@@ -38,15 +38,8 @@ import type {
 } from '../interface';
 
 import { normalizeOptions } from './options.js';
-import {
-  ES_TYPE_MAPPING,
-  UNSUPPORTED_ES_TYPES,
-  type ESFieldType,
-} from './type-mapping.js';
-import type {
-  ElasticsearchIndexDefinition,
-  ESFieldOverride,
-} from './types.js';
+import { ES_TYPE_MAPPING, UNSUPPORTED_ES_TYPES, type ESFieldType } from './type-mapping.js';
+import type { ElasticsearchIndexDefinition, ESFieldOverride } from './types.js';
 
 // ============================================================================
 // Surface constants
@@ -290,10 +283,7 @@ function generateMapping(
   return { code: JSON.stringify({ indices }, null, 2) + '\n', diagnostics: allDiagnostics };
 }
 
-function deriveIndexDefsFromStores(
-  _ir: IR,
-  stores: IRStore[],
-): ElasticsearchIndexDefinition[] {
+function deriveIndexDefsFromStores(_ir: IR, stores: IRStore[]): ElasticsearchIndexDefinition[] {
   return stores.map((store) => ({
     entity: store.entity,
     // Read searchable flag from store config if present
@@ -336,7 +326,10 @@ function generateIndexTemplate(
     };
   }
 
-  return { code: JSON.stringify({ index_templates: templates }, null, 2) + '\n', diagnostics: allDiagnostics };
+  return {
+    code: JSON.stringify({ index_templates: templates }, null, 2) + '\n',
+    diagnostics: allDiagnostics,
+  };
 }
 
 function generateIngestPipeline(opts: ReturnType<typeof normalizeOptions>): string {
@@ -403,7 +396,9 @@ function generateIndexer(ir: IR, opts: ReturnType<typeof normalizeOptions>): str
     lines.push(`/**`);
     lines.push(` * Build an Elasticsearch document from a ${entity.name} entity.`);
     lines.push(` */`);
-    lines.push(`function build${entity.name}Document(entity: Record<string, unknown>): Record<string, unknown> {`);
+    lines.push(
+      `function build${entity.name}Document(entity: Record<string, unknown>): Record<string, unknown> {`,
+    );
     lines.push(`  return {`);
     lines.push(`    ...entity,`);
     lines.push(`    _indexed_at: new Date().toISOString(),`);
@@ -582,12 +577,19 @@ function generateClient(ir: IR, opts: ReturnType<typeof normalizeOptions>): stri
     lines.push(`    query: {`);
     lines.push(`      multi_match: {`);
     lines.push(`        query,`);
-    lines.push(`        fields: [${entity.properties.filter((p) => p.type.name === 'string' || p.type.name === 'text').map((p) => `'${p.name}'`).join(', ')}],`);
+    lines.push(
+      `        fields: [${entity.properties
+        .filter((p) => p.type.name === 'string' || p.type.name === 'text')
+        .map((p) => `'${p.name}'`)
+        .join(', ')}],`,
+    );
     lines.push(`      },`);
     lines.push(`    },`);
     lines.push(`    ...(options?.sort ? { sort: options.sort } : {}),`);
     lines.push(`  };`);
-    lines.push(`  const response = await fetch(\`${endpointPlaceholder()}/\${${JSON.stringify(indexName)}}/_search\`, {`);
+    lines.push(
+      `  const response = await fetch(\`${endpointPlaceholder()}/\${${JSON.stringify(indexName)}}/_search\`, {`,
+    );
     lines.push(`    method: 'POST',`);
     lines.push(`    headers: { 'Content-Type': 'application/json' },`);
     lines.push(`    body: JSON.stringify(body),`);
@@ -604,7 +606,9 @@ function generateClient(ir: IR, opts: ReturnType<typeof normalizeOptions>): stri
     lines.push(`  client: ESClient,`);
     lines.push(`  id: string,`);
     lines.push(`): Promise<${entity.name}Document | null> {`);
-    lines.push(`  const response = await fetch(\`${endpointPlaceholder()}/\${${JSON.stringify(indexName)}}/_doc/\${id}\`);`);
+    lines.push(
+      `  const response = await fetch(\`${endpointPlaceholder()}/\${${JSON.stringify(indexName)}}/_doc/\${id}\`);`,
+    );
     lines.push(`  if (response.status === 404) return null;`);
     lines.push(`  const data = await response.json() as { _source: ${entity.name}Document };`);
     lines.push(`  return data._source;`);

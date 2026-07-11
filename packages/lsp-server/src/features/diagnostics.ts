@@ -8,7 +8,7 @@ import { toLspRange } from '../position-utils.js';
  */
 export function toDiagnostics(
   parseErrors: CompilationError[],
-  irDiagnostics: IRDiagnostic[]
+  irDiagnostics: IRDiagnostic[],
 ): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
 
@@ -26,9 +26,10 @@ export function toDiagnostics(
   }
 
   for (const diag of irDiagnostics) {
-    const range = diag.line != null && diag.column != null
-      ? toLspRange({ line: diag.line, column: diag.column })
-      : { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } };
+    const range =
+      diag.line != null && diag.column != null
+        ? toLspRange({ line: diag.line, column: diag.column })
+        : { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } };
 
     diagnostics.push({
       range,
@@ -43,9 +44,13 @@ export function toDiagnostics(
 
 function mapIRSeverity(severity: IRDiagnostic['severity']): DiagnosticSeverity {
   switch (severity) {
-    case 'error': return DiagnosticSeverity.Error;
-    case 'warning': return DiagnosticSeverity.Warning;
-    case 'info': return DiagnosticSeverity.Information;
-    default: return DiagnosticSeverity.Information;
+    case 'error':
+      return DiagnosticSeverity.Error;
+    case 'warning':
+      return DiagnosticSeverity.Warning;
+    case 'info':
+      return DiagnosticSeverity.Information;
+    default:
+      return DiagnosticSeverity.Information;
   }
 }

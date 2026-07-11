@@ -59,7 +59,9 @@ interface PreflightResult {
 /**
  * Get all environment variable definitions from the env mapping
  */
-function getAllEnvVars(envMapping: EnvMapping | undefined): Array<{ category: string; key: string; def: EnvVarDefinition }> {
+function getAllEnvVars(
+  envMapping: EnvMapping | undefined,
+): Array<{ category: string; key: string; def: EnvVarDefinition }> {
   if (!envMapping) return [];
 
   const result: Array<{ category: string; key: string; def: EnvVarDefinition }> = [];
@@ -80,11 +82,7 @@ function getAllEnvVars(envMapping: EnvMapping | undefined): Array<{ category: st
 /**
  * Check environment variable status
  */
-function checkEnvVar(
-  category: string,
-  key: string,
-  def: EnvVarDefinition
-): EnvVarStatus {
+function checkEnvVar(category: string, key: string, def: EnvVarDefinition): EnvVarStatus {
   const envVarName = def.name;
   const isSet = envVarName in process.env;
   const isRequired = def.required !== false; // default is true
@@ -111,13 +109,11 @@ async function runEnvChecks(cwd: string): Promise<PreflightResult> {
   const envMapping = build.env;
 
   const allVars = getAllEnvVars(envMapping);
-  const checked = allVars.map(({ category, key, def }) =>
-    checkEnvVar(category, key, def)
-  );
+  const checked = allVars.map(({ category, key, def }) => checkEnvVar(category, key, def));
 
-  const missing = checked.filter(s => !s.isSet && s.isRequired && !s.hasDefault);
-  const present = checked.filter(s => s.isSet);
-  const optionalMissing = checked.filter(s => !s.isSet && !s.isRequired);
+  const missing = checked.filter((s) => !s.isSet && s.isRequired && !s.hasDefault);
+  const present = checked.filter((s) => s.isSet);
+  const optionalMissing = checked.filter((s) => !s.isSet && !s.isRequired);
 
   return {
     ok: missing.length === 0,
@@ -203,7 +199,9 @@ function formatTextResult(result: PreflightResult): string {
   if (result.checked.length === 0) {
     lines.push(chalk.yellow('No environment variables configured.'));
     lines.push('');
-    lines.push(chalk.gray('Add an "env" section to manifest.config.yaml to define environment variables:'));
+    lines.push(
+      chalk.gray('Add an "env" section to manifest.config.yaml to define environment variables:'),
+    );
     lines.push('');
     lines.push(chalk.gray('  env:'));
     lines.push(chalk.gray('    stores:'));
@@ -218,7 +216,9 @@ function formatTextResult(result: PreflightResult): string {
   if (result.ok) {
     lines.push(chalk.green.bold('✓ All required environment variables are set.'));
   } else {
-    lines.push(chalk.red.bold(`✗ ${result.missing.length} required environment variable(s) missing.`));
+    lines.push(
+      chalk.red.bold(`✗ ${result.missing.length} required environment variable(s) missing.`),
+    );
   }
   lines.push('');
 
@@ -253,7 +253,9 @@ function formatTextResult(result: PreflightResult): string {
     lines.push(chalk.bold('Optional variables not set:'));
     for (const status of result.optionalMissing) {
       const categoryLabel = chalk.gray(`[${status.category}]`);
-      lines.push(`  ${chalk.yellow('○')} ${chalk.cyan(status.name)} ${categoryLabel} ${chalk.gray('(optional)')}`);
+      lines.push(
+        `  ${chalk.yellow('○')} ${chalk.cyan(status.name)} ${categoryLabel} ${chalk.gray('(optional)')}`,
+      );
       if (status.description) {
         lines.push(`      ${chalk.gray(status.description)}`);
       }
@@ -265,7 +267,9 @@ function formatTextResult(result: PreflightResult): string {
   if (result.missing.length > 0) {
     lines.push(chalk.bold('To fix:'));
     lines.push(`  1. Set the missing environment variables, or`);
-    lines.push(`  2. Run ${chalk.cyan('manifest preflight --generate-example')} to create a .env.example file`);
+    lines.push(
+      `  2. Run ${chalk.cyan('manifest preflight --generate-example')} to create a .env.example file`,
+    );
     lines.push('');
   }
 
@@ -285,7 +289,9 @@ export async function preflightCommand(options: PreflightOptions = {}): Promise<
   if (options.generateExample) {
     const content = generateEnvExampleContent(result);
     const outputPath = options.output
-      ? (path.isAbsolute(options.output) ? options.output : path.join(cwd, options.output))
+      ? path.isAbsolute(options.output)
+        ? options.output
+        : path.join(cwd, options.output)
       : path.join(cwd, '.env.example');
 
     // Ensure parent directory exists
@@ -306,7 +312,9 @@ export async function preflightCommand(options: PreflightOptions = {}): Promise<
     console.log('');
 
     if (result.missing.length > 0) {
-      console.log(chalk.yellow(`Note: ${result.missing.length} required variable(s) are currently missing.`));
+      console.log(
+        chalk.yellow(`Note: ${result.missing.length} required variable(s) are currently missing.`),
+      );
       console.log('');
     }
 

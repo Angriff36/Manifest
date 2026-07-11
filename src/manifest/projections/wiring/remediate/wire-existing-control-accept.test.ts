@@ -50,7 +50,7 @@ describe('wire-existing-control semantic matching (accept)', () => {
       fileContents: files,
       capabilityId: 'ActionMilestone.complete',
     });
-    const plan = bundle.plans.find(p => p.repairKind === 'wire-existing-control');
+    const plan = bundle.plans.find((p) => p.repairKind === 'wire-existing-control');
     expect(plan?.automaticApplicationAllowed).toBe(true);
     expect(plan?.decision).toMatch(/auto-fixable|repairable-with-existing-pattern/);
 
@@ -60,7 +60,7 @@ describe('wire-existing-control semantic matching (accept)', () => {
       mode: 'one-defect',
       capabilityId: 'ActionMilestone.complete',
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
+    expect(result.applied.some((a) => a.applied)).toBe(true);
     const patch = applyRepairPlan(plan!, files);
     expect(patch.ok).toBe(true);
     const content = [...patch.nextContents.values()][0]!;
@@ -145,12 +145,12 @@ describe('wire-existing-control semantic matching (accept)', () => {
       mode: 'one-defect',
     });
     const wireApplied = result.applied.filter(
-      a => a.applied && a.findingId.includes('ActionMilestone.complete'),
+      (a) => a.applied && a.findingId.includes('ActionMilestone.complete'),
     );
     expect(wireApplied).toHaveLength(0);
     expect(
       result.plans.some(
-        p =>
+        (p) =>
           p.capabilityId === 'ActionMilestone.complete' &&
           p.decision === 'ambiguous-product-decision',
       ),
@@ -179,15 +179,13 @@ describe('wire-existing-control semantic matching (accept)', () => {
       fileContents: files,
       mode: 'one-defect',
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
-    const applied = result.applied.find(a => a.applied)!;
+    expect(result.applied.some((a) => a.applied)).toBe(true);
+    const applied = result.applied.find((a) => a.applied)!;
     expect(applied.findingId).toMatch(/wrong_input_shape|Task\.create/);
     expect(applied.findingId).not.toMatch(/ActionMilestone\.complete/);
-    const dismissFile = files.get(
-      'apps/app/app/(mobile-kitchen)/kitchen/mobile/page.tsx',
-    )!;
+    const dismissFile = files.get('apps/app/app/(mobile-kitchen)/kitchen/mobile/page.tsx')!;
     const after = applyRepairPlan(
-      result.plans.find(p => p.findingId === applied.findingId)!,
+      result.plans.find((p) => p.findingId === applied.findingId)!,
       files,
     );
     expect(after.nextContents.get('apps/app/app/(mobile-kitchen)/kitchen/mobile/page.tsx')).toBe(

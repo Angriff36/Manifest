@@ -1,18 +1,25 @@
 import { checkDomainCompleteness } from '@angriff36/manifest/domain-completeness';
 import { checkReactionCompleteness } from '@angriff36/manifest/reaction-completeness';
-import type { IRCommand, IREntity, IREvent, IRReactionRule, IRStore, IRTenant } from '@angriff36/manifest/ir';
+import type {
+  IRCommand,
+  IREntity,
+  IREvent,
+  IRReactionRule,
+  IRStore,
+  IRTenant,
+} from '@angriff36/manifest/ir';
 import type { IrRecord, ParsedIrSnapshot, ValidationDiagnostic } from './validate-ai-types.js';
 
 export function parseIrSnapshot(ir: unknown): ParsedIrSnapshot | null {
   if (!ir || typeof ir !== 'object') return null;
   const record = ir as IrRecord;
   return {
-    entities: Array.isArray(record.entities) ? record.entities as IrRecord[] : [],
-    commands: Array.isArray(record.commands) ? record.commands as IrRecord[] : [],
-    policies: Array.isArray(record.policies) ? record.policies as IrRecord[] : [],
-    stores: Array.isArray(record.stores) ? record.stores as IrRecord[] : [],
-    events: Array.isArray(record.events) ? record.events as IrRecord[] : [],
-    reactions: Array.isArray(record.reactions) ? record.reactions as IrRecord[] : [],
+    entities: Array.isArray(record.entities) ? (record.entities as IrRecord[]) : [],
+    commands: Array.isArray(record.commands) ? (record.commands as IrRecord[]) : [],
+    policies: Array.isArray(record.policies) ? (record.policies as IrRecord[]) : [],
+    stores: Array.isArray(record.stores) ? (record.stores as IrRecord[]) : [],
+    events: Array.isArray(record.events) ? (record.events as IrRecord[]) : [],
+    reactions: Array.isArray(record.reactions) ? (record.reactions as IrRecord[]) : [],
     tenant: record.tenant as IRTenant | undefined,
   };
 }
@@ -41,11 +48,13 @@ function checkPolicyCoverage(snapshot: ParsedIrSnapshot): ValidationDiagnostic[]
   }
   if (pairs.length === 0) return diagnostics;
 
-  const executePolicies = snapshot.policies.filter(p => p.action === 'execute' || p.action === 'all');
-  const coveredEntities = new Set(
-    executePolicies.filter(p => p.entity).map(p => String(p.entity)),
+  const executePolicies = snapshot.policies.filter(
+    (p) => p.action === 'execute' || p.action === 'all',
   );
-  const hasGlobal = executePolicies.some(p => !p.entity);
+  const coveredEntities = new Set(
+    executePolicies.filter((p) => p.entity).map((p) => String(p.entity)),
+  );
+  const hasGlobal = executePolicies.some((p) => !p.entity);
 
   for (const pair of pairs) {
     if (hasGlobal || coveredEntities.has(pair.entity)) continue;
@@ -64,12 +73,12 @@ function checkPolicyCoverage(snapshot: ParsedIrSnapshot): ValidationDiagnostic[]
 function checkDuplicateConstraintCodes(entities: IrRecord[]): ValidationDiagnostic[] {
   const diagnostics: ValidationDiagnostic[] = [];
   for (const entity of entities) {
-    const constraints = Array.isArray(entity.constraints) ? entity.constraints as IrRecord[] : [];
+    const constraints = Array.isArray(entity.constraints) ? (entity.constraints as IrRecord[]) : [];
     const codesSeen = new Map<string, number>();
     const entityName = String(entity.name);
 
     for (const c of constraints) {
-      const code = c.code ? String(c.code) : (c.name ? String(c.name) : '');
+      const code = c.code ? String(c.code) : c.name ? String(c.name) : '';
       if (!code) continue;
       const count = (codesSeen.get(code) ?? 0) + 1;
       codesSeen.set(code, count);
@@ -80,7 +89,8 @@ function checkDuplicateConstraintCodes(entities: IrRecord[]): ValidationDiagnost
         severity: 'error',
         category: 'semantic',
         path: `entities[?(@.name=="${entityName}")].constraints`,
-        suggestion: 'Constraint codes must be unique within an entity. Rename or remove the duplicate.',
+        suggestion:
+          'Constraint codes must be unique within an entity. Rename or remove the duplicate.',
       });
     }
   }
@@ -89,11 +99,11 @@ function checkDuplicateConstraintCodes(entities: IrRecord[]): ValidationDiagnost
 
 function checkOrphanEventEmits(snapshot: ParsedIrSnapshot): ValidationDiagnostic[] {
   const diagnostics: ValidationDiagnostic[] = [];
-  const eventNames = new Set(snapshot.events.map(e => String(e.name)));
+  const eventNames = new Set(snapshot.events.map((e) => String(e.name)));
 
   for (const cmd of snapshot.commands) {
     const cmdName = cmd.name == null ? '' : String(cmd.name);
-    const emits = Array.isArray(cmd.emits) ? cmd.emits as string[] : [];
+    const emits = Array.isArray(cmd.emits) ? (cmd.emits as string[]) : [];
     for (const eventName of emits) {
       if (eventNames.has(eventName)) continue;
       diagnostics.push({
@@ -111,7 +121,7 @@ function checkOrphanEventEmits(snapshot: ParsedIrSnapshot): ValidationDiagnostic
 
 function checkStoreEntityReferences(snapshot: ParsedIrSnapshot): ValidationDiagnostic[] {
   const diagnostics: ValidationDiagnostic[] = [];
-  const entityNames = new Set(snapshot.entities.map(e => String(e.name)));
+  const entityNames = new Set(snapshot.entities.map((e) => String(e.name)));
 
   for (const store of snapshot.stores) {
     const storeEntity = store.entity == null ? '' : String(store.entity);
@@ -130,7 +140,7 @@ function checkStoreEntityReferences(snapshot: ParsedIrSnapshot): ValidationDiagn
 
 function checkCommandEntityReferences(snapshot: ParsedIrSnapshot): ValidationDiagnostic[] {
   const diagnostics: ValidationDiagnostic[] = [];
-  const entityNames = new Set(snapshot.entities.map(e => String(e.name)));
+  const entityNames = new Set(snapshot.entities.map((e) => String(e.name)));
 
   for (const cmd of snapshot.commands) {
     const cmdEntity = cmd.entity == null ? '' : String(cmd.entity);
@@ -150,11 +160,13 @@ function checkCommandEntityReferences(snapshot: ParsedIrSnapshot): ValidationDia
 
 function checkRelationshipTargets(snapshot: ParsedIrSnapshot): ValidationDiagnostic[] {
   const diagnostics: ValidationDiagnostic[] = [];
-  const entityNames = new Set(snapshot.entities.map(e => String(e.name)));
+  const entityNames = new Set(snapshot.entities.map((e) => String(e.name)));
 
   for (const entity of snapshot.entities) {
     const entityName = String(entity.name);
-    const relationships = Array.isArray(entity.relationships) ? entity.relationships as IrRecord[] : [];
+    const relationships = Array.isArray(entity.relationships)
+      ? (entity.relationships as IrRecord[])
+      : [];
     for (const rel of relationships) {
       const target = rel.target == null ? '' : String(rel.target);
       if (!target || entityNames.has(target)) continue;

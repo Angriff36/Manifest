@@ -26,7 +26,12 @@ export default definePlugin({
     },
   ],
   builtins: [
-    { name: 'slugify', purity: 'pure', arity: 1, fn: (s) => String(s).toLowerCase().replace(/\s+/g, '-') },
+    {
+      name: 'slugify',
+      purity: 'pure',
+      arity: 1,
+      fn: (s) => String(s).toLowerCase().replace(/\s+/g, '-'),
+    },
   ],
 });
 ```

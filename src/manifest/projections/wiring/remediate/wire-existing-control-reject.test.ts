@@ -29,7 +29,7 @@ describe('wire-existing-control semantic matching (reject)', () => {
       fileContents: files,
       capabilityId: 'ActionMilestone.complete',
     });
-    const plan = bundle.plans.find(p => p.capabilityId === 'ActionMilestone.complete');
+    const plan = bundle.plans.find((p) => p.capabilityId === 'ActionMilestone.complete');
     expect(plan?.decision).toBe('ambiguous-product-decision');
     expect(plan?.automaticApplicationAllowed).toBe(false);
     expect(plan?.edits ?? []).toHaveLength(0);
@@ -40,7 +40,7 @@ describe('wire-existing-control semantic matching (reject)', () => {
       mode: 'one-defect',
       capabilityId: 'ActionMilestone.complete',
     });
-    expect(result.applied.filter(a => a.applied)).toHaveLength(0);
+    expect(result.applied.filter((a) => a.applied)).toHaveLength(0);
     expect(files.get('apps/app/app/(mobile-kitchen)/kitchen/mobile/page.tsx')).toContain(
       'onClick={() => setError(null)}',
     );
@@ -74,7 +74,7 @@ describe('wire-existing-control semantic matching (reject)', () => {
       fileContents: files,
       capabilityId: 'ActionMilestone.complete',
     });
-    const plan = bundle.plans.find(p => p.capabilityId === 'ActionMilestone.complete');
+    const plan = bundle.plans.find((p) => p.capabilityId === 'ActionMilestone.complete');
     expect(plan?.decision).toBe('ambiguous-product-decision');
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
@@ -105,7 +105,7 @@ describe('wire-existing-control semantic matching (reject)', () => {
       fileContents: files,
       capabilityId: 'ActionMilestone.complete',
     });
-    const plan = bundle.plans.find(p => p.capabilityId === 'ActionMilestone.complete');
+    const plan = bundle.plans.find((p) => p.capabilityId === 'ActionMilestone.complete');
     expect(plan?.decision).toBe('ambiguous-product-decision');
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
@@ -137,7 +137,7 @@ describe('wire-existing-control semantic matching (reject)', () => {
       fileContents: files,
       capabilityId: 'ActionMilestone.complete',
     });
-    const plan = bundle.plans.find(p => p.capabilityId === 'ActionMilestone.complete');
+    const plan = bundle.plans.find((p) => p.capabilityId === 'ActionMilestone.complete');
     expect(plan?.decision).toBe('ambiguous-product-decision');
     expect(plan?.automaticApplicationAllowed).toBe(false);
     expect(plan?.edits ?? []).toHaveLength(0);
@@ -170,7 +170,7 @@ describe('wire-existing-control semantic matching (reject)', () => {
       fileContents: files,
       capabilityId: 'ActionMilestone.complete',
     });
-    const plan = bundle.plans.find(p => p.capabilityId === 'ActionMilestone.complete');
+    const plan = bundle.plans.find((p) => p.capabilityId === 'ActionMilestone.complete');
     expect(plan?.decision).toBe('ambiguous-product-decision');
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
@@ -201,7 +201,7 @@ describe('wire-existing-control semantic matching (reject)', () => {
       fileContents: files,
       capabilityId: 'ActionMilestone.complete',
     });
-    const plan = bundle.plans.find(p => p.capabilityId === 'ActionMilestone.complete');
+    const plan = bundle.plans.find((p) => p.capabilityId === 'ActionMilestone.complete');
     expect(plan?.decision).toBe('ambiguous-product-decision');
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });

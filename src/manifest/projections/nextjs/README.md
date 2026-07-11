@@ -5,6 +5,7 @@ Generates Next.js App Router API routes from Manifest IR.
 ## Overview
 
 The Next.js projection creates type-safe API route handlers that:
+
 - Use direct Prisma queries for reads (efficient, bypasses runtime)
 - Include configurable authentication (Clerk, NextAuth, custom, or none)
 - Support tenant isolation with optional filtering
@@ -186,16 +187,16 @@ const clientResult = projection.generateClient(ir);
 // Auto-generated Next.js API route for Recipe
 // Generated from Manifest IR - DO NOT EDIT
 
-import { NextRequest } from "next/server";
-import { database } from "@/lib/database";
-import { manifestSuccessResponse, manifestErrorResponse } from "@/lib/manifest-response";
+import { NextRequest } from 'next/server';
+import { database } from '@/lib/database';
+import { manifestSuccessResponse, manifestErrorResponse } from '@/lib/manifest-response';
 
 export async function GET(request: NextRequest) {
   try {
     // Auth check
     const { userId } = await auth();
     if (!userId) {
-      return manifestErrorResponse("Unauthorized", 401);
+      return manifestErrorResponse('Unauthorized', 401);
     }
 
     // Tenant lookup (if enabled)
@@ -204,7 +205,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!userMapping) {
-      return manifestErrorResponse("User not mapped to tenant", 400);
+      return manifestErrorResponse('User not mapped to tenant', 400);
     }
 
     const { tenantId } = userMapping;
@@ -213,17 +214,17 @@ export async function GET(request: NextRequest) {
     const recipes = await database.recipe.findMany({
       where: {
         tenantId,
-        deletedAt: null
+        deletedAt: null,
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
     });
 
     return manifestSuccessResponse({ recipes });
   } catch (error) {
-    console.error("Error fetching recipes:", error);
-    return manifestErrorResponse("Internal server error", 500);
+    console.error('Error fetching recipes:', error);
+    return manifestErrorResponse('Internal server error', 500);
   }
 }
 ```
@@ -245,6 +246,7 @@ See `docs/guides/writing-projections.md` for detailed rationale.
 ### Writes Must Use Runtime
 
 For POST/PUT/DELETE operations (mutations), you **MUST use `runtime.executeCommand()`** because mutations require:
+
 - Guard evaluation (ordered, short-circuit)
 - Constraint validation
 - Policy checks (execute or all)
@@ -253,12 +255,14 @@ For POST/PUT/DELETE operations (mutations), you **MUST use `runtime.executeComma
 ## Testing
 
 The projection includes comprehensive smoke tests that verify:
+
 - Direct Prisma query generation (not runtime.query)
 - Tenant and soft delete filtering
 - Auth provider customization
 - Error handling and diagnostics
 
 Run tests with:
+
 ```bash
 npm test src/manifest/projections/nextjs/generator.test.ts
 ```

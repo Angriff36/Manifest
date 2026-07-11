@@ -18,7 +18,7 @@ describe('document-symbols', () => {
     expect(symbols[0].children).toBeDefined();
     expect(symbols[0].children!.length).toBeGreaterThanOrEqual(2);
 
-    const propSymbol = symbols[0].children!.find(s => s.name === 'status');
+    const propSymbol = symbols[0].children!.find((s) => s.name === 'status');
     expect(propSymbol).toBeDefined();
     expect(propSymbol!.kind).toBe(SymbolKind.Property);
   });
@@ -48,7 +48,7 @@ store Order in memory`;
 
     // Should have entity + store
     expect(symbols.length).toBeGreaterThanOrEqual(2);
-    const storeSymbol = symbols.find(s => s.name === 'Order' && s.kind === SymbolKind.Module);
+    const storeSymbol = symbols.find((s) => s.name === 'Order' && s.kind === SymbolKind.Module);
     expect(storeSymbol).toBeDefined();
   });
 

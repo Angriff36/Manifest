@@ -23,7 +23,7 @@ function ok(): CommandResult {
 describe('extractRetryErrorCode', () => {
   it('surfaces a custom structured code from the error string', () => {
     expect(extractRetryErrorCode(fail('SUPPLIER_UNAVAILABLE: upstream is down'))).toBe(
-      'SUPPLIER_UNAVAILABLE'
+      'SUPPLIER_UNAVAILABLE',
     );
   });
 
@@ -45,7 +45,9 @@ describe('extractRetryErrorCode', () => {
   });
 
   it('returns undefined for a plain prose error with no structured code', () => {
-    expect(extractRetryErrorCode(fail('Expenses over 500 require approval override'))).toBeUndefined();
+    expect(
+      extractRetryErrorCode(fail('Expenses over 500 require approval override')),
+    ).toBeUndefined();
   });
 });
 

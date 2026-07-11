@@ -35,7 +35,9 @@ export const PLUGIN_API_VERSION = '1';
  * don't need to import commander as a dependency.
  */
 export interface CliProgramLike {
-  command(name: string): { description(d: string): { action(fn: (...args: unknown[]) => void | Promise<void>): unknown } };
+  command(name: string): {
+    description(d: string): { action(fn: (...args: unknown[]) => void | Promise<void>): unknown };
+  };
 }
 
 /**
@@ -87,7 +89,12 @@ export interface PluginManifest {
  * Plugin-registered store adapters MUST NOT use these as scheme names.
  */
 export const BUILTIN_STORE_TARGETS: ReadonlySet<string> = new Set([
-  'memory', 'localStorage', 'postgres', 'supabase', 'durable', 'mongodb',
+  'memory',
+  'localStorage',
+  'postgres',
+  'supabase',
+  'durable',
+  'mongodb',
 ]);
 
 /**
@@ -260,7 +267,7 @@ export function definePlugin(plugin: ManifestPlugin): ManifestPlugin {
   if (plugin.manifest.pluginApiVersion !== PLUGIN_API_VERSION) {
     throw new Error(
       `Plugin "${plugin.manifest.name}" declares pluginApiVersion "${plugin.manifest.pluginApiVersion}" ` +
-      `but current API version is "${PLUGIN_API_VERSION}"`
+        `but current API version is "${PLUGIN_API_VERSION}"`,
     );
   }
   // Validate store adapter schemes don't collide with built-in targets
@@ -269,7 +276,7 @@ export function definePlugin(plugin: ManifestPlugin): ManifestPlugin {
       if (BUILTIN_STORE_TARGETS.has(adapter.scheme)) {
         throw new Error(
           `Plugin "${plugin.manifest.name}" registers store adapter with scheme "${adapter.scheme}" ` +
-          `which is a built-in store target. Custom adapters must use unique scheme names.`
+            `which is a built-in store target. Custom adapters must use unique scheme names.`,
         );
       }
     }
@@ -286,14 +293,51 @@ export function definePlugin(plugin: ManifestPlugin): ManifestPlugin {
  * Plugins cannot register builtins with these names.
  */
 export const RESERVED_BUILTIN_NAMES: ReadonlySet<string> = new Set([
-  'now', 'uuid',
-  'trim', 'split', 'count', 'startsWith', 'endsWith', 'replace',
-  'toUpperCase', 'toLowerCase', 'length', 'substring', 'indexOf', 'matches', 'search',
-  'abs', 'round', 'floor', 'ceil', 'min', 'max', 'between',
-  'sum', 'avg', 'min_of', 'max_of', 'count_of', 'filter', 'map',
-  'year', 'month', 'day', 'hours', 'minutes', 'seconds',
-  'dateOf', 'timeOf', 'datetimeOf', 'addDuration', 'durationBetween',
-  'durationDays', 'durationHours', 'durationMinutes', 'durationSeconds',
+  'now',
+  'uuid',
+  'trim',
+  'split',
+  'count',
+  'startsWith',
+  'endsWith',
+  'replace',
+  'toUpperCase',
+  'toLowerCase',
+  'length',
+  'substring',
+  'indexOf',
+  'matches',
+  'search',
+  'abs',
+  'round',
+  'floor',
+  'ceil',
+  'min',
+  'max',
+  'between',
+  'sum',
+  'avg',
+  'min_of',
+  'max_of',
+  'count_of',
+  'filter',
+  'map',
+  'year',
+  'month',
+  'day',
+  'hours',
+  'minutes',
+  'seconds',
+  'dateOf',
+  'timeOf',
+  'datetimeOf',
+  'addDuration',
+  'durationBetween',
+  'durationDays',
+  'durationHours',
+  'durationMinutes',
+  'durationSeconds',
   'flag',
-  'hasPermission', 'roleAllows',
+  'hasPermission',
+  'roleAllows',
 ]);

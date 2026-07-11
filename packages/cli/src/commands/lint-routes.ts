@@ -75,10 +75,7 @@ const DEFAULT_CONFIG: LintRoutesConfig = {
  */
 export async function loadLintRoutesConfig(cwd: string): Promise<LintRoutesConfig> {
   // Try to load from manifest.config.yaml
-  const configPaths = [
-    'manifest.config.yaml',
-    'manifest.config.yml',
-  ];
+  const configPaths = ['manifest.config.yaml', 'manifest.config.yml'];
 
   for (const configFile of configPaths) {
     const configPath = path.resolve(cwd, configFile);
@@ -123,7 +120,7 @@ export async function loadLintRoutesConfig(cwd: string): Promise<LintRoutesConfi
  */
 function buildRoutePattern(prefixes: string[]): RegExp {
   // Escape regex special chars in prefixes
-  const escaped = prefixes.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const escaped = prefixes.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   // Match quoted strings or template literal strings containing any prefix
   // Wrap alternation in non-capturing group so [^...] applies to all alternatives
   const pattern = `(?:["'\`])\\s*((?:${escaped.join('|')})[^"'\`\\s]*)\\s*(?:["'\`])`;
@@ -149,7 +146,7 @@ function isCommentOrGenerated(line: string): boolean {
  * Check if a match is in the allowlist.
  */
 function isAllowlisted(match: string, allowlist: string[]): boolean {
-  return allowlist.some(allowed => match === allowed || match.startsWith(allowed));
+  return allowlist.some((allowed) => match === allowed || match.startsWith(allowed));
 }
 
 /**
@@ -158,7 +155,7 @@ function isAllowlisted(match: string, allowlist: string[]): boolean {
 export function scanFileForRoutes(
   content: string,
   filePath: string,
-  config: LintRoutesConfig
+  config: LintRoutesConfig,
 ): LintViolation[] {
   const violations: LintViolation[] = [];
   const pattern = buildRoutePattern(config.prefixes);
@@ -199,15 +196,12 @@ export function scanFileForRoutes(
 /**
  * Scan all configured directories for hardcoded route strings.
  */
-export async function scanDirectories(
-  cwd: string,
-  config: LintRoutesConfig
-): Promise<LintResult> {
+export async function scanDirectories(cwd: string, config: LintRoutesConfig): Promise<LintResult> {
   const violations: LintViolation[] = [];
   let filesScanned = 0;
 
   // Collect all files from configured directories
-  const filePatterns = config.dirs.map(dir => `${dir}/**/*.{ts,tsx,js,jsx,mjs,cjs}`);
+  const filePatterns = config.dirs.map((dir) => `${dir}/**/*.{ts,tsx,js,jsx,mjs,cjs}`);
 
   for (const pattern of filePatterns) {
     const files = await glob(pattern, {
@@ -267,9 +261,13 @@ export async function lintRoutesCommand(options: LintRoutesOptions = {}): Promis
     } else {
       if (result.violations.length === 0) {
         spinner.succeed(`Scanned ${result.filesScanned} file(s) — no hardcoded routes found`);
-        console.log(chalk.green('\n  Route surface is clean. All transport paths use generated helpers.'));
+        console.log(
+          chalk.green('\n  Route surface is clean. All transport paths use generated helpers.'),
+        );
       } else {
-        spinner.fail(`Found ${result.violations.length} hardcoded route(s) in ${result.filesScanned} file(s)`);
+        spinner.fail(
+          `Found ${result.violations.length} hardcoded route(s) in ${result.filesScanned} file(s)`,
+        );
         console.log('');
 
         for (const v of result.violations) {

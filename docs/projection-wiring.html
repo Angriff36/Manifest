@@ -1,448 +1,883 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Manifest · Prisma + Next.js Projection Wiring</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-<style>
-  :root {
-    --ink:        #0a0e16;
-    --ink-2:      #0e131f;
-    --panel:      #121927;
-    --panel-2:    #161f30;
-    --line:       #243246;
-    --grid:       rgba(86, 156, 214, 0.06);
-    --cyan:       #56b6c2;
-    --cyan-br:    #7fd6e0;
-    --amber:      #e0a64a;
-    --amber-br:   #f4c06a;
-    --green:      #7fb069;
-    --violet:     #9d8df1;
-    --rose:       #e06c75;
-    --paper:      #e7ecf3;
-    --paper-dim:  #9bacc4;
-    --paper-mute: #5e7088;
-    --mono: "IBM Plex Mono", ui-monospace, monospace;
-    --sans: "IBM Plex Sans", system-ui, sans-serif;
-    --disp: "Bricolage Grotesque", var(--sans);
-  }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manifest · Prisma + Next.js Projection Wiring</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #0a0e16;
+        --ink-2: #0e131f;
+        --panel: #121927;
+        --panel-2: #161f30;
+        --line: #243246;
+        --grid: rgba(86, 156, 214, 0.06);
+        --cyan: #56b6c2;
+        --cyan-br: #7fd6e0;
+        --amber: #e0a64a;
+        --amber-br: #f4c06a;
+        --green: #7fb069;
+        --violet: #9d8df1;
+        --rose: #e06c75;
+        --paper: #e7ecf3;
+        --paper-dim: #9bacc4;
+        --paper-mute: #5e7088;
+        --mono: 'IBM Plex Mono', ui-monospace, monospace;
+        --sans: 'IBM Plex Sans', system-ui, sans-serif;
+        --disp: 'Bricolage Grotesque', var(--sans);
+      }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-  html { scroll-behavior: smooth; }
+      html {
+        scroll-behavior: smooth;
+      }
 
-  body {
-    background-color: var(--ink);
-    background-image:
-      linear-gradient(var(--grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--grid) 1px, transparent 1px),
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(86,182,194,0.10), transparent 60%);
-    background-size: 32px 32px, 32px 32px, 100% 100%;
-    color: var(--paper);
-    font-family: var(--sans);
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
-  }
+      body {
+        background-color: var(--ink);
+        background-image:
+          linear-gradient(var(--grid) 1px, transparent 1px),
+          linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+          radial-gradient(ellipse 80% 50% at 50% -10%, rgba(86, 182, 194, 0.1), transparent 60%);
+        background-size:
+          32px 32px,
+          32px 32px,
+          100% 100%;
+        color: var(--paper);
+        font-family: var(--sans);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
 
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 0 28px;
+      }
 
-  a { color: var(--cyan-br); text-decoration: none; }
+      a {
+        color: var(--cyan-br);
+        text-decoration: none;
+      }
 
-  code, .mono { font-family: var(--mono); }
+      code,
+      .mono {
+        font-family: var(--mono);
+      }
 
-  /* ---------- header / hero ---------- */
-  header {
-    padding: 88px 0 56px;
-    border-bottom: 1px solid var(--line);
-    position: relative;
-  }
-  .kicker {
-    font-family: var(--mono);
-    font-size: 12px;
-    letter-spacing: 0.32em;
-    text-transform: uppercase;
-    color: var(--cyan);
-    display: flex; align-items: center; gap: 12px;
-    margin-bottom: 22px;
-  }
-  .kicker::before {
-    content: ""; width: 38px; height: 1px; background: var(--cyan);
-  }
-  h1 {
-    font-family: var(--disp);
-    font-weight: 800;
-    font-size: clamp(40px, 7vw, 86px);
-    line-height: 0.98;
-    letter-spacing: -0.02em;
-    margin-bottom: 24px;
-  }
-  h1 .em { color: var(--amber); }
-  h1 .slash { color: var(--paper-mute); font-weight: 400; }
-  .lede {
-    max-width: 680px;
-    font-size: 18px;
-    color: var(--paper-dim);
-  }
-  .lede strong { color: var(--paper); font-weight: 600; }
-  .meta-row {
-    margin-top: 36px;
-    display: flex; flex-wrap: wrap; gap: 10px;
-    font-family: var(--mono); font-size: 12.5px;
-  }
-  .chip {
-    border: 1px solid var(--line);
-    background: var(--panel);
-    padding: 7px 13px;
-    border-radius: 2px;
-    color: var(--paper-dim);
-  }
-  .chip b { color: var(--cyan-br); font-weight: 600; }
+      /* ---------- header / hero ---------- */
+      header {
+        padding: 88px 0 56px;
+        border-bottom: 1px solid var(--line);
+        position: relative;
+      }
+      .kicker {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 22px;
+      }
+      .kicker::before {
+        content: '';
+        width: 38px;
+        height: 1px;
+        background: var(--cyan);
+      }
+      h1 {
+        font-family: var(--disp);
+        font-weight: 800;
+        font-size: clamp(40px, 7vw, 86px);
+        line-height: 0.98;
+        letter-spacing: -0.02em;
+        margin-bottom: 24px;
+      }
+      h1 .em {
+        color: var(--amber);
+      }
+      h1 .slash {
+        color: var(--paper-mute);
+        font-weight: 400;
+      }
+      .lede {
+        max-width: 680px;
+        font-size: 18px;
+        color: var(--paper-dim);
+      }
+      .lede strong {
+        color: var(--paper);
+        font-weight: 600;
+      }
+      .meta-row {
+        margin-top: 36px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-family: var(--mono);
+        font-size: 12.5px;
+      }
+      .chip {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        padding: 7px 13px;
+        border-radius: 2px;
+        color: var(--paper-dim);
+      }
+      .chip b {
+        color: var(--cyan-br);
+        font-weight: 600;
+      }
 
-  /* corner brackets decoration */
-  .bracket { position: absolute; width: 18px; height: 18px; border: 1px solid var(--amber); opacity: .55; }
-  .bracket.tr { top: 30px; right: 28px; border-left: 0; border-bottom: 0; }
-  .bracket.bl { bottom: -1px; left: 28px; border-right: 0; border-top: 0; }
+      /* corner brackets decoration */
+      .bracket {
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        border: 1px solid var(--amber);
+        opacity: 0.55;
+      }
+      .bracket.tr {
+        top: 30px;
+        right: 28px;
+        border-left: 0;
+        border-bottom: 0;
+      }
+      .bracket.bl {
+        bottom: -1px;
+        left: 28px;
+        border-right: 0;
+        border-top: 0;
+      }
 
-  /* ---------- section scaffolding ---------- */
-  section { padding: 72px 0; border-bottom: 1px solid var(--line); }
-  .sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 40px; }
-  .sec-num {
-    font-family: var(--mono); font-size: 13px; color: var(--amber);
-    border: 1px solid var(--amber); border-radius: 50%;
-    width: 34px; height: 34px; flex: none;
-    display: grid; place-items: center;
-  }
-  h2 {
-    font-family: var(--disp); font-weight: 700;
-    font-size: clamp(26px, 3.6vw, 40px); letter-spacing: -0.015em;
-    line-height: 1.05;
-  }
-  .sec-sub { color: var(--paper-dim); max-width: 640px; margin: 14px 0 0 50px; }
+      /* ---------- section scaffolding ---------- */
+      section {
+        padding: 72px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .sec-head {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        margin-bottom: 40px;
+      }
+      .sec-num {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--amber);
+        border: 1px solid var(--amber);
+        border-radius: 50%;
+        width: 34px;
+        height: 34px;
+        flex: none;
+        display: grid;
+        place-items: center;
+      }
+      h2 {
+        font-family: var(--disp);
+        font-weight: 700;
+        font-size: clamp(26px, 3.6vw, 40px);
+        letter-spacing: -0.015em;
+        line-height: 1.05;
+      }
+      .sec-sub {
+        color: var(--paper-dim);
+        max-width: 640px;
+        margin: 14px 0 0 50px;
+      }
 
-  /* ---------- pipeline flow ---------- */
-  .pipe {
-    display: flex; align-items: stretch; flex-wrap: wrap; gap: 0;
-    margin: 8px 0;
-  }
-  .stage {
-    flex: 1 1 0; min-width: 110px;
-    background: linear-gradient(180deg, var(--panel-2), var(--panel));
-    border: 1px solid var(--line);
-    padding: 16px 14px;
-    position: relative;
-    border-radius: 3px;
-  }
-  .stage + .stage { margin-left: 26px; }
-  .stage + .stage::before {
-    content: "▸"; position: absolute; left: -21px; top: 50%;
-    transform: translateY(-50%); color: var(--cyan); font-size: 15px;
-  }
-  .stage .st-k { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--paper-mute); }
-  .stage .st-t { font-family: var(--disp); font-weight: 600; font-size: 17px; margin-top: 4px; }
-  .stage .st-d { font-size: 12.5px; color: var(--paper-dim); margin-top: 6px; }
-  .stage.src   { border-color: #36506e; }
-  .stage.ir    { border-color: var(--cyan); box-shadow: 0 0 0 1px rgba(86,182,194,.25) inset; }
-  .stage.out   { border-color: var(--amber); }
+      /* ---------- pipeline flow ---------- */
+      .pipe {
+        display: flex;
+        align-items: stretch;
+        flex-wrap: wrap;
+        gap: 0;
+        margin: 8px 0;
+      }
+      .stage {
+        flex: 1 1 0;
+        min-width: 110px;
+        background: linear-gradient(180deg, var(--panel-2), var(--panel));
+        border: 1px solid var(--line);
+        padding: 16px 14px;
+        position: relative;
+        border-radius: 3px;
+      }
+      .stage + .stage {
+        margin-left: 26px;
+      }
+      .stage + .stage::before {
+        content: '▸';
+        position: absolute;
+        left: -21px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--cyan);
+        font-size: 15px;
+      }
+      .stage .st-k {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--paper-mute);
+      }
+      .stage .st-t {
+        font-family: var(--disp);
+        font-weight: 600;
+        font-size: 17px;
+        margin-top: 4px;
+      }
+      .stage .st-d {
+        font-size: 12.5px;
+        color: var(--paper-dim);
+        margin-top: 6px;
+      }
+      .stage.src {
+        border-color: #36506e;
+      }
+      .stage.ir {
+        border-color: var(--cyan);
+        box-shadow: 0 0 0 1px rgba(86, 182, 194, 0.25) inset;
+      }
+      .stage.out {
+        border-color: var(--amber);
+      }
 
-  /* ---------- file/wiring graph ---------- */
-  .graph {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 22px;
-    margin-top: 8px;
-  }
-  .col-label {
-    font-family: var(--mono); font-size: 11px; letter-spacing: .2em;
-    text-transform: uppercase; color: var(--paper-mute);
-    padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px dashed var(--line);
-  }
-  .node {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-left: 3px solid var(--cyan);
-    border-radius: 3px;
-    padding: 13px 15px;
-    margin-bottom: 14px;
-  }
-  .node:last-child { margin-bottom: 0; }
-  .node .nf { font-family: var(--mono); font-size: 13px; color: var(--paper); font-weight: 500; }
-  .node .nd { font-size: 12px; color: var(--paper-dim); margin-top: 5px; }
-  .node.amber  { border-left-color: var(--amber); }
-  .node.green  { border-left-color: var(--green); }
-  .node.violet { border-left-color: var(--violet); }
-  .node.rose   { border-left-color: var(--rose); }
-  .node .tag {
-    display: inline-block; font-family: var(--mono); font-size: 10px;
-    letter-spacing: .08em; text-transform: uppercase;
-    padding: 2px 7px; border-radius: 2px; margin-top: 9px;
-    background: rgba(255,255,255,.05); color: var(--paper-mute);
-  }
-  .tag.gen  { background: rgba(224,166,74,.14); color: var(--amber-br); }
-  .tag.hand { background: rgba(86,182,194,.14); color: var(--cyan-br); }
+      /* ---------- file/wiring graph ---------- */
+      .graph {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 22px;
+        margin-top: 8px;
+      }
+      .col-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--paper-mute);
+        padding-bottom: 10px;
+        margin-bottom: 4px;
+        border-bottom: 1px dashed var(--line);
+      }
+      .node {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--cyan);
+        border-radius: 3px;
+        padding: 13px 15px;
+        margin-bottom: 14px;
+      }
+      .node:last-child {
+        margin-bottom: 0;
+      }
+      .node .nf {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--paper);
+        font-weight: 500;
+      }
+      .node .nd {
+        font-size: 12px;
+        color: var(--paper-dim);
+        margin-top: 5px;
+      }
+      .node.amber {
+        border-left-color: var(--amber);
+      }
+      .node.green {
+        border-left-color: var(--green);
+      }
+      .node.violet {
+        border-left-color: var(--violet);
+      }
+      .node.rose {
+        border-left-color: var(--rose);
+      }
+      .node .tag {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        border-radius: 2px;
+        margin-top: 9px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--paper-mute);
+      }
+      .tag.gen {
+        background: rgba(224, 166, 74, 0.14);
+        color: var(--amber-br);
+      }
+      .tag.hand {
+        background: rgba(86, 182, 194, 0.14);
+        color: var(--cyan-br);
+      }
 
-  .flow-note {
-    grid-column: 1 / -1;
-    font-family: var(--mono); font-size: 12px; color: var(--paper-mute);
-    border: 1px dashed var(--line); border-radius: 3px;
-    padding: 12px 16px; margin-top: 4px;
-    display: flex; gap: 10px; align-items: flex-start;
-  }
-  .flow-note::before { content: "↳"; color: var(--cyan); }
+      .flow-note {
+        grid-column: 1 / -1;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--paper-mute);
+        border: 1px dashed var(--line);
+        border-radius: 3px;
+        padding: 12px 16px;
+        margin-top: 4px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .flow-note::before {
+        content: '↳';
+        color: var(--cyan);
+      }
 
-  /* ---------- timeline / when to run ---------- */
-  .phases { display: grid; gap: 18px; }
-  .phase {
-    display: grid; grid-template-columns: 150px 1fr; gap: 0;
-    border: 1px solid var(--line); border-radius: 3px; overflow: hidden;
-    background: var(--panel);
-  }
-  .phase .when {
-    background: var(--ink-2); padding: 18px 18px;
-    border-right: 1px solid var(--line);
-  }
-  .phase .when .wlabel { font-family: var(--disp); font-weight: 700; font-size: 16px; }
-  .phase .when .wfreq  { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--amber); margin-top: 6px; }
-  .phase .body { padding: 18px 20px; }
-  .phase .body .cmd {
-    font-family: var(--mono); font-size: 13.5px; color: var(--cyan-br);
-    background: var(--ink-2); border: 1px solid var(--line);
-    border-radius: 3px; padding: 9px 13px; display: inline-block; margin-bottom: 10px;
-  }
-  .phase .body .cmd .fl { color: var(--amber-br); }
-  .phase .body p { font-size: 13.5px; color: var(--paper-dim); }
-  .phase .body p code { color: var(--paper); background: rgba(255,255,255,.05); padding: 1px 5px; border-radius: 2px; font-size: 12.5px; }
+      /* ---------- timeline / when to run ---------- */
+      .phases {
+        display: grid;
+        gap: 18px;
+      }
+      .phase {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 0;
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        overflow: hidden;
+        background: var(--panel);
+      }
+      .phase .when {
+        background: var(--ink-2);
+        padding: 18px 18px;
+        border-right: 1px solid var(--line);
+      }
+      .phase .when .wlabel {
+        font-family: var(--disp);
+        font-weight: 700;
+        font-size: 16px;
+      }
+      .phase .when .wfreq {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin-top: 6px;
+      }
+      .phase .body {
+        padding: 18px 20px;
+      }
+      .phase .body .cmd {
+        font-family: var(--mono);
+        font-size: 13.5px;
+        color: var(--cyan-br);
+        background: var(--ink-2);
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        padding: 9px 13px;
+        display: inline-block;
+        margin-bottom: 10px;
+      }
+      .phase .body .cmd .fl {
+        color: var(--amber-br);
+      }
+      .phase .body p {
+        font-size: 13.5px;
+        color: var(--paper-dim);
+      }
+      .phase .body p code {
+        color: var(--paper);
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1px 5px;
+        border-radius: 2px;
+        font-size: 12.5px;
+      }
 
-  /* ---------- code blocks ---------- */
-  .code {
-    background: var(--ink-2);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    overflow: hidden;
-    margin-top: 8px;
-  }
-  .code .bar {
-    display: flex; align-items: center; gap: 8px;
-    padding: 9px 14px; border-bottom: 1px solid var(--line);
-    background: var(--panel);
-  }
-  .code .bar .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
-  .code .bar .fname { font-family: var(--mono); font-size: 12px; color: var(--paper-dim); margin-left: 6px; }
-  .code .bar .badge { margin-left: auto; font-family: var(--mono); font-size: 10px; letter-spacing:.1em; text-transform: uppercase; padding: 2px 8px; border-radius: 2px; }
-  .badge.gen { background: rgba(224,166,74,.14); color: var(--amber-br); }
-  .badge.hand{ background: rgba(86,182,194,.14); color: var(--cyan-br); }
-  pre {
-    font-family: var(--mono); font-size: 12.8px; line-height: 1.65;
-    padding: 16px 18px; overflow-x: auto; color: var(--paper-dim);
-  }
-  pre .k  { color: var(--violet); }
-  pre .s  { color: var(--green); }
-  pre .c  { color: var(--paper-mute); font-style: italic; }
-  pre .a  { color: var(--amber-br); }
-  pre .t  { color: var(--cyan-br); }
-  pre .n  { color: var(--paper); }
+      /* ---------- code blocks ---------- */
+      .code {
+        background: var(--ink-2);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 8px;
+      }
+      .code .bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 14px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+      }
+      .code .bar .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--line);
+      }
+      .code .bar .fname {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--paper-dim);
+        margin-left: 6px;
+      }
+      .code .bar .badge {
+        margin-left: auto;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 2px;
+      }
+      .badge.gen {
+        background: rgba(224, 166, 74, 0.14);
+        color: var(--amber-br);
+      }
+      .badge.hand {
+        background: rgba(86, 182, 194, 0.14);
+        color: var(--cyan-br);
+      }
+      pre {
+        font-family: var(--mono);
+        font-size: 12.8px;
+        line-height: 1.65;
+        padding: 16px 18px;
+        overflow-x: auto;
+        color: var(--paper-dim);
+      }
+      pre .k {
+        color: var(--violet);
+      }
+      pre .s {
+        color: var(--green);
+      }
+      pre .c {
+        color: var(--paper-mute);
+        font-style: italic;
+      }
+      pre .a {
+        color: var(--amber-br);
+      }
+      pre .t {
+        color: var(--cyan-br);
+      }
+      pre .n {
+        color: var(--paper);
+      }
 
-  /* ---------- two col ---------- */
-  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  .two .head3 { font-family: var(--disp); font-weight: 600; font-size: 18px; margin-bottom: 4px; }
-  .two .head3 .px { font-family: var(--mono); font-size: 12px; color: var(--amber); margin-right: 8px; }
+      /* ---------- two col ---------- */
+      .two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .two .head3 {
+        font-family: var(--disp);
+        font-weight: 600;
+        font-size: 18px;
+        margin-bottom: 4px;
+      }
+      .two .head3 .px {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--amber);
+        margin-right: 8px;
+      }
 
-  /* ---------- mapping table ---------- */
-  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
-  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--paper-mute); font-weight: 500; }
-  td.m { font-family: var(--mono); color: var(--paper); font-size: 12.5px; }
-  td .arrow { color: var(--cyan); }
-  tr:hover td { background: rgba(255,255,255,.018); }
+      /* ---------- mapping table ---------- */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-top: 8px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 11px 14px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--paper-mute);
+        font-weight: 500;
+      }
+      td.m {
+        font-family: var(--mono);
+        color: var(--paper);
+        font-size: 12.5px;
+      }
+      td .arrow {
+        color: var(--cyan);
+      }
+      tr:hover td {
+        background: rgba(255, 255, 255, 0.018);
+      }
 
-  /* ---------- callout ---------- */
-  .note {
-    border: 1px solid var(--line);
-    border-left: 3px solid var(--amber);
-    background: linear-gradient(90deg, rgba(224,166,74,.06), transparent 60%);
-    border-radius: 3px; padding: 16px 20px; margin-top: 26px;
-    font-size: 14px; color: var(--paper-dim);
-  }
-  .note b { color: var(--amber-br); font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; display: block; margin-bottom: 6px; }
+      /* ---------- callout ---------- */
+      .note {
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--amber);
+        background: linear-gradient(90deg, rgba(224, 166, 74, 0.06), transparent 60%);
+        border-radius: 3px;
+        padding: 16px 20px;
+        margin-top: 26px;
+        font-size: 14px;
+        color: var(--paper-dim);
+      }
+      .note b {
+        color: var(--amber-br);
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        display: block;
+        margin-bottom: 6px;
+      }
 
-  /* runtime sequence */
-  .seq { display: grid; gap: 0; counter-reset: step; margin-top: 8px; }
-  .step {
-    display: grid; grid-template-columns: 44px 1fr; gap: 18px;
-    padding: 18px 0; border-bottom: 1px dashed var(--line);
-  }
-  .step:last-child { border-bottom: 0; }
-  .step .num {
-    counter-increment: step; font-family: var(--mono); font-size: 14px;
-    color: var(--ink); background: var(--cyan); border-radius: 50%;
-    width: 30px; height: 30px; display: grid; place-items: center; font-weight: 600;
-  }
-  .step .num::before { content: counter(step); }
-  .step .st { font-family: var(--disp); font-weight: 600; font-size: 16px; }
-  .step .sd { font-size: 13.5px; color: var(--paper-dim); margin-top: 4px; }
-  .step .sd code { font-family: var(--mono); font-size: 12px; color: var(--cyan-br); }
+      /* runtime sequence */
+      .seq {
+        display: grid;
+        gap: 0;
+        counter-reset: step;
+        margin-top: 8px;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        gap: 18px;
+        padding: 18px 0;
+        border-bottom: 1px dashed var(--line);
+      }
+      .step:last-child {
+        border-bottom: 0;
+      }
+      .step .num {
+        counter-increment: step;
+        font-family: var(--mono);
+        font-size: 14px;
+        color: var(--ink);
+        background: var(--cyan);
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        font-weight: 600;
+      }
+      .step .num::before {
+        content: counter(step);
+      }
+      .step .st {
+        font-family: var(--disp);
+        font-weight: 600;
+        font-size: 16px;
+      }
+      .step .sd {
+        font-size: 13.5px;
+        color: var(--paper-dim);
+        margin-top: 4px;
+      }
+      .step .sd code {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--cyan-br);
+      }
 
-  footer { padding: 50px 0 80px; color: var(--paper-mute); font-family: var(--mono); font-size: 12px; }
-  footer .big { font-family: var(--disp); font-size: 20px; color: var(--paper-dim); margin-bottom: 10px; }
+      footer {
+        padding: 50px 0 80px;
+        color: var(--paper-mute);
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      footer .big {
+        font-family: var(--disp);
+        font-size: 20px;
+        color: var(--paper-dim);
+        margin-bottom: 10px;
+      }
 
-  /* reveal */
-  .rev { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
-  .rev.in { opacity: 1; transform: none; }
+      /* reveal */
+      .rev {
+        opacity: 0;
+        transform: translateY(18px);
+        transition:
+          opacity 0.7s ease,
+          transform 0.7s ease;
+      }
+      .rev.in {
+        opacity: 1;
+        transform: none;
+      }
 
-  @media (max-width: 860px) {
-    .graph { grid-template-columns: 1fr; }
-    .two { grid-template-columns: 1fr; }
-    .phase { grid-template-columns: 1fr; }
-    .phase .when { border-right: 0; border-bottom: 1px solid var(--line); }
-    .stage + .stage { margin-left: 0; margin-top: 26px; }
-    .stage + .stage::before { left: 50%; top: -21px; transform: translateX(-50%) rotate(90deg); }
-  }
-</style>
-</head>
-<body>
-
-<header>
-  <span class="bracket tr"></span><span class="bracket bl"></span>
-  <div class="wrap">
-    <div class="kicker">Manifest · IR-first language · wiring schematic</div>
-    <h1>One source of truth,<br><span class="em">two projections</span> <span class="slash">/</span><br>Prisma <span class="slash">+</span> Next.js</h1>
-    <p class="lede">Your <strong>.manifest</strong> files are the contract. The compiler turns them into <strong>IR</strong>, and projections turn that one IR into a <strong>Prisma schema</strong> and <strong>Next.js route handlers</strong> — kept in lockstep, never hand-edited. This is the full map of which file feeds which, and exactly when each command runs.</p>
-    <div class="meta-row">
-      <span class="chip">source · <b>*.manifest</b></span>
-      <span class="chip">contract · <b>IR JSON</b></span>
-      <span class="chip">db · <b>schema.prisma</b></span>
-      <span class="chip">api · <b>app/api/**/route.ts</b></span>
-      <span class="chip">config · <b>manifest.config.*</b></span>
-    </div>
-  </div>
-</header>
-
-<!-- ============ 1 · PIPELINE ============ -->
-<section>
-  <div class="wrap rev">
-    <div class="sec-head">
-      <span class="sec-num">01</span>
-      <h2>The pipeline, end to end</h2>
-    </div>
-    <p class="sec-sub">Every artifact downstream is <em>derivative</em>. The IR is authority — change the <code>.manifest</code>, recompile, regenerate. Generated code is a view, not a place you edit.</p>
-
-    <div class="pipe" style="margin-top:38px">
-      <div class="stage src"><div class="st-k">author</div><div class="st-t">.manifest</div><div class="st-d">entities, commands, policies, relationships</div></div>
-      <div class="stage"><div class="st-k">lex · parse</div><div class="st-t">AST</div><div class="st-d">tokens → syntax tree</div></div>
-      <div class="stage ir"><div class="st-k">ir-compiler</div><div class="st-t">IR JSON</div><div class="st-d">the executable contract · single source of truth</div></div>
-      <div class="stage out"><div class="st-k">projection</div><div class="st-t">schema.prisma</div><div class="st-d">prisma generator</div></div>
-      <div class="stage out"><div class="st-k">projection</div><div class="st-t">route.ts</div><div class="st-d">nextjs generator</div></div>
-    </div>
-
-    <div class="note">
-      <b>Why IR-first matters</b>
-      Both projections read the <em>same</em> IR. The Prisma model and the Next.js handler that queries it can never drift, because neither is the source — they're two renderings of one fact. Editing generated files is overwritten on the next <code>generate</code>.
-    </div>
-  </div>
-</section>
-
-<!-- ============ 2 · FILE GRAPH ============ -->
-<section>
-  <div class="wrap rev">
-    <div class="sec-head">
-      <span class="sec-num">02</span>
-      <h2>Files &amp; configs — who feeds whom</h2>
-    </div>
-    <p class="sec-sub">Three layers: what you <span style="color:var(--cyan-br)">author by hand</span>, what Manifest <span style="color:var(--amber-br)">generates</span>, and the <span style="color:var(--green)">glue</span> the runtime imports.</p>
-
-    <div class="graph" style="margin-top:34px">
-      <div>
-        <div class="col-label">① You author</div>
-        <div class="node">
-          <div class="nf">src/**/*.manifest</div>
-          <div class="nd">Entities, properties, relationships, commands, guards, policies. The only real source.</div>
-          <span class="tag hand">hand-written</span>
-        </div>
-        <div class="node">
-          <div class="nf">manifest.config.ts</div>
-          <div class="nd">Declares <code>src</code> glob, IR <code>output</code> dir, and every <code>projections.*</code> block + their options.</div>
-          <span class="tag hand">hand-written</span>
-        </div>
-        <div class="node green">
-          <div class="nf">src/lib/database.ts</div>
-          <div class="nd">Exports the Prisma client (<code>db</code>). Handlers import it via <code>databaseImportPath</code>.</div>
-          <span class="tag hand">hand-written glue</span>
-        </div>
-        <div class="node green">
-          <div class="nf">src/lib/auth.ts · manifest-runtime.ts</div>
-          <div class="nd">Auth helper + <code>createManifestRuntime()</code> factory the dispatcher calls.</div>
-          <span class="tag hand">hand-written glue</span>
+      @media (max-width: 860px) {
+        .graph {
+          grid-template-columns: 1fr;
+        }
+        .two {
+          grid-template-columns: 1fr;
+        }
+        .phase {
+          grid-template-columns: 1fr;
+        }
+        .phase .when {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+        .stage + .stage {
+          margin-left: 0;
+          margin-top: 26px;
+        }
+        .stage + .stage::before {
+          left: 50%;
+          top: -21px;
+          transform: translateX(-50%) rotate(90deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="bracket tr"></span><span class="bracket bl"></span>
+      <div class="wrap">
+        <div class="kicker">Manifest · IR-first language · wiring schematic</div>
+        <h1>
+          One source of truth,<br /><span class="em">two projections</span>
+          <span class="slash">/</span><br />Prisma <span class="slash">+</span> Next.js
+        </h1>
+        <p class="lede">
+          Your <strong>.manifest</strong> files are the contract. The compiler turns them into
+          <strong>IR</strong>, and projections turn that one IR into a
+          <strong>Prisma schema</strong> and <strong>Next.js route handlers</strong> — kept in
+          lockstep, never hand-edited. This is the full map of which file feeds which, and exactly
+          when each command runs.
+        </p>
+        <div class="meta-row">
+          <span class="chip">source · <b>*.manifest</b></span>
+          <span class="chip">contract · <b>IR JSON</b></span>
+          <span class="chip">db · <b>schema.prisma</b></span>
+          <span class="chip">api · <b>app/api/**/route.ts</b></span>
+          <span class="chip">config · <b>manifest.config.*</b></span>
         </div>
       </div>
+    </header>
 
-      <div>
-        <div class="col-label">② Manifest emits</div>
-        <div class="node">
-          <div class="nf">ir/ *.json</div>
-          <div class="nd">Merged IR from <code>compile --all</code>. The contract every projection consumes.</div>
-          <span class="tag gen">generated</span>
+    <!-- ============ 1 · PIPELINE ============ -->
+    <section>
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">01</span>
+          <h2>The pipeline, end to end</h2>
         </div>
-        <div class="node amber">
-          <div class="nf">prisma/schema.prisma</div>
-          <div class="nd">Models, enums, <code>@relation</code>, referential actions, <code>@@unique</code>, <code>@@schema</code>. From the prisma projection.</div>
-          <span class="tag gen">generated</span>
+        <p class="sec-sub">
+          Every artifact downstream is <em>derivative</em>. The IR is authority — change the
+          <code>.manifest</code>, recompile, regenerate. Generated code is a view, not a place you
+          edit.
+        </p>
+
+        <div class="pipe" style="margin-top: 38px">
+          <div class="stage src">
+            <div class="st-k">author</div>
+            <div class="st-t">.manifest</div>
+            <div class="st-d">entities, commands, policies, relationships</div>
+          </div>
+          <div class="stage">
+            <div class="st-k">lex · parse</div>
+            <div class="st-t">AST</div>
+            <div class="st-d">tokens → syntax tree</div>
+          </div>
+          <div class="stage ir">
+            <div class="st-k">ir-compiler</div>
+            <div class="st-t">IR JSON</div>
+            <div class="st-d">the executable contract · single source of truth</div>
+          </div>
+          <div class="stage out">
+            <div class="st-k">projection</div>
+            <div class="st-t">schema.prisma</div>
+            <div class="st-d">prisma generator</div>
+          </div>
+          <div class="stage out">
+            <div class="st-k">projection</div>
+            <div class="st-t">route.ts</div>
+            <div class="st-d">nextjs generator</div>
+          </div>
         </div>
-        <div class="node amber">
-          <div class="nf">prisma/prisma.config.ts</div>
-          <div class="nd">Companion: datasource provider + <code>DATABASE_URL</code> binding (when <code>provider</code> set).</div>
-          <span class="tag gen">generated</span>
-        </div>
-        <div class="node amber">
-          <div class="nf">app/api/**/route.ts</div>
-          <div class="nd">Dispatcher (writes) + list/detail GET (reads) + schedule/subscribe surfaces. From the nextjs projection.</div>
-          <span class="tag gen">generated</span>
-        </div>
-        <div class="node amber">
-          <div class="nf">src/manifest.types.ts · manifest-client.ts</div>
-          <div class="nd"><code>ts.types</code> + <code>ts.client</code> surfaces — typed client helpers for the frontend.</div>
-          <span class="tag gen">generated</span>
+
+        <div class="note">
+          <b>Why IR-first matters</b>
+          Both projections read the <em>same</em> IR. The Prisma model and the Next.js handler that
+          queries it can never drift, because neither is the source — they're two renderings of one
+          fact. Editing generated files is overwritten on the next <code>generate</code>.
         </div>
       </div>
+    </section>
 
-      <div>
-        <div class="col-label">③ Tooling derives</div>
-        <div class="node violet">
-          <div class="nf">node_modules/.prisma/client</div>
-          <div class="nd"><code>prisma generate</code> reads <code>schema.prisma</code> → typed client. External to Manifest.</div>
-          <span class="tag">prisma cli</span>
+    <!-- ============ 2 · FILE GRAPH ============ -->
+    <section>
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">02</span>
+          <h2>Files &amp; configs — who feeds whom</h2>
         </div>
-        <div class="node violet">
-          <div class="nf">DB migrations</div>
-          <div class="nd"><code>prisma migrate dev</code> diffs <code>schema.prisma</code> against the database.</div>
-          <span class="tag">prisma cli</span>
-        </div>
-        <div class="node rose">
-          <div class="nf">.next/ build output</div>
-          <div class="nd"><code>next build</code> bundles the generated route handlers + your client code.</div>
-          <span class="tag">next cli</span>
+        <p class="sec-sub">
+          Three layers: what you <span style="color: var(--cyan-br)">author by hand</span>, what
+          Manifest <span style="color: var(--amber-br)">generates</span>, and the
+          <span style="color: var(--green)">glue</span> the runtime imports.
+        </p>
+
+        <div class="graph" style="margin-top: 34px">
+          <div>
+            <div class="col-label">① You author</div>
+            <div class="node">
+              <div class="nf">src/**/*.manifest</div>
+              <div class="nd">
+                Entities, properties, relationships, commands, guards, policies. The only real
+                source.
+              </div>
+              <span class="tag hand">hand-written</span>
+            </div>
+            <div class="node">
+              <div class="nf">manifest.config.ts</div>
+              <div class="nd">
+                Declares <code>src</code> glob, IR <code>output</code> dir, and every
+                <code>projections.*</code> block + their options.
+              </div>
+              <span class="tag hand">hand-written</span>
+            </div>
+            <div class="node green">
+              <div class="nf">src/lib/database.ts</div>
+              <div class="nd">
+                Exports the Prisma client (<code>db</code>). Handlers import it via
+                <code>databaseImportPath</code>.
+              </div>
+              <span class="tag hand">hand-written glue</span>
+            </div>
+            <div class="node green">
+              <div class="nf">src/lib/auth.ts · manifest-runtime.ts</div>
+              <div class="nd">
+                Auth helper + <code>createManifestRuntime()</code> factory the dispatcher calls.
+              </div>
+              <span class="tag hand">hand-written glue</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="col-label">② Manifest emits</div>
+            <div class="node">
+              <div class="nf">ir/ *.json</div>
+              <div class="nd">
+                Merged IR from <code>compile --all</code>. The contract every projection consumes.
+              </div>
+              <span class="tag gen">generated</span>
+            </div>
+            <div class="node amber">
+              <div class="nf">prisma/schema.prisma</div>
+              <div class="nd">
+                Models, enums, <code>@relation</code>, referential actions, <code>@@unique</code>,
+                <code>@@schema</code>. From the prisma projection.
+              </div>
+              <span class="tag gen">generated</span>
+            </div>
+            <div class="node amber">
+              <div class="nf">prisma/prisma.config.ts</div>
+              <div class="nd">
+                Companion: datasource provider + <code>DATABASE_URL</code> binding (when
+                <code>provider</code> set).
+              </div>
+              <span class="tag gen">generated</span>
+            </div>
+            <div class="node amber">
+              <div class="nf">app/api/**/route.ts</div>
+              <div class="nd">
+                Dispatcher (writes) + list/detail GET (reads) + schedule/subscribe surfaces. From
+                the nextjs projection.
+              </div>
+              <span class="tag gen">generated</span>
+            </div>
+            <div class="node amber">
+              <div class="nf">src/manifest.types.ts · manifest-client.ts</div>
+              <div class="nd">
+                <code>ts.types</code> + <code>ts.client</code> surfaces — typed client helpers for
+                the frontend.
+              </div>
+              <span class="tag gen">generated</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="col-label">③ Tooling derives</div>
+            <div class="node violet">
+              <div class="nf">node_modules/.prisma/client</div>
+              <div class="nd">
+                <code>prisma generate</code> reads <code>schema.prisma</code> → typed client.
+                External to Manifest.
+              </div>
+              <span class="tag">prisma cli</span>
+            </div>
+            <div class="node violet">
+              <div class="nf">DB migrations</div>
+              <div class="nd">
+                <code>prisma migrate dev</code> diffs <code>schema.prisma</code> against the
+                database.
+              </div>
+              <span class="tag">prisma cli</span>
+            </div>
+            <div class="node rose">
+              <div class="nf">.next/ build output</div>
+              <div class="nd">
+                <code>next build</code> bundles the generated route handlers + your client code.
+              </div>
+              <span class="tag">next cli</span>
+            </div>
+          </div>
+
+          <div class="flow-note">
+            manifest.config.ts &nbsp;→&nbsp; drives both <code>compile --all</code> (src→IR) and
+            <code>generate --all</code> (IR→projections). One config, every artifact.
+          </div>
         </div>
       </div>
+    </section>
 
-      <div class="flow-note">manifest.config.ts &nbsp;→&nbsp; drives both <code>compile --all</code> (src→IR) and <code>generate --all</code> (IR→projections). One config, every artifact.</div>
-    </div>
-  </div>
-</section>
+    <!-- ============ 3 · CONFIG ============ -->
+    <section>
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">03</span>
+          <h2>The config that wires it all</h2>
+        </div>
+        <p class="sec-sub">
+          One <code>manifest.config.ts</code> declares the source glob, the IR output, and a block
+          per projection. <code>--all</code> walks <code>projections</code> and runs each.
+        </p>
 
-<!-- ============ 3 · CONFIG ============ -->
-<section>
-  <div class="wrap rev">
-    <div class="sec-head">
-      <span class="sec-num">03</span>
-      <h2>The config that wires it all</h2>
-    </div>
-    <p class="sec-sub">One <code>manifest.config.ts</code> declares the source glob, the IR output, and a block per projection. <code>--all</code> walks <code>projections</code> and runs each.</p>
-
-    <div class="code">
-      <div class="bar"><span class="dot"></span><span class="fname">manifest.config.ts</span><span class="badge hand">you write this</span></div>
-<pre><span class="k">import</span> type { ManifestConfig } <span class="k">from</span> <span class="s">'@angriff36/manifest'</span>
+        <div class="code">
+          <div class="bar">
+            <span class="dot"></span><span class="fname">manifest.config.ts</span
+            ><span class="badge hand">you write this</span>
+          </div>
+          <pre><span class="k">import</span> type { ManifestConfig } <span class="k">from</span> <span class="s">'@angriff36/manifest'</span>
 
 <span class="k">const</span> config<span class="t">: ManifestConfig</span> = {
   <span class="a">src</span>: <span class="s">'src/**/*.manifest'</span>,        <span class="c">// what compile --all reads</span>
@@ -475,133 +910,273 @@
 }
 
 <span class="k">export default</span> config</pre>
-    </div>
+        </div>
 
-    <div class="note">
-      <b>Field-aware, not assumed</b>
-      Set <code>includeTenantFilter</code>/<code>includeSoftDeleteFilter</code> globally, but the nextjs projection still inspects each entity first — it only emits <code>where: { tenantId }</code> or <code>where: { deletedAt: null }</code> for entities that actually declare those properties. No phantom filters, no Prisma "unknown argument" type errors.
-    </div>
-  </div>
-</section>
-
-<!-- ============ 4 · WHEN TO RUN ============ -->
-<section>
-  <div class="wrap rev">
-    <div class="sec-head">
-      <span class="sec-num">04</span>
-      <h2>When each command runs</h2>
-    </div>
-    <p class="sec-sub">Two cadences. <strong>Build-time codegen</strong> regenerates artifacts from the IR; <strong>schema tooling</strong> turns the generated schema into a client and a database.</p>
-
-    <div class="phases" style="margin-top:32px">
-
-      <div class="phase">
-        <div class="when"><div class="wlabel">Develop</div><div class="wfreq">on save</div></div>
-        <div class="body">
-          <span class="cmd">manifest watch <span class="fl">--all</span></span>
-          <p>Watches the <code>src</code> glob. On any change: compile → regenerate <em>every</em> projection in config. Your <code>schema.prisma</code> and <code>route.ts</code> files stay live as you edit <code>.manifest</code>. This is the inner loop.</p>
+        <div class="note">
+          <b>Field-aware, not assumed</b>
+          Set <code>includeTenantFilter</code>/<code>includeSoftDeleteFilter</code> globally, but
+          the nextjs projection still inspects each entity first — it only emits
+          <code>where: { tenantId }</code> or <code>where: { deletedAt: null }</code> for entities
+          that actually declare those properties. No phantom filters, no Prisma "unknown argument"
+          type errors.
         </div>
       </div>
+    </section>
 
-      <div class="phase">
-        <div class="when"><div class="wlabel">Compile</div><div class="wfreq">build step 1</div></div>
-        <div class="body">
-          <span class="cmd">manifest compile <span class="fl">--all</span></span>
-          <p>Reads every <code>.manifest</code> from <code>config.src</code>, resolves <code>use</code>/<code>mixin</code>, and writes one merged IR to <code>config.output</code>. Reports <em>all</em> files' errors in one pass.</p>
+    <!-- ============ 4 · WHEN TO RUN ============ -->
+    <section>
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">04</span>
+          <h2>When each command runs</h2>
+        </div>
+        <p class="sec-sub">
+          Two cadences. <strong>Build-time codegen</strong> regenerates artifacts from the IR;
+          <strong>schema tooling</strong> turns the generated schema into a client and a database.
+        </p>
+
+        <div class="phases" style="margin-top: 32px">
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">Develop</div>
+              <div class="wfreq">on save</div>
+            </div>
+            <div class="body">
+              <span class="cmd">manifest watch <span class="fl">--all</span></span>
+              <p>
+                Watches the <code>src</code> glob. On any change: compile → regenerate
+                <em>every</em> projection in config. Your <code>schema.prisma</code> and
+                <code>route.ts</code> files stay live as you edit <code>.manifest</code>. This is
+                the inner loop.
+              </p>
+            </div>
+          </div>
+
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">Compile</div>
+              <div class="wfreq">build step 1</div>
+            </div>
+            <div class="body">
+              <span class="cmd">manifest compile <span class="fl">--all</span></span>
+              <p>
+                Reads every <code>.manifest</code> from <code>config.src</code>, resolves
+                <code>use</code>/<code>mixin</code>, and writes one merged IR to
+                <code>config.output</code>. Reports <em>all</em> files' errors in one pass.
+              </p>
+            </div>
+          </div>
+
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">Generate</div>
+              <div class="wfreq">build step 2</div>
+            </div>
+            <div class="body">
+              <span class="cmd">manifest generate <span class="fl">--all</span></span>
+              <p>
+                Reads the IR, iterates <code>config.projections</code>, runs each generator. Emits
+                <code>schema.prisma</code> + <code>prisma.config.ts</code> and the full
+                <code>app/api</code> route tree. Use
+                <span class="cmd" style="margin: 0; padding: 4px 8px"
+                  >generate <span class="fl">--all --check</span></span
+                >
+                in CI to fail on drift.
+              </p>
+            </div>
+          </div>
+
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">Prisma</div>
+              <div class="wfreq">after generate</div>
+            </div>
+            <div class="body">
+              <span class="cmd">npx prisma generate</span> &nbsp;<span class="cmd"
+                >npx prisma migrate dev</span
+              >
+              <p>
+                External Prisma CLI. <code>generate</code> reads the freshly-emitted
+                <code>schema.prisma</code> → typed client into <code>.prisma/client</code>.
+                <code>migrate dev</code> diffs the schema against your database. Run whenever the
+                schema changes.
+              </p>
+            </div>
+          </div>
+
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">Commit</div>
+              <div class="wfreq">pre-commit hook</div>
+            </div>
+            <div class="body">
+              <span class="cmd">manifest fmt <span class="fl">--check</span></span> &nbsp;<span
+                class="cmd"
+                >manifest validate</span
+              >
+              <p>
+                Format the <code>.manifest</code> sources and validate the IR against the schema
+                before the commit lands. Keeps the contract clean; doesn't touch generated output.
+              </p>
+            </div>
+          </div>
+
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">Ship</div>
+              <div class="wfreq">CI / deploy</div>
+            </div>
+            <div class="body">
+              <span class="cmd">next build</span>
+              <p>
+                Bundles the generated route handlers + your client code. The handlers
+                <code>import</code> the Prisma client and the runtime glue — both must exist before
+                this step.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="note">
+          <b>Ordering rule</b>
+          <code
+            >compile&nbsp;→&nbsp;generate&nbsp;→&nbsp;prisma&nbsp;generate&nbsp;→&nbsp;next&nbsp;build</code
+          >. Prisma client must exist before the Next.js handlers (which import it) can typecheck.
+          <code>watch --all</code> collapses the first two for development.
         </div>
       </div>
+    </section>
 
-      <div class="phase">
-        <div class="when"><div class="wlabel">Generate</div><div class="wfreq">build step 2</div></div>
-        <div class="body">
-          <span class="cmd">manifest generate <span class="fl">--all</span></span>
-          <p>Reads the IR, iterates <code>config.projections</code>, runs each generator. Emits <code>schema.prisma</code> + <code>prisma.config.ts</code> and the full <code>app/api</code> route tree. Use <span class="cmd" style="margin:0;padding:4px 8px">generate <span class="fl">--all --check</span></span> in CI to fail on drift.</p>
+    <!-- ============ 5 · TWO PROJECTIONS ============ -->
+    <section>
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">05</span>
+          <h2>What each projection emits</h2>
         </div>
-      </div>
 
-      <div class="phase">
-        <div class="when"><div class="wlabel">Prisma</div><div class="wfreq">after generate</div></div>
-        <div class="body">
-          <span class="cmd">npx prisma generate</span> &nbsp;<span class="cmd">npx prisma migrate dev</span>
-          <p>External Prisma CLI. <code>generate</code> reads the freshly-emitted <code>schema.prisma</code> → typed client into <code>.prisma/client</code>. <code>migrate dev</code> diffs the schema against your database. Run whenever the schema changes.</p>
+        <div class="two" style="margin-top: 30px">
+          <div>
+            <div class="head3"><span class="px">→</span>Prisma projection</div>
+            <p style="color: var(--paper-dim); font-size: 13.5px; margin-bottom: 6px">
+              Only persistent stores become models (<code class="mono"
+                >durable · postgres · supabase</code
+              >); <code class="mono">memory</code>/<code class="mono">localStorage</code> entities
+              are skipped.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>IR construct</th>
+                  <th>Prisma</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="m">entity User</td>
+                  <td class="m"><span class="arrow">→</span> model User</td>
+                </tr>
+                <tr>
+                  <td class="m">property id @id</td>
+                  <td class="m"><span class="arrow">→</span> id String @id</td>
+                </tr>
+                <tr>
+                  <td class="m">price: decimal</td>
+                  <td class="m"><span class="arrow">→</span> Decimal @db.Decimal</td>
+                </tr>
+                <tr>
+                  <td class="m">belongsTo author</td>
+                  <td class="m"><span class="arrow">→</span> FK + @relation + onDelete</td>
+                </tr>
+                <tr>
+                  <td class="m">hasMany books</td>
+                  <td class="m"><span class="arrow">→</span> Book[]</td>
+                </tr>
+                <tr>
+                  <td class="m">hasOne profile</td>
+                  <td class="m"><span class="arrow">→</span> Profile + @unique FK</td>
+                </tr>
+                <tr>
+                  <td class="m">composite FK</td>
+                  <td class="m"><span class="arrow">→</span> @@unique([a, b])</td>
+                </tr>
+                <tr>
+                  <td class="m">entity.module</td>
+                  <td class="m"><span class="arrow">→</span> @@schema (multiSchema)</td>
+                </tr>
+                <tr>
+                  <td class="m">naming: snake</td>
+                  <td class="m"><span class="arrow">→</span> @map / @@map</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <div class="head3"><span class="px">→</span>Next.js projection</div>
+            <p style="color: var(--paper-dim); font-size: 13.5px; margin-bottom: 6px">
+              Writes go through one canonical dispatcher; reads are inline Prisma queries,
+              field-aware per entity.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Surface</th>
+                  <th>Route</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="m">dispatcher</td>
+                  <td class="m">POST /api/manifest/[e]/commands/[c]</td>
+                </tr>
+                <tr>
+                  <td class="m">route (list)</td>
+                  <td class="m">GET /api/[e]</td>
+                </tr>
+                <tr>
+                  <td class="m">detail</td>
+                  <td class="m">GET /api/[e]/[id]</td>
+                </tr>
+                <tr>
+                  <td class="m">schedule</td>
+                  <td class="m">POST /api/schedule/[name]</td>
+                </tr>
+                <tr>
+                  <td class="m">subscribe</td>
+                  <td class="m">SSE /api/[e]/subscribe</td>
+                </tr>
+                <tr>
+                  <td class="m">ts.types</td>
+                  <td class="m">src/manifest.types.ts</td>
+                </tr>
+                <tr>
+                  <td class="m">ts.client</td>
+                  <td class="m">src/manifest-client.ts</td>
+                </tr>
+              </tbody>
+            </table>
+            <p
+              style="
+                color: var(--paper-mute);
+                font-size: 12px;
+                margin-top: 12px;
+                font-family: var(--mono);
+              "
+            >
+              auth failure → <span style="color: var(--amber-br)">401</span>, never 500 ·
+              per-command routes are deprecated, the dispatcher is canonical
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div class="phase">
-        <div class="when"><div class="wlabel">Commit</div><div class="wfreq">pre-commit hook</div></div>
-        <div class="body">
-          <span class="cmd">manifest fmt <span class="fl">--check</span></span> &nbsp;<span class="cmd">manifest validate</span>
-          <p>Format the <code>.manifest</code> sources and validate the IR against the schema before the commit lands. Keeps the contract clean; doesn't touch generated output.</p>
-        </div>
-      </div>
-
-      <div class="phase">
-        <div class="when"><div class="wlabel">Ship</div><div class="wfreq">CI / deploy</div></div>
-        <div class="body">
-          <span class="cmd">next build</span>
-          <p>Bundles the generated route handlers + your client code. The handlers <code>import</code> the Prisma client and the runtime glue — both must exist before this step.</p>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="note">
-      <b>Ordering rule</b>
-      <code>compile&nbsp;→&nbsp;generate&nbsp;→&nbsp;prisma&nbsp;generate&nbsp;→&nbsp;next&nbsp;build</code>. Prisma client must exist before the Next.js handlers (which import it) can typecheck. <code>watch --all</code> collapses the first two for development.
-    </div>
-  </div>
-</section>
-
-<!-- ============ 5 · TWO PROJECTIONS ============ -->
-<section>
-  <div class="wrap rev">
-    <div class="sec-head">
-      <span class="sec-num">05</span>
-      <h2>What each projection emits</h2>
-    </div>
-
-    <div class="two" style="margin-top:30px">
-      <div>
-        <div class="head3"><span class="px">→</span>Prisma projection</div>
-        <p style="color:var(--paper-dim);font-size:13.5px;margin-bottom:6px">Only persistent stores become models (<code class="mono">durable · postgres · supabase</code>); <code class="mono">memory</code>/<code class="mono">localStorage</code> entities are skipped.</p>
-        <table>
-          <thead><tr><th>IR construct</th><th>Prisma</th></tr></thead>
-          <tbody>
-            <tr><td class="m">entity User</td><td class="m"><span class="arrow">→</span> model User</td></tr>
-            <tr><td class="m">property id @id</td><td class="m"><span class="arrow">→</span> id String @id</td></tr>
-            <tr><td class="m">price: decimal</td><td class="m"><span class="arrow">→</span> Decimal @db.Decimal</td></tr>
-            <tr><td class="m">belongsTo author</td><td class="m"><span class="arrow">→</span> FK + @relation + onDelete</td></tr>
-            <tr><td class="m">hasMany books</td><td class="m"><span class="arrow">→</span> Book[]</td></tr>
-            <tr><td class="m">hasOne profile</td><td class="m"><span class="arrow">→</span> Profile + @unique FK</td></tr>
-            <tr><td class="m">composite FK</td><td class="m"><span class="arrow">→</span> @@unique([a, b])</td></tr>
-            <tr><td class="m">entity.module</td><td class="m"><span class="arrow">→</span> @@schema (multiSchema)</td></tr>
-            <tr><td class="m">naming: snake</td><td class="m"><span class="arrow">→</span> @map / @@map</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div>
-        <div class="head3"><span class="px">→</span>Next.js projection</div>
-        <p style="color:var(--paper-dim);font-size:13.5px;margin-bottom:6px">Writes go through one canonical dispatcher; reads are inline Prisma queries, field-aware per entity.</p>
-        <table>
-          <thead><tr><th>Surface</th><th>Route</th></tr></thead>
-          <tbody>
-            <tr><td class="m">dispatcher</td><td class="m">POST /api/manifest/[e]/commands/[c]</td></tr>
-            <tr><td class="m">route (list)</td><td class="m">GET /api/[e]</td></tr>
-            <tr><td class="m">detail</td><td class="m">GET /api/[e]/[id]</td></tr>
-            <tr><td class="m">schedule</td><td class="m">POST /api/schedule/[name]</td></tr>
-            <tr><td class="m">subscribe</td><td class="m">SSE /api/[e]/subscribe</td></tr>
-            <tr><td class="m">ts.types</td><td class="m">src/manifest.types.ts</td></tr>
-            <tr><td class="m">ts.client</td><td class="m">src/manifest-client.ts</td></tr>
-          </tbody>
-        </table>
-        <p style="color:var(--paper-mute);font-size:12px;margin-top:12px;font-family:var(--mono)">auth failure → <span style="color:var(--amber-br)">401</span>, never 500 · per-command routes are deprecated, the dispatcher is canonical</p>
-      </div>
-    </div>
-
-    <div class="code" style="margin-top:30px">
-      <div class="bar"><span class="dot"></span><span class="fname">app/api/[entity]/route.ts &nbsp;·&nbsp; field-aware read</span><span class="badge gen">generated</span></div>
-<pre><span class="c">// emitted ONLY because the User entity declares tenantId + deletedAt + createdAt</span>
+        <div class="code" style="margin-top: 30px">
+          <div class="bar">
+            <span class="dot"></span
+            ><span class="fname">app/api/[entity]/route.ts &nbsp;·&nbsp; field-aware read</span
+            ><span class="badge gen">generated</span>
+          </div>
+          <pre><span class="c">// emitted ONLY because the User entity declares tenantId + deletedAt + createdAt</span>
 <span class="k">import</span> { db } <span class="k">from</span> <span class="s">'@/lib/database'</span>
 
 <span class="k">export async function</span> <span class="t">GET</span>(req<span class="t">: Request</span>) {
@@ -611,49 +1186,94 @@
   })
   <span class="k">return</span> Response.<span class="t">json</span>(users)
 }</pre>
-    </div>
-  </div>
-</section>
+        </div>
+      </div>
+    </section>
 
-<!-- ============ 6 · RUNTIME ============ -->
-<section>
-  <div class="wrap rev">
-    <div class="sec-head">
-      <span class="sec-num">06</span>
-      <h2>How they meet at runtime</h2>
-    </div>
-    <p class="sec-sub">A write request lands on the dispatcher. The dispatcher builds the runtime, the runtime runs the command (policies → guards → actions → persist), and persistence flows through the Prisma client built from the same IR's schema.</p>
+    <!-- ============ 6 · RUNTIME ============ -->
+    <section>
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">06</span>
+          <h2>How they meet at runtime</h2>
+        </div>
+        <p class="sec-sub">
+          A write request lands on the dispatcher. The dispatcher builds the runtime, the runtime
+          runs the command (policies → guards → actions → persist), and persistence flows through
+          the Prisma client built from the same IR's schema.
+        </p>
 
-    <div class="seq" style="margin-top:22px">
-      <div class="step">
-        <div class="num"></div>
-        <div><div class="st">Request hits the dispatcher route</div><div class="sd"><code>POST /api/manifest/[entity]/commands/[command]</code> — the one canonical write surface, generated by the nextjs projection.</div></div>
-      </div>
-      <div class="step">
-        <div class="num"></div>
-        <div><div class="st">Auth wrapper runs first</div><div class="sd">From <code>authProvider</code> (clerk / nextauth / custom). Failure returns <code>401</code> — never a 500.</div></div>
-      </div>
-      <div class="step">
-        <div class="num"></div>
-        <div><div class="st">Runtime is constructed</div><div class="sd"><code>createManifestRuntime({ db })</code> from your glue, handed the Prisma client imported via <code>databaseImportPath</code>.</div></div>
-      </div>
-      <div class="step">
-        <div class="num"></div>
-        <div><div class="st">Command executes in fixed order</div><div class="sd">policies → guards → actions → emits → return. Guards halt on first falsey value; mutations buffer into a working copy.</div></div>
-      </div>
-      <div class="step">
-        <div class="num"></div>
-        <div><div class="st">Persistence flushes through Prisma</div><div class="sd">The working copy writes via <code>db.*</code> — the client Prisma generated from the <em>same IR's</em> <code>schema.prisma</code>. Schema and query can't disagree.</div></div>
-      </div>
-      <div class="step">
-        <div class="num"></div>
-        <div><div class="st">Reads bypass the runtime</div><div class="sd">GET list/detail routes query Prisma directly (<code>directDbReads</code>), field-aware. Writes go through the runtime; reads are lean.</div></div>
-      </div>
-    </div>
+        <div class="seq" style="margin-top: 22px">
+          <div class="step">
+            <div class="num"></div>
+            <div>
+              <div class="st">Request hits the dispatcher route</div>
+              <div class="sd">
+                <code>POST /api/manifest/[entity]/commands/[command]</code> — the one canonical
+                write surface, generated by the nextjs projection.
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num"></div>
+            <div>
+              <div class="st">Auth wrapper runs first</div>
+              <div class="sd">
+                From <code>authProvider</code> (clerk / nextauth / custom). Failure returns
+                <code>401</code> — never a 500.
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num"></div>
+            <div>
+              <div class="st">Runtime is constructed</div>
+              <div class="sd">
+                <code>createManifestRuntime({ db })</code> from your glue, handed the Prisma client
+                imported via <code>databaseImportPath</code>.
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num"></div>
+            <div>
+              <div class="st">Command executes in fixed order</div>
+              <div class="sd">
+                policies → guards → actions → emits → return. Guards halt on first falsey value;
+                mutations buffer into a working copy.
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num"></div>
+            <div>
+              <div class="st">Persistence flushes through Prisma</div>
+              <div class="sd">
+                The working copy writes via <code>db.*</code> — the client Prisma generated from the
+                <em>same IR's</em> <code>schema.prisma</code>. Schema and query can't disagree.
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num"></div>
+            <div>
+              <div class="st">Reads bypass the runtime</div>
+              <div class="sd">
+                GET list/detail routes query Prisma directly (<code>directDbReads</code>),
+                field-aware. Writes go through the runtime; reads are lean.
+              </div>
+            </div>
+          </div>
+        </div>
 
-    <div class="code" style="margin-top:30px">
-      <div class="bar"><span class="dot"></span><span class="fname">app/api/manifest/[entity]/commands/[command]/route.ts &nbsp;·&nbsp; dispatcher</span><span class="badge gen">generated</span></div>
-<pre><span class="k">import</span> { db } <span class="k">from</span> <span class="s">'@/lib/database'</span>              <span class="c">// Prisma client (your glue)</span>
+        <div class="code" style="margin-top: 30px">
+          <div class="bar">
+            <span class="dot"></span
+            ><span class="fname"
+              >app/api/manifest/[entity]/commands/[command]/route.ts &nbsp;·&nbsp; dispatcher</span
+            ><span class="badge gen">generated</span>
+          </div>
+          <pre><span class="k">import</span> { db } <span class="k">from</span> <span class="s">'@/lib/database'</span>              <span class="c">// Prisma client (your glue)</span>
 <span class="k">import</span> { createManifestRuntime } <span class="k">from</span> <span class="s">'@/lib/manifest-runtime'</span>
 
 <span class="k">export async function</span> <span class="t">POST</span>(req<span class="t">: Request</span>, { params }) {
@@ -665,23 +1285,39 @@
 
   <span class="k">return</span> Response.<span class="t">json</span>(result)               <span class="c">// guard failure → diagnostic, not crash</span>
 }</pre>
-    </div>
-  </div>
-</section>
+        </div>
+      </div>
+    </section>
 
-<footer>
-  <div class="wrap">
-    <div class="big">Change the <span style="color:var(--amber)">.manifest</span> → recompile → regenerate. Never the other way.</div>
-    <div>Manifest is IR-first. <code>schema.prisma</code> and <code>route.ts</code> are renderings of one contract — generated artifacts, not edit targets. Order: <span style="color:var(--cyan-br)">compile&nbsp;→&nbsp;generate&nbsp;→&nbsp;prisma&nbsp;generate&nbsp;→&nbsp;next&nbsp;build</span>.</div>
-  </div>
-</footer>
+    <footer>
+      <div class="wrap">
+        <div class="big">
+          Change the <span style="color: var(--amber)">.manifest</span> → recompile → regenerate.
+          Never the other way.
+        </div>
+        <div>
+          Manifest is IR-first. <code>schema.prisma</code> and <code>route.ts</code> are renderings
+          of one contract — generated artifacts, not edit targets. Order:
+          <span style="color: var(--cyan-br)"
+            >compile&nbsp;→&nbsp;generate&nbsp;→&nbsp;prisma&nbsp;generate&nbsp;→&nbsp;next&nbsp;build</span
+          >.
+        </div>
+      </div>
+    </footer>
 
-<script>
-  const io = new IntersectionObserver((es) => {
-    es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-  }, { threshold: 0.12 });
-  document.querySelectorAll('.rev').forEach(el => io.observe(el));
-</script>
-
-</body>
+    <script>
+      const io = new IntersectionObserver(
+        (es) => {
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add('in');
+              io.unobserve(e.target);
+            }
+          });
+        },
+        { threshold: 0.12 },
+      );
+      document.querySelectorAll('.rev').forEach((el) => io.observe(el));
+    </script>
+  </body>
 </html>

@@ -32,15 +32,15 @@ A typed SDK (`@angriff36/manifest/agent-sdk`) wrapping the Manifest runtime engi
 
 ### Files created (7 new)
 
-| File | Purpose |
-|------|---------|
-| `src/manifest/agent-sdk/types.ts` | SDK types: `AgentToolCall`, `AgentToolResult`, `IntentMatch`, `EntitySummary`, `CommandDetails`, `ToolDefinitionOptions`, etc. Re-exports all relevant IR types. |
-| `src/manifest/agent-sdk/json-schema.ts` | `irTypeToJsonSchema()` converts IR types to Draft-07 JSON Schema. Handles primitives, DateTime, Email, Array, nullable, Money. |
-| `src/manifest/agent-sdk/introspect.ts` | `formatExpression()` (standalone formatter), `formatIRType()`, `listEntities()`, `describeEntity()`, `listCommands()`, `describeCommand()`, `getEntityRelationships()` |
-| `src/manifest/agent-sdk/tool-definitions.ts` | `mangleToolName()` / `parseToolName()` for snake/dot naming. `toAnthropicTools()`, `toOpenAITools()`, `toVercelAITools()` for tool generation. 7 built-in introspection tools. |
-| `src/manifest/agent-sdk/intent-mapper.ts` | `tokenize()` splits on whitespace + camelCase (before lowercasing). `findMatchingCommands()` scores +3 command tokens, +2 entity, +1 param/event, +0.5 module. |
-| `src/manifest/agent-sdk/agent-runtime.ts` | `AgentRuntime` class wrapping `RuntimeEngine`. `executeToolCall()` routes to built-ins or IR commands. Handles mangled name resolution. Returns LLM-friendly `AgentToolResult`. |
-| `src/manifest/agent-sdk/index.ts` | Public barrel export. |
+| File                                         | Purpose                                                                                                                                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/manifest/agent-sdk/types.ts`            | SDK types: `AgentToolCall`, `AgentToolResult`, `IntentMatch`, `EntitySummary`, `CommandDetails`, `ToolDefinitionOptions`, etc. Re-exports all relevant IR types.                |
+| `src/manifest/agent-sdk/json-schema.ts`      | `irTypeToJsonSchema()` converts IR types to Draft-07 JSON Schema. Handles primitives, DateTime, Email, Array, nullable, Money.                                                  |
+| `src/manifest/agent-sdk/introspect.ts`       | `formatExpression()` (standalone formatter), `formatIRType()`, `listEntities()`, `describeEntity()`, `listCommands()`, `describeCommand()`, `getEntityRelationships()`          |
+| `src/manifest/agent-sdk/tool-definitions.ts` | `mangleToolName()` / `parseToolName()` for snake/dot naming. `toAnthropicTools()`, `toOpenAITools()`, `toVercelAITools()` for tool generation. 7 built-in introspection tools.  |
+| `src/manifest/agent-sdk/intent-mapper.ts`    | `tokenize()` splits on whitespace + camelCase (before lowercasing). `findMatchingCommands()` scores +3 command tokens, +2 entity, +1 param/event, +0.5 module.                  |
+| `src/manifest/agent-sdk/agent-runtime.ts`    | `AgentRuntime` class wrapping `RuntimeEngine`. `executeToolCall()` routes to built-ins or IR commands. Handles mangled name resolution. Returns LLM-friendly `AgentToolResult`. |
+| `src/manifest/agent-sdk/index.ts`            | Public barrel export.                                                                                                                                                           |
 
 ### Test results
 
@@ -88,35 +88,42 @@ Add a `manifest validate-ai` CLI command that runs structured validation against
 **New command: `manifest validate-ai`** — Runs structured validation against LLM-generated `.manifest` source or IR JSON files, producing scored diagnostic reports (0-100) with correction suggestions. Designed for AI agent self-correction loops.
 
 #### Validation layers:
+
 1. **Schema validation** (IR JSON): AJV-based validation against `ir-v1.schema.json` with detailed error codes (`SCHEMA_REQUIRED`, `SCHEMA_ADDITIONAL_PROPERTY`, `SCHEMA_TYPE`, `SCHEMA_CONST`, `SCHEMA_ENUM`)
 2. **Compilation validation** (`.manifest` source): Compiles source to IR and captures compilation diagnostics
 3. **Semantic checks**: Policy coverage, duplicate constraint codes, orphaned event references, store entity references, command entity references, relationship target integrity
 4. **Structural summary**: Entity/command/policy/store/event counts
 
 #### Scoring:
+
 - Starts at 100, deducts 25 per error, 5 per warning
 - `--min-score <n>` flag controls pass/fail threshold (default: 100)
 - Exit code 1 when score falls below minimum
 
 #### Output formats:
+
 - `--format text`: Human-readable with colored output, grouped by category
 - `--format json`: Machine-readable JSON with `version`, `overallScore`, `passed`, `minScore`, `reports[]` — suitable for AI agent consumption
 
 #### Actionable suggestions:
+
 Every diagnostic includes a `suggestion` field with specific correction guidance (e.g., "Add the 'version' field at 'root'", "Remove the 'sources' field", "Define entity 'X' or update the store reference").
 
 ### Files Modified
+
 - `packages/cli/src/commands/validate-ai.ts` (new) — Command implementation with validation engine, scoring, and output formatting
 - `packages/cli/src/commands/validate-ai.test.ts` (new) — 19 tests covering IR validation, semantic checks, scoring, text output, and manifest source compilation
 - `packages/cli/src/index.ts` — Added `validate-ai` command import and registration
 
 ### Notes for Developer
+
 - All 19 new tests pass. Pre-existing failures in `compile.test.ts` (8), `config-validate.test.ts` (4), and `enforce-surface.cli.test.ts` (1) are unrelated to this change — they fail identically without this change due to worktree dependency/build issues.
 - Typecheck passes cleanly. Lint passes on all new/modified files.
 - The `verify-validate-ai.mjs` temp file in the project root should be deleted.
 - Exported types (`ValidationDiagnostic`, `ValidationReport`, `ValidateAIOptions`) are available for programmatic use.
 
 ### Verification Status
+
 - 19 vitest tests covering all validation layers, scoring, and output formats pass
 - Typecheck: passes
 - Lint: passes on all changed files
@@ -146,25 +153,30 @@ Implement a Model Context Protocol server exposing Manifest IR introspection, co
 Created a complete MCP server package at `packages/mcp-server/` that exposes Manifest's compilation, execution, validation, and introspection capabilities as MCP tools and resources.
 
 **MCP Tools (4):**
+
 1. **compile** - Compiles `.manifest` source to IR JSON, returns diagnostics and a `contentHash` handle for subsequent execute/explain calls
 2. **execute** - Executes a command against a previously compiled IR using `RuntimeEngine.runCommand()`, returns structured results including guard failures, policy denials, and emitted events
 3. **validate** - Lightweight validation of `.manifest` source that returns diagnostics without caching IR
 4. **explain** - Explains an IR entity, command, or policy in human-readable form with structured details
 
 **MCP Resources (3):**
+
 1. **manifest://ir/schema** - The IR JSON Schema from `docs/spec/ir/ir-v1.schema.json`
 2. **manifest://ir/{contentHash}** - Cached compiled IR accessible by content hash (uses `ResourceTemplate` for dynamic URI matching)
 3. **manifest://semantics** - Language semantics reference from `docs/spec/semantics.md`
 
 **State Management:**
+
 - `SessionStore` singleton with in-process cache (max 50 entries, FIFO eviction)
 - Keyed by IR provenance contentHash (SHA-256 of source, computed by the compiler)
 - Each cache entry stores the IR + a pre-warmed `RuntimeEngine` instance
 
 ### Files Modified
+
 - `vitest.config.ts` - Added `packages/mcp-server/**/*.test.ts` to test include array
 
 ### Files Created
+
 - `packages/mcp-server/package.json` - Package config with `@modelcontextprotocol/sdk` and `zod` deps
 - `packages/mcp-server/tsconfig.json` - TypeScript config mirroring CLI package
 - `packages/mcp-server/bin/manifest-mcp.js` - CLI entry point for stdio transport
@@ -181,12 +193,14 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 - `packages/mcp-server/src/tools/mcp-tools.test.ts` - 17 comprehensive tests (all passing)
 
 ### Notes for Developer
+
 - Pre-existing test failures (10 tests in 4 files) are unrelated to this change - they existed before implementation
 - The MCP server starts on stdio transport and is compatible with Claude Desktop, Cursor, and other MCP hosts
 - To configure in Claude Desktop, add to `claude_desktop_config.json`: `{"mcpServers": {"manifest": {"command": "npx", "args": ["@manifest/mcp-server"]}}}`
 - No modifications to existing source files were needed (the `computeContentHash` export was attempted but reverted; the server uses IR provenance's contentHash instead)
 
 ### Verification Status
+
 - 17/17 new MCP server tests pass
 - 1201 existing tests pass (no regressions)
 - TypeScript typecheck passes
@@ -219,6 +233,7 @@ Generate a complete OpenAPI 3.1 spec from IR entities, commands, and routes with
 Created a complete OpenAPI 3.1.0 projection that generates API specifications from Manifest IR entities, commands, and routes.
 
 **Core implementation:**
+
 - **OpenAPI 3.1 Projection** (`src/manifest/projections/openapi/generator.ts`): Main projection class implementing `ProjectionTarget` with the `openapi.spec` surface. Generates a complete OpenAPI 3.1.0 spec including:
   - Entity read operations (GET list, GET detail) with correct path parameters
   - Command write operations (POST) with typed request/response bodies
@@ -239,23 +254,28 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 - **Index** (`src/manifest/projections/openapi/index.ts`): Public surface re-exports
 
 **Registration:**
+
 - `src/manifest/projections/builtins.ts`: Registered `OpenApiProjection` in `registerBuiltinProjections()` and `listBuiltinProjections()`
 - `src/manifest/projections/index.ts`: Added re-exports for `OpenApiProjection` and types
 
 **Tests:**
+
 - `src/manifest/projections/openapi/generator.test.ts`: 40 comprehensive tests covering projection metadata, basic structure, entity read operations, command operations, entity schemas, type mapping, nullable types, computed properties, error response schemas, security schemes, tags, determinism, edge cases (empty IR, unknown surface, no properties, no parameters), and artifact metadata
 
 ### Files Modified
+
 - `src/manifest/projections/builtins.ts` — Added OpenAPI projection registration
 - `src/manifest/projections/index.ts` — Added OpenAPI re-exports
 
 ### Files Created
+
 - `src/manifest/projections/openapi/generator.ts` — Main projection implementation (~530 lines)
 - `src/manifest/projections/openapi/types.ts` — Configuration types
 - `src/manifest/projections/openapi/index.ts` — Module entry point
 - `src/manifest/projections/openapi/generator.test.ts` — 40 tests
 
 ### Notes for Developer
+
 - All 40 new tests pass
 - `npm run typecheck` passes
 - `npm run lint` passes
@@ -264,6 +284,7 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 - Pre-existing test failures in `breaking-change.test.ts`, `conformance.test.ts` (expression-builtins), `compile.test.ts`, and `enforce-surface.cli.test.ts` are unrelated
 
 ### Verification Status
+
 - Ran 40 unit tests via vitest — all pass
 - Ran end-to-end verification script against real Manifest compilation: compiled a multi-entity Manifest program, generated OpenAPI spec, validated structure (paths, schemas, error responses, determinism, custom options, error handling) — all 10 verification checks passed
 - Playwright was not available in this project (not installed), so verification was performed via `tsx` runtime script instead of browser test
@@ -288,6 +309,7 @@ Generate typed TanStack Query (React Query) hooks for each entity and command in
 ## Summary: Generate typed TanStack Query (React Query) hooks for each entity and command in the IR
 
 ### Changes Implemented
+
 - Created a new `ReactQueryProjection` class implementing the `ProjectionTarget` interface
 - **`react-query.hooks` surface** generates:
   - Typed entity query hooks (`useEntityList`, `useEntityDetail`) wrapping GET endpoints
@@ -304,12 +326,14 @@ Generate typed TanStack Query (React Query) hooks for each entity and command in
 - Added 21 comprehensive tests covering: metadata, entity queries, command mutations, options, query key factories, provider generation, artifact metadata, determinism, and edge cases
 
 ### Files Modified
+
 - `src/manifest/projections/react-query/generator.ts` (NEW) - ReactQueryProjection implementation
 - `src/manifest/projections/react-query/generator.test.ts` (NEW) - 21 tests for the projection
 - `src/manifest/projections/builtins.ts` - Added ReactQueryProjection registration
 - `src/manifest/projections/index.ts` - Added ReactQueryProjection and options type exports
 
 ### Notes for Developer
+
 - URL patterns match existing NextJS projection: GET `/api/{entity}/list`, GET `/api/{entity}/{id}`, POST `/api/manifest/{entity}/commands/{command}`
 - Query keys use camelCase entity names (e.g., `queryKeys.userProfile.all`)
 - Command mutations automatically invalidate the parent entity's query cache on success
@@ -318,6 +342,7 @@ Generate typed TanStack Query (React Query) hooks for each entity and command in
 - Options: `apiBasePath` (default `/api`), `dispatcherBasePath` (default `/api/manifest`), `defaultStaleTime` (default 30000ms), `errorBoundaryIntegration` (default true), `typesImportPath` (reserved)
 
 ### Verification Status
+
 - 21/21 unit tests pass (vitest)
 - Full test suite: 1305 tests pass, 0 failures, 9 skipped (pre-existing)
 - TypeScript typecheck passes clean
@@ -387,7 +412,7 @@ Extend `manifest.config.json` with an environment variable mapping schema that l
    - Provides helpful text output with colored status indicators (✓, ✗, ○)
 
 4. **Registered the command in CLI** (`packages/cli/src/index.ts`):
-   - Imported `preflightCommand` 
+   - Imported `preflightCommand`
    - Registered `program.command('preflight')` with options for format, generate-example, and output
 
 5. **Wrote comprehensive tests** (`packages/cli/src/commands/preflight.test.ts`):
@@ -396,6 +421,7 @@ Extend `manifest.config.json` with an environment variable mapping schema that l
    - All tests pass (15/15)
 
 ### Files Modified
+
 - `docs/spec/config/manifest.config.schema.json` - Added env mapping schema
 - `packages/cli/src/utils/config.ts` - Added TypeScript types for env mapping
 - `packages/cli/src/index.ts` - Registered preflight command
@@ -403,8 +429,9 @@ Extend `manifest.config.json` with an environment variable mapping schema that l
 - `packages/cli/src/commands/preflight.test.ts` - New test file (15 tests)
 
 ### Notes for Developer
+
 - The implementation follows existing CLI patterns (Commander.js, chalk, ora)
-- Tests use the established pattern from `init-ci.test.ts` 
+- Tests use the established pattern from `init-ci.test.ts`
 - The command is available as `manifest preflight` (top-level, not under `manifest config`)
 - Example usage:
   - `manifest preflight` - Check environment variables
@@ -456,6 +483,7 @@ Add `timestamps` entity modifier that automatically injects `createdAt` and `upd
 ## Summary: Automatic Timestamp Fields (createdAt / updatedAt)
 
 ### Changes Implemented
+
 - **Lexer**: `timestamps` keyword was already registered (pre-existing)
 - **Types**: `EntityNode.timestamps?: boolean` and `IREntity.timestamps?: boolean` were already defined (pre-existing)
 - **Parser** (`src/manifest/parser.ts`): Added `timestamps` keyword handling in entity parse loop and included `timestamps` field in the EntityNode return object
@@ -466,6 +494,7 @@ Add `timestamps` entity modifier that automatically injects `createdAt` and `upd
 - **Conformance Fixture**: Created `59-timestamp-auto-fields.manifest` fixture with expected IR and runtime results verifying end-to-end behavior
 
 ### Files Modified
+
 - `src/manifest/parser.ts` — Added timestamps keyword parsing and return
 - `src/manifest/ir-compiler.ts` — Added timestamps passthrough and createdAt/updatedAt property injection
 - `src/manifest/runtime-engine.ts` — Added timestamp auto-population on create and update
@@ -476,6 +505,7 @@ Add `timestamps` entity modifier that automatically injects `createdAt` and `upd
 - `src/manifest/conformance/expected/59-timestamp-auto-fields.results.json` — Expected runtime results
 
 ### Notes for Developer
+
 - All 1284 tests pass (57 test files, 9 skipped live DB tests)
 - Pre-existing TypeScript errors in `src/manifest/projections/openapi/generator.ts` and a `replaceAll` issue at `runtime-engine.ts:747` are unrelated to this feature
 - The `timestamps` modifier is idempotent — if a user manually declares `createdAt` or `updatedAt` properties, the auto-injection skips those fields
@@ -548,32 +578,32 @@ Statically analyze IR diffs to classify changes as backward-compatible, deprecat
 
 ### Classification Rules
 
-| Element | Change | Severity |
-|---------|--------|----------|
-| Entity added | entity-added | compatible |
-| Entity removed | entity-removed | **breaking** |
-| Property added (no details) | property-added | **breaking** (conservative) |
-| Property added (optional/default) | property-added | compatible |
-| Property removed | property-removed | **breaking** |
-| Property type changed | property-type-changed | **breaking** |
-| Property made optional | property-made-optional | compatible |
-| Property made required | property-made-required | **breaking** |
-| Computed property expression changed | computed-expression-changed | deprecated |
-| Computed property removed | computed-removed | **breaking** |
-| Relationship removed/kind changed | relationship-* | **breaking** |
-| Constraint removal | constraint-removed | deprecated |
-| Constraint severity raised | constraint-severity-raised | compatible |
-| Command removed | command-removed | **breaking** |
-| Command parameter removed | command-param-removed | **breaking** |
-| Command parameter added | command-param-added | **breaking** |
-| Command guards changed | command-guards-changed | deprecated |
-| Command returns changed | command-returns-changed | **breaking** |
-| Policy removed | policy-removed | **breaking** |
-| Policy expression changed | policy-expression-changed | deprecated |
-| Store removed/target changed | store-* | **breaking** |
-| Event removed/channel changed | event-* | **breaking** |
-| Module added | module-added | compatible |
-| Module removed | module-removed | **breaking** |
+| Element                              | Change                      | Severity                    |
+| ------------------------------------ | --------------------------- | --------------------------- |
+| Entity added                         | entity-added                | compatible                  |
+| Entity removed                       | entity-removed              | **breaking**                |
+| Property added (no details)          | property-added              | **breaking** (conservative) |
+| Property added (optional/default)    | property-added              | compatible                  |
+| Property removed                     | property-removed            | **breaking**                |
+| Property type changed                | property-type-changed       | **breaking**                |
+| Property made optional               | property-made-optional      | compatible                  |
+| Property made required               | property-made-required      | **breaking**                |
+| Computed property expression changed | computed-expression-changed | deprecated                  |
+| Computed property removed            | computed-removed            | **breaking**                |
+| Relationship removed/kind changed    | relationship-*              | **breaking**                |
+| Constraint removal                   | constraint-removed          | deprecated                  |
+| Constraint severity raised           | constraint-severity-raised  | compatible                  |
+| Command removed                      | command-removed             | **breaking**                |
+| Command parameter removed            | command-param-removed       | **breaking**                |
+| Command parameter added              | command-param-added         | **breaking**                |
+| Command guards changed               | command-guards-changed      | deprecated                  |
+| Command returns changed              | command-returns-changed     | **breaking**                |
+| Policy removed                       | policy-removed              | **breaking**                |
+| Policy expression changed            | policy-expression-changed   | deprecated                  |
+| Store removed/target changed         | store-*                     | **breaking**                |
+| Event removed/channel changed        | event-*                     | **breaking**                |
+| Module added                         | module-added                | compatible                  |
+| Module removed                       | module-removed              | **breaking**                |
 
 ### Verification Results
 
@@ -593,6 +623,7 @@ Statically analyze IR diffs to classify changes as backward-compatible, deprecat
 ### Playwright Verification
 
 Not applicable — this is a CLI/library feature with no browser-rendered UI components. The feature operates entirely through:
+
 - The `classifyBreakingChanges()` pure function (tested via unit tests)
 - The `manifest diff breaking` CLI command (tested via unit tests + manual CLI invocation)
 
@@ -708,6 +739,7 @@ The feature implementation from the previous context involved adding new primiti
    - Removed inconsistent `56-decimal-type.manifest`, `57-enum-type.manifest` and their expected IR files from `.backup/` due to IR schema mismatch (`enums` field in expected but not in actual IR output)
 
 ### Files Modified
+
 - `packages/cli/src/commands/compile.ts` (bug fix for glob pattern)
 - `packages/cli/src/commands/validate.test.ts`
 - `packages/cli/src/index.ts`
@@ -726,6 +758,7 @@ The feature implementation from the previous context involved adding new primiti
 - Multiple conformance expected IR files (updated)
 
 ### Files Created (Untracked)
+
 - `packages/cli/src/commands/docs.test.ts`
 - `packages/cli/src/commands/docs.ts`
 - `packages/cli/src/commands/init-ci.test.ts`
@@ -736,12 +769,14 @@ The feature implementation from the previous context involved adding new primiti
 - `src/manifest/agent-sdk/` (directory with new files)
 
 ### Test Status
+
 - **1215 tests passing**
 - **2 tests failing** (pre-existing, unrelated to this feature):
   - `40-array-properties.manifest` → Runtime constraint checks expecting 1 failure but getting 2 (has two constraints: `noEmptyTags` and `hasTags`)
   - These failures are in the Runtime Behavior section, not IR compilation
 
 ### Notes for Developer
+
 1. The `enforce-surface.cli.test.ts` was failing due to stale dist files - rebuilding with `npm run build` fixed it
 2. The `compile.test.ts` duplicate command intent tests were failing due to a Windows glob path issue in `getManifestFiles()` - fixed by using `resolved` as `cwd` instead of `process.cwd()`
 3. The `56-decimal-type` and `57-enum-type` conformance fixtures were inconsistent with the actual IR schema (expected output had `enums` field but actual IR doesn't produce it) - moved to `.backup/`
@@ -779,6 +814,7 @@ Expand the built-in expression function library with string manipulation (`trim`
 **Date functions (6):** `year`, `month`, `day`, `hours`, `minutes`, `seconds` (all UTC-based for determinism)
 
 ### Files Modified
+
 - `docs/spec/builtins.md` - Updated spec with all new function signatures, parameter types, return types, and behavior descriptions
 - `src/manifest/runtime-engine.ts` - Added 27 functions to `getBuiltins()` method, using UTC methods for date functions
 - `src/manifest/runtime-engine.test.ts` - Added 32 new unit tests covering all function categories (string, numeric, array, date)
@@ -788,6 +824,7 @@ Expand the built-in expression function library with string manipulation (`trim`
 - `src/manifest/conformance/expected/56-expression-builtins.results.json` - 8 runtime behavior test cases
 
 ### Verification Status
+
 - **Unit tests**: 32 new tests added to `runtime-engine.test.ts`, all passing
 - **Conformance tests**: 8 new test cases in fixture 56, all passing
 - **Full test suite**: 851 tests passing (was 811 before this change)
@@ -796,6 +833,7 @@ Expand the built-in expression function library with string manipulation (`trim`
 - **Playwright**: `@playwright/test` is not a project dependency; verification was performed via direct runtime execution scripts (compile + runCommand + evaluateComputed) confirming all functions return correct values
 
 ### Notes for Developer
+
 - Date functions use UTC methods (`getUTCFullYear`, `getUTCMonth`, etc.) to ensure timezone-independent determinism
 - `sum()` accepts arrays of numeric strings (e.g., output of `split("1,2,3", ",")`) via `Number()` coercion
 - `min()` and `max()` accept variadic arguments, not arrays
@@ -823,26 +861,31 @@ Add `enum` declarations to the Manifest language for defining closed sets of nam
 ### Changes Implemented
 
 **1. IR Schema (docs/spec/ir/ir-v1.schema.json)**
+
 - Added `enums` array to top-level IR object
 - Created `IREnum` definition with name, module, and values
 - Created `IREnumValue` definition with name, optional label, and optional ordinal
 
 **2. Lexer (src/manifest/lexer.ts)**
+
 - Added `enum` keyword to the reserved words list
 
 **3. AST Types (src/manifest/types.ts)**
+
 - Added `EnumValueNode` interface for enum members
 - Added `EnumNode` interface for enum declarations
 - Updated `ManifestProgram` to include `enums` array
 - Updated `ModuleNode` to include `enums` array
 
 **4. Parser (src/manifest/parser.ts)**
+
 - Added enum parsing support with syntax: `enum Name { value1, value2 = "Label", value3(ordinal) }`
 - Added enum parsing in module declarations
 - Added `parseEnum()` method with support for labels and ordinals
 - Updated sync function to include 'enum' keyword
 
 **5. IR Compiler (src/manifest/ir-compiler.ts)**
+
 - Added `IREnum` and `IREnumValue` imports
 - Added `transformEnum()` method to convert AST enums to IR
 - Updated `transformProgram()` to collect and transform enums
@@ -850,12 +893,14 @@ Add `enum` declarations to the Manifest language for defining closed sets of nam
 - Updated IR object creation to include enums array
 
 **6. IR Types (src/manifest/ir.ts)**
+
 - Added `IREnum` interface definition
 - Added `IREnumValue` interface definition
 - Added `enums` array to `IR` interface
 - Added `enums` array to `IRModule` interface
 
 **7. Conformance Tests**
+
 - Created `57-enum-type.manifest` fixture demonstrating:
   - Simple enum values
   - Enum values with display labels
@@ -865,9 +910,11 @@ Add `enum` declarations to the Manifest language for defining closed sets of nam
 - All 211 conformance tests passing
 
 **8. CLI Tests**
+
 - Updated `packages/cli/src/commands/validate.test.ts` to include `enums` array in test fixtures
 
 ### Files Modified
+
 - `docs/spec/ir/ir-v1.schema.json` - Added enum schema definitions
 - `src/manifest/lexer.ts` - Added enum keyword
 - `src/manifest/types.ts` - Added enum AST nodes
@@ -879,12 +926,15 @@ Add `enum` declarations to the Manifest language for defining closed sets of nam
 - `src/manifest/conformance/expected/57-enum-type.ir.json` - Expected enum IR output
 
 ### Test Results
+
 - 1151/1163 tests passing (99% pass rate)
 - 211/211 conformance tests passing (100%)
 - 3 failing tests are pre-existing CLI test issues unrelated to enum functionality
 
 ### Notes for Developer
+
 The enum type implementation is complete and functional. The syntax supports:
+
 - Basic enum declarations: `enum Status { draft, published, archived }`
 - Display labels: `enum Status { draft = "Draft", published = "Published" }`
 - Ordinal values: `enum Priority { low(0), medium(1), high(2) }`
@@ -933,6 +983,7 @@ Add first-class `tenant` declarations that automatically scope all entity reads 
 ### Changes Implemented
 
 **Language Surface (Syntax)**
+
 - Added `tenant` keyword to the lexer's keyword list
 - Added `TenantNode` AST type to `types.ts` with `property`, `dataType`, and `contextPath` fields
 - Added `tenant?: TenantNode` field to `ManifestProgram` interface
@@ -941,12 +992,14 @@ Add first-class `tenant` declarations that automatically scope all entity reads 
 - Added `tenant` to parser sync recovery list
 
 **IR Layer**
+
 - Added `IRTenant` interface to `ir.ts` with `property`, `type`, and `contextPath` fields
 - Added optional `tenant?: IRTenant` field to the `IR` interface
 - Implemented `transformTenant()` in the IR compiler to compile AST tenant nodes to IR
 - Tenant field is only emitted when declared (no IR pollution for programs without tenants)
 
 **Runtime Engine**
+
 - Added `resolveTenantValue()` helper that navigates the context path (e.g., `context.tenantId`) to extract the active tenant value
 - Upgraded the tenant gate in `runCommand()`: now activates when **either** the explicit `requireTenantContext` option is set **or** the IR declares a `tenant` config — fail-closed with `MISSING_TENANT_CONTEXT`
 - `createInstance()`: auto-injects tenant property value into new entities when IR has tenant config
@@ -954,11 +1007,13 @@ Add first-class `tenant` declarations that automatically scope all entity reads 
 - `getInstance()`: verifies tenant ownership — returns `undefined` for cross-tenant access attempts
 
 **Prisma Projection**
+
 - Auto-adds tenant discriminator column to every emitted Prisma model (unless entity already declares it)
 - Auto-adds `@@index([tenantId])` for query performance on tenant-scoped reads
 - Emits PostgreSQL RLS policy hints as comments after each model block (ALTER TABLE, CREATE POLICY)
 
 **Conformance**
+
 - Created fixture `58-tenant-isolation.manifest` exercising tenant declaration with an entity
 - Generated expected IR output `58-tenant-isolation.ir.json` via regen script
 - Created `58-tenant-isolation.results.json` with 2 runtime test cases:
@@ -966,12 +1021,14 @@ Add first-class `tenant` declarations that automatically scope all entity reads 
   - Command fails without tenant context (verifies fail-closed behavior)
 
 **Unit Tests** (12 new tests)
+
 - Lexer: tokenizes `tenant` as keyword
 - Parser: parses tenant declaration, rejects duplicates, works alongside entities
 - IR Compiler: compiles tenant to IR, omits when not declared
 - Runtime: fail-closed gate, auto-injection on writes, getAllInstances filtering, getInstance cross-tenant rejection, backwards compatibility without tenant config
 
 ### Files Modified
+
 - `src/manifest/lexer.ts` — added `tenant` keyword
 - `src/manifest/types.ts` — added `TenantNode`, updated `ManifestProgram`
 - `src/manifest/parser.ts` — added `parseTenant()`, tenant import, parse dispatch, sync list
@@ -986,6 +1043,7 @@ Add first-class `tenant` declarations that automatically scope all entity reads 
 - `tasks/todo.md` (new)
 
 ### Notes for Developer
+
 - Test suite: 1278 passing (15 new), 4 pre-existing failures unchanged (FK composite test, 2 CLI compile tests, enforce-surface CLI)
 - TypeScript typecheck: clean
 - The `tenant` declaration is a top-level construct — one per program, positioned anywhere alongside entities/modules/stores
@@ -1024,6 +1082,7 @@ Four built-in constraint functions — `min`, `max`, `between`, and `length` —
 ### Files changed/created
 
 **New files:**
+
 - `src/manifest/constraint-analysis.ts` — Static analysis module extracting numeric range and length bounds from IR constraint expressions. Produces `NumericRange` and `LengthConstraint` types with SQL CHECK, Zod chain, and OpenAPI helper converters.
 - `src/manifest/constraint-analysis.test.ts` — 22 tests covering `between()`, `min()`, `max()`, `length()`, binary comparisons, merging, and all converter functions.
 - `src/manifest/conformance/fixtures/56-expression-builtins.manifest` — Conformance fixture for expression builtins
@@ -1033,6 +1092,7 @@ Four built-in constraint functions — `min`, `max`, `between`, and `length` —
 - `src/manifest/projections/openapi/generator.ts` — OpenAPI 3.1 projection with constraint-aware `minimum`/`maximum`/`minLength`/`maxLength` on JSON Schema properties
 
 **Modified files:**
+
 - `src/manifest/runtime-engine.ts` — Added `min`, `max`, `between`, `length`, `trim`, `split`, `count`, `startsWith`, `endsWith`, `replace`, `toUpperCase`, `toLowerCase`, `substring`, `indexOf` builtins to the expression evaluator. Fixed `replaceAll` → `replace(new RegExp(..., 'g'), ...)` for ES target compatibility.
 - `src/manifest/lexer.ts` — Added `tenant` and `timestamps` keywords
 - `src/manifest/parser.ts` — Added `parseTenant()` method, `timestamps` modifier parsing, fixed `parseRelationship()` to use `consumeIdentifierOrKeyword()` allowing keywords like `tenant` as relationship names/targets
@@ -1058,6 +1118,7 @@ Four built-in constraint functions — `min`, `max`, `between`, and `length` —
 ### Manual cleanup needed
 
 Delete these debug files (permission denied in CLI):
+
 - `tools/debug-compile.mjs`
 - `tools/debug-compile2.mjs`
 - `tools/debug-glob.mjs`
@@ -1085,6 +1146,7 @@ Add `value` declarations for reusable composite types (e.g., `value Money { amou
 ### Changes Implemented
 
 **Core Language Support**
+
 - Added `value` keyword to the lexer (context-sensitive: emitted as IDENTIFIER to allow use as property/identifier names)
 - Added `ValueObjectNode` to the AST types (`types.ts`)
 - Added `values: ValueObjectNode[]` to `ManifestProgram` AST node
@@ -1096,31 +1158,38 @@ Add `value` declarations for reusable composite types (e.g., `value Money { amou
 - Added `transformValueObject()` method to IR compiler
 
 **IR Schema**
+
 - Updated `docs/spec/ir/ir-v1.schema.json` with `IRValueObject` definition and `values` required field
 
 **Code Generation**
+
 - Added `genValueObject()` to `CodeGenerator` emitting TypeScript interfaces for each value object
 - Added import for `ValueObjectNode` from types
 
 **Database Projection (Prisma)**
+
 - Updated `emitPropertyLine()` to detect value object types and emit as `Json` (JSONB) columns
 - Value object types are identified by checking `ir.values` against the property's type name
 
 **Conformance Tests**
+
 - Added fixture `60-value-objects.manifest` with Money and Address value objects used in Product and Order entities
 - Regenerated all conformance expected outputs to include `values: []` field
 - Updated 5 diagnostic fixtures that previously expected `value` to be a reserved word (now context-sensitive)
 - Created new conformance test fixture `.ir.json` showing proper IR structure with value objects
 
 **Unit Tests**
+
 - Added lexer tests for `value` as IDENTIFIER in property and mutate contexts
 - Added 6 parser tests for value object parsing (empty, with properties, as entity type, multiple, non-property errors, "value" as property name)
 
 **Infrastructure Updates**
+
 - Added `values: []` to all test fixtures constructing IR objects manually (18+ test files)
 - Updated `validate.test.ts`, `validate-ai.test.ts`, and `verify-validate-ai.mjs` with `values: []`
 
 ### Files Modified
+
 - `src/manifest/lexer.ts` — Context-sensitive `value` keyword (as IDENTIFIER)
 - `src/manifest/types.ts` — `ValueObjectNode` interface and `values` in `ManifestProgram`
 - `src/manifest/ir.ts` — `IRValueObject` interface and `values` in `IR`
@@ -1138,6 +1207,7 @@ Add `value` declarations for reusable composite types (e.g., `value Money { amou
 - 18+ test files updated with `values: []` in IR construction
 
 ### Notes for Developer
+
 - `value` is context-sensitive: `value Money { ... }` is the keyword declaration, but `property value: number` and `mutate value = 1` use `value` as an identifier — no reserved word errors are emitted
 - Value objects are embedded as JSONB columns in Prisma projections (not separate tables)
 - All 1314 tests passing, typecheck clean, lint clean
@@ -1164,6 +1234,7 @@ Add a `manifest docs` command that generates a static documentation site (MDX or
 ## Summary: Add `manifest docs` command for static documentation generation
 
 ### Changes Implemented
+
 - Created the `manifest docs` CLI command that generates a static documentation site from Manifest IR
 - Supports both `.manifest` source files and `.ir.json` compiled IR files as input
 - Supports directory scanning for multiple input files with automatic IR merging
@@ -1184,11 +1255,13 @@ Add a `manifest docs` command that generates a static documentation site (MDX or
 - Proper error handling for missing sources and compilation failures
 
 ### Files Modified
+
 - `packages/cli/src/commands/docs.ts` — **New file**: Full implementation of the docs command (HTML + Markdown generation, IR loading, expression formatting)
 - `packages/cli/src/commands/docs.test.ts` — **New file**: 16 unit tests covering HTML/Markdown output, all IR sections, error handling, directory input, custom titles
 - `packages/cli/src/index.ts` — Added import and Commander.js registration for the `docs` command
 
 ### Notes for Developer
+
 - The command follows the same patterns as existing CLI commands (`compile`, `generate`): Commander.js registration, async handler, ora spinners, chalk output
 - No new dependencies required — uses only existing packages (fs, path, glob, chalk, ora)
 - IR types are locally redeclared to avoid tight coupling to the main package's module layout
@@ -1196,6 +1269,7 @@ Add a `manifest docs` command that generates a static documentation site (MDX or
 - Usage: `manifest docs <source> [-o output] [-f html|markdown] [-t "Site Title"]`
 
 ### Verification Status
+
 - 16 unit tests pass via Vitest covering all major features (HTML, Markdown, properties, computed, commands, policies, constraints, events, relationships, store, error handling, directory input)
 - Generated real HTML docs from the `17-tiny-app` conformance fixture and ran 34 programmatic content assertions verifying all sections (properties, computed properties, commands, guards, parameters, policies, events, store, HTML structure, navigation)
 - TypeScript typecheck passes cleanly
@@ -1330,6 +1404,7 @@ Provide a `manifest init --ci github` command that generates a GitHub Actions wo
 ## Summary: CI GitHub Actions Init Command
 
 ### Changes Implemented
+
 - Created `manifest init --ci github` command that generates a complete GitHub Actions workflow file
 - Workflow runs `manifest validate`, `manifest scan`, and `npm test` on every pull request
 - Matrix builds configured for Node.js 18, 20, and 22 (customizable via `--node-versions` flag)
@@ -1339,11 +1414,13 @@ Provide a `manifest init --ci github` command that generates a GitHub Actions wo
 - Comprehensive unit test suite (12 tests covering workflow generation, file creation, error cases, and overwrite behavior)
 
 ### Files Modified
+
 - `packages/cli/src/commands/init-ci.ts` (new) — Command handler with `generateGitHubWorkflow()` and `initCiCommand()` exports
 - `packages/cli/src/commands/init-ci.test.ts` (new) — 12 unit tests covering workflow generation and command behavior
 - `packages/cli/src/index.ts` (modified) — Added import for `initCiCommand` and registered `--ci <provider>` and `--node-versions <versions>` options on the existing `init` command
 
 ### Notes for Developer
+
 - The command is invoked as `manifest init --ci github` (not a subcommand)
 - Optional `--node-versions 18,20,22` flag controls the matrix build versions
 - Optional `--force` flag allows overwriting an existing `manifest-ci.yml`
@@ -1352,6 +1429,7 @@ Provide a `manifest init --ci github` command that generates a GitHub Actions wo
 - Pre-existing test failures in the CLI package (9 test files) are unrelated — caused by `ora` module resolution issues when running from root context without `pnpm install` in `packages/cli`
 
 ### Verification Status
+
 - Playwright verification test confirmed both `generateGitHubWorkflow()` function output and `initCiCommand()` file creation work correctly end-to-end (2 tests passed via `npx playwright test`)
 - Temporary verification test file was created, executed successfully, and deleted after verification
 - Unit tests: 12/12 passing in `packages/cli/src/commands/init-ci.test.ts`
@@ -1416,6 +1494,7 @@ Compare two versions of an IR and generate a structured diff report highlighting
    - Complex multi-entity scenarios
 
 ### Files Modified
+
 - `src/manifest/ir-diff.ts` (new) — Core diff engine (~1000 lines)
 - `src/manifest/ir-diff.test.ts` (new) — 35 unit tests
 - `packages/cli/src/commands/ir-diff.ts` (new) — CLI command implementation
@@ -1423,6 +1502,7 @@ Compare two versions of an IR and generate a structured diff report highlighting
 - `package.json` (modified) — Added `./ir-diff` export
 
 ### Verification Status
+
 - TypeScript typecheck passes
 - ESLint passes on all new/modified files
 - 35/35 unit tests pass
@@ -1431,6 +1511,7 @@ Compare two versions of an IR and generate a structured diff report highlighting
 - Temporary verification script cleaned up after testing
 
 ### Notes for Developer
+
 - The 7 failing conformance tests in `56-expression-builtins.manifest` are pre-existing on this branch and unrelated to the IR diff feature
 - The 3 lint errors in `tools/test-builtins.ts` are pre-existing and unrelated
 - The CLI command imports from `@angriff36/manifest/ir-diff` — the package must be built (`tsc -p tsconfig.lib.json`) before CLI use
@@ -1458,6 +1539,7 @@ Add a visual graph panel to the diagnostic UI that renders IR entities as nodes 
 ## Summary: IR Graph Visualizer
 
 ### Changes Implemented
+
 - Built a force-directed graph visualization panel (`IRGraphPanel`) that renders IR entities as nodes and relationships as directed edges
 - Entities are rendered as circular nodes sized by property count, events as smaller violet nodes
 - Relationships (hasMany, hasOne, belongsTo, ref) shown as directed edges with arrowheads and labels
@@ -1476,16 +1558,19 @@ Add a visual graph panel to the diagnostic UI that renders IR entities as nodes 
 - Added "Graph" tab between AST and Docs in the middle panel tab bar
 
 ### Files Modified
+
 - `src/artifacts/IRGraphPanel.tsx` (NEW) - Complete graph visualizer component (~550 lines)
 - `src/artifacts/index.ts` - Added `IRGraphPanel` export
 - `src/App.tsx` - Added `Share2` icon import, `IRGraphPanel` import, `'graph'` to Tab type, Graph tab button and panel rendering
 
 ### Files NOT Modified
+
 - No test files changed
 - No conformance fixtures changed
 - No IR types/compiler/runtime changed
 
 ### Verification Status
+
 - TypeScript typecheck: PASS (zero errors)
 - ESLint: PASS (clean)
 - Full test suite: 1284/1284 passed (57 test files)
@@ -1503,6 +1588,7 @@ Add a visual graph panel to the diagnostic UI that renders IR entities as nodes 
 - Temporary verification files (verify-graph.mjs, ir-graph-verify.spec.ts, playwright.config.ts) deleted after successful verification
 
 ### Notes for Developer
+
 - The force simulation runs synchronously with 300 iterations during IR extraction - fast enough for typical Manifest programs (< 50 entities)
 - Canvas renders at device pixel ratio for crisp display on HiDPI screens
 - Inspector panel overlays the right side of the canvas (320px wide)

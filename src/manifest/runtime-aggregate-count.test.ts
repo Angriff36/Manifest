@@ -42,12 +42,14 @@ describe('aggregate count reactions', () => {
 
     it('compiles the count expression into an IR aggregate node', async () => {
       const { ir, diagnostics } = await compileToIR(source());
-      expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       const reaction = ir!.reactions?.[0];
       expect(reaction?.targetEntity).toBe('Schedule');
       expect(reaction?.targetCommand).toBe('syncShiftCount');
       expect(reaction?.resolve).toEqual({
-        kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'scheduleId',
+        kind: 'member',
+        object: { kind: 'identifier', name: 'self' },
+        property: 'scheduleId',
       });
       expect(reaction?.params?.[0]).toEqual({
         name: 'shiftCount',
@@ -56,7 +58,14 @@ describe('aggregate count reactions', () => {
           op: 'count',
           entity: 'ScheduleShift',
           predicates: [
-            { field: 'scheduleId', value: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'scheduleId' } },
+            {
+              field: 'scheduleId',
+              value: {
+                kind: 'member',
+                object: { kind: 'identifier', name: 'self' },
+                property: 'scheduleId',
+              },
+            },
           ],
         },
       });
@@ -64,7 +73,7 @@ describe('aggregate count reactions', () => {
 
     it('counts children matching the FK after each child event and stores the count on the parent', async () => {
       const { ir, diagnostics } = await compileToIR(source());
-      expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       const engine = new RuntimeEngine(ir!, {}, { now: () => 1000, generateId: () => 'gen-id' });
       await engine.createInstance('Schedule', { id: 'p1', shiftCount: 0 } as EntityInstance);
       await engine.createInstance('Schedule', { id: 'p2', shiftCount: 0 } as EntityInstance);
@@ -72,13 +81,25 @@ describe('aggregate count reactions', () => {
       await engine.createInstance('ScheduleShift', { id: 'c2', scheduleId: '' } as EntityInstance);
       await engine.createInstance('ScheduleShift', { id: 'c3', scheduleId: '' } as EntityInstance);
 
-      await engine.runCommand('assign', { scheduleId: 'p1' }, { entityName: 'ScheduleShift', instanceId: 'c1' });
-      await engine.runCommand('assign', { scheduleId: 'p1' }, { entityName: 'ScheduleShift', instanceId: 'c2' });
-      await engine.runCommand('assign', { scheduleId: 'p2' }, { entityName: 'ScheduleShift', instanceId: 'c3' });
+      await engine.runCommand(
+        'assign',
+        { scheduleId: 'p1' },
+        { entityName: 'ScheduleShift', instanceId: 'c1' },
+      );
+      await engine.runCommand(
+        'assign',
+        { scheduleId: 'p1' },
+        { entityName: 'ScheduleShift', instanceId: 'c2' },
+      );
+      await engine.runCommand(
+        'assign',
+        { scheduleId: 'p2' },
+        { entityName: 'ScheduleShift', instanceId: 'c3' },
+      );
 
-      const schedules = await engine.getAllInstances('Schedule') as EntityInstance[];
-      expect(schedules.find(s => s.id === 'p1')?.shiftCount).toBe(2);
-      expect(schedules.find(s => s.id === 'p2')?.shiftCount).toBe(1);
+      const schedules = (await engine.getAllInstances('Schedule')) as EntityInstance[];
+      expect(schedules.find((s) => s.id === 'p1')?.shiftCount).toBe(2);
+      expect(schedules.find((s) => s.id === 'p2')?.shiftCount).toBe(1);
     });
   });
 
@@ -113,34 +134,70 @@ describe('aggregate count reactions', () => {
 
     it('compiles multiple equality predicates into one ANDed aggregate', async () => {
       const { ir, diagnostics } = await compileToIR(source());
-      expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       const agg = ir!.reactions?.[0]?.params?.[0]?.expression;
       expect(agg).toEqual({
         kind: 'aggregate',
         op: 'count',
         entity: 'PrepTask',
         predicates: [
-          { field: 'stationId', value: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'stationId' } },
-          { field: 'status', value: { kind: 'literal', value: { kind: 'string', value: 'in_progress' } } },
+          {
+            field: 'stationId',
+            value: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'self' },
+              property: 'stationId',
+            },
+          },
+          {
+            field: 'status',
+            value: { kind: 'literal', value: { kind: 'string', value: 'in_progress' } },
+          },
         ],
       });
     });
 
     it('counts only children matching every predicate (FK AND status)', async () => {
       const { ir, diagnostics } = await compileToIR(source());
-      expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       const engine = new RuntimeEngine(ir!, {}, { now: () => 1000, generateId: () => 'gen-id' });
       await engine.createInstance('Station', { id: 's1', currentTaskCount: 0 } as EntityInstance);
-      await engine.createInstance('PrepTask', { id: 't1', stationId: '', status: 'pending' } as EntityInstance);
-      await engine.createInstance('PrepTask', { id: 't2', stationId: '', status: 'pending' } as EntityInstance);
-      await engine.createInstance('PrepTask', { id: 't3', stationId: '', status: 'pending' } as EntityInstance);
+      await engine.createInstance('PrepTask', {
+        id: 't1',
+        stationId: '',
+        status: 'pending',
+      } as EntityInstance);
+      await engine.createInstance('PrepTask', {
+        id: 't2',
+        stationId: '',
+        status: 'pending',
+      } as EntityInstance);
+      await engine.createInstance('PrepTask', {
+        id: 't3',
+        stationId: '',
+        status: 'pending',
+      } as EntityInstance);
 
       // Claiming t1 and t2 sets stationId=s1 AND status=in_progress → counted.
-      await engine.runCommand('claim', { stationId: 's1' }, { entityName: 'PrepTask', instanceId: 't1' });
-      expect((await engine.getAllInstances('Station') as EntityInstance[]).find(s => s.id === 's1')?.currentTaskCount).toBe(1);
-      await engine.runCommand('claim', { stationId: 's1' }, { entityName: 'PrepTask', instanceId: 't2' });
+      await engine.runCommand(
+        'claim',
+        { stationId: 's1' },
+        { entityName: 'PrepTask', instanceId: 't1' },
+      );
+      expect(
+        ((await engine.getAllInstances('Station')) as EntityInstance[]).find((s) => s.id === 's1')
+          ?.currentTaskCount,
+      ).toBe(1);
+      await engine.runCommand(
+        'claim',
+        { stationId: 's1' },
+        { entityName: 'PrepTask', instanceId: 't2' },
+      );
       // t3 remains pending → excluded by the status predicate.
-      expect((await engine.getAllInstances('Station') as EntityInstance[]).find(s => s.id === 's1')?.currentTaskCount).toBe(2);
+      expect(
+        ((await engine.getAllInstances('Station')) as EntityInstance[]).find((s) => s.id === 's1')
+          ?.currentTaskCount,
+      ).toBe(2);
     });
   });
 
@@ -153,8 +210,8 @@ describe('aggregate count reactions', () => {
           store in memory
         }
       `);
-      expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
-      expect(ir!.entities[0].properties.find(p => p.name === 'count')?.type.name).toBe('number');
+      expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+      expect(ir!.entities[0].properties.find((p) => p.name === 'count')?.type.name).toBe('number');
     });
   });
 });

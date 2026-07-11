@@ -5,6 +5,7 @@
 ## What Manifest Is
 
 Manifest is a **language for expressing domain models** with:
+
 - **Entities** with typed properties, computed values, and relationships
 - **Commands** that mutate state, enforce guards, and emit events
 - **Policies** for authorization and access control
@@ -36,7 +37,7 @@ if (!ir || diagnostics.some((d) => d.severity === 'error')) {
 
 // Execute commands deterministically against the IR.
 const engine = new RuntimeEngine(ir);
-const result = await engine.runCommand('commandName', { /* input */ });
+const result = await engine.runCommand('commandName', {/* input */});
 ```
 
 ```bash
@@ -96,6 +97,7 @@ The projection system generates platform-specific code from Manifest IR. Project
 The Next.js projection includes 4 surfaces:
 
 **1. `nextjs.route` - Entity-scoped GET Operations**
+
 - Generates Next.js App Router API routes for entity reads
 - Uses direct Prisma/database queries (bypasses runtime for performance)
 - Configurable auth providers (Clerk, NextAuth, custom, none)
@@ -103,6 +105,7 @@ The Next.js projection includes 4 surfaces:
 - Returns entity lists and single entity retrieval
 
 **2. `nextjs.command` - Command-scoped POST/PUT/DELETE Operations**
+
 - Generates Next.js API routes for command execution
 - **MUST use `RuntimeEngine.runCommand()`** to enforce guards, policies, and events
 - Supports all HTTP methods (POST, PUT, DELETE, PATCH)
@@ -110,11 +113,13 @@ The Next.js projection includes 4 surfaces:
 - Returns command results with event emissions
 
 **3. `ts.types` - TypeScript Type Definitions**
+
 - Generates TypeScript interfaces from IR entity definitions
 - Includes property types, required/optional modifiers
 - Type-safe client/server code
 
 **4. `ts.client` - Client SDK**
+
 - Generates type-safe client functions for API calls
 - Includes fetch wrappers with error handling
 - TypeScript-first with full IntelliSense support
@@ -332,6 +337,7 @@ npx tsx bin/generate-projection.ts --help
 The project includes 448 tests across 7 test suites:
 
 **Conformance Suite** (`src/manifest/conformance/conformance.test.ts` - 142 tests):
+
 - 27 fixture files (`.manifest` source files)
 - 63 expected outputs (IR, diagnostics, runtime results)
 - Validates IR compilation correctness
@@ -343,12 +349,14 @@ The project includes 448 tests across 7 test suites:
 - vNext features (constraints, overrides, workflows, concurrency)
 
 **Unit Tests** (285 tests):
+
 - Lexer tests (58): Tokenization and edge cases
 - Parser tests (79): AST construction
 - IR Compiler tests (91): IR generation and normalization
 - Runtime tests (56): Command execution, guards, policies
 
 **Projection Tests** (21 tests):
+
 - Next.js projection smoke tests
 - Verifies all 4 surfaces (route, command, types, client)
 - Auth provider configurations
@@ -423,6 +431,7 @@ All tests use deterministic time and ID generation for reproducibility.
 ### Instance Creation & Defaults
 
 When creating an instance:
+
 - **Omitted properties** receive default values from property definitions
 - **Provided properties** (even empty strings `""`) use the provided value
 - UI forms filter empty strings to allow defaults to apply (see `templates.ts`)
@@ -430,6 +439,7 @@ When creating an instance:
 ### Command Execution Semantics
 
 Commands execute in strict order:
+
 1. Build evaluation context (`self`, `this`, params, runtime context)
 2. Evaluate applicable policies (fail fast on denial)
 3. Evaluate guards in order (fail fast on first falsey guard)
@@ -440,6 +450,7 @@ Commands execute in strict order:
 ### Guard Failures
 
 When a guard fails, the runtime provides:
+
 - Guard index (1-based)
 - Formatted expression
 - Resolved values for sub-expressions (for debugging)
@@ -447,6 +458,7 @@ When a guard fails, the runtime provides:
 ### Event Payloads
 
 Event payloads contain:
+
 - Command input parameters
 - Last action result
 

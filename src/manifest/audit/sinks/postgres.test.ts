@@ -114,9 +114,9 @@ describe('PostgresAuditSink', () => {
   });
 
   it('throws when recordId is missing (idempotency cannot be enforced)', async () => {
-    await expect(
-      sink.emit({ ...baseRecord, recordId: undefined })
-    ).rejects.toThrow(/requires AuditRecord.recordId/);
+    await expect(sink.emit({ ...baseRecord, recordId: undefined })).rejects.toThrow(
+      /requires AuditRecord.recordId/,
+    );
   });
 
   it('routes the INSERT through a provided PoolClient when supplied', async () => {

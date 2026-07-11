@@ -21,12 +21,7 @@ import type { IR } from '../../ir';
  * `resolveLocalImportPathHint` so call sites are self-documenting and so future
  * per-framework resolution can key off it without a signature change.
  */
-export type CompanionFramework =
-  | 'nextjs'
-  | 'express'
-  | 'hono'
-  | 'remix'
-  | 'sveltekit';
+export type CompanionFramework = 'nextjs' | 'express' | 'hono' | 'remix' | 'sveltekit';
 
 /** Context for resolving where a local import specifier's module must be emitted. */
 export interface ResolveImportPathContext {
@@ -154,8 +149,12 @@ export interface RuntimeFactoryModuleInput {
  */
 export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): string {
   const { ir, runtimeConfigImport, exportName = 'createManifestRuntime' } = input;
-  const durableStores = ir.stores.filter((store) => !['memory', 'localStorage'].includes(store.target));
-  const durableStoreSummary = durableStores.map((store) => `${store.entity} (${store.target})`).join(', ');
+  const durableStores = ir.stores.filter(
+    (store) => !['memory', 'localStorage'].includes(store.target),
+  );
+  const durableStoreSummary = durableStores
+    .map((store) => `${store.entity} (${store.target})`)
+    .join(', ');
   const irJson = JSON.stringify(ir, null, 2);
 
   const lines: string[] = [];
@@ -173,7 +172,9 @@ export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): 
   lines.push('type ManifestIR = ConstructorParameters<typeof RuntimeEngine>[0];');
   lines.push('type ManifestContext = NonNullable<ConstructorParameters<typeof RuntimeEngine>[1]>;');
   if (runtimeConfigImport) {
-    lines.push('type ManifestOptions = NonNullable<ConstructorParameters<typeof RuntimeEngine>[2]>;');
+    lines.push(
+      'type ManifestOptions = NonNullable<ConstructorParameters<typeof RuntimeEngine>[2]>;',
+    );
     lines.push('type StoreProvider = NonNullable<ManifestOptions["storeProvider"]>;');
     lines.push('type Store = NonNullable<ReturnType<StoreProvider>>;');
     lines.push('');
@@ -189,7 +190,9 @@ export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): 
     lines.push('// Mirrors createStoreProvider from @angriff36/manifest (CLI utils): resolves a');
     lines.push('// per-entity Store from config.stores, accepting a class, a factory function,');
     lines.push('// or a ready-made instance. Cached per entity name.');
-    lines.push('function createStoreProvider(config: RuntimeConfigLike | undefined): StoreProvider {');
+    lines.push(
+      'function createStoreProvider(config: RuntimeConfigLike | undefined): StoreProvider {',
+    );
     lines.push('  const cache = new Map<string, Store>();');
     lines.push('  return (entityName: string): Store | undefined => {');
     lines.push('    const cached = cache.get(entityName);');
@@ -230,7 +233,9 @@ export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): 
     lines.push('  context: ManifestContext = {},');
     lines.push('): Promise<RuntimeEngine> {');
     if (durableStores.length > 0) {
-      lines.push(`  throw new Error(${JSON.stringify(`A storeProvider is required for durable stores: ${durableStoreSummary}. Configure runtimeConfigImport; zero-config runtime creation is fail-closed.`)});`);
+      lines.push(
+        `  throw new Error(${JSON.stringify(`A storeProvider is required for durable stores: ${durableStoreSummary}. Configure runtimeConfigImport; zero-config runtime creation is fail-closed.`)});`,
+      );
     } else {
       lines.push('  return new RuntimeEngine(ir, context);');
     }

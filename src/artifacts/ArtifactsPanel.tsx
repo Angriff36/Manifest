@@ -5,7 +5,13 @@ import { FileViewer } from './FileViewer';
 import { SmokeTestPanel } from './SmokeTestPanel';
 import { RuntimePanel } from './RuntimePanel';
 import { ConstraintTestPanel } from './ConstraintTestPanel';
-import { buildFileMap, exportZip, exportRunnableZip, copyAllFiles, generateProjectName } from './zipExporter';
+import {
+  buildFileMap,
+  exportZip,
+  exportRunnableZip,
+  copyAllFiles,
+  generateProjectName,
+} from './zipExporter';
 import { ProjectFiles } from './types';
 
 interface ArtifactsPanelProps {
@@ -25,7 +31,7 @@ export function ArtifactsPanel({
   serverCode,
   testCode,
   ast,
-  hasErrors
+  hasErrors,
 }: ArtifactsPanelProps) {
   const [selectedFile, setSelectedFile] = useState<string | null>('src/generated/client.ts');
   const [copiedAll, setCopiedAll] = useState(false);
@@ -38,7 +44,7 @@ export function ArtifactsPanel({
     clientCode,
     serverCode,
     testCode,
-    ast
+    ast,
   };
 
   const fileMap = buildFileMap(files);
@@ -82,7 +88,9 @@ export function ArtifactsPanel({
           <div className="flex items-center gap-2">
             <Package size={16} className="text-sky-400" />
             <span className="text-sm font-medium text-gray-200">Artifacts</span>
-            <span className="text-xs text-gray-500 px-2 py-0.5 bg-gray-800 rounded">{projectName}</span>
+            <span className="text-xs text-gray-500 px-2 py-0.5 bg-gray-800 rounded">
+              {projectName}
+            </span>
           </div>
         </div>
         <div className="flex flex-col gap-2">
@@ -130,9 +138,7 @@ export function ArtifactsPanel({
           </div>
         </div>
         {hasErrors && (
-          <div className="mt-2 text-xs text-rose-400">
-            Fix compilation errors to enable export
-          </div>
+          <div className="mt-2 text-xs text-rose-400">Fix compilation errors to enable export</div>
         )}
       </div>
 
@@ -205,11 +211,7 @@ export function ArtifactsPanel({
         </div>
       </div>
 
-      <SmokeTestPanel
-        clientCode={clientCode}
-        ast={ast}
-        disabled={hasErrors}
-      />
+      <SmokeTestPanel clientCode={clientCode} ast={ast} disabled={hasErrors} />
     </div>
   );
 }

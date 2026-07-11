@@ -36,8 +36,8 @@ function normalizeDiagnostics(result: unknown): NormalizedDiagnostics {
   if (Array.isArray(result?.diagnostics)) {
     const diagnostics = result.diagnostics as Array<{ severity: string }>;
     return {
-      errors: diagnostics.filter(d => d.severity === 'error'),
-      warnings: diagnostics.filter(d => d.severity === 'warning'),
+      errors: diagnostics.filter((d) => d.severity === 'error'),
+      warnings: diagnostics.filter((d) => d.severity === 'warning'),
     };
   }
 
@@ -87,47 +87,54 @@ async function regen() {
       continue;
     }
 
-  // If compilation succeeded, write IR output (derived, never hand-edited).
-  if (!didFail) {
-    if (!compiled?.ir) {
-      problems.push(`${fixtureFile}: Compile succeeded but no IR was produced`);
-      continue;
+    // If compilation succeeded, write IR output (derived, never hand-edited).
+    if (!didFail) {
+      if (!compiled?.ir) {
+        problems.push(`${fixtureFile}: Compile succeeded but no IR was produced`);
+        continue;
+      }
+      // Normalize provenance fields for consistent test output
+      const irForOutput = { ...compiled.ir };
+      if (irForOutput.provenance) {
+        irForOutput.provenance.compiledAt = '2024-01-01T00:00:00.000Z';
+        irForOutput.provenance.contentHash = 'normalized-content-hash';
+        // compilerVersion tracks package.json (see scripts/sync-version.mjs);
+        // normalize it so release bumps never churn conformance fixtures.
+        irForOutput.provenance.compilerVersion = 'normalized-compiler-version';
+      }
+      writeJson(irPath, irForOutput);
     }
-    // Normalize provenance fields for consistent test output
-    const irForOutput = { ...compiled.ir };
-    if (irForOutput.provenance) {
-      irForOutput.provenance.compiledAt = '2024-01-01T00:00:00.000Z';
-      irForOutput.provenance.contentHash = 'normalized-content-hash';
-      // compilerVersion tracks package.json (see scripts/sync-version.mjs);
-      // normalize it so release bumps never churn conformance fixtures.
-      irForOutput.provenance.compilerVersion = 'normalized-compiler-version';
+
+    // Write diagnostics when:
+    // - The compile produced errors/warnings, OR
+    // - A diagnostics file already exists (so regen updates it deterministically)
+    if (didFail || warnings.length > 0 || expectedDiag) {
+      // Use compiler-provided diagnostics array, formatted as expected by tests
+      const diagnostics = compiled?.diagnostics || [];
+      const diagOut = {
+        shouldFail: expectedShouldFail || didFail,
+        diagnostics: diagnostics.map((d: unknown) => {
+          if (
+            d &&
+            typeof d === 'object' &&
+            'severity' in d &&
+            'message' in d &&
+            'line' in d &&
+            'column' in d
+          ) {
+            return {
+              severity: d.severity,
+              message: d.message,
+              line: d.line as number,
+              column: d.column as number,
+            };
+          }
+          return { severity: 'error', message: 'Unknown diagnostic', line: 0, column: 0 };
+        }),
+      };
+
+      writeJson(diagnosticsPath, diagOut);
     }
-    writeJson(irPath, irForOutput);
-  }
-
-  // Write diagnostics when:
-  // - The compile produced errors/warnings, OR
-  // - A diagnostics file already exists (so regen updates it deterministically)
-  if (didFail || warnings.length > 0 || expectedDiag) {
-    // Use compiler-provided diagnostics array, formatted as expected by tests
-    const diagnostics = compiled?.diagnostics || [];
-    const diagOut = {
-      shouldFail: expectedShouldFail || didFail,
-      diagnostics: diagnostics.map((d: unknown) => {
-        if (d && typeof d === 'object' && 'severity' in d && 'message' in d && 'line' in d && 'column' in d) {
-          return {
-            severity: d.severity,
-            message: d.message,
-            line: d.line as number,
-            column: d.column as number,
-          };
-        }
-        return { severity: 'error', message: 'Unknown diagnostic', line: 0, column: 0 };
-      }),
-    };
-
-    writeJson(diagnosticsPath, diagOut);
-  }
   }
 
   if (problems.length) {

@@ -32,7 +32,7 @@ async function compile(source: string): Promise<IR> {
   const compiler = new IRCompiler();
   const result = await compiler.compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compile failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compile failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
@@ -73,7 +73,7 @@ function makeRuntime(
   ir: IR,
   sink: AuditSink,
   context: RuntimeContext = { tenantId: 't1' },
-  extra: Partial<RuntimeOptions> = {}
+  extra: Partial<RuntimeOptions> = {},
 ): RuntimeEngine {
   let n = 0;
   return new RuntimeEngine(ir, context, {
@@ -140,34 +140,40 @@ describe('Runtime audit emission — outcome coverage', () => {
       },
       modules: [],
       values: [],
-      entities: [{
-        name: 'Doc',
-        properties: [],
-        computedProperties: [],
-        relationships: [],
-        commands: ['edit'],
-        constraints: [],
-        policies: ['mustBeAdmin'],
-      }],
+      entities: [
+        {
+          name: 'Doc',
+          properties: [],
+          computedProperties: [],
+          relationships: [],
+          commands: ['edit'],
+          constraints: [],
+          policies: ['mustBeAdmin'],
+        },
+      ],
       enums: [],
       stores: [],
       events: [],
-      commands: [{
-        name: 'edit',
-        entity: 'Doc',
-        parameters: [],
-        guards: [],
-        actions: [],
-        emits: [],
-        policies: ['mustBeAdmin'],
-      }],
-      policies: [{
-        name: 'mustBeAdmin',
-        action: 'execute',
-        entity: 'Doc',
-        expression: { kind: 'literal', value: { kind: 'boolean', value: false } },
-        message: 'denied for testing',
-      }],
+      commands: [
+        {
+          name: 'edit',
+          entity: 'Doc',
+          parameters: [],
+          guards: [],
+          actions: [],
+          emits: [],
+          policies: ['mustBeAdmin'],
+        },
+      ],
+      policies: [
+        {
+          name: 'mustBeAdmin',
+          action: 'execute',
+          entity: 'Doc',
+          expression: { kind: 'literal', value: { kind: 'boolean', value: false } },
+          message: 'denied for testing',
+        },
+      ],
     };
 
     const rt = makeRuntime(ir, sink);
@@ -177,7 +183,9 @@ describe('Runtime audit emission — outcome coverage', () => {
     expect(sink.size()).toBe(1);
     const record = sink.list()[0];
     expect(record.outcome).toBe('policy_denied');
-    expect((record.diagnostics as { policyDenial?: { policyName: string } }).policyDenial?.policyName).toBe('mustBeAdmin');
+    expect(
+      (record.diagnostics as { policyDenial?: { policyName: string } }).policyDenial?.policyName,
+    ).toBe('mustBeAdmin');
   });
 
   it('emits outcome=constraint_failed when a blocking command constraint fails', async () => {
@@ -195,35 +203,41 @@ describe('Runtime audit emission — outcome coverage', () => {
       },
       modules: [],
       values: [],
-      entities: [{
-        name: 'Order',
-        properties: [
-          { name: 'total', type: { name: 'number', nullable: false }, modifiers: [] },
-        ],
-        computedProperties: [],
-        relationships: [],
-        commands: ['place'],
-        constraints: [],
-        policies: [],
-      }],
+      entities: [
+        {
+          name: 'Order',
+          properties: [{ name: 'total', type: { name: 'number', nullable: false }, modifiers: [] }],
+          computedProperties: [],
+          relationships: [],
+          commands: ['place'],
+          constraints: [],
+          policies: [],
+        },
+      ],
       enums: [],
       stores: [],
       events: [],
-      commands: [{
-        name: 'place',
-        entity: 'Order',
-        parameters: [{ name: 'total', type: { name: 'number', nullable: false }, required: true }],
-        guards: [],
-        actions: [],
-        emits: [],
-        constraints: [{
-          name: 'alwaysBlocks',
-          code: 'alwaysBlocks',
-          expression: { kind: 'literal', value: { kind: 'boolean', value: false } },
-          severity: 'block',
-          message: 'blocks for testing',
-        }],
-      }],
+      commands: [
+        {
+          name: 'place',
+          entity: 'Order',
+          parameters: [
+            { name: 'total', type: { name: 'number', nullable: false }, required: true },
+          ],
+          guards: [],
+          actions: [],
+          emits: [],
+          constraints: [
+            {
+              name: 'alwaysBlocks',
+              code: 'alwaysBlocks',
+              expression: { kind: 'literal', value: { kind: 'boolean', value: false } },
+              severity: 'block',
+              message: 'blocks for testing',
+            },
+          ],
+        },
+      ],
       policies: [],
     };
     const rt = makeRuntime(ir, sink);
@@ -237,12 +251,16 @@ describe('Runtime audit emission — outcome coverage', () => {
   it('emits outcome=missing_tenant_context when requireTenantContext fails closed', async () => {
     const sink = new MemoryAuditSink();
     const ir = emptyIR('bar');
-    const rt = new RuntimeEngine(ir, {}, {
-      auditSink: sink,
-      requireTenantContext: true,
-      generateId: () => 'audit-1',
-      now: () => 1700_000_000_000,
-    });
+    const rt = new RuntimeEngine(
+      ir,
+      {},
+      {
+        auditSink: sink,
+        requireTenantContext: true,
+        generateId: () => 'audit-1',
+        now: () => 1700_000_000_000,
+      },
+    );
     const result = await rt.runCommand('bar', {}, { entityName: 'Foo' });
 
     expect(result.success).toBe(false);
@@ -267,42 +285,51 @@ describe('Runtime audit emission — outcome coverage', () => {
       },
       modules: [],
       values: [],
-      entities: [{
-        name: 'Item',
-        properties: [],
-        computedProperties: [],
-        relationships: [],
-        commands: ['create'],
-        constraints: [],
-        policies: [],
-      }],
+      entities: [
+        {
+          name: 'Item',
+          properties: [],
+          computedProperties: [],
+          relationships: [],
+          commands: ['create'],
+          constraints: [],
+          policies: [],
+        },
+      ],
       enums: [],
       stores: [],
       events: [],
-      commands: [{
-        name: 'create',
-        entity: 'Item',
-        parameters: [],
-        guards: [],
-        actions: [{
-          kind: 'persist',
-          expression: { kind: 'literal', value: { kind: 'null' } },
-        }],
-        emits: [],
-      }],
+      commands: [
+        {
+          name: 'create',
+          entity: 'Item',
+          parameters: [],
+          guards: [],
+          actions: [
+            {
+              kind: 'persist',
+              expression: { kind: 'literal', value: { kind: 'null' } },
+            },
+          ],
+          emits: [],
+        },
+      ],
       policies: [],
     };
     const rt = makeRuntime(ir, sink, { tenantId: 't1' }, { deterministicMode: true });
     await expect(rt.runCommand('create', {}, { entityName: 'Item' })).rejects.toThrow();
     expect(sink.size()).toBe(1);
     expect(sink.list()[0].outcome).toBe('error');
-    expect((sink.list()[0].diagnostics as { error?: string }).error).toContain('not allowed in deterministicMode');
+    expect((sink.list()[0].diagnostics as { error?: string }).error).toContain(
+      'not allowed in deterministicMode',
+    );
   });
 
   it('emits outcome=error when the evaluation budget is exceeded (caught error)', async () => {
     const sink = new MemoryAuditSink();
     // Build a deeply nested binary expression to exceed the depth limit.
-    type Expr = { kind: 'literal'; value: { kind: 'boolean'; value: boolean } }
+    type Expr =
+      | { kind: 'literal'; value: { kind: 'boolean'; value: boolean } }
       | { kind: 'binary'; operator: string; left: Expr; right: Expr };
     function nested(d: number): Expr {
       if (d <= 0) return { kind: 'literal', value: { kind: 'boolean', value: true } };
@@ -325,31 +352,40 @@ describe('Runtime audit emission — outcome coverage', () => {
       },
       modules: [],
       values: [],
-      entities: [{
-        name: 'Item',
-        properties: [],
-        computedProperties: [],
-        relationships: [],
-        commands: ['create'],
-        constraints: [],
-        policies: [],
-      }],
+      entities: [
+        {
+          name: 'Item',
+          properties: [],
+          computedProperties: [],
+          relationships: [],
+          commands: ['create'],
+          constraints: [],
+          policies: [],
+        },
+      ],
       enums: [],
       stores: [],
       events: [],
-      commands: [{
-        name: 'create',
-        entity: 'Item',
-        parameters: [],
-        guards: [guardExpr],
-        actions: [],
-        emits: [],
-      }],
+      commands: [
+        {
+          name: 'create',
+          entity: 'Item',
+          parameters: [],
+          guards: [guardExpr],
+          actions: [],
+          emits: [],
+        },
+      ],
       policies: [],
     };
-    const rt = makeRuntime(ir, sink, { tenantId: 't1' }, {
-      evaluationLimits: { maxExpressionDepth: 3 },
-    });
+    const rt = makeRuntime(
+      ir,
+      sink,
+      { tenantId: 't1' },
+      {
+        evaluationLimits: { maxExpressionDepth: 3 },
+      },
+    );
     const result = await rt.runCommand('create', {}, { entityName: 'Item' });
 
     expect(result.success).toBe(false);
@@ -407,18 +443,22 @@ describe('Runtime audit emission — record shape', () => {
     const rt = makeRuntime(ir, sink);
     const result = await rt.runCommand('createUser', { name: 'Alice' }, { entityName: 'User' });
 
-    expect(result.emittedEvents.map(e => e.name)).toEqual(['UserCreated']);
+    expect(result.emittedEvents.map((e) => e.name)).toEqual(['UserCreated']);
     expect(sink.list()[0].emittedEventNames).toEqual(['UserCreated']);
   });
 
   it('uses occurredAt from RuntimeOptions.now and recordId from generateId', async () => {
     const sink = new MemoryAuditSink();
     const ir = emptyIR('bar');
-    const rt = new RuntimeEngine(ir, { tenantId: 't1' }, {
-      auditSink: sink,
-      now: () => 9999,
-      generateId: () => 'fixed-record-id',
-    });
+    const rt = new RuntimeEngine(
+      ir,
+      { tenantId: 't1' },
+      {
+        auditSink: sink,
+        now: () => 9999,
+        generateId: () => 'fixed-record-id',
+      },
+    );
     await rt.runCommand('bar', {}, { entityName: 'Foo' });
 
     const record = sink.list()[0];
@@ -438,9 +478,15 @@ describe('Runtime audit emission — exactly-once and fail-open', () => {
     `);
     const cache = new Map<string, ReturnType<typeof Object>>();
     const idemStore = {
-      async has(k: string) { return cache.has(k); },
-      async get(k: string) { return cache.get(k) as never; },
-      async set(k: string, v: never) { cache.set(k, v); },
+      async has(k: string) {
+        return cache.has(k);
+      },
+      async get(k: string) {
+        return cache.get(k) as never;
+      },
+      async set(k: string, v: never) {
+        cache.set(k, v);
+      },
     };
     const rt = makeRuntime(ir, sink, { tenantId: 't1' }, { idempotencyStore: idemStore });
 
@@ -449,7 +495,7 @@ describe('Runtime audit emission — exactly-once and fail-open', () => {
 
     // Two invocations -> two records, even though the second hit the cache.
     expect(sink.size()).toBe(2);
-    expect(sink.list().every(r => r.outcome === 'success')).toBe(true);
+    expect(sink.list().every((r) => r.outcome === 'success')).toBe(true);
     // Record IDs differ even though the underlying CommandResult is the same.
     expect(sink.list()[0].recordId).not.toBe(sink.list()[1].recordId);
   });
@@ -458,9 +504,15 @@ describe('Runtime audit emission — exactly-once and fail-open', () => {
     const sink = new MemoryAuditSink();
     const ir = emptyIR('bar');
     const idemStore = {
-      async has() { return false; },
-      async get() { return undefined; },
-      async set() { /* noop */ },
+      async has() {
+        return false;
+      },
+      async get() {
+        return undefined;
+      },
+      async set() {
+        /* noop */
+      },
     };
     const rt = makeRuntime(ir, sink, { tenantId: 't1' }, { idempotencyStore: idemStore });
 
@@ -478,7 +530,9 @@ describe('Runtime audit emission — exactly-once and fail-open', () => {
       }
     `);
     const throwingSink: AuditSink = {
-      async emit() { throw new Error('sink unavailable'); },
+      async emit() {
+        throw new Error('sink unavailable');
+      },
     };
     const rt = makeRuntime(ir, throwingSink);
     const result = await rt.runCommand('create', { name: 'x' }, { entityName: 'Item' });
@@ -514,7 +568,7 @@ describe('Runtime audit emission — exactly-once and fail-open', () => {
     await rt.runCommand('create', { name: '' }, { entityName: 'Item' });
     await rt.runCommand('create', { name: 'third' }, { entityName: 'Item' });
 
-    const outcomes = sink.list().map(r => r.outcome);
+    const outcomes = sink.list().map((r) => r.outcome);
     expect(outcomes).toEqual(['success', 'guard_denied', 'success']);
   });
 });
@@ -526,7 +580,7 @@ describe('Runtime audit emission — classification edge cases', () => {
     const rt = makeRuntime(ir, sink);
     const result = await rt.runCommand('doesNotExist', {}, { entityName: 'Foo' });
     expect(result.success).toBe(false);
-    expect(result.error).toContain("not found");
+    expect(result.error).toContain('not found');
     expect(sink.size()).toBe(1);
     expect(sink.list()[0].outcome).toBe('error');
   });
@@ -547,33 +601,39 @@ describe('Runtime audit emission — classification edge cases', () => {
       },
       modules: [],
       values: [],
-      entities: [{
-        name: 'Task',
-        properties: [],
-        computedProperties: [],
-        relationships: [],
-        commands: ['close'],
-        constraints: [],
-        policies: [],
-      }],
+      entities: [
+        {
+          name: 'Task',
+          properties: [],
+          computedProperties: [],
+          relationships: [],
+          commands: ['close'],
+          constraints: [],
+          policies: [],
+        },
+      ],
       enums: [],
       stores: [],
       events: [],
-      commands: [{
-        name: 'close',
-        entity: 'Task',
-        parameters: [],
-        guards: [{ kind: 'literal', value: { kind: 'boolean', value: false } }],
-        actions: [],
-        emits: [],
-        constraints: [{
-          name: 'warnsOnly',
-          code: 'warnsOnly',
-          expression: { kind: 'literal', value: { kind: 'boolean', value: false } },
-          severity: 'warn',
-          message: 'a warning, not a block',
-        }],
-      }],
+      commands: [
+        {
+          name: 'close',
+          entity: 'Task',
+          parameters: [],
+          guards: [{ kind: 'literal', value: { kind: 'boolean', value: false } }],
+          actions: [],
+          emits: [],
+          constraints: [
+            {
+              name: 'warnsOnly',
+              code: 'warnsOnly',
+              expression: { kind: 'literal', value: { kind: 'boolean', value: false } },
+              severity: 'warn',
+              message: 'a warning, not a block',
+            },
+          ],
+        },
+      ],
       policies: [],
     };
     const rt = makeRuntime(ir, sink);
@@ -600,38 +660,44 @@ describe('Runtime audit emission — classification edge cases', () => {
       },
       modules: [],
       values: [],
-      entities: [{
-        name: 'Task',
-        properties: [],
-        computedProperties: [],
-        relationships: [],
-        commands: ['noop'],
-        constraints: [],
-        policies: [],
-      }],
+      entities: [
+        {
+          name: 'Task',
+          properties: [],
+          computedProperties: [],
+          relationships: [],
+          commands: ['noop'],
+          constraints: [],
+          policies: [],
+        },
+      ],
       enums: [],
       stores: [],
       events: [],
-      commands: [{
-        name: 'noop',
-        entity: 'Task',
-        parameters: [],
-        guards: [],
-        actions: [],
-        emits: [],
-        constraints: [{
-          name: 'alwaysWarns',
-          code: 'alwaysWarns',
-          expression: { kind: 'literal', value: { kind: 'boolean', value: false } },
-          severity: 'warn',
-        }],
-      }],
+      commands: [
+        {
+          name: 'noop',
+          entity: 'Task',
+          parameters: [],
+          guards: [],
+          actions: [],
+          emits: [],
+          constraints: [
+            {
+              name: 'alwaysWarns',
+              code: 'alwaysWarns',
+              expression: { kind: 'literal', value: { kind: 'boolean', value: false } },
+              severity: 'warn',
+            },
+          ],
+        },
+      ],
       policies: [],
     };
     const rt = makeRuntime(ir, sink);
     const result = await rt.runCommand('noop', {}, { entityName: 'Task' });
     expect(result.success).toBe(true);
-    expect(result.constraintOutcomes?.some(o => !o.passed && o.severity === 'warn')).toBe(true);
+    expect(result.constraintOutcomes?.some((o) => !o.passed && o.severity === 'warn')).toBe(true);
     expect(sink.size()).toBe(1);
     expect(sink.list()[0].outcome).toBe('success');
   });
@@ -652,9 +718,15 @@ describe('Runtime audit emission — classification edge cases', () => {
     `);
     const cache = new Map<string, unknown>();
     const idemStore = {
-      async has(k: string) { return cache.has(k); },
-      async get(k: string) { return cache.get(k) as never; },
-      async set(k: string, v: never) { cache.set(k, v); },
+      async has(k: string) {
+        return cache.has(k);
+      },
+      async get(k: string) {
+        return cache.get(k) as never;
+      },
+      async set(k: string, v: never) {
+        cache.set(k, v);
+      },
     };
     const rt = makeRuntime(ir, sink, { tenantId: 't1' }, { idempotencyStore: idemStore });
 
@@ -664,7 +736,7 @@ describe('Runtime audit emission — classification edge cases', () => {
     await rt.runCommand('create', { name: '' }, { entityName: 'Item', idempotencyKey: 'k1' });
 
     expect(sink.size()).toBe(2);
-    expect(sink.list().map(r => r.outcome)).toEqual(['guard_denied', 'guard_denied']);
+    expect(sink.list().map((r) => r.outcome)).toEqual(['guard_denied', 'guard_denied']);
   });
 });
 

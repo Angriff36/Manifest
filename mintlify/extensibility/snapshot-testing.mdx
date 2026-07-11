@@ -1,7 +1,7 @@
 ---
-title: "Snapshot testing for Manifest projections"
-sidebarTitle: "Snapshot Testing"
-description: "Snapshot generated code across all built-in projections so any change to a generator surfaces as a reviewable diff, with timestamp stabilization and a determinism check."
+title: 'Snapshot testing for Manifest projections'
+sidebarTitle: 'Snapshot Testing'
+description: 'Snapshot generated code across all built-in projections so any change to a generator surfaces as a reviewable diff, with timestamp stabilization and a determinism check.'
 ---
 
 Snapshot tests compile a representative Manifest program to IR, run every built-in projection against it, and snapshot the generated artifacts. Any change to generated code surfaces as a snapshot diff in review. Verified against `src/manifest/projections/snapshot.test.ts` and `src/manifest/projections/__snapshots__/snapshot.test.ts.snap`.
@@ -37,7 +37,8 @@ Snapshots are stored in `src/manifest/projections/__snapshots__/snapshot.test.ts
 ## Notes and limitations
 
 <Note>
-The fixture is a single representative IR, not exhaustive coverage of every language construct, so snapshot diffs reflect changes against that one program rather than the full feature surface.
+  The fixture is a single representative IR, not exhaustive coverage of every language construct, so
+  snapshot diffs reflect changes against that one program rather than the full feature surface.
 </Note>
 
 The hardcoded projection count (13) is a deliberate tripwire: it fails when the built-in projection set changes, forcing a conscious snapshot update. Only ISO-millisecond timestamps are stabilized; any other non-deterministic output in a generator would make snapshots flaky and must be handled in the generator itself, since the runtime determinism assertion would also catch it.
@@ -61,19 +62,19 @@ manifest coverage --ir ir/app.ir.json --format json
 
 ### Coverage categories
 
-| Category | What it checks |
-|----------|---------------|
-| Commands | Each declared command has at least one test case |
-| Guards | Each guard expression is exercised (true and false paths) |
-| Policies | Each policy rule has a test that evaluates it |
-| Constraints | Each constraint expression is tested for pass and fail |
+| Category    | What it checks                                            |
+| ----------- | --------------------------------------------------------- |
+| Commands    | Each declared command has at least one test case          |
+| Guards      | Each guard expression is exercised (true and false paths) |
+| Policies    | Each policy rule has a test that evaluates it             |
+| Constraints | Each constraint expression is tested for pass and fail    |
 
 ### Programmatic API
 
 ```typescript
-import { CoverageReporter } from "@angriff36/manifest/coverage";
+import { CoverageReporter } from '@angriff36/manifest/coverage';
 
-const reporter = new CoverageReporter(ir, { root: "." });
+const reporter = new CoverageReporter(ir, { root: '.' });
 const report = reporter.compute();
 
 console.log(`Commands: ${report.commands.covered}/${report.commands.total}`);
@@ -87,13 +88,13 @@ Property-based testing generates random valid inputs and verifies that runtime i
 
 ### Invariants tested
 
-| Invariant | Description |
-|-----------|-------------|
-| Determinism | Identical IR + identical context + identical input → identical result |
-| Guard safety | Guards never throw — they return true or false |
-| Constraint monotonicity | Raising constraint severity never makes a previously valid program invalid |
-| Policy isolation | Policy denial always prevents command execution, regardless of input |
-| State consistency | After a successful command, all computed properties are consistent with the new state |
+| Invariant               | Description                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------------- |
+| Determinism             | Identical IR + identical context + identical input → identical result                 |
+| Guard safety            | Guards never throw — they return true or false                                        |
+| Constraint monotonicity | Raising constraint severity never makes a previously valid program invalid            |
+| Policy isolation        | Policy denial always prevents command execution, regardless of input                  |
+| State consistency       | After a successful command, all computed properties are consistent with the new state |
 
 ### Usage
 
@@ -104,5 +105,7 @@ pnpm test -- --grep "property-based"
 ```
 
 <Note>
-Property-based tests use a fixed random seed by default for reproducibility. When a test fails, the seed is printed so you can reproduce the exact failing case. To run with a different seed, set the `FC_SEED` environment variable.
+  Property-based tests use a fixed random seed by default for reproducibility. When a test fails,
+  the seed is printed so you can reproduce the exact failing case. To run with a different seed, set
+  the `FC_SEED` environment variable.
 </Note>

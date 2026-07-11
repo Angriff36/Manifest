@@ -44,10 +44,7 @@ async function compileSource(source: string): Promise<CompileContext> {
 }
 
 /** Validate a single step against the user's source code (async) */
-export async function validateStep(
-  step: TutorialStep,
-  source: string
-): Promise<ValidationResult> {
+export async function validateStep(step: TutorialStep, source: string): Promise<ValidationResult> {
   const ctx = await compileSource(source);
   const checks: CheckResult[] = [];
 
@@ -68,10 +65,7 @@ export async function validateStep(
 }
 
 /** Evaluate a single validation rule */
-function evaluateRule(
-  rule: StepValidation,
-  ctx: CompileContext
-): CheckResult {
+function evaluateRule(rule: StepValidation, ctx: CompileContext): CheckResult {
   switch (rule.type) {
     case 'compiles':
       return {
@@ -99,7 +93,11 @@ function evaluateRule(
 
     case 'has-entity': {
       if (!ctx.success || !ctx.ir) {
-        return { description: `Entity "${rule.name}" defined`, passed: false, detail: ctx.compileError };
+        return {
+          description: `Entity "${rule.name}" defined`,
+          passed: false,
+          detail: ctx.compileError,
+        };
       }
       const entities = ctx.ir.entities || [];
       const found = entities.some((e) => e.name === rule.name);
@@ -111,7 +109,11 @@ function evaluateRule(
 
     case 'has-property': {
       if (!ctx.success || !ctx.ir) {
-        return { description: `Property "${rule.entity}.${rule.property}"`, passed: false, detail: ctx.compileError };
+        return {
+          description: `Property "${rule.entity}.${rule.property}"`,
+          passed: false,
+          detail: ctx.compileError,
+        };
       }
       const entity = (ctx.ir.entities || []).find((e) => e.name === rule.entity);
       if (!entity) {
@@ -119,7 +121,7 @@ function evaluateRule(
       }
       const props = entity.properties || [];
       const found = props.some(
-        (p) => p.name === rule.property && (!rule.typeName || p.type?.name === rule.typeName)
+        (p) => p.name === rule.property && (!rule.typeName || p.type?.name === rule.typeName),
       );
       return {
         description: `Property "${rule.property}"${rule.typeName ? ` of type ${rule.typeName}` : ''} on "${rule.entity}"`,
@@ -141,7 +143,11 @@ function evaluateRule(
 
     case 'has-guard': {
       if (!ctx.success || !ctx.ir) {
-        return { description: `Guard on "${rule.command}"`, passed: false, detail: ctx.compileError };
+        return {
+          description: `Guard on "${rule.command}"`,
+          passed: false,
+          detail: ctx.compileError,
+        };
       }
       const commands = ctx.ir.commands || [];
       const cmd = commands.find((c) => c.name === rule.command);
@@ -177,7 +183,7 @@ function evaluateRule(
       }
       const policies = ctx.ir.policies || [];
       const found = policies.some(
-        (p) => p.name === rule.name && (!rule.action || p.action === rule.action)
+        (p) => p.name === rule.name && (!rule.action || p.action === rule.action),
       );
       return {
         description: `Policy "${rule.name}"${rule.action ? ` (${rule.action})` : ''}`,

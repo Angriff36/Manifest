@@ -1,8 +1,4 @@
-import {
-  Location,
-  Position,
-  Range,
-} from 'vscode-languageserver/node';
+import { Location, Position, Range } from 'vscode-languageserver/node';
 import type { ManifestProgram } from '@angriff36/manifest/compiler';
 
 /**
@@ -37,27 +33,24 @@ export function getDefinition(
   if (!word) return null;
 
   // Search entities (top-level and in modules)
-  const allEntities = [
-    ...program.entities,
-    ...program.modules.flatMap((m) => m.entities),
-  ];
+  const allEntities = [...program.entities, ...program.modules.flatMap((m) => m.entities)];
   for (const entity of allEntities) {
     if (entity.name === word && entity.position) {
       return Location.create(
         uri,
         Range.create(
           Position.create(entity.position.line - 1, entity.position.column - 1),
-          Position.create(entity.position.line - 1, entity.position.column - 1 + entity.name.length),
+          Position.create(
+            entity.position.line - 1,
+            entity.position.column - 1 + entity.name.length,
+          ),
         ),
       );
     }
   }
 
   // Search enums
-  const allEnums = [
-    ...program.enums,
-    ...program.modules.flatMap((m) => m.enums),
-  ];
+  const allEnums = [...program.enums, ...program.modules.flatMap((m) => m.enums)];
   for (const en of allEnums) {
     if (en.name === word && en.position) {
       return Location.create(

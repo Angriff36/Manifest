@@ -31,7 +31,11 @@ export { ConsumerTracer } from './consumer-tracer.js';
 export { analyzeContractMismatches } from './mismatch-analyzer.js';
 export { ProductSurfaceClassifier } from './surface-classifier.js';
 export { ProductionFlowParser } from './production-flow-parser.js';
-export { RouteHelperIndex, bracketRoutePathToRegex, dynamicRouteProbePath } from './route-helper-index.js';
+export {
+  RouteHelperIndex,
+  bracketRoutePathToRegex,
+  dynamicRouteProbePath,
+} from './route-helper-index.js';
 export {
   extractAllManifestInvocations,
   extractApiManifestPosts,

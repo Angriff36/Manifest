@@ -8,7 +8,7 @@ async function compile(source: string): Promise<IR> {
   const compiler = new IRCompiler();
   const result = await compiler.compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compilation failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compilation failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
@@ -72,14 +72,22 @@ async function compileTodoCreate(): Promise<IR> {
 describe('RuntimeEngine create command auto-instantiation', () => {
   it('persists the quickstart Todo.create command without pre-seeded bootstrap state', async () => {
     const ir = await compileTodoCreate();
-    const runtime = new RuntimeEngine(ir, {}, {
-      generateId: () => 'todo-1',
-      now: () => 12345,
-    });
+    const runtime = new RuntimeEngine(
+      ir,
+      {},
+      {
+        generateId: () => 'todo-1',
+        now: () => 12345,
+      },
+    );
 
-    const result = await runtime.runCommand('create', { title: 'Learn Manifest' }, {
-      entityName: 'Todo',
-    });
+    const result = await runtime.runCommand(
+      'create',
+      { title: 'Learn Manifest' },
+      {
+        entityName: 'Todo',
+      },
+    );
 
     const persisted = await runtime.getInstance('Todo', 'todo-1');
     expect(result.success).toBe(true);
@@ -95,15 +103,23 @@ describe('RuntimeEngine create command auto-instantiation', () => {
 
   it('uses body.id when provided', async () => {
     const ir = await compileTodoCreate();
-    const runtime = new RuntimeEngine(ir, {}, {
-      generateId: () => 'generated-id',
-      now: () => 1,
-    });
+    const runtime = new RuntimeEngine(
+      ir,
+      {},
+      {
+        generateId: () => 'generated-id',
+        now: () => 1,
+      },
+    );
 
-    const result = await runtime.runCommand('create', {
-      id: 'provided-id',
-      title: 'Provided',
-    }, { entityName: 'Todo' });
+    const result = await runtime.runCommand(
+      'create',
+      {
+        id: 'provided-id',
+        title: 'Provided',
+      },
+      { entityName: 'Todo' },
+    );
 
     expect(result.success).toBe(true);
     expect(result.instance).toMatchObject({ id: 'provided-id', title: 'Provided' });
@@ -136,9 +152,13 @@ describe('RuntimeEngine create command auto-instantiation', () => {
     `);
     const runtime = new RuntimeEngine(ir, {}, { generateId: () => 'todo-self-guard' });
 
-    const result = await runtime.runCommand('create', { title: 'Candidate' }, {
-      entityName: 'Todo',
-    });
+    const result = await runtime.runCommand(
+      'create',
+      { title: 'Candidate' },
+      {
+        entityName: 'Todo',
+      },
+    );
 
     expect(result.success).toBe(true);
     expect(result.instance).toMatchObject({
@@ -161,9 +181,13 @@ describe('RuntimeEngine create command auto-instantiation', () => {
     `);
     const runtime = new RuntimeEngine(ir, {}, { generateId: () => 'todo-command-constraint' });
 
-    const result = await runtime.runCommand('create', { title: 'Candidate' }, {
-      entityName: 'Todo',
-    });
+    const result = await runtime.runCommand(
+      'create',
+      { title: 'Candidate' },
+      {
+        entityName: 'Todo',
+      },
+    );
 
     expect(result.success).toBe(true);
     expect(result.instance).toMatchObject({
@@ -186,9 +210,13 @@ describe('RuntimeEngine create command auto-instantiation', () => {
     `);
     const runtime = new RuntimeEngine(ir, {}, { generateId: () => 'todo-policy' });
 
-    const result = await runtime.runCommand('create', { title: 'blocked' }, {
-      entityName: 'Todo',
-    });
+    const result = await runtime.runCommand(
+      'create',
+      { title: 'blocked' },
+      {
+        entityName: 'Todo',
+      },
+    );
 
     expect(result.success).toBe(false);
     expect(result.policyDenial?.policyName).toBe('TitleAllowed');
@@ -209,9 +237,13 @@ describe('RuntimeEngine create command auto-instantiation', () => {
     `);
     const runtime = new RuntimeEngine(ir, {}, { generateId: () => 'todo-block' });
 
-    const result = await runtime.runCommand('create', { title: 'too long' }, {
-      entityName: 'Todo',
-    });
+    const result = await runtime.runCommand(
+      'create',
+      { title: 'too long' },
+      {
+        entityName: 'Todo',
+      },
+    );
 
     expect(result.success).toBe(false);
     expect(result.constraintOutcomes?.[0]).toMatchObject({
@@ -236,14 +268,22 @@ describe('RuntimeEngine create command auto-instantiation', () => {
         }
       }
     `);
-    const runtime = new RuntimeEngine(ir, {}, {
-      generateId: () => 'todo-event',
-      outboxStore: outbox,
-    });
+    const runtime = new RuntimeEngine(
+      ir,
+      {},
+      {
+        generateId: () => 'todo-event',
+        outboxStore: outbox,
+      },
+    );
 
-    const result = await runtime.runCommand('create', { title: 'Events' }, {
-      entityName: 'Todo',
-    });
+    const result = await runtime.runCommand(
+      'create',
+      { title: 'Events' },
+      {
+        entityName: 'Todo',
+      },
+    );
 
     expect(result.success).toBe(true);
     expect(result.emittedEvents).toHaveLength(1);
@@ -259,14 +299,22 @@ describe('RuntimeEngine create command auto-instantiation', () => {
   it('persists through the configured Store.create path', async () => {
     const store = new TrackingStore();
     const ir = await compileTodoCreate();
-    const runtime = new RuntimeEngine(ir, {}, {
-      generateId: () => 'todo-store',
-      storeProvider: entityName => entityName === 'Todo' ? store : undefined,
-    });
+    const runtime = new RuntimeEngine(
+      ir,
+      {},
+      {
+        generateId: () => 'todo-store',
+        storeProvider: (entityName) => (entityName === 'Todo' ? store : undefined),
+      },
+    );
 
-    const result = await runtime.runCommand('create', { title: 'Store path' }, {
-      entityName: 'Todo',
-    });
+    const result = await runtime.runCommand(
+      'create',
+      { title: 'Store path' },
+      {
+        entityName: 'Todo',
+      },
+    );
 
     expect(result.success).toBe(true);
     expect(store.created).toHaveLength(1);
@@ -287,10 +335,14 @@ describe('RuntimeEngine create command auto-instantiation', () => {
     const runtime = new RuntimeEngine(ir);
     await runtime.createInstance('Todo', { id: 'todo-update', title: 'Old' });
 
-    const result = await runtime.runCommand('rename', { title: 'New' }, {
-      entityName: 'Todo',
-      instanceId: 'todo-update',
-    });
+    const result = await runtime.runCommand(
+      'rename',
+      { title: 'New' },
+      {
+        entityName: 'Todo',
+        instanceId: 'todo-update',
+      },
+    );
 
     expect(result.success).toBe(true);
     expect(await runtime.getInstance('Todo', 'todo-update')).toMatchObject({
@@ -313,10 +365,14 @@ describe('RuntimeEngine create command auto-instantiation', () => {
     const runtime = new RuntimeEngine(ir, {}, { generateId: () => 'unexpected-create' });
     await runtime.createInstance('Todo', { id: 'todo-existing', title: 'Old' });
 
-    const result = await runtime.runCommand('create', { title: 'Updated' }, {
-      entityName: 'Todo',
-      instanceId: 'todo-existing',
-    });
+    const result = await runtime.runCommand(
+      'create',
+      { title: 'Updated' },
+      {
+        entityName: 'Todo',
+        instanceId: 'todo-existing',
+      },
+    );
 
     expect(result.success).toBe(true);
     expect(result.instance).toBeUndefined();
@@ -338,9 +394,13 @@ describe('RuntimeEngine create command auto-instantiation', () => {
     `);
     const runtime = new RuntimeEngine(ir, {}, { generateId: () => 'todo-renamed' });
 
-    const result = await runtime.runCommand('rename', { title: 'No row' }, {
-      entityName: 'Todo',
-    });
+    const result = await runtime.runCommand(
+      'rename',
+      { title: 'No row' },
+      {
+        entityName: 'Todo',
+      },
+    );
 
     expect(result.success).toBe(true);
     expect(result.instance).toBeUndefined();

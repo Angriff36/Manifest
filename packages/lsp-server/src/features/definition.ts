@@ -12,7 +12,7 @@ export function getDefinition(
   tokens: Token[],
   symbols: SymbolEntry[],
   uri: string,
-  position: LspPosition
+  position: LspPosition,
 ): Location | null {
   const mPos = toManifestPosition(position);
   const token = findTokenAtPosition(tokens, mPos);
@@ -21,7 +21,7 @@ export function getDefinition(
   const name = token.value;
 
   // Try to find in symbol index
-  const symbol = symbols.find(s => s.name === name && s.position);
+  const symbol = symbols.find((s) => s.name === name && s.position);
   if (!symbol?.position) return null;
 
   // Symbol positions come from the lexer which records END positions.
@@ -30,8 +30,5 @@ export function getDefinition(
   const startCol0 = endCol0 - symbol.name.length;
   const line0 = symbol.position.line - 1;
 
-  return Location.create(
-    uri,
-    Range.create(line0, startCol0, line0, endCol0)
-  );
+  return Location.create(uri, Range.create(line0, startCol0, line0, endCol0));
 }

@@ -56,14 +56,18 @@ event Pinged: "system.pinged" {
 
 async function setup() {
   const { ir, diagnostics } = await compileToIR(source);
-  expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+  expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   expect(ir).not.toBeNull();
 
   let nextId = 0;
-  const engine = new RuntimeEngine(ir!, {}, {
-    now: () => FIXED_NOW,
-    generateId: () => `test-id-${++nextId}`,
-  });
+  const engine = new RuntimeEngine(
+    ir!,
+    {},
+    {
+      now: () => FIXED_NOW,
+      generateId: () => `test-id-${++nextId}`,
+    },
+  );
   return engine;
 }
 
@@ -76,10 +80,14 @@ describe('RuntimeEngine.subscribe', () => {
     const received: EmittedEvent[] = [];
     engine.subscribe('Counter', (e) => received.push(e));
 
-    const result = await engine.runCommand('increment', {}, {
-      entityName: 'Counter',
-      instanceId: counter!.id as string,
-    });
+    const result = await engine.runCommand(
+      'increment',
+      {},
+      {
+        entityName: 'Counter',
+        instanceId: counter!.id as string,
+      },
+    );
     expect(result.success).toBe(true);
 
     expect(received).toHaveLength(1);
@@ -95,18 +103,26 @@ describe('RuntimeEngine.subscribe', () => {
     const counterEvents: EmittedEvent[] = [];
     engine.subscribe('Counter', (e) => counterEvents.push(e));
 
-    const result = await engine.runCommand('bump', {}, {
-      entityName: 'Gauge',
-      instanceId: gauge!.id as string,
-    });
+    const result = await engine.runCommand(
+      'bump',
+      {},
+      {
+        entityName: 'Gauge',
+        instanceId: gauge!.id as string,
+      },
+    );
     expect(result.success).toBe(true);
     expect(counterEvents).toHaveLength(0);
 
     // Sanity: the matching entity still receives its own events.
-    await engine.runCommand('increment', {}, {
-      entityName: 'Counter',
-      instanceId: counter!.id as string,
-    });
+    await engine.runCommand(
+      'increment',
+      {},
+      {
+        entityName: 'Counter',
+        instanceId: counter!.id as string,
+      },
+    );
     expect(counterEvents).toHaveLength(1);
   });
 
@@ -136,18 +152,26 @@ describe('RuntimeEngine.subscribe', () => {
     const received: EmittedEvent[] = [];
     const unsubscribe = engine.subscribe('Counter', (e) => received.push(e));
 
-    await engine.runCommand('increment', {}, {
-      entityName: 'Counter',
-      instanceId: counter!.id as string,
-    });
+    await engine.runCommand(
+      'increment',
+      {},
+      {
+        entityName: 'Counter',
+        instanceId: counter!.id as string,
+      },
+    );
     expect(received).toHaveLength(1);
 
     unsubscribe();
 
-    await engine.runCommand('increment', {}, {
-      entityName: 'Counter',
-      instanceId: counter!.id as string,
-    });
+    await engine.runCommand(
+      'increment',
+      {},
+      {
+        entityName: 'Counter',
+        instanceId: counter!.id as string,
+      },
+    );
     expect(received).toHaveLength(1);
   });
 
@@ -163,14 +187,22 @@ describe('RuntimeEngine.subscribe', () => {
     engine.subscribe('Counter', (e) => b.push(e));
     engine.subscribe('Gauge', (e) => g.push(e));
 
-    await engine.runCommand('increment', {}, {
-      entityName: 'Counter',
-      instanceId: counter!.id as string,
-    });
-    await engine.runCommand('bump', {}, {
-      entityName: 'Gauge',
-      instanceId: gauge!.id as string,
-    });
+    await engine.runCommand(
+      'increment',
+      {},
+      {
+        entityName: 'Counter',
+        instanceId: counter!.id as string,
+      },
+    );
+    await engine.runCommand(
+      'bump',
+      {},
+      {
+        entityName: 'Gauge',
+        instanceId: gauge!.id as string,
+      },
+    );
 
     expect(a).toHaveLength(1);
     expect(b).toHaveLength(1);
@@ -178,10 +210,14 @@ describe('RuntimeEngine.subscribe', () => {
 
     // Unsubscribing one listener leaves the others attached.
     unsubA();
-    await engine.runCommand('increment', {}, {
-      entityName: 'Counter',
-      instanceId: counter!.id as string,
-    });
+    await engine.runCommand(
+      'increment',
+      {},
+      {
+        entityName: 'Counter',
+        instanceId: counter!.id as string,
+      },
+    );
     expect(a).toHaveLength(1);
     expect(b).toHaveLength(2);
     expect(g).toHaveLength(1);
@@ -192,13 +228,19 @@ describe('RuntimeEngine.subscribe', () => {
     const counter = await engine.createInstance('Counter', { value: 0 });
 
     const received: EmittedEvent[] = [];
-    engine.subscribe('Counter', () => { throw new Error('listener boom'); });
+    engine.subscribe('Counter', () => {
+      throw new Error('listener boom');
+    });
     engine.subscribe('Counter', (e) => received.push(e));
 
-    const result = await engine.runCommand('increment', {}, {
-      entityName: 'Counter',
-      instanceId: counter!.id as string,
-    });
+    const result = await engine.runCommand(
+      'increment',
+      {},
+      {
+        entityName: 'Counter',
+        instanceId: counter!.id as string,
+      },
+    );
     expect(result.success).toBe(true);
     expect(received).toHaveLength(1);
   });

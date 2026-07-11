@@ -12,7 +12,7 @@ import {
 export type { ReactionCompletenessEmit } from './reaction-completeness-checks.js';
 
 function entityPropertyNames(entity: IREntity): Set<string> {
-  const names = new Set(entity.properties.map(p => p.name));
+  const names = new Set(entity.properties.map((p) => p.name));
   for (const c of entity.computedProperties) names.add(c.name);
   names.add('id');
   return names;
@@ -32,8 +32,10 @@ export function checkReactionCompleteness(
   emit: ReactionCompletenessEmit,
   events: IREvent[] = [],
 ): void {
-  const entityProps = new Map(entities.map(e => [e.name, entityPropertyNames(e)]));
-  const declaredEventPayload = new Map(events.map(ev => [ev.name, eventPayloadFieldNames(ev.payload)]));
+  const entityProps = new Map(entities.map((e) => [e.name, entityPropertyNames(e)]));
+  const declaredEventPayload = new Map(
+    events.map((ev) => [ev.name, eventPayloadFieldNames(ev.payload)]),
+  );
   const emittersByEvent = buildEmittersByEvent(commands);
 
   for (const reaction of reactions) {

@@ -1,6 +1,6 @@
 ---
-title: "Adapters and Delivery"
-description: "See how Manifest plugs in storage, audit, outbox, idempotency, and deterministic effect boundaries."
+title: 'Adapters and Delivery'
+description: 'See how Manifest plugs in storage, audit, outbox, idempotency, and deterministic effect boundaries.'
 ---
 
 > **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
@@ -13,7 +13,6 @@ description: "See how Manifest plugs in storage, audit, outbox, idempotency, and
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 Manifest keeps the core runtime small by expressing integration points as explicit interfaces. Storage adapters, audit sinks, outbox stores, and idempotency stores are all opt-in contracts, which means you can change operational behavior without changing language semantics.
 
@@ -52,18 +51,22 @@ Use a custom store provider when the root runtime needs server-backed storage:
 import { RuntimeEngine } from '@angriff36/manifest';
 import { PostgresStore } from '@angriff36/manifest/stores';
 
-const runtime = new RuntimeEngine(ir, { tenantId: 'tenant-1' }, {
-  storeProvider: (entityName) => {
-    if (entityName === 'Invoice') {
-      return new PostgresStore({
-        connectionString: process.env.DATABASE_URL!,
-        tableName: 'invoices',
-      });
-    }
+const runtime = new RuntimeEngine(
+  ir,
+  { tenantId: 'tenant-1' },
+  {
+    storeProvider: (entityName) => {
+      if (entityName === 'Invoice') {
+        return new PostgresStore({
+          connectionString: process.env.DATABASE_URL!,
+          tableName: 'invoices',
+        });
+      }
 
-    return undefined;
+      return undefined;
+    },
   },
-});
+);
 ```
 
 ## Advanced Usage
@@ -78,17 +81,21 @@ import { PostgresOutboxStore } from '@angriff36/manifest/outbox/postgres';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-const runtime = new RuntimeEngine(ir, {
-  actorId: 'approver-1',
-  requestId: 'req-100',
-  source: 'route',
-  tenantId: 'tenant-1',
-  user: { id: 'approver-1', role: 'admin' },
-}, {
-  auditSink: new PostgresAuditSink({ pool }),
-  outboxStore: new PostgresOutboxStore({ pool }),
-  generateId: () => crypto.randomUUID(),
-});
+const runtime = new RuntimeEngine(
+  ir,
+  {
+    actorId: 'approver-1',
+    requestId: 'req-100',
+    source: 'route',
+    tenantId: 'tenant-1',
+    user: { id: 'approver-1', role: 'admin' },
+  },
+  {
+    auditSink: new PostgresAuditSink({ pool }),
+    outboxStore: new PostgresOutboxStore({ pool }),
+    generateId: () => crypto.randomUUID(),
+  },
+);
 ```
 
 <Callout type="warn">The current runtime does not provide a shared transaction handle to both state mutation and outbox enqueue. If `outboxStore.enqueue()` fails after a successful mutation, the state change remains committed and the runtime only logs the failure. Treat that as an operational constraint until the transaction boundary is widened.</Callout>

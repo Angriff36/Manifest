@@ -1,7 +1,7 @@
 ---
-title: "Tenant isolation: scoping reads and writes to a tenant"
-sidebarTitle: "Tenant isolation"
-description: "Scope entity reads and writes to a tenant value drawn from the runtime context with a single tenant declaration that fails closed when no tenant resolves."
+title: 'Tenant isolation: scoping reads and writes to a tenant'
+sidebarTitle: 'Tenant isolation'
+description: 'Scope entity reads and writes to a tenant value drawn from the runtime context with a single tenant declaration that fails closed when no tenant resolves.'
 ---
 
 A top-level `tenant` declaration scopes entity reads and writes to a tenant value extracted from the runtime context. Tenant-scoped programs fail closed: a command invoked without a resolvable tenant value is rejected with `MISSING_TENANT_CONTEXT`.
@@ -49,9 +49,13 @@ The Prisma projection adds a tenant discriminator column and an index per model,
 - Failure diagnostic: `MISSING_TENANT_CONTEXT`, classified as outcome `missing_tenant_context`.
 
 <Warning>
-Tenant filtering is enforced by the reference runtime engine's read paths (`getAllInstances`, `getInstance`); it is **not** enforced by the database unless the emitted RLS policies are applied. The Prisma RLS statements ship as comments, not executed migrations.
+  Tenant filtering is enforced by the reference runtime engine's read paths (`getAllInstances`,
+  `getInstance`); it is **not** enforced by the database unless the emitted RLS policies are
+  applied. The Prisma RLS statements ship as comments, not executed migrations.
 </Warning>
 
 <Note>
-The runtime gate is fail-closed by design — a missing or empty tenant value is treated as an error rather than a permissive default. The `requireTenantContext` option and the IR `tenant` declaration are orthogonal; either activates the gate.
+  The runtime gate is fail-closed by design — a missing or empty tenant value is treated as an error
+  rather than a permissive default. The `requireTenantContext` option and the IR `tenant`
+  declaration are orthogonal; either activates the gate.
 </Note>

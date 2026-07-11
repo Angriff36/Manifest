@@ -22,7 +22,12 @@ interface MatrixCell {
 }
 
 // Operation types to check for each entity
-const OPERATIONS: readonly ['read', 'write', 'delete', 'execute'] = ['read', 'write', 'delete', 'execute'];
+const OPERATIONS: readonly ['read', 'write', 'delete', 'execute'] = [
+  'read',
+  'write',
+  'delete',
+  'execute',
+];
 
 // Default roles to test if no roles are defined
 const DEFAULT_ROLES = ['Anonymous', 'Authenticated', 'Admin'];
@@ -58,7 +63,7 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
   const [policies, setPolicies] = useState<IRPolicy[]>([]);
   const [roles, setRoles] = useState<IRRole[]>([]);
   const [runtimeContextJson, setRuntimeContextJson] = useState(
-    '{\n  "user": {\n    "id": "u1",\n    "role": "admin"\n  }\n}'
+    '{\n  "user": {\n    "id": "u1",\n    "role": "admin"\n  }\n}',
   );
 
   // Matrix data
@@ -139,7 +144,7 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
     entityName: string,
     operation: string,
     roleName: string,
-    commands: IRCommand[]
+    commands: IRCommand[],
   ): MatrixCell {
     // Find applicable policies for this entity and operation
     const applicablePolicies = policies.filter((p) => {
@@ -184,7 +189,7 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
         const hasPermission = role.effectivePermissions.some(
           (p) =>
             (p.action === operation || p.action === 'all') &&
-            (!p.target || p.target === entityName || p.target === '*')
+            (!p.target || p.target === entityName || p.target === '*'),
         );
         if (hasPermission) {
           hasAllow = true;
@@ -201,7 +206,9 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
         const hasPermissivePolicy = allPolicies.some((p) => {
           // Simple heuristic: if policy expression is 'true' or a simple allow
           const expr = p.expression;
-          return expr.kind === 'literal' && expr.value.kind === 'boolean' && expr.value.value === true;
+          return (
+            expr.kind === 'literal' && expr.value.kind === 'boolean' && expr.value.value === true
+          );
         });
         if (hasPermissivePolicy) {
           hasAllow = true;
@@ -240,7 +247,6 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
     };
   }
 
-
   // Evaluate policy matrix whenever engine, entities, policies, roles, or context changes
   useEffect(() => {
     let cancelled = false;
@@ -254,24 +260,24 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
         return;
       }
 
-    const matrix: MatrixCell[] = [];
+      const matrix: MatrixCell[] = [];
 
-    // Determine which roles to evaluate
-    const rolesToTest = roles.length > 0 ? roles.map((r) => r.name) : DEFAULT_ROLES;
+      // Determine which roles to evaluate
+      const rolesToTest = roles.length > 0 ? roles.map((r) => r.name) : DEFAULT_ROLES;
 
-    for (const entity of entities) {
-      // Get all commands for this entity to determine operations
-      const entityCommands = entity.commands
-        .map((name) => engine.getCommand(name, entity.name))
-        .filter((c): c is IRCommand => !!c);
+      for (const entity of entities) {
+        // Get all commands for this entity to determine operations
+        const entityCommands = entity.commands
+          .map((name) => engine.getCommand(name, entity.name))
+          .filter((c): c is IRCommand => !!c);
 
-      for (const operation of OPERATIONS) {
-        for (const roleName of rolesToTest) {
-          const result = evaluateCell(entity.name, operation, roleName, entityCommands);
-          matrix.push(result);
+        for (const operation of OPERATIONS) {
+          for (const roleName of rolesToTest) {
+            const result = evaluateCell(entity.name, operation, roleName, entityCommands);
+            matrix.push(result);
+          }
         }
       }
-    }
 
       setMatrixData(matrix);
     })();
@@ -367,9 +373,7 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
           </div>
           <div className="p-2 space-y-1">
             {entities.length === 0 ? (
-              <div className="text-xs text-gray-500 text-center py-4">
-                No entities found
-              </div>
+              <div className="text-xs text-gray-500 text-center py-4">No entities found</div>
             ) : (
               entities.map((entity) => (
                 <button
@@ -381,9 +385,18 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <Package size={14} className={selectedCell?.entityName === entity.name ? 'text-purple-400' : 'text-gray-500'} />
+                    <Package
+                      size={14}
+                      className={
+                        selectedCell?.entityName === entity.name
+                          ? 'text-purple-400'
+                          : 'text-gray-500'
+                      }
+                    />
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-200 truncate">{entity.name}</div>
+                      <div className="text-sm font-medium text-gray-200 truncate">
+                        {entity.name}
+                      </div>
                       <div className="text-xs text-gray-500">
                         {entity.policies.length} policies, {entity.commands.length} commands
                       </div>
@@ -450,9 +463,14 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
                       <table className="w-full border-collapse">
                         <thead>
                           <tr className="border-b border-gray-800">
-                            <th className="px-3 py-2 text-left text-xs text-gray-500 font-medium">Role</th>
+                            <th className="px-3 py-2 text-left text-xs text-gray-500 font-medium">
+                              Role
+                            </th>
                             {uniqueOperations.map((op) => (
-                              <th key={op} className="px-3 py-2 text-center text-xs text-gray-500 font-medium uppercase">
+                              <th
+                                key={op}
+                                className="px-3 py-2 text-center text-xs text-gray-500 font-medium uppercase"
+                              >
                                 {op}
                               </th>
                             ))}
@@ -461,10 +479,12 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
                         <tbody>
                           {tableRoles.map((roleName) => (
                             <tr key={roleName} className="border-b border-gray-800/50">
-                              <td className="px-3 py-2 text-sm text-gray-300 font-medium">{roleName}</td>
+                              <td className="px-3 py-2 text-sm text-gray-300 font-medium">
+                                {roleName}
+                              </td>
                               {uniqueOperations.map((operation) => {
                                 const cell = entityCells.find(
-                                  (c) => c.roleName === roleName && c.operation === operation
+                                  (c) => c.roleName === roleName && c.operation === operation,
                                 );
                                 if (!cell) return <td key={operation} className="px-3 py-2" />;
 
@@ -473,7 +493,7 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
                                     <button
                                       onClick={() => setSelectedCell(cell)}
                                       className={`w-full px-2 py-1.5 rounded border transition-colors flex items-center justify-center gap-1 ${getResultStyle(
-                                        cell.result
+                                        cell.result,
                                       )} hover:opacity-80`}
                                     >
                                       {getResultIcon(cell.result)}
@@ -522,7 +542,9 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
               </div>
               <div>
                 <div className="text-xs text-gray-500 mb-1">Result</div>
-                <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-sm ${getResultStyle(selectedCell.result)}`}>
+                <div
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded text-sm ${getResultStyle(selectedCell.result)}`}
+                >
                   {getResultIcon(selectedCell.result)}
                   {getResultLabel(selectedCell.result)}
                 </div>

@@ -69,7 +69,7 @@ describe('RoutesProjection', () => {
 
       // Should have list + detail routes for Recipe
       const recipeRoutes = manifest.routes.filter(
-        (r: any) => r.source.kind === 'entity-read' && r.source.entity === 'Recipe'
+        (r: any) => r.source.kind === 'entity-read' && r.source.entity === 'Recipe',
       );
       expect(recipeRoutes).toHaveLength(2);
 
@@ -109,7 +109,7 @@ describe('RoutesProjection', () => {
       const manifest = parseManifest(routeResult);
 
       const commandRoute = manifest.routes.find(
-        (r: any) => r.source.kind === 'command' && r.source.command === 'create'
+        (r: any) => r.source.kind === 'command' && r.source.command === 'create',
       );
       expect(commandRoute).toBeDefined();
       expect(commandRoute.method).toBe('POST');
@@ -143,8 +143,12 @@ describe('RoutesProjection', () => {
 
       const opts = { generatedAt: '2026-01-01T00:00:00.000Z' };
 
-      const result1 = firstCode(projection.generate(result.ir!, { surface: 'routes.manifest', options: opts }));
-      const result2 = firstCode(projection.generate(result.ir!, { surface: 'routes.manifest', options: opts }));
+      const result1 = firstCode(
+        projection.generate(result.ir!, { surface: 'routes.manifest', options: opts }),
+      );
+      const result2 = firstCode(
+        projection.generate(result.ir!, { surface: 'routes.manifest', options: opts }),
+      );
 
       // Byte-identical
       expect(result1).toBe(result2);
@@ -247,13 +251,11 @@ describe('RoutesProjection', () => {
         surface: 'routes.manifest',
         options: {
           generatedAt: '2026-01-01T00:00:00.000Z',
-          manualRoutes: [
-            { id: 'collision', path: '/api/recipe/list', method: 'GET' },
-          ],
+          manualRoutes: [{ id: 'collision', path: '/api/recipe/list', method: 'GET' }],
         },
       });
 
-      const collisionDiag = routeResult.diagnostics.find(d => d.code === 'ROUTE_COLLISION');
+      const collisionDiag = routeResult.diagnostics.find((d) => d.code === 'ROUTE_COLLISION');
       expect(collisionDiag).toBeDefined();
     });
 
@@ -262,22 +264,26 @@ describe('RoutesProjection', () => {
       const result = await compileToIR(source);
 
       // Default: auth=true, tenant=true
-      const withDefaults = parseManifest(projection.generate(result.ir!, {
-        surface: 'routes.manifest',
-        options: { generatedAt: '2026-01-01T00:00:00.000Z' },
-      }));
+      const withDefaults = parseManifest(
+        projection.generate(result.ir!, {
+          surface: 'routes.manifest',
+          options: { generatedAt: '2026-01-01T00:00:00.000Z' },
+        }),
+      );
       expect(withDefaults.routes[0].auth).toBe(true);
       expect(withDefaults.routes[0].tenant).toBe(true);
 
       // Disabled
-      const withoutAuth = parseManifest(projection.generate(result.ir!, {
-        surface: 'routes.manifest',
-        options: {
-          generatedAt: '2026-01-01T00:00:00.000Z',
-          includeAuth: false,
-          includeTenant: false,
-        },
-      }));
+      const withoutAuth = parseManifest(
+        projection.generate(result.ir!, {
+          surface: 'routes.manifest',
+          options: {
+            generatedAt: '2026-01-01T00:00:00.000Z',
+            includeAuth: false,
+            includeTenant: false,
+          },
+        }),
+      );
       expect(withoutAuth.routes[0].auth).toBe(false);
       expect(withoutAuth.routes[0].tenant).toBe(false);
     });
@@ -354,18 +360,25 @@ describe('RoutesProjection', () => {
       expect(result.ir).not.toBeNull();
 
       // Default: only the dispatcher builder, no concrete builder.
-      const dflt = firstCode(projection.generate(result.ir!, {
-        surface: 'routes.ts',
-        options: { generatedAt: '2026-01-01T00:00:00.000Z' },
-      }));
+      const dflt = firstCode(
+        projection.generate(result.ir!, {
+          surface: 'routes.ts',
+          options: { generatedAt: '2026-01-01T00:00:00.000Z' },
+        }),
+      );
       expect(dflt).toContain('export function recipeCreatePath(): string');
       expect(dflt).not.toContain('recipeCreateConcretePath');
 
       // Opted in: BOTH the dispatcher builder and the deprecated concrete builder.
-      const concrete = firstCode(projection.generate(result.ir!, {
-        surface: 'routes.ts',
-        options: { generatedAt: '2026-01-01T00:00:00.000Z', concreteCommandRoutes: { enabled: true } },
-      }));
+      const concrete = firstCode(
+        projection.generate(result.ir!, {
+          surface: 'routes.ts',
+          options: {
+            generatedAt: '2026-01-01T00:00:00.000Z',
+            concreteCommandRoutes: { enabled: true },
+          },
+        }),
+      );
       expect(concrete).toContain('export function recipeCreatePath(): string');
       expect(concrete).toContain('return "/api/manifest/Recipe/commands/create"');
       expect(concrete).toContain('export function recipeCreateConcretePath(): string');
@@ -385,10 +398,16 @@ describe('RoutesProjection', () => {
       const result = await compileToIR(source);
       expect(result.ir).not.toBeNull();
 
-      const code = firstCode(projection.generate(result.ir!, {
-        surface: 'routes.ts',
-        options: { generatedAt: '2026-01-01T00:00:00.000Z', appDir: 'app/api/v2', routeCasing: 'kebab-case' },
-      }));
+      const code = firstCode(
+        projection.generate(result.ir!, {
+          surface: 'routes.ts',
+          options: {
+            generatedAt: '2026-01-01T00:00:00.000Z',
+            appDir: 'app/api/v2',
+            routeCasing: 'kebab-case',
+          },
+        }),
+      );
 
       // appDir moves the api prefix to /api/v2; kebab casing splits OrderLine.
       expect(code).toContain('return "/api/v2/order-line/list"');
@@ -404,9 +423,7 @@ describe('RoutesProjection', () => {
         surface: 'routes.ts',
         options: {
           generatedAt: '2026-01-01T00:00:00.000Z',
-          manualRoutes: [
-            { id: 'health-check', path: '/api/health', method: 'GET' },
-          ],
+          manualRoutes: [{ id: 'health-check', path: '/api/health', method: 'GET' }],
         },
       });
 
@@ -528,13 +545,15 @@ describe('RoutesProjection', () => {
         enums: [],
         stores: [],
         events: [],
-        commands: [{
-          name: 'orphanCommand',
-          parameters: [],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'orphanCommand',
+            parameters: [],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
         policies: [],
       };
 
@@ -543,7 +562,7 @@ describe('RoutesProjection', () => {
         options: { generatedAt: '2026-01-01T00:00:00.000Z' },
       });
 
-      const warningDiag = routeResult.diagnostics.find(d => d.code === 'COMMAND_NO_ENTITY');
+      const warningDiag = routeResult.diagnostics.find((d) => d.code === 'COMMAND_NO_ENTITY');
       expect(warningDiag).toBeDefined();
     });
   });

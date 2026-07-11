@@ -17,15 +17,15 @@ Every emitted event carries this shape:
 
 ```typescript
 interface EmittedEvent {
-  name: string;           // Event name from IR (e.g., 'PrepTaskClaimed')
-  channel: string;        // Channel from event definition or defaults to name
-  payload: object;        // Command input + last action result
-  timestamp: number;      // Milliseconds since epoch
+  name: string; // Event name from IR (e.g., 'PrepTaskClaimed')
+  channel: string; // Channel from event definition or defaults to name
+  payload: object; // Command input + last action result
+  timestamp: number; // Milliseconds since epoch
 
   // Workflow metadata (present when supplied via command options)
-  emitIndex: number;      // Per-command emission counter (0, 1, 2...), always present
+  emitIndex: number; // Per-command emission counter (0, 1, 2...), always present
   correlationId?: string; // Groups events across a multi-step workflow
-  causationId?: string;   // Links this event to its triggering cause
+  causationId?: string; // Links this event to its triggering cause
 }
 ```
 
@@ -79,7 +79,7 @@ function useWorkflowTimeline(tenantId: string) {
     const event = message.data;
     const correlationId = event.correlationId ?? 'uncorrelated';
 
-    setEvents(prev => {
+    setEvents((prev) => {
       const updated = new Map(prev);
       const existing = updated.get(correlationId) ?? [];
       updated.set(correlationId, [...existing, event]);
@@ -119,15 +119,19 @@ export async function reserveInventoryWithOutbox(
   const collectedEvents: EmittedEvent[] = [];
   runtime.onEvent((event) => collectedEvents.push(event));
 
-  const result = await runtime.runCommand('reserve', {
-    quantity,
-    eventId,
-  }, {
-    entityName: 'InventoryItem',
-    instanceId: itemId,
-    correlationId,
-    causationId: `user-reserve-${userId}`,
-  });
+  const result = await runtime.runCommand(
+    'reserve',
+    {
+      quantity,
+      eventId,
+    },
+    {
+      entityName: 'InventoryItem',
+      instanceId: itemId,
+      correlationId,
+      causationId: `user-reserve-${userId}`,
+    },
+  );
 
   if (!result.success) return result;
 
@@ -144,7 +148,7 @@ export async function reserveInventoryWithOutbox(
 
     // Store events in outbox — workflow metadata preserved
     await tx.outbox.createMany({
-      data: collectedEvents.map(event => ({
+      data: collectedEvents.map((event) => ({
         tenantId,
         eventName: event.name,
         channel: event.channel,
@@ -208,7 +212,7 @@ export async function publishOutboxEvents() {
 
 ## In-Engine vs Host-Side Wiring
 
-The patterns below wire events **host-side** via `runtime.onEvent` — the right tool for *external* infrastructure (Ably, queues, webhooks, the outbox). But when an event should simply dispatch **another Manifest command**, prefer a **declarative reaction** in the `.manifest` source instead of a host-side handler. Reactions are part of the IR, run synchronously inside the same command turn, propagate `correlationId`/`causationId` automatically, and are covered by conformance tests:
+The patterns below wire events **host-side** via `runtime.onEvent` — the right tool for _external_ infrastructure (Ably, queues, webhooks, the outbox). But when an event should simply dispatch **another Manifest command**, prefer a **declarative reaction** in the `.manifest` source instead of a host-side handler. Reactions are part of the IR, run synchronously inside the same command turn, propagate `correlationId`/`causationId` automatically, and are covered by conformance tests:
 
 ```manifest fragment
 // Declarative: order completes -> create its invoice (no host-side onEvent needed)
@@ -271,16 +275,20 @@ export function setupPrepTaskAutomation(tenantId: string) {
     });
     if (!task?.stationId) return;
 
-    await stationRuntime.runCommand('assignTask', {
-      taskId: task.id,
-    }, {
-      entityName: 'Station',
-      instanceId: task.stationId,
-      // Same correlation as the claim event — links the whole chain
-      correlationId: event.correlationId,
-      // This station assignment was caused by the prep task claim
-      causationId: `PrepTaskClaimed-${event.payload.id}-${event.emitIndex}`,
-    });
+    await stationRuntime.runCommand(
+      'assignTask',
+      {
+        taskId: task.id,
+      },
+      {
+        entityName: 'Station',
+        instanceId: task.stationId,
+        // Same correlation as the claim event — links the whole chain
+        correlationId: event.correlationId,
+        // This station assignment was caused by the prep task claim
+        causationId: `PrepTaskClaimed-${event.payload.id}-${event.emitIndex}`,
+      },
+    );
   });
 
   // When a task is completed, remove it from the station
@@ -292,31 +300,39 @@ export function setupPrepTaskAutomation(tenantId: string) {
     });
     if (!task?.stationId) return;
 
-    await stationRuntime.runCommand('removeTask', {
-      taskId: task.id,
-    }, {
-      entityName: 'Station',
-      instanceId: task.stationId,
-      correlationId: event.correlationId,
-      causationId: `PrepTaskCompleted-${event.payload.id}-${event.emitIndex}`,
-    });
+    await stationRuntime.runCommand(
+      'removeTask',
+      {
+        taskId: task.id,
+      },
+      {
+        entityName: 'Station',
+        instanceId: task.stationId,
+        correlationId: event.correlationId,
+        causationId: `PrepTaskCompleted-${event.payload.id}-${event.emitIndex}`,
+      },
+    );
   });
 
   // When any kitchen event fires, notify the kitchen lead
   prepRuntime.onEvent(async (event) => {
     if (!['PrepTaskClaimed', 'PrepTaskCompleted', 'PrepTaskReleased'].includes(event.name)) return;
 
-    await notificationQueue.add('kitchen-notification', {
-      tenantId,
-      eventName: event.name,
-      payload: event.payload,
-      correlationId: event.correlationId,
-      causationId: event.causationId,
-      emitIndex: event.emitIndex,
-    }, {
-      // Deduplicate: same event name + same task + same emitIndex = same notification
-      jobId: `${event.name}-${event.payload.id}-${event.emitIndex}`,
-    });
+    await notificationQueue.add(
+      'kitchen-notification',
+      {
+        tenantId,
+        eventName: event.name,
+        payload: event.payload,
+        correlationId: event.correlationId,
+        causationId: event.causationId,
+        emitIndex: event.emitIndex,
+      },
+      {
+        // Deduplicate: same event name + same task + same emitIndex = same notification
+        jobId: `${event.name}-${event.payload.id}-${event.emitIndex}`,
+      },
+    );
   });
 
   return { prepRuntime, stationRuntime };
@@ -347,14 +363,11 @@ export function setupInventoryAlerts(tenantId: string) {
     // Re-check constraints for this item to get current state
     try {
       const inst = await runtime.getInstance('InventoryItem', event.payload.id as string);
-      const outcomes = await runtime.checkConstraints(
-        'InventoryItem',
-        inst ?? {},
-      );
+      const outcomes = await runtime.checkConstraints('InventoryItem', inst ?? {});
 
       const warnings = getWarningConstraints(outcomes);
-      const belowPar = warnings.find(w => w.code === 'warnBelowPar');
-      const lowStock = warnings.find(w => w.code === 'warnLowStock');
+      const belowPar = warnings.find((w) => w.code === 'warnBelowPar');
+      const lowStock = warnings.find((w) => w.code === 'warnLowStock');
 
       if (belowPar || lowStock) {
         // Create alert in database
@@ -423,21 +436,21 @@ export function setupEventRouting(tenantId: string, runtime: RuntimeEngine) {
     }
 
     // Kitchen events → real-time push to production board
-    if (['PrepTaskClaimed', 'PrepTaskStarted', 'PrepTaskCompleted', 'PrepTaskReleased'].includes(event.name)) {
-      ably.channels
-        .get(`tenant:${tenantId}:kitchen`)
-        .publish(event.name, {
-          ...event.payload,
-          emitIndex: event.emitIndex,
-          correlationId: event.correlationId,
-        });
+    if (
+      ['PrepTaskClaimed', 'PrepTaskStarted', 'PrepTaskCompleted', 'PrepTaskReleased'].includes(
+        event.name,
+      )
+    ) {
+      ably.channels.get(`tenant:${tenantId}:kitchen`).publish(event.name, {
+        ...event.payload,
+        emitIndex: event.emitIndex,
+        correlationId: event.correlationId,
+      });
     }
 
     // Inventory events → real-time push + background reorder check
     if (['InventoryConsumed', 'InventoryReserved', 'InventoryWasted'].includes(event.name)) {
-      ably.channels
-        .get(`tenant:${tenantId}:inventory`)
-        .publish(event.name, event.payload);
+      ably.channels.get(`tenant:${tenantId}:inventory`).publish(event.name, event.payload);
 
       auditQueue.add('check-reorder', {
         tenantId,
@@ -448,9 +461,7 @@ export function setupEventRouting(tenantId: string, runtime: RuntimeEngine) {
 
     // Station events → real-time push to capacity dashboard
     if (['StationTaskAssigned', 'StationTaskRemoved'].includes(event.name)) {
-      ably.channels
-        .get(`tenant:${tenantId}:stations`)
-        .publish(event.name, event.payload);
+      ably.channels.get(`tenant:${tenantId}:stations`).publish(event.name, event.payload);
     }
   });
 }
@@ -487,10 +498,10 @@ const webhooks: WebhookConfig[] = [
 ];
 
 export function setupWebhookDelivery(tenantId: string, runtime: RuntimeEngine) {
-  const matchingWebhooks = webhooks.filter(w => w.tenantId === tenantId);
+  const matchingWebhooks = webhooks.filter((w) => w.tenantId === tenantId);
 
   runtime.onEvent(async (event) => {
-    const targets = matchingWebhooks.filter(w => w.events.includes(event.name));
+    const targets = matchingWebhooks.filter((w) => w.events.includes(event.name));
 
     for (const webhook of targets) {
       // Idempotency key: same event + same emitIndex = same delivery
@@ -620,14 +631,14 @@ runtime.onEvent(async (event) => {
 
 ## Common Patterns Summary
 
-| Pattern | Use Case | Capsule Pro Example |
-|---------|----------|-------------------|
-| Ably Real-Time | Push updates to production board | Kitchen task status, station capacity |
-| Transactional Outbox | Guaranteed delivery with Prisma | Inventory changes, financial events |
-| Event-Driven Automation | Trigger downstream steps | Claim task → assign station → notify lead |
-| Alert Pipeline | Constraint-based monitoring | Low stock → alert → reorder suggestion |
-| Channel Routing | Route by event type | Kitchen → Ably, inventory → queue, overrides → audit |
-| Webhook Delivery | External integrations | Accounting system, supplier portal |
+| Pattern                 | Use Case                         | Capsule Pro Example                                  |
+| ----------------------- | -------------------------------- | ---------------------------------------------------- |
+| Ably Real-Time          | Push updates to production board | Kitchen task status, station capacity                |
+| Transactional Outbox    | Guaranteed delivery with Prisma  | Inventory changes, financial events                  |
+| Event-Driven Automation | Trigger downstream steps         | Claim task → assign station → notify lead            |
+| Alert Pipeline          | Constraint-based monitoring      | Low stock → alert → reorder suggestion               |
+| Channel Routing         | Route by event type              | Kitchen → Ably, inventory → queue, overrides → audit |
+| Webhook Delivery        | External integrations            | Accounting system, supplier portal                   |
 
 ---
 

@@ -8,7 +8,8 @@ import { loadCompiler } from './validate-ai-compiler.js';
 
 function ioDiagnostic(filePath: string, error: unknown): ValidationDiagnostic {
   const msg = error instanceof Error ? error.message : String(error);
-  const isNotFound = error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT';
+  const isNotFound =
+    error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT';
   return {
     code: isNotFound ? 'FILE_NOT_FOUND' : 'IO_ERROR',
     message: isNotFound ? `File not found: ${filePath}` : `Read error: ${msg}`,
@@ -22,7 +23,8 @@ function ioDiagnostic(filePath: string, error: unknown): ValidationDiagnostic {
 
 function compileFatalDiagnostic(filePath: string, error: unknown): ValidationDiagnostic {
   const msg = error instanceof Error ? error.message : String(error);
-  const isNotFound = error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT';
+  const isNotFound =
+    error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT';
   return {
     code: isNotFound ? 'FILE_NOT_FOUND' : 'COMPILE_FATAL',
     message: isNotFound ? `File not found: ${filePath}` : `Compilation failed: ${msg}`,
@@ -40,13 +42,16 @@ function parseErrorReport(filePath: string, error: SyntaxError): ValidationRepor
     inputType: 'ir-json',
     valid: false,
     score: 0,
-    diagnostics: [{
-      code: 'PARSE_ERROR',
-      message: `Invalid JSON: ${error.message}`,
-      severity: 'error',
-      category: 'schema',
-      suggestion: 'Fix the JSON syntax. Common issues: trailing commas, unquoted keys, missing closing braces.',
-    }],
+    diagnostics: [
+      {
+        code: 'PARSE_ERROR',
+        message: `Invalid JSON: ${error.message}`,
+        severity: 'error',
+        category: 'schema',
+        suggestion:
+          'Fix the JSON syntax. Common issues: trailing commas, unquoted keys, missing closing braces.',
+      },
+    ],
     summary: { errors: 1, warnings: 0, info: 0, totalChecks: 1 },
   };
 }
@@ -59,10 +64,13 @@ function validateAgainstSchema(ir: unknown, schema: AnySchema): ValidationDiagno
 }
 
 function shouldRunSemanticChecks(schemaErrors: ValidationDiagnostic[]): boolean {
-  return schemaErrors.filter(d => d.severity === 'error').length <= 5;
+  return schemaErrors.filter((d) => d.severity === 'error').length <= 5;
 }
 
-export async function validateIRFile(filePath: string, schema: AnySchema): Promise<ValidationReport> {
+export async function validateIRFile(
+  filePath: string,
+  schema: AnySchema,
+): Promise<ValidationReport> {
   const diagnostics: ValidationDiagnostic[] = [];
 
   try {
@@ -87,7 +95,12 @@ export async function validateIRFile(filePath: string, schema: AnySchema): Promi
   return buildReport(filePath, 'ir-json', diagnostics);
 }
 
-function mapCompileDiagnostic(d: { severity: string; message: string; line?: number; column?: number }): ValidationDiagnostic {
+function mapCompileDiagnostic(d: {
+  severity: string;
+  message: string;
+  line?: number;
+  column?: number;
+}): ValidationDiagnostic {
   const isError = d.severity !== 'warning' && d.severity !== 'info';
   return {
     code: isError ? 'COMPILE_ERROR' : 'COMPILE_WARNING',
@@ -115,7 +128,10 @@ function compiledIrSchemaWarnings(ir: unknown, schema: AnySchema): ValidationDia
   return diagnostics;
 }
 
-export async function validateManifestSource(filePath: string, schema: AnySchema): Promise<ValidationReport> {
+export async function validateManifestSource(
+  filePath: string,
+  schema: AnySchema,
+): Promise<ValidationReport> {
   const diagnostics: ValidationDiagnostic[] = [];
 
   try {

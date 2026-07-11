@@ -40,11 +40,7 @@ const SCOPE = [
   'docs/README.md',
 ];
 
-const IGNORE = [
-  '**/node_modules/**',
-  'mintlify/README.md',
-  'mintlify/CONTRIBUTING.md',
-];
+const IGNORE = ['**/node_modules/**', 'mintlify/README.md', 'mintlify/CONTRIBUTING.md'];
 
 /**
  * Extract fenced ```manifest blocks with their annotation, start line, and
@@ -88,9 +84,7 @@ function extractManifestBlocks(src) {
 
 async function main() {
   const jiti = createJiti(import.meta.url);
-  const { compileToIR } = await jiti.import(
-    path.join(ROOT, 'src/manifest/ir-compiler.ts')
-  );
+  const { compileToIR } = await jiti.import(path.join(ROOT, 'src/manifest/ir-compiler.ts'));
 
   const files = await glob(SCOPE, { cwd: ROOT, nodir: true, ignore: IGNORE });
   files.sort();
@@ -126,7 +120,8 @@ async function main() {
         failures.push({
           file: rel,
           line: block.line,
-          detail: 'marked `invalid` but now compiles cleanly — the documented error no longer exists',
+          detail:
+            'marked `invalid` but now compiles cleanly — the documented error no longer exists',
         });
       } else if (!expectInvalid && errors.length > 0) {
         failures.push({
@@ -143,13 +138,13 @@ async function main() {
 
   if (failures.length === 0) {
     console.log(
-      `check-doc-snippets: OK (${checked} manifest snippet(s) compiled, ${skipped} fragment(s) skipped, ${files.length} file(s) scanned)`
+      `check-doc-snippets: OK (${checked} manifest snippet(s) compiled, ${skipped} fragment(s) skipped, ${files.length} file(s) scanned)`,
     );
     return;
   }
 
   console.error(
-    `check-doc-snippets: ${failures.length} failing snippet(s) (${checked} checked, ${skipped} skipped)`
+    `check-doc-snippets: ${failures.length} failing snippet(s) (${checked} checked, ${skipped} skipped)`,
   );
   let lastFile = null;
   for (const f of failures) {

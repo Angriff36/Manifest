@@ -40,13 +40,11 @@ export async function loadCommandSet(registryPath: string): Promise<Set<string>>
     raw = await fs.readFile(registryPath, 'utf-8');
   } catch (err) {
     throw new Error(
-      `Failed to read commands registry at ${registryPath}: ${(err as Error).message}`
+      `Failed to read commands registry at ${registryPath}: ${(err as Error).message}`,
     );
   }
   const parsed = JSON.parse(raw) as CommandRegistryShape;
-  const entries: CommandRegistryEntry[] = Array.isArray(parsed)
-    ? parsed
-    : (parsed.commands ?? []);
+  const entries: CommandRegistryEntry[] = Array.isArray(parsed) ? parsed : (parsed.commands ?? []);
   const ids = new Set<string>();
   for (const c of entries) {
     if (c?.commandId) ids.add(c.commandId);

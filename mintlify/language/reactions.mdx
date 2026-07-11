@@ -1,7 +1,7 @@
 ---
-title: "Reactions: declarative event-driven command dispatch"
-description: "Automatically dispatch commands when events are emitted using on Event run Command syntax, with resolve expressions, parameter mappings, and cascade protection."
-sidebarTitle: "Reactions"
+title: 'Reactions: declarative event-driven command dispatch'
+description: 'Automatically dispatch commands when events are emitted using on Event run Command syntax, with resolve expressions, parameter mappings, and cascade protection.'
+sidebarTitle: 'Reactions'
 ---
 
 Reactions connect events to commands declaratively. When an event is emitted, the runtime evaluates matching reactions in declaration order and dispatches the target command with resolved parameters. This creates reactive workflows without manual event wiring.
@@ -111,7 +111,7 @@ Each payload field is `name: <expr>`, where the expression is evaluated in the e
 
 ## Fan-out reactions (1:N cascades)
 
-A single-target reaction dispatches on ONE resolved instance. For a **1:N cascade** — run a command on *every* related row, e.g. "when a gig is cancelled, unassign every staff member assigned to it" — use the `fanOut` form. It replaces `resolve` with a collection match:
+A single-target reaction dispatches on ONE resolved instance. For a **1:N cascade** — run a command on _every_ related row, e.g. "when a gig is cancelled, unassign every staff member assigned to it" — use the `fanOut` form. It replaces `resolve` with a collection match:
 
 ```manifest
 entity Gig {
@@ -219,17 +219,17 @@ The runtime evaluates `count` by scanning the entity's collection and counting r
 
 `count(...)` covers the **per-parent** recompute (one parent's count, updated by the child event that points at it). It does not cover:
 
-- **Tenant-wide reconcile** (recompute *every* parent on each event) or **dual-target updates** (a reassignment that moves a child from parent A to parent B needs both updated). These are multi-step / conditional fan-out — model them as sagas, actions, or keep the hand middleware. They are intentional scope boundaries, not gaps in `count`.
+- **Tenant-wide reconcile** (recompute _every_ parent on each event) or **dual-target updates** (a reassignment that moves a child from parent A to parent B needs both updated). These are multi-step / conditional fan-out — model them as sagas, actions, or keep the hand middleware. They are intentional scope boundaries, not gaps in `count`.
 
 ## Reaction scopes
 
 Reactions can be declared at three levels:
 
-| Scope | Location | Behavior |
-|-------|----------|----------|
+| Scope   | Location                      | Behavior                              |
+| ------- | ----------------------------- | ------------------------------------- |
 | Program | Top-level in `.manifest` file | Global — fires for any matching event |
-| Module | Inside a `module` block | Scoped to the module |
-| Entity | Inside an `entity` block | Targets the entity's own commands |
+| Module  | Inside a `module` block       | Scoped to the module                  |
+| Entity  | Inside an `entity` block      | Targets the entity's own commands     |
 
 ```manifest
 event OrderSubmitted: "order.submitted" {
@@ -296,7 +296,10 @@ OrderSubmitted
 The runtime enforces a maximum reaction depth (`MAX_REACTION_DEPTH = 10`). If a chain exceeds this limit, the runtime throws a `ManifestReactionDepthError` and stops processing further reactions. This prevents infinite loops from circular reaction chains.
 
 <Warning>
-Design your reaction chains to terminate naturally. If event A triggers command B which emits event C which triggers command D which emits event A, the runtime will halt after 10 iterations with a `ManifestReactionDepthError`. This is a safety net, not a design pattern — circular reaction chains indicate a modeling problem.
+  Design your reaction chains to terminate naturally. If event A triggers command B which emits
+  event C which triggers command D which emits event A, the runtime will halt after 10 iterations
+  with a `ManifestReactionDepthError`. This is a safety net, not a design pattern — circular
+  reaction chains indicate a modeling problem.
 </Warning>
 
 ## correlationId and causationId propagation
@@ -387,20 +390,20 @@ on InvoiceCreated run Shipping.prepareShipment
 ```
 
 ```typescript
-import { RuntimeEngine } from "@angriff36/manifest";
-import { ir } from "./compiled.ir.json";
+import { RuntimeEngine } from '@angriff36/manifest';
+import { ir } from './compiled.ir.json';
 
 const runtime = new RuntimeEngine(ir, {
-  user: { id: "system", role: "worker" },
+  user: { id: 'system', role: 'worker' },
 });
 
 // Seed instances
-runtime.createInstance("Invoice", { id: "invoice-auto" });
-runtime.createInstance("Shipping", { id: "shipping-auto" });
+runtime.createInstance('Invoice', { id: 'invoice-auto' });
+runtime.createInstance('Shipping', { id: 'shipping-auto' });
 
 // Emitting OrderSubmitted triggers the reaction chain
-const result = await runtime.runCommand("Order", "submit", {
-  instanceId: "order-001",
+const result = await runtime.runCommand('Order', 'submit', {
+  instanceId: 'order-001',
   amount: 250,
 });
 

@@ -17,13 +17,14 @@ The audit found **12 sources of nondeterminism**, with **9 requiring remediation
 
 These sources of nondeterminism are acceptable because they are explicitly configurable through runtime options, allowing callers to ensure determinism when needed.
 
-| File | Line | Source | Type | Status |
-|------|------|--------|------|--------|
-| `src/manifest/runtime-engine.ts` | 170, 43, 519 | `crypto.randomUUID()` for ID generation | CONFIGURABLE | ✅ Acceptable |
-| `src/manifest/runtime-engine.ts` | 513 | `Date.now()` for timestamps | CONFIGURABLE | ✅ Acceptable |
+| File                             | Line             | Source                                  | Type         | Status        |
+| -------------------------------- | ---------------- | --------------------------------------- | ------------ | ------------- |
+| `src/manifest/runtime-engine.ts` | 170, 43, 519     | `crypto.randomUUID()` for ID generation | CONFIGURABLE | ✅ Acceptable |
+| `src/manifest/runtime-engine.ts` | 513              | `Date.now()` for timestamps             | CONFIGURABLE | ✅ Acceptable |
 | `src/manifest/runtime-engine.ts` | 1308, 1315, 1330 | `Promise.all()` for parallel evaluation | CONFIGURABLE | ✅ Acceptable |
 
 **Rationale**: These are configurable through:
+
 - `generateId` option for ID generation
 - `now` option for timestamps
 - Inherent parallel execution model that's part of the language design
@@ -32,17 +33,17 @@ These sources of nondeterminism are acceptable because they are explicitly confi
 
 These sources introduce nondeterminism that cannot be controlled by runtime configuration and require remediation.
 
-| File | Line | Source | Type | Impact | Remediation |
-|------|------|--------|------|--------|-------------|
-| `src/manifest/ir-cache.ts` | 53 | `cache.keys().next().value` for cache eviction | HARDCODED | Map iteration order | Use LRU cache with explicit ordering |
-| `src/manifest/ir-cache.ts` | 84 | `Array.from(cache.keys())` for stats | HARDCODED | Map iteration order | Sort keys before returning |
-| `src/manifest/ir-cache.ts` | 95 | `cache.entries()` for cleanup | HARDCODED | Map iteration order | Sort entries before iteration |
-| `src/manifest/ir-compiler.ts` | 83 | `Object.keys().sort()` for JSON serialization | HARDCODED | Sorting optimization | Use deterministic sort function |
-| `src/manifest/runtime-engine.ts` | 577 | `Object.keys().sort()` for JSON serialization | HARDCODED | Sorting optimization | Use deterministic sort function |
-| `src/manifest/ir-cache.ts` | 33, 59, 92 | `Date.now()` for timestamping | HARDCODED | Time-based expiration | Acceptable for caching |
-| `src/manifest/stores.node.ts` | 43, 165 | `crypto.randomUUID()` for server IDs | HARDCODED | Random ID generation | Make configurable |
-| `src/project-template/templates.ts` | 1442, 1490, 1979, 2006 | `crypto.randomUUID()` for template IDs | HARDCODED | Random ID generation | Acceptable for templates |
-| `src/project-template/runtime.ts` | 64, 112 | `crypto.randomUUID()` for runtime IDs | HARDCODED | Random ID generation | Acceptable for runtime |
+| File                                | Line                   | Source                                         | Type      | Impact                | Remediation                          |
+| ----------------------------------- | ---------------------- | ---------------------------------------------- | --------- | --------------------- | ------------------------------------ |
+| `src/manifest/ir-cache.ts`          | 53                     | `cache.keys().next().value` for cache eviction | HARDCODED | Map iteration order   | Use LRU cache with explicit ordering |
+| `src/manifest/ir-cache.ts`          | 84                     | `Array.from(cache.keys())` for stats           | HARDCODED | Map iteration order   | Sort keys before returning           |
+| `src/manifest/ir-cache.ts`          | 95                     | `cache.entries()` for cleanup                  | HARDCODED | Map iteration order   | Sort entries before iteration        |
+| `src/manifest/ir-compiler.ts`       | 83                     | `Object.keys().sort()` for JSON serialization  | HARDCODED | Sorting optimization  | Use deterministic sort function      |
+| `src/manifest/runtime-engine.ts`    | 577                    | `Object.keys().sort()` for JSON serialization  | HARDCODED | Sorting optimization  | Use deterministic sort function      |
+| `src/manifest/ir-cache.ts`          | 33, 59, 92             | `Date.now()` for timestamping                  | HARDCODED | Time-based expiration | Acceptable for caching               |
+| `src/manifest/stores.node.ts`       | 43, 165                | `crypto.randomUUID()` for server IDs           | HARDCODED | Random ID generation  | Make configurable                    |
+| `src/project-template/templates.ts` | 1442, 1490, 1979, 2006 | `crypto.randomUUID()` for template IDs         | HARDCODED | Random ID generation  | Acceptable for templates             |
+| `src/project-template/runtime.ts`   | 64, 112                | `crypto.randomUUID()` for runtime IDs          | HARDCODED | Random ID generation  | Acceptable for runtime               |
 
 ## Detailed Analysis
 
@@ -75,6 +76,7 @@ These sources introduce nondeterminism that cannot be controlled by runtime conf
 ### Phase 1: Critical Fixes (High Priority)
 
 1. **Fix IR Cache Nondeterminism**
+
    ```typescript
    // In src/manifest/ir-cache.ts
    class LRU_CACHE {
@@ -118,7 +120,7 @@ These sources introduce nondeterminism that cannot be controlled by runtime conf
          const sorted: any = {};
          Object.keys(value)
            .sort((a, b) => a.localeCompare(b))
-           .forEach(k => {
+           .forEach((k) => {
              sorted[k] = value[k];
            });
          return sorted;
@@ -136,7 +138,7 @@ These sources introduce nondeterminism that cannot be controlled by runtime conf
    export class PostgresStore<T extends EntityInstance> {
      constructor(
        config: PostgresConfig,
-       generateId?: () => string  // Add this option
+       generateId?: () => string, // Add this option
      ) {
        this.generateId = generateId || (() => crypto.randomUUID());
      }
@@ -198,6 +200,7 @@ These sources introduce nondeterminism that cannot be controlled by runtime conf
 ## Testing Recommendations
 
 1. **Add Determinism Tests**
+
    ```typescript
    test('Identical IR + context produces identical results', () => {
      const ir = compileToIR(source);
@@ -232,5 +235,5 @@ The audit reveals that most nondeterministic sources are either safely configura
 
 ---
 
-*Generated on: ${new Date().toISOString()}*
-*Audit tool: Claude Code*
+_Generated on: ${new Date().toISOString()}_
+_Audit tool: Claude Code_

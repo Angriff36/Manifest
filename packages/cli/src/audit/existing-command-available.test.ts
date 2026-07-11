@@ -27,7 +27,7 @@ async function writeRegistry(root: string, commands: Array<{ entity: string; com
         emits: [],
         effects: [],
       })),
-    })
+    }),
   );
   return reg;
 }
@@ -72,7 +72,7 @@ describe('existingCommandAvailableDetector', () => {
     await writeFile(
       root,
       'app/api/helpers/route.ts',
-      `export async function createUser(input){ return await db.user.insert(input); }`
+      `export async function createUser(input){ return await db.user.insert(input); }`,
     );
     const findings = await existingCommandAvailableDetector.run({
       root,
@@ -90,7 +90,7 @@ describe('existingCommandAvailableDetector', () => {
     await writeFile(
       root,
       'app/api/users/route.ts',
-      `export async function createUser(input){ return await runtime.runCommand('User.create', input); }`
+      `export async function createUser(input){ return await runtime.runCommand('User.create', input); }`,
     );
     const findings = await existingCommandAvailableDetector.run({
       root,
@@ -102,11 +102,7 @@ describe('existingCommandAvailableDetector', () => {
   it('does NOT flag a single-token name (avoids noise from generic helpers)', async () => {
     const root = await tempDir();
     const reg = await writeRegistry(root, [{ entity: 'User', command: 'create' }]);
-    await writeFile(
-      root,
-      'app/api/x/route.ts',
-      `export function create(){ return 1; }`
-    );
+    await writeFile(root, 'app/api/x/route.ts', `export function create(){ return 1; }`);
     const findings = await existingCommandAvailableDetector.run({
       root,
       commandsRegistry: reg,
@@ -116,11 +112,7 @@ describe('existingCommandAvailableDetector', () => {
 
   it('does nothing when no commands registry is provided', async () => {
     const root = await tempDir();
-    await writeFile(
-      root,
-      'app/api/x/route.ts',
-      `export function createUser(){ return 1; }`
-    );
+    await writeFile(root, 'app/api/x/route.ts', `export function createUser(){ return 1; }`);
     const findings = await existingCommandAvailableDetector.run({ root });
     expect(findings).toEqual([]);
   });

@@ -1,7 +1,7 @@
 ---
-title: "Modules: multi-file projects"
-description: "Organize Manifest programs across multiple files using use declarations, with cycle detection, topological sort, and IR merging."
-sidebarTitle: "Modules"
+title: 'Modules: multi-file projects'
+description: 'Organize Manifest programs across multiple files using use declarations, with cycle detection, topological sort, and IR merging.'
+sidebarTitle: 'Modules'
 ---
 
 Manifest supports multi-file projects through `use` declarations. The module resolver discovers all referenced files, detects cycles, sorts them topologically, and merges the compiled IR into a single deterministic output. This lets you split large programs into focused files without sacrificing whole-program validation.
@@ -25,22 +25,28 @@ The resolver walks `use` declarations recursively to discover the full file grap
 
 <Steps>
   <Step title="Resolution">
-    Walk all `use` declarations starting from the entry file. Build a complete dependency graph using BFS discovery.
+    Walk all `use` declarations starting from the entry file. Build a complete dependency graph
+    using BFS discovery.
   </Step>
   <Step title="Cycle detection">
-    Detect circular dependencies (A uses B uses A) using DFS with grey/black coloring. Circular dependencies produce a compile error diagnostic listing the cycle path.
+    Detect circular dependencies (A uses B uses A) using DFS with grey/black coloring. Circular
+    dependencies produce a compile error diagnostic listing the cycle path.
   </Step>
   <Step title="Topological sort">
-    Kahn's algorithm determines the compilation order — dependencies compile before dependents. Ties are broken alphabetically for deterministic output.
+    Kahn's algorithm determines the compilation order — dependencies compile before dependents. Ties
+    are broken alphabetically for deterministic output.
   </Step>
   <Step title="Per-file compilation">
     Each file is parsed and compiled to IR independently, producing one IR per file.
   </Step>
   <Step title="Cross-file validation">
-    The merged IR is validated for cross-file reference integrity: entity types referenced in properties must exist, enum members used as defaults must be declared, and event names referenced in `emit` must be defined somewhere in the project.
+    The merged IR is validated for cross-file reference integrity: entity types referenced in
+    properties must exist, enum members used as defaults must be declared, and event names
+    referenced in `emit` must be defined somewhere in the project.
   </Step>
   <Step title="IR merging">
-    All per-file IRs are merged into a single output with sorted arrays for determinism. A `sources` array in the IR provenance tracks which files contributed to the merged output.
+    All per-file IRs are merged into a single output with sorted arrays for determinism. A `sources`
+    array in the IR provenance tracks which files contributed to the merged output.
   </Step>
 </Steps>
 
@@ -59,9 +65,9 @@ manifest compile --merge --entry src/app.manifest --output ir/
 manifest compile --merge src/
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--merge` | Enable multi-file compilation and merge all discovered files into a single IR output |
+| Flag             | Description                                                                                        |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
+| `--merge`        | Enable multi-file compilation and merge all discovered files into a single IR output               |
 | `--entry <path>` | Specify the entry point for module resolution. When omitted, the compiler auto-detects root files. |
 
 ## Namespace isolation
@@ -77,7 +83,8 @@ domains/product.manifest -> Order entity -> domains/product.Order
 The `use` syntax makes all declarations from the referenced file available, with the module prefix available for disambiguation.
 
 <Note>
-Cross-file validation catches ambiguous references when two modules export the same symbol name. Use the module prefix to disambiguate.
+  Cross-file validation catches ambiguous references when two modules export the same symbol name.
+  Use the module prefix to disambiguate.
 </Note>
 
 ## Cross-file validation
@@ -96,13 +103,13 @@ Invalid cross-file references produce compile error diagnostics rather than runt
 The module resolver uses a `ResolverHost` abstraction for file system access. In production, this reads from disk. In tests, you can provide an in-memory host to test resolution without touching the file system:
 
 ```typescript
-import { ModuleResolver } from "@angriff36/manifest/module-resolver";
+import { ModuleResolver } from '@angriff36/manifest/module-resolver';
 
 const resolver = new ModuleResolver({
   readFile(path) {
     // Return file contents from an in-memory map
     return mockFiles.get(path);
-  }
+  },
 });
 ```
 

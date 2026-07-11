@@ -21,7 +21,7 @@ describe('manifest audit-constitution (deprecated alias)', () => {
     const dir = await tempDir('manifest-audit-const-alias-');
     const result = await auditConstitutionCommand({ root: dir, format: 'json' });
     expect(result.detectorsRun).toEqual(
-      expect.arrayContaining(['direct-writes', 'route-drift', 'missing-tests'])
+      expect.arrayContaining(['direct-writes', 'route-drift', 'missing-tests']),
     );
     expect(result.findings).toBeDefined();
     expect(typeof result.errorCount).toBe('number');

@@ -106,7 +106,11 @@ describe('Module Resolver', () => {
 
     const result = await resolveModuleGraph(['/project/a.manifest'], host, parseFn);
 
-    expect(result.diagnostics.some(d => d.severity === 'error' && d.message.includes('Circular dependency'))).toBe(true);
+    expect(
+      result.diagnostics.some(
+        (d) => d.severity === 'error' && d.message.includes('Circular dependency'),
+      ),
+    ).toBe(true);
     expect(result.order).toHaveLength(0);
   });
 
@@ -120,7 +124,11 @@ describe('Module Resolver', () => {
 
     const result = await resolveModuleGraph(['/project/main.manifest'], host, parseFn);
 
-    expect(result.diagnostics.some(d => d.severity === 'error' && d.message.includes('File not found'))).toBe(true);
+    expect(
+      result.diagnostics.some(
+        (d) => d.severity === 'error' && d.message.includes('File not found'),
+      ),
+    ).toBe(true);
     expect(result.order).toHaveLength(0);
   });
 
@@ -136,7 +144,11 @@ describe('Module Resolver', () => {
 
     const result = await resolveModuleGraph(['/project/main.manifest'], host, parseFn);
 
-    expect(result.diagnostics.some(d => d.severity === 'warning' && d.message.includes('Duplicate use'))).toBe(true);
+    expect(
+      result.diagnostics.some(
+        (d) => d.severity === 'warning' && d.message.includes('Duplicate use'),
+      ),
+    ).toBe(true);
     // Should still resolve successfully (warning, not error)
     expect(result.order).toHaveLength(2);
   });
@@ -238,6 +250,6 @@ describe('Module Resolver', () => {
     const result = await resolveModuleGraph(['/project/main.manifest'], host, parseFn);
 
     // Should have diagnostics from the broken file
-    expect(result.diagnostics.some(d => d.file === '/project/broken.manifest')).toBe(true);
+    expect(result.diagnostics.some((d) => d.file === '/project/broken.manifest')).toBe(true);
   });
 });

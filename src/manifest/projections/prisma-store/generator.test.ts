@@ -143,7 +143,7 @@ describe('PrismaStoreProjection', () => {
 
     expect(result.artifacts[0].code).not.toContain('softDeleteStatus');
     expect(
-      result.diagnostics.some(d => d.code === 'PRISMA_STORE_SOFT_DELETE_FIELD_MISSING'),
+      result.diagnostics.some((d) => d.code === 'PRISMA_STORE_SOFT_DELETE_FIELD_MISSING'),
     ).toBe(true);
   });
 });

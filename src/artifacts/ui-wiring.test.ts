@@ -13,7 +13,7 @@ import { buildProfilerCommandOptions } from './profiler-options';
 describe('diagnostic UI wiring', () => {
   it('exposes tutorial, policy matrix, and profiler tabs in the app', () => {
     expect(APP_TABS.map((tab) => tab.id)).toEqual(
-      expect.arrayContaining(['tutorial', 'policies', 'profiler'])
+      expect.arrayContaining(['tutorial', 'policies', 'profiler']),
     );
   });
 

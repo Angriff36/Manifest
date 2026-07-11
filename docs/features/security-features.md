@@ -42,14 +42,14 @@ entity Patient {
 
 ### Masking Strategies
 
-| Strategy | Behavior |
-|----------|----------|
+| Strategy              | Behavior                         |
+| --------------------- | -------------------------------- |
 | `partial(start, end)` | Preserve characters at start/end |
-| `email` | Mask local part of email |
-| `phone` | Mask phone number |
-| `last4` | Show last four characters |
-| `redact` | Full redaction |
-| bare `masked` | Defaults to redact |
+| `email`               | Mask local part of email         |
+| `phone`               | Mask phone number                |
+| `last4`               | Show last four characters        |
+| `redact`              | Full redaction                   |
+| bare `masked`         | Defaults to redact               |
 
 When `unmask when` evaluates true for the current `user` binding, the full value is returned.
 
@@ -72,12 +72,12 @@ command sendNotification(recipient: string, message: string) {
 
 ### Rate Limit Configuration
 
-| Field | Description |
-|-------|-------------|
-| `windowMs` | Time window in milliseconds |
-| `maxRequests` | Maximum allowed requests within the window |
-| `scope` | `user`, `"tenant"`, or `global` (quote `tenant` — it is a reserved word) |
-| `burstAllowance` | Optional burst above steady rate |
+| Field            | Description                                                              |
+| ---------------- | ------------------------------------------------------------------------ |
+| `windowMs`       | Time window in milliseconds                                              |
+| `maxRequests`    | Maximum allowed requests within the window                               |
+| `scope`          | `user`, `"tenant"`, or `global` (quote `tenant` — it is a reserved word) |
+| `burstAllowance` | Optional burst above steady rate                                         |
 
 When the rate limit is exceeded, the command fails before execution.
 
@@ -105,12 +105,12 @@ entity Task {
 
 ### Retry Configuration
 
-| Field | Description |
-|-------|-------------|
-| `maxAttempts` | Maximum number of retry attempts |
-| `backoff` | `fixed`, `exponential`, or `linear` |
-| `delay` | Base delay in milliseconds |
-| `retryOn` | Conditions that qualify for retry |
+| Field         | Description                         |
+| ------------- | ----------------------------------- |
+| `maxAttempts` | Maximum number of retry attempts    |
+| `backoff`     | `fixed`, `exponential`, or `linear` |
+| `delay`       | Base delay in milliseconds          |
+| `retryOn`     | Conditions that qualify for retry   |
 
 Retry policies apply to action execution, not to guard or policy failures.
 

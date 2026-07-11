@@ -29,7 +29,7 @@ async function compile(source: string): Promise<IR> {
   const compiler = new IRCompiler();
   const result = await compiler.compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compile failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compile failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
@@ -38,7 +38,7 @@ function makeRuntime(
   ir: IR,
   store: OutboxStore,
   context: RuntimeContext = { tenantId: 't1' },
-  extra: Partial<RuntimeOptions> = {}
+  extra: Partial<RuntimeOptions> = {},
 ): RuntimeEngine {
   let n = 0;
   return new RuntimeEngine(ir, context, {
@@ -104,24 +104,32 @@ describe('Runtime outbox enqueue — success path', () => {
     await rt.runCommand('createAndIndex', { name: 'x' }, { entityName: 'Item' });
 
     const entries = store.list();
-    expect(entries.map(e => e.event.name)).toEqual(['Created', 'Indexed']);
+    expect(entries.map((e) => e.event.name)).toEqual(['Created', 'Indexed']);
   });
 
   it('uses RuntimeOptions.generateId for entryId and RuntimeOptions.now for enqueuedAt', async () => {
     const seenIds: string[] = [];
     const fakeStore: OutboxStore = {
-      async enqueue(entries) { seenIds.push(...entries.map(e => e.entryId)); },
-      async claim() { return []; },
+      async enqueue(entries) {
+        seenIds.push(...entries.map((e) => e.entryId));
+      },
+      async claim() {
+        return [];
+      },
       async markDelivered() {},
       async markFailed() {},
     };
     const ir = await compile(oneEventIRSource);
     let n = 0;
-    const rt = new RuntimeEngine(ir, { tenantId: 't1' }, {
-      outboxStore: fakeStore,
-      generateId: () => `outbox-${++n}`,
-      now: () => 5555,
-    });
+    const rt = new RuntimeEngine(
+      ir,
+      { tenantId: 't1' },
+      {
+        outboxStore: fakeStore,
+        generateId: () => `outbox-${++n}`,
+        now: () => 5555,
+      },
+    );
     await rt.runCommand('createUser', { name: 'Alice' }, { entityName: 'User' });
 
     expect(seenIds).toEqual(['outbox-1']);
@@ -131,11 +139,15 @@ describe('Runtime outbox enqueue — success path', () => {
     const store = new MemoryOutboxStore();
     const ir = await compile(oneEventIRSource);
     const rt = makeRuntime(ir, store);
-    await rt.runCommand('createUser', { name: 'Alice' }, {
-      entityName: 'User',
-      correlationId: 'corr-1',
-      causationId: 'caus-1',
-    });
+    await rt.runCommand(
+      'createUser',
+      { name: 'Alice' },
+      {
+        entityName: 'User',
+        correlationId: 'corr-1',
+        causationId: 'caus-1',
+      },
+    );
 
     const entry = store.list()[0];
     expect(entry.event.correlationId).toBe('corr-1');
@@ -186,11 +198,15 @@ describe('Runtime outbox enqueue — non-emit paths', () => {
   it('does NOT enqueue when the tenant context gate fails', async () => {
     const store = new MemoryOutboxStore();
     const ir = await compile(oneEventIRSource);
-    const rt = new RuntimeEngine(ir, {}, {
-      outboxStore: store,
-      requireTenantContext: true,
-      generateId: () => 'stub',
-    });
+    const rt = new RuntimeEngine(
+      ir,
+      {},
+      {
+        outboxStore: store,
+        requireTenantContext: true,
+        generateId: () => 'stub',
+      },
+    );
     const result = await rt.runCommand('createUser', { name: 'x' }, { entityName: 'User' });
     expect(result.success).toBe(false);
     expect(store.size()).toBe(0);
@@ -201,15 +217,19 @@ describe('Runtime outbox enqueue — fail-open and backwards compatibility', () 
   it('command result is unchanged when OutboxStore.enqueue throws (fail-open)', async () => {
     const ir = await compile(oneEventIRSource);
     const throwingStore: OutboxStore = {
-      async enqueue() { throw new Error('outbox unavailable'); },
-      async claim() { return []; },
+      async enqueue() {
+        throw new Error('outbox unavailable');
+      },
+      async claim() {
+        return [];
+      },
       async markDelivered() {},
       async markFailed() {},
     };
     const rt = makeRuntime(ir, throwingStore);
     const result = await rt.runCommand('createUser', { name: 'x' }, { entityName: 'User' });
     expect(result.success).toBe(true);
-    expect(result.emittedEvents.map(e => e.name)).toEqual(['UserCreated']);
+    expect(result.emittedEvents.map((e) => e.name)).toEqual(['UserCreated']);
   });
 
   it('does NOT enqueue when no outboxStore is configured (backwards compatible)', async () => {
@@ -241,8 +261,12 @@ describe('Runtime outbox enqueue — fail-open and backwards compatibility', () 
       }
     `);
     const throwingStore: OutboxStore = {
-      async enqueue() { throw new Error('outbox unavailable'); },
-      async claim() { return []; },
+      async enqueue() {
+        throw new Error('outbox unavailable');
+      },
+      async claim() {
+        return [];
+      },
       async markDelivered() {},
       async markFailed() {},
     };
@@ -256,14 +280,18 @@ describe('Runtime outbox enqueue — fail-open and backwards compatibility', () 
     // in; this no-provider path stays fail-open by design.
     expect(result.success).toBe(true);
     expect(result.result).toBe('Alice');
-    expect(result.emittedEvents.map(e => e.name)).toEqual(['UserCreated']);
+    expect(result.emittedEvents.map((e) => e.name)).toEqual(['UserCreated']);
   });
 
   it('store.enqueue receives an array (batched per command, not per event)', async () => {
     const calls: OutboxEntry[][] = [];
     const trackingStore: OutboxStore = {
-      async enqueue(entries) { calls.push(entries); },
-      async claim() { return []; },
+      async enqueue(entries) {
+        calls.push(entries);
+      },
+      async claim() {
+        return [];
+      },
       async markDelivered() {},
       async markFailed() {},
     };
@@ -287,7 +315,7 @@ describe('Runtime outbox enqueue — fail-open and backwards compatibility', () 
     // in a durable adapter using a single INSERT).
     expect(calls).toHaveLength(1);
     expect(calls[0]).toHaveLength(2);
-    expect(calls[0].map(e => e.event.name)).toEqual(['Created', 'Indexed']);
+    expect(calls[0].map((e) => e.event.name)).toEqual(['Created', 'Indexed']);
   });
 });
 
@@ -296,10 +324,14 @@ describe('Runtime event subject metadata', () => {
     const store = new MemoryOutboxStore();
     const ir = await compile(oneEventIRSource);
     const rt = makeRuntime(ir, store);
-    const result = await rt.runCommand('createUser', { name: 'Alice' }, {
-      entityName: 'User',
-      instanceId: 'u-1',
-    });
+    const result = await rt.runCommand(
+      'createUser',
+      { name: 'Alice' },
+      {
+        entityName: 'User',
+        instanceId: 'u-1',
+      },
+    );
 
     expect(result.success).toBe(true);
     const entry = store.list()[0];
@@ -314,9 +346,13 @@ describe('Runtime event subject metadata', () => {
     const store = new MemoryOutboxStore();
     const ir = await compile(oneEventIRSource);
     const rt = makeRuntime(ir, store);
-    const result = await rt.runCommand('createUser', { name: 'Alice' }, {
-      entityName: 'User',
-    });
+    const result = await rt.runCommand(
+      'createUser',
+      { name: 'Alice' },
+      {
+        entityName: 'User',
+      },
+    );
 
     expect(result.success).toBe(true);
     const entry = store.list()[0];
@@ -353,9 +389,13 @@ describe('Runtime event subject metadata', () => {
       }
     `);
     const rt = makeRuntime(ir, store);
-    const result = await rt.runCommand('createItem', { id: 'item-42', name: 'Widget' }, {
-      entityName: 'Item',
-    });
+    const result = await rt.runCommand(
+      'createItem',
+      { id: 'item-42', name: 'Widget' },
+      {
+        entityName: 'Item',
+      },
+    );
 
     expect(result.success).toBe(true);
     const entry = store.list()[0];
@@ -376,9 +416,13 @@ describe('Runtime event subject metadata', () => {
       }
     `);
     const rt = makeRuntime(ir, store);
-    const result = await rt.runCommand('createItem', { id: '', name: 'Widget' }, {
-      entityName: 'Item',
-    });
+    const result = await rt.runCommand(
+      'createItem',
+      { id: '', name: 'Widget' },
+      {
+        entityName: 'Item',
+      },
+    );
 
     expect(result.success).toBe(true);
     const entry = store.list()[0];
@@ -397,10 +441,14 @@ describe('Runtime event subject metadata', () => {
       }
     `);
     const rt = makeRuntime(ir, store);
-    const result = await rt.runCommand('createItem', { id: 'payload-id', name: 'Widget' }, {
-      entityName: 'Item',
-      instanceId: 'instance-id',
-    });
+    const result = await rt.runCommand(
+      'createItem',
+      { id: 'payload-id', name: 'Widget' },
+      {
+        entityName: 'Item',
+        instanceId: 'instance-id',
+      },
+    );
 
     expect(result.success).toBe(true);
     const entry = store.list()[0];
@@ -422,10 +470,14 @@ describe('Runtime event subject metadata', () => {
       }
     `);
     const rt = makeRuntime(ir, store);
-    await rt.runCommand('createAndIndex', { name: 'x' }, {
-      entityName: 'Item',
-      instanceId: 'i-1',
-    });
+    await rt.runCommand(
+      'createAndIndex',
+      { name: 'x' },
+      {
+        entityName: 'Item',
+        instanceId: 'i-1',
+      },
+    );
 
     const entries = store.list();
     expect(entries).toHaveLength(2);
@@ -441,10 +493,14 @@ describe('Runtime event subject metadata', () => {
     const store = new MemoryOutboxStore();
     const ir = await compile(oneEventIRSource);
     const rt = makeRuntime(ir, store);
-    const result = await rt.runCommand('createUser', { name: 'Alice' }, {
-      entityName: 'User',
-      instanceId: 'u-1',
-    });
+    const result = await rt.runCommand(
+      'createUser',
+      { name: 'Alice' },
+      {
+        entityName: 'User',
+        instanceId: 'u-1',
+      },
+    );
 
     expect(result.emittedEvents[0].subject).toEqual(store.list()[0].event.subject);
   });
@@ -453,10 +509,14 @@ describe('Runtime event subject metadata', () => {
     const store = new MemoryOutboxStore();
     const ir = await compile(oneEventIRSource);
     const rt = makeRuntime(ir, store);
-    const result = await rt.runCommand('createUser', { name: 'Alice' }, {
-      entityName: 'User',
-      correlationId: 'corr-1',
-    });
+    const result = await rt.runCommand(
+      'createUser',
+      { name: 'Alice' },
+      {
+        entityName: 'User',
+        correlationId: 'corr-1',
+      },
+    );
 
     const ev = result.emittedEvents[0];
     expect(ev.name).toBe('UserCreated');

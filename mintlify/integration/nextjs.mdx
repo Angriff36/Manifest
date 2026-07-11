@@ -21,6 +21,7 @@ This guide walks you through adding Manifest to an existing Next.js App Router p
     ```bash
     npm install @angriff36/manifest
     ```
+
   </Step>
 
   <Step title="Write your .manifest file">
@@ -53,6 +54,7 @@ This guide walks you through adding Manifest to an existing Next.js App Router p
     ```
 
     Save this as `recipe.manifest` in your project root.
+
   </Step>
 
   <Step title="Generate routes">
@@ -89,6 +91,7 @@ This guide walks you through adding Manifest to an existing Next.js App Router p
     <Note>
       For repeatable builds, declare your sources and projections in `manifest.config.yaml` and run `manifest compile --all` followed by `manifest generate --all` — see the monorepo section below.
     </Note>
+
   </Step>
 
   <Step title="Review the generated read route">
@@ -127,6 +130,7 @@ This guide walks you through adding Manifest to an existing Next.js App Router p
     ```
 
     Tenant and soft-delete `where` filters are **opt-in** (`includeTenantFilter` and `includeSoftDeleteFilter` both default to `false`) — see the multi-tenant section below for how to enable them.
+
   </Step>
 
   <Step title="Review the generated command dispatcher">
@@ -204,6 +208,7 @@ This guide walks you through adding Manifest to an existing Next.js App Router p
     ```
 
     Runtime construction is delegated to `createManifestRuntime` from `@/lib/manifest-runtime` — a module the generator emits for you (the `companions` surface, on by default) that embeds the compiled IR and constructs the `RuntimeEngine` with the given context. Regenerate it after every compile, or set `emitCompanions: false` and maintain your own — for example to enrich the `user` object with fields your guards and policies read (e.g. `role`).
+
   </Step>
 
   <Step title="Wire up Clerk auth">
@@ -233,6 +238,7 @@ This guide walks you through adding Manifest to an existing Next.js App Router p
     ```
 
     The generated routes call `auth()` imported from `@clerk/nextjs` to resolve `userId` (and `orgId`). Use the `authImportPath` option to import it from somewhere else (e.g. `@clerk/nextjs/server`). No additional configuration is needed in the route files.
+
   </Step>
 </Steps>
 
@@ -250,9 +256,9 @@ projections:
       includeTenantFilter: true
       tenantIdProperty: tenantId
       tenantProvider:
-        importPath: "@/lib/tenant"
-        functionName: "getTenantIdForOrg"
-        lookupKey: "orgId"       # or "userId"
+        importPath: '@/lib/tenant'
+        functionName: 'getTenantIdForOrg'
+        lookupKey: 'orgId' # or "userId"
 ```
 
 Then regenerate with `manifest generate --all`.
@@ -264,12 +270,12 @@ When enabled, every generated route resolves the tenant through your `tenantProv
 const tenantId = await getTenantIdForOrg(orgId);
 
 if (!tenantId) {
-  return manifestErrorResponse({ error: "Tenant not found", diagnostics: [] }, 400);
+  return manifestErrorResponse({ error: 'Tenant not found', diagnostics: [] }, 400);
 }
 
 const recipes = await database.recipe.findMany({
   where: { tenantId },
-  orderBy: { id: "desc" },
+  orderBy: { id: 'desc' },
 });
 ```
 
@@ -291,18 +297,18 @@ In `packages/domain`, declare the sources and projection targets in `manifest.co
 
 ```yaml
 # packages/domain/manifest.config.yaml
-src: "*.manifest"
-output: "ir/"
+src: '*.manifest'
+output: 'ir/'
 
 projections:
   nextjs:
-    output: "../../apps/web"
+    output: '../../apps/web'
     options:
       authProvider: clerk
       # Redirect shared artifacts into the types package
       # (path is relative to the projection output above).
       paths:
-        typesFile: "../../packages/api-types/src/recipe.ts"
+        typesFile: '../../packages/api-types/src/recipe.ts'
 ```
 
 Then the whole pipeline is two config-driven commands:
@@ -341,7 +347,7 @@ try {
   const result = await runtime.runCommand(
     'publishRecipe',
     {},
-    { entityName: 'Recipe', instanceId: params.id }
+    { entityName: 'Recipe', instanceId: params.id },
   );
 
   if (!result.success) {
@@ -382,17 +388,32 @@ When any entity is realtime, generated command routes (inline mode) automaticall
     Entity names are case-sensitive. Verify that the name you pass to `runCommand` exactly matches the entity name declared in your `.manifest` file.
   </Accordion>
 
-  <Accordion title="Guard fails even with the correct user">
-    Guards reference `user.*` from the runtime context, not from the request body. The generated `@/lib/manifest-runtime` forwards the context it receives; if your guards read fields the dispatcher's auth step doesn't supply (e.g. `role`), enrich the context — either in a custom runtime module (`emitCompanions: false`) or by adjusting your auth provider wiring. If the guard references `user.role` and you did not supply it, the failure is correct behavior.
-  </Accordion>
+<Accordion title="Guard fails even with the correct user">
+  Guards reference `user.*` from the runtime context, not from the request body. The generated
+  `@/lib/manifest-runtime` forwards the context it receives; if your guards read fields the
+  dispatcher's auth step doesn't supply (e.g. `role`), enrich the context — either in a custom
+  runtime module (`emitCompanions: false`) or by adjusting your auth provider wiring. If the guard
+  references `user.role` and you did not supply it, the failure is correct behavior.
+</Accordion>
 
-  <Accordion title="Generated route imports are wrong">
-    The generated code uses import paths like `@/lib/database`, `@/lib/manifest-response`, and `@/lib/manifest-runtime`. The generator emits these companion modules itself (the `companions` surface, included in `--surface all`), so a fresh generate compiles without hand-written files — this error usually means the companions were generated into a different directory than your `@/*` alias points at, or generation ran with `emitCompanions: false`. Custom `databaseImportPath`, `responseImportPath`, and `runtimeImportPath` options relocate both the imports and the emitted modules; paths pointing at npm packages are left to you.
-  </Accordion>
+<Accordion title="Generated route imports are wrong">
+  The generated code uses import paths like `@/lib/database`, `@/lib/manifest-response`, and
+  `@/lib/manifest-runtime`. The generator emits these companion modules itself (the `companions`
+  surface, included in `--surface all`), so a fresh generate compiles without hand-written files —
+  this error usually means the companions were generated into a different directory than your `@/*`
+  alias points at, or generation ran with `emitCompanions: false`. Custom `databaseImportPath`,
+  `responseImportPath`, and `runtimeImportPath` options relocate both the imports and the emitted
+  modules; paths pointing at npm packages are left to you.
+</Accordion>
 
-  <Accordion title="Routes don't match my react-query hooks">
-    Both projections derive each entity's default URL segment from its name, and the casing must agree. Pass the same `routeCasing` option to both generators: `'lowercase'` (default — `PrepTask` → `preptask`), `'kebab-case'` (`prep-task`), `'snake_case'` (`prep_task`), or `'preserve'` (`PrepTask`). Explicit `routeSegments` / `entityRoutes` overrides still take precedence. Use `dateSerialization: 'iso-string'` (default `'date'`) when `date`/`datetime` fields cross the wire as ISO-8601 strings rather than `Date` instances.
-  </Accordion>
+<Accordion title="Routes don't match my react-query hooks">
+  Both projections derive each entity's default URL segment from its name, and the casing must
+  agree. Pass the same `routeCasing` option to both generators: `'lowercase'` (default — `PrepTask`
+  → `preptask`), `'kebab-case'` (`prep-task`), `'snake_case'` (`prep_task`), or `'preserve'`
+  (`PrepTask`). Explicit `routeSegments` / `entityRoutes` overrides still take precedence. Use
+  `dateSerialization: 'iso-string'` (default `'date'`) when `date`/`datetime` fields cross the wire
+  as ISO-8601 strings rather than `Date` instances.
+</Accordion>
 
   <Accordion title="Tenant filtering returns no results">
     Tenant filtering is off by default (`includeTenantFilter: false`). If you enabled it and get no results, confirm that your database rows have the tenant column populated and that your `tenantProvider` function returns the correct value. To rule the filter out during development, remove `includeTenantFilter: true` and regenerate.

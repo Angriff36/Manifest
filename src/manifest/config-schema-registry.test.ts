@@ -17,13 +17,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import { getProjectionNames } from './projections/registry';
-import {
-  buildProjectionsProperties,
-  SCHEMA_PATH,
-} from '../../scripts/generate-config-schema.mjs';
+import { buildProjectionsProperties, SCHEMA_PATH } from '../../scripts/generate-config-schema.mjs';
 
 function loadCommittedSchema(): {
-  properties: { projections: { additionalProperties: unknown; properties: Record<string, unknown> } };
+  properties: {
+    projections: { additionalProperties: unknown; properties: Record<string, unknown> };
+  };
 } {
   return JSON.parse(readFileSync(SCHEMA_PATH, 'utf-8'));
 }
@@ -40,7 +39,9 @@ describe('config schema ↔ projection registry drift', () => {
     const committed = Object.keys(loadCommittedSchema().properties.projections.properties).sort();
     const registered = [...getProjectionNames()].sort();
     const missing = registered.filter((n) => !committed.includes(n));
-    expect(missing, `missing from schema — run node scripts/generate-config-schema.mjs`).toEqual([]);
+    expect(missing, `missing from schema — run node scripts/generate-config-schema.mjs`).toEqual(
+      [],
+    );
   });
 
   it('keeps projections a closed set (additionalProperties:false catches unknown names)', () => {

@@ -1,5 +1,14 @@
 import { Hover, Position } from 'vscode-languageserver/node';
-import type { ManifestProgram, EntityNode, CommandNode, PropertyNode, ComputedPropertyNode, PolicyNode, ConstraintNode, EnumNode } from '@angriff36/manifest/compiler';
+import type {
+  ManifestProgram,
+  EntityNode,
+  CommandNode,
+  PropertyNode,
+  ComputedPropertyNode,
+  PolicyNode,
+  ConstraintNode,
+  EnumNode,
+} from '@angriff36/manifest/compiler';
 
 const KEYWORD_DESCRIPTIONS: Record<string, string> = {
   entity: 'Defines a business object with properties, commands, and constraints.',
@@ -104,17 +113,15 @@ function formatEnum(en: EnumNode): string {
   return `**enum** \`${en.name}\`\n\nValues: ${vals}`;
 }
 
-export function getHover(
-  program: ManifestProgram,
-  text: string,
-  position: Position,
-): Hover | null {
+export function getHover(program: ManifestProgram, text: string, position: Position): Hover | null {
   const word = getWordAtPosition(text, position);
   if (!word) return null;
 
   // Check keyword descriptions first
   if (KEYWORD_DESCRIPTIONS[word]) {
-    return { contents: { kind: 'markdown', value: `**${word}**\n\n${KEYWORD_DESCRIPTIONS[word]}` } };
+    return {
+      contents: { kind: 'markdown', value: `**${word}**\n\n${KEYWORD_DESCRIPTIONS[word]}` },
+    };
   }
 
   // Search entities

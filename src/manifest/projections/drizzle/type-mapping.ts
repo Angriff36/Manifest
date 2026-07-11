@@ -117,9 +117,12 @@ export function isNumericType(colType: DrizzleColumnType): boolean {
  */
 export function tableFunctionForDialect(dialect: DrizzleDialect): string {
   switch (dialect) {
-    case 'postgresql': return 'pgTable';
-    case 'mysql': return 'mysqlTable';
-    case 'sqlite': return 'sqliteTable';
+    case 'postgresql':
+      return 'pgTable';
+    case 'mysql':
+      return 'mysqlTable';
+    case 'sqlite':
+      return 'sqliteTable';
   }
 }
 
@@ -128,8 +131,11 @@ export function tableFunctionForDialect(dialect: DrizzleDialect): string {
  */
 export function importPathForDialect(dialect: DrizzleDialect): string {
   switch (dialect) {
-    case 'postgresql': return 'drizzle-orm/pg-core';
-    case 'mysql': return 'drizzle-orm/mysql-core';
-    case 'sqlite': return 'drizzle-orm/sqlite-core';
+    case 'postgresql':
+      return 'drizzle-orm/pg-core';
+    case 'mysql':
+      return 'drizzle-orm/mysql-core';
+    case 'sqlite':
+      return 'drizzle-orm/sqlite-core';
   }
 }

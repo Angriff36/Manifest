@@ -10,16 +10,16 @@ duplicate normative files from `docs/spec/`.
 
 ## Where the actual contracts live
 
-| Contract | Location |
-|---|---|
-| IR schema (executable contract anchor) | `docs/spec/ir/ir-v1.schema.json` |
-| Runtime meaning of IR nodes | `docs/spec/semantics.md` |
-| Built-in identifiers and functions | `docs/spec/builtins.md` |
-| Adapter hooks (audit, outbox, stores, dispatcher) | `docs/spec/adapters.md` |
-| Conformance test rules | `docs/spec/conformance.md` |
-| vNext features: constraints, overrides, composite keys, referential actions | `docs/spec/manifest-vnext.md` |
-| Registry schemas | `docs/spec/registry/README.md` |
-| Conformance fixtures (executable semantics evidence) | `src/manifest/conformance/**` |
+| Contract                                                                    | Location                         |
+| --------------------------------------------------------------------------- | -------------------------------- |
+| IR schema (executable contract anchor)                                      | `docs/spec/ir/ir-v1.schema.json` |
+| Runtime meaning of IR nodes                                                 | `docs/spec/semantics.md`         |
+| Built-in identifiers and functions                                          | `docs/spec/builtins.md`          |
+| Adapter hooks (audit, outbox, stores, dispatcher)                           | `docs/spec/adapters.md`          |
+| Conformance test rules                                                      | `docs/spec/conformance.md`       |
+| vNext features: constraints, overrides, composite keys, referential actions | `docs/spec/manifest-vnext.md`    |
+| Registry schemas                                                            | `docs/spec/registry/README.md`   |
+| Conformance fixtures (executable semantics evidence)                        | `src/manifest/conformance/**`    |
 
 ## What is NOT a contract
 
@@ -29,6 +29,7 @@ handlers as a derivative artifact. These are tooling outputs — they do not def
 semantics and do not belong in the contracts tier.
 
 If you are looking for how the Prisma projection works, see:
+
 - `docs/codedocs/api-reference/projections.md`
 - `docs/proposals/storage-projection/README.md`
 

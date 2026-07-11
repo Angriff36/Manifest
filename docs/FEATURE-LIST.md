@@ -138,6 +138,7 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 **27 features shipped.**
 
 ### Aggregate Computed Properties (Count, Sum, Avg across Relations)
+
 **Feature ID:** `aggregate-computed-properties`  
 **Status:** Shipped in v1.8.0
 
@@ -146,6 +147,7 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 ## Summary: Aggregate Computed Properties
 
 ### Changes Implemented
+
 - Extended `sum()` builtin to accept an optional mapper lambda function: `sum(arr, (item) => item.price * item.quantity)`
 - Added new aggregate builtins: `avg()`, `min_of()`, `max_of()`, `count_of()`, `filter()`, `map()` — all with optional mapper/predicate lambda support
 - All aggregate builtins handle async lambda evaluation (since expression evaluation returns Promises)
@@ -155,32 +157,38 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 - Updated builtins spec documentation with full aggregate function signatures and usage examples
 
 ### Files Modified
+
 - `src/manifest/runtime-engine.ts` — Extended `getBuiltins()` with aggregate functions (sum with mapper, avg, min_of, max_of, count_of, filter, map)
 - `docs/spec/builtins.md` — Documented all new aggregate builtins with signatures and examples
 
 ### Files Created
+
 - `src/manifest/conformance/fixtures/64-aggregate-computed-properties.manifest` — Conformance fixture with Order/LineItem aggregate expressions
 - `src/manifest/conformance/expected/64-aggregate-computed-properties.ir.json` — Expected IR output (auto-generated via conformance:regen)
 - `src/manifest/conformance/expected/64-aggregate-computed-properties.results.json` — 10 runtime test cases
 - `verify-aggregates.mts` — End-to-end verification script (temporary, can be deleted)
 
 ### Key Design Decisions
+
 - **No parser/lexer/IR compiler changes needed** — The existing syntax for function calls with lambda arguments (`sum(self.lineItems, (item) => item.price)`) already parses and compiles correctly. Lambda expressions and call expressions were already fully supported in the IR pipeline.
 - **Async-aware builtins** — Aggregate builtins with mappers return Promises (via async IIFEs) since lambda body evaluation is async. JavaScript's automatic Promise unwrapping in `await` ensures this works transparently.
 - **Backward compatible** — `sum(arr)` without a mapper still works identically to before. All existing tests pass unchanged.
 
 ### Test Results
+
 - **1782/1782 tests pass** (full test suite)
 - **246/246 conformance tests pass** (including 10 new aggregate tests)
 - **ESLint passes** cleanly
 - **TypeScript typecheck** has pre-existing errors (unrelated to this change, same on main branch)
 
 ### Verification Status
+
 - Created `verify-aggregates.mts` end-to-end verification script that compiles a .manifest source with aggregate computed properties and evaluates all aggregate functions through the runtime engine
 - 10/10 verification checks passed: sum(mapper), count_of, avg(mapper), min_of(mapper), max_of(mapper), count_of(predicate), empty collection handling, non-aggregate computed
 - Note: Playwright is not configured in this project (it's a compiler/DSL, not a web app), so verification was done via a Node.js script exercising the full compilation and runtime pipeline
 
 ### Notes for Developer
+
 - The `verify-aggregates.mts` and `debug-compile-64.mjs` files in the project root are temporary and can be deleted
 - `min_of` and `max_of` return `undefined` for empty arrays (not 0), matching the behavior of `min()` and `max()` builtins
 - The `filter()` and `map()` builtins were added for completeness but are not exercised in the conformance fixture — they're useful for chaining: `sum(filter(self.items, (i) => i.active), (i) => i.price)`
@@ -190,6 +198,7 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 ---
 
 ### Multi-Stage Approval Workflow Pattern
+
 **Feature ID:** `approval-workflow`  
 **Status:** Shipped in v1.8.0
 
@@ -200,14 +209,17 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 ### Changes Implemented
 
 **Lexer** (`src/manifest/lexer.ts`):
+
 - Added `approval`, `stages`, `timeout` to the KEYWORDS set
 
 **AST Types** (`src/manifest/types.ts`):
+
 - Added `ApprovalStageNode` interface (name, policy expression, required count, optional when expression)
 - Added `ApprovalNode` interface (name, command reference, stages, timeout, onTimeout, emits)
 - Added `approvals: ApprovalNode[]` to `EntityNode`
 
 **Parser** (`src/manifest/parser.ts`):
+
 - Added import for `ApprovalNode`, `ApprovalStageNode`
 - Added `approvals` array to `parseEntity()` declaration and return
 - Added approval branch in entity body parse loop
@@ -215,11 +227,13 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 - Implemented `parseApprovalStage()` method: parses `policy:` (expression), `required:` (number), `when:` (expression)
 
 **IR Types** (`src/manifest/ir.ts`):
+
 - Added `IRApprovalStage` interface (name, policy: IRExpression, required, optional when: IRExpression)
 - Added `IRApproval` interface (name, command, stages, optional timeout/onTimeout, emits)
 - Added `approvals?: IRApproval[]` to `IREntity`
 
 **IR Compiler** (`src/manifest/ir-compiler.ts`):
+
 - Added imports for `ApprovalNode`, `ApprovalStageNode`, `IRApproval`, `IRApprovalStage`
 - Added `approvals` spread to `transformEntity()` return (omitted when empty — no impact on existing fixtures)
 - Implemented `transformApproval()` with validation diagnostics:
@@ -229,11 +243,13 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 - Implemented `transformApprovalStage()` using existing `transformExpression()`
 
 **IR Schema** (`docs/spec/ir/ir-v1.schema.json`):
+
 - Added `IRApprovalStage` definition (name, policy, required, optional when)
 - Added `IRApproval` definition (name, command, stages, optional timeout/onTimeout, emits)
 - Added `approvals` array property to `IREntity` (optional, not in `required`)
 
 **Runtime Engine** (`src/manifest/runtime-engine.ts`):
+
 - Added import for `IRApproval`
 - Added types: `ApprovalGrant`, `ApprovalRequestState`, `ApprovalRequiredInfo`
 - Added `approvalRequired?: ApprovalRequiredInfo` to `CommandResult`
@@ -250,18 +266,21 @@ These features are complete and their code exists in the **v1.8.0** npm release.
   - `getApprovalRequest(entity, instanceId, approvalName)` — query state
 
 **Conformance Fixture** (`src/manifest/conformance/fixtures/68-approval-workflow.manifest`):
+
 - PurchaseOrder entity with submit command and submitApproval declaration
 - Manager stage (unconditional) and director stage (conditional: amount > 10000)
 - 72-hour timeout with cancel behavior
 - Lifecycle events: ApprovalRequested, ApprovalGranted
 
 **Tests** (`src/manifest/runtime-approval.test.ts`):
+
 - 18 tests covering parser, IR compiler validation, and runtime:
   - Parser: approval block parsing, stages, when conditions, no-timeout case
   - IR Compiler: error for non-existent command reference, duplicate stages, empty stages, omission for entities without approvals
   - Runtime: command blocking (low/high amounts), approval→success flow, multi-stage flow, denial, timeout expiration, policy enforcement on approvers, non-gated commands unaffected, state retrieval
 
 ### Files Modified
+
 - `src/manifest/lexer.ts` — 3 keywords added
 - `src/manifest/types.ts` — ApprovalNode, ApprovalStageNode interfaces, EntityNode.approvals
 - `src/manifest/parser.ts` — parseApproval(), parseApprovalStage(), entity body wiring
@@ -274,6 +293,7 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 - `src/manifest/runtime-approval.test.ts` — 18 new tests
 
 ### Notes for Developer
+
 - All 1897 tests pass (1879 existing + 18 new), 83 test files, zero regressions
 - TypeScript check clean, no new lint errors
 - The `approvals` field is optional on IREntity — omitted when empty, so all 60+ existing expected IR fixture files are byte-identical (no mass regen needed)
@@ -288,14 +308,16 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 ---
 
 ### Array / List Property Type
+
 **Feature ID:** `array-type`  
 **Status:** Shipped in v1.8.0
 
-*No detailed summary.*
+_No detailed summary._
 
 ---
 
 ### Async / Background Command Execution
+
 **Feature ID:** `async-command-execution`  
 **Status:** Shipped in v1.8.0
 
@@ -306,16 +328,19 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 ### Changes Implemented
 
 **Language Feature: `async` command modifier**
+
 - New `async` keyword prefix for commands: `async command processOrder(amount: number) { ... }`
 - Available at program-level, module-level, and entity-level command declarations
 - Defers action execution to a background worker queue instead of executing synchronously
 
 **IR Schema Contract**
+
 - Added 3 optional fields to `IRCommand`: `async` (boolean), `completionEvent` (string), `failureEvent` (string)
 - Auto-synthesized `{commandName}Completed` and `{commandName}Failed` events appended to `ir.events`
 - Compile-time collision detection: error diagnostic if synthesized event name matches user-declared event
 
 **Runtime Execution**
+
 - Async commands validate policies/constraints/guards synchronously (fail-fast), then enqueue a `JobRecord` via `JobQueue` adapter
 - Returns `{ jobId, status: 'pending', enqueuedAt }` immediately without executing actions
 - Re-entry guard: `context.source === 'job'` bypasses async branch during worker execution
@@ -323,17 +348,20 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 - `drainJobs()` public method for deterministic testing: drains pending jobs in FIFO order
 
 **Adapter System**
+
 - `JobQueue` interface: `enqueue()`, `drainPending()`, `updateStatus()`
 - `JobRecord` type: `jobId`, `commandName`, `entityName`, `instanceId`, `input`, `correlationId`, `causationId`, `enqueuedAt`, `status`
 - `MemoryJobQueue` in-memory implementation for testing/development
 - `RuntimeOptions.jobQueue` wire-in point
 
 **Testing**
+
 - 15 new unit tests covering IR compilation, async enqueue, guard fail-fast, sync command isolation, drainJobs with completion/failure events, MemoryJobQueue operations
 - 1 new conformance fixture (69-async-commands) with expected IR output
 - All 1939 tests passing (1924 existing + 15 new)
 
 ### Files Modified
+
 - `docs/spec/ir/ir-v1.schema.json` — Added `async`, `completionEvent`, `failureEvent` fields to IRCommand
 - `docs/spec/semantics.md` — Added "Async Commands" section with full execution semantics
 - `docs/spec/adapters.md` — Added "Job Queue" adapter contract section
@@ -348,6 +376,7 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 - `src/manifest/runtime-async.test.ts` — 15 unit tests for async command execution
 
 ### Notes for Developer
+
 - All existing 1924 tests continue to pass; no behavioral changes to non-async commands
 - The event sorting is scoped to synthesized events only — user-declared event order is preserved
 - Pre-existing lint errors in unrelated files (changelog.ts, versions.ts, etc.) remain; no new lint issues introduced
@@ -359,6 +388,7 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 ---
 
 ### Breaking Change Detector for IR Upgrades
+
 **Feature ID:** `breaking-change-detector`  
 **Status:** Shipped in v1.8.0
 
@@ -413,32 +443,32 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 
 ### Classification Rules
 
-| Element | Change | Severity |
-|---------|--------|----------|
-| Entity added | entity-added | compatible |
-| Entity removed | entity-removed | **breaking** |
-| Property added (no details) | property-added | **breaking** (conservative) |
-| Property added (optional/default) | property-added | compatible |
-| Property removed | property-removed | **breaking** |
-| Property type changed | property-type-changed | **breaking** |
-| Property made optional | property-made-optional | compatible |
-| Property made required | property-made-required | **breaking** |
-| Computed property expression changed | computed-expression-changed | deprecated |
-| Computed property removed | computed-removed | **breaking** |
-| Relationship removed/kind changed | relationship-* | **breaking** |
-| Constraint removal | constraint-removed | deprecated |
-| Constraint severity raised | constraint-severity-raised | compatible |
-| Command removed | command-removed | **breaking** |
-| Command parameter removed | command-param-removed | **breaking** |
-| Command parameter added | command-param-added | **breaking** |
-| Command guards changed | command-guards-changed | deprecated |
-| Command returns changed | command-returns-changed | **breaking** |
-| Policy removed | policy-removed | **breaking** |
-| Policy expression changed | policy-expression-changed | deprecated |
-| Store removed/target changed | store-* | **breaking** |
-| Event removed/channel changed | event-* | **breaking** |
-| Module added | module-added | compatible |
-| Module removed | module-removed | **breaking** |
+| Element                              | Change                      | Severity                    |
+| ------------------------------------ | --------------------------- | --------------------------- |
+| Entity added                         | entity-added                | compatible                  |
+| Entity removed                       | entity-removed              | **breaking**                |
+| Property added (no details)          | property-added              | **breaking** (conservative) |
+| Property added (optional/default)    | property-added              | compatible                  |
+| Property removed                     | property-removed            | **breaking**                |
+| Property type changed                | property-type-changed       | **breaking**                |
+| Property made optional               | property-made-optional      | compatible                  |
+| Property made required               | property-made-required      | **breaking**                |
+| Computed property expression changed | computed-expression-changed | deprecated                  |
+| Computed property removed            | computed-removed            | **breaking**                |
+| Relationship removed/kind changed    | relationship-*              | **breaking**                |
+| Constraint removal                   | constraint-removed          | deprecated                  |
+| Constraint severity raised           | constraint-severity-raised  | compatible                  |
+| Command removed                      | command-removed             | **breaking**                |
+| Command parameter removed            | command-param-removed       | **breaking**                |
+| Command parameter added              | command-param-added         | **breaking**                |
+| Command guards changed               | command-guards-changed      | deprecated                  |
+| Command returns changed              | command-returns-changed     | **breaking**                |
+| Policy removed                       | policy-removed              | **breaking**                |
+| Policy expression changed            | policy-expression-changed   | deprecated                  |
+| Store removed/target changed         | store-*                     | **breaking**                |
+| Event removed/channel changed        | event-*                     | **breaking**                |
+| Module added                         | module-added                | compatible                  |
+| Module removed                       | module-removed              | **breaking**                |
 
 ### Verification Results
 
@@ -458,6 +488,7 @@ These features are complete and their code exists in the **v1.8.0** npm release.
 ### Playwright Verification
 
 Not applicable — this is a CLI/library feature with no browser-rendered UI components. The feature operates entirely through:
+
 - The `classifyBreakingChanges()` pure function (tested via unit tests)
 - The `manifest diff breaking` CLI command (tested via unit tests + manual CLI invocation)
 
@@ -466,6 +497,7 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
 ---
 
 ### GitHub Actions Workflow Templates
+
 **Feature ID:** `ci-github-actions`  
 **Status:** Shipped in v1.8.0
 
@@ -474,6 +506,7 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
 ## Summary: CI GitHub Actions Init Command
 
 ### Changes Implemented
+
 - Created `manifest init --ci github` command that generates a complete GitHub Actions workflow file
 - Workflow runs `manifest validate`, `manifest scan`, and `npm test` on every pull request
 - Matrix builds configured for Node.js 18, 20, and 22 (customizable via `--node-versions` flag)
@@ -483,11 +516,13 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
 - Comprehensive unit test suite (12 tests covering workflow generation, file creation, error cases, and overwrite behavior)
 
 ### Files Modified
+
 - `packages/cli/src/commands/init-ci.ts` (new) — Command handler with `generateGitHubWorkflow()` and `initCiCommand()` exports
 - `packages/cli/src/commands/init-ci.test.ts` (new) — 12 unit tests covering workflow generation and command behavior
 - `packages/cli/src/index.ts` (modified) — Added import for `initCiCommand` and registered `--ci <provider>` and `--node-versions <versions>` options on the existing `init` command
 
 ### Notes for Developer
+
 - The command is invoked as `manifest init --ci github` (not a subcommand)
 - Optional `--node-versions 18,20,22` flag controls the matrix build versions
 - Optional `--force` flag allows overwriting an existing `manifest-ci.yml`
@@ -496,6 +531,7 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
 - Pre-existing test failures in the CLI package (9 test files) are unrelated — caused by `ora` module resolution issues when running from root context without `pnpm install` in `packages/cli`
 
 ### Verification Status
+
 - Playwright verification test confirmed both `generateGitHubWorkflow()` function output and `initCiCommand()` file creation work correctly end-to-end (2 tests passed via `npx playwright test`)
 - Temporary verification test file was created, executed successfully, and deleted after verification
 - Unit tests: 12/12 passing in `packages/cli/src/commands/init-ci.test.ts`
@@ -507,6 +543,7 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
 ---
 
 ### Computed Property Memoization and Staleness Tracking
+
 **Feature ID:** `computed-property-caching`  
 **Status:** Shipped in v1.8.0
 
@@ -515,6 +552,7 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
 ## Summary: Computed Property Caching with Memoization Strategies and Staleness Detection
 
 ### Changes Implemented
+
 - Extended DSL syntax with `cache` annotation for computed properties supporting three strategies: `cache request`, `cache session`, `cache ttl <seconds>`
 - Added `IRComputedPropertyCache` type and optional `cache` field to `IRComputedProperty` in the IR type system
 - Updated IR JSON schema (`ir-v1.schema.json`) with `IRComputedPropertyCache` definition
@@ -530,6 +568,7 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
 - Added `cache`, `request`, `session`, `ttl` as reserved keywords in the lexer
 
 ### Files Modified
+
 - `src/manifest/lexer.ts` - Added cache-related keywords
 - `src/manifest/types.ts` - Added `ComputedPropertyCache` interface and optional `cache` field to `ComputedPropertyNode`
 - `src/manifest/parser.ts` - Added `parseComputedCache()` method called from `parseComputedProperty()`
@@ -542,6 +581,7 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
 - `src/manifest/conformance/expected/65-computed-property-caching.results.json` - Expected runtime results
 
 ### Notes for Developer
+
 - All 1795 tests pass (80 test files), including 5 new tests from the conformance fixture
 - TypeScript typecheck passes for all changed files (pre-existing errors in agent-sdk and projection files remain unchanged)
 - The `evaluateComputedWithMeta()` method is the primary new API surface — it returns `{ value: unknown; stale: boolean; cached: boolean }`
@@ -550,6 +590,7 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
 - The `cache` annotation is fully optional — existing computed properties without it continue to work exactly as before
 
 ### Verification Status
+
 - Feature verified via a dedicated vitest verification test (8 tests covering: IR compilation, evaluateComputedWithMeta, session caching, staleness detection, TTL expiration, uncached properties, backward compatibility, and transitive staleness). All 8 tests passed. Test file was deleted after verification.
 - No Playwright configuration exists in this project (it's a DSL compiler/runtime, not a browser app), so browser-based testing was not applicable.
 
@@ -558,6 +599,7 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
 ---
 
 ### Cross-Entity Constraint Expressions
+
 **Feature ID:** `cross-entity-constraint`  
 **Status:** Shipped in v1.8.0
 
@@ -566,6 +608,7 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
 ## Summary: Cross-Entity Constraint Expressions
 
 ### Changes Implemented
+
 - **Enriched resolved relationship instances with `_entity` metadata** in `resolveRelationship()` (`runtime-engine.ts:969-977`) — resolved entities carry their entity type so chained traversal can continue resolving deeper relationships (e.g., `self.order.customer.name`)
 - **Generalized member access handler** in `evaluateExpression()` (`runtime-engine.ts:2980-2994`) — removed the `expr.object.kind === 'identifier'` gate so relationship traversal works on any object with `_entity` metadata, not just direct `self`/`this` identifiers
 - **Added `setup` support to `ConstraintTestCase`** in the conformance test runner — constraint test cases can now seed related entity instances via `setup.createInstances` before evaluation
@@ -575,6 +618,7 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
   - Order with missing/nonexistent customer fails the constraint (null relationship)
 
 ### Files Modified
+
 - `src/manifest/runtime-engine.ts` — two targeted changes: `_entity` enrichment in `resolveRelationship()` and generalized relationship detection in `case 'member'`
 - `src/manifest/conformance/conformance.test.ts` — added optional `setup` to `ConstraintTestCase` interface and seeding logic in the handler
 - `src/manifest/conformance/fixtures/70-cross-entity-constraints.manifest` — new fixture (Customer/Order with cross-entity constraint)
@@ -582,6 +626,7 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
 - `src/manifest/conformance/expected/70-cross-entity-constraints.results.json` — manual test cases for runtime validation
 
 ### Notes for Developer
+
 - All 2028 tests pass (85 test files), typecheck clean, no new lint errors
 - Committed as `90b8cfa` — this commit also includes pre-existing uncommitted changes in `runtime-engine.ts` and `conformance.test.ts` from prior feature work (approval workflows, async commands, etc.)
 - The feature supports arbitrary-depth chaining (e.g., `self.order.customer.address.city`) since each resolved relationship gets `_entity` metadata enabling further resolution
@@ -593,6 +638,7 @@ Not applicable — this is a CLI/library feature with no browser-rendered UI com
 ---
 
 ### Decimal / Money Primitive Type
+
 **Feature ID:** `decimal-type`  
 **Status:** Shipped in v1.8.0
 
@@ -653,6 +699,7 @@ Note: There are some pre-existing test failures in the CLI test suite (`compile.
 ---
 
 ### Declarative Event Reaction Rules (on Event run Command)
+
 **Feature ID:** `declarative-event-reactions`  
 **Status:** Shipped in v1.8.0
 
@@ -665,6 +712,7 @@ Note: There are some pre-existing test failures in the CLI test suite (`compile.
 The declarative event reactions feature has been **fully implemented** in the previous session. Here's a comprehensive summary:
 
 ### Language Syntax
+
 ```text
 on <EventName> run <EntityType>.<commandName>
   resolve <expression>
@@ -672,30 +720,36 @@ on <EventName> run <EntityType>.<commandName>
 ```
 
 ### IR Schema (docs/spec/ir/ir-v1.schema.json)
+
 - Added `reactions` array to IR root with `IRReactionRule` items
 - `IRReactionRule` includes: event, targetEntity, targetCommand, resolve, params, module, entity
 - Added `IRReactionParam` for parameter mappings
 - Added `reactions` array to `IRModule` for module-scoped reactions
 
 ### Compiler Implementation (src/manifest/ir-compiler.ts)
+
 - `transformReaction()`: Transforms ReactionNode to IRReactionRule
 - Collects reactions from program, module, and entity scopes
 - Handles resolve expression and params mapping transformation
 
 ### Parser Implementation (src/manifest/parser.ts)
+
 - `parseReaction()`: Parses reaction declarations
 - `isReactionLookahead()`: Distinguishes `on Event run ...` from behavior syntax
 - Supports optional params block with multiple parameter mappings
 
 ### Lexer Implementation (src/manifest/lexer.ts)
+
 - Added keywords: `run`, `resolve`, `params`
 
 ### Types (src/manifest/types.ts)
+
 - `ReactionNode`: AST node for reactions
 - `ReactionParamMapping`: Parameter mapping in params block
 - Added reactions to ProgramNode, ModuleNode, and EntityNode
 
 ### Runtime Implementation (src/manifest/runtime-engine.ts)
+
 - Reaction execution after event emission (line 2517-2573)
 - Evaluates matching reactions in declaration order
 - Builds enriched payload context with `payload`, `self`, `_subject`, `_eventName`, `_channel`
@@ -704,17 +758,20 @@ on <EventName> run <EntityType>.<commandName>
 - Cascades events from reaction-triggered commands
 
 ### Semantics Documentation (docs/spec/semantics.md)
+
 - Added "Reactions" section with syntax, compilation, and runtime semantics
 - Documents declaration order evaluation
 - Specifies deterministic behavior and cascading rules
 - Includes correlationId/causationId propagation rules
 
 ### Conformance Tests
+
 - Fixture: `67-event-reactions.manifest`
 - Expected IR: `67-event-reactions.ir.json`
 - Tests: Order→Invoice reaction workflow with resolve and params
 
 ### Files Modified
+
 1. `docs/spec/ir/ir-v1.schema.json` - IR schema with IRReactionRule
 2. `docs/spec/semantics.md` - Semantics documentation
 3. `src/manifest/lexer.ts` - Keywords for run/resolve/params
@@ -726,11 +783,13 @@ on <EventName> run <EntityType>.<commandName>
 9. `src/manifest/conformance/expected/67-event-reactions.ir.json` - Expected IR
 
 ### Test Status
+
 - All 2028 tests passing
 - Typecheck passes
 - Existing lint errors unrelated to this feature
 
 ### Notes for Developer
+
 The feature is **production-ready** and fully implements declarative event-driven command dispatch within Manifest's governance boundary. The runtime executes reactions synchronously within the same command execution turn, with proper cascade protection and deterministic ordering.
 
 </details>
@@ -738,6 +797,7 @@ The feature is **production-ready** and fully implements declarative event-drive
 ---
 
 ### Drizzle ORM Schema Projection
+
 **Feature ID:** `drizzle-projection`  
 **Status:** Shipped in v1.8.0
 
@@ -746,6 +806,7 @@ The feature is **production-ready** and fully implements declarative event-drive
 ## Summary: Drizzle ORM Table Definition Projection
 
 ### Changes Implemented
+
 - Created a complete Drizzle ORM schema projection that generates TypeScript-first table definitions from Manifest IR entities
 - Implemented correct column types with IR→Drizzle type mapping (varchar, integer, boolean, uuid, timestamp, numeric, jsonb, etc.)
 - Primary key support: single-column `.primaryKey()` for `id` fields, composite PK comments for `key: [...]` entities
@@ -762,6 +823,7 @@ The feature is **production-ready** and fully implements declarative event-drive
 - 51 tests covering metadata, type mapping, skipping rules, composite PK, relationships, referential actions, imports, indexes, default values, array types, determinism, and ordering
 
 ### Files Modified
+
 - `src/manifest/projections/drizzle/type-mapping.ts` (new) — IR type → Drizzle column builder mapping
 - `src/manifest/projections/drizzle/options.ts` (new) — DrizzleProjectionOptions type and normalizeOptions()
 - `src/manifest/projections/drizzle/generator.ts` (new) — DrizzleProjection class implementing ProjectionTarget
@@ -771,6 +833,7 @@ The feature is **production-ready** and fully implements declarative event-drive
 - `src/manifest/projections/index.ts` (modified) — Re-exported DrizzleProjection and DrizzleProjectionOptions
 
 ### Notes for Developer
+
 - The projection surface is `drizzle.schema` — generates a single TypeScript file
 - Default dialect is `postgresql` with `pgTable` imports from `drizzle-orm/pg-core`
 - The projection follows the same architectural patterns as the Prisma projection (Checkpoint 1 boundary rules, structural invariants)
@@ -778,6 +841,7 @@ The feature is **production-ready** and fully implements declarative event-drive
 - All 1506 tests pass (no regressions), TypeScript typecheck passes, ESLint passes
 
 ### Verification Status
+
 - All 51 Drizzle projection unit tests pass
 - Full test suite (1506 tests) passes with no regressions
 - TypeScript typecheck passes
@@ -788,6 +852,7 @@ The feature is **production-ready** and fully implements declarative event-drive
 ---
 
 ### First-Class Enum Types
+
 **Feature ID:** `enum-type`  
 **Status:** Shipped in v1.8.0
 
@@ -798,26 +863,31 @@ The feature is **production-ready** and fully implements declarative event-drive
 ### Changes Implemented
 
 **1. IR Schema (docs/spec/ir/ir-v1.schema.json)**
+
 - Added `enums` array to top-level IR object
 - Created `IREnum` definition with name, module, and values
 - Created `IREnumValue` definition with name, optional label, and optional ordinal
 
 **2. Lexer (src/manifest/lexer.ts)**
+
 - Added `enum` keyword to the reserved words list
 
 **3. AST Types (src/manifest/types.ts)**
+
 - Added `EnumValueNode` interface for enum members
 - Added `EnumNode` interface for enum declarations
 - Updated `ManifestProgram` to include `enums` array
 - Updated `ModuleNode` to include `enums` array
 
 **4. Parser (src/manifest/parser.ts)**
+
 - Added enum parsing support with syntax: `enum Name { value1, value2 = "Label", value3(ordinal) }`
 - Added enum parsing in module declarations
 - Added `parseEnum()` method with support for labels and ordinals
 - Updated sync function to include 'enum' keyword
 
 **5. IR Compiler (src/manifest/ir-compiler.ts)**
+
 - Added `IREnum` and `IREnumValue` imports
 - Added `transformEnum()` method to convert AST enums to IR
 - Updated `transformProgram()` to collect and transform enums
@@ -825,12 +895,14 @@ The feature is **production-ready** and fully implements declarative event-drive
 - Updated IR object creation to include enums array
 
 **6. IR Types (src/manifest/ir.ts)**
+
 - Added `IREnum` interface definition
 - Added `IREnumValue` interface definition
 - Added `enums` array to `IR` interface
 - Added `enums` array to `IRModule` interface
 
 **7. Conformance Tests**
+
 - Created `57-enum-type.manifest` fixture demonstrating:
   - Simple enum values
   - Enum values with display labels
@@ -840,9 +912,11 @@ The feature is **production-ready** and fully implements declarative event-drive
 - All 211 conformance tests passing
 
 **8. CLI Tests**
+
 - Updated `packages/cli/src/commands/validate.test.ts` to include `enums` array in test fixtures
 
 ### Files Modified
+
 - `docs/spec/ir/ir-v1.schema.json` - Added enum schema definitions
 - `src/manifest/lexer.ts` - Added enum keyword
 - `src/manifest/types.ts` - Added enum AST nodes
@@ -854,12 +928,15 @@ The feature is **production-ready** and fully implements declarative event-drive
 - `src/manifest/conformance/expected/57-enum-type.ir.json` - Expected enum IR output
 
 ### Test Results
+
 - 1151/1163 tests passing (99% pass rate)
 - 211/211 conformance tests passing (100%)
 - 3 failing tests are pre-existing CLI test issues unrelated to enum functionality
 
 ### Notes for Developer
+
 The enum type implementation is complete and functional. The syntax supports:
+
 - Basic enum declarations: `enum Status { draft, published, archived }`
 - Display labels: `enum Status { draft = "Draft", published = "Published" }`
 - Ordinal values: `enum Priority { low(0), medium(1), high(2) }`
@@ -872,6 +949,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ---
 
 ### Declarative Event Subscription Rules
+
 **Feature ID:** `event-subscription-language`  
 **Status:** Shipped in v1.8.0
 
@@ -880,6 +958,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ## Summary: Declarative Event Subscription Rules
 
 ### Changes Implemented
+
 - **Lexer**: Keywords `on`, `run`, `resolve`, `params` registered as reserved words for reaction syntax
 - **Parser**: `parseReaction()` method with `isReactionLookahead()` disambiguation from behavior syntax; reactions parsed at program, module, and entity scope levels
 - **AST Types**: `ReactionNode` interface with event, targetEntity, targetCommand, resolve expression, and optional param mappings (`src/manifest/types.ts`)
@@ -891,6 +970,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - **Conformance Tests**: Fixture `67-event-reactions.manifest` with expected IR and execution results verifying end-to-end pipeline
 
 ### Files Modified
+
 - `src/manifest/lexer.ts` — reaction keywords
 - `src/manifest/parser.ts` — `parseReaction()`, `isReactionLookahead()`
 - `src/manifest/types.ts` — `ReactionNode`, `ReactionParamMapping` AST types
@@ -904,6 +984,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - `src/manifest/conformance/expected/67-event-reactions.results.json` — expected execution results
 
 ### Notes for Developer
+
 - Feature was shipped in v1.8.0 (commit `83e6c4f`) and is fully integrated
 - All 2028 tests pass across 88 test files (0 failures)
 - Syntax: `on <EventName> run <Entity>.<command> resolve <expr> params { key: <expr> }`
@@ -916,6 +997,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ---
 
 ### Express / Fastify REST Projection
+
 **Feature ID:** `express-projection`  
 **Status:** Shipped in v1.8.0
 
@@ -924,6 +1006,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ## Summary: Express/Fastify Route Handler Projection
 
 ### Changes Implemented
+
 - Created a new `express` projection that generates standalone Express or Fastify router modules from Manifest IR
 - Supports 4 surfaces: `express.router` (complete router), `express.entity` (per-entity router), `express.types` (TypeScript type definitions), `express.all` (all combined)
 - Express mode generates `Router()` with `router.get()`/`router.post()` handlers
@@ -940,6 +1023,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - Registered as the 10th built-in projection in the registry
 
 ### Files Modified
+
 - `src/manifest/projections/express/types.ts` (NEW) - `ExpressProjectionOptions` interface with framework, auth, runtime, validation, and output options
 - `src/manifest/projections/express/generator.ts` (NEW) - `ExpressProjection` class implementing `ProjectionTarget` with all 4 surfaces
 - `src/manifest/projections/express/index.ts` (NEW) - Re-exports for the express projection module
@@ -949,6 +1033,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - `src/manifest/projections/__snapshots__/snapshot.test.ts.snap` - New snapshot auto-generated for express projection
 
 ### Notes for Developer
+
 - The projection follows the exact same patterns as all other built-in projections (OpenAPI, Zod, Prisma, etc.)
 - CLI usage: `manifest generate <ir> -p express` (defaults to Express) or `manifest generate <ir> -p express` with `--options '{"framework":"fastify"}'`
 - The 1 conformance test failure (`Recipe.create` reference) is preexisting — verified by stashing changes and confirming 14 failures exist without any of the working tree changes
@@ -956,6 +1041,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - TypeScript typecheck and ESLint both pass clean
 
 ### Verification Status
+
 - Created a comprehensive 12-test verification suite exercising all surfaces, both frameworks (Express/Fastify), entity-scoped generation, Zod validation integration, public reads, guard/policy comments, determinism, diagnostic reporting, and unknown surface/entity error handling — all 12 tests passed
 - Snapshot tests pass (21/21) including the new express projection snapshot
 - Full test suite passes (1811/1812, 1 preexisting conformance failure unrelated to this change)
@@ -967,6 +1053,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ---
 
 ### Feature Flag Declarations in Policy Expressions
+
 **Feature ID:** `feature-flags-integration`  
 **Status:** Shipped in v1.8.0
 
@@ -975,6 +1062,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ## Summary: Add `flag(name)` Built-in Expression for Feature Flags
 
 ### Changes Implemented
+
 - Added `flag(name)` as a core built-in function that resolves feature flag values from a configurable provider
 - Added `flagProvider` option to `RuntimeOptions` interface for injecting any feature flag backend (LaunchDarkly, Unleash, JSON file, etc.)
 - Safe default: `flag()` returns `false` when no provider is configured (features off by default)
@@ -987,6 +1075,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - Documented the feature in `docs/spec/builtins.md` under a new "Feature Flags" section
 
 ### Files Modified
+
 - `src/manifest/runtime-engine.ts` — Added `flagProvider` to `RuntimeOptions`, added `flag()` to `getBuiltins()`
 - `src/manifest/plugin-api.ts` — Added `'flag'` to `RESERVED_BUILTIN_NAMES`
 - `src/manifest/plugin-api.test.ts` — Updated reserved names count (34→35), added test for `flag` reservation
@@ -994,10 +1083,12 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - `docs/spec/builtins.md` — Added Feature Flags section, updated reserved names count and list
 
 ### Files Created
+
 - `src/manifest/conformance/fixtures/66-feature-flags.manifest` — Conformance fixture
 - `src/manifest/conformance/expected/66-feature-flags.ir.json` — Expected IR output (auto-generated)
 
 ### Notes for Developer
+
 - No lexer, parser, or IR compiler changes were needed — `flag()` is handled generically as a function call identifier, just like `now()`, `uuid()`, etc.
 - The `flagProvider` function signature is `(name: string) => unknown`, enabling boolean flags and multivariate flags (string/number/object)
 - Core builtin precedence is maintained: `flag` cannot be overridden via `customBuiltins` (plugin system)
@@ -1005,6 +1096,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - Full test suite: 1817/1817 tests passing across 80 test files
 
 ### Verification Status
+
 - Created a temporary verification test (`flag-feature-verification.test.ts`) with 6 end-to-end tests covering: compilation, safe defaults, provider integration, guard behavior, multivariate values, and computed properties
 - All 6 verification tests passed successfully
 - Test file deleted after verification
@@ -1015,6 +1107,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ---
 
 ### GraphQL Schema Projection
+
 **Feature ID:** `graphql-projection`  
 **Status:** Shipped in v1.8.0
 
@@ -1023,6 +1116,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ## Summary: GraphQL Schema Projection
 
 ### Changes Implemented
+
 - Created a complete GraphQL SDL + resolver stubs projection that generates type-safe schema definitions from Manifest IR
 - **Entity types**: Maps IR entities to GraphQL object types with typed fields, computed properties, and relationship fields
 - **Query type**: Generates `list` (plural) and `detail` (by ID) query fields for each entity
@@ -1038,6 +1132,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - Registered as the 8th built-in projection in the projection registry
 
 ### Files Modified
+
 - `src/manifest/projections/graphql/types.ts` — **New**: GraphQLProjectionOptions interface
 - `src/manifest/projections/graphql/generator.ts` — **New**: GraphQLProjection class with `graphql.schema` and `graphql.resolvers` surfaces
 - `src/manifest/projections/graphql/index.ts` — **New**: Public module entry point
@@ -1046,6 +1141,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - `src/manifest/projections/index.ts` — Added GraphQLProjection and GraphQLProjectionOptions exports
 
 ### Notes for Developer
+
 - `publish` is a reserved keyword in the Manifest language — cannot be used as a command name in `.manifest` source. Tests use `release`, `activate`, `assign`, etc. instead
 - All 1690 tests pass (76 test files), including the 41 new GraphQL projection tests
 - No new TypeScript errors or ESLint errors introduced (preexisting errors in `agent-sdk` and other files are unrelated)
@@ -1053,6 +1149,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - Two surfaces: `graphql.schema` (SDL output) and `graphql.resolvers` (TypeScript resolver stubs)
 
 ### Verification Status
+
 - Verified via 41 comprehensive vitest tests covering: projection metadata, basic structure, type mapping (scalars, nullable, arrays, custom scalars), command-to-mutation mapping, event-to-subscription mapping, policy-to-auth-directive mapping, enum types, computed properties, resolver stubs (queries with direct DB, mutations with runtime.runCommand, subscription resolvers), deterministic output, and edge cases (empty IR, unknown surfaces, no properties, no parameters)
 - Playwright browser-based verification not applicable — this is a pure code generation projection with no UI surface. All verification done through the test suite.
 
@@ -1061,6 +1158,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ---
 
 ### Runtime Health Check and Readiness Probe
+
 **Feature ID:** `health-check-endpoint`  
 **Status:** Shipped in v1.8.0
 
@@ -1069,6 +1167,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ## Summary: Runtime Health Check and Readiness Probe
 
 ### Changes Implemented
+
 - Created a new `HealthCheckProjection` as a standalone built-in projection that generates `/manifest/health` endpoint code from IR
 - Three surfaces implemented:
   - `health.handler` — Framework-agnostic TypeScript handler with IR integrity check (provenance hash verification), per-store-target connectivity check functions (deduplicated by target type), outbox queue depth check (postgres/supabase only), and `runHealthCheck()` orchestrator with aggregated status (`healthy`/`degraded`/`unhealthy`)
@@ -1085,6 +1184,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - 39 new tests covering metadata, all three surfaces, options, determinism, and edge cases
 
 ### Files Modified
+
 - `src/manifest/projections/health/types.ts` (created) — `HealthCheckProjectionOptions` interface, `HEALTH_DEFAULTS`, `normalizeHealthOptions()`
 - `src/manifest/projections/health/generator.ts` (created) — `HealthCheckProjection` class with 3 surfaces
 - `src/manifest/projections/health/generator.test.ts` (created) — 39 tests
@@ -1094,6 +1194,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - `src/manifest/projections/__snapshots__/snapshot.test.ts.snap` (regenerated) — Includes health projection snapshots
 
 ### Notes for Developer
+
 - Pre-existing test failures exist in `ir-compiler.test.ts` (9 failures), `conformance.test.ts` (23 failures in blog-app), `openapi/generator.test.ts` (1 failure), and `postgres.live.test.ts` (2 failures) — all unrelated to this change
 - Pre-existing typecheck errors exist in `ir-compiler.ts` (unused `RoleNode`/`IRRolePermission` imports, missing `transformRole` method) — unrelated to this change
 - Store connectivity checks generate TODO stubs — the projection cannot know runtime credentials. This follows the same pattern as GraphQL resolver stubs
@@ -1104,6 +1205,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ---
 
 ### IR Diff and Migration Generator
+
 **Feature ID:** `ir-diff-tool`  
 **Status:** Shipped in v1.8.0
 
@@ -1150,6 +1252,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
    - Complex multi-entity scenarios
 
 ### Files Modified
+
 - `src/manifest/ir-diff.ts` (new) — Core diff engine (~1000 lines)
 - `src/manifest/ir-diff.test.ts` (new) — 35 unit tests
 - `packages/cli/src/commands/ir-diff.ts` (new) — CLI command implementation
@@ -1157,6 +1260,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - `package.json` (modified) — Added `./ir-diff` export
 
 ### Verification Status
+
 - TypeScript typecheck passes
 - ESLint passes on all new/modified files
 - 35/35 unit tests pass
@@ -1165,6 +1269,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - Temporary verification script cleaned up after testing
 
 ### Notes for Developer
+
 - The 7 failing conformance tests in `56-expression-builtins.manifest` are pre-existing on this branch and unrelated to the IR diff feature
 - The 3 lint errors in `tools/test-builtins.ts` are pre-existing and unrelated
 - The CLI command imports from `@angriff36/manifest/ir-diff` — the package must be built (`tsc -p tsconfig.lib.json`) before CLI use
@@ -1175,6 +1280,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ---
 
 ### IR to Mermaid Diagram Exporter
+
 **Feature ID:** `ir-to-mermaid`  
 **Status:** Shipped in v1.8.0
 
@@ -1208,6 +1314,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
    - Artifact path hints
 
 ### Files Modified
+
 - `src/manifest/projections/mermaid/generator.ts` (new) — MermaidProjection implementation
 - `src/manifest/projections/mermaid/mermaid.test.ts` (new) — 21 unit tests
 - `src/manifest/projections/builtins.ts` — Register MermaidProjection
@@ -1217,6 +1324,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - `package.json` — Add `./projections/mermaid` subpath export
 
 ### Notes for Developer
+
 - All 1844 tests pass (81 test files), zero regressions
 - The diagram command accepts both `.manifest` source files and `.ir.json` precompiled IR
 - Output is deterministic (entities/relationships/transitions sorted alphabetically)
@@ -1224,6 +1332,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - The `mermaid-verify.spec.ts` Playwright test was created, verified successfully via CLI execution, and deleted after verification
 
 ### Verification Status
+
 - **Unit tests**: 21 dedicated tests for MermaidProjection — all pass
 - **Snapshot tests**: MermaidProjection included in the existing projection snapshot suite — passes
 - **Full test suite**: 1844/1844 tests pass with zero regressions
@@ -1235,6 +1344,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ---
 
 ### Database Migration CLI Integration
+
 **Feature ID:** `migration-cli-integration`  
 **Status:** Shipped in v1.8.0
 
@@ -1293,6 +1403,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ---
 
 ### Multi-Module Project Compilation
+
 **Feature ID:** `multi-module-compilation`  
 **Status:** Shipped in v1.8.0
 
@@ -1301,6 +1412,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ## Summary: Multi-Module Project Compilation
 
 ### Changes Implemented
+
 - **Lexer**: Added `use` keyword to the KEYWORDS set for tokenization
 - **Types/AST**: Added `UseNode` interface and `uses: UseNode[]` field to `ManifestProgram`
 - **Parser**: Added `parseUse()` method with validation (relative paths, `.manifest` extension), enforces use-at-top rule with clear error on use-after-declarations
@@ -1312,6 +1424,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - **Tests**: 31 new tests (11 resolver + 15 multi-compiler + 5 parser use-declaration tests)
 
 ### Files Modified
+
 - `src/manifest/lexer.ts` — Added `'use'` keyword
 - `src/manifest/types.ts` — Added `UseNode` interface, `uses` field on `ManifestProgram`
 - `src/manifest/parser.ts` — Added `UseNode` import, use-parsing loop, `parseUse()` method
@@ -1324,6 +1437,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - `packages/cli/tsconfig.json` — Added path mappings for new modules
 
 ### Files Created
+
 - `src/manifest/module-resolver.ts` — Module resolution with ResolverHost, cycle detection, topological sort
 - `src/manifest/multi-compiler.ts` — Multi-file compilation with cross-file validation and IR merging
 - `src/manifest/module-resolver.test.ts` — 11 tests for resolver
@@ -1331,6 +1445,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 - `src/manifest/parser.test.ts` — 5 new tests added (use declaration parsing)
 
 ### Notes for Developer
+
 - All 2022 existing tests pass (88 test files, 0 failures)
 - TypeScript clean (`pnpm run typecheck` passes)
 - Pre-existing lint issues in unrelated files are not from this change
@@ -1344,6 +1459,7 @@ The IR correctly includes enum definitions with all metadata (labels, ordinals) 
 ---
 
 ### Range and Boundary Constraint Primitives
+
 **Feature ID:** `range-constraint`  
 **Status:** Shipped in v1.8.0
 
@@ -1363,6 +1479,7 @@ Four built-in constraint functions — `min`, `max`, `between`, and `length` —
 ### Files changed/created
 
 **New files:**
+
 - `src/manifest/constraint-analysis.ts` — Static analysis module extracting numeric range and length bounds from IR constraint expressions. Produces `NumericRange` and `LengthConstraint` types with SQL CHECK, Zod chain, and OpenAPI helper converters.
 - `src/manifest/constraint-analysis.test.ts` — 22 tests covering `between()`, `min()`, `max()`, `length()`, binary comparisons, merging, and all converter functions.
 - `src/manifest/conformance/fixtures/56-expression-builtins.manifest` — Conformance fixture for expression builtins
@@ -1372,6 +1489,7 @@ Four built-in constraint functions — `min`, `max`, `between`, and `length` —
 - `src/manifest/projections/openapi/generator.ts` — OpenAPI 3.1 projection with constraint-aware `minimum`/`maximum`/`minLength`/`maxLength` on JSON Schema properties
 
 **Modified files:**
+
 - `src/manifest/runtime-engine.ts` — Added `min`, `max`, `between`, `length`, `trim`, `split`, `count`, `startsWith`, `endsWith`, `replace`, `toUpperCase`, `toLowerCase`, `substring`, `indexOf` builtins to the expression evaluator. Fixed `replaceAll` → `replace(new RegExp(..., 'g'), ...)` for ES target compatibility.
 - `src/manifest/lexer.ts` — Added `tenant` and `timestamps` keywords
 - `src/manifest/parser.ts` — Added `parseTenant()` method, `timestamps` modifier parsing, fixed `parseRelationship()` to use `consumeIdentifierOrKeyword()` allowing keywords like `tenant` as relationship names/targets
@@ -1397,6 +1515,7 @@ Four built-in constraint functions — `min`, `max`, `between`, and `length` —
 ### Manual cleanup needed
 
 Delete these debug files (permission denied in CLI):
+
 - `tools/debug-compile.mjs`
 - `tools/debug-compile2.mjs`
 - `tools/debug-glob.mjs`
@@ -1407,6 +1526,7 @@ Delete these debug files (permission denied in CLI):
 ---
 
 ### Regex Pattern Constraint Primitive
+
 **Feature ID:** `regex-constraint`  
 **Status:** Shipped in v1.8.0
 
@@ -1415,6 +1535,7 @@ Delete these debug files (permission denied in CLI):
 ## Summary: Regex Pattern Constraint Primitive (`matches()`)
 
 ### Changes Implemented
+
 - **Runtime builtin**: Added `matches(s, pattern)` function to the runtime engine's built-in registry that tests a string against a regex pattern, returning `false` for non-strings, invalid patterns, or non-matches
 - **Compile-time regex validation**: Added validation in the IR compiler's `Call` expression handler that emits an error diagnostic when `matches()` is called with a literal string that is not a valid regex pattern
 - **Constraint analysis infrastructure**: Added `PatternConstraint` type, `extractLiteralString()` helper, `matches()` call recognition in `analyzeConstraintExpression()`, pattern constraint aggregation in `analyzeConstraints()`, and converter functions `patternConstraintToCheckConstraint()` (PostgreSQL `~` operator) and `patternConstraintToZodChain()` (`.regex()`)
@@ -1425,6 +1546,7 @@ Delete these debug files (permission denied in CLI):
 - **Bug fix**: Fixed a missing `patternConstraints` in the final return statement of `analyzeConstraintExpression()` (line 253) that was missed by the previous `replace_all` edit
 
 ### Files Modified
+
 - `src/manifest/runtime-engine.ts` — Added `matches()` builtin function
 - `src/manifest/ir-compiler.ts` — Added compile-time regex pattern validation for `matches()` calls
 - `src/manifest/constraint-analysis.ts` — Added `PatternConstraint` type, extraction logic, SQL/Zod converters
@@ -1438,6 +1560,7 @@ Delete these debug files (permission denied in CLI):
 - `src/manifest/conformance/expected/*.ir.json` — Regenerated existing IR files (irHash changes only)
 
 ### Notes for Developer
+
 - The `pattern` property modifier concept from the feature description was intentionally implemented as a constraint expression (`matches(self.prop, "regex")`) rather than a keyword modifier, because the existing architecture only supports keyword-only modifiers (no arguments). This is more consistent with how `between()`, `min()`, `max()`, and `length()` constraints already work.
 - Prisma generator was not updated because Prisma doesn't have native CHECK constraint syntax — the `patternConstraintToCheckConstraint()` helper is available for consumers who generate raw SQL migrations.
 - The `matches()` builtin gracefully handles invalid regex patterns at runtime (returns `false`) while also providing compile-time diagnostics when the pattern is a string literal.
@@ -1448,6 +1571,7 @@ Delete these debug files (permission denied in CLI):
 ---
 
 ### Role Hierarchy and Permission Inheritance
+
 **Feature ID:** `role-hierarchy`  
 **Status:** Shipped in v1.8.0
 
@@ -1456,6 +1580,7 @@ Delete these debug files (permission denied in CLI):
 ## Summary: Role Hierarchy and Permission Inheritance
 
 ### Changes Implemented
+
 - **Manifest DSL syntax**: `role <Name> [extends <Parent>] { (allow|deny) <action> [<target>]* }` — block-bodied role declarations with single-parent inheritance
 - **Lexer**: Added `extends` keyword; `role` treated as contextual identifier (not reserved keyword) to preserve backward compatibility with `property role: string` patterns
 - **Parser**: Added `parseRole()` method with dispatch wiring in top-level and module contexts
@@ -1469,6 +1594,7 @@ Delete these debug files (permission denied in CLI):
 - **Pre-existing bug fix**: Fixed `validate-ai.test.ts` which used `provenance.sources` (now a valid schema property) as the test for additional property detection
 
 ### Files Modified
+
 - `src/manifest/types.ts` — Added `RolePermissionNode`, `RoleNode` interfaces; extended `ManifestProgram`, `ModuleNode`
 - `src/manifest/lexer.ts` — Added `extends` keyword
 - `src/manifest/parser.ts` — Added `parseRole()`, `RoleNode`/`RolePermissionNode` imports, dispatch wiring, sync recovery
@@ -1483,6 +1609,7 @@ Delete these debug files (permission denied in CLI):
 - `packages/cli/src/commands/validate-ai.test.ts` — Fixed pre-existing test using `provenance.unknownField` instead of `provenance.sources`
 
 ### Notes for Developer
+
 - `role` is a **contextual identifier**, not a reserved keyword — existing programs using `role` as a property name (e.g., `property role: string`, `user.role == "admin"`) continue to work without changes
 - `roles` is **optional** on the IR root — only emitted when roles are declared, avoiding regeneration of 60+ existing fixture files
 - `effectivePermissions` is **precomputed at compile time** — runtime permission checks are O(1) lookups, no graph traversal
@@ -1496,6 +1623,7 @@ Delete these debug files (permission denied in CLI):
 ---
 
 ### Multi-Tenancy Isolation Policy
+
 **Feature ID:** `tenant-isolation-policy`  
 **Status:** Shipped in v1.8.0
 
@@ -1506,6 +1634,7 @@ Delete these debug files (permission denied in CLI):
 ### Changes Implemented
 
 **Language Surface (Syntax)**
+
 - Added `tenant` keyword to the lexer's keyword list
 - Added `TenantNode` AST type to `types.ts` with `property`, `dataType`, and `contextPath` fields
 - Added `tenant?: TenantNode` field to `ManifestProgram` interface
@@ -1514,12 +1643,14 @@ Delete these debug files (permission denied in CLI):
 - Added `tenant` to parser sync recovery list
 
 **IR Layer**
+
 - Added `IRTenant` interface to `ir.ts` with `property`, `type`, and `contextPath` fields
 - Added optional `tenant?: IRTenant` field to the `IR` interface
 - Implemented `transformTenant()` in the IR compiler to compile AST tenant nodes to IR
 - Tenant field is only emitted when declared (no IR pollution for programs without tenants)
 
 **Runtime Engine**
+
 - Added `resolveTenantValue()` helper that navigates the context path (e.g., `context.tenantId`) to extract the active tenant value
 - Upgraded the tenant gate in `runCommand()`: now activates when **either** the explicit `requireTenantContext` option is set **or** the IR declares a `tenant` config — fail-closed with `MISSING_TENANT_CONTEXT`
 - `createInstance()`: auto-injects tenant property value into new entities when IR has tenant config
@@ -1527,11 +1658,13 @@ Delete these debug files (permission denied in CLI):
 - `getInstance()`: verifies tenant ownership — returns `undefined` for cross-tenant access attempts
 
 **Prisma Projection**
+
 - Auto-adds tenant discriminator column to every emitted Prisma model (unless entity already declares it)
 - Auto-adds `@@index([tenantId])` for query performance on tenant-scoped reads
 - Emits PostgreSQL RLS policy hints as comments after each model block (ALTER TABLE, CREATE POLICY)
 
 **Conformance**
+
 - Created fixture `58-tenant-isolation.manifest` exercising tenant declaration with an entity
 - Generated expected IR output `58-tenant-isolation.ir.json` via regen script
 - Created `58-tenant-isolation.results.json` with 2 runtime test cases:
@@ -1539,12 +1672,14 @@ Delete these debug files (permission denied in CLI):
   - Command fails without tenant context (verifies fail-closed behavior)
 
 **Unit Tests** (12 new tests)
+
 - Lexer: tokenizes `tenant` as keyword
 - Parser: parses tenant declaration, rejects duplicates, works alongside entities
 - IR Compiler: compiles tenant to IR, omits when not declared
 - Runtime: fail-closed gate, auto-injection on writes, getAllInstances filtering, getInstance cross-tenant rejection, backwards compatibility without tenant config
 
 ### Files Modified
+
 - `src/manifest/lexer.ts` — added `tenant` keyword
 - `src/manifest/types.ts` — added `TenantNode`, updated `ManifestProgram`
 - `src/manifest/parser.ts` — added `parseTenant()`, tenant import, parse dispatch, sync list
@@ -1559,6 +1694,7 @@ Delete these debug files (permission denied in CLI):
 - `tasks/todo.md` (new)
 
 ### Notes for Developer
+
 - Test suite: 1278 passing (15 new), 4 pre-existing failures unchanged (FK composite test, 2 CLI compile tests, enforce-surface CLI)
 - TypeScript typecheck: clean
 - The `tenant` declaration is a top-level construct — one per program, positioned anywhere alongside entities/modules/stores
@@ -1571,6 +1707,7 @@ Delete these debug files (permission denied in CLI):
 ---
 
 ### Automatic Timestamp Fields (createdAt / updatedAt)
+
 **Feature ID:** `timestamp-auto-fields`  
 **Status:** Shipped in v1.8.0
 
@@ -1579,6 +1716,7 @@ Delete these debug files (permission denied in CLI):
 ## Summary: Automatic Timestamp Fields (createdAt / updatedAt)
 
 ### Changes Implemented
+
 - **Lexer**: `timestamps` keyword was already registered (pre-existing)
 - **Types**: `EntityNode.timestamps?: boolean` and `IREntity.timestamps?: boolean` were already defined (pre-existing)
 - **Parser** (`src/manifest/parser.ts`): Added `timestamps` keyword handling in entity parse loop and included `timestamps` field in the EntityNode return object
@@ -1589,6 +1727,7 @@ Delete these debug files (permission denied in CLI):
 - **Conformance Fixture**: Created `59-timestamp-auto-fields.manifest` fixture with expected IR and runtime results verifying end-to-end behavior
 
 ### Files Modified
+
 - `src/manifest/parser.ts` — Added timestamps keyword parsing and return
 - `src/manifest/ir-compiler.ts` — Added timestamps passthrough and createdAt/updatedAt property injection
 - `src/manifest/runtime-engine.ts` — Added timestamp auto-population on create and update
@@ -1599,6 +1738,7 @@ Delete these debug files (permission denied in CLI):
 - `src/manifest/conformance/expected/59-timestamp-auto-fields.results.json` — Expected runtime results
 
 ### Notes for Developer
+
 - All 1284 tests pass (57 test files, 9 skipped live DB tests)
 - Pre-existing TypeScript errors in `src/manifest/projections/openapi/generator.ts` and a `replaceAll` issue at `runtime-engine.ts:747` are unrelated to this feature
 - The `timestamps` modifier is idempotent — if a user manually declares `createdAt` or `updatedAt` properties, the auto-injection skips those fields
@@ -1610,6 +1750,7 @@ Delete these debug files (permission denied in CLI):
 ---
 
 ### Value Object / Embedded Type Declarations
+
 **Feature ID:** `value-object-type`  
 **Status:** Shipped in v1.8.0
 
@@ -1620,6 +1761,7 @@ Delete these debug files (permission denied in CLI):
 ### Changes Implemented
 
 **Core Language Support**
+
 - Added `value` keyword to the lexer (context-sensitive: emitted as IDENTIFIER to allow use as property/identifier names)
 - Added `ValueObjectNode` to the AST types (`types.ts`)
 - Added `values: ValueObjectNode[]` to `ManifestProgram` AST node
@@ -1631,31 +1773,38 @@ Delete these debug files (permission denied in CLI):
 - Added `transformValueObject()` method to IR compiler
 
 **IR Schema**
+
 - Updated `docs/spec/ir/ir-v1.schema.json` with `IRValueObject` definition and `values` required field
 
 **Code Generation**
+
 - Added `genValueObject()` to `CodeGenerator` emitting TypeScript interfaces for each value object
 - Added import for `ValueObjectNode` from types
 
 **Database Projection (Prisma)**
+
 - Updated `emitPropertyLine()` to detect value object types and emit as `Json` (JSONB) columns
 - Value object types are identified by checking `ir.values` against the property's type name
 
 **Conformance Tests**
+
 - Added fixture `60-value-objects.manifest` with Money and Address value objects used in Product and Order entities
 - Regenerated all conformance expected outputs to include `values: []` field
 - Updated 5 diagnostic fixtures that previously expected `value` to be a reserved word (now context-sensitive)
 - Created new conformance test fixture `.ir.json` showing proper IR structure with value objects
 
 **Unit Tests**
+
 - Added lexer tests for `value` as IDENTIFIER in property and mutate contexts
 - Added 6 parser tests for value object parsing (empty, with properties, as entity type, multiple, non-property errors, "value" as property name)
 
 **Infrastructure Updates**
+
 - Added `values: []` to all test fixtures constructing IR objects manually (18+ test files)
 - Updated `validate.test.ts`, `validate-ai.test.ts`, and `verify-validate-ai.mjs` with `values: []`
 
 ### Files Modified
+
 - `src/manifest/lexer.ts` — Context-sensitive `value` keyword (as IDENTIFIER)
 - `src/manifest/types.ts` — `ValueObjectNode` interface and `values` in `ManifestProgram`
 - `src/manifest/ir.ts` — `IRValueObject` interface and `values` in `IR`
@@ -1673,6 +1822,7 @@ Delete these debug files (permission denied in CLI):
 - 18+ test files updated with `values: []` in IR construction
 
 ### Notes for Developer
+
 - `value` is context-sensitive: `value Money { ... }` is the keyword declaration, but `property value: number` and `mutate value = 1` use `value` as an identifier — no reserved word errors are emitted
 - Value objects are embedded as JSONB columns in Prisma projections (not separate tables)
 - All 1314 tests passing, typecheck clean, lint clean
@@ -1687,6 +1837,7 @@ These features have full implementation summaries. Code is on **main** but not y
 **76 features.** See the [Release Roadmap](#release-roadmap) above for planned grouping.
 
 ### AI Agent SDK for IR Consumption
+
 **Feature ID:** `ai-agent-sdk`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -1700,15 +1851,15 @@ A typed SDK (`@angriff36/manifest/agent-sdk`) wrapping the Manifest runtime engi
 
 ### Files created (7 new)
 
-| File | Purpose |
-|------|---------|
-| `src/manifest/agent-sdk/types.ts` | SDK types: `AgentToolCall`, `AgentToolResult`, `IntentMatch`, `EntitySummary`, `CommandDetails`, `ToolDefinitionOptions`, etc. Re-exports all relevant IR types. |
-| `src/manifest/agent-sdk/json-schema.ts` | `irTypeToJsonSchema()` converts IR types to Draft-07 JSON Schema. Handles primitives, DateTime, Email, Array, nullable, Money. |
-| `src/manifest/agent-sdk/introspect.ts` | `formatExpression()` (standalone formatter), `formatIRType()`, `listEntities()`, `describeEntity()`, `listCommands()`, `describeCommand()`, `getEntityRelationships()` |
-| `src/manifest/agent-sdk/tool-definitions.ts` | `mangleToolName()` / `parseToolName()` for snake/dot naming. `toAnthropicTools()`, `toOpenAITools()`, `toVercelAITools()` for tool generation. 7 built-in introspection tools. |
-| `src/manifest/agent-sdk/intent-mapper.ts` | `tokenize()` splits on whitespace + camelCase (before lowercasing). `findMatchingCommands()` scores +3 command tokens, +2 entity, +1 param/event, +0.5 module. |
-| `src/manifest/agent-sdk/agent-runtime.ts` | `AgentRuntime` class wrapping `RuntimeEngine`. `executeToolCall()` routes to built-ins or IR commands. Handles mangled name resolution. Returns LLM-friendly `AgentToolResult`. |
-| `src/manifest/agent-sdk/index.ts` | Public barrel export. |
+| File                                         | Purpose                                                                                                                                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/manifest/agent-sdk/types.ts`            | SDK types: `AgentToolCall`, `AgentToolResult`, `IntentMatch`, `EntitySummary`, `CommandDetails`, `ToolDefinitionOptions`, etc. Re-exports all relevant IR types.                |
+| `src/manifest/agent-sdk/json-schema.ts`      | `irTypeToJsonSchema()` converts IR types to Draft-07 JSON Schema. Handles primitives, DateTime, Email, Array, nullable, Money.                                                  |
+| `src/manifest/agent-sdk/introspect.ts`       | `formatExpression()` (standalone formatter), `formatIRType()`, `listEntities()`, `describeEntity()`, `listCommands()`, `describeCommand()`, `getEntityRelationships()`          |
+| `src/manifest/agent-sdk/tool-definitions.ts` | `mangleToolName()` / `parseToolName()` for snake/dot naming. `toAnthropicTools()`, `toOpenAITools()`, `toVercelAITools()` for tool generation. 7 built-in introspection tools.  |
+| `src/manifest/agent-sdk/intent-mapper.ts`    | `tokenize()` splits on whitespace + camelCase (before lowercasing). `findMatchingCommands()` scores +3 command tokens, +2 entity, +1 param/event, +0.5 module.                  |
+| `src/manifest/agent-sdk/agent-runtime.ts`    | `AgentRuntime` class wrapping `RuntimeEngine`. `executeToolCall()` routes to built-ins or IR commands. Handles mangled name resolution. Returns LLM-friendly `AgentToolResult`. |
+| `src/manifest/agent-sdk/index.ts`            | Public barrel export.                                                                                                                                                           |
 
 ### Test results
 
@@ -1737,6 +1888,7 @@ A typed SDK (`@angriff36/manifest/agent-sdk`) wrapping the Manifest runtime engi
 ---
 
 ### AI-Assisted Conformance Test Generator
+
 **Feature ID:** `ai-test-generator`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -1745,6 +1897,7 @@ A typed SDK (`@angriff36/manifest/agent-sdk`) wrapping the Manifest runtime engi
 ## Summary: Add a `manifest gen-tests` command
 
 ### Changes Implemented
+
 - Created new CLI command `manifest gen-tests` at `packages/cli/src/commands/gen-tests.ts`
 - Added command registration to `packages/cli/src/index.ts`
 - Exported `buildSystemPrompt` function from `generate-from-prompt.ts` for reuse
@@ -1752,7 +1905,9 @@ A typed SDK (`@angriff36/manifest/agent-sdk`) wrapping the Manifest runtime engi
 - Added missing `cli-table3` dependency to `packages/cli/package.json`
 
 ### Command Features
+
 The `manifest gen-tests` command:
+
 - Analyzes existing .manifest source and uses LLM to generate conformance fixtures
 - Supports multiple test categories: edge-cases, boundary, adversarial, coverage
 - Generates fixture source with corresponding IR expected outputs
@@ -1762,6 +1917,7 @@ The `manifest gen-tests` command:
 - Includes comprehensive error handling and retry logic
 
 ### Command Options
+
 - `--category <type>`: Test category (edge-cases, boundary, adversarial, coverage)
 - `--count <n>`: Number of test fixtures to generate (default: 3)
 - `--feature <text>`: Custom feature description for test generation
@@ -1772,6 +1928,7 @@ The `manifest gen-tests` command:
 - `--verbose`: Include iteration details
 
 ### Files Modified
+
 - `packages/cli/src/commands/gen-tests.ts` (NEW) - Main command implementation
 - `packages/cli/src/commands/generate-from-prompt.ts` - Exported buildSystemPrompt function
 - `packages/cli/src/index.ts` - Added command registration
@@ -1779,12 +1936,15 @@ The `manifest gen-tests` command:
 - `packages/cli/package.json` - Added cli-table3 dependency
 
 ### Verification Status
+
 The command was verified through:
+
 1. Help command test - ✓ Help text displays correctly with all options
 2. Fixtures directory test - ✓ Correctly detects 62 existing fixtures
 3. API key validation test - ✓ Correctly fails without ANTHROPIC_API_KEY
 
 ### Notes for Developer
+
 - The command requires ANTHROPIC_API_KEY environment variable or --api-key option
 - Generated fixtures are automatically compiled to produce expected IR outputs
 - Fixtures that fail compilation are rejected with verbose error messages
@@ -1797,6 +1957,7 @@ The command was verified through:
 ---
 
 ### Analytics Event Schema Projection
+
 **Feature ID:** `analytics-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -1850,6 +2011,7 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 ---
 
 ### Generated Code Bundle Size Analyzer
+
 **Feature ID:** `bundle-size-analyzer`  
 **Planned release:** v2.0.0 (Advanced Runtime & Platform)
 
@@ -1858,6 +2020,7 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 ## Summary: Add `manifest analyze` CLI command for bundle size analysis
 
 ### Changes Implemented
+
 - Created `packages/cli/src/commands/analyze.ts` — the `manifest analyze` CLI command that:
   - Loads IR from `.manifest` (compiles on the fly) or `.ir.json` files
   - Runs a projection (default: `nextjs`) to generate code artifacts
@@ -1870,6 +2033,7 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 - Added the `@angriff36/manifest/projections` alias to `vitest.config.ts` (positioned after specific subpath aliases to avoid shadowing)
 
 ### Files Modified
+
 - `packages/cli/src/commands/analyze.ts` (new) — analyze command implementation (~400 lines)
 - `packages/cli/src/commands/analyze.test.ts` (new) — 6 vitest tests covering entity/store reporting, flagging, JSON output, .manifest compilation, and error handling
 - `packages/cli/src/index.ts` — added import and Commander registration for `analyze` command
@@ -1877,6 +2041,7 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 - `vitest.config.ts` — added `@angriff36/manifest/projections` alias
 
 ### Verification Status
+
 - 6/6 analyze unit tests pass (vitest)
 - Full test suite: 2276/2276 tests pass (the 1 pre-existing snapshot test failure is unrelated — it hardcodes 18 projections but the codebase now has 19)
 - TypeScript: no errors in the new files
@@ -1886,6 +2051,7 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 - All 17 end-to-end verification checks passed (script deleted after verification)
 
 ### Notes for Developer
+
 - The "minified" size is an approximation — it strips comments and collapses whitespace but does not perform tree-shaking or variable mangling. This is by design since no bundler is a project dependency. The metric gives a useful relative comparison between IR entities.
 - The command defaults to the `nextjs` projection which has the richest per-entity surface set. Other projections can be used with `-p <name>`.
 - The `entitySurfaces` detection in `generateArtifacts()` is heuristic-based — it matches surfaces ending in `.route`, `.detail`, `.entity`, or starting with `nextjs.`. If you add a new projection with different naming, this detection may need adjustment.
@@ -1896,6 +2062,7 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 ---
 
 ### Automated Changelog Generation from IR Diffs
+
 **Feature ID:** `changelog-from-ir-diff`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -1904,6 +2071,7 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 ## Summary: Add `manifest changelog` command for Git tag-based IR diff changelogs
 
 ### Changes Implemented
+
 - Created new `manifest changelog <from-ref> [to-ref]` CLI command that generates human-readable Markdown changelogs from IR diffs between Git refs (tags, branches, SHAs)
 - Compiles `.manifest` sources at each Git ref using `git show` and `git ls-tree`, then diffs the resulting IR
 - Classifies changes into Keep a Changelog sections: **Breaking Changes**, **Added** (new entities, commands, policies, events, stores, properties), **Changed** (modified properties, constraints, commands, policies), **Deprecated**, and **Removed**
@@ -1916,11 +2084,13 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 - Uses existing `diffIR` and `classifyBreakingChanges` infrastructure from `@angriff36/manifest/ir-diff` and `@angriff36/manifest/breaking-change`
 
 ### Files Modified
+
 - `packages/cli/src/commands/changelog.ts` — **New file**: Command implementation with Git helpers, IR compilation at refs, Markdown generation, and JSON output
 - `packages/cli/src/commands/changelog.test.ts` — **New file**: 8 comprehensive tests covering Markdown output, JSON output, file writing, custom titles, no-changes detection, invalid ref errors, breaking change detection, and JSON file output
 - `packages/cli/src/index.ts` — Added import and Commander.js registration for the `changelog` command
 
 ### Notes for Developer
+
 - The command leverages existing `diffIR()` and `classifyBreakingChanges()` functions — no new IR diffing logic was needed
 - For multi-file projects, each `.manifest` file is compiled independently (consistent with how `manifest compile` works)
 - Pre-existing typecheck errors in other files (agent-sdk, drizzle, openapi generators) are unrelated to this change
@@ -1928,6 +2098,7 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 - CLI package typechecks clean with zero errors
 
 ### Verification Status
+
 - Verified with 8 vitest tests using real Git repositories (temp repos with tagged commits)
 - Tests cover: Markdown generation, JSON output, file writing, custom titles, no-changes detection, invalid ref handling, breaking change detection, and JSON-to-file output
 - Playwright browser testing is not applicable for this CLI-only command; the vitest suite with real Git repos provides comprehensive verification
@@ -1940,6 +2111,7 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 ---
 
 ### Command and Guard Coverage Reporter
+
 **Feature ID:** `command-coverage-report`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -1948,6 +2120,7 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 ## Summary: Add `manifest coverage` CLI Command
 
 ### Changes Implemented
+
 - Created the `manifest coverage` CLI command that analyzes IR and conformance/test evidence to report coverage of commands, guards, policies, and constraint branches
 - Coverage analysis extracts coverable paths from IR: entity commands, per-command guard expressions (indexed), named authorization policies, and constraints (with severity levels)
 - Evidence scanning reads conformance `*.results.json` files for exercised commands (guard failures, policy denials, constraint violations) and scans `*.test.ts` files for substring references
@@ -1959,11 +2132,13 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 - Added 11 comprehensive tests covering: empty evidence (0%), test file references, conformance guard failures, policy denials, constraint coverage, overall percentage computation, 100% coverage, empty IR edge case, missing IR error, JSON structure validation, and uncovered paths filtering
 
 ### Files Modified
+
 - `packages/cli/src/commands/coverage.ts` (new — 530 lines, coverage analysis logic)
 - `packages/cli/src/commands/coverage.test.ts` (new — 11 tests)
 - `packages/cli/src/index.ts` (added import and CLI command registration)
 
 ### Notes for Developer
+
 - The coverage command uses local IR type interfaces rather than importing from `src/manifest/ir.ts` to keep the CLI lightweight
 - Follows the same patterns as `audit-governance` command: exported function + typed options/result + text/json output
 - Guard coverage is tracked per index (e.g., `Task.complete:guard[0]`) — both failure and success paths mark guards as covered
@@ -1972,6 +2147,7 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 - Pre-existing typecheck failures in drizzle/graphql/openapi/react-query/zod projections are unrelated
 
 ### Verification Status
+
 - Playwright verification test was created, executed (2/2 passing), and deleted after verification
 - Test 1 verified all 11 vitest coverage tests pass via Playwright's test runner with JSON reporter parsing
 - Test 2 verified the `coverage` command is properly registered in the CLI with all expected options (`--ir`, `--source`, `--min-coverage`, `--strict`, `--format`)
@@ -1982,6 +2158,7 @@ Created a new `AnalyticsProjection` (the 19th built-in projection) that generate
 ---
 
 ### Command Retry Policy Declarations
+
 **Feature ID:** `command-retry-policy`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -2073,6 +2250,7 @@ The retry feature is complete and tested. The runtime engine now supports retry 
 ---
 
 ### Interactive Constraint Test Harness
+
 **Feature ID:** `constraint-test-harness`  
 **Planned release:** v2.0.0 (Advanced Runtime & Platform)
 
@@ -2081,6 +2259,7 @@ The retry feature is complete and tested. The runtime engine now supports retry 
 ## Summary: Interactive Constraint Test Harness
 
 ### Changes Implemented
+
 - **New `evaluateAllConstraints` public method on `RuntimeEngine`**: Added a method that returns all constraint outcomes (both passed and failed) for a given entity and data. The existing `checkConstraints` only returned failures — this new method enables the diagnostic UI to show complete constraint status.
 - **New `ConstraintTestPanel.tsx` component**: A full-featured interactive panel for testing constraint expressions with:
   - Entity sidebar listing all entities that have constraints, with constraint counts
@@ -2096,12 +2275,14 @@ The retry feature is complete and tested. The runtime engine now supports retry 
 - **Export from artifacts index**: ConstraintTestPanel is exported for use by other consumers
 
 ### Files Modified
+
 - `src/manifest/runtime-engine.ts` — Added `evaluateAllConstraints()` public method (lines 1377-1385)
 - `src/artifacts/ConstraintTestPanel.tsx` — New file (~400 lines), the interactive constraint test harness UI
 - `src/artifacts/ArtifactsPanel.tsx` — Added import, PanelMode type update, sidebar button, and content rendering
 - `src/artifacts/index.ts` — Added ConstraintTestPanel export
 
 ### Notes for Developer
+
 - All existing tests pass (411/411 on core test files). The 3 failures in `86-readmodel` are pre-existing from untracked fixture work, not related to this change.
 - Production build succeeds with no new errors.
 - No new type errors introduced (verified via `tsc --noEmit -p tsconfig.app.json`).
@@ -2113,6 +2294,7 @@ The retry feature is complete and tested. The runtime engine now supports retry 
 ---
 
 ### Custom Built-In Expression Function Registration
+
 **Feature ID:** `custom-expression-functions`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -2121,6 +2303,7 @@ The retry feature is complete and tested. The runtime engine now supports retry 
 ## Summary: Custom Expression Functions (Plugin API)
 
 ### Changes Implemented
+
 - Added `customBuiltins` option to `RuntimeOptions` interface — allows plugin authors and project configurations to inject custom deterministic expression functions into the runtime engine
 - Wired custom builtins into `RuntimeEngine.getBuiltins()` — custom builtins are merged with core builtins, with core builtins always taking precedence on name collision (ensuring reserved names cannot be overridden)
 - Expanded `RESERVED_BUILTIN_NAMES` from 27 to 34 entries — added 7 previously missing core builtins (`matches`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map`) to prevent plugin collisions
@@ -2128,6 +2311,7 @@ The retry feature is complete and tested. The runtime engine now supports retry 
 - Updated `docs/spec/builtins.md` with complete documentation of the custom expression functions feature including registration API, reserved names, and usage examples
 
 ### Files Modified
+
 - `src/manifest/runtime-engine.ts` — Added `customBuiltins` field to `RuntimeOptions` and merged custom builtins into `getBuiltins()` method
 - `src/manifest/plugin-api.ts` — Expanded `RESERVED_BUILTIN_NAMES` to include all 34 core builtins; updated JSDoc comment on `BuiltinFunctionPlugin`
 - `src/manifest/plugin-api.test.ts` — Updated test count from 27 to 34; added `matches` to string builtins test; added aggregate builtins test group
@@ -2135,12 +2319,14 @@ The retry feature is complete and tested. The runtime engine now supports retry 
 - `docs/spec/builtins.md` — Added "Custom Expression Functions (Plugin API)" section with registration docs, reserved names list, and example
 
 ### Notes for Developer
+
 - The plugin loader (`plugin-loader.ts`) already collects `BuiltinFunctionPlugin` registrations into a `Map<string, Function>` — this change completes the wiring by making `RuntimeEngine` accept and use that map via `RuntimeOptions.customBuiltins`
 - Core builtins ALWAYS win on name collision — the spread order in `getBuiltins()` puts custom entries first, then core entries override on top
 - The `RESERVED_BUILTIN_NAMES` set was missing 7 entries that existed as core builtins in `getBuiltins()` but weren't protected from plugin collision. This is now fixed
 - All 1808 tests pass, typecheck passes, lint passes
 
 ### Verification Status
+
 - Feature verified via a temporary vitest test file (`src/manifest/custom-builtins-verify.test.ts`) with 4 test cases covering: guard expression evaluation with custom builtins, core builtin override protection, computed property evaluation with custom builtins, and reserved names count verification. All 4 tests passed. Test file was deleted after verification.
 - Playwright was not used because the project has no Playwright configuration — this is a language/runtime implementation, not a UI application. Verification was performed through the project's native vitest test runner.
 
@@ -2149,6 +2335,7 @@ The retry feature is complete and tested. The runtime engine now supports retry 
 ---
 
 ### Custom Store Adapter Registration via Plugin API
+
 **Feature ID:** `custom-store-adapter`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -2206,6 +2393,7 @@ The retry feature is complete and tested. The runtime engine now supports retry 
 ---
 
 ### Dynamic Data Masking Policy
+
 **Feature ID:** `data-masking`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -2216,11 +2404,13 @@ The retry feature is complete and tested. The runtime engine now supports retry 
 ### Changes Implemented
 
 #### IR Schema Updates
+
 - Added `masked` to the `PropertyModifier` enum in `docs/spec/ir/ir-v1.schema.json`
 - Added `IRMaskStrategy` definition with mask types: `redact`, `partial`, `tokenize`, `email`, `phone`, `ssn`, `creditCard`
 - Added `maskStrategy` optional field to `IRProperty` definition
 
 #### TypeScript Type Updates
+
 - Added `masked` to `PropertyModifier` union type in `src/manifest/ir.ts`
 - Added `IRMaskStrategy` interface with properties:
   - `type`: The masking strategy type
@@ -2230,10 +2420,12 @@ The retry feature is complete and tested. The runtime engine now supports retry 
   - `unmaskPolicy`: Optional boolean expression to bypass masking
 
 #### Language Parser Updates
+
 - Added `masked` keyword to lexer keywords array in `src/manifest/lexer.ts`
 - Added `masked` to parser property modifiers validation in `src/manifest/parser.ts`
 
 #### Runtime Implementation
+
 - Added `applyMasking()` method to `RuntimeEngine` in `src/manifest/runtime-engine.ts`
 - Implemented masking helper methods:
   - `applyMaskStrategy()`: Routes to specific masking strategy
@@ -2247,11 +2439,13 @@ The retry feature is complete and tested. The runtime engine now supports retry 
 - Null/undefined values are not masked (pass through as-is)
 
 #### Semantics Documentation
+
 - Added Property Masking section to `docs/spec/semantics.md`
 - Documented all masking strategy types and their behavior
 - Documented unmaskPolicy evaluation rules
 
 ### Files Modified
+
 - `docs/spec/ir/ir-v1.schema.json`: Added masked modifier and IRMaskStrategy definition
 - `src/manifest/ir.ts`: Added IRMaskStrategy interface and masked modifier
 - `src/manifest/lexer.ts`: Added masked keyword
@@ -2261,6 +2455,7 @@ The retry feature is complete and tested. The runtime engine now supports retry 
 - `src/manifest/runtime-engine.ts`: Fixed duplicate `command` variable declaration
 
 ### Notes for Developer
+
 - The masking feature is implemented at the IR and runtime level
 - The `masked` modifier can be used in Manifest source code (e.g., `property masked email: string`)
 - Mask strategies are currently added programmatically to IR (not parsed from source)
@@ -2273,6 +2468,7 @@ The retry feature is complete and tested. The runtime engine now supports retry 
 ---
 
 ### Expanded Date/Time Primitive Types
+
 **Feature ID:** `date-time-types`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -2306,6 +2502,7 @@ The feature implementation from the previous context involved adding new primiti
    - Removed inconsistent `56-decimal-type.manifest`, `57-enum-type.manifest` and their expected IR files from `.backup/` due to IR schema mismatch (`enums` field in expected but not in actual IR output)
 
 ### Files Modified
+
 - `packages/cli/src/commands/compile.ts` (bug fix for glob pattern)
 - `packages/cli/src/commands/validate.test.ts`
 - `packages/cli/src/index.ts`
@@ -2324,6 +2521,7 @@ The feature implementation from the previous context involved adding new primiti
 - Multiple conformance expected IR files (updated)
 
 ### Files Created (Untracked)
+
 - `packages/cli/src/commands/docs.test.ts`
 - `packages/cli/src/commands/docs.ts`
 - `packages/cli/src/commands/init-ci.test.ts`
@@ -2334,12 +2532,14 @@ The feature implementation from the previous context involved adding new primiti
 - `src/manifest/agent-sdk/` (directory with new files)
 
 ### Test Status
+
 - **1215 tests passing**
 - **2 tests failing** (pre-existing, unrelated to this feature):
   - `40-array-properties.manifest` → Runtime constraint checks expecting 1 failure but getting 2 (has two constraints: `noEmptyTags` and `hasTags`)
   - These failures are in the Runtime Behavior section, not IR compilation
 
 ### Notes for Developer
+
 1. The `enforce-surface.cli.test.ts` was failing due to stale dist files - rebuilding with `npm run build` fixed it
 2. The `compile.test.ts` duplicate command intent tests were failing due to a Windows glob path issue in `getManifestFiles()` - fixed by using `resolved` as `cwd` instead of `process.cwd()`
 3. The `56-decimal-type` and `57-enum-type` conformance fixtures were inconsistent with the actual IR schema (expected output had `enums` field but actual IR doesn't produce it) - moved to `.backup/`
@@ -2350,6 +2550,7 @@ The feature implementation from the previous context involved adding new primiti
 ---
 
 ### Auto-Generated API Documentation from IR
+
 **Feature ID:** `documentation-site-generator`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -2358,6 +2559,7 @@ The feature implementation from the previous context involved adding new primiti
 ## Summary: Add `manifest docs` command for static documentation generation
 
 ### Changes Implemented
+
 - Created the `manifest docs` CLI command that generates a static documentation site from Manifest IR
 - Supports both `.manifest` source files and `.ir.json` compiled IR files as input
 - Supports directory scanning for multiple input files with automatic IR merging
@@ -2378,11 +2580,13 @@ The feature implementation from the previous context involved adding new primiti
 - Proper error handling for missing sources and compilation failures
 
 ### Files Modified
+
 - `packages/cli/src/commands/docs.ts` — **New file**: Full implementation of the docs command (HTML + Markdown generation, IR loading, expression formatting)
 - `packages/cli/src/commands/docs.test.ts` — **New file**: 16 unit tests covering HTML/Markdown output, all IR sections, error handling, directory input, custom titles
 - `packages/cli/src/index.ts` — Added import and Commander.js registration for the `docs` command
 
 ### Notes for Developer
+
 - The command follows the same patterns as existing CLI commands (`compile`, `generate`): Commander.js registration, async handler, ora spinners, chalk output
 - No new dependencies required — uses only existing packages (fs, path, glob, chalk, ora)
 - IR types are locally redeclared to avoid tight coupling to the main package's module layout
@@ -2390,6 +2594,7 @@ The feature implementation from the previous context involved adding new primiti
 - Usage: `manifest docs <source> [-o output] [-f html|markdown] [-t "Site Title"]`
 
 ### Verification Status
+
 - 16 unit tests pass via Vitest covering all major features (HTML, Markdown, properties, computed, commands, policies, constraints, events, relationships, store, error handling, directory input)
 - Generated real HTML docs from the `17-tiny-app` conformance fixture and ran 34 programmatic content assertions verifying all sections (properties, computed properties, commands, guards, parameters, policies, events, store, HTML structure, navigation)
 - TypeScript typecheck passes cleanly
@@ -2400,6 +2605,7 @@ The feature implementation from the previous context involved adding new primiti
 ---
 
 ### DynamoDB Store Adapter
+
 **Feature ID:** `dynamodb-store-adapter`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -2437,6 +2643,7 @@ The feature implementation from the previous context involved adding new primiti
    - `src/manifest/projections/dynamodb/generator.test.ts` (9 tests) - All 3 surfaces + single-table design
 
 ### Files Modified
+
 - `src/manifest/ir.ts` (added 'dynamodb' to BuiltinStoreTarget)
 - `docs/spec/ir/ir-v1.schema.json` (updated description)
 - `src/manifest/stores.node.ts` (added DynamoDBStore class, ~200 lines)
@@ -2446,18 +2653,21 @@ The feature implementation from the previous context involved adding new primiti
 - `src/manifest/conformance/expected/82-dynamodb-store.ir.json` (new expected IR)
 
 ### Files Created
+
 - `src/manifest/outbox/stores/dynamodb.ts` (DynamoDBOutboxStore, ~250 lines)
 - `src/manifest/projections/dynamodb/generator.ts` (DynamoDBProjection, ~380 lines)
 - `src/manifest/stores.dynamodb.test.ts` (18 tests, ~400 lines)
 - `src/manifest/projections/dynamodb/generator.test.ts` (9 tests, ~130 lines)
 
 ### Verification Status
+
 - 27/27 DynamoDB-specific tests pass (18 store + 9 projection)
 - Conformance test for fixture 82 passes
 - Temporary verification test (`src/verify-dynamodb.test.ts`) was created with 4 integration tests covering full CRUD contract, key construction, projection surfaces, and IR compilation, all passing - then deleted as required
 - Full test suite: 2331 passed / 1 failed (pre-existing 83-event-sourced.manifest fixture has no expected IR - unrelated to this feature)
 
 ### Notes for Developer
+
 - The DynamoDBStore uses optional peer dependencies (`@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb`) loaded via dynamic import - clear error thrown if missing
 - The outbox table always gets `NEW_AND_OLD_IMAGES` stream specification; data tables get `KEYS_ONLY` unless event reactions need full context
 - Single-table design is auto-detected when `config.singleTable === true` in any store declaration, or can be forced via projection options
@@ -2469,6 +2679,7 @@ The feature implementation from the previous context involved adding new primiti
 ---
 
 ### Entity Inheritance and Composition (extends / mixin)
+
 **Feature ID:** `entity-inheritance`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -2481,6 +2692,7 @@ The feature implementation from the previous context involved adding new primiti
 Added `extends` (single inheritance) and `mixin` (multiple composition) keywords to the Manifest DSL, enabling entities to inherit/compose properties, commands, policies, and constraints from base entities or trait definitions. Inheritance is fully resolved at IR compilation time, producing flat IR nodes with no runtime overhead.
 
 **Key design decisions:**
+
 - The `IREntity` node stores both a `parent?: string` and `mixins?: string[]` field (for traceability) AND contains all resolved members directly in its `properties`, `commands`, `policies`, `defaultPolicies`, and `constraints` arrays (flat representation).
 - Own declarations take precedence over inherited ones (override by name).
 - Child declarations come after inherited ones in the merged arrays.
@@ -2488,6 +2700,7 @@ Added `extends` (single inheritance) and `mixin` (multiple composition) keywords
 - Pattern follows the existing `resolveRoleGraph` implementation in the IR compiler.
 
 **Diagnostics implemented:**
+
 - `Entity 'X' references unknown entity 'Y' in inheritance` (error)
 - `Entity inheritance cycle detected: A -> B -> A` (error)
 - `Duplicate entity declaration 'X'` (error)
@@ -2523,6 +2736,7 @@ Added `extends` (single inheritance) and `mixin` (multiple composition) keywords
 ### Verification Status
 
 Verified using a temporary script (now deleted) that:
+
 1. Test 1 (extends): ChildEntity correctly inherits `id`, `active` properties and `Archive` command from BaseEntity, plus has its own `name` property and `parent: "BaseEntity"` field - PASS
 2. Test 2 (mixin): Article correctly composes `createdAt`, `deletedAt` properties and `SoftDelete` command from Timestampable and SoftDeletable, plus has its own `title` property and `mixins: ["Timestampable", "SoftDeletable"]` field - PASS
 3. Test 3 (extends + mixin): Document correctly combines both inheritance patterns with all properties merged and both `parent` and `mixins` fields present - PASS
@@ -2536,6 +2750,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 ---
 
 ### Environment Variable Mapping for Store Configuration
+
 **Feature ID:** `environment-variable-mapping`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -2565,7 +2780,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
    - Provides helpful text output with colored status indicators (✓, ✗, ○)
 
 4. **Registered the command in CLI** (`packages/cli/src/index.ts`):
-   - Imported `preflightCommand` 
+   - Imported `preflightCommand`
    - Registered `program.command('preflight')` with options for format, generate-example, and output
 
 5. **Wrote comprehensive tests** (`packages/cli/src/commands/preflight.test.ts`):
@@ -2574,6 +2789,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
    - All tests pass (15/15)
 
 ### Files Modified
+
 - `docs/spec/config/manifest.config.schema.json` - Added env mapping schema
 - `packages/cli/src/utils/config.ts` - Added TypeScript types for env mapping
 - `packages/cli/src/index.ts` - Registered preflight command
@@ -2581,8 +2797,9 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 - `packages/cli/src/commands/preflight.test.ts` - New test file (15 tests)
 
 ### Notes for Developer
+
 - The implementation follows existing CLI patterns (Commander.js, chalk, ora)
-- Tests use the established pattern from `init-ci.test.ts` 
+- Tests use the established pattern from `init-ci.test.ts`
 - The command is available as `manifest preflight` (top-level, not under `manifest config`)
 - Example usage:
   - `manifest preflight` - Check environment variables
@@ -2598,6 +2815,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 ---
 
 ### Event Sourcing Store Adapter
+
 **Feature ID:** `event-sourcing-projection`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -2627,6 +2845,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 - **Expected IR generated** via `pnpm run conformance:regen`
 
 ### Files Modified
+
 - `src/manifest/ir.ts` — Added `eventSourced` to BuiltinStoreTarget, IREventSourcedConfig interface, IRStore.eventSourced field
 - `src/manifest/types.ts` — Updated StoreNode JSDoc
 - `src/manifest/ir-compiler.ts` — Updated transformStore() to extract eventSourced config; added resolveGenericInstantiations stub
@@ -2636,6 +2855,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 - `src/manifest/conformance/expected/83-event-sourced.ir.json` — Generated expected IR output
 
 ### Notes for Developer
+
 - The `eventSourced` store uses an in-memory event log by default. For production persistence, the snapshot/append mechanism should be backed by a durable store via `snapshotStoreTarget` config.
 - The store implements the full `Store<T>` contract, so it integrates transparently with the existing runtime engine — `createInstance`, `getInstance`, `updateInstance`, etc. all work through event folding.
 - Aggregate reconstruction starts from the latest snapshot (if any) and replays only subsequent events for efficiency.
@@ -2646,6 +2866,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 - Two pre-existing test failures (Dart projection snapshot, one flaky expression property test) are unrelated to this change and exist on `main` before these changes.
 
 ### Verification Status
+
 - **Conformance tests**: 281/281 passing including new fixture 83 (`pnpm vitest run src/manifest/conformance/conformance.test.ts`)
 - **Verification tests** (written and deleted as per requirements): 11 unit tests for EventSourcedStore + 3 runtime integration tests all passing before deletion
 - **Type checking**: No new errors introduced in modified files (`src/manifest/ir.ts`, `src/manifest/types.ts`, `src/manifest/ir-compiler.ts`, `src/manifest/runtime-engine.ts`)
@@ -2656,6 +2877,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 ---
 
 ### Extended Expression Language Functions
+
 **Feature ID:** `expression-language-extensions`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -2676,6 +2898,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 **Date functions (6):** `year`, `month`, `day`, `hours`, `minutes`, `seconds` (all UTC-based for determinism)
 
 ### Files Modified
+
 - `docs/spec/builtins.md` - Updated spec with all new function signatures, parameter types, return types, and behavior descriptions
 - `src/manifest/runtime-engine.ts` - Added 27 functions to `getBuiltins()` method, using UTC methods for date functions
 - `src/manifest/runtime-engine.test.ts` - Added 32 new unit tests covering all function categories (string, numeric, array, date)
@@ -2685,6 +2908,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 - `src/manifest/conformance/expected/56-expression-builtins.results.json` - 8 runtime behavior test cases
 
 ### Verification Status
+
 - **Unit tests**: 32 new tests added to `runtime-engine.test.ts`, all passing
 - **Conformance tests**: 8 new test cases in fixture 56, all passing
 - **Full test suite**: 851 tests passing (was 811 before this change)
@@ -2693,6 +2917,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 - **Playwright**: `@playwright/test` is not a project dependency; verification was performed via direct runtime execution scripts (compile + runCommand + evaluateComputed) confirming all functions return correct values
 
 ### Notes for Developer
+
 - Date functions use UTC methods (`getUTCFullYear`, `getUTCMonth`, etc.) to ensure timezone-independent determinism
 - `sum()` accepts arrays of numeric strings (e.g., output of `split("1,2,3", ",")`) via `Number()` coercion
 - `min()` and `max()` accept variadic arguments, not arrays
@@ -2703,6 +2928,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 ---
 
 ### First-Class Event Subject Metadata
+
 **Feature ID:** `feature-1780206660992-92bdiex42j7`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -2711,6 +2937,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 ## Summary: Add Canonical Subject Metadata to Manifest Emitted Events
 
 ### Changes Implemented
+
 - Defined `EventSubject` interface with `entity?: string`, `command: string`, `id?: string` fields
 - Extended `EmittedEvent` interface with an optional `subject` field
 - Added deterministic subject resolution logic in `RuntimeEngine._executeCommandInternal`:
@@ -2727,6 +2954,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 - All 1857 tests pass (81 test files), typecheck clean, lint clean
 
 ### Files Modified
+
 - `src/manifest/runtime-engine.ts` — `EventSubject` type, `EmittedEvent.subject` field, subject resolution in `_executeCommandInternal`, `executeAction` signature update
 - `src/manifest/outbox/stores/postgres.ts` — `projectSubject` option, conditional INSERT with subject columns
 - `src/manifest/outbox/stores/postgres.sql` — optional `subject_entity`/`subject_id` columns and indexes
@@ -2734,12 +2962,14 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 - `src/manifest/outbox/stores/postgres.test.ts` — 4 new tests for subject projection
 
 ### Notes for Developer
+
 - The change is fully additive and backward-compatible: `subject` is optional on `EmittedEvent`, existing consumers are unaffected
 - PostgreSQL subject projection is opt-in via `projectSubject: true` in `PostgresOutboxStoreOptions`; the columns are nullable and can be added to existing tables with the ALTER TABLE statements in `postgres.sql`
 - The `justCreatedInstanceIds` fallback (resolution step 2) is wired but currently has no runtime source within `_executeCommandInternal` since `createInstance` is an external API method; it's ready for future use if command execution starts creating instances internally
 - Action-emitted events (from `emit`/`publish` action kinds) receive the base subject computed before the action loop; command-declared events receive the fully resolved subject
 
 ### Verification Status
+
 - Playwright is not configured in this project (it's a DSL/runtime library with no browser UI)
 - Feature was verified through 13 new vitest tests covering: full subject population, missing entity, missing instanceId, payload.id fallback, empty string rejection, instanceId priority, multi-event consistency, outbox entry preservation, backward compatibility, and PostgreSQL projection (enabled/disabled/null/JSONB preservation)
 - Full test suite: 1857/1857 passing, 0 failures
@@ -2749,6 +2979,7 @@ All 277 conformance tests pass, including the 5 new fixtures. Full test suite: 2
 ---
 
 ### Health Check Projection Export Fix
+
 **Feature ID:** `feature-1780316518102-h71n1r2u1fm`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -2761,6 +2992,7 @@ Review and verify the completed parent task implementation for the `manifest wat
 ---
 
 ### Health Check Projection ESM Import Fix
+
 **Feature ID:** `feature-1780387482210-qhzhvc02q0j`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -2785,6 +3017,7 @@ I've fixed the HealthCheckProjection export and module resolution issues. Here's
 ---
 
 ### Field-Level Encryption Declarations
+
 **Feature ID:** `field-level-encryption`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -2795,6 +3028,7 @@ I've fixed the HealthCheckProjection export and module resolution issues. Here's
 ### Changes Implemented
 
 **Pipeline (lexer → parser → IR → projections):**
+
 - Added `encrypted` to the `KEYWORDS` set in the lexer (`lexer.ts:24`)
 - Added `encrypted` to the modifier allowlist in `parseProperty()` (`parser.ts:374`)
 - Extended the `PropertyModifier` type union with `'encrypted'` (`ir.ts:157`)
@@ -2802,6 +3036,7 @@ I've fixed the HealthCheckProjection export and module resolution issues. Here's
 - IR compiler requires no changes — `transformProperty()` does a pass-through cast
 
 **Runtime encryption/decryption (`runtime-engine.ts`):**
+
 - New `EncryptionProvider` interface with `encrypt(plaintext) → {ciphertext, keyId}` and `decrypt(ciphertext, keyId) → plaintext`
 - Added `encryptionProvider?` to `RuntimeOptions`
 - Three private helper methods: `encryptedPropertyNames()` (cached), `encryptProperties()`, `decryptProperties()`
@@ -2815,14 +3050,17 @@ I've fixed the HealthCheckProjection export and module resolution issues. Here's
 - Constraints, guards, and computed properties always see plaintext
 
 **Projections:**
+
 - Drizzle: encrypted columns get `// @encrypted` comment annotation + info diagnostic
 - Prisma: encrypted columns get `// @encrypted` inline comment
 
 **Tests:**
+
 - Conformance fixture `91-encrypted-properties.manifest` with expected IR output
 - 7 new runtime unit tests covering: create/read/update encryption, getAllInstances decryption, no-op without provider, keyId preservation for rotation, non-encrypted properties untouched
 
 ### Files Modified
+
 - `src/manifest/lexer.ts` — added `'encrypted'` keyword
 - `src/manifest/parser.ts` — added `'encrypted'` to modifier allowlist
 - `src/manifest/ir.ts` — extended `PropertyModifier` union type
@@ -2833,10 +3071,12 @@ I've fixed the HealthCheckProjection export and module resolution issues. Here's
 - `src/manifest/runtime-engine.test.ts` — 7 new encrypted modifier tests
 
 ### Files Created
+
 - `src/manifest/conformance/fixtures/91-encrypted-properties.manifest`
 - `src/manifest/conformance/expected/91-encrypted-properties.ir.json`
 
 ### Notes for Developer
+
 - All 99 runtime engine tests pass (including 7 new encrypted tests)
 - All 290 conformance tests pass (3 pre-existing readmodel failures unrelated to this feature)
 - The `EncryptionProvider` is intentionally a simple interface — consumers provide their own crypto implementation (e.g., AWS KMS, Vault, node:crypto). The runtime is crypto-agnostic.
@@ -2848,6 +3088,7 @@ I've fixed the HealthCheckProjection export and module resolution issues. Here's
 ---
 
 ### Flutter / Dart Model Projection
+
 **Feature ID:** `flutter-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -2867,6 +3108,7 @@ Created a new `DartProjection` that generates type-safe Dart/Flutter code from M
 - **`dart.package`** — Complete Flutter package: models + client + providers + `pubspec.yaml` + `README.md`
 
 **Key design decisions:**
+
 - `camelCase` for Dart fields/properties, `PascalCase` for class names
 - IR type mapping: `string`→`String`, `int`→`int`, `number`→`double`, `bool`→`bool`, `datetime`→`DateTime`, `array`→`List<T>`, `map`→`Map<String,T>`, `decimal`→`String`
 - Constraints mapped to `validate()` methods using the existing `constraint-analysis.ts` utilities (numeric ranges, length, pattern/regex)
@@ -2889,6 +3131,7 @@ Created a new `DartProjection` that generates type-safe Dart/Flutter code from M
 ### Verification Status
 
 Verified with vitest (the project's test framework — Playwright was not installable in this monorepo):
+
 - 24/24 unit tests pass (`generator.test.ts`)
 - 8/8 end-to-end verification tests pass (`verify.test.ts`)
 - 41/41 cross-projection snapshot tests pass
@@ -2903,6 +3146,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 ---
 
 ### Full-Text Search Index Declarations
+
 **Feature ID:** `full-text-search`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -2911,6 +3155,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 ## Summary: Full-Text Search Index Declarations
 
 ### Changes Implemented
+
 - Added `searchable` property modifier to the Manifest DSL (string-only, with compiler validation)
 - Added `search(text, query)` built-in function with AND-semantics whole-word matching (case-insensitive, deterministic, pure)
 - Lexer recognizes `searchable` as a keyword
@@ -2924,6 +3169,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 - Builtins spec updated with `search()` documentation and `searchable` modifier description
 
 ### Files Modified
+
 - `docs/spec/ir/ir-v1.schema.json` — Added `"searchable"` to modifier enum
 - `docs/spec/builtins.md` — Documented `search()` function, `searchable` modifier, updated reserved name count (35→36), updated date
 - `src/manifest/ir.ts` — Added `'searchable'` to `PropertyModifier` type union
@@ -2940,6 +3186,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 - `src/manifest/conformance/expected/89-full-text-search.results.json` — NEW expected runtime results (3 test cases)
 
 ### Notes for Developer
+
 - All 662 tests in changed-file scope pass; 3 pre-existing failures in `86-readmodel.manifest` are unrelated
 - Fixture numbering uses `89-` since `67-88` were already taken
 - The `search()` function uses AND semantics (all query words must match) and whole-word matching, mirroring PostgreSQL `to_tsquery('english', 'word1 & word2')` behavior
@@ -2950,6 +3197,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 ---
 
 ### Generic / Parameterized Entity Types
+
 **Feature ID:** `generic-entity-types`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -2988,6 +3236,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
    - `expected/85-generic-arity-mismatch.diagnostics.json` — expected error diagnostic
 
 ### Files Modified
+
 - `src/manifest/types.ts` — AST type extensions
 - `src/manifest/ir.ts` — IR type extensions
 - `src/manifest/parser.ts` — generic syntax parsing
@@ -2998,6 +3247,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 - `src/manifest/conformance/expected/85-generic-arity-mismatch.diagnostics.json` — expected diagnostics
 
 ### Notes for Developer
+
 - **Syntax**: `entity Name<T, U> { property items: T = "" }` for templates, `entity Alias = Name<ConcreteType> { ... }` for instantiations
 - **Compilation model**: Generic templates are compile-time only. Only concrete instantiations appear in the IR. Type parameters are substituted wherever they appear in property types, computed property types, and relationship targets within the template body.
 - **Validation**: Instantiation must reference a known generic entity; type argument count must match the template's type parameter count. Errors are emitted for unknown templates and arity mismatches.
@@ -3006,6 +3256,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 - **Test results**: 2348 tests pass (up from 2345 with the 2 new conformance tests + 1 now-passing pre-existing test). No regressions.
 
 ### Verification Status
+
 - Created and ran temporary verification test (`temp-runtime-generics.test.ts`) that confirmed the instantiated `ItemList` entity works at runtime via `RuntimeEngine.createInstance()`. Test passed and was deleted after verification.
 - All 281 conformance tests pass, including the 2 new fixtures (84 and 85).
 - Full test suite (2348 tests) passes with no regressions.
@@ -3015,6 +3266,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 ---
 
 ### Hono Edge-Runtime Projection
+
 **Feature ID:** `hono-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -3023,6 +3275,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 ## Summary: Hono Projection for Edge Runtimes
 
 ### Changes Implemented
+
 - Created a new Hono projection that generates edge-runtime-optimized route handlers from Manifest IR
 - The projection produces a single deployable Hono router file with zero Node.js dependencies
 - Uses Hono's typed middleware pattern with `c.get('user')` / `c.set()` context instead of `req.user`
@@ -3033,6 +3286,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 - Supports all existing projection options: auth middleware, Zod validation, tenant context, public reads, comments
 
 ### Files Modified
+
 - `src/manifest/projections/hono/types.ts` (NEW) — `HonoProjectionOptions` interface
 - `src/manifest/projections/hono/generator.ts` (NEW) — `HonoProjection` class implementing `ProjectionTarget`
 - `src/manifest/projections/builtins.ts` — Added `HonoProjection` import, registration, and listing
@@ -3041,6 +3295,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 - `src/manifest/projections/__snapshots__/snapshot.test.ts.snap` — Updated with Hono projection snapshots
 
 ### Verification Status
+
 - Created a 16-test verification suite covering all surfaces, registry integration, edge runtime characteristics, option handling (publicReads, includeComments), deterministic output, and error handling — all 16 tests passed
 - Verification test file was deleted after successful verification
 - Full test suite: **1844/1844 tests pass** across 81 test files
@@ -3048,6 +3303,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 - ESLint: passes clean
 
 ### Notes for Developer
+
 - The Hono projection generates `export default app` for direct deployment compatibility with edge runtimes
 - Auth is injected via Hono's `c.get('user')` pattern (set by auth middleware), not `req.user`
 - The CLI `generate` command (`packages/cli/src/commands/generate.ts`) currently only supports `nextjs` — extending it to support `--projection hono` would be a separate task
@@ -3059,6 +3315,7 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 ---
 
 ### Interactive Tutorial Mode in Diagnostic UI
+
 **Feature ID:** `interactive-tutorial-mode`  
 **Planned release:** v2.0.0 (Advanced Runtime & Platform)
 
@@ -3067,9 +3324,11 @@ The feature generates syntactically valid Dart code with proper `fromJson`/`toJs
 ## Interactive Tutorial Mode — Implementation Complete
 
 ### What was built
+
 A guided tutorial system in the Manifest diagnostic UI that walks new users through writing their first `.manifest` program step-by-step, with inline hints, async validation feedback, and progressive disclosure of language features.
 
 ### Files created
+
 - `src/artifacts/tutorials/types.ts` — Type definitions for `Tutorial`, `TutorialStep`, `StepValidation`, `ValidationResult`, etc.
 - `src/artifacts/tutorials/engine.ts` — Async `validateStep` using `compileToIR` with 10 rule types (compiles, has-entity, has-property, has-command, has-guard, has-computed, has-policy, source-contains, source-matches, ir-has)
 - `src/artifacts/tutorials/builtin.ts` — 3 built-in tutorials: "Your First Manifest Program" (3 steps), "Writing Your First Command" (3 steps), "Computed Properties" (2 steps)
@@ -3079,10 +3338,12 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 - `docs/spec/tutorials/tutorial-v1.schema.json` — External JSON schema for community contributions
 
 ### Files modified
+
 - `src/App.tsx` — Added "Tutorial" tab to the tab bar
 - `src/artifacts/index.ts` — Exported `TutorialPanel`, `validateTutorialJson`, `BUILTIN_TUTORIALS`, and types
 
 ### Key design decisions
+
 - **Async validation via IR**: Validation uses `compileToIR()` so checks are structural (entity exists, property has correct type, etc.) — not regex pattern matching
 - **Race condition fix**: Added `stepId` to `ValidationResult` so auto-completion only marks the step that the validation was actually for (prevents stale validation from marking a different step complete)
 - **Progressive disclosure**: Each step can declare an `unlocks` array of feature names shown only after completion
@@ -3091,12 +3352,14 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 - **Community extensibility**: Tutorials are pure JSON; the `validateTutorialJson` function enforces the contract
 
 ### Verification results
+
 - **27/27 unit tests pass** (`engine.test.ts`)
 - **10/10 Playwright UI tests pass** (tab present, list shows 3 tutorials, difficulty badges, step counter, hint reveal, answer reveal, navigation back to list, etc.)
 - **Production build succeeds** (`npx vite build`)
 - All temporary verification files cleaned up
 
 ### Pre-existing issues NOT caused by this work
+
 - TypeScript errors in `src/manifest/stores.*.test.ts` and `src/manifest/runtime-middleware.test.ts` (unrelated to tutorial code)
 - Property test flakiness in some runtime tests
 
@@ -3105,6 +3368,7 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 ---
 
 ### IR Compression and Binary Serialization
+
 **Feature ID:** `ir-compression`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -3137,6 +3401,7 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 7. **Tests** (`src/manifest/binary-ir.test.ts`): 18 unit tests covering header generation, round-trip fidelity (including complex nested structures), error cases (short buffer, bad magic, bad version), size comparison, and path derivation
 
 ### Files Modified
+
 - `package.json` (added `@msgpack/msgpack` dep + `./binary-ir` export)
 - `packages/cli/src/index.ts` (registered pack/unpack commands)
 - `packages/cli/src/commands/pack-unpack.ts` (new — CLI command implementations)
@@ -3144,12 +3409,14 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 - `src/manifest/binary-ir.test.ts` (new — 18 unit tests)
 
 ### Notes for Developer
+
 - Binary format layout: `MIR` (3 bytes) + version byte (0x01) + MessagePack payload. Version byte is checked on unpack to allow safe format evolution.
 - Round-trip is lossless: `unpackIR(packIR(ir))` deep-equals the original IR.
 - The CLI command imports follow the same `await import('@angriff36/manifest/binary-ir')` pattern as existing CLI commands. The library must be built (`pnpm run build:lib`) before CLI execution at runtime — this is consistent with all other CLI commands. The `build:lib` step has pre-existing TypeScript errors in `runtime-engine.ts` unrelated to this feature; once those are resolved, the pack/unpack commands will work end-to-end.
 - Compression is achieved by MessagePack's binary encoding (compact representation of maps, arrays, and common values) versus JSON's text encoding. Typical savings: 40-60% for non-trivial IR.
 
 ### Verification Status
+
 - **18/18 unit tests pass** in `src/manifest/binary-ir.test.ts` covering pack/unpack, round-trip fidelity, error handling, size comparison, and path derivation
 - **End-to-end verification completed** with a temporary test (`src/manifest/binary-ir-verify.test.ts`) that packed a real IR fixture file (`01-entity-properties.ir.json`), wrote it to disk, read it back, unpacked it, and confirmed the decoded entity/module counts matched the original with positive size savings. The temporary test was deleted after successful verification as required.
 - **CLI help output verified** — both `manifest pack --help` and `manifest unpack --help` produce correct usage text
@@ -3160,6 +3427,7 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 ---
 
 ### IR Entity Relationship Graph Visualizer
+
 **Feature ID:** `ir-graph-visualizer`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -3168,6 +3436,7 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 ## Summary: IR Graph Visualizer
 
 ### Changes Implemented
+
 - Built a force-directed graph visualization panel (`IRGraphPanel`) that renders IR entities as nodes and relationships as directed edges
 - Entities are rendered as circular nodes sized by property count, events as smaller violet nodes
 - Relationships (hasMany, hasOne, belongsTo, ref) shown as directed edges with arrowheads and labels
@@ -3186,16 +3455,19 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 - Added "Graph" tab between AST and Docs in the middle panel tab bar
 
 ### Files Modified
+
 - `src/artifacts/IRGraphPanel.tsx` (NEW) - Complete graph visualizer component (~550 lines)
 - `src/artifacts/index.ts` - Added `IRGraphPanel` export
 - `src/App.tsx` - Added `Share2` icon import, `IRGraphPanel` import, `'graph'` to Tab type, Graph tab button and panel rendering
 
 ### Files NOT Modified
+
 - No test files changed
 - No conformance fixtures changed
 - No IR types/compiler/runtime changed
 
 ### Verification Status
+
 - TypeScript typecheck: PASS (zero errors)
 - ESLint: PASS (clean)
 - Full test suite: 1284/1284 passed (57 test files)
@@ -3213,6 +3485,7 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 - Temporary verification files (verify-graph.mjs, ir-graph-verify.spec.ts, playwright.config.ts) deleted after successful verification
 
 ### Notes for Developer
+
 - The force simulation runs synchronously with 300 iterations during IR extraction - fast enough for typical Manifest programs (< 50 entities)
 - Canvas renders at device pixel ratio for crisp display on HiDPI screens
 - Inspector panel overlays the right side of the canvas (320px wide)
@@ -3223,6 +3496,7 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 ---
 
 ### IR Version Registry and Changelog Tracking
+
 **Feature ID:** `ir-version-control`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -3239,6 +3513,7 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 ### What was implemented
 
 **Core Library** (`src/manifest/ir-version-store.ts`):
+
 - `IRVersionIndex` / `IRVersionMeta` types for tracking version history
 - `createVersionIndex()`, `addVersionToIndex()`, `tagVersionInIndex()` — version lifecycle management
 - `createVersionMeta()` — generates version metadata with SHA-256 content hash and IR hash via `computeIRHash`
@@ -3249,6 +3524,7 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 
 **CLI Command** (`packages/cli/src/commands/versions.ts`):
 8 subcommands under `manifest versions`:
+
 - `list` — list all saved IR versions
 - `show <version>` — display version metadata (by number, tag, or "latest")
 - `save <file>` — compile and save a new IR snapshot with optional `--tag`, `--auto-tag`, `--label`
@@ -3259,6 +3535,7 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 - `verify [version]` — integrity check with SHA-256 hash comparison (`--all` for all versions)
 
 **Filesystem Layout** (`.manifest-versions/`):
+
 ```
 .manifest-versions/
   manifest.json           — Version index (current version number, version list)
@@ -3274,33 +3551,33 @@ A guided tutorial system in the Manifest diagnostic UI that walks new users thro
 
 ### Files created
 
-| File | Purpose |
-|------|---------|
-| `src/manifest/ir-version-store.ts` | Core pure logic module (no I/O) |
-| `src/manifest/ir-version-store.test.ts` | 29 unit tests |
-| `packages/cli/src/commands/versions.ts` | CLI subcommand group (8 commands) |
-| `packages/cli/src/commands/versions.test.ts` | 24 integration tests |
+| File                                         | Purpose                           |
+| -------------------------------------------- | --------------------------------- |
+| `src/manifest/ir-version-store.ts`           | Core pure logic module (no I/O)   |
+| `src/manifest/ir-version-store.test.ts`      | 29 unit tests                     |
+| `packages/cli/src/commands/versions.ts`      | CLI subcommand group (8 commands) |
+| `packages/cli/src/commands/versions.test.ts` | 24 integration tests              |
 
 ### Files modified
 
-| File | Change |
-|------|--------|
-| `src/manifest/ir-compiler.ts` | Exported `computeIRHash` for integrity verification |
-| `vitest.config.ts` | Added aliases for `ir-diff`, `breaking-change`, `ir-version-store` |
-| `package.json` | Added `./ir-version-store` subpath export |
-| `packages/cli/src/index.ts` | Registered `manifest versions` command group |
-| `src/manifest/projections/builtins.ts` | Registered OpenAPI, React-Query, Zod projections (bonus fix) |
+| File                                   | Change                                                             |
+| -------------------------------------- | ------------------------------------------------------------------ |
+| `src/manifest/ir-compiler.ts`          | Exported `computeIRHash` for integrity verification                |
+| `vitest.config.ts`                     | Added aliases for `ir-diff`, `breaking-change`, `ir-version-store` |
+| `package.json`                         | Added `./ir-version-store` subpath export                          |
+| `packages/cli/src/index.ts`            | Registered `manifest versions` command group                       |
+| `src/manifest/projections/builtins.ts` | Registered OpenAPI, React-Query, Zod projections (bonus fix)       |
 
 ---
 
 ### Test results
 
-| Category | Count | Status |
-|----------|-------|--------|
-| `ir-version-store.test.ts` | 29 | ALL PASS |
-| `versions.test.ts` | 24 | ALL PASS |
-| **New tests total** | **53** | **ALL PASS** |
-| Full suite | 1405 passed / 28 failed | 28 failures are pre-existing branch issues |
+| Category                   | Count                   | Status                                     |
+| -------------------------- | ----------------------- | ------------------------------------------ |
+| `ir-version-store.test.ts` | 29                      | ALL PASS                                   |
+| `versions.test.ts`         | 24                      | ALL PASS                                   |
+| **New tests total**        | **53**                  | **ALL PASS**                               |
+| Full suite                 | 1405 passed / 28 failed | 28 failures are pre-existing branch issues |
 
 The 28 pre-existing failures are in 4 test files (`tenant-isolation.test.ts`, `conformance.test.ts`, `compile.test.ts`, `validate-ai.test.ts`) caused by other half-implemented features in the branch. All pass on main. The version control feature introduces zero regressions.
 
@@ -3319,6 +3596,7 @@ The 28 pre-existing failures are in 4 test files (`tenant-isolation.test.ts`, `c
 ---
 
 ### JSON Schema Projection from IR Entities
+
 **Feature ID:** `json-schema-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -3327,6 +3605,7 @@ The 28 pre-existing failures are in 4 test files (`tenant-isolation.test.ts`, `c
 ## Summary: JSON Schema Projection from IR Entity Definitions
 
 ### Changes Implemented
+
 - Created a new `jsonschema` projection that generates JSON Schema documents (drafts 7, 2019-09, 2020-12) from Manifest IR entity definitions
 - Maps all Manifest property types to JSON Schema types (string, number, integer, boolean, date, datetime, uuid, email, url, array, map, etc.)
 - Maps IR constraints to JSON Schema keywords: `minimum`/`maximum` (from numeric range constraints), `minLength`/`maxLength` (from length constraints), `pattern` (from regex/matches constraints)
@@ -3343,6 +3622,7 @@ The 28 pre-existing failures are in 4 test files (`tenant-isolation.test.ts`, `c
 - Updated snapshot test count from 11 to 13 (also accounting for previously untracked Mermaid projection)
 
 ### Files Modified
+
 - `src/manifest/projections/jsonschema/types.ts` (new) — `JsonSchemaProjectionOptions` interface
 - `src/manifest/projections/jsonschema/generator.ts` (new) — `JsonSchemaProjection` class implementing `ProjectionTarget`
 - `src/manifest/projections/jsonschema/index.ts` (new) — barrel re-exports
@@ -3351,6 +3631,7 @@ The 28 pre-existing failures are in 4 test files (`tenant-isolation.test.ts`, `c
 - `src/manifest/projections/snapshot.test.ts` — updated projection count from 11 to 13
 
 ### Notes for Developer
+
 - The projection reuses `analyzeConstraints()` from `src/manifest/constraint-analysis.ts` for extracting numeric ranges, length constraints, and pattern constraints from IR constraint expressions
 - Enum type references are resolved by looking up `ir.enums` by name during generation
 - The generated schemas are valid JSON and use the standard `$schema` meta-schema URIs
@@ -3358,6 +3639,7 @@ The 28 pre-existing failures are in 4 test files (`tenant-isolation.test.ts`, `c
 - The snapshot test count was updated from 11 to 13 because both the Mermaid projection (pre-existing but miscounted) and the new JsonSchema projection needed to be included
 
 ### Verification Status
+
 - 20 targeted verification tests were run covering: type mapping, nullable handling, required/readonly modifiers, enum support, constraint extraction (minimum/maximum/minLength/maxLength/pattern), computed properties, all three draft versions, baseUri option, additionalProperties, both surfaces, error diagnostics, deterministic output, and valid JSON output. All 20 passed.
 - Full test suite: 1860 tests across 82 files — all passing
 - Snapshot tests: 27 tests (13 projections x 2 + 1 count assertion) — all passing, 2 new snapshots written for jsonschema
@@ -3367,6 +3649,7 @@ The 28 pre-existing failures are in 4 test files (`tenant-isolation.test.ts`, `c
 ---
 
 ### Kysely Type-Safe Query Builder Projection
+
 **Feature ID:** `kysely-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -3377,11 +3660,13 @@ The 28 pre-existing failures are in 4 test files (`tenant-isolation.test.ts`, `c
 ### Changes Implemented
 
 Created a new Kysely projection that generates TypeScript type definitions for the Kysely type-safe SQL query builder. The projection produces:
+
 1. Per-table TypeScript interfaces (e.g., `TaskTable`)
 2. A `Database` interface mapping table names to those interfaces
 3. A `createDb()` factory function for creating configured `Kysely<Database>` instances
 
 Key features:
+
 - **Type mapping**: IR types → Kysely/TypeScript types (string, number, Date, Generated<T>, ColumnType<T,...>, etc.)
 - **Dialect support**: postgresql, mysql, sqlite with appropriate dialect imports
 - **Relationship handling**: Auto-generates FK columns for `belongsTo`/`ref` relationships (no duplicate if FK already declared as property)
@@ -3394,6 +3679,7 @@ Key features:
 - **Configuration options**: `dialect`, `tableMappings`, `columnMappings`, `typeMappings`, `emitFactory`, `databaseInterfaceName`, `factoryFunctionName`, `output`
 
 ### Files Created
+
 - `src/manifest/projections/kysely/type-mapping.ts` - IR type → Kysely/TypeScript type mapping
 - `src/manifest/projections/kysely/options.ts` - Configuration options and defaults
 - `src/manifest/projections/kysely/generator.ts` - Main projection class
@@ -3401,12 +3687,14 @@ Key features:
 - `src/manifest/projections/kysely/generator.test.ts` - 30 unit tests
 
 ### Files Modified
+
 - `src/manifest/projections/builtins.ts` - Registered `KyselyProjection` in both `registerBuiltinProjections()` and `listBuiltinProjections()`
 - `src/manifest/projections/index.ts` - Exported `KyselyProjection` class and `KyselyProjectionOptions` type
 - `src/manifest/projections/snapshot.test.ts` - Updated count assertion from 20 to 21
 - `src/manifest/projections/__snapshots__/snapshot.test.ts.snap` - Generated Kysely snapshot entry
 
 ### Notes for Developer
+
 - The projection generates only TypeScript types — Kysely does not manage DDL or migrations (that's the DB's responsibility)
 - The generated factory function accepts a dialect config object (e.g., `{ pool }` for Postgres), keeping the projection runtime-agnostic
 - `Generated<T>` is used for ID columns and columns with `defaultValue` (DB-side defaults)
@@ -3420,6 +3708,7 @@ Key features:
 ---
 
 ### Language Server Protocol (LSP) Implementation
+
 **Feature ID:** `language-server-protocol`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -3428,6 +3717,7 @@ Key features:
 <feature>language-server-protocol</feature>
 <status>complete</status>
 <files_created>
+
 - packages/lsp-server/package.json
 - packages/lsp-server/tsconfig.json
 - packages/lsp-server/bin/manifest-lsp.js
@@ -3449,8 +3739,8 @@ Key features:
 - packages/lsp-server/test/hover.test.ts
 - packages/lsp-server/test/definition.test.ts
 - packages/lsp-server/test/document-symbols.test.ts
-</files_created>
-<files_modified>
+  </files_created>
+  <files_modified>
 - package.json (added ./lexer and ./types exports, manifest-lsp bin entry, files array, prepublishOnly)
 - vitest.config.ts (added LSP test include and aliases)
 - tsconfig.lib.json (excluded pre-existing build error file)
@@ -3461,6 +3751,7 @@ Key features:
 - Existing test suite: zero regressions (all pre-existing failures are from untracked files)
 - All LSP modules load correctly
 </verification>
+
 <architecture>
 The LSP server lives in packages/lsp-server/ and reuses the existing Manifest compiler pipeline (Lexer → Parser → IR Compiler). Key design decisions:
 
@@ -3478,6 +3769,7 @@ Critical gotcha: The Manifest lexer records token positions as END positions (on
 ---
 
 ### LLM Context Export (llms.txt Enhancements)
+
 **Feature ID:** `llm-context-export`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -3486,6 +3778,7 @@ Critical gotcha: The Manifest lexer records token positions as END positions (on
 ## Summary: LLM Context Export (llms.txt Enhancements)
 
 ### Changes Implemented
+
 - **Core projection (previously implemented)**: `LlmContextProjection` class with 3 surfaces (`llm-context.full`, `llm-context.summary`, `llm-context.ir`) generating structured `manifest-context.json` for AI agent context injection
 - **Core types (previously implemented)**: Full type definitions for `ManifestContext`, `EntityContext`, `CommandContext`, `PolicyContext`, `ConstraintContext`, `RelationshipEdge`, `EnumContext`, `EventContext`, `StoreContext`
 - **Registration (previously implemented)**: Projection registered in `builtins.ts` for auto-registration
@@ -3495,15 +3788,18 @@ Critical gotcha: The Manifest lexer records token positions as END positions (on
 - **Comprehensive test suite**: 38 tests covering all surfaces, options, entity/command/policy/constraint extraction, computed properties, relationships, enums, events, stores, multi-tenancy detection, determinism, and edge cases
 
 ### Files Modified
+
 - `src/manifest/projections/llm-context/generator.ts` — Fixed unused import (`ProjectionArtifact`) and unused parameter (`opts` → `_opts`)
 - `src/manifest/projections/llm-context/generator.test.ts` — **New file**: 38 tests across 12 describe blocks
 - `src/manifest/projections/index.ts` — Added `LlmContextProjection` class export and `LlmContextProjectionOptions` type export
 
 ### Files Previously Created (no changes needed)
+
 - `src/manifest/projections/llm-context/types.ts` — Type definitions (complete)
 - `src/manifest/projections/builtins.ts` — Registration (complete)
 
 ### Notes for Developer
+
 - All 1728 tests pass (77 test files), including the 38 new LLM context tests
 - No lint errors in changed files
 - Two minor TS errors fixed in generator.ts (unused import and unused parameter) — these were pre-existing from the initial implementation
@@ -3515,6 +3811,7 @@ Critical gotcha: The Manifest lexer records token positions as END positions (on
 ---
 
 ### LLM-Generated IR Validator and Repair Tool
+
 **Feature ID:** `llm-ir-validator`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -3527,35 +3824,42 @@ Critical gotcha: The Manifest lexer records token positions as END positions (on
 **New command: `manifest validate-ai`** — Runs structured validation against LLM-generated `.manifest` source or IR JSON files, producing scored diagnostic reports (0-100) with correction suggestions. Designed for AI agent self-correction loops.
 
 #### Validation layers:
+
 1. **Schema validation** (IR JSON): AJV-based validation against `ir-v1.schema.json` with detailed error codes (`SCHEMA_REQUIRED`, `SCHEMA_ADDITIONAL_PROPERTY`, `SCHEMA_TYPE`, `SCHEMA_CONST`, `SCHEMA_ENUM`)
 2. **Compilation validation** (`.manifest` source): Compiles source to IR and captures compilation diagnostics
 3. **Semantic checks**: Policy coverage, duplicate constraint codes, orphaned event references, store entity references, command entity references, relationship target integrity
 4. **Structural summary**: Entity/command/policy/store/event counts
 
 #### Scoring:
+
 - Starts at 100, deducts 25 per error, 5 per warning
 - `--min-score <n>` flag controls pass/fail threshold (default: 100)
 - Exit code 1 when score falls below minimum
 
 #### Output formats:
+
 - `--format text`: Human-readable with colored output, grouped by category
 - `--format json`: Machine-readable JSON with `version`, `overallScore`, `passed`, `minScore`, `reports[]` — suitable for AI agent consumption
 
 #### Actionable suggestions:
+
 Every diagnostic includes a `suggestion` field with specific correction guidance (e.g., "Add the 'version' field at 'root'", "Remove the 'sources' field", "Define entity 'X' or update the store reference").
 
 ### Files Modified
+
 - `packages/cli/src/commands/validate-ai.ts` (new) — Command implementation with validation engine, scoring, and output formatting
 - `packages/cli/src/commands/validate-ai.test.ts` (new) — 19 tests covering IR validation, semantic checks, scoring, text output, and manifest source compilation
 - `packages/cli/src/index.ts` — Added `validate-ai` command import and registration
 
 ### Notes for Developer
+
 - All 19 new tests pass. Pre-existing failures in `compile.test.ts` (8), `config-validate.test.ts` (4), and `enforce-surface.cli.test.ts` (1) are unrelated to this change — they fail identically without this change due to worktree dependency/build issues.
 - Typecheck passes cleanly. Lint passes on all new/modified files.
 - The `verify-validate-ai.mjs` temp file in the project root should be deleted.
 - Exported types (`ValidationDiagnostic`, `ValidationReport`, `ValidateAIOptions`) are available for programmatic use.
 
 ### Verification Status
+
 - 19 vitest tests covering all validation layers, scoring, and output formats pass
 - Typecheck: passes
 - Lint: passes on all changed files
@@ -3566,6 +3870,7 @@ Every diagnostic includes a `suggestion` field with specific correction guidance
 ---
 
 ### Load Testing Fixture Generator
+
 **Feature ID:** `load-testing-fixtures`  
 **Planned release:** v2.0.0 (Advanced Runtime & Platform)
 
@@ -3602,11 +3907,13 @@ Every diagnostic includes a `suggestion` field with specific correction guidance
 3. **`packages/cli/src/index.ts`** — Added import + commander.js command registration for `manifest load-test`
 
 ### Files Modified
+
 - `packages/cli/src/commands/load-test.ts` (new)
 - `packages/cli/src/commands/load-test.test.ts` (new)
 - `packages/cli/src/index.ts` (import + command registration)
 
 ### Notes for Developer
+
 - Generated scripts are **fully self-contained** — no `npm install` required for k6 or Artillery to understand them. Faker helpers are inlined.
 - The command is wired into the CLI as `manifest load-test [source] [options]` and shows up in `--help` with all flags.
 - The `entityName` is set on commands from the top-level `ir.commands` lookup to handle the conformance IR structure where `entity.commands` is `string[]`.
@@ -3614,6 +3921,7 @@ Every diagnostic includes a `suggestion` field with specific correction guidance
 - SLO thresholds in k6 map to `http_req_duration` or `http_req_failed` metrics; in Artillery they are encoded as a comment block in the YAML + evaluator function in the processor.
 
 ### Verification Status
+
 - **All 11 unit tests pass** (`pnpm vitest run packages/cli/src/commands/load-test.test.ts`)
 - **CLI registration verified end-to-end** — `node dist/index.js load-test --help` displays all options correctly
 - **Integration test against real conformance fixture** — Created and ran a temporary `load-test-verify.test.ts` that ran the command against `src/manifest/conformance/expected/09-compute-action.ir.json` (a real Manifest IR with commands), verified generated k6 and Artillery scripts contain correct stages, thresholds, faker patterns, and URL paths. The verification test was deleted after passing.
@@ -3624,6 +3932,7 @@ Every diagnostic includes a `suggestion` field with specific correction guidance
 ---
 
 ### Manifest Code Formatter (manifest fmt)
+
 **Feature ID:** `manifest-format`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -3632,6 +3941,7 @@ Every diagnostic includes a `suggestion` field with specific correction guidance
 ## Summary: Manifest Code Formatter (manifest fmt)
 
 ### Changes Implemented
+
 - **Core formatter function** (`formatManifestSource`): Deterministic whitespace normalization that handles CRLF→LF conversion, tab→2-space conversion, trailing whitespace removal, trailing blank line removal, and ensures a final newline. Returns `\n` for empty files.
 - **CLI command** (`manifest fmt [source]`): Full CLI integration with `--check` (CI mode, exits 1 if files need formatting), `--write` (in-place updates), and `-g/--glob` (custom glob pattern) options.
 - **File discovery**: Auto-discovers `.manifest` files via glob patterns, respects `manifest.config` for default source patterns, ignores `node_modules/`, `dist/`, `.next/`.
@@ -3641,6 +3951,7 @@ Every diagnostic includes a `suggestion` field with specific correction guidance
 - **Test suite**: 6 tests covering trailing whitespace normalization, idempotency, tab conversion, `--write` mode, `--check` failure mode, and `--check` pass mode.
 
 ### Files Modified
+
 - `packages/cli/src/commands/fmt.ts` — Core formatter implementation (157 lines)
 - `packages/cli/src/commands/fmt.test.ts` — Test suite (87 lines)
 - `packages/cli/src/index.ts` — CLI command registration (fmt + install-hooks)
@@ -3650,6 +3961,7 @@ Every diagnostic includes a `suggestion` field with specific correction guidance
 - `packages/cli/dist/commands/fmt.js.map` — JS source map
 
 ### Notes for Developer
+
 - Feature was shipped in v1.0.26 and has been stable through 6 subsequent releases (current: v1.0.32)
 - All 1690 tests pass across 76 test files (full suite green)
 - The formatter is intentionally minimal (whitespace-only normalization) — it does not reorder properties, normalize brace style, or restructure code. This aligns with the "simplicity first" principle.
@@ -3661,6 +3973,7 @@ Every diagnostic includes a `suggestion` field with specific correction guidance
 ---
 
 ### Import / Use Declaration for Cross-File References
+
 **Feature ID:** `manifest-import-system`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -3671,6 +3984,7 @@ Every diagnostic includes a `suggestion` field with specific correction guidance
 ### Changes Implemented
 
 **Core Language Changes:**
+
 1. **Added `import` keyword** to lexer (`src/manifest/lexer.ts`) - Reserved as a keyword
 2. **Added `ImportNode` and `ImportSpecifierNode` types** (`src/manifest/types.ts`) - AST node types for import declarations
 3. **Added `imports` array** to `ManifestProgram` interface
@@ -3678,26 +3992,31 @@ Every diagnostic includes a `suggestion` field with specific correction guidance
 5. **Enhanced module resolver** (`src/manifest/module-resolver.ts`) - Validates import specifiers against exported symbols (entities, enums, value objects)
 
 **Syntax Added:**
+
 ```manifest
 import { User, Order } from "./types.manifest"
 import { User as Customer } from "./types.manifest"
 ```
 
 **Resolver Enhancements:**
+
 - Added `ExportedSymbols` interface to extract exported entities, enums, and value objects
 - Added import specifier validation phase in `resolveModuleGraph()`
 - Validates that imported symbols exist and are of the correct kind
 - Supports aliasing via `as` keyword
 
 **Tests Added:**
+
 - Parser tests for import declarations (9 tests in `parser.test.ts`)
 - Module resolver tests for import resolution (10 tests in `module-resolver.test.ts`)
 - Tests cover: basic imports, aliases, multiple imports, transitive imports, error cases (unknown symbols, circular dependencies, wrong kinds)
 
 **Documentation:**
+
 - Created `docs/spec/imports.md` - Comprehensive spec documentation for the import system
 
 ### Files Modified
+
 - `src/manifest/types.ts` - Added ImportNode, ImportSpecifierNode, imports array
 - `src/manifest/lexer.ts` - Added 'import' keyword
 - `src/manifest/parser.ts` - Added parseImport() method, updated parsing loop
@@ -3707,6 +4026,7 @@ import { User as Customer } from "./types.manifest"
 - `docs/spec/imports.md` - Created new spec documentation
 
 ### Test Results
+
 - **458 import-related and core tests pass** (all import-specific tests pass)
 - **Total test suite**: 2046 tests pass (2 unrelated snapshot test failures in NextJsProjection are pre-existing issues)
 
@@ -3715,6 +4035,7 @@ import { User as Customer } from "./types.manifest"
 ---
 
 ### Manifest MCP (Model Context Protocol) Server
+
 **Feature ID:** `manifest-mcp-server`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -3727,25 +4048,30 @@ import { User as Customer } from "./types.manifest"
 Created a complete MCP server package at `packages/mcp-server/` that exposes Manifest's compilation, execution, validation, and introspection capabilities as MCP tools and resources.
 
 **MCP Tools (4):**
+
 1. **compile** - Compiles `.manifest` source to IR JSON, returns diagnostics and a `contentHash` handle for subsequent execute/explain calls
 2. **execute** - Executes a command against a previously compiled IR using `RuntimeEngine.runCommand()`, returns structured results including guard failures, policy denials, and emitted events
 3. **validate** - Lightweight validation of `.manifest` source that returns diagnostics without caching IR
 4. **explain** - Explains an IR entity, command, or policy in human-readable form with structured details
 
 **MCP Resources (3):**
+
 1. **manifest://ir/schema** - The IR JSON Schema from `docs/spec/ir/ir-v1.schema.json`
 2. **manifest://ir/{contentHash}** - Cached compiled IR accessible by content hash (uses `ResourceTemplate` for dynamic URI matching)
 3. **manifest://semantics** - Language semantics reference from `docs/spec/semantics.md`
 
 **State Management:**
+
 - `SessionStore` singleton with in-process cache (max 50 entries, FIFO eviction)
 - Keyed by IR provenance contentHash (SHA-256 of source, computed by the compiler)
 - Each cache entry stores the IR + a pre-warmed `RuntimeEngine` instance
 
 ### Files Modified
+
 - `vitest.config.ts` - Added `packages/mcp-server/**/*.test.ts` to test include array
 
 ### Files Created
+
 - `packages/mcp-server/package.json` - Package config with `@modelcontextprotocol/sdk` and `zod` deps
 - `packages/mcp-server/tsconfig.json` - TypeScript config mirroring CLI package
 - `packages/mcp-server/bin/manifest-mcp.js` - CLI entry point for stdio transport
@@ -3762,12 +4088,14 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 - `packages/mcp-server/src/tools/mcp-tools.test.ts` - 17 comprehensive tests (all passing)
 
 ### Notes for Developer
+
 - Pre-existing test failures (10 tests in 4 files) are unrelated to this change - they existed before implementation
 - The MCP server starts on stdio transport and is compatible with Claude Desktop, Cursor, and other MCP hosts
 - To configure in Claude Desktop, add to `claude_desktop_config.json`: `{"mcpServers": {"manifest": {"command": "npx", "args": ["@manifest/mcp-server"]}}}`
 - No modifications to existing source files were needed (the `computeContentHash` export was attempted but reverted; the server uses IR provenance's contentHash instead)
 
 ### Verification Status
+
 - 17/17 new MCP server tests pass
 - 1201 existing tests pass (no regressions)
 - TypeScript typecheck passes
@@ -3779,6 +4107,7 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 ---
 
 ### Shareable Online Playground
+
 **Feature ID:** `manifest-playground`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -3787,6 +4116,7 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 ## Summary: Shareable Online Playground
 
 ### Changes Implemented
+
 - Created a standalone playground at `/playground.html` as a second Vite entry point — completely additive, zero modifications to existing App.tsx or compiler code
 - Custom textarea-based editor with line-number gutter and error markers (red dots on lines with diagnostics)
 - LZ-string URL hash compression for shareable permalinks (`#code=...`) — no server needed
@@ -3802,10 +4132,12 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 - Production build: playground chunk is 21KB (6.8KB gzip)
 
 ### Files Modified
+
 - `vite.config.ts` — Added `rollupOptions.input` with both `index.html` and `playground.html` entries
 - `package.json` / `pnpm-lock.yaml` — Added `lz-string` dependency
 
 ### Files Created
+
 - `playground.html` — Second Vite entry point
 - `src/playground/main.tsx` — React root mount
 - `src/playground/Playground.tsx` — Top-level playground shell
@@ -3820,6 +4152,7 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 - `src/playground/lib/highlight.ts` — Syntax highlighting for manifest/ts/json
 
 ### Notes for Developer
+
 - Access the playground at `http://localhost:5173/playground.html` during development
 - All pre-existing test/lint/typecheck failures are unchanged — zero playground-related errors
 - The playground shares the CSS bundle with the main app (Tailwind) and tree-shakes shared chunks (compiler, runtime)
@@ -3832,6 +4165,7 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 ---
 
 ### Map / Record Property Type
+
 **Feature ID:** `map-type`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -3842,22 +4176,27 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 ### Changes Implemented
 
 **Spec Update**
+
 - Added Map instance methods section to `docs/spec/builtins.md` documenting `has()`, `get()`, `keys()`, `values()`, and `size` property
 
 **Projection Type Mappings**
+
 - Added `map: 'Json'` to Prisma type mapping (`src/manifest/projections/prisma/type-mapping.ts`)
 - Added `map: { builder: 'jsonb' }` to Drizzle type mapping (`src/manifest/projections/drizzle/type-mapping.ts`)
 
 **Runtime Engine** (`src/manifest/runtime-engine.ts`)
+
 - Extended `length()` builtin to handle plain objects (returns `Object.keys(v).length`)
 - Added virtual `size` property in `member` case for map access (`obj.size` → key count)
 - Added map method calls in `call` case: `has(key)`, `get(key)`, `keys()`, `values()`
 
 **Conformance Fixture**
+
 - Created `src/manifest/conformance/fixtures/73-map-type.manifest`
 - Generated expected IR output at `src/manifest/conformance/expected/73-map-type.ir.json`
 
 ### Files Modified
+
 - `docs/spec/builtins.md` - Added Map instance methods documentation
 - `src/manifest/projections/prisma/type-mapping.ts` - Added `map: 'Json'`
 - `src/manifest/projections/drizzle/type-mapping.ts` - Added `map: { builder: 'jsonb' }`
@@ -3866,6 +4205,7 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 - `src/manifest/conformance/expected/73-map-type.ir.json` - Expected IR output
 
 ### Files NOT Modified (Verified Unnecessary)
+
 - `lexer.ts` - `map` already reserved keyword
 - `parser.ts` - `type<generic>` syntax already works
 - `types.ts` - `TypeNode.generic` already sufficient
@@ -3875,6 +4215,7 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 - All other projections (Zod, Express, Hono, OpenAPI, GraphQL, JSON Schema) - already handle map
 
 ### Notes for Developer
+
 - Syntax: `property metadata: map<string>`, `property flags: map<boolean> = {}`
 - Keys are implicitly strings (JSONB constraint)
 - `map` builtin function (array transformation) does NOT conflict with `map<V>` type - different parse/eval paths
@@ -3886,6 +4227,7 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 ---
 
 ### Materialized View SQL Projection
+
 **Feature ID:** `materialized-view-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -3919,6 +4261,7 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 ### Files Modified
 
 **Created (new files):**
+
 - `src/manifest/projections/materialized-views/types.ts`
 - `src/manifest/projections/materialized-views/options.ts`
 - `src/manifest/projections/materialized-views/expression-to-sql.ts`
@@ -3926,6 +4269,7 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 - `src/manifest/projections/materialized-views/generator.test.ts`
 
 **Modified (registration):**
+
 - `src/manifest/projections/builtins.ts` (import, register, list)
 - `src/manifest/projections/index.ts` (export class + types)
 
@@ -3940,6 +4284,7 @@ Created a complete MCP server package at `packages/mcp-server/` that exposes Man
 ### Verification Status
 
 Verified via a temporary vitest test (`src/verify-materialized-views.test.ts`, 10 tests, since deleted) that:
+
 - `getProjection('materialized-views')` returns a registered projection with name `materialized-views` and surfaces `['materialized-views.ddl']`
 - On-demand strategy emits `CREATE MATERIALIZED VIEW` + `REFRESH MATERIALIZED VIEW` + indexes
 - Scheduled strategy emits `SELECT cron.schedule('...', '0 * * * *', 'REFRESH MATERIALIZED VIEW ...')`
@@ -3955,6 +4300,7 @@ Sample generated DDL confirmed visually (saved to `verify-smoke-output.sql` then
 ---
 
 ### Auto-Generated Mock Server for Testing
+
 **Feature ID:** `mock-server`  
 **Planned release:** v2.0.0 (Advanced Runtime & Platform)
 
@@ -3963,6 +4309,7 @@ Sample generated DDL confirmed visually (saved to `verify-smoke-output.sql` then
 ## Summary: Auto-Generated Mock Server for Testing
 
 ### Changes Implemented
+
 - Created `manifest mock <source>` CLI command that starts a local HTTP server simulating API routes derived from compiled Manifest IR
 - Uses `RuntimeEngine` with in-memory stores for real command execution (no fake data)
 - Derives REST routes automatically from IR: `GET /api/{entity}/list`, `GET /api/{entity}/:id`, `POST /api/{entity}/{command-kebab}`
@@ -3978,11 +4325,13 @@ Sample generated DDL confirmed visually (saved to `verify-smoke-output.sql` then
 - 21 tests: 6 unit tests for `toKebabCase`, 4 for `deriveRoutes`, 5 for `commandResultToStatus`, 6 integration tests with a real HTTP server
 
 ### Files Modified
+
 - `packages/cli/src/commands/mock.ts` — **CREATED** — Mock server implementation (exported: `mockCommand`, `createMockServer`, `deriveRoutes`, `commandResultToStatus`, `toKebabCase`, `Route`)
 - `packages/cli/src/commands/mock.test.ts` — **CREATED** — Unit + integration tests (21 tests, all passing)
 - `packages/cli/src/index.ts` — **MODIFIED** — Registered `mock` command with Commander.js
 
 ### Notes for Developer
+
 - The mock server uses honest execution — all commands run through RuntimeEngine with real guard/policy evaluation. No fake failures.
 - The `--scenario` flag only prints hints about which guards/constraints exist, it doesn't alter execution behavior (per the Manifest house style: "diagnostics explain, never compensate")
 - Command body format: `POST /api/task/start-progress` with JSON body `{ "instanceId": "task-1", "input": { ... } }` — if `input` key is absent, the entire body (minus `instanceId`) is used as input
@@ -3993,6 +4342,7 @@ Sample generated DDL confirmed visually (saved to `verify-smoke-output.sql` then
 ---
 
 ### Natural Language to Manifest Transpiler
+
 **Feature ID:** `natural-language-to-manifest`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -4001,6 +4351,7 @@ Sample generated DDL confirmed visually (saved to `verify-smoke-output.sql` then
 ## Summary: Natural Language to Manifest Transpiler
 
 ### Changes Implemented
+
 - Created `packages/cli/src/commands/generate-from-prompt.ts` - Main command implementation with LLM integration, retry logic, and validation loop
 - Added `--from-prompt` option to the existing `manifest generate` command in `packages/cli/src/index.ts`
 - Created `packages/cli/src/utils/schema.ts` - Utility for schema path resolution
@@ -4009,12 +4360,14 @@ Sample generated DDL confirmed visually (saved to `verify-smoke-output.sql` then
 - Built comprehensive system prompt that includes IR schema, semantics, and built-in functions
 
 ### Files Modified
+
 - `packages/cli/src/commands/generate-from-prompt.ts` (NEW)
 - `packages/cli/src/commands/validate-ai.ts` (exported loadCompiler)
 - `packages/cli/src/index.ts` (added --from-prompt option)
 - `packages/cli/src/utils/schema.ts` (NEW)
 
 ### Command Usage
+
 ```bash
 # Generate from natural language (uses Anthropic Claude API)
 manifest generate --from-prompt "Create a blog with posts and comments"
@@ -4031,6 +4384,7 @@ manifest generate --from-prompt "Create an e-commerce shop" \
 ```
 
 ### Notes for Developer
+
 - Requires `ANTHROPIC_API_KEY` environment variable or `--api-key` option for LLM generation
 - Falls back to template-based generation when no API key is available
 - Supports templates for blog, todo/task tracker, and e-commerce domains
@@ -4043,6 +4397,7 @@ manifest generate --from-prompt "Create an e-commerce shop" \
 ---
 
 ### OpenAPI 3.1 Specification Projection
+
 **Feature ID:** `openapi-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -4055,6 +4410,7 @@ manifest generate --from-prompt "Create an e-commerce shop" \
 Created a complete OpenAPI 3.1.0 projection that generates API specifications from Manifest IR entities, commands, and routes.
 
 **Core implementation:**
+
 - **OpenAPI 3.1 Projection** (`src/manifest/projections/openapi/generator.ts`): Main projection class implementing `ProjectionTarget` with the `openapi.spec` surface. Generates a complete OpenAPI 3.1.0 spec including:
   - Entity read operations (GET list, GET detail) with correct path parameters
   - Command write operations (POST) with typed request/response bodies
@@ -4075,23 +4431,28 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 - **Index** (`src/manifest/projections/openapi/index.ts`): Public surface re-exports
 
 **Registration:**
+
 - `src/manifest/projections/builtins.ts`: Registered `OpenApiProjection` in `registerBuiltinProjections()` and `listBuiltinProjections()`
 - `src/manifest/projections/index.ts`: Added re-exports for `OpenApiProjection` and types
 
 **Tests:**
+
 - `src/manifest/projections/openapi/generator.test.ts`: 40 comprehensive tests covering projection metadata, basic structure, entity read operations, command operations, entity schemas, type mapping, nullable types, computed properties, error response schemas, security schemes, tags, determinism, edge cases (empty IR, unknown surface, no properties, no parameters), and artifact metadata
 
 ### Files Modified
+
 - `src/manifest/projections/builtins.ts` — Added OpenAPI projection registration
 - `src/manifest/projections/index.ts` — Added OpenAPI re-exports
 
 ### Files Created
+
 - `src/manifest/projections/openapi/generator.ts` — Main projection implementation (~530 lines)
 - `src/manifest/projections/openapi/types.ts` — Configuration types
 - `src/manifest/projections/openapi/index.ts` — Module entry point
 - `src/manifest/projections/openapi/generator.test.ts` — 40 tests
 
 ### Notes for Developer
+
 - All 40 new tests pass
 - `npm run typecheck` passes
 - `npm run lint` passes
@@ -4100,6 +4461,7 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 - Pre-existing test failures in `breaking-change.test.ts`, `conformance.test.ts` (expression-builtins), `compile.test.ts`, and `enforce-surface.cli.test.ts` are unrelated
 
 ### Verification Status
+
 - Ran 40 unit tests via vitest — all pass
 - Ran end-to-end verification script against real Manifest compilation: compiled a multi-entity Manifest program, generated OpenAPI spec, validated structure (paths, schemas, error responses, determinism, custom options, error handling) — all 10 verification checks passed
 - Playwright was not available in this project (not installed), so verification was performed via `tsx` runtime script instead of browser test
@@ -4109,6 +4471,7 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 ---
 
 ### Runtime Performance Profiler
+
 **Feature ID:** `performance-profiler`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -4119,6 +4482,7 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 ### Changes Implemented
 
 #### 1. Profiling Data Structures (`src/manifest/profiling.ts`)
+
 - Created `ExecutionPhase` type defining all measurable execution phases (total, policyEvaluation, constraintValidation, guardEvaluation, etc.)
 - Created `PhaseTiming` interface for recording duration and metadata for each phase
 - Created `CommandProfile` interface containing complete profiling data for a single command execution
@@ -4128,6 +4492,7 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 - Implemented `toFlameGraph()` function for converting profiles to flame graph visualization format
 
 #### 2. Runtime Engine Instrumentation (`src/manifest/runtime-engine.ts`)
+
 - Added `profiling` option to `RuntimeOptions` interface
 - Added `currentProfile` and `sessionProfiles` fields to `RuntimeEngine` class
 - Added helper methods `isProfilingEnabled()`, `isDetailedProfiling()`, `completeProfiling()`, `getProfiles()`, `clearProfiles()`
@@ -4144,6 +4509,7 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 - Exported profiling types at package root for consumer access
 
 #### 3. CLI Profile Command (`packages/cli/src/commands/profile.ts`)
+
 - Implemented `manifest profile` CLI command with options:
   - `--ir <path>`: IR file to load
   - `--format <format>`: Output format (table, json, flame)
@@ -4160,6 +4526,7 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 - Registered command in CLI index
 
 #### 4. Flame Graph Panel (`src/artifacts/FlameGraphPanel.tsx`)
+
 - Created React component displaying:
   - Statistics overview (total duration, average, slowest/fastest)
   - Visual flame graph with color-coded phases
@@ -4170,12 +4537,14 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 - Added to ArtifactsPanel as "Performance" panel mode
 
 #### 5. ArtifactsPanel Integration (`src/artifacts/ArtifactsPanel.tsx`)
+
 - Added `profiler` to `PanelMode` type
 - Imported `FlameGraphPanel` component
 - Added sidebar button with Flame icon
 - Added panel rendering in main content area
 
 ### Files Modified
+
 - `src/manifest/profiling.ts` (NEW)
 - `src/manifest/runtime-engine.ts`
 - `packages/cli/src/commands/profile.ts` (NEW)
@@ -4184,6 +4553,7 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 - `src/artifacts/ArtifactsPanel.tsx`
 
 ### Notes for Developer
+
 - All 2042 tests pass after these changes
 - Profiling is opt-in via `RuntimeOptions.profiling.enabled = true`
 - The feature identifies slow expression evaluations and large entity graphs through:
@@ -4199,6 +4569,7 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 ---
 
 ### Manifest Plugin API for Third-Party Extensions
+
 **Feature ID:** `plugin-api`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -4209,6 +4580,7 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 ### Changes Implemented
 
 **New Files:**
+
 - `src/manifest/plugin-api.ts` — Core plugin contract: 5 extension point interfaces (ProjectionTarget, StoreAdapterPlugin, AuditSinkPlugin, BuiltinFunctionPlugin, CliCommandPlugin), `definePlugin()` type-safe helper, `RESERVED_BUILTIN_NAMES` set (27 reserved names), `PLUGIN_API_VERSION` constant
 - `src/manifest/plugin-loader.ts` — Dynamic import loader with: module resolution (relative paths via `pathToFileURL`, npm packages via `createRequire`), shape validation, SemVer range compatibility checks (supports `>=`, `<`, `^`, `~`, exact, compound ranges), composite store provider builder, composite audit sink factories, builtin function merging with reserved-name collision rejection, CLI command collection, `onLoad` lifecycle hook support
 - `src/manifest/plugin-api.test.ts` — 16 tests covering: PLUGIN_API_VERSION, RESERVED_BUILTIN_NAMES, definePlugin (valid, all extension points, missing manifest/name/version, wrong API version, onLoad hook), type coverage
@@ -4216,12 +4588,14 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 - `docs/spec/plugins/plugin.schema.json` — JSON Schema for validating plugin module exports
 
 **Modified Files:**
+
 - `package.json` — Added `./plugin-api` and `./plugin-loader` subpath exports; added `docs/spec/plugins/*.schema.json` to `files` array
 - `vitest.config.ts` — Added aliases for `@angriff36/manifest/plugin-api` and `@angriff36/manifest/plugin-loader`
 - `packages/cli/src/utils/config.ts` — Added `plugins` array to `ManifestConfig` interface (module, options, enabled)
 - `packages/cli/src/index.ts` — Added `loadAllConfigs` import; added `manifest plugins list` CLI subcommand (supports --json output)
 
 ### Key Design Decisions
+
 - Subpath exports from root package (no separate `@manifest/plugin-api` package) — follows existing pattern of 14+ subpath exports
 - Plugin API version is `'1'` — hardcoded string for forward compatibility
 - No `semver` dependency — hand-rolled ~40-line SemVer range matcher
@@ -4230,6 +4604,7 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 - Zero conformance/test regressions — all 28 failing tests are pre-existing on this branch
 
 ### Verification
+
 - 33 new tests all pass
 - 1405 total tests pass (same as before changes)
 - TypeScript typecheck clean for plugin files
@@ -4241,6 +4616,7 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 ---
 
 ### Policy Matrix Viewer
+
 **Feature ID:** `policy-matrix-viewer`  
 **Planned release:** v2.0.0 (Advanced Runtime & Platform)
 
@@ -4264,12 +4640,14 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
    - Extended PanelMode type to include 'policies'
 
 ### Files Modified
+
 - `src/artifacts/PolicyMatrixPanel.tsx` (new file, 575 lines)
 - `src/artifacts/ArtifactsPanel.tsx` (updated imports and panel routing)
 
 ### Key Features
+
 - **Matrix Grid**: Shows entities on the left with a table of roles vs operations (read/write/delete/execute)
-- **Color Coding**: 
+- **Color Coding**:
   - Green (Allow) - permitted access
   - Red (Deny) - denied access
   - Yellow (Conditional) - access depends on policy expression evaluation
@@ -4283,12 +4661,14 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 - **Default Roles**: When no roles are defined, shows Anonymous, Authenticated, and Admin
 
 ### Verification
+
 - All 2042 tests pass
 - TypeScript type checking passes (pre-existing errors in runtime-engine.ts are unrelated)
 - Dev server compiles successfully with the new component
 - ESLint warnings are intentional dependency exclusions for performance
 
 ### Notes for Developer
+
 - The policy matrix evaluates policies against roles defined in the IR or uses default roles (Anonymous, Authenticated, Admin) for testing
 - The `formatExpression` function converts IR expression trees to readable strings for display
 - Policy evaluation uses heuristics for default roles but leverages `effectivePermissions` from IRRole when roles are defined
@@ -4299,6 +4679,7 @@ Created a complete OpenAPI 3.1.0 projection that generates API specifications fr
 ---
 
 ### Property-Based Testing for Runtime Engine
+
 **Feature ID:** `property-based-testing`  
 **Planned release:** v2.0.0 (Advanced Runtime & Platform)
 
@@ -4322,6 +4703,7 @@ I've successfully completed the property-based testing feature for the Manifest 
 ---
 
 ### Python Pydantic Model Projection
+
 **Feature ID:** `python-pydantic-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -4332,11 +4714,13 @@ I've successfully completed the property-based testing feature for the Manifest 
 ### Changes Implemented
 
 **New Files Created:**
+
 - `src/manifest/projections/pydantic/generator.ts` - Main Pydantic projection generator with type mappings, constraint validators, and code generation
 - `src/manifest/projections/pydantic/generator.test.ts` - Comprehensive test suite with 15 tests covering entities, commands, type mappings, and validators
 - `src/manifest/projections/pydantic/types.ts` - Configuration options for the Pydantic projection
 
 **Modified Files:**
+
 - `src/manifest/projections/builtins.ts` - Registered PydanticProjection (now 16 built-in projections)
 - `src/manifest/projections/snapshot.test.ts` - Updated projection count from 15 to 16
 
@@ -4346,16 +4730,17 @@ I've successfully completed the property-based testing feature for the Manifest 
 2. **Generic Types**: Support for `array<T>` → `list[T]` and `map<T>` → `dict[str, T]`
 3. **Field Validators**: Constraint severity mapped to Pydantic validators:
    - Numeric ranges → @field_validator with min/max checks
-   - Length constraints → @field_validator with length checks  
+   - Length constraints → @field_validator with length checks
    - Pattern constraints → @field_validator with regex validation
 4. **Computed Properties**: Generated with @computed_field and @property decorators
-5. **Three Surfaces**: 
+5. **Three Surfaces**:
    - `pydantic.entity` - Per-entity models
    - `pydantic.command` - Per-command parameter models
    - `pydantic.models` - All models in one file
 6. **Configuration Options**: Support for custom imports, JSON schema export, computed field emission
 
 ### Test Results
+
 - All 15 Pydantic projection tests pass
 - All 2,059 existing tests pass (excluding pre-existing property test failures)
 - Snapshot test updated successfully
@@ -4365,6 +4750,7 @@ I've successfully completed the property-based testing feature for the Manifest 
 ---
 
 ### Rate Limiting Policy Declarations
+
 **Feature ID:** `rate-limiting-policy`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -4375,6 +4761,7 @@ I've successfully completed the property-based testing feature for the Manifest 
 ### Changes Implemented
 
 **IR Schema Updates:**
+
 - Added `IRRateLimit` interface to `docs/spec/ir/ir-v1.schema.json` with fields:
   - `maxRequests` (number): Maximum requests per window
   - `windowMs` (number): Time window in milliseconds
@@ -4383,6 +4770,7 @@ I've successfully completed the property-based testing feature for the Manifest 
 - Added `rateLimit` field to `IRCommand` and `IRPolicy` definitions
 
 **Parser & Lexer Updates:**
+
 - Added rate limit keywords to lexer: `rateLimit`, `maxRequests`, `windowMs`, `burstAllowance`, `scope`, `global`
 - Added `RateLimitNode` to AST types in `src/manifest/types.ts`
 - Added `parseRateLimit()` method to parser for rate limit block parsing
@@ -4390,16 +4778,19 @@ I've successfully completed the property-based testing feature for the Manifest 
 - Updated `parsePolicy()` to handle both inline and block-style rate limits
 
 **IR Compiler Updates:**
+
 - Added `IRRateLimit` type to `src/manifest/ir.ts`
 - Added `transformRateLimit()` method to transform AST nodes to IR
 - Updated `transformCommand()` and `transformPolicy()` to include rate limit data
 
 **Documentation Updates:**
+
 - Updated `docs/spec/semantics.md` with rate limiting semantics
 - Added execution order documentation (rate limits checked before policies)
 - Added policy rate limiting section
 
 **Conformance Tests:**
+
 - Created `74-rate-limit-command.manifest` fixture testing command rate limits
 - Created `75-rate-limit-policy.manifest` fixture testing policy rate limits
 - Generated expected IR outputs for both fixtures
@@ -4407,21 +4798,26 @@ I've successfully completed the property-based testing feature for the Manifest 
 ### Files Modified
 
 **Schema & IR:**
+
 - `docs/spec/ir/ir-v1.schema.json` - Added IRRateLimit definition and rateLimit fields
 - `src/manifest/ir.ts` - Added IRRateLimit interface and type exports
 
 **Parser & Types:**
+
 - `src/manifest/lexer.ts` - Added rate limit keywords
 - `src/manifest/parser.ts` - Added rate limit parsing logic
 - `src/manifest/types.ts` - Added RateLimitNode and RateLimitScope types
 
 **Compiler:**
+
 - `src/manifest/ir-compiler.ts` - Added rate limit transformation
 
 **Documentation:**
+
 - `docs/spec/semantics.md` - Added rate limiting semantics
 
 **Tests:**
+
 - `src/manifest/conformance/fixtures/74-rate-limit-command.manifest` (new)
 - `src/manifest/conformance/fixtures/75-rate-limit-policy.manifest` (new)
 - `src/manifest/conformance/expected/74-rate-limit-command.ir.json` (new)
@@ -4430,6 +4826,7 @@ I've successfully completed the property-based testing feature for the Manifest 
 ### Notes for Developer
 
 **Syntax Examples:**
+
 ```manifest
 event NotificationSent: notifications {
   payload: string
@@ -4452,6 +4849,7 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 ```
 
 **Verification:**
+
 - All conformance tests pass (271 tests including 2 new rate limit fixtures)
 - Direct verification confirms IR compilation with correct rate limit metadata
 - Rate limit values correctly preserved through compilation pipeline
@@ -4461,6 +4859,7 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 ---
 
 ### TanStack Query Hooks Projection
+
 **Feature ID:** `react-query-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -4469,6 +4868,7 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 ## Summary: Generate typed TanStack Query (React Query) hooks for each entity and command in the IR
 
 ### Changes Implemented
+
 - Created a new `ReactQueryProjection` class implementing the `ProjectionTarget` interface
 - **`react-query.hooks` surface** generates:
   - Typed entity query hooks (`useEntityList`, `useEntityDetail`) wrapping GET endpoints
@@ -4485,12 +4885,14 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 - Added 21 comprehensive tests covering: metadata, entity queries, command mutations, options, query key factories, provider generation, artifact metadata, determinism, and edge cases
 
 ### Files Modified
+
 - `src/manifest/projections/react-query/generator.ts` (NEW) - ReactQueryProjection implementation
 - `src/manifest/projections/react-query/generator.test.ts` (NEW) - 21 tests for the projection
 - `src/manifest/projections/builtins.ts` - Added ReactQueryProjection registration
 - `src/manifest/projections/index.ts` - Added ReactQueryProjection and options type exports
 
 ### Notes for Developer
+
 - URL patterns match existing NextJS projection: GET `/api/{entity}/list`, GET `/api/{entity}/{id}`, POST `/api/manifest/{entity}/commands/{command}`
 - Query keys use camelCase entity names (e.g., `queryKeys.userProfile.all`)
 - Command mutations automatically invalidate the parent entity's query cache on success
@@ -4499,6 +4901,7 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 - Options: `apiBasePath` (default `/api`), `dispatcherBasePath` (default `/api/manifest`), `defaultStaleTime` (default 30000ms), `errorBoundaryIntegration` (default true), `typesImportPath` (reserved)
 
 ### Verification Status
+
 - 21/21 unit tests pass (vitest)
 - Full test suite: 1305 tests pass, 0 failures, 9 skipped (pre-existing)
 - TypeScript typecheck passes clean
@@ -4511,6 +4914,7 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 ---
 
 ### Real-Time Entity Subscription via WebSockets
+
 **Feature ID:** `realtime-subscription`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -4519,6 +4923,7 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 ## Summary: Add realtime modifier to entities for WebSocket subscriptions
 
 ### Changes Implemented
+
 - **IR Schema Update**: Added `realtime` boolean property to `IREntity` in `docs/spec/ir/ir-v1.schema.json`
 - **IR Type Definitions**: Added `realtime?: boolean` to `IREntity` interface in `src/manifest/ir.ts`
 - **AST Types**: Added `realtime?: boolean` to `EntityNode` in `src/manifest/types.ts`
@@ -4531,6 +4936,7 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 - **Conformance Tests**: Updated 60 fixture files to include new IR properties
 
 ### Files Modified
+
 - `docs/spec/ir/ir-v1.schema.json` - Added realtime property to IREntity
 - `docs/spec/semantics.md` - Documentation updates
 - `docs/spec/adapters.md` - Documentation updates
@@ -4545,6 +4951,7 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 - `src/manifest/projections/__snapshots__/snapshot.test.ts.snap` - Updated snapshots
 
 ### Notes for Developer
+
 - The `realtime` modifier is placed inside the entity block (e.g., `entity MyEntity { realtime }`)
 - Generates SSE (Server-Sent Events) subscription routes at `/api/{entity}/realtime`
 - React hooks support auto-reconnect with configurable delay
@@ -4555,6 +4962,7 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 ---
 
 ### Redis Store Adapter
+
 **Feature ID:** `redis-store-adapter`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -4565,23 +4973,27 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 ### Changes Implemented
 
 **1. RedisStore Entity Persistence (`src/manifest/stores.node.ts`)**
+
 - Added `RedisStore` class implementing the `Store<T>` interface
 - Stores entities as Redis hash fields with entity names as keys (e.g., `manifest:User`)
 - Each entity is stored as a JSON string value with entity ID as the hash field
 - Supports all Store operations: `getAll()`, `getById()`, `create()`, `update()`, `delete()`, `clear()`
 
 **2. TTL Support**
+
 - Added `defaultTTL` configuration option for automatic entity expiration
 - Implemented `setTTL()` and `getTTL()` methods for runtime TTL management
 - TTL can be set at hash level (entire entity collection) or removed
 
 **3. Redis Pub/Sub Event Emission**
+
 - Added `publishEvent()` method to publish events to Redis channels
 - Added `subscribe()` method for subscribing to events with automatic cleanup
 - Uses separate Redis connection for pub/sub (SUBSCRIBE mode connections can't perform other commands)
 - Returns unsubscribe function for clean listener management
 
 **4. RedisOutboxStore for Outbox Pattern (`src/manifest/outbox/stores/redis.ts`)**
+
 - Added `RedisOutboxStore` class implementing the `OutboxStore` interface
 - Uses Redis Streams (`XADD`, `XREADGROUP`, `XACK`) for durable event queuing
 - Supports consumer groups for parallel delivery with automatic load balancing
@@ -4589,26 +5001,31 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 - Added `releaseStaleClaims()`, `getLength()`, `getPendingInfo()`, `trim()` utility methods
 
 **5. Configuration & Exports**
+
 - Added `RedisConfig` interface with connection options (url, host, port, db, password, keyPrefix, defaultTTL, etc.)
 - Exported `RedisStore` and `RedisConfig` from `stores.node.ts`
 - Added package.json export for `./outbox/redis` module
 
 **6. Optional Peer Dependency**
+
 - `ioredis` is an optional peer dependency (loaded via dynamic import)
 - Clear error message when `ioredis` is not installed: "RedisStore requires 'ioredis' to be installed. Run: npm install ioredis"
 
 **7. Tests**
+
 - Added `src/manifest/stores.node.test.ts` with integration tests (skipped when ioredis not available)
 - Tests verify all Store operations, TTL, pub/sub, and OutboxStore functionality
 - Verified feature with temporary Playwright test (7 tests passing, then deleted as required)
 
 ### Files Modified
+
 - `src/manifest/stores.node.ts` - Added RedisStore class (~260 lines)
 - `src/manifest/outbox/stores/redis.ts` - Created RedisOutboxStore (~300 lines)
 - `src/manifest/stores.node.test.ts` - Added integration tests (~200 lines)
 - `package.json` - Added `./outbox/redis` export
 
 ### Notes for Developer
+
 - The Redis adapter follows the same patterns as existing adapters (PostgresStore, MongoDBStore)
 - `ioredis` library is used (not `redis`) for better TypeScript support and cluster features
 - Tests skip gracefully when ioredis is not installed (no runtime requirement)
@@ -4623,6 +5040,7 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 ---
 
 ### Remix / React Router v7 Projection
+
 **Feature ID:** `remix-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -4671,12 +5089,14 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
    - **Session-based Auth**: Proper session handling and redirects for unauthorized users
 
 ### Files Modified
+
 - `src/manifest/projections/remix/generator.ts` - New Remix projection generator (958 lines)
 - `src/manifest/projections/interface.ts` - Added RemixProjectionOptions interface (71 lines added)
 - `src/manifest/projections/builtins.ts` - Registered Remix projection (3 lines added)
 - `src/manifest/projections/snapshot.test.ts` - Updated projection count from 16 to 17
 
 ### Verification Status
+
 - **Projection Tests**: All 528 projection tests pass, including 35 snapshot tests
 - **TypeScript Type Check**: No Remix-specific type errors
 - **ESLint**: No Remix-specific lint errors
@@ -4687,6 +5107,7 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 - **Test File Deleted**: Temporary verification test deleted after successful verification
 
 ### Notes for Developer
+
 - The Remix projection follows the same patterns as existing projections (Next.js, Express, Hono)
 - Generated code uses proper TypeScript typing and follows Remix conventions
 - Auth integration supports multiple providers with configurable import paths
@@ -4700,6 +5121,7 @@ policy WriteRestricted write: context.role == 'admin' "Only admins can write" ra
 ---
 
 ### Federated Multi-Service Runtime
+
 **Feature ID:** `runtime-federation`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -4723,6 +5145,7 @@ Implemented a federation layer enabling multiple Manifest runtime instances (mic
 10. **Test suites** — 34 unit tests in `federation.test.ts` + 8 conformance tests in `federation-conformance.test.ts`
 
 ### Files Modified
+
 - `src/manifest/federation/types.ts` (new)
 - `src/manifest/federation/registry.ts` (new)
 - `src/manifest/federation/client.ts` (new)
@@ -4736,11 +5159,13 @@ Implemented a federation layer enabling multiple Manifest runtime instances (mic
 - `package.json` — added `./federation` export
 
 ### Verification Status
+
 - **Vitest**: 42/42 federation tests passing (34 unit + 8 conformance), including IR compilation, descriptor building, command discovery, identity round-tripping, client invocation with retry on idempotent commands, transient failure detection, and typed HTTP adapter generation.
 - **Playwright**: Wrote and ran `verify-federation.spec.ts` against the Vite dev server. The test imports the federation module in a real browser context, exercises registry/descriptor/client/adapter/policy-bridge APIs end-to-end, and verifies all assertions. Test passed in 1.3s, then the file was deleted as required.
 - **Pre-existing test failures**: Confirmed 75 pre-existing test failures exist in files I did not modify (runtime-middleware, projection registrations, etc.) by stashing changes and re-running. My implementation does not introduce regressions.
 
 ### Notes for Developer
+
 - The federation module is transport-agnostic via the `FederationTransport` interface, enabling gRPC/queue-based implementations
 - The default transport uses `globalThis.fetch` and can be replaced for testing or alternative protocols
 - Policy bridge headers use the `X-Manifest-Actor`/`X-Manifest-Tenant`/`X-Manifest-Org`/`X-Manifest-Roles`/`X-Request-Id`/`X-Correlation-Id` prefix scheme
@@ -4753,6 +5178,7 @@ Implemented a federation layer enabling multiple Manifest runtime instances (mic
 ---
 
 ### Runtime Middleware Pipeline
+
 **Feature ID:** `runtime-middleware`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -4789,10 +5215,12 @@ Implemented a federation layer enabling multiple Manifest runtime instances (mic
    - Tests for context patching, event inspection, and conditional short-circuit
 
 ### Files Modified
+
 - `src/manifest/runtime-engine.ts` - Added middleware types, configuration, and execution hooks
 - `src/manifest/runtime-middleware.test.ts` - New comprehensive test suite (23 tests, all passing)
 
 ### Notes for Developer
+
 - Middleware hooks execute in deterministic order: before-policy → before-guard → before-action → after-emit
 - Middleware can enrich the evaluation context via `contextPatch` or short-circuit with custom results
 - All middleware types are exported for library consumers
@@ -4804,6 +5232,7 @@ Implemented a federation layer enabling multiple Manifest runtime instances (mic
 ---
 
 ### Interactive Runtime REPL (manifest repl)
+
 **Feature ID:** `runtime-repl`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -4812,6 +5241,7 @@ Implemented a federation layer enabling multiple Manifest runtime instances (mic
 ## Summary: Interactive Runtime REPL (`manifest repl`)
 
 ### Changes Implemented
+
 - Created new `manifest repl` CLI command providing an interactive REPL for runtime exploration
 - Implemented readline-based interface with command history and tab completion
 - Added JSON output mode for scripting/piping
@@ -4822,15 +5252,18 @@ Implemented a federation layer enabling multiple Manifest runtime instances (mic
 - Support for user context, tenant isolation, and context variables
 
 ### Files Modified
+
 - **packages/cli/src/commands/repl.ts** (NEW) - Core REPL implementation
 - **packages/cli/src/index.ts** (MODIFIED) - Added REPL command registration
 
 ### Files Created/Modified for Build
+
 - **packages/cli/dist/commands/repl.js** - Compiled REPL command
 - **packages/cli/dist/commands/repl.d.ts** - TypeScript definitions
 - **packages/cli/dist/index.js** - Updated with REPL registration
 
 ### Available Commands
+
 ```
 help              - Show available commands
 list [ls]         - List all entities
@@ -4851,6 +5284,7 @@ exit [quit/q]     - Exit the REPL
 ```
 
 ### Usage Examples
+
 ```bash
 # Interactive REPL
 manifest repl src/manifest/conformance/fixtures/20-blog-app.manifest
@@ -4863,6 +5297,7 @@ manifest repl --user admin --tenant acme src/fixtures/app.manifest
 ```
 
 ### Notes
+
 - The `profile` command was temporarily commented out in `packages/cli/src/index.ts` due to pre-existing build errors (missing exports in runtime-engine: `summarizeProfiles`, `toFlameGraph`). This is unrelated to the REPL feature.
 - REPL uses Node.js native `readline` module for cross-platform compatibility
 - Tab completion works for entity names, command names, and command options
@@ -4874,6 +5309,7 @@ manifest repl --user admin --tenant acme src/fixtures/app.manifest
 ---
 
 ### Runtime Time-Travel Debugger
+
 **Feature ID:** `runtime-time-travel`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -4882,18 +5318,21 @@ manifest repl --user admin --tenant acme src/fixtures/app.manifest
 ## Summary: Time-Travel Debugger for Runtime Panel
 
 ### Changes Implemented
+
 1. Created TimeTravelManager class (`src/manifest/time-travel.ts`) to record and manage execution history
 2. Created TimeTravelPanel UI component (`src/artifacts/TimeTravelPanel.tsx`) with timeline scrubbing, step navigation, and state inspection
 3. Updated RuntimePanel to integrate time-travel controls and history recording
 4. Added time-travel state type definitions to support the feature
 
 ### Files Modified
+
 - `src/artifacts/RuntimePanel.tsx` - Integrated time-travel controls
 - `src/manifest/time-travel.ts` - NEW: Time-travel history management
 - `src/artifacts/TimeTravelPanel.tsx` - NEW: Time-travel UI component
 - `src/manifest/types.ts` - Added time-travel state types
 
 ### Notes for Developer
+
 - Time-trival captures every command execution, state mutation, and event emission
 - History is serializable and can be persisted/exported
 - UI includes timeline scrubber, step navigation buttons, and state inspection
@@ -4901,6 +5340,7 @@ manifest repl --user admin --tenant acme src/fixtures/app.manifest
 - Built on existing runtime state serialization infrastructure
 
 ### Verification Status
+
 - Created temporary Playwright verification test
 - Tested time-travel UI renders and navigation works
 - Confirmed history recording captures state changes
@@ -4912,6 +5352,7 @@ manifest repl --user admin --tenant acme src/fixtures/app.manifest
 ---
 
 ### Saga / Distributed Workflow Declarations
+
 **Feature ID:** `saga-workflow`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -4948,24 +5389,24 @@ saga ProcessOrder {
 
 ### Files Changed
 
-| File | Change |
-|------|--------|
-| `src/manifest/ir.ts` | Added `IRSagaStep`, `IRSaga` interfaces; added `sagas?: IRSaga[]` to IR root and `sagas?: string[]` to IRModule |
-| `docs/spec/ir/ir-v1.schema.json` | Added `IRSaga`, `IRSagaStep` definitions and `sagas` property to root and module |
-| `src/manifest/types.ts` | Added `SagaStepNode`, `SagaNode` AST interfaces; added `sagas: SagaNode[]` to ManifestProgram and ModuleNode |
-| `src/manifest/lexer.ts` | Added `'saga'` to KEYWORDS set |
-| `src/manifest/parser.ts` | Added `parseSaga()` and `parseSagaStep()` methods with context-sensitive matching for `step`/`compensate` |
-| `src/manifest/ir-compiler.ts` | Added `transformSaga()` method; saga collection in `transformProgram` and `transformModule` |
-| `src/manifest/runtime-engine.ts` | Added `SagaStepResult`/`SagaResult` types; `runSaga()`, `compensateSagaSteps()`, `emitSagaLifecycle()` methods |
-| `src/manifest/generator.ts` | Added `genSaga()` method for TypeScript code generation |
+| File                             | Change                                                                                                          |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `src/manifest/ir.ts`             | Added `IRSagaStep`, `IRSaga` interfaces; added `sagas?: IRSaga[]` to IR root and `sagas?: string[]` to IRModule |
+| `docs/spec/ir/ir-v1.schema.json` | Added `IRSaga`, `IRSagaStep` definitions and `sagas` property to root and module                                |
+| `src/manifest/types.ts`          | Added `SagaStepNode`, `SagaNode` AST interfaces; added `sagas: SagaNode[]` to ManifestProgram and ModuleNode    |
+| `src/manifest/lexer.ts`          | Added `'saga'` to KEYWORDS set                                                                                  |
+| `src/manifest/parser.ts`         | Added `parseSaga()` and `parseSagaStep()` methods with context-sensitive matching for `step`/`compensate`       |
+| `src/manifest/ir-compiler.ts`    | Added `transformSaga()` method; saga collection in `transformProgram` and `transformModule`                     |
+| `src/manifest/runtime-engine.ts` | Added `SagaStepResult`/`SagaResult` types; `runSaga()`, `compensateSagaSteps()`, `emitSagaLifecycle()` methods  |
+| `src/manifest/generator.ts`      | Added `genSaga()` method for TypeScript code generation                                                         |
 
 ### Files Added
 
-| File | Purpose |
-|------|---------|
-| `src/manifest/conformance/fixtures/88-saga-orchestration.manifest` | Conformance fixture with 3 entities, 5 commands, 9 events, 1 saga |
-| `src/manifest/conformance/expected/88-saga-orchestration.ir.json` | Expected IR output (auto-generated) |
-| `src/manifest/runtime-saga.test.ts` | 7 runtime tests: compilation, happy path, lifecycle events, command events, failure+compensation, abort mode, unknown saga |
+| File                                                               | Purpose                                                                                                                    |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `src/manifest/conformance/fixtures/88-saga-orchestration.manifest` | Conformance fixture with 3 entities, 5 commands, 9 events, 1 saga                                                          |
+| `src/manifest/conformance/expected/88-saga-orchestration.ir.json`  | Expected IR output (auto-generated)                                                                                        |
+| `src/manifest/runtime-saga.test.ts`                                | 7 runtime tests: compilation, happy path, lifecycle events, command events, failure+compensation, abort mode, unknown saga |
 
 ### Key Design Decisions
 
@@ -4986,6 +5427,7 @@ saga ProcessOrder {
 ---
 
 ### Scheduled / Cron Command Triggers
+
 **Feature ID:** `scheduled-command`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -4998,6 +5440,7 @@ saga ProcessOrder {
 **Language Feature**: Added `schedule` declarations to the Manifest DSL that bind commands to cron expressions, interval triggers, or "every N units" triggers. Schedules can target module-level commands or entity-level commands (e.g., `Order.archive`).
 
 **Supported Syntax**:
+
 ```
 schedule <name> cron "<expression>" run [Entity.]<commandName>([args])
 schedule <name> interval "<duration>" run [Entity.]<commandName>([args])
@@ -5005,6 +5448,7 @@ schedule <name> every <count> <unit> run [Entity.]<commandName>([args])
 ```
 
 **Examples from the conformance fixture**:
+
 - `schedule dailyBackup cron "0 0 * * *" run backupData`
 - `schedule frequentCleanup interval "5m" run cleanupOldData`
 - `schedule weeklyReport every 1 weeks run generateReport`
@@ -5012,6 +5456,7 @@ schedule <name> every <count> <unit> run [Entity.]<commandName>([args])
 - `schedule archiveOldOrders cron "0 2 * * *" run Order.archive`
 
 **Trigger Types**:
+
 - `cron`: Standard 5-field cron expressions (e.g., `"0 0 * * *"`)
 - `interval`: Duration strings (e.g., `"5m"`, `"1h"`, `"1d"`)
 - `every`: Count + unit (e.g., `1 weeks`, `30 minutes`)
@@ -5057,6 +5502,7 @@ schedule <name> every <count> <unit> run [Entity.]<commandName>([args])
 ---
 
 ### Python Client SDK Generation
+
 **Feature ID:** `sdk-python`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -5095,6 +5541,7 @@ schedule <name> every <count> <unit> run [Entity.]<commandName>([args])
 11. **Fixed Pre-existing Typecheck Errors** — Removed `outcome: 'deny'` field (not in `IRConstraint`), added required `name` and `code` fields to constraints, fixed `version: '1.0.0'` → `version: '1.0'` throughout the test file
 
 ### Files Modified
+
 - `src/manifest/projections/index.ts` — Added `PydanticProjection` export and `PydanticProjectionOptions` type export
 - `src/manifest/projections/builtins.ts` — Added `PydanticProjection` import, registration in `registerBuiltinProjections()`, and entry in `listBuiltinProjections()`
 - `src/manifest/projections/pydantic/generator.ts` — Added `pydantic.client` surface, enum generation, convenience functions, helper functions; fixed unused variable warnings
@@ -5104,6 +5551,7 @@ schedule <name> every <count> <unit> run [Entity.]<commandName>([args])
 - `CLAUDE.md` — Added Projections section with Pydantic documentation
 
 ### Notes for Developer
+
 - **Test status**: All 19 Pydantic tests pass, all 530 projection tests pass, all 33 snapshot tests pass. Pre-existing failures in untracked files (`runtime-middleware.test.ts`, `runtime-builtin-properties.test.ts`, conformance fixtures 72-76) are unrelated to this feature.
 - **Typecheck status**: Pydantic files have zero typecheck errors. The previously noted errors (`stores.node.test.ts`, `runtime-middleware.test.ts`) are in untracked files unrelated to this work.
 - **Critical fix**: The previous implementation left the Pydantic projection unregistered in `builtins.ts` and unexported from `index.ts`. This would have caused silent failure at runtime — the projection would not be available via `getProjection('pydantic')`. This is now fixed.
@@ -5116,6 +5564,7 @@ schedule <name> every <count> <unit> run [Entity.]<commandName>([args])
 ---
 
 ### Elasticsearch / OpenSearch Index Projection
+
 **Feature ID:** `search-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -5170,6 +5619,7 @@ Created a new `elasticsearch` projection in the Manifest DSL that generates Elas
 ### Verification Status
 
 Verified with Playwright using 5 temporary test cases that all passed (then deleted):
+
 1. Generates all expected surfaces (mapping, template, indexer, client) for multi-entity IR
 2. Emits `ELASTICSEARCH_AMBIGUOUS_NUMBER` diagnostic for `number` type
 3. Skips private properties in index mappings
@@ -5183,6 +5633,7 @@ All 24 unit tests in `generator.test.ts` pass. Generated artifacts (mapping.json
 ---
 
 ### Seed Data Generator from IR
+
 **Feature ID:** `seed-data-generator`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -5191,6 +5642,7 @@ All 24 unit tests in `generator.test.ts` pass. Generated artifacts (mapping.json
 ## Summary: Seed Data Generator from IR
 
 ### Changes Implemented
+
 - **New `manifest seed` CLI command** — Generates realistic seed data files from IR entity definitions. Uses property type metadata to generate valid values, walks the relationship graph to produce consistent referential data, and supports dev/staging/demo profiles.
 - **Deterministic generation** — Seeded mulberry32 PRNG for reproducible output. `generateId()` was fixed during development to not read wall-clock time (a bug that broke FK reference consistency when same RNG instance generated parent then child ids).
 - **Type-aware value generators** — Realistic string templates keyed on property name (email, name, title, status, etc.), context-aware number ranges (age, price, year, rating), boolean, timestamp, UUID, array, and object types.
@@ -5204,11 +5656,13 @@ All 24 unit tests in `generator.test.ts` pass. Generated artifacts (mapping.json
 - **CLI options**: positional source, `--output`, `--profile` (dev/staging/demo), `--format` (json/sql/supabase), `--count` (override per-entity), `--entity` (repeatable filter), `--seed` (PRNG seed), `--json` (stdout structured output).
 
 ### Files Modified
-- `packages/cli/src/commands/seed.ts` *(new)* — Core seed command implementation: IR loader, mulberry32 PRNG, value generators, topological sort, relationship resolver, three output formatters, and `seedCommand()` entry point.
-- `packages/cli/src/commands/seed.test.ts` *(new)* — 10 tests covering: record count, profile defaults, determinism, JSON/SQL/Supabase output formats, belongsTo FK consistency, unique constraint enforcement, `--json` stdout mode, `--entity` filtering, and invalid profile rejection.
+
+- `packages/cli/src/commands/seed.ts` _(new)_ — Core seed command implementation: IR loader, mulberry32 PRNG, value generators, topological sort, relationship resolver, three output formatters, and `seedCommand()` entry point.
+- `packages/cli/src/commands/seed.test.ts` _(new)_ — 10 tests covering: record count, profile defaults, determinism, JSON/SQL/Supabase output formats, belongsTo FK consistency, unique constraint enforcement, `--json` stdout mode, `--entity` filtering, and invalid profile rejection.
 - `packages/cli/src/index.ts` — Added `seedCommand` import and `manifest seed` command registration with all options.
 
 ### Notes for Developer
+
 - **Test status**: Full CLI test suite passes — **422/422 tests** (412 pre-existing + 10 new seed tests).
 - The `pnpm test` suite at project root shows 27 failures in `src/manifest/runtime-*.test.ts` — these are pre-existing failures in untracked files unrelated to this feature.
 - Lint clean on all modified files.
@@ -5221,6 +5675,7 @@ All 24 unit tests in `generator.test.ts` pass. Generated artifacts (mapping.json
 ---
 
 ### Snapshot Testing for Generated Code
+
 **Feature ID:** `snapshot-testing`  
 **Planned release:** v2.0.0 (Advanced Runtime & Platform)
 
@@ -5229,6 +5684,7 @@ All 24 unit tests in `generator.test.ts` pass. Generated artifacts (mapping.json
 ## Summary: Snapshot Testing for Generated Code
 
 ### Changes Implemented
+
 - Created a snapshot test file that covers all 9 built-in projection generators (NextJS, Routes, Prisma, OpenAPI, React Query, Zod, Drizzle, GraphQL, LLM Context)
 - Built a representative IR fixture with 2 entities (Task, User), commands, computed properties, relationships, events, policies, constraints, and durable stores to exercise all projection code paths
 - Implemented `generateAllSurfaces()` helper that requests every surface of a projection (including entity-scoped variants) and deduplicates artifacts by ID
@@ -5240,10 +5696,12 @@ All 24 unit tests in `generator.test.ts` pass. Generated artifacts (mapping.json
 - No type errors introduced (preexisting type errors in other test files are unrelated)
 
 ### Files Modified
+
 - `src/manifest/projections/snapshot.test.ts` (created) — snapshot test file with IR fixture, surface collection, timestamp stabilization, and test suite
 - `src/manifest/projections/__snapshots__/snapshot.test.ts.snap` (created) — Vitest snapshot file containing generated code for all 9 projections
 
 ### Notes for Developer
+
 - To update snapshots after intentional generator changes: `npx vitest -u src/manifest/projections/snapshot.test.ts`
 - The snapshot file captures full generated code (Drizzle schemas, Prisma models, GraphQL SDL, OpenAPI specs, Zod schemas, React Query hooks, Next.js routes, LLM context JSON, route manifests) — changes to any generator will show as snapshot diffs in code review
 - ISO timestamps are normalized to `2025-01-01T00:00:00.000Z` to prevent flaky snapshots
@@ -5255,6 +5713,7 @@ All 24 unit tests in `generator.test.ts` pass. Generated artifacts (mapping.json
 ---
 
 ### Manifest Standard Library (stdlib)
+
 **Feature ID:** `standard-library`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -5297,6 +5756,7 @@ Created a new `@manifest/stdlib` workspace package at `packages/stdlib/` that sh
 ### Verification Status
 
 Verified via `npx vitest run` in `packages/stdlib/` — **22/22 tests pass**, including:
+
 - Catalog shape (5 archetypes, 5 value objects, 3 enums)
 - Source non-empty and path resolution checks
 - Each of the 13 `.manifest` source files compiles cleanly through the real `compileToIR` pipeline
@@ -5312,6 +5772,7 @@ Playwright was not used because `@manifest/stdlib` is a pure backend library wit
 ---
 
 ### Storybook Story Projection
+
 **Feature ID:** `storybook-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -5320,6 +5781,7 @@ Playwright was not used because `@manifest/stdlib` is a pure backend library wit
 ## Summary: Storybook CSF Projection
 
 ### Changes Implemented
+
 - Created a new Storybook CSF3 projection that generates Component Story Format stories and arg types from IR entities and commands
 - Each entity gets a default story with all properties mapped to Storybook controls (text, number, boolean, date, select for enums)
 - Each command gets interaction stories with `GuardsPass` and `GuardFails` scenarios using play functions
@@ -5330,6 +5792,7 @@ Playwright was not used because `@manifest/stdlib` is a pure backend library wit
 - Configurable options: `componentImportPattern`, `titlePrefix`, `includeGuardScenarios`, `includeConstraintStories`
 
 ### Files Modified
+
 - `src/manifest/projections/storybook/generator.ts` (new) — Main projection class with 3 surfaces: `storybook.entity`, `storybook.command`, `storybook.all`
 - `src/manifest/projections/storybook/generator.test.ts` (new) — 24 unit tests covering metadata, entity stories, command stories, options, enum handling, determinism
 - `src/manifest/projections/builtins.ts` — Added import and registration of `StorybookProjection`
@@ -5338,6 +5801,7 @@ Playwright was not used because `@manifest/stdlib` is a pure backend library wit
 - `src/manifest/projections/__snapshots__/snapshot.test.ts.snap` — Regenerated with new storybook snapshot
 
 ### Notes for Developer
+
 - The projection follows the same architecture as existing projections (Zod, OpenAPI, etc.)
 - Guard analysis uses heuristics (binary `!=` with literals) rather than full expression evaluation — complex guards will use type-based defaults
 - The `componentImportPattern` uses `{Entity}` and `{Command}` placeholders for path interpolation
@@ -5345,6 +5809,7 @@ Playwright was not used because `@manifest/stdlib` is a pure backend library wit
 - Pre-existing lint errors in other files are unrelated to this change
 
 ### Verification Status
+
 - TypeScript typecheck: passes with zero errors
 - Unit tests: 24/24 passing (generator.test.ts)
 - Snapshot tests: 29/29 passing (updated to 14 projections)
@@ -5357,6 +5822,7 @@ Playwright was not used because `@manifest/stdlib` is a pure backend library wit
 ---
 
 ### SvelteKit Projection
+
 **Feature ID:** `sveltekit-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -5367,6 +5833,7 @@ Playwright was not used because `@manifest/stdlib` is a pure backend library wit
 Implemented the **SvelteKit projection** (17th built-in) that generates SvelteKit server routes (`+server.ts`) and load functions (`+page.server.ts`) from Manifest IR. The projection mirrors the Next.js App Router projection but targets SvelteKit conventions: form actions, `$lib` imports, `RequestHandler`/`PageServerLoad`/`Actions` types, and type-safe `PageData`.
 
 ### Surfaces registered (5 total)
+
 - `sveltekit.server` — `+server.ts` with `GET` (list reads) and `POST` (command dispatch) `RequestHandler` exports
 - `sveltekit.load` — `+page.server.ts` with `load: PageServerLoad` and `actions: Actions` exports
 - `sveltekit.command` — per-command `commands/[command]/+server.ts` route (legacy alias)
@@ -5374,6 +5841,7 @@ Implemented the **SvelteKit projection** (17th built-in) that generates SvelteKi
 - `sveltekit.client` — `$lib/manifest-client.ts` with `invokeManifestCommand()` helper
 
 ### Architecture decisions
+
 - **All writes flow through `runtime.runCommand()`** — preserves guard/policy/constraint enforcement (projections are tooling, not semantics)
 - **Reads MAY bypass runtime** via direct Prisma-style `database.<entity>.findMany()` for read performance
 - **Auth providers**: `lucia` (default, `event.locals.session`), `auth-js` (`getServerSession(event)`), `custom` (`requireUser(event)`), `none`
@@ -5384,12 +5852,14 @@ Implemented the **SvelteKit projection** (17th built-in) that generates SvelteKi
 ## Files Modified
 
 ### Created
+
 - `src/manifest/projections/sveltekit/types.ts` — `SvelteKitProjectionOptions` interface (auth, runtime, database, validation, tenant, dispatcher options)
 - `src/manifest/projections/sveltekit/generator.ts` — `SvelteKitProjection` class with 5 surface generators + ~20 helper functions (toPascalCase, toKebabCase, irTypeToTs, expressionToString, generateAuthImports, generateServerAuthBody, generateLoadAuthBody, generateTenantLookup, generateListReadQuery, etc.)
 - `src/manifest/projections/sveltekit/index.ts` — public surface exports
 - `src/manifest/projections/sveltekit/generator.test.ts` — 40 unit tests (all surfaces, all auth providers, all options, error cases, determinism)
 
 ### Updated
+
 - `src/manifest/projections/builtins.ts` — added `SvelteKitProjection` import + registration in both `registerBuiltinProjections()` and `listBuiltinProjections()`
 - `src/manifest/projections/index.ts` — added `SvelteKitProjection` and `SvelteKitProjectionOptions` exports
 - `src/manifest/projections/snapshot.test.ts` — bumped expected count from 16 to 17
@@ -5398,6 +5868,7 @@ Implemented the **SvelteKit projection** (17th built-in) that generates SvelteKi
 ## Notes for Developer
 
 1. **Run commands** to update snapshots after intentional changes:
+
    ```bash
    npx vitest -u src/manifest/projections/snapshot.test.ts
    ```
@@ -5413,6 +5884,7 @@ Implemented the **SvelteKit projection** (17th built-in) that generates SvelteKi
 **Playwright infrastructure is not installed** in this project (`@playwright/test` absent from `package.json`, no `playwright.config.*`). An existing root-level `constraint-test-verify.spec.ts` exists but cannot be executed.
 
 Substituted with **vitest end-to-end verification** that exercises the same projection surface area a Playwright test would:
+
 - Created `src/manifest/projections/sveltekit/verify.test.ts` (temporary, **DELETED** after passing)
 - 8 verification tests, all passing:
   1. `SvelteKitProjection` is in the registry (17 total projections)
@@ -5433,6 +5905,7 @@ Verification status: **PASS** (8/8 end-to-end, 75/75 unit + snapshot, lint clean
 ---
 
 ### Terraform / Infrastructure-as-Code Projection
+
 **Feature ID:** `terraform-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -5449,6 +5922,7 @@ Created a new Terraform projection (`TerraformProjection`) that generates Terraf
 3. **Supabase** — emits `supabase_project` with documented table schemas
 
 Key features:
+
 - Walks `ir.stores` to find entities with persistent store targets (`postgres`, `supabase`) for database resources
 - Walks `ir.entities` properties (never `computedProperties`) to emit column definitions
 - Walks `ir.events` to emit pub/sub topics
@@ -5489,13 +5963,14 @@ Key features:
 - Verification test file was deleted after successful verification
 - 25/25 unit tests in `generator.test.ts` pass
 - Snapshot test for terraform projection created and passes (deterministic output verified)
-]<]minimax[>[
+  ]<]minimax[>[
 
 </details>
 
 ---
 
 ### Transactional Outbox — Atomic State + Event Commit
+
 **Feature ID:** `transactional-outbox`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -5555,6 +6030,7 @@ Key features:
 ---
 
 ### Turso / libSQL Store Adapter
+
 **Feature ID:** `turso-store-adapter`  
 **Planned release:** v1.11.0 (Runtime, Stores & Infrastructure)
 
@@ -5581,6 +6057,7 @@ Key features:
 6. **`src/manifest/stores.turso.test.ts`** - 20 new vitest tests covering schema generation, initialization, CRUD operations, transactions (commit/rollback), sync (embedded replicas), and connection lifecycle
 
 ### Files Modified
+
 - `src/manifest/ir.ts` (added 'turso' to BuiltinStoreTarget)
 - `src/manifest/plugin-api.ts` (added 'turso' to BUILTIN_STORE_TARGETS)
 - `src/manifest/plugin-api.test.ts` (updated count expectation)
@@ -5589,6 +6066,7 @@ Key features:
 - `src/manifest/stores.turso.test.ts` (new test file with 20 tests)
 
 ### Notes for Developer
+
 - `@libsql/client` is an optional peer dependency. Install it with `npm install @libsql/client` to use the TursoStore.
 - The TursoStore follows the same patterns as PostgreSQL, Supabase, and MongoDB stores (dynamic import, EntityInstance/Store contract, auto-schema-init).
 - The `generateTursoSchema()` function can be used independently for Drizzle migration generation or pre-provisioning databases.
@@ -5596,6 +6074,7 @@ Key features:
 - The store is exported via the existing `./stores` package entry point (no new export needed).
 
 ### Verification Status
+
 - 20/20 new TursoStore vitest tests pass
 - 23/23 plugin-api tests pass (updated for 7 built-in targets)
 - Standalone Node.js verification script ran 17/17 checks successfully (module exports, schema generation, built-in targets, interface methods, construction with optional dependency)
@@ -5607,6 +6086,7 @@ Key features:
 ---
 
 ### VS Code Extension
+
 **Feature ID:** `vscode-extension`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -5615,6 +6095,7 @@ Key features:
 ## Summary: VS Code Extension
 
 ### Changes Implemented
+
 - Created a complete VS Code extension package at `packages/vscode-extension/` with bundled LSP server
 - **TextMate grammar** covering all Manifest keywords (declarations, control flow, types, modifiers, operators, constants, relationships, access control, store targets, severity levels)
 - **Language configuration** with comment toggling (`//` and `/* */`), bracket matching, auto-closing pairs, and indentation rules
@@ -5629,6 +6110,7 @@ Key features:
 - Extension host uses IPC transport to spawn the bundled LSP server
 
 ### Files Modified
+
 - `packages/vscode-extension/package.json` — VS Code extension manifest with contributions (language, grammar, snippets)
 - `packages/vscode-extension/tsconfig.json` — TypeScript config with path aliases to `dist/manifest/`
 - `packages/vscode-extension/esbuild.config.mjs` — Dual-bundle build (client + server) with watch mode
@@ -5646,6 +6128,7 @@ Key features:
 - `packages/vscode-extension/src/server/definition.ts` — Intra-file go-to-definition for entity/enum/module refs
 
 ### Notes for Developer
+
 - **Build sequence**: `pnpm run build:lib` (root), then `pnpm --filter manifest-lang run build` (extension)
 - **Dev testing**: `code --extensionDevelopmentPath=packages/vscode-extension` to launch Extension Development Host
 - **Package for marketplace**: `pnpm --filter manifest-lang run package` (requires `@vscode/vsce`)
@@ -5660,6 +6143,7 @@ Key features:
 ---
 
 ### WebAssembly Runtime Engine Compilation
+
 **Feature ID:** `wasm-runtime`  
 **Planned release:** v2.0.0 (Advanced Runtime & Platform)
 
@@ -5670,6 +6154,7 @@ Key features:
 ### Changes Implemented
 
 **1. AssemblyScript WASM Implementation (`assembly/index.ts`)**
+
 - Complete port of the Manifest expression evaluator to AssemblyScript
 - All expression kinds: literal, identifier, member, binary, unary, call, conditional, array, object
 - All binary operators: arithmetic (+, -, *, /, %), comparison (<, >, <=, >=, ==, !=), logical (&&, ||, and, or, not), and array operations (in, contains)
@@ -5679,12 +6164,14 @@ Key features:
 - Exports: `evalExpr()`, `evalConstraint()`, `setNowProvider()`, `setUuidProvider()`, `version()`
 
 **2. TypeScript WASM Loader (`src/manifest/wasm/wasm-loader.ts`)**
+
 - Prototype loader for explicitly supplied WASM bytes in repo/dev scenarios
 - Expression/context serialization to JSON for WASM input
 - Result deserialization from WASM JSON output
 - Graceful fallback to the TypeScript evaluator when no bytes are available
 
 **3. WASM Evaluator Wrapper (`src/manifest/wasm/wasm-evaluator.ts`)**
+
 - `WasmExpressionEvaluator` class with lifecycle management
 - Automatic TypeScript fallback when WASM unavailable
 - Singleton pattern via `getDefaultWasmEvaluator()`
@@ -5693,26 +6180,31 @@ Key features:
 - Host callback wiring for now() and uuid() builtins
 
 **4. Internal Entry Point (`src/manifest/wasm/index.ts`)**
+
 - Re-exports the internal WASM prototype types and functions for in-repo development
 - Not part of the published `@angriff36/manifest` package surface
 
 **5. Runtime Engine Integration (`src/manifest/runtime-engine.ts`)**
+
 - Added `wasmEvaluator` option to `RuntimeOptions`
 - WASM fast-path in `evaluateExpression()` with `isWasmCompatible()` guard
 - Conservative compatibility check: only delegates pure computational expressions to WASM
 - Transparent fallback to TypeScript on any WASM failure
 
 **6. Prototype Build Configuration**
+
 - `asconfig.json` for AssemblyScript compilation targets
 - Dev dependencies: `assemblyscript`, `@assemblyscript/loader`
 - Package surface is quarantined until a supported artifact + loader path exists
 
 **7. Test Suite**
+
 - 47 unit tests in `wasm-evaluator.test.ts` covering lifecycle, serialization, fallback paths, parity with TypeScript evaluator
 - 9 integration tests in `runtime-wasm-integration.test.ts` verifying RuntimeEngine + WASM integration
 - Package-surface regression tests verify the published package does not advertise unsupported WASM exports or packaging hooks
 
 ### Files Created
+
 - `assembly/index.ts` — AssemblyScript source (expression evaluator, constraint validator, builtins)
 - `asconfig.json` — AssemblyScript compiler configuration
 - `src/manifest/wasm/wasm-loader.ts` — WASM module loader and serialization helpers
@@ -5722,10 +6214,12 @@ Key features:
 - `src/manifest/runtime-wasm-integration.test.ts` — 9 integration tests
 
 ### Files Modified
+
 - `src/manifest/runtime-engine.ts` — Added `wasmEvaluator` option, WASM fast-path in `evaluateExpression()`, and `isWasmCompatible()` helper
 - `package.json` — WASM surface later quarantined from the published package pending a real artifact + loader story
 
 ### Notes for Developer
+
 - **Design Choice**: AssemblyScript was selected over Rust/wasm-bindgen because the existing TypeScript runtime is already a tree-walking interpreter, making AssemblyScript the most natural port. Both languages would target identical WASM semantics, but AssemblyScript has minimal friction.
 - **Conservative Compatibility**: `isWasmCompatible()` only delegates pure expressions to WASM. Anything requiring relationship resolution, entity context, or async effects stays on TypeScript. This ensures identical semantics with no risk of divergence.
 - **Graceful Fallback**: The system works even without AssemblyScript installed. If WASM bytes aren't available, the evaluator transparently falls back to TypeScript via dynamic import of the existing RuntimeEngine.
@@ -5733,6 +6227,7 @@ Key features:
 - **Test Coverage**: Internal tests verify fallback behavior and runtime integration; package-surface tests keep the unsupported publish path from reappearing accidentally.
 
 ### Verification Status
+
 - Created Playwright test `verify-wasm.spec.ts` with 8 test cases
 - All 8 tests passed: file existence, module structure, TypeScript syntax, package.json config, integration test presence
 - Temporary test file deleted after verification
@@ -5744,6 +6239,7 @@ Key features:
 ---
 
 ### Watch Mode Compiler with Incremental Rebuilds
+
 **Feature ID:** `watch-mode-compiler`  
 **Planned release:** v1.12.0 (Developer Tooling & AI Integration)
 
@@ -5752,6 +6248,7 @@ Key features:
 ## Summary: Add `manifest watch` CLI command
 
 ### Changes Implemented
+
 - Created `manifest watch` CLI command that monitors `.manifest` files for changes and performs incremental re-compilation and re-projection
 - Uses Node.js `fs.watch` with recursive mode for efficient file system monitoring (with `watchFile` polling fallback for older platforms)
 - Debounced rebuild with configurable delay (default 300ms) to coalesce rapid file changes
@@ -5763,11 +6260,13 @@ Key features:
 - 9 unit tests covering module exports, options interface, initial build, debounce coalescing, event emission shapes, and file extension filtering
 
 ### Files Modified
+
 - `packages/cli/src/commands/watch.ts` — New file: watch command implementation (147 lines)
 - `packages/cli/src/commands/watch.test.ts` — New file: 9 unit tests for the watch command
 - `packages/cli/src/index.ts` — Added import for `watchCommand` and registered `manifest watch` command with all options (projection, surface, ir-output, code-output, glob, auth, database, runtime, response, debounce, events, clear)
 
 ### Notes for Developer
+
 - No new dependencies were added — uses Node.js built-in `fs.watch` (recursive) and `fs.watchFile` (polling fallback)
 - The watch command reuses `compileCommand` and `generateCommand` directly, maintaining full parity with `manifest build`
 - Config resolution follows the same pattern as the `build` command: reads `manifest.config.yaml` for output paths and projection options
@@ -5776,6 +6275,7 @@ Key features:
 - TypeScript typecheck and ESLint both pass cleanly
 
 ### Verification Status
+
 - Created and ran a standalone Node.js verification script (watch-verify.mjs) that:
   1. Spawned the watch command with `--events` flag against a temp directory containing a `.manifest` file
   2. Verified the `ready` event was emitted with correct shape (timestamp, files, irOutput, codeOutput)
@@ -5789,6 +6289,7 @@ Key features:
 ---
 
 ### Webhook Inbound Trigger Declarations
+
 **Feature ID:** `webhook-trigger`  
 **Planned release:** v1.9.0 (Language & Type System Extensions)
 
@@ -5797,6 +6298,7 @@ Key features:
 ## Summary: Webhook Inbound Trigger Declarations
 
 ### Changes Implemented
+
 - **AST types** (`types.ts`): Added `WebhookNode`, `WebhookSignatureNode`, and `WebhookParamMapping` interfaces. Added `webhooks: WebhookNode[]` to both `ManifestProgram` and `ModuleNode`.
 - **Lexer** (`lexer.ts`): Added `webhook`, `signature`, `idempotencyHeader`, `transform` to the KEYWORDS set.
 - **Parser** (`parser.ts`): Added `parseWebhook()` and `parseWebhookSignature()` methods. Added webhook dispatch in both `parse()` and `parseModule()` loops. Added `'webhook'` to `sync()` error recovery. Webhook syntax: `webhook <name> "<path>" run [Entity.]<command>` with optional `signature {}`, `idempotencyHeader:`, and `transform: {}` clauses.
@@ -5806,6 +6308,7 @@ Key features:
 - **Conformance fixture**: Created `90-webhook-trigger.manifest` with two webhook declarations (simple + full-featured with HMAC signature, idempotency header, entity-scoped command, and nested payload transforms). Generated corresponding `90-webhook-trigger.ir.json` expected output.
 
 ### Files Modified
+
 - `src/manifest/types.ts` — Added WebhookNode AST types, updated ManifestProgram and ModuleNode
 - `src/manifest/lexer.ts` — Added webhook-related keywords
 - `src/manifest/parser.ts` — Added parseWebhook(), parseWebhookSignature(), dispatch, error recovery
@@ -5816,6 +6319,7 @@ Key features:
 - `src/manifest/conformance/expected/90-webhook-trigger.ir.json` — New expected IR output
 
 ### Notes for Developer
+
 - TypeScript typecheck passes cleanly
 - All 374 core tests pass (lexer: 58, parser: 89, IR compiler: 112, runtime: 92, plugin-api: 23)
 - All 79 pre-existing IR compilation conformance tests pass, plus the new webhook test (80 total)
@@ -5831,6 +6335,7 @@ Key features:
 ---
 
 ### Zod Schema Projection
+
 **Feature ID:** `zod-schema-projection`  
 **Planned release:** v1.10.0 (Projections & SDK Generation)
 
@@ -5839,6 +6344,7 @@ Key features:
 ## Summary: Zod Schema Projection
 
 ### Changes Implemented
+
 - Created a complete Zod schema projection that generates `z.object()` validation schemas from Manifest IR entities and command parameters
 - Full type mapping from IR types to Zod expressions (string, boolean, number, int, bigint, float, decimal, money, date, datetime, uuid, email, url, uri, json, bytes, object, array<T>, map<T>)
 - Constraint refinements via existing `numericRangeToZodChain()` and `lengthConstraintToZodChain()` helpers
@@ -5849,6 +6355,7 @@ Key features:
 - Registered as a built-in projection alongside OpenAPI, Prisma, Next.js, Routes, and ReactQuery
 
 ### Files Modified
+
 - **Created**: `src/manifest/projections/zod/types.ts` — ZodProjectionOptions interface
 - **Created**: `src/manifest/projections/zod/generator.ts` — ZodProjection class with full implementation
 - **Created**: `src/manifest/projections/zod/index.ts` — Re-exports
@@ -5857,6 +6364,7 @@ Key features:
 - **Modified**: `src/manifest/projections/index.ts` — Added ZodProjection and ZodProjectionOptions re-exports
 
 ### Notes for Developer
+
 - All 261 projection tests pass (including 41 new Zod tests)
 - TypeScript check and ESLint pass clean
 - Pre-existing test failures in `versions.test.ts`, `validate-ai.test.ts`, `tenant-isolation.test.ts`, `plugin-api.test.ts`, `ir-version-store.test.ts`, and conformance fixtures 56-60 are unrelated to this change
@@ -5874,18 +6382,18 @@ They may be spec'd, partially implemented, or in backlog.
 
 **13 features.**
 
-| # | Feature ID | Title |
-|---|-----------|-------|
-| 1 | `consent-tracking` | Consent and Data Governance Declarations |
-| 2 | `contract-testing` | Consumer-Driven Contract Testing Integration |
-| 3 | `cqrs-read-model` | CQRS Read Model Projections |
-| 4 | `cross-entity-actions` | Cross-Entity Action Targets in Commands |
-| 5 | `manifest-registry-server` | IR Registry / Schema Registry Server |
-| 6 | `multi-environment-config` | Multi-Environment Configuration Profiles |
-| 7 | `notification-channel` | Notification Channel Declarations |
-| 8 | `npx-init-templates` | Project Scaffold Templates for manifest init |
-| 9 | `pagination-api` | Built-In Pagination API for Entity Lists |
-| 10 | `policy-enforcement-default-deny` | Policy Enforcement Mode: Default-Deny Configuration |
-| 11 | `pre-commit-hooks` | Pre-Commit Hook Integration |
-| 12 | `runtime-metrics` | OpenTelemetry Metrics and Tracing Integration |
-| 13 | `soft-delete-pattern` | Soft Delete Built-In Pattern |
+| #   | Feature ID                        | Title                                               |
+| --- | --------------------------------- | --------------------------------------------------- |
+| 1   | `consent-tracking`                | Consent and Data Governance Declarations            |
+| 2   | `contract-testing`                | Consumer-Driven Contract Testing Integration        |
+| 3   | `cqrs-read-model`                 | CQRS Read Model Projections                         |
+| 4   | `cross-entity-actions`            | Cross-Entity Action Targets in Commands             |
+| 5   | `manifest-registry-server`        | IR Registry / Schema Registry Server                |
+| 6   | `multi-environment-config`        | Multi-Environment Configuration Profiles            |
+| 7   | `notification-channel`            | Notification Channel Declarations                   |
+| 8   | `npx-init-templates`              | Project Scaffold Templates for manifest init        |
+| 9   | `pagination-api`                  | Built-In Pagination API for Entity Lists            |
+| 10  | `policy-enforcement-default-deny` | Policy Enforcement Mode: Default-Deny Configuration |
+| 11  | `pre-commit-hooks`                | Pre-Commit Hook Integration                         |
+| 12  | `runtime-metrics`                 | OpenTelemetry Metrics and Tracing Integration       |
+| 13  | `soft-delete-pattern`             | Soft Delete Built-In Pattern                        |

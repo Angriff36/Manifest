@@ -16,10 +16,10 @@ Normative semantics are defined in `docs/spec/semantics.md`.
 
 **Projections** and **embedded runtime** solve different problems:
 
-| Pattern | Best For | Example |
-|---------|----------|---------|
-| **Projections** | Standard CRUD operations | Recipe list, User profile GET |
-| **Embedded Runtime** | Complex workflows | Order processing, Document imports |
+| Pattern              | Best For                 | Example                            |
+| -------------------- | ------------------------ | ---------------------------------- |
+| **Projections**      | Standard CRUD operations | Recipe list, User profile GET      |
+| **Embedded Runtime** | Complex workflows        | Order processing, Document imports |
 
 **Hybrid approach:** Use projections for simple operations, embedded runtime for complex ones.
 
@@ -106,10 +106,7 @@ import { Queue } from 'bullmq';
 const notificationQueue = new Queue('notifications');
 const analyticsQueue = new Queue('analytics');
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   const { userId } = await auth();
   const userMapping = await prisma.userTenantMapping.findUnique({ where: { userId } });
   const { tenantId } = userMapping;
@@ -141,16 +138,21 @@ export async function POST(
   });
 
   // Execute command
-  const result = await runtime.runCommand('goLive', {}, {
-    entityName: 'Recipe',
-    instanceId: params.id,
-  });
+  const result = await runtime.runCommand(
+    'goLive',
+    {},
+    {
+      entityName: 'Recipe',
+      instanceId: params.id,
+    },
+  );
 
   if (!result.success) {
-    const errorMsg = result.guardFailure?.formatted 
-      || result.policyDenial?.message 
-      || result.error 
-      || 'Command failed';
+    const errorMsg =
+      result.guardFailure?.formatted ||
+      result.policyDenial?.message ||
+      result.error ||
+      'Command failed';
     return Response.json({ error: errorMsg }, { status: 400 });
   }
 
@@ -208,27 +210,32 @@ export async function POST(request: Request) {
       // Reserve inventory
       const reservation = await inventoryService.reserve(event.payload.items);
 
-      await runtime.runCommand('reserveInventory', {
-        reservationId: reservation.id,
-      }, {
-        entityName: 'Order',
-        instanceId: event.payload.id as string,
-      });
+      await runtime.runCommand(
+        'reserveInventory',
+        {
+          reservationId: reservation.id,
+        },
+        {
+          entityName: 'Order',
+          instanceId: event.payload.id as string,
+        },
+      );
     }
 
     if (event.name === 'InventoryReserved') {
       // Process payment
-      const payment = await paymentService.charge(
-        event.payload.userId,
-        event.payload.totalAmount
-      );
+      const payment = await paymentService.charge(event.payload.userId, event.payload.totalAmount);
 
-      await runtime.runCommand('processPayment', {
-        paymentId: payment.id,
-      }, {
-        entityName: 'Order',
-        instanceId: event.payload.id as string,
-      });
+      await runtime.runCommand(
+        'processPayment',
+        {
+          paymentId: payment.id,
+        },
+        {
+          entityName: 'Order',
+          instanceId: event.payload.id as string,
+        },
+      );
     }
 
     if (event.name === 'PaymentProcessed') {
@@ -271,7 +278,9 @@ app/api/
 
 ```typescript
 // app/api/recipes/route.ts (generated)
-export async function GET() { /* ... */ }
+export async function GET() {
+  /* ... */
+}
 export async function POST(request: Request) {
   const runtime = new RuntimeEngine(ir, { userId, tenantId });
   return runtime.runCommand('create', await request.json(), { entityName: 'Recipe' });
@@ -282,10 +291,7 @@ export async function POST(request: Request) {
 
 ```typescript
 // app/api/recipes/[id]/clone/route.ts (custom)
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   const { userId } = await auth();
 
   const runtime = new RuntimeEngine(ir, { userId, tenantId });
@@ -300,11 +306,15 @@ export async function POST(
   }
 
   // Create clone with custom logic
-  const result = await runtime.runCommand('create', {
-    name: `${original.name} (Copy)`,
-    ingredients: original.ingredients,
-    instructions: original.instructions,
-  }, { entityName: 'Recipe' });
+  const result = await runtime.runCommand(
+    'create',
+    {
+      name: `${original.name} (Copy)`,
+      ingredients: original.ingredients,
+      instructions: original.instructions,
+    },
+    { entityName: 'Recipe' },
+  );
 
   if (result.success) {
     // Track clone event
@@ -314,10 +324,10 @@ export async function POST(
     });
   }
 
-  return Response.json({ 
-    success: result.success, 
-    result: result.result, 
-    events: result.emittedEvents 
+  return Response.json({
+    success: result.success,
+    result: result.result,
+    events: result.emittedEvents,
   });
 }
 ```
@@ -400,7 +410,7 @@ import { NextRequest } from 'next/server';
 
 export async function withRuntime(
   request: NextRequest,
-  handler: (runtime: RuntimeEngine) => Promise<Response>
+  handler: (runtime: RuntimeEngine) => Promise<Response>,
 ): Promise<Response> {
   const { userId } = await auth();
 
@@ -444,10 +454,14 @@ export async function POST(request: Request) {
 
     if (orderResult.success) {
       // Send confirmation
-      await runtime.runCommand('send', {
-        userId: input.userId,
-        message: 'Order created successfully',
-      }, { entityName: 'Notification' });
+      await runtime.runCommand(
+        'send',
+        {
+          userId: input.userId,
+          message: 'Order created successfully',
+        },
+        { entityName: 'Notification' },
+      );
     }
 
     return Response.json(orderResult);
@@ -499,10 +513,14 @@ const worker = new Worker('reports', async (job) => {
   const runtime = new RuntimeEngine(ir, { userId, tenantId });
 
   // Multi-step report generation
-  const createResult = await runtime.runCommand('create', {
-    type: reportType,
-    dateRange,
-  }, { entityName: 'Report' });
+  const createResult = await runtime.runCommand(
+    'create',
+    {
+      type: reportType,
+      dateRange,
+    },
+    { entityName: 'Report' },
+  );
 
   const reportId = createResult.instance.id;
 
@@ -513,18 +531,26 @@ const worker = new Worker('reports', async (job) => {
   const pdfUrl = await generatePDF(data);
 
   // Update report
-  await runtime.runCommand('markGenerated', {
-    pdfUrl,
-  }, {
-    entityName: 'Report',
-    instanceId: reportId,
-  });
+  await runtime.runCommand(
+    'markGenerated',
+    {
+      pdfUrl,
+    },
+    {
+      entityName: 'Report',
+      instanceId: reportId,
+    },
+  );
 
   // Send email
-  await runtime.runCommand('send', {}, {
-    entityName: 'Report',
-    instanceId: reportId,
-  });
+  await runtime.runCommand(
+    'send',
+    {},
+    {
+      entityName: 'Report',
+      instanceId: reportId,
+    },
+  );
 
   return { reportId, pdfUrl };
 });
@@ -569,9 +595,11 @@ export const resolvers = {
       return {
         success: result.success,
         recipe: result.result,
-        errors: result.success ? undefined : [
-          result.guardFailure?.formatted || result.policyDenial?.message || result.error
-        ].filter(Boolean),
+        errors: result.success
+          ? undefined
+          : [result.guardFailure?.formatted || result.policyDenial?.message || result.error].filter(
+              Boolean,
+            ),
       };
     },
 
@@ -587,17 +615,23 @@ export const resolvers = {
         }
       });
 
-      const result = await runtime.runCommand('publish', {}, {
-        entityName: 'Recipe',
-        instanceId: id,
-      });
+      const result = await runtime.runCommand(
+        'publish',
+        {},
+        {
+          entityName: 'Recipe',
+          instanceId: id,
+        },
+      );
 
       return {
         success: result.success,
         recipe: result.result,
-        errors: result.success ? undefined : [
-          result.guardFailure?.formatted || result.policyDenial?.message || result.error
-        ].filter(Boolean),
+        errors: result.success
+          ? undefined
+          : [result.guardFailure?.formatted || result.policyDenial?.message || result.error].filter(
+              Boolean,
+            ),
       };
     },
   },
@@ -660,12 +694,10 @@ test('GET /recipes returns list', async () => {
 test('POST /recipes/publish emits event', async () => {
   const events: EmittedEvent[] = [];
 
-  runtime.onEvent(event => events.push(event));
+  runtime.onEvent((event) => events.push(event));
   await runtime.runCommand('goLive', {}, { entityName: 'Recipe', instanceId });
 
-  expect(events).toContainEqual(
-    expect.objectContaining({ name: 'RecipePublished' })
-  );
+  expect(events).toContainEqual(expect.objectContaining({ name: 'RecipePublished' }));
 });
 ```
 
@@ -677,30 +709,34 @@ test('POST /recipes/publish emits event', async () => {
  * Pattern: Projection (direct database query)
  * Use: Fast list retrieval
  */
-export async function GET() { /* ... */ }
+export async function GET() {
+  /* ... */
+}
 
 /**
  * POST /api/recipes/[id]/publish
  * Pattern: Embedded runtime
  * Use: Complex workflow with events
  */
-export async function POST() { /* ... */ }
+export async function POST() {
+  /* ... */
+}
 ```
 
 ---
 
 ## Decision Matrix
 
-| Scenario | Pattern | Rationale |
-|----------|---------|-----------|
-| List recipes | Projection | Simple read, no business logic |
-| Create recipe | Projection | Standard CRUD |
-| Publish recipe | Embedded Runtime | Events, notifications, search indexing |
-| Place order | Embedded Runtime | Multi-step: inventory → payment → fulfillment |
-| Get user profile | Projection | Simple read |
-| Update user settings | Projection | Simple update, no side effects |
-| Generate invoice | Embedded Runtime | Async job, PDF generation, email |
-| Delete recipe | Projection | Simple delete with soft delete filter |
+| Scenario             | Pattern          | Rationale                                     |
+| -------------------- | ---------------- | --------------------------------------------- |
+| List recipes         | Projection       | Simple read, no business logic                |
+| Create recipe        | Projection       | Standard CRUD                                 |
+| Publish recipe       | Embedded Runtime | Events, notifications, search indexing        |
+| Place order          | Embedded Runtime | Multi-step: inventory → payment → fulfillment |
+| Get user profile     | Projection       | Simple read                                   |
+| Update user settings | Projection       | Simple update, no side effects                |
+| Generate invoice     | Embedded Runtime | Async job, PDF generation, email              |
+| Delete recipe        | Projection       | Simple delete with soft delete filter         |
 
 ---
 

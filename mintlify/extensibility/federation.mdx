@@ -1,7 +1,7 @@
 ---
-title: "Federated multi-service runtime"
+title: 'Federated multi-service runtime'
 description: "Connect multiple Manifest runtimes into a federated mesh where services discover each other's entity schemas, invoke cross-service commands, and propagate identity through policy bridge headers."
-sidebarTitle: "Federation"
+sidebarTitle: 'Federation'
 ---
 
 The federation layer enables multiple Manifest runtime instances -- typically running as separate microservices -- to discover each other's entity schemas, invoke commands across service boundaries, and enforce policy-based authorization end-to-end. Federation is transport-agnostic: the default implementation uses HTTP with `fetch`, but the `FederationTransport` interface supports gRPC, message queues, or any custom protocol.
@@ -23,15 +23,15 @@ const descriptor = buildDescriptor('inventory-service', ir, {
 
 ### ServiceDescriptor schema
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `serviceId` | `string` | Unique identifier for this service in the mesh |
-| `displayName` | `string?` | Human-readable name |
-| `endpoint` | `string` | Base URL for reaching this service |
-| `schemaVersion` | `string` | IR schema version this service speaks |
-| `entities` | `ExposedEntity[]` | Entities this service exposes, with their commands |
-| `health` | `ServiceHealth?` | Health status, populated by registry health checks |
-| `auth` | `ServiceAuthConfig?` | Service-to-service auth scheme for the policy bridge |
+| Field           | Type                 | Description                                          |
+| --------------- | -------------------- | ---------------------------------------------------- |
+| `serviceId`     | `string`             | Unique identifier for this service in the mesh       |
+| `displayName`   | `string?`            | Human-readable name                                  |
+| `endpoint`      | `string`             | Base URL for reaching this service                   |
+| `schemaVersion` | `string`             | IR schema version this service speaks                |
+| `entities`      | `ExposedEntity[]`    | Entities this service exposes, with their commands   |
+| `health`        | `ServiceHealth?`     | Health status, populated by registry health checks   |
+| `auth`          | `ServiceAuthConfig?` | Service-to-service auth scheme for the policy bridge |
 
 The `buildDescriptor` function is pure: identical IR input always produces the same descriptor output, supporting deterministic builds and reproducible deployments.
 
@@ -67,9 +67,9 @@ import { FederationClient } from '@angriff36/manifest/federation';
 // new FederationClient(registry, options?, transport?)
 // The transport defaults to HttpFederationTransport (globalThis.fetch).
 const client = new FederationClient(registry, {
-  defaultTimeoutMs: 5000,   // per-call timeout (default 30000)
-  maxRetries: 2,            // retry transient failures on idempotent commands (default 0)
-  retryDelayMs: 1000,       // delay between retries
+  defaultTimeoutMs: 5000, // per-call timeout (default 30000)
+  maxRetries: 2, // retry transient failures on idempotent commands (default 0)
+  retryDelayMs: 1000, // delay between retries
 });
 
 const result = await client.invoke({
@@ -85,9 +85,9 @@ const result = await client.invoke({
 
 The client uses command-level idempotency heuristics to decide whether a failed request is safe to retry:
 
-| Command contains only | Idempotent? |
-|-----------------------|-------------|
-| `mutate`, `persist` | Yes -- safe to retry |
+| Command contains only       | Idempotent?                 |
+| --------------------------- | --------------------------- |
+| `mutate`, `persist`         | Yes -- safe to retry        |
 | `emit`, `effect`, `publish` | No -- may have side effects |
 
 Commands with `emit`, `effect`, or `publish` actions are conservatively marked non-idempotent. Only commands whose actions are limited to `mutate` and `persist` are retried on transient failure.
@@ -110,14 +110,14 @@ interface FederationTransport {
 
 The policy bridge propagates caller identity across service boundaries so that policy expressions on the receiving service can evaluate correctly. Identity is encoded as HTTP headers with the `X-Manifest-*` prefix:
 
-| Header | Source | Reconstructed as |
-|--------|--------|-----------------|
-| `X-Manifest-Actor` | `context.actorId` or `user.id` | `context.actorId` |
-| `X-Manifest-Tenant` | `context.tenantId` | `context.tenantId` |
-| `X-Manifest-Org` | `context.orgId` | `context.orgId` |
-| `X-Manifest-Roles` | `user.role` | `user.role` |
-| `X-Request-Id` | `context.requestId` | `context.requestId` |
-| `X-Correlation-Id` | Generated per invocation | `context.correlationId` |
+| Header              | Source                         | Reconstructed as        |
+| ------------------- | ------------------------------ | ----------------------- |
+| `X-Manifest-Actor`  | `context.actorId` or `user.id` | `context.actorId`       |
+| `X-Manifest-Tenant` | `context.tenantId`             | `context.tenantId`      |
+| `X-Manifest-Org`    | `context.orgId`                | `context.orgId`         |
+| `X-Manifest-Roles`  | `user.role`                    | `user.role`             |
+| `X-Request-Id`      | `context.requestId`            | `context.requestId`     |
+| `X-Correlation-Id`  | Generated per invocation       | `context.correlationId` |
 
 The sending side injects these headers into the outgoing request. The receiving side extracts them and reconstructs a `RuntimeContext` so that policy expressions like `user.role == "admin"` evaluate correctly on the downstream service.
 
@@ -138,7 +138,9 @@ const reconstructed = contextFromBridgeHeaders(parseBridgeHeaders(request.header
 ```
 
 <Warning>
-The policy bridge carries identity but not authorization decisions. Each service evaluates its own policies against the reconstructed context. A policy that denies access on service B will deny the federated call even if service A authorized it.
+  The policy bridge carries identity but not authorization decisions. Each service evaluates its own
+  policies against the reconstructed context. A policy that denies access on service B will deny the
+  federated call even if service A authorized it.
 </Warning>
 
 ## HTTP adapter generation
@@ -166,7 +168,11 @@ The generated adapter includes:
 A common pattern is an order service that checks inventory availability before confirming an order:
 
 ```typescript
-import { FederationRegistry, FederationClient, buildDescriptor } from '@angriff36/manifest/federation';
+import {
+  FederationRegistry,
+  FederationClient,
+  buildDescriptor,
+} from '@angriff36/manifest/federation';
 import { orderIr } from './ir/order.ir.json';
 import { inventoryDescriptor } from './inventory-descriptor';
 
@@ -236,5 +242,7 @@ import {
 ```
 
 <Note>
-The federation module is transport-agnostic by design. The default HTTP transport works out of the box with any Manifest service exposed via the generated Next.js or Express routes. For message-queue or gRPC-based deployments, implement the `FederationTransport` interface.
+  The federation module is transport-agnostic by design. The default HTTP transport works out of the
+  box with any Manifest service exposed via the generated Next.js or Express routes. For
+  message-queue or gRPC-based deployments, implement the `FederationTransport` interface.
 </Note>

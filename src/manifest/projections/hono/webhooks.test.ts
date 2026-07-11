@@ -97,7 +97,9 @@ describe('hono.webhooks — emission', () => {
       options: { runtimeFactoryName: 'createManifestEngine' },
     }).artifacts[0].code;
     // The facade would collide with the engine factory name → engine factory is renamed.
-    expect(code).toContain("import { createManifestEngineInternal } from './lib/manifest-runtime';");
+    expect(code).toContain(
+      "import { createManifestEngineInternal } from './lib/manifest-runtime';",
+    );
     expect(code).toContain('const runtime = await createManifestEngineInternal();');
   });
 });

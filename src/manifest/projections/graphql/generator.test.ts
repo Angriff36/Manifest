@@ -207,19 +207,27 @@ describe('GraphQLProjection', () => {
 
     it('maps array types to GraphQL lists', () => {
       const ir = makeMinimalIR({
-        entities: [{
-          name: 'Widget',
-          properties: [{
-            name: 'tags',
-            type: { name: 'array', generic: { name: 'string', nullable: false }, nullable: false },
-            modifiers: [],
-          }],
-          computedProperties: [],
-          relationships: [],
-          commands: [],
-          constraints: [],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'Widget',
+            properties: [
+              {
+                name: 'tags',
+                type: {
+                  name: 'array',
+                  generic: { name: 'string', nullable: false },
+                  nullable: false,
+                },
+                modifiers: [],
+              },
+            ],
+            computedProperties: [],
+            relationships: [],
+            commands: [],
+            constraints: [],
+            policies: [],
+          },
+        ],
       });
 
       const schemaResult = projection.generate(ir, { surface: 'graphql.schema' });
@@ -298,19 +306,21 @@ describe('GraphQLProjection', () => {
 
     it('warns about commands without entities', () => {
       const ir = makeMinimalIR({
-        commands: [{
-          name: 'orphanCommand',
-          module: undefined,
-          entity: undefined,
-          parameters: [],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'orphanCommand',
+            module: undefined,
+            entity: undefined,
+            parameters: [],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
 
       const schemaResult = projection.generate(ir, { surface: 'graphql.schema' });
-      expect(schemaResult.diagnostics.some(d => d.code === 'COMMAND_NO_ENTITY')).toBe(true);
+      expect(schemaResult.diagnostics.some((d) => d.code === 'COMMAND_NO_ENTITY')).toBe(true);
     });
   });
 
@@ -452,14 +462,12 @@ describe('GraphQLProjection', () => {
   describe('enum types', () => {
     it('generates enum type definitions', () => {
       const ir = makeMinimalIR({
-        enums: [{
-          name: 'Status',
-          values: [
-            { name: 'DRAFT' },
-            { name: 'PUBLISHED' },
-            { name: 'ARCHIVED' },
-          ],
-        }],
+        enums: [
+          {
+            name: 'Status',
+            values: [{ name: 'DRAFT' }, { name: 'PUBLISHED' }, { name: 'ARCHIVED' }],
+          },
+        ],
       });
 
       const schemaResult = projection.generate(ir, { surface: 'graphql.schema' });
@@ -473,13 +481,15 @@ describe('GraphQLProjection', () => {
 
     it('includes labels as descriptions on enum values', () => {
       const ir = makeMinimalIR({
-        enums: [{
-          name: 'Priority',
-          values: [
-            { name: 'LOW', label: 'Low priority' },
-            { name: 'HIGH', label: 'High priority' },
-          ],
-        }],
+        enums: [
+          {
+            name: 'Priority',
+            values: [
+              { name: 'LOW', label: 'Low priority' },
+              { name: 'HIGH', label: 'High priority' },
+            ],
+          },
+        ],
       });
 
       const schemaResult = projection.generate(ir, { surface: 'graphql.schema' });
@@ -491,10 +501,12 @@ describe('GraphQLProjection', () => {
 
     it('omits enums when option is disabled', () => {
       const ir = makeMinimalIR({
-        enums: [{
-          name: 'Status',
-          values: [{ name: 'DRAFT' }],
-        }],
+        enums: [
+          {
+            name: 'Status',
+            values: [{ name: 'DRAFT' }],
+          },
+        ],
       });
 
       const schemaResult = projection.generate(ir, {
@@ -616,22 +628,28 @@ describe('GraphQLProjection', () => {
 
     it('generates subscription resolvers for events', () => {
       const ir = makeMinimalIR({
-        entities: [{
-          name: 'Widget',
-          properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] }],
-          computedProperties: [],
-          relationships: [],
-          commands: [],
-          constraints: [],
-          policies: [],
-        }],
-        events: [{
-          name: 'widgetCreated',
-          channel: 'widget.created',
-          payload: [
-            { name: 'widgetId', type: { name: 'string', nullable: false }, required: true },
-          ],
-        }],
+        entities: [
+          {
+            name: 'Widget',
+            properties: [
+              { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+            ],
+            computedProperties: [],
+            relationships: [],
+            commands: [],
+            constraints: [],
+            policies: [],
+          },
+        ],
+        events: [
+          {
+            name: 'widgetCreated',
+            channel: 'widget.created',
+            payload: [
+              { name: 'widgetId', type: { name: 'string', nullable: false }, required: true },
+            ],
+          },
+        ],
       });
 
       const resolverResult = projection.generate(ir, { surface: 'graphql.resolvers' });
@@ -719,16 +737,22 @@ describe('GraphQLProjection', () => {
             policies: [],
           },
         ],
-        commands: [{
-          name: 'publish',
-          entity: 'Widget',
-          parameters: [],
-          guards: [],
-          actions: [
-            { kind: 'mutate', target: 'self.status', expression: { kind: 'literal', value: { kind: 'string', value: 'published' } } },
-          ],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'publish',
+            entity: 'Widget',
+            parameters: [],
+            guards: [],
+            actions: [
+              {
+                kind: 'mutate',
+                target: 'self.status',
+                expression: { kind: 'literal', value: { kind: 'string', value: 'published' } },
+              },
+            ],
+            emits: [],
+          },
+        ],
       });
 
       const result1 = projection.generate(ir, { surface: 'graphql.schema' });
@@ -862,20 +886,22 @@ describe('GraphQLProjection', () => {
   describe('relationships', () => {
     it('generates relationship fields', () => {
       const ir = makeMinimalIR({
-        entities: [{
-          name: 'Widget',
-          properties: [
-            { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-          ],
-          computedProperties: [],
-          relationships: [
-            { name: 'parts', kind: 'hasMany', target: 'Part' },
-            { name: 'owner', kind: 'belongsTo', target: 'User' },
-          ],
-          commands: [],
-          constraints: [],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'Widget',
+            properties: [
+              { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+            ],
+            computedProperties: [],
+            relationships: [
+              { name: 'parts', kind: 'hasMany', target: 'Part' },
+              { name: 'owner', kind: 'belongsTo', target: 'User' },
+            ],
+            commands: [],
+            constraints: [],
+            policies: [],
+          },
+        ],
       });
 
       const schemaResult = projection.generate(ir, { surface: 'graphql.schema' });

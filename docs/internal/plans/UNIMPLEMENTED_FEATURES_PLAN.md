@@ -147,17 +147,17 @@ This keeps `EvaluationBudgetExceededError` as a domain failure (CommandResult), 
 
 ### Implementation Steps
 
-| Step | File | Change |
-|------|------|--------|
-| 1 | `src/manifest/runtime-engine.ts` | Add `EvaluationLimits` interface, `EvaluationBudgetExceededError` class |
-| 2 | `src/manifest/runtime-engine.ts` | Add `evaluationLimits` to `RuntimeOptions` |
-| 3 | `src/manifest/runtime-engine.ts` | Add `evalBudget` field, reset in `_executeCommandInternal`, clear in finally |
-| 4 | `src/manifest/runtime-engine.ts` | Add depth/step checks at top of `evaluateExpression` with try/finally |
-| 5 | `src/manifest/runtime-engine.ts` | Catch `EvaluationBudgetExceededError` in `_executeCommandInternal`, convert to CommandResult |
-| 6 | `src/manifest/runtime-engine.test.ts` | Add unit tests: depth limit exceeded, step limit exceeded, default limits permissive, custom limits respected |
-| 7 | `docs/spec/manifest-vnext.md` | Move "Bounded complexity limits" from NOT_IMPLEMENTED to IMPLEMENTED in nonconformance table |
-| 8 | `docs/COMPLIANCE_MATRIX.md` | Update bounded complexity row from `[ ]` NOT_IMPLEMENTED to `[x]` FULLY_IMPLEMENTED |
-| 9 | `CHANGELOG-workflow-framework.md` | Add changelog entry for bounded complexity |
+| Step | File                                  | Change                                                                                                        |
+| ---- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| 1    | `src/manifest/runtime-engine.ts`      | Add `EvaluationLimits` interface, `EvaluationBudgetExceededError` class                                       |
+| 2    | `src/manifest/runtime-engine.ts`      | Add `evaluationLimits` to `RuntimeOptions`                                                                    |
+| 3    | `src/manifest/runtime-engine.ts`      | Add `evalBudget` field, reset in `_executeCommandInternal`, clear in finally                                  |
+| 4    | `src/manifest/runtime-engine.ts`      | Add depth/step checks at top of `evaluateExpression` with try/finally                                         |
+| 5    | `src/manifest/runtime-engine.ts`      | Catch `EvaluationBudgetExceededError` in `_executeCommandInternal`, convert to CommandResult                  |
+| 6    | `src/manifest/runtime-engine.test.ts` | Add unit tests: depth limit exceeded, step limit exceeded, default limits permissive, custom limits respected |
+| 7    | `docs/spec/manifest-vnext.md`         | Move "Bounded complexity limits" from NOT_IMPLEMENTED to IMPLEMENTED in nonconformance table                  |
+| 8    | `docs/COMPLIANCE_MATRIX.md`           | Update bounded complexity row from `[ ]` NOT_IMPLEMENTED to `[x]` FULLY_IMPLEMENTED                           |
+| 9    | `CHANGELOG-workflow-framework.md`     | Add changelog entry for bounded complexity                                                                    |
 
 ### Test Cases
 
@@ -191,15 +191,15 @@ The compliance matrix lists this as NOT_IMPLEMENTED, but `docs/COMPLIANCE_MATRIX
 
 The runtime already provides all the building blocks a caller needs to build their own replay:
 
-| Primitive | Status | Location |
-|-----------|--------|----------|
-| `correlationId` on events | IMPLEMENTED | runtime-engine.ts:157 |
-| `causationId` on events | IMPLEMENTED | runtime-engine.ts:159 |
-| `emitIndex` per-command counter | IMPLEMENTED | runtime-engine.ts:161 |
-| `IdempotencyStore` interface | IMPLEMENTED | runtime-engine.ts:179-186 |
-| `deterministicMode` (block side effects) | IMPLEMENTED | runtime-engine.ts:86-93 |
-| Event log (`getEventLog()`) | IMPLEMENTED | runtime-engine.ts:1875-1880 |
-| State transitions (`IRTransition`) | IMPLEMENTED | runtime-engine.ts:822-836 |
+| Primitive                                | Status      | Location                    |
+| ---------------------------------------- | ----------- | --------------------------- |
+| `correlationId` on events                | IMPLEMENTED | runtime-engine.ts:157       |
+| `causationId` on events                  | IMPLEMENTED | runtime-engine.ts:159       |
+| `emitIndex` per-command counter          | IMPLEMENTED | runtime-engine.ts:161       |
+| `IdempotencyStore` interface             | IMPLEMENTED | runtime-engine.ts:179-186   |
+| `deterministicMode` (block side effects) | IMPLEMENTED | runtime-engine.ts:86-93     |
+| Event log (`getEventLog()`)              | IMPLEMENTED | runtime-engine.ts:1875-1880 |
+| State transitions (`IRTransition`)       | IMPLEMENTED | runtime-engine.ts:822-836   |
 
 ### Recommended Resolution: Formally Close as OUT_OF_SCOPE
 
@@ -207,12 +207,12 @@ A full replay engine (event store, replay orchestrator, state reconstruction, ca
 
 ### Steps to Formally Close
 
-| Step | File | Change |
-|------|------|--------|
-| 1 | `docs/COMPLIANCE_MATRIX.md` § 9 | Change "Not Implemented Features (2%)" to "Out of Scope Features" and reword the replay engine entry: "Workflow replay engine — OUT_OF_SCOPE. Runtime provides replay primitives (correlationId, causationId, emitIndex, IdempotencyStore, deterministicMode). Replay orchestration is the caller's responsibility per manifest-vnext.md § 'Workflow Patterns'." |
-| 2 | `docs/COMPLIANCE_MATRIX.md` § 9 | Update percentage breakdown to reflect that bounded complexity (once implemented) moves to Fully Implemented, and replay engine is reclassified as out-of-scope rather than unimplemented |
-| 3 | `docs/spec/manifest-vnext.md` § "Out of scope" | Add explicit line: "Workflow replay orchestration (event store, state reconstruction, causality validation). The runtime provides metadata primitives; replay is the caller's responsibility." |
-| 4 | `docs/spec/manifest-vnext.md` § "Workflow Patterns" | Add a brief "What the runtime does NOT do" clarification noting that correlationId/causationId/emitIndex/idempotency are primitives for callers to build replay on, not a replay engine |
+| Step | File                                                | Change                                                                                                                                                                                                                                                                                                                                                           |
+| ---- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | `docs/COMPLIANCE_MATRIX.md` § 9                     | Change "Not Implemented Features (2%)" to "Out of Scope Features" and reword the replay engine entry: "Workflow replay engine — OUT_OF_SCOPE. Runtime provides replay primitives (correlationId, causationId, emitIndex, IdempotencyStore, deterministicMode). Replay orchestration is the caller's responsibility per manifest-vnext.md § 'Workflow Patterns'." |
+| 2    | `docs/COMPLIANCE_MATRIX.md` § 9                     | Update percentage breakdown to reflect that bounded complexity (once implemented) moves to Fully Implemented, and replay engine is reclassified as out-of-scope rather than unimplemented                                                                                                                                                                        |
+| 3    | `docs/spec/manifest-vnext.md` § "Out of scope"      | Add explicit line: "Workflow replay orchestration (event store, state reconstruction, causality validation). The runtime provides metadata primitives; replay is the caller's responsibility."                                                                                                                                                                   |
+| 4    | `docs/spec/manifest-vnext.md` § "Workflow Patterns" | Add a brief "What the runtime does NOT do" clarification noting that correlationId/causationId/emitIndex/idempotency are primitives for callers to build replay on, not a replay engine                                                                                                                                                                          |
 
 ### If Replay Is Later Brought Into Scope
 
@@ -234,6 +234,7 @@ The two features are independent. Recommended order:
 2. **Workflow replay engine closure** (doc-only changes)
 
 After both:
+
 - Run `npm test` — verify 474+ tests passing
 - Update `COMPLIANCE_MATRIX.md` § 9 summary to reflect 0 NOT_IMPLEMENTED items
 - Update compliance matrix checkmarks: bounded complexity `[ ]` → `[x]`

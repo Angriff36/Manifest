@@ -1,7 +1,7 @@
 ---
-title: "Quickstart: install Manifest and run your first command"
-sidebarTitle: "Quickstart"
-description: "Install @angriff36/manifest, write your first .manifest file, compile it to IR, and execute a command with RuntimeEngine in under five minutes."
+title: 'Quickstart: install Manifest and run your first command'
+sidebarTitle: 'Quickstart'
+description: 'Install @angriff36/manifest, write your first .manifest file, compile it to IR, and execute a command with RuntimeEngine in under five minutes.'
 ---
 
 This guide walks you from a blank project to a running Manifest program. You will install the package, write a `.manifest` source file, compile it to IR, and call `RuntimeEngine.runCommand()` to see the result. All code examples use real APIs from the package — nothing is invented.
@@ -74,9 +74,9 @@ const source = readFileSync('my-program.manifest', 'utf-8');
 
 const { ir, diagnostics } = await compileToIR(source);
 
-if (diagnostics.some(d => d.severity === 'error')) {
+if (diagnostics.some((d) => d.severity === 'error')) {
   console.error('Compilation errors:');
-  diagnostics.forEach(d => console.error(`  ${d.message}`));
+  diagnostics.forEach((d) => console.error(`  ${d.message}`));
   process.exit(1);
 }
 
@@ -99,7 +99,8 @@ const { ir, diagnostics } = await compileToIR(source);
 ```
 
 <Note>
-  The IR is plain JSON. You can serialize it to disk, cache it, or pass it to any downstream consumer — including the `RuntimeEngine`, projections, and conformance tooling.
+  The IR is plain JSON. You can serialize it to disk, cache it, or pass it to any downstream
+  consumer — including the `RuntimeEngine`, projections, and conformance tooling.
 </Note>
 
 </Step>
@@ -121,7 +122,7 @@ const runtime = new RuntimeEngine(ir, {
 const createResult = await runtime.runCommand(
   'create',
   { newTitle: 'Learn Manifest' },
-  { entityName: 'Todo' }
+  { entityName: 'Todo' },
 );
 
 if (!createResult.success) {
@@ -144,7 +145,7 @@ Use the instance returned by `create` to run `complete`. Check `completeResult.e
 const completeResult = await runtime.runCommand(
   'complete',
   {},
-  { entityName: 'Todo', instanceId: createResult.instance.id }
+  { entityName: 'Todo', instanceId: createResult.instance.id },
 );
 
 if (completeResult.success) {
@@ -187,7 +188,8 @@ manifest init
 ```
 
 <Tip>
-  Run `manifest init` once to create a `manifest.config.yaml` for your project. After that, `manifest build` uses your config defaults and you don't need to repeat flags on every invocation.
+  Run `manifest init` once to create a `manifest.config.yaml` for your project. After that,
+  `manifest build` uses your config defaults and you don't need to repeat flags on every invocation.
 </Tip>
 
 ## Troubleshooting

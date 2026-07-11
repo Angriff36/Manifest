@@ -14,10 +14,7 @@ import {
   type SampleDataRowRecord,
   type SeedPack,
 } from './types.js';
-import {
-  matchesPackRun,
-  toSampleDataRowRecord,
-} from './sample-data-row.js';
+import { matchesPackRun, toSampleDataRowRecord } from './sample-data-row.js';
 import {
   findEntity,
   findRelationship,
@@ -77,7 +74,7 @@ async function loadTrackingRows(
   getStore: StoreProvider,
   tenantId: string,
   packId?: string,
-  version?: string
+  version?: string,
 ): Promise<SampleDataRowRecord[]> {
   const store = getStore(SAMPLE_DATA_ROW_ENTITY);
   const all = await store.getAll();
@@ -86,18 +83,11 @@ async function loadTrackingRows(
     .filter((r) => matchesPackRun(r, tenantId, packId, version));
 }
 
-export async function applySeedPack(
-  options: ApplySeedPackOptions
-): Promise<ApplySeedPackResult> {
+export async function applySeedPack(options: ApplySeedPackOptions): Promise<ApplySeedPackResult> {
   const { ir, pack, tenantId, getStore } = options;
   const injectTenantId = options.injectTenantId !== false;
 
-  const existing = await loadTrackingRows(
-    getStore,
-    tenantId,
-    pack.meta.packId,
-    pack.meta.version
-  );
+  const existing = await loadTrackingRows(getStore, tenantId, pack.meta.packId, pack.meta.version);
   if (existing.length > 0) {
     const map: Record<string, string> = {};
     for (const row of existing) {
@@ -151,7 +141,7 @@ export async function applySeedPack(
           entity: table.entity,
           seedKey: row.seedKey,
           instanceId,
-        }) as unknown as Partial<EntityInstance>
+        }) as unknown as Partial<EntityInstance>,
       );
     }
   }
@@ -174,7 +164,7 @@ export async function applySeedPack(
         const targetId = seedKeyToId[trackingKey(rel.target, ref!.trim())];
         if (!targetId) {
           throw new Error(
-            `Apply phase 2: ${table.entity}/${row.seedKey} FK ${col} → ${ref} not in seedKey map`
+            `Apply phase 2: ${table.entity}/${row.seedKey} FK ${col} → ${ref} not in seedKey map`,
           );
         }
         // Prefer FK field names when present on the relationship
@@ -204,9 +194,7 @@ export async function applySeedPack(
   };
 }
 
-export async function clearSeedPack(
-  options: ClearSeedPackOptions
-): Promise<ClearSeedPackResult> {
+export async function clearSeedPack(options: ClearSeedPackOptions): Promise<ClearSeedPackResult> {
   const { tenantId, getStore, packId, version, entities } = options;
   const tracking = await loadTrackingRows(getStore, tenantId, packId, version);
   if (tracking.length === 0) {
@@ -249,7 +237,7 @@ export async function clearSeedPack(
 
 /** Test helper: in-memory Store implementation. */
 export function createMemorySeedStore(
-  generateId: () => string = () => crypto.randomUUID()
+  generateId: () => string = () => crypto.randomUUID(),
 ): Store<EntityInstance> {
   const items = new Map<string, EntityInstance>();
   return {

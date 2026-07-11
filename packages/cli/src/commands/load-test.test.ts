@@ -234,7 +234,7 @@ describe('load-test', () => {
         format: 'k6',
         rampUp: 'invalid-format',
         json: true,
-      })
+      }),
     ).rejects.toThrow(/ramp-up/i);
   });
 
@@ -249,7 +249,7 @@ describe('load-test', () => {
         format: 'k6',
         slo: 'p95:500ms', // missing operator
         json: true,
-      })
+      }),
     ).rejects.toThrow(/SLO/i);
   });
 
@@ -300,7 +300,7 @@ describe('load-test', () => {
         format: 'k6',
         command: ['nonexistent'],
         json: true,
-      })
+      }),
     ).rejects.toThrow(/No matching commands/);
   });
 

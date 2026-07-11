@@ -65,7 +65,7 @@ Do not move/force-push a tag after the publish job has run.
 Manifest is an **IR-first language**. The Intermediate Representation (IR) is the single source of truth for program semantics.
 
 - **IR is Authority**: The IR (defined by `docs/spec/ir/ir-v1.schema.json`) is the executable contract
-- **Generated Code is Derivative**: TypeScript/React generated from IR is a *view*, not source of truth
+- **Generated Code is Derivative**: TypeScript/React generated from IR is a _view_, not source of truth
 - **Source of Truth Order**:
   1. `docs/spec/ir/ir-v1.schema.json` (IR shape is the contract)
   2. `docs/spec/semantics.md` (runtime meaning)
@@ -95,6 +95,7 @@ Manifest is an **IR-first language**. The Intermediate Representation (IR) is th
 ### Artifacts System
 
 The `src/artifacts/` directory provides UI for viewing generated code:
+
 - `ArtifactsPanel.tsx` - View generated client/server code
 - `RuntimePanel.tsx` - Interactive runtime testing
 - `SmokeTestPanel.tsx` - Smoke testing interface
@@ -103,6 +104,7 @@ The `src/artifacts/` directory provides UI for viewing generated code:
 ## Language Features
 
 ### Core Concepts
+
 - **Entities**: Business objects with properties and behaviors
 - **Properties**: Data fields with types and constraints
 - **Computed Properties**: Auto-calculating derived fields (spreadsheet-like)
@@ -115,6 +117,7 @@ The `src/artifacts/` directory provides UI for viewing generated code:
 - **Modules**: Namespace grouping
 
 ### vNext Features (Recently Implemented)
+
 - Commands with guards and mutations
 - Computed/derived properties
 - Constraint severity and outcomes
@@ -125,17 +128,20 @@ The `src/artifacts/` directory provides UI for viewing generated code:
 ## Testing Strategy
 
 ### Test Suite (~3,929 tests / 228 files as of 2026-07-10 — run `pnpm test` for current counts)
+
 1. **Conformance Tests**: Fixture-based testing with expected outputs
 2. **Unit Tests**: lexer, parser, IR compiler, runtime engine, adapters
 3. **Projection Tests**: snapshot + smoke tests across projection targets
 4. **CLI Tests**: command registration and behavior (`packages/cli`)
 
 ### Test Files
+
 - `src/manifest/conformance/conformance.test.ts` - Conformance suite
 - `src/manifest/*.test.ts` - Unit tests for each module
 - `src/manifest/*.bench.ts` - Performance benchmarks
 
 ### Conformance Fixtures
+
 - `src/manifest/conformance/fixtures/*.manifest` - Language source
 - `src/manifest/conformance/expected/*.ir.json` - Expected IR output
 - `src/manifest/conformance/expected/*.diagnostics.json` - Expected diagnostics
@@ -148,7 +154,7 @@ The `src/artifacts/` directory provides UI for viewing generated code:
 From `house-style.md` and `AGENTS.md`:
 
 1. **Determinism over convenience**: Identical IR + identical runtime context must produce identical results
-2. **Explicitness over inference**: Guards MUST reference spec-guaranteed bindings (self.*, this.*, user.*, context.*)
+2. **Explicitness over inference**: Guards MUST reference spec-guaranteed bindings (self._, this._, user._, context._)
 3. **Strict guard semantics**: Guards evaluated in order, execution halts on first falsey guard. No auto-repair, fallback, or permissive defaults
 4. **Diagnostics explain, never compensate**: Failures must surface failing guard index, expression, resolved values. Diagnostics MUST NOT alter execution behavior
 5. **IR is immutable at runtime**: All variability enters through runtime context, never by editing IR
@@ -168,11 +174,13 @@ From `house-style.md` and `AGENTS.md`:
 From `AGENTS.md`:
 
 **Signs of context rot**:
+
 - Reading the same file twice → you forgot
 - "Let me also..." → stop, commit what you have first
 - Large uncommitted diff → commit now
 
 **Validation commands** (run after implementing):
+
 ```bash
 pnpm test                    # Must pass
 pnpm run typecheck          # TypeScript check
@@ -212,11 +220,13 @@ Agents must treat these with explicit justification and verification:
 UI must reflect IR and semantics, not invent them:
 
 **Allowed**:
+
 - Better diagnostics (show which guard failed and why)
 - Add runtime context editor for testing programs
 - Display current state, computed values, events
 
 **Not allowed**:
+
 - Auto-injecting permissive defaults to "make demos work"
 - Reordering guard/policy semantics for convenience
 - Letting UI mutate IR directly
@@ -224,6 +234,7 @@ UI must reflect IR and semantics, not invent them:
 ## Definition of "Done"
 
 A change is only done when:
+
 - `pnpm test` is green
 - `pnpm run typecheck` passes
 - `pnpm run lint` passes
@@ -234,42 +245,48 @@ A change is only done when:
 # === COGNILAYER (auto-generated, do not delete) ===
 
 ## CogniLayer v4 Active
+
 Persistent memory + code intelligence is ON.
 ON FIRST USER MESSAGE in this session, briefly tell the user:
-  'CogniLayer v4 active — persistent memory is on. Type /cognihelp for available commands.'
+'CogniLayer v4 active — persistent memory is on. Type /cognihelp for available commands.'
 Say it ONCE, keep it short, then continue with their request.
 
 ## Tools — HOW TO WORK
 
 FIRST RUN ON A PROJECT:
 When DNA shows "[new session]" or "[first session]":
+
 1. Run /onboard — indexes project docs (PRD, README), builds initial memory
 2. Run code_index() — builds AST index for code intelligence
-Both are one-time. After that, updates are incremental.
-If file_search or code_search return empty → these haven't been run yet.
+   Both are one-time. After that, updates are incremental.
+   If file_search or code_search return empty → these haven't been run yet.
 
 UNDERSTAND FIRST (before making changes):
+
 - memory_search(query) → what do we know? Past bugs, decisions, gotchas
 - code_context(symbol) → how does the code work? Callers, callees, dependencies
 - file_search(query) → search project docs (PRD, README) without reading full files
 - code_search(query) → find where a function/class is defined
-Use BOTH memory + code tools for complete picture. They are fast — call in parallel.
+  Use BOTH memory + code tools for complete picture. They are fast — call in parallel.
 
 BEFORE RISKY CHANGES (mandatory):
+
 - Renaming, deleting, or moving a function/class → code_impact(symbol) FIRST
 - Changing a function's signature or return value → code_impact(symbol) FIRST
 - Modifying shared utilities used across multiple files → code_impact(symbol) FIRST
 - ALSO: memory_search(symbol) → check for related decisions or known gotchas
-Both required. Structure tells you what breaks, memory tells you WHY it was built that way.
+  Both required. Structure tells you what breaks, memory tells you WHY it was built that way.
 
 AFTER COMPLETING WORK:
+
 - memory_write(content) → save important discoveries immediately
   (error_fix, gotcha, pattern, api_contract, procedure, decision)
 - session_bridge(action="save", content="Progress: ...; Open: ...")
-DO NOT wait for /harvest — session may crash.
+  DO NOT wait for /harvest — session may crash.
 
 SUBAGENT MEMORY PROTOCOL:
 When spawning Agent tool for research or exploration:
+
 - Include in prompt: synthesize findings into consolidated memory_write(content, type, tags="subagent,<task-topic>") facts
   Assign a descriptive topic tag per subagent (e.g. tags="subagent,auth-review", tags="subagent,perf-analysis")
 - Do NOT write each discovery separately — group related findings into cohesive facts
@@ -281,29 +298,35 @@ When spawning Agent tool for research or exploration:
 - Return: actionable summary (file paths, function names, specific values) + what was saved + keywords for memory_search
 - If MCP tools unavailable or fail → include key findings directly in return text as fallback
 - Launch subagents as foreground (default) for reliable MCP access — user can Ctrl+B to background later
-Why: without this protocol, subagent returns dump all text into parent context (40K+ tokens).
-With protocol, findings go to DB and parent gets ~500 token summary + on-demand memory_search.
+  Why: without this protocol, subagent returns dump all text into parent context (40K+ tokens).
+  With protocol, findings go to DB and parent gets ~500 token summary + on-demand memory_search.
 
 BEFORE DEPLOY/PUSH:
+
 - verify_identity(action_type="...") → mandatory safety gate
 - If BLOCKED → STOP and ask the user
 - If VERIFIED → READ the target server to the user and request confirmation
 
 ## VERIFY-BEFORE-ACT
+
 When memory_search returns a fact marked ⚠ STALE:
+
 1. Read the source file and verify the fact still holds
 2. If changed → update via memory_write
 3. NEVER act on STALE facts without verification
 
 ## Process Management (Windows)
+
 - NEVER use `taskkill //F //IM node.exe` — kills ALL Node.js INCLUDING Claude Code CLI!
 - Use: `npx kill-port PORT` or find PID via `netstat -ano | findstr :PORT` then `taskkill //F //PID XXXX`
 
 ## Git Rules
+
 - Commit often, small atomic changes. Format: "[type] what and why"
 - commit = Tier 1 (do it yourself). push = Tier 3 (verify_identity).
 
 ## Project DNA: @angriff36/manifest
+
 Stack: React 18.3.1, TypeScript, Tailwind CSS
 Style: [unknown]
 Structure: .automaker, .bolt, .codex-main-push, .github, .opencode, .playwright-mcp, .tmp, .turbo
@@ -312,22 +335,23 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
+
 [pre-compact bridge — saved before context compaction]
 Files (7):
-  C:/Users/Ryan/.claude/skills/manifest/SKILL.md (create)
-  C:/Projects/capsule-pro/manifest/NATIVE-REWRITE-PLAN.md (edit)
-  C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/project-manifest-skill-consolidated.md (create)
-  C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/MEMORY.md (edit)
-  C:/Projects/capsule-pro/HANDOFF-FABLE.md (edit)
-  C:/Users/Ryan/.claude/skills/manifest/SKILL.md (edit)
-  C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/project-manifest-skill-consolidated.md (edit)
+C:/Users/Ryan/.claude/skills/manifest/SKILL.md (create)
+C:/Projects/capsule-pro/manifest/NATIVE-REWRITE-PLAN.md (edit)
+C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/project-manifest-skill-consolidated.md (create)
+C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/MEMORY.md (edit)
+C:/Projects/capsule-pro/HANDOFF-FABLE.md (edit)
+C:/Users/Ryan/.claude/skills/manifest/SKILL.md (edit)
+C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/project-manifest-skill-consolidated.md (edit)
 Manual bridge:
 [proactive bridge @ 86% context — saved before compacting]
 Files (5):
-  C:/Users/Ryan/.claude/skills/manifest/SKILL.md (create)
-  C:/Projects/capsule-pro/manifest/NATIVE-REWRITE-PLAN.md (edit)
-  C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/project-manifest-skill-consolidated.md (create)
-  C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/MEMORY.md (edit)
-  C:/Projects/capsule-pro/HANDOFF-FABLE.md (edit)
+C:/Users/Ryan/.claude/skills/manifest/SKILL.md (create)
+C:/Projects/capsule-pro/manifest/NATIVE-REWRITE-PLAN.md (edit)
+C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/project-manifest-skill-consolidated.md (create)
+C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/MEMORY.md (edit)
+C:/Projects/capsule-pro/HANDOFF-FABLE.md (edit)
 
 # === END COGNILAYER ===

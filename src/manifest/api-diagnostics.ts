@@ -5,7 +5,8 @@ import type { CommandResult, EmittedEvent, GuardFailure, PolicyDenial } from './
  * Provides a consistent shape for all runtime failures at the API boundary.
  */
 export interface RuntimeDiagnostic {
-  kind: 'guard_failure' | 'policy_denial' | 'constraint_block' | 'constraint_warn' | 'runtime_error';
+  kind:
+    'guard_failure' | 'policy_denial' | 'constraint_block' | 'constraint_warn' | 'runtime_error';
   entity: string;
   command: string;
   ruleName?: string;
@@ -28,10 +29,10 @@ export interface NormalizedCommandResult {
 
 /**
  * Normalize a CommandResult into a consistent API response shape.
- * 
+ *
  * This function bridges the gap between the runtime's CommandResult structure
  * and a consistent API contract that surfaces all diagnostic information.
- * 
+ *
  * @param entityName - Name of the entity the command operates on
  * @param commandName - Name of the command being executed
  * @param result - CommandResult from RuntimeEngine.runCommand()
@@ -40,7 +41,7 @@ export interface NormalizedCommandResult {
 export function normalizeCommandResult(
   entityName: string,
   commandName: string,
-  result: CommandResult
+  result: CommandResult,
 ): NormalizedCommandResult {
   const diagnostics: RuntimeDiagnostic[] = [];
 
@@ -71,7 +72,7 @@ export function normalizeCommandResult(
   }
 
   // Failure case: convert all failure modes to diagnostics
-  
+
   // Guard failure
   if (result.guardFailure) {
     diagnostics.push(convertGuardFailure(entityName, commandName, result.guardFailure));
@@ -123,7 +124,7 @@ export function normalizeCommandResult(
 function convertGuardFailure(
   entityName: string,
   commandName: string,
-  guardFailure: GuardFailure
+  guardFailure: GuardFailure,
 ): RuntimeDiagnostic {
   return {
     kind: 'guard_failure',
@@ -141,7 +142,7 @@ function convertGuardFailure(
 function convertPolicyDenial(
   entityName: string,
   commandName: string,
-  policyDenial: PolicyDenial
+  policyDenial: PolicyDenial,
 ): RuntimeDiagnostic {
   return {
     kind: 'policy_denial',

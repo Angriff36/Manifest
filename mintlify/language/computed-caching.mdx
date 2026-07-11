@@ -1,7 +1,7 @@
 ---
-title: "Computed property caching: request, session, and TTL"
-sidebarTitle: "Computed caching"
-description: "Memoize computed properties with request, session, or TTL cache strategies, with dependency-driven staleness surfaced on every read."
+title: 'Computed property caching: request, session, and TTL'
+sidebarTitle: 'Computed caching'
+description: 'Memoize computed properties with request, session, or TTL cache strategies, with dependency-driven staleness surfaced on every read.'
 ---
 
 A computed property can declare a cache strategy so its value is memoized rather than recomputed on every read. Three strategies are available: per-command (`request`), per-engine-lifetime (`session`), and time-bounded (`ttl`). For how computed properties work in general, see [Computed properties](/language/computed-properties).
@@ -42,5 +42,9 @@ On a cache hit the engine returns `{ value, stale, cached: true }`; on a miss it
 Caching is a runtime evaluation concern; the cache strategy is metadata carried on the computed property in the IR. There is no dedicated database or schema projection for it.
 
 <Note>
-The `request` cache is cleared on each command boundary, so it is genuinely scoped to a single command's evaluation rather than to an HTTP-request abstraction. `session` persists for the lifetime of the engine instance — there is no eviction beyond staleness marking. Dependency-driven staleness sets a flag rather than evicting; consumers decide whether to act on `stale: true`. A `ttl` clause without a numeric argument is a parse error.
+  The `request` cache is cleared on each command boundary, so it is genuinely scoped to a single
+  command's evaluation rather than to an HTTP-request abstraction. `session` persists for the
+  lifetime of the engine instance — there is no eviction beyond staleness marking. Dependency-driven
+  staleness sets a flag rather than evicting; consumers decide whether to act on `stale: true`. A
+  `ttl` clause without a numeric argument is a parse error.
 </Note>

@@ -68,7 +68,12 @@ function wrapBinary(expr: IRExpression, _operator: string): string {
 }
 
 function isCompound(expr: IRExpression): boolean {
-  return expr.kind === 'binary' || expr.kind === 'unary' || expr.kind === 'conditional' || expr.kind === 'lambda';
+  return (
+    expr.kind === 'binary' ||
+    expr.kind === 'unary' ||
+    expr.kind === 'conditional' ||
+    expr.kind === 'lambda'
+  );
 }
 
 function formatValue(v: IRValue): string {
@@ -83,7 +88,9 @@ function formatValue(v: IRValue): string {
     case 'array':
       return `[${v.elements.map(formatValue).join(', ')}]`;
     case 'object':
-      return `{${Object.entries(v.properties).map(([k, val]) => `"${k}": ${formatValue(val)}`).join(', ')}}`;
+      return `{${Object.entries(v.properties)
+        .map(([k, val]) => `"${k}": ${formatValue(val)}`)
+        .join(', ')}}`;
   }
 }
 
@@ -151,7 +158,9 @@ export function describeEntity(ir: IR, name: string): EntityDetails | null {
     constraints: entity.constraints.map((c) => constraintToDescriptor(c)),
     policies: entity.policies.map((polName) => {
       const pol = ir.policies.find((p) => p.name === polName);
-      return pol ? policyToDescriptor(pol) : { name: polName, action: 'unknown', expression: '', message: undefined };
+      return pol
+        ? policyToDescriptor(pol)
+        : { name: polName, action: 'unknown', expression: '', message: undefined };
     }),
     key: entity.key,
     alternateKeys: entity.alternateKeys,
@@ -171,7 +180,9 @@ function irValueToJson_(v: IRValue): unknown {
     case 'array':
       return v.elements.map(irValueToJson_);
     case 'object':
-      return Object.fromEntries(Object.entries(v.properties).map(([k, val]) => [k, irValueToJson_(val)]));
+      return Object.fromEntries(
+        Object.entries(v.properties).map(([k, val]) => [k, irValueToJson_(val)]),
+      );
   }
 }
 
@@ -185,7 +196,7 @@ function irValueToJson_(v: IRValue): unknown {
  */
 export function listCommands(
   ir: IR,
-  opts?: { entity?: string; module?: string }
+  opts?: { entity?: string; module?: string },
 ): CommandSummary[] {
   return ir.commands
     .filter((c) => (opts?.entity ? c.entity === opts.entity : true))
@@ -212,7 +223,7 @@ function commandToSummary(c: IRCommand): CommandSummary {
 export function describeCommand(
   ir: IR,
   name: string,
-  opts?: { includeGuardExpressions?: boolean; includeActionExpressions?: boolean }
+  opts?: { includeGuardExpressions?: boolean; includeActionExpressions?: boolean },
 ): CommandDetails | null {
   const cmd = ir.commands.find((c) => c.name === name);
   if (!cmd) return null;
@@ -233,7 +244,9 @@ export function describeCommand(
 
   const policies: PolicyDescriptor[] = (cmd.policies ?? []).map((polName) => {
     const pol = ir.policies.find((p) => p.name === polName);
-    return pol ? policyToDescriptor(pol) : { name: polName, action: 'execute', expression: '', message: undefined };
+    return pol
+      ? policyToDescriptor(pol)
+      : { name: polName, action: 'execute', expression: '', message: undefined };
   });
 
   const actions = opts?.includeActionExpressions
@@ -334,6 +347,8 @@ export function getEntityRelationships(ir: IR, name: string): RelationshipGraph 
  * Get entities that have commands — useful for showing which entities are "actionable".
  */
 export function getActionableEntities(ir: IR): EntitySummary[] {
-  const actionableNames = new Set(ir.commands.map((c) => c.entity).filter((n): n is string => n !== undefined));
+  const actionableNames = new Set(
+    ir.commands.map((c) => c.entity).filter((n): n is string => n !== undefined),
+  );
   return listEntities(ir).filter((e) => actionableNames.has(e.name));
 }

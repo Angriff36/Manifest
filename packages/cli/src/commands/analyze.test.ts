@@ -247,7 +247,9 @@ describe('manifest analyze command', () => {
     // Capture stdout
     const originalLog = console.log;
     const captured: string[] = [];
-    console.log = (msg: string) => { captured.push(msg); };
+    console.log = (msg: string) => {
+      captured.push(msg);
+    };
 
     try {
       await analyzeCommand({
@@ -280,7 +282,7 @@ describe('manifest analyze command', () => {
   count: number
 }
 `,
-      'utf-8'
+      'utf-8',
     );
     process.chdir(tmpDir);
 

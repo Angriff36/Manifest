@@ -1,6 +1,6 @@
 ---
-title: "Getting Started"
-description: "Learn what Manifest does, why it exists, and how to run your first Manifest program."
+title: 'Getting Started'
+description: 'Learn what Manifest does, why it exists, and how to run your first Manifest program.'
 ---
 
 > **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
@@ -13,7 +13,6 @@ description: "Learn what Manifest does, why it exists, and how to run your first
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 Manifest is a TypeScript-first domain modeling language and runtime that compiles declarative business rules into a stable IR and executes them deterministically.
 
@@ -62,10 +61,14 @@ const runtime = new RuntimeEngine(ir, {
 });
 
 const task = await runtime.createInstance('Task', {});
-const result = await runtime.runCommand('complete', {}, {
-  entityName: 'Task',
-  instanceId: task!.id,
-});
+const result = await runtime.runCommand(
+  'complete',
+  {},
+  {
+    entityName: 'Task',
+    instanceId: task!.id,
+  },
+);
 
 console.log(result.success, (await runtime.getInstance('Task', task!.id))?.status);
 ```
@@ -138,20 +141,28 @@ if (!ir || diagnostics.some((d) => d.severity === 'error')) {
   process.exit(1);
 }
 
-const runtime = new RuntimeEngine(ir, {
-  actorId: 'demo-user',
-  user: { id: 'demo-user', role: 'member' },
-}, {
-  generateId: () => 'counter-1',
-  now: () => 1700000000000,
-});
+const runtime = new RuntimeEngine(
+  ir,
+  {
+    actorId: 'demo-user',
+    user: { id: 'demo-user', role: 'member' },
+  },
+  {
+    generateId: () => 'counter-1',
+    now: () => 1700000000000,
+  },
+);
 
 await runtime.createInstance('Counter', {});
 
-const result = await runtime.runCommand('increment', { amount: 2 }, {
-  entityName: 'Counter',
-  instanceId: 'counter-1',
-});
+const result = await runtime.runCommand(
+  'increment',
+  { amount: 2 },
+  {
+    entityName: 'Counter',
+    instanceId: 'counter-1',
+  },
+);
 
 const counter = await runtime.getInstance('Counter', 'counter-1');
 

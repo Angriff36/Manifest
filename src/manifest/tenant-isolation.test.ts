@@ -18,9 +18,7 @@ describe('Tenant isolation — lexer', () => {
 describe('Tenant isolation — parser', () => {
   it('parses a tenant declaration', () => {
     const parser = new Parser();
-    const { program, errors } = parser.parse(
-      'tenant tenantId : string from context.tenantId'
-    );
+    const { program, errors } = parser.parse('tenant tenantId : string from context.tenantId');
     expect(errors).toHaveLength(0);
     expect(program.tenant).toBeDefined();
     expect(program.tenant!.property).toBe('tenantId');
@@ -30,22 +28,26 @@ describe('Tenant isolation — parser', () => {
 
   it('rejects duplicate tenant declarations', () => {
     const parser = new Parser();
-    const { errors } = parser.parse([
-      'tenant tenantId : string from context.tenantId',
-      'tenant orgId : string from context.orgId',
-    ].join('\n'));
-    expect(errors.some(e => e.message.includes('Duplicate tenant declaration'))).toBe(true);
+    const { errors } = parser.parse(
+      [
+        'tenant tenantId : string from context.tenantId',
+        'tenant orgId : string from context.orgId',
+      ].join('\n'),
+    );
+    expect(errors.some((e) => e.message.includes('Duplicate tenant declaration'))).toBe(true);
   });
 
   it('parses tenant alongside entities', () => {
     const parser = new Parser();
-    const { program, errors } = parser.parse([
-      'tenant tenantId : string from context.tenantId',
-      '',
-      'entity Foo {',
-      '  property required id: string',
-      '}',
-    ].join('\n'));
+    const { program, errors } = parser.parse(
+      [
+        'tenant tenantId : string from context.tenantId',
+        '',
+        'entity Foo {',
+        '  property required id: string',
+        '}',
+      ].join('\n'),
+    );
     expect(errors).toHaveLength(0);
     expect(program.tenant).toBeDefined();
     expect(program.entities).toHaveLength(1);
@@ -63,7 +65,7 @@ describe('Tenant isolation — IR compiler', () => {
     ].join('\n');
 
     const { ir, diagnostics } = await compileToIR(source);
-    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     expect(ir).not.toBeNull();
     expect(ir!.tenant).toBeDefined();
     expect(ir!.tenant!.property).toBe('tenantId');
@@ -72,11 +74,7 @@ describe('Tenant isolation — IR compiler', () => {
   });
 
   it('omits tenant from IR when not declared', async () => {
-    const source = [
-      'entity Foo {',
-      '  property required id: string',
-      '}',
-    ].join('\n');
+    const source = ['entity Foo {', '  property required id: string', '}'].join('\n');
 
     const { ir } = await compileToIR(source);
     expect(ir).not.toBeNull();
@@ -121,9 +119,7 @@ function buildTenantIR(): IR {
       {
         name: 'createInvoice',
         entity: 'Invoice',
-        parameters: [
-          { name: 'amount', type: { name: 'number', nullable: false }, required: true },
-        ],
+        parameters: [{ name: 'amount', type: { name: 'number', nullable: false }, required: true }],
         guards: [],
         actions: [
           { kind: 'mutate', target: 'amount', expression: { kind: 'identifier', name: 'amount' } },
@@ -140,7 +136,11 @@ describe('Tenant isolation — runtime engine', () => {
     it('rejects commands when IR has tenant config but context lacks tenantId', async () => {
       const ir = buildTenantIR();
       const rt = new RuntimeEngine(ir, {}, {});
-      const result = await rt.runCommand('createInvoice', { amount: 100 }, { entityName: 'Invoice' });
+      const result = await rt.runCommand(
+        'createInvoice',
+        { amount: 100 },
+        { entityName: 'Invoice' },
+      );
       expect(result.success).toBe(false);
       expect(result.error).toContain('MISSING_TENANT_CONTEXT');
     });
@@ -148,7 +148,11 @@ describe('Tenant isolation — runtime engine', () => {
     it('allows commands when tenant context is provided', async () => {
       const ir = buildTenantIR();
       const rt = new RuntimeEngine(ir, { tenantId: 'tenant-a' }, {});
-      const result = await rt.runCommand('createInvoice', { amount: 100 }, { entityName: 'Invoice' });
+      const result = await rt.runCommand(
+        'createInvoice',
+        { amount: 100 },
+        { entityName: 'Invoice' },
+      );
       expect(result.success).toBe(true);
     });
   });
@@ -177,7 +181,7 @@ describe('Tenant isolation — runtime engine', () => {
 
       const allForA = await rtA.getAllInstances('Invoice');
       expect(allForA).toHaveLength(2);
-      expect(allForA.every(i => i.tenantId === 'tenant-a')).toBe(true);
+      expect(allForA.every((i) => i.tenantId === 'tenant-a')).toBe(true);
     });
 
     it('getInstance rejects cross-tenant access', async () => {

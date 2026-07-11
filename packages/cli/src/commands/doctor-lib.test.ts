@@ -16,7 +16,16 @@ describe('doctor-lib', () => {
       const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-doctor-cfg-'));
       await fs.writeFile(
         path.join(dir, 'manifest.config.yaml'),
-        ['src: src/**/*.manifest', 'output: ir/', 'projections:', '  nextjs:', '    output: apps/api/', '    options:', '      appDir: apps/api/app/api', ''].join('\n'),
+        [
+          'src: src/**/*.manifest',
+          'output: ir/',
+          'projections:',
+          '  nextjs:',
+          '    output: apps/api/',
+          '    options:',
+          '      appDir: apps/api/app/api',
+          '',
+        ].join('\n'),
         'utf-8',
       );
       const findings = await inspectConfigHealth(dir);
@@ -29,7 +38,16 @@ describe('doctor-lib', () => {
       const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-doctor-cfg-ok-'));
       await fs.writeFile(
         path.join(dir, 'manifest.config.yaml'),
-        ['output: ir/', 'projections:', '  nextjs:', '    output: apps/api/', '    options:', '      appDir: app/api', '      generatedDir: app', ''].join('\n'),
+        [
+          'output: ir/',
+          'projections:',
+          '  nextjs:',
+          '    output: apps/api/',
+          '    options:',
+          '      appDir: app/api',
+          '      generatedDir: app',
+          '',
+        ].join('\n'),
         'utf-8',
       );
       const findings = await inspectConfigHealth(dir);
@@ -93,7 +111,6 @@ entity KitchenTask {
     });
   });
 
-
   describe('detectEntitySourceParseHeuristics', () => {
     it('flags probable parser/scanner mismatch when raw entity block has command tokens but parsed entity has none', () => {
       const source = `
@@ -112,7 +129,9 @@ entity KitchenTask {
         parsedCommandCount: 0,
       });
 
-      expect(findings.some((f) => f.code === 'SOURCE_ENTITY_RAW_COMMAND_TOKENS_UNPARSED')).toBe(true);
+      expect(findings.some((f) => f.code === 'SOURCE_ENTITY_RAW_COMMAND_TOKENS_UNPARSED')).toBe(
+        true,
+      );
     });
 
     it('does not flag when parsed command count matches raw command tokens', () => {

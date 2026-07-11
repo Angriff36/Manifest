@@ -120,7 +120,12 @@ export default defineConfig({
           // column; object = full fields/references + referential actions.
           foreignKeys: {
             OrderLine: {
-              order: { fields: ['orderId'], references: ['id'], onDelete: 'Cascade', onUpdate: 'Cascade' },
+              order: {
+                fields: ['orderId'],
+                references: ['id'],
+                onDelete: 'Cascade',
+                onUpdate: 'Cascade',
+              },
             },
           },
 
@@ -132,7 +137,10 @@ export default defineConfig({
           // Per-entity, per-property verbatim field attributes (not duplicated
           // if the standard pipeline already emits them).
           fieldAttributes: {
-            Event: { id: ['@default(dbgenerated("gen_random_uuid()"))'], updatedAt: ['@updatedAt'] },
+            Event: {
+              id: ['@default(dbgenerated("gen_random_uuid()"))'],
+              updatedAt: ['@updatedAt'],
+            },
           },
         },
       },

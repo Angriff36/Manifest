@@ -43,7 +43,7 @@ describe('Multi-Compiler', () => {
     });
 
     expect(result.ir).not.toBeNull();
-    expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     expect(result.ir!.entities).toHaveLength(1);
     expect(result.ir!.entities[0].name).toBe('User');
   });
@@ -70,7 +70,7 @@ describe('Multi-Compiler', () => {
     });
 
     expect(result.ir).not.toBeNull();
-    expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     expect(result.ir!.entities).toHaveLength(2);
     // Sorted alphabetically
     expect(result.ir!.entities[0].name).toBe('Order');
@@ -98,7 +98,11 @@ describe('Multi-Compiler', () => {
     });
 
     expect(result.ir).toBeNull();
-    expect(result.diagnostics.some(d => d.severity === 'error' && d.message.includes('Duplicate entity'))).toBe(true);
+    expect(
+      result.diagnostics.some(
+        (d) => d.severity === 'error' && d.message.includes('Duplicate entity'),
+      ),
+    ).toBe(true);
   });
 
   it('validates relationship targets across files', async () => {
@@ -125,7 +129,7 @@ describe('Multi-Compiler', () => {
 
     expect(result.ir).not.toBeNull();
     // No errors — User is defined in users.manifest
-    expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
   });
 
   it('reports unknown relationship targets', async () => {
@@ -145,9 +149,14 @@ describe('Multi-Compiler', () => {
     });
 
     expect(result.ir).toBeNull();
-    expect(result.diagnostics.some(d =>
-      d.severity === 'error' && d.message.includes('unknown entity') && d.message.includes('NonExistent')
-    )).toBe(true);
+    expect(
+      result.diagnostics.some(
+        (d) =>
+          d.severity === 'error' &&
+          d.message.includes('unknown entity') &&
+          d.message.includes('NonExistent'),
+      ),
+    ).toBe(true);
   });
 
   it('merges modules with same name', async () => {
@@ -199,7 +208,11 @@ describe('Multi-Compiler', () => {
     });
 
     expect(result.ir).toBeNull();
-    expect(result.diagnostics.some(d => d.severity === 'error' && d.message.includes('Duplicate tenant'))).toBe(true);
+    expect(
+      result.diagnostics.some(
+        (d) => d.severity === 'error' && d.message.includes('Duplicate tenant'),
+      ),
+    ).toBe(true);
   });
 
   it('includes provenance with sources for multi-file', async () => {
@@ -221,7 +234,7 @@ describe('Multi-Compiler', () => {
     expect(result.ir!.provenance.sources).toBeDefined();
     expect(result.ir!.provenance.sources).toHaveLength(2);
     // Sources should be sorted by path
-    const paths = result.ir!.provenance.sources!.map(s => s.path);
+    const paths = result.ir!.provenance.sources!.map((s) => s.path);
     expect(paths).toEqual([...paths].sort());
   });
 
@@ -238,7 +251,7 @@ describe('Multi-Compiler', () => {
     });
 
     expect(result.sources).toHaveLength(2);
-    expect(result.sources.every(s => s.contentHash.length > 0)).toBe(true);
+    expect(result.sources.every((s) => s.contentHash.length > 0)).toBe(true);
   });
 
   it('merges commands sorted by entity.name', async () => {
@@ -293,7 +306,9 @@ describe('Multi-Compiler', () => {
     });
 
     expect(result.ir).toBeNull();
-    expect(result.diagnostics.some(d => d.severity === 'error' && d.message.includes('Circular'))).toBe(true);
+    expect(
+      result.diagnostics.some((d) => d.severity === 'error' && d.message.includes('Circular')),
+    ).toBe(true);
   });
 
   it('produces IR with irHash', async () => {
@@ -329,7 +344,11 @@ describe('Multi-Compiler', () => {
     });
 
     expect(result.ir).toBeNull();
-    expect(result.diagnostics.some(d => d.severity === 'error' && d.message.includes('Duplicate enum'))).toBe(true);
+    expect(
+      result.diagnostics.some(
+        (d) => d.severity === 'error' && d.message.includes('Duplicate enum'),
+      ),
+    ).toBe(true);
   });
 
   it('merges stores from multiple files', async () => {
@@ -423,11 +442,11 @@ describe('Multi-Compiler', () => {
       basePath: '/project',
     });
 
-    expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     expect(result.ir).not.toBeNull();
-    expect(result.ir!.sagas?.map(s => s.name)).toEqual(['RunJob']);
-    expect(result.ir!.webhooks?.map(w => w.name)).toEqual(['JobInbound']);
-    expect(result.ir!.schedules?.map(s => s.name)).toEqual(['nightlyJob']);
+    expect(result.ir!.sagas?.map((s) => s.name)).toEqual(['RunJob']);
+    expect(result.ir!.webhooks?.map((w) => w.name)).toEqual(['JobInbound']);
+    expect(result.ir!.schedules?.map((s) => s.name)).toEqual(['nightlyJob']);
   });
 
   describe('cross-file composition (mixins / extends)', () => {
@@ -455,13 +474,13 @@ describe('Multi-Compiler', () => {
         basePath: '/project',
       });
 
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
       expect(result.ir).not.toBeNull();
-      const article = result.ir!.entities.find(e => e.name === 'Article');
+      const article = result.ir!.entities.find((e) => e.name === 'Article');
       expect(article).toBeDefined();
       expect(article!.mixins).toEqual(['TenantScoped', 'SoftDeletable']);
       // Mixin properties are flattened into the consumer (precedence: mixins then own)
-      const propNames = article!.properties.map(p => p.name);
+      const propNames = article!.properties.map((p) => p.name);
       expect(propNames).toContain('tenantId');
       expect(propNames).toContain('deletedAt');
       expect(propNames).toContain('title');
@@ -489,10 +508,10 @@ describe('Multi-Compiler', () => {
         basePath: '/project',
       });
 
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
-      const doc = result.ir!.entities.find(e => e.name === 'Document');
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
+      const doc = result.ir!.entities.find((e) => e.name === 'Document');
       expect(doc).toBeDefined();
-      const propNames = doc!.properties.map(p => p.name);
+      const propNames = doc!.properties.map((p) => p.name);
       expect(propNames).toContain('id');
       expect(propNames).toContain('createdAt');
       expect(propNames).toContain('title');
@@ -516,7 +535,7 @@ describe('Multi-Compiler', () => {
       expect(result.ir).toBeNull();
       expect(
         result.diagnostics.some(
-          d => d.severity === 'error' && d.message.includes('DoesNotExist'),
+          (d) => d.severity === 'error' && d.message.includes('DoesNotExist'),
         ),
       ).toBe(true);
     });
@@ -556,7 +575,11 @@ describe('Multi-Compiler', () => {
         basePath: '/project',
       });
 
-      expect(result.diagnostics.some(d => d.severity === 'error' && /no command emits/.test(d.message))).toBe(false);
+      expect(
+        result.diagnostics.some(
+          (d) => d.severity === 'error' && /no command emits/.test(d.message),
+        ),
+      ).toBe(false);
       expect(result.ir).not.toBeNull();
     });
 
@@ -585,7 +608,11 @@ describe('Multi-Compiler', () => {
         basePath: '/project',
       });
 
-      expect(result.diagnostics.some(d => d.severity === 'error' && /no command emits/.test(d.message))).toBe(true);
+      expect(
+        result.diagnostics.some(
+          (d) => d.severity === 'error' && /no command emits/.test(d.message),
+        ),
+      ).toBe(true);
       expect(result.ir).toBeNull();
     });
 
@@ -617,10 +644,10 @@ describe('Multi-Compiler', () => {
 
       expect(result.ir).toBeNull();
       const autoProvided = result.diagnostics.filter(
-        d => d.severity === 'error' && d.message.includes('auto-provides'),
+        (d) => d.severity === 'error' && d.message.includes('auto-provides'),
       );
-      expect(autoProvided.some(d => d.message.includes('Aaa.create'))).toBe(true);
-      expect(autoProvided.some(d => d.message.includes('Bbb.create'))).toBe(true);
+      expect(autoProvided.some((d) => d.message.includes('Aaa.create'))).toBe(true);
+      expect(autoProvided.some((d) => d.message.includes('Bbb.create'))).toBe(true);
     });
   });
 });

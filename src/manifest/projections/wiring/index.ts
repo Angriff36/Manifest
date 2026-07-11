@@ -18,10 +18,7 @@ export type {
   WiringLifecycleTransition,
   WiringInvalidationTarget,
 } from './types.js';
-export {
-  WIRING_CONTRACT_SCHEMA,
-  WIRING_CONSUMERS_SCHEMA,
-} from './types.js';
+export { WIRING_CONTRACT_SCHEMA, WIRING_CONSUMERS_SCHEMA } from './types.js';
 
 export {
   inspectWiringConsumers,

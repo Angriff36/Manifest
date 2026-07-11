@@ -8,12 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type {
-  IR,
-  IREntity,
-  IREvent,
-  IRStore,
-} from '../../ir';
+import type { IR, IREntity, IREvent, IRStore } from '../../ir';
 import { TerraformProjection } from './generator.js';
 
 // ---------------------------------------------------------------------------
@@ -100,9 +95,7 @@ function widgetEvent(): IREvent {
   return {
     name: 'WidgetCreated',
     channel: 'widgets.created',
-    payload: [
-      { name: 'id', type: { name: 'uuid', nullable: false }, required: true },
-    ],
+    payload: [{ name: 'id', type: { name: 'uuid', nullable: false }, required: true }],
   };
 }
 

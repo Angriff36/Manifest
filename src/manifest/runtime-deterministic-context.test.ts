@@ -19,14 +19,12 @@ function buildIR(): IR {
       schemaVersion: '1.0',
       compiledAt: new Date().toISOString(),
     },
-  modules: [],
-  values: [],
-  entities: [
+    modules: [],
+    values: [],
+    entities: [
       {
         name: 'Foo',
-        properties: [
-          { name: 'name', type: { name: 'string', nullable: false }, modifiers: [] },
-        ],
+        properties: [{ name: 'name', type: { name: 'string', nullable: false }, modifiers: [] }],
         computedProperties: [],
         relationships: [],
         commands: ['tag'],
@@ -63,9 +61,9 @@ describe('context.deterministic triggers effect boundary', () => {
   it('throws ManifestEffectBoundaryError when context.deterministic=true and persist runs', async () => {
     const ir = buildIR();
     const rt = new RuntimeEngine(ir, { tenantId: 't', deterministic: true });
-    await expect(
-      rt.runCommand('tag', {}, { entityName: 'Foo' })
-    ).rejects.toBeInstanceOf(ManifestEffectBoundaryError);
+    await expect(rt.runCommand('tag', {}, { entityName: 'Foo' })).rejects.toBeInstanceOf(
+      ManifestEffectBoundaryError,
+    );
   });
 
   it('does not throw when context.deterministic is unset or false', async () => {
@@ -82,7 +80,7 @@ describe('context.deterministic triggers effect boundary', () => {
     const rt = new RuntimeEngine(
       ir,
       { tenantId: 't', deterministic: true },
-      { deterministicMode: false }
+      { deterministicMode: false },
     );
     const result = await rt.runCommand('tag', {}, { entityName: 'Foo' });
     expect(result.success).toBe(true);

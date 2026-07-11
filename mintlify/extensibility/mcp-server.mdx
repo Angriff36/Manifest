@@ -1,7 +1,7 @@
 ---
-title: "Manifest MCP server for AI hosts"
-sidebarTitle: "MCP Server"
-description: "Expose Manifest compilation, execution, validation, and introspection as Model Context Protocol tools and resources over stdio for Claude Desktop, Cursor, and other MCP hosts."
+title: 'Manifest MCP server for AI hosts'
+sidebarTitle: 'MCP Server'
+description: 'Expose Manifest compilation, execution, validation, and introspection as Model Context Protocol tools and resources over stdio for Claude Desktop, Cursor, and other MCP hosts.'
 ---
 
 The Manifest MCP server exposes compilation, execution, validation, and introspection as Model Context Protocol tools and resources over stdio, letting MCP-compatible hosts (Claude Desktop, Cursor, and others) consume and reason about Manifest programs as structured context. Verified against `packages/mcp-server/`.
@@ -49,7 +49,8 @@ State is held in a `SessionStore` singleton: an in-process cache keyed by `conte
 ## Notes and limitations
 
 <Warning>
-The session cache is in-process and lost on restart. `execute` and `explain` require a `contentHash` from a prior `compile` call in the same session.
+  The session cache is in-process and lost on restart. `execute` and `explain` require a
+  `contentHash` from a prior `compile` call in the same session.
 </Warning>
 
 `compile` uses the IR provenance `contentHash` (SHA-256 of source computed by the compiler) as the cache key, so identical source reuses the same entry. `validate` deliberately does not cache, so it cannot be followed by `execute` on the same hash. The package's own version is `0.1.0`; the server identifies itself as `manifest-mcp-server`. The session store caps at 50 entries with FIFO eviction (an implementation detail of `session-store.ts`).

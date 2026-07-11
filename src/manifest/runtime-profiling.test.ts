@@ -14,38 +14,44 @@ function minimalIR(): IR {
     },
     modules: [],
     values: [],
-    entities: [{
-      name: 'Counter',
-      properties: [
-        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        { name: 'count', type: { name: 'int', nullable: false }, modifiers: [] },
-      ],
-      computedProperties: [],
-      relationships: [],
-      commands: ['create'],
-      constraints: [],
-      policies: [],
-    }],
+    entities: [
+      {
+        name: 'Counter',
+        properties: [
+          { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          { name: 'count', type: { name: 'int', nullable: false }, modifiers: [] },
+        ],
+        computedProperties: [],
+        relationships: [],
+        commands: ['create'],
+        constraints: [],
+        policies: [],
+      },
+    ],
     enums: [],
     stores: [{ entity: 'Counter', target: 'memory', config: {} }],
     events: [],
-    commands: [{
-      name: 'create',
-      entity: 'Counter',
-      parameters: [],
-      guards: [],
-      constraints: [],
-      actions: [{
-        kind: 'mutate',
-        target: 'count',
-        expression: {
-          kind: 'call',
-          callee: { kind: 'identifier', name: 'now' },
-          args: [],
-        },
-      }],
-      emits: [],
-    }],
+    commands: [
+      {
+        name: 'create',
+        entity: 'Counter',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'count',
+            expression: {
+              kind: 'call',
+              callee: { kind: 'identifier', name: 'now' },
+              args: [],
+            },
+          },
+        ],
+        emits: [],
+      },
+    ],
     policies: [],
   };
 }
@@ -53,12 +59,16 @@ function minimalIR(): IR {
 describe('RuntimeEngine profiling', () => {
   it('collects phase timings when profiling is enabled', async () => {
     const profiles: unknown[] = [];
-    const engine = new RuntimeEngine(minimalIR(), { user: { id: 'u1', role: 'admin' } }, {
-      profiling: {
-        enabled: true,
-        onProfileComplete: p => profiles.push(p),
+    const engine = new RuntimeEngine(
+      minimalIR(),
+      { user: { id: 'u1', role: 'admin' } },
+      {
+        profiling: {
+          enabled: true,
+          onProfileComplete: (p) => profiles.push(p),
+        },
       },
-    });
+    );
 
     await engine.runCommand('create', { id: 'c1' }, { entityName: 'Counter' });
 

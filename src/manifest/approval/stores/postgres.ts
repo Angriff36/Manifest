@@ -72,7 +72,8 @@ function rowToState(row: ApprovalRow): ApprovalRequestState {
     state.expiresAt = toNumber(row.expires_at);
   }
   if (row.denied_by !== null && row.denied_by !== undefined) state.deniedBy = row.denied_by;
-  if (row.denied_reason !== null && row.denied_reason !== undefined) state.deniedReason = row.denied_reason;
+  if (row.denied_reason !== null && row.denied_reason !== undefined)
+    state.deniedReason = row.denied_reason;
   return state;
 }
 

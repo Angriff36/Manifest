@@ -78,18 +78,16 @@ export function packIR(ir: IR): Uint8Array {
 export function unpackIR(buf: Uint8Array): IR {
   if (buf.length < MIR_HEADER_SIZE) {
     throw new BinaryIRError(
-      `Buffer too short: expected at least ${MIR_HEADER_SIZE} header bytes, got ${buf.length}`
+      `Buffer too short: expected at least ${MIR_HEADER_SIZE} header bytes, got ${buf.length}`,
     );
   }
   if (buf[0] !== MIR_MAGIC[0] || buf[1] !== MIR_MAGIC[1] || buf[2] !== MIR_MAGIC[2]) {
-    throw new BinaryIRError(
-      'Invalid magic bytes: not a .mir file (expected "MIR" prefix)'
-    );
+    throw new BinaryIRError('Invalid magic bytes: not a .mir file (expected "MIR" prefix)');
   }
   const version = buf[3];
   if (version !== MIR_FORMAT_VERSION) {
     throw new BinaryIRError(
-      `Unsupported format version: ${version} (expected ${MIR_FORMAT_VERSION})`
+      `Unsupported format version: ${version} (expected ${MIR_FORMAT_VERSION})`,
     );
   }
   const payload = buf.subarray(MIR_HEADER_SIZE);
@@ -107,7 +105,7 @@ export function unpackIR(buf: Uint8Array): IR {
 export function inspectBinaryIR(buf: Uint8Array): BinaryIRInfo {
   if (buf.length < MIR_HEADER_SIZE) {
     throw new BinaryIRError(
-      `Buffer too short: expected at least ${MIR_HEADER_SIZE} header bytes, got ${buf.length}`
+      `Buffer too short: expected at least ${MIR_HEADER_SIZE} header bytes, got ${buf.length}`,
     );
   }
   if (buf[0] !== MIR_MAGIC[0] || buf[1] !== MIR_MAGIC[1] || buf[2] !== MIR_MAGIC[2]) {

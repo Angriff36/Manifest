@@ -47,7 +47,7 @@ export function useDebouncedCompile(source: string, debounceMs = 300): CompileRe
       try {
         const irResult = await compileToIR(source);
         ir = irResult.ir;
-        diagnostics = (irResult.diagnostics || []).map(d => ({
+        diagnostics = (irResult.diagnostics || []).map((d) => ({
           message: d.message,
           severity: d.severity || 'error',
           line: d.line,

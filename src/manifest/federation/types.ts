@@ -10,7 +10,6 @@
  * @module federation/types
  */
 
-
 /**
  * Describes a single remote Manifest service in the federation.
  * A service descriptor is the public, minimal contract that other services
@@ -170,7 +169,7 @@ export interface FederationClientOptions {
   defaultTimeoutMs?: number;
   /** Maximum number of retry attempts for transient failures (default: 0) */
   maxRetries?: number;
- /** Delay between retries in ms (default: 1000) */
+  /** Delay between retries in ms (default: 1000) */
   retryDelayMs?: number;
   /** Function to resolve the auth token for a given service (used when descriptor.auth.scheme !== 'none') */
   resolveAuthToken?: (serviceId: string) => string | undefined;
@@ -200,7 +199,7 @@ export interface FederationTransport {
   invoke(
     descriptor: ServiceDescriptor,
     request: FederationRequest,
-    options: { timeoutMs: number; authToken?: string }
+    options: { timeoutMs: number; authToken?: string },
   ): Promise<FederationResponse>;
 }
 
@@ -215,5 +214,8 @@ export interface TypedClientAdapter {
   /** Generated source code for the adapter */
   readonly source: string;
   /** Factory that creates a live client instance from a base URL */
-  create(baseUrl: string, options?: { authToken?: string; timeoutMs?: number }): Record<string, (...args: unknown[]) => Promise<unknown>>;
+  create(
+    baseUrl: string,
+    options?: { authToken?: string; timeoutMs?: number },
+  ): Record<string, (...args: unknown[]) => Promise<unknown>>;
 }

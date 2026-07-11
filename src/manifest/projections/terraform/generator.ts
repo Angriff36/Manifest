@@ -209,10 +209,7 @@ function emitAwsProviderConfig(config: ResolvedDatabaseConfig): string {
   ].join('\n');
 }
 
-function emitAwsDatabaseInstance(
-  resourceName: string,
-  dbConfig: ResolvedDatabaseConfig,
-): string {
+function emitAwsDatabaseInstance(resourceName: string, dbConfig: ResolvedDatabaseConfig): string {
   return [
     `resource "aws_db_instance" ${hclString(resourceName)} {`,
     `  identifier         = ${hclString(`${resourceName}-instance`)}`,
@@ -354,10 +351,7 @@ function emitGcpProviderConfig(config: ResolvedDatabaseConfig): string {
   ].join('\n');
 }
 
-function emitGcpDatabaseInstance(
-  resourceName: string,
-  dbConfig: ResolvedDatabaseConfig,
-): string {
+function emitGcpDatabaseInstance(resourceName: string, dbConfig: ResolvedDatabaseConfig): string {
   return [
     `resource "google_sql_database_instance" ${hclString(resourceName)} {`,
     `  name             = ${hclString(resourceName)}`,
@@ -570,10 +564,7 @@ function emitSupabaseTable(
 // Provider dispatch
 // ============================================================================
 
-function emitProviderConfig(
-  provider: TerraformProvider,
-  dbConfig: ResolvedDatabaseConfig,
-): string {
+function emitProviderConfig(provider: TerraformProvider, dbConfig: ResolvedDatabaseConfig): string {
   switch (provider) {
     case 'aws':
       return emitAwsProviderConfig(dbConfig);

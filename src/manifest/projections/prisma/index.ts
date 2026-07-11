@@ -18,7 +18,4 @@ export {
   type PropertyName,
   type ForeignKeyConfig,
 } from './options.js';
-export {
-  DEFAULT_TYPE_MAPPING,
-  resolvePrismaScalar,
-} from './type-mapping.js';
+export { DEFAULT_TYPE_MAPPING, resolvePrismaScalar } from './type-mapping.js';

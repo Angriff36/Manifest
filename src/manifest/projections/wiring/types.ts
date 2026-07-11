@@ -17,13 +17,7 @@ export type ParameterOwnership = 'client' | 'server';
 
 /** Kind of trusted server-owned source (derived from context path, not names). */
 export type TrustedSourceKind =
-  | 'actor'
-  | 'tenant'
-  | 'org'
-  | 'request'
-  | 'routeEntityId'
-  | 'context'
-  | 'unknown';
+  'actor' | 'tenant' | 'org' | 'request' | 'routeEntityId' | 'context' | 'unknown';
 
 /** Statically known input constraints (never runtime-only guards). */
 export interface WiringInputConstraints {
@@ -146,11 +140,7 @@ export interface WiringConsumersRegistry {
 }
 
 export type WiringCoverageStatus =
-  | 'exposed'
-  | 'backend-only'
-  | 'deferred'
-  | 'unwired'
-  | 'stale-consumer';
+  'exposed' | 'backend-only' | 'deferred' | 'unwired' | 'stale-consumer';
 
 export interface WiringCoverageFinding {
   capabilityId: string;

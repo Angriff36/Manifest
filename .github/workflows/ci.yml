@@ -39,6 +39,9 @@ jobs:
         # lsp-server, stdlib, and the vscode extension.
         run: pnpm install --frozen-lockfile
 
+      - name: Prettier formatting check
+        run: pnpm run format:check
+
       - name: Build root library
         # packages/cli depends on @angriff36/manifest via type imports
         # (src/checks/runtime-smoke.ts, src/commands/*.ts). Without
@@ -109,6 +112,9 @@ jobs:
 
       - name: Install dependencies (frozen lockfile)
         run: pnpm install --frozen-lockfile
+
+      - name: Prettier formatting check
+        run: pnpm run format:check
 
       - name: Build root library
         run: pnpm run build:lib

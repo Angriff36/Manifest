@@ -79,7 +79,11 @@
           },
           {
             "group": "Integration",
-            "pages": ["integration/overview", "integration/projections", "integration/embedded-runtime"]
+            "pages": [
+              "integration/overview",
+              "integration/projections",
+              "integration/embedded-runtime"
+            ]
           },
           {
             "group": "Adapters",

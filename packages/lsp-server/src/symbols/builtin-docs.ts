@@ -33,7 +33,8 @@ export const KEYWORD_DOCS: Record<string, string> = {
   through: 'Specifies a join table for many-to-many relationships.',
 
   // Command internals
-  guard: 'Boolean expression that must be true for the command to execute. Evaluated in order; first failure halts.',
+  guard:
+    'Boolean expression that must be true for the command to execute. Evaluated in order; first failure halts.',
   mutate: 'State mutation action. Modifies entity properties.',
   emit: 'Emits an event as a side effect of the command.',
   publish: 'Publishes a message to an event channel.',
@@ -121,16 +122,66 @@ export interface CompletionBucket {
 
 /** Top-level declaration keywords */
 export const TOP_LEVEL_COMPLETIONS: CompletionBucket[] = [
-  { label: 'entity', kind: CompletionItemKind.Keyword, detail: 'Entity declaration', documentation: KEYWORD_DOCS.entity },
-  { label: 'enum', kind: CompletionItemKind.Keyword, detail: 'Enum declaration', documentation: KEYWORD_DOCS.enum },
-  { label: 'command', kind: CompletionItemKind.Keyword, detail: 'Command declaration', documentation: KEYWORD_DOCS.command },
-  { label: 'module', kind: CompletionItemKind.Keyword, detail: 'Module declaration', documentation: KEYWORD_DOCS.module },
-  { label: 'policy', kind: CompletionItemKind.Keyword, detail: 'Policy declaration', documentation: KEYWORD_DOCS.policy },
-  { label: 'store', kind: CompletionItemKind.Keyword, detail: 'Store declaration', documentation: KEYWORD_DOCS.store },
-  { label: 'event', kind: CompletionItemKind.Keyword, detail: 'Event declaration', documentation: KEYWORD_DOCS.event },
-  { label: 'saga', kind: CompletionItemKind.Keyword, detail: 'Saga declaration', documentation: KEYWORD_DOCS.saga },
-  { label: 'tenant', kind: CompletionItemKind.Keyword, detail: 'Tenant declaration', documentation: KEYWORD_DOCS.tenant },
-  { label: 'use', kind: CompletionItemKind.Keyword, detail: 'Import module', documentation: KEYWORD_DOCS.use },
+  {
+    label: 'entity',
+    kind: CompletionItemKind.Keyword,
+    detail: 'Entity declaration',
+    documentation: KEYWORD_DOCS.entity,
+  },
+  {
+    label: 'enum',
+    kind: CompletionItemKind.Keyword,
+    detail: 'Enum declaration',
+    documentation: KEYWORD_DOCS.enum,
+  },
+  {
+    label: 'command',
+    kind: CompletionItemKind.Keyword,
+    detail: 'Command declaration',
+    documentation: KEYWORD_DOCS.command,
+  },
+  {
+    label: 'module',
+    kind: CompletionItemKind.Keyword,
+    detail: 'Module declaration',
+    documentation: KEYWORD_DOCS.module,
+  },
+  {
+    label: 'policy',
+    kind: CompletionItemKind.Keyword,
+    detail: 'Policy declaration',
+    documentation: KEYWORD_DOCS.policy,
+  },
+  {
+    label: 'store',
+    kind: CompletionItemKind.Keyword,
+    detail: 'Store declaration',
+    documentation: KEYWORD_DOCS.store,
+  },
+  {
+    label: 'event',
+    kind: CompletionItemKind.Keyword,
+    detail: 'Event declaration',
+    documentation: KEYWORD_DOCS.event,
+  },
+  {
+    label: 'saga',
+    kind: CompletionItemKind.Keyword,
+    detail: 'Saga declaration',
+    documentation: KEYWORD_DOCS.saga,
+  },
+  {
+    label: 'tenant',
+    kind: CompletionItemKind.Keyword,
+    detail: 'Tenant declaration',
+    documentation: KEYWORD_DOCS.tenant,
+  },
+  {
+    label: 'use',
+    kind: CompletionItemKind.Keyword,
+    detail: 'Import module',
+    documentation: KEYWORD_DOCS.use,
+  },
 ];
 
 /** Keywords valid inside an entity body */
@@ -219,5 +270,9 @@ export const STORE_TARGET_COMPLETIONS: CompletionBucket[] = [
   { label: 'memory', kind: CompletionItemKind.Keyword, documentation: KEYWORD_DOCS.memory },
   { label: 'postgres', kind: CompletionItemKind.Keyword, documentation: KEYWORD_DOCS.postgres },
   { label: 'supabase', kind: CompletionItemKind.Keyword, documentation: KEYWORD_DOCS.supabase },
-  { label: 'localStorage', kind: CompletionItemKind.Keyword, documentation: KEYWORD_DOCS.localStorage },
+  {
+    label: 'localStorage',
+    kind: CompletionItemKind.Keyword,
+    documentation: KEYWORD_DOCS.localStorage,
+  },
 ];

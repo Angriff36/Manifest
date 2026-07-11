@@ -62,7 +62,7 @@ function collectUniqueTargets(ir: IR): string[] {
  * Determine if any store targets support outbox queues.
  */
 function hasOutboxCapableStores(ir: IR): boolean {
-  return ir.stores.some(s => OUTBOX_TARGETS.has(s.target));
+  return ir.stores.some((s) => OUTBOX_TARGETS.has(s.target));
 }
 
 /**
@@ -82,10 +82,7 @@ function targetToFunctionSuffix(target: string): string {
 /**
  * Build the framework-agnostic health check handler code.
  */
-function buildHandlerCode(
-  ir: IR,
-  opts: Required<HealthCheckProjectionOptions>,
-): string {
+function buildHandlerCode(ir: IR, opts: Required<HealthCheckProjectionOptions>): string {
   const lines: string[] = [];
   const targets = collectUniqueTargets(ir);
   const hasOutbox = hasOutboxCapableStores(ir);
@@ -150,7 +147,9 @@ function buildHandlerCode(
       lines.push('  // When live hash computation is implemented, compare against:');
       lines.push(`  // expected irHash: '${ir.provenance.irHash}'`);
     }
-    lines.push("  return { status: 'healthy', message: 'IR provenance verified', details: MANIFEST_IR_META };");
+    lines.push(
+      "  return { status: 'healthy', message: 'IR provenance verified', details: MANIFEST_IR_META };",
+    );
     lines.push('}');
     lines.push('');
   }
@@ -170,14 +169,18 @@ function buildHandlerCode(
       lines.push(`async function check${suffix}Store(): Promise<ComponentHealth> {`);
 
       if (isMemory) {
-        lines.push(`  return { status: 'healthy', message: '${target} store is always available' };`);
+        lines.push(
+          `  return { status: 'healthy', message: '${target} store is always available' };`,
+        );
       } else {
         lines.push('  try {');
         lines.push(`    // TODO: Add ${target} connection health check`);
         lines.push(`    // Example: await pool.query('SELECT 1') or equivalent`);
         lines.push(`    return { status: 'healthy', message: '${target} store connected' };`);
         lines.push('  } catch (error) {');
-        lines.push(`    return { status: 'unhealthy', message: '${target} store unreachable', details: { error: String(error) } };`);
+        lines.push(
+          `    return { status: 'unhealthy', message: '${target} store unreachable', details: { error: String(error) } };`,
+        );
         lines.push('  }');
       }
 
@@ -194,12 +197,16 @@ function buildHandlerCode(
     lines.push(' */');
     lines.push('async function checkOutbox(): Promise<ComponentHealth> {');
     lines.push('  try {');
-    lines.push("    // TODO: Query outbox table for pending event count");
-    lines.push("    // Example: SELECT COUNT(*) FROM manifest_outbox WHERE delivered_at IS NULL");
-    lines.push("    const depth = 0; // placeholder");
-    lines.push("    return { status: 'healthy', message: 'Outbox queue nominal', details: { depth } };");
+    lines.push('    // TODO: Query outbox table for pending event count');
+    lines.push('    // Example: SELECT COUNT(*) FROM manifest_outbox WHERE delivered_at IS NULL');
+    lines.push('    const depth = 0; // placeholder');
+    lines.push(
+      "    return { status: 'healthy', message: 'Outbox queue nominal', details: { depth } };",
+    );
     lines.push('  } catch (error) {');
-    lines.push("    return { status: 'unhealthy', message: 'Outbox check failed', details: { error: String(error) } };");
+    lines.push(
+      "    return { status: 'unhealthy', message: 'Outbox check failed', details: { error: String(error) } };",
+    );
     lines.push('  }');
     lines.push('}');
     lines.push('');
@@ -222,7 +229,7 @@ function buildHandlerCode(
   if (opts.includeIRCheck) {
     lines.push('  // IR integrity');
     lines.push('  const irHealth = checkIR();');
-    lines.push("  (checks as Record<string, unknown>).ir = irHealth;");
+    lines.push('  (checks as Record<string, unknown>).ir = irHealth;');
     lines.push("  if (irHealth.status === 'unhealthy') {");
     lines.push("    overallStatus = 'unhealthy';");
     lines.push('  }');
@@ -236,7 +243,7 @@ function buildHandlerCode(
       const suffix = targetToFunctionSuffix(target);
       lines.push(`  storeResults['${target}'] = await check${suffix}Store();`);
     }
-    lines.push("  (checks as Record<string, unknown>).stores = storeResults;");
+    lines.push('  (checks as Record<string, unknown>).stores = storeResults;');
     lines.push('');
     lines.push('  const storeStatuses = Object.values(storeResults);');
     lines.push("  const anyStoreUnhealthy = storeStatuses.some(s => s.status === 'unhealthy');");
@@ -252,7 +259,7 @@ function buildHandlerCode(
   if (opts.includeOutboxCheck && hasOutbox) {
     lines.push('  // Outbox queue depth');
     lines.push('  const outboxHealth = await checkOutbox();');
-    lines.push("  (checks as Record<string, unknown>).outbox = outboxHealth;");
+    lines.push('  (checks as Record<string, unknown>).outbox = outboxHealth;');
     lines.push("  if (outboxHealth.status === 'unhealthy' && overallStatus === 'healthy') {");
     lines.push("    overallStatus = 'degraded';");
     lines.push('  }');
@@ -277,10 +284,7 @@ function buildHandlerCode(
 /**
  * Build the Next.js App Router GET route handler.
  */
-function buildNextjsCode(
-  _ir: IR,
-  opts: Required<HealthCheckProjectionOptions>,
-): string {
+function buildNextjsCode(_ir: IR, opts: Required<HealthCheckProjectionOptions>): string {
   const lines: string[] = [];
 
   lines.push('/**');
@@ -296,7 +300,9 @@ function buildNextjsCode(
   lines.push('');
   lines.push('export async function GET(): Promise<Response> {');
   lines.push('  const report = await runHealthCheck();');
-  lines.push(`  const statusCode = report.status === 'healthy' ? ${opts.healthyStatus} : ${opts.unhealthyStatus};`);
+  lines.push(
+    `  const statusCode = report.status === 'healthy' ? ${opts.healthyStatus} : ${opts.unhealthyStatus};`,
+  );
   lines.push('  return Response.json(report, { status: statusCode });');
   lines.push('}');
   lines.push('');
@@ -311,10 +317,7 @@ function buildNextjsCode(
 /**
  * Build the Express middleware/route handler.
  */
-function buildExpressCode(
-  _ir: IR,
-  opts: Required<HealthCheckProjectionOptions>,
-): string {
+function buildExpressCode(_ir: IR, opts: Required<HealthCheckProjectionOptions>): string {
   const lines: string[] = [];
 
   lines.push('/**');
@@ -328,11 +331,15 @@ function buildExpressCode(
   lines.push('');
   lines.push(`import { runHealthCheck } from '${opts.handlerImportPath}';`);
   lines.push('');
-  lines.push('import type { Request, Response } from \'express\';');
+  lines.push("import type { Request, Response } from 'express';");
   lines.push('');
-  lines.push('export async function manifestHealthHandler(_req: Request, res: Response): Promise<void> {');
+  lines.push(
+    'export async function manifestHealthHandler(_req: Request, res: Response): Promise<void> {',
+  );
   lines.push('  const report = await runHealthCheck();');
-  lines.push(`  const statusCode = report.status === 'healthy' ? ${opts.healthyStatus} : ${opts.unhealthyStatus};`);
+  lines.push(
+    `  const statusCode = report.status === 'healthy' ? ${opts.healthyStatus} : ${opts.unhealthyStatus};`,
+  );
   lines.push('  res.status(statusCode).json(report);');
   lines.push('}');
   lines.push('');
@@ -357,7 +364,8 @@ function buildExpressCode(
  */
 export class HealthCheckProjection implements ProjectionTarget {
   readonly name = 'health';
-  readonly description = 'Health check endpoint generation with IR integrity, store connectivity, and outbox checks';
+  readonly description =
+    'Health check endpoint generation with IR integrity, store connectivity, and outbox checks';
   readonly surfaces = SURFACES;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
@@ -402,11 +410,13 @@ export class HealthCheckProjection implements ProjectionTarget {
       default:
         return {
           artifacts: [],
-          diagnostics: [{
-            severity: 'error',
-            code: 'UNKNOWN_SURFACE',
-            message: `Unknown surface: "${request.surface}". Available: health.handler, health.nextjs, health.express`,
-          }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'UNKNOWN_SURFACE',
+              message: `Unknown surface: "${request.surface}". Available: health.handler, health.nextjs, health.express`,
+            },
+          ],
         };
     }
   }

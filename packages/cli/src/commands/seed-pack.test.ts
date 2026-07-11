@@ -6,11 +6,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {
-  seedTemplateCommand,
-  seedFillCommand,
-  seedValidateCommand,
-} from './seed-pack-cli.js';
+import { seedTemplateCommand, seedFillCommand, seedValidateCommand } from './seed-pack-cli.js';
 import type { IR } from '@angriff36/manifest/ir';
 
 function buildIR(): IR {
@@ -69,9 +65,7 @@ describe('seed pack CLI', () => {
       version: '1.0.0',
       count: 1,
     });
-    const meta = JSON.parse(
-      await fs.readFile(path.join(packDir, 'manifest.seed.json'), 'utf8')
-    );
+    const meta = JSON.parse(await fs.readFile(path.join(packDir, 'manifest.seed.json'), 'utf8'));
     expect(meta.packId).toBe('cli-demo');
 
     await seedFillCommand({

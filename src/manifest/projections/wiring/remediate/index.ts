@@ -18,10 +18,7 @@ export type {
   RemediateReport,
   RemediateFileMap,
 } from './types.js';
-export {
-  WIRING_REPAIR_PLAN_SCHEMA,
-  WIRING_REMEDIATE_REPORT_SCHEMA,
-} from './types.js';
+export { WIRING_REPAIR_PLAN_SCHEMA, WIRING_REMEDIATE_REPORT_SCHEMA } from './types.js';
 
 export { planWiringRepairs } from './planner.js';
 export type { PlanRepairsOptions } from './planner.js';

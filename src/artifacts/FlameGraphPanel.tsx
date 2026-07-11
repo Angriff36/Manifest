@@ -3,21 +3,12 @@ import { compileToIR } from '../manifest/ir-compiler';
 import { RuntimeEngine } from '../manifest/runtime-engine';
 import type { CommandProfile, PhaseTiming } from '../manifest/profiling';
 import { buildProfilerCommandOptions, type ProfilerCommandOption } from './profiler-options';
-import {
-  Flame,
-  Zap,
-  TrendingUp,
-  ChevronDown,
-  ChevronRight,
-  Activity,
-  Layers,
-} from 'lucide-react';
+import { Flame, Zap, TrendingUp, ChevronDown, ChevronRight, Activity, Layers } from 'lucide-react';
 
 interface FlameGraphPanelProps {
   source: string;
   disabled: boolean;
 }
-
 
 interface FlameBarProps {
   phase: PhaseTiming;
@@ -51,9 +42,7 @@ function FlameBar({ phase, x, width, totalDuration, isSlowest }: FlameBarProps) 
       title={`${phase.phase}: ${phase.duration.toFixed(2)}ms`}
     >
       <span className="truncate">{phase.phase}</span>
-      <span className="ml-auto text-xs opacity-80">
-        {phase.duration.toFixed(1)}ms
-      </span>
+      <span className="ml-auto text-xs opacity-80">{phase.duration.toFixed(1)}ms</span>
     </div>
   );
 }
@@ -97,7 +86,9 @@ function PhaseDetail({ phase, totalDuration }: { phase: PhaseTiming; totalDurati
                 {phase.metadata.expression && (
                   <div className="col-span-2">
                     <span className="text-gray-500">Expression:</span>
-                    <span className="text-gray-300 ml-2 font-mono">{phase.metadata.expression}</span>
+                    <span className="text-gray-300 ml-2 font-mono">
+                      {phase.metadata.expression}
+                    </span>
                   </div>
                 )}
                 {phase.metadata.count !== undefined && (
@@ -187,12 +178,16 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
         }
 
         // Create runtime with profiling enabled
-        const runtimeEngine = new RuntimeEngine(compileResult.ir, {}, {
-          profiling: {
-            enabled: true,
-            detailed: false,
+        const runtimeEngine = new RuntimeEngine(
+          compileResult.ir,
+          {},
+          {
+            profiling: {
+              enabled: true,
+              detailed: false,
+            },
           },
-        });
+        );
 
         setEngine(runtimeEngine);
         setProfiles([]);
@@ -256,13 +251,20 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
   };
 
   // Calculate statistics
-  const stats = profiles.length > 0 ? {
-    totalCommands: profiles.length,
-    totalDuration: profiles.reduce((sum, p) => sum + p.totalDuration, 0),
-    averageDuration: profiles.reduce((sum, p) => sum + p.totalDuration, 0) / profiles.length,
-    slowestCommand: profiles.reduce((max, p) => p.totalDuration > max.totalDuration ? p : max),
-    fastestCommand: profiles.reduce((min, p) => p.totalDuration < min.totalDuration ? p : min),
-  } : null;
+  const stats =
+    profiles.length > 0
+      ? {
+          totalCommands: profiles.length,
+          totalDuration: profiles.reduce((sum, p) => sum + p.totalDuration, 0),
+          averageDuration: profiles.reduce((sum, p) => sum + p.totalDuration, 0) / profiles.length,
+          slowestCommand: profiles.reduce((max, p) =>
+            p.totalDuration > max.totalDuration ? p : max,
+          ),
+          fastestCommand: profiles.reduce((min, p) =>
+            p.totalDuration < min.totalDuration ? p : min,
+          ),
+        }
+      : null;
 
   const currentProfile = selectedProfile || profiles[profiles.length - 1] || null;
 
@@ -385,7 +387,8 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
                   <div className="flex items-center gap-2">
                     <Layers size={16} className="text-blue-400" />
                     <span className="text-sm font-medium text-gray-300">
-                      {currentProfile.entityName ? `${currentProfile.entityName}.` : ''}{currentProfile.commandName}
+                      {currentProfile.entityName ? `${currentProfile.entityName}.` : ''}
+                      {currentProfile.commandName}
                     </span>
                   </div>
                   <div className="text-xs text-gray-500">
@@ -398,9 +401,12 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
                   {currentProfile.phases.map((phase, i) => {
                     const x = (phase.startOffset / currentProfile.totalDuration) * 100;
                     const width = (phase.duration / currentProfile.totalDuration) * 100;
-                    const isSlowest = i === currentProfile.phases.findIndex(
-                      p => p.duration === Math.max(...currentProfile.phases.map(p => p.duration))
-                    );
+                    const isSlowest =
+                      i ===
+                      currentProfile.phases.findIndex(
+                        (p) =>
+                          p.duration === Math.max(...currentProfile.phases.map((p) => p.duration)),
+                      );
                     return (
                       <FlameBar
                         key={i}
@@ -432,22 +438,26 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
               <div className="bg-gray-900/50 rounded-lg p-4">
                 <div className="text-xs text-gray-500 mb-2">Recent Profiles</div>
                 <div className="space-y-1">
-                  {profiles.slice(-5).reverse().map((profile, i) => (
-                    <div
-                      key={i}
-                      onClick={() => setSelectedProfile(profile)}
-                      className={`flex items-center justify-between px-3 py-2 rounded cursor-pointer transition-colors ${
-                        selectedProfile === profile
-                          ? 'bg-blue-900/30 text-blue-300'
-                          : 'bg-gray-800/50 text-gray-400 hover:bg-gray-800'
-                      }`}
-                    >
-                      <span className="text-sm">
-                        {profile.entityName ? `${profile.entityName}.` : ''}{profile.commandName}
-                      </span>
-                      <span className="text-xs">{profile.totalDuration.toFixed(2)}ms</span>
-                    </div>
-                  ))}
+                  {profiles
+                    .slice(-5)
+                    .reverse()
+                    .map((profile, i) => (
+                      <div
+                        key={i}
+                        onClick={() => setSelectedProfile(profile)}
+                        className={`flex items-center justify-between px-3 py-2 rounded cursor-pointer transition-colors ${
+                          selectedProfile === profile
+                            ? 'bg-blue-900/30 text-blue-300'
+                            : 'bg-gray-800/50 text-gray-400 hover:bg-gray-800'
+                        }`}
+                      >
+                        <span className="text-sm">
+                          {profile.entityName ? `${profile.entityName}.` : ''}
+                          {profile.commandName}
+                        </span>
+                        <span className="text-xs">{profile.totalDuration.toFixed(2)}ms</span>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}

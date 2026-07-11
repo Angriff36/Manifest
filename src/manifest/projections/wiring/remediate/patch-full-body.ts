@@ -4,11 +4,7 @@
 
 import ts from 'typescript';
 import type { RepairOperation } from './types.js';
-import {
-  parseSource,
-  ensureNamedImports,
-  callMatchesCapability,
-} from './ast-utils.js';
+import { parseSource, ensureNamedImports, callMatchesCapability } from './ast-utils.js';
 import {
   extractApiManifestPosts,
   extractGeneratedClientCalls,
@@ -24,7 +20,11 @@ export function ensureExportSymbols(
   const isServerActionsModule = /^["']use server["']/m.test(content);
   let next = content;
   for (const name of op.symbolNames) {
-    if (new RegExp(`\\bexport\\s+(?:async\\s+)?(?:function|const|let|var)\\s+${escape(name)}\\b`).test(next)) {
+    if (
+      new RegExp(
+        `\\bexport\\s+(?:async\\s+)?(?:function|const|let|var)\\s+${escape(name)}\\b`,
+      ).test(next)
+    ) {
       continue;
     }
     // Next.js: every export from a "use server" file must be an async Server Action.
@@ -38,9 +38,7 @@ export function ensureExportSymbols(
       next = next.replace(constRe, `$1export $2`);
       continue;
     }
-    const fnRe = new RegExp(
-      `(^|\\n)((?:async\\s+)?function\\s+${escape(name)}\\b)`,
-    );
+    const fnRe = new RegExp(`(^|\\n)((?:async\\s+)?function\\s+${escape(name)}\\b)`);
     if (fnRe.test(next)) {
       next = next.replace(fnRe, `$1export $2`);
       continue;
@@ -58,9 +56,7 @@ function isSyncDeclaration(content: string, name: string): boolean {
   if (new RegExp(`\\bconst\\s+${escape(name)}\\s*=\\s*async\\b`).test(content)) {
     return false;
   }
-  return (
-    new RegExp(`\\b(?:function|const|let|var)\\s+${escape(name)}\\b`).test(content)
-  );
+  return new RegExp(`\\b(?:function|const|let|var)\\s+${escape(name)}\\b`).test(content);
 }
 
 export function applyEnsureNamedImports(
@@ -77,10 +73,7 @@ export function replaceCapabilityPayloadWithFullBody(
   op: Extract<RepairOperation, { type: 'replace-capability-payload-with-full-body' }>,
 ): string | null {
   // Idempotent: already expanded with builder spread
-  if (
-    content.includes(`...${op.builderName}(`) &&
-    content.includes(op.loaderName)
-  ) {
+  if (content.includes(`...${op.builderName}(`) && content.includes(op.loaderName)) {
     return content;
   }
 
@@ -93,25 +86,17 @@ export function replaceCapabilityPayloadWithFullBody(
     if (loaderLine && !next.includes(`${op.loaderName}(`)) {
       // Insert immediately before the call that owns the payload
       const insertAt = findStatementStart(next, payloadSpan.callStart);
-      next =
-        next.slice(0, insertAt) +
-        loaderLine +
-        next.slice(insertAt);
+      next = next.slice(0, insertAt) + loaderLine + next.slice(insertAt);
       // Recompute span after insert
       const shifted = findPartialPayloadSpan(next, op);
       if (!shifted) return null;
-      next =
-        next.slice(0, shifted.payloadStart) +
-        op.toExpression +
-        next.slice(shifted.payloadEnd);
+      next = next.slice(0, shifted.payloadStart) + op.toExpression + next.slice(shifted.payloadEnd);
       return next;
     }
   }
 
   next =
-    next.slice(0, payloadSpan.payloadStart) +
-    op.toExpression +
-    next.slice(payloadSpan.payloadEnd);
+    next.slice(0, payloadSpan.payloadStart) + op.toExpression + next.slice(payloadSpan.payloadEnd);
   return next;
 }
 

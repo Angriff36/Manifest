@@ -96,7 +96,7 @@ function parseRampUp(input: string | undefined): RampStage[] {
     const [duration, targetRaw] = trimmed.split(':');
     if (!duration || !targetRaw) {
       throw new Error(
-        `Invalid ramp-up stage: "${trimmed}". Expected format: "duration:target" (e.g. "30s:20")`
+        `Invalid ramp-up stage: "${trimmed}". Expected format: "duration:target" (e.g. "30s:20")`,
       );
     }
     const target = parseInt(targetRaw.trim(), 10);
@@ -105,7 +105,7 @@ function parseRampUp(input: string | undefined): RampStage[] {
     }
     if (!/^\d+[smh]$/.test(duration.trim())) {
       throw new Error(
-        `Invalid ramp-up duration: "${duration}". Must end with s, m, or h (e.g. "30s", "5m").`
+        `Invalid ramp-up duration: "${duration}". Must end with s, m, or h (e.g. "30s", "5m").`,
       );
     }
     stages.push({ duration: duration.trim(), target });
@@ -130,16 +130,14 @@ function parseSlo(input: string | undefined): SloThreshold[] {
     const segments = trimmed.split(':');
     if (segments.length < 3) {
       throw new Error(
-        `Invalid SLO threshold: "${trimmed}". Expected format: "metric:op:value" (e.g. "p95:<:500ms")`
+        `Invalid SLO threshold: "${trimmed}". Expected format: "metric:op:value" (e.g. "p95:<:500ms")`,
       );
     }
 
     const [metric, op, valueRaw, ...flags] = segments;
     const opTrimmed = op as SloThreshold['op'];
     if (!['<', '<=', '>', '>='].includes(opTrimmed)) {
-      throw new Error(
-        `Invalid SLO operator: "${op}". Must be one of: <, <=, >, >=.`
-      );
+      throw new Error(`Invalid SLO operator: "${op}". Must be one of: <, <=, >, >=.`);
     }
 
     const value = parseDurationOrNumber(valueRaw.trim());
@@ -249,7 +247,7 @@ function pickCommands(ir: IR, filter: string[] | undefined): CommandWithContext[
   if (matched.length === 0) {
     throw new Error(
       `No matching commands for --command ${filter.join(', ')}. ` +
-        `Available: ${allCommands.map((c) => c.name).join(', ')}`
+        `Available: ${allCommands.map((c) => c.name).join(', ')}`,
     );
   }
   return matched;
@@ -262,7 +260,7 @@ function pickEntities(ir: IR, filter: string[] | undefined): IREntity[] {
   if (matched.length === 0) {
     throw new Error(
       `No matching entities for --entity ${filter.join(', ')}. ` +
-        `Available: ${ir.entities.map((e) => e.name).join(', ')}`
+        `Available: ${ir.entities.map((e) => e.name).join(', ')}`,
     );
   }
   return matched;
@@ -392,7 +390,7 @@ function generateK6Script(
     slo: SloThreshold[];
     timeout: number;
     profilerIntegration: boolean;
-  }
+  },
 ): string {
   const pathSuffix = commandNameToPath(command.name);
   const bodyProps: string[] = [];
@@ -416,9 +414,7 @@ function generateK6Script(
     })
     .join('\n');
 
-  const thresholdBlock = thresholds
-    ? `\n  thresholds: {\n${thresholds}\n  },`
-    : '';
+  const thresholdBlock = thresholds ? `\n  thresholds: {\n${thresholds}\n  },` : '';
 
   const profileHeader = opts.profilerIntegration
     ? ` * - Profiler integration: timestamps emitted via console.log for correlation
@@ -504,12 +500,15 @@ function generateArtilleryConfig(
     baseUrl: string;
     rampUp: RampStage[];
     slo: SloThreshold[];
-  }
+  },
 ): string {
   const pathSuffix = commandNameToPath(command.name);
 
   const phases = opts.rampUp
-    .map((s) => `      - duration: ${s.duration}\n        arrivalRate: ${Math.max(1, Math.floor(s.target / 10))}`)
+    .map(
+      (s) =>
+        `      - duration: ${s.duration}\n        arrivalRate: ${Math.max(1, Math.floor(s.target / 10))}`,
+    )
     .join('\n');
 
   // Artillery does not have native SLO thresholds like k6, so we encode them
@@ -549,7 +548,7 @@ function generateArtilleryProcessor(
   entityName: string,
   command: IRCommand,
   properties: IRProperty[],
-  opts: { slo: SloThreshold[]; profilerIntegration: boolean }
+  opts: { slo: SloThreshold[]; profilerIntegration: boolean },
 ): string {
   const bodyLines: string[] = [];
   for (const prop of properties) {
@@ -559,8 +558,9 @@ function generateArtilleryProcessor(
   }
   const bodyObj = bodyLines.length > 0 ? `{\n${bodyLines.join('\n')}\n}` : '{}';
 
-  const sloCheck = opts.slo.length > 0
-    ? `
+  const sloCheck =
+    opts.slo.length > 0
+      ? `
 
 // SLO threshold evaluation (post-run check)
 function evaluateSLOs(report) {
@@ -583,7 +583,7 @@ function evaluateSLOs(report) {
   }
   return violations;
 }`
-    : '';
+      : '';
 
   const profileLog = opts.profilerIntegration
     ? `
@@ -618,10 +618,7 @@ module.exports = {
 
 // ---------- File writing ----------
 
-function pickPropertiesForCommand(
-  entity: IREntity,
-  command: IRCommand
-): IRProperty[] {
+function pickPropertiesForCommand(entity: IREntity, command: IRCommand): IRProperty[] {
   // Collect property names referenced by the command.
   // Commands have `parameters` + `actions[].target`.
   const referencedProps = new Set<string>();
@@ -645,9 +642,7 @@ function pickPropertiesForCommand(
   }
 
   if (referencedProps.size > 0) {
-    return entity.properties.filter(
-      (p) => p.name === 'id' || referencedProps.has(p.name)
-    );
+    return entity.properties.filter((p) => p.name === 'id' || referencedProps.has(p.name));
   }
   // Fallback: all non-id properties
   return entity.properties;
@@ -718,9 +713,7 @@ export async function loadTestCommand(options: LoadTestOptions = {}): Promise<Lo
 
     for (const cmd of commands) {
       const entity = findEntityForCommand(ir, cmd);
-      const props = entity
-        ? pickPropertiesForCommand(entity, cmd)
-        : [];
+      const props = entity ? pickPropertiesForCommand(entity, cmd) : [];
 
       if (format === 'k6') {
         const script = generateK6Script(cmd.entityName || 'Unknown', cmd, props, {
@@ -771,22 +764,33 @@ export async function loadTestCommand(options: LoadTestOptions = {}): Promise<Lo
 
     if (options.json) {
       // For JSON output, don't include full file contents in stdout — too large.
-      const compact = { ...result, files: Object.fromEntries(Object.keys(files).map((k) => [k, '<generated>'])) };
+      const compact = {
+        ...result,
+        files: Object.fromEntries(Object.keys(files).map((k) => [k, '<generated>'])),
+      };
       console.log(JSON.stringify(compact, null, 2));
-      spinner.succeed(`Generated ${Object.keys(files).length} file(s) for ${commands.length} command(s)`);
+      spinner.succeed(
+        `Generated ${Object.keys(files).length} file(s) for ${commands.length} command(s)`,
+      );
       return result;
     }
 
-    spinner.succeed(`Generated ${Object.keys(files).length} file(s) → ${path.relative(process.cwd(), outputDir)}`);
+    spinner.succeed(
+      `Generated ${Object.keys(files).length} file(s) → ${path.relative(process.cwd(), outputDir)}`,
+    );
 
     // Human summary
     console.log('');
     console.log(chalk.bold('Load test summary:'));
     console.log(`  ${chalk.gray('Format:')}    ${format}`);
     console.log(`  ${chalk.gray('Base URL:')}  ${baseUrl}`);
-    console.log(`  ${chalk.gray('Ramp-up:')}   ${rampUp.map((s) => `${s.duration}@${s.target}VU`).join(' → ')}`);
+    console.log(
+      `  ${chalk.gray('Ramp-up:')}   ${rampUp.map((s) => `${s.duration}@${s.target}VU`).join(' → ')}`,
+    );
     if (slo.length > 0) {
-      console.log(`  ${chalk.gray('SLO:')}       ${slo.map((t) => `${t.metric} ${t.op} ${t.value}`).join(', ')}`);
+      console.log(
+        `  ${chalk.gray('SLO:')}       ${slo.map((t) => `${t.metric} ${t.op} ${t.value}`).join(', ')}`,
+      );
     }
     if (options.profile) {
       console.log(`  ${chalk.gray('Profiler:')}  integration enabled`);
@@ -812,7 +816,9 @@ export async function loadTestCommand(options: LoadTestOptions = {}): Promise<Lo
 
     return result;
   } catch (error: unknown) {
-    spinner.fail(`Load test generation failed: ${error instanceof Error ? error.message : String(error)}`);
+    spinner.fail(
+      `Load test generation failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     throw error;
   }
 }

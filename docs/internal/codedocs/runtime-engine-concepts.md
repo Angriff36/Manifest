@@ -1,6 +1,6 @@
 ---
-title: "Runtime Engine"
-description: "Learn how RuntimeEngine evaluates commands, context, constraints, and events from compiled Manifest IR."
+title: 'Runtime Engine'
+description: 'Learn how RuntimeEngine evaluates commands, context, constraints, and events from compiled Manifest IR.'
 ---
 
 > **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
@@ -13,7 +13,6 @@ description: "Learn how RuntimeEngine evaluates commands, context, constraints, 
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 `RuntimeEngine` is the execution core of Manifest. It takes compiled IR, a runtime context, and optional adapters, then applies a fixed command lifecycle that the rest of the package depends on.
 
@@ -65,10 +64,14 @@ const runtime = new RuntimeEngine(ir, {
 
 const record = await runtime.createInstance('Task', { id: 'task-1', status: 'pending' });
 
-const result = await runtime.runCommand('complete', {}, {
-  entityName: 'Task',
-  instanceId: record!.id,
-});
+const result = await runtime.runCommand(
+  'complete',
+  {},
+  {
+    entityName: 'Task',
+    instanceId: record!.id,
+  },
+);
 
 console.log(result.success, result.guardFailure, result.emittedEvents);
 ```
@@ -78,19 +81,25 @@ console.log(result.success, result.guardFailure, result.emittedEvents);
 The runtime supports workflow metadata, overrides, deterministic boundaries, and idempotency:
 
 ```ts
-const result = await runtime.runCommand('approve', { amount: 1200 }, {
-  entityName: 'Expense',
-  instanceId: 'expense-1',
-  correlationId: 'wf-42',
-  causationId: 'event-17',
-  idempotencyKey: 'expense-1:approve:v1',
-  overrideRequests: [{
-    constraintCode: 'MANAGER_LIMIT',
-    reason: 'Emergency exception',
-    authorizedBy: 'director-7',
-    timestamp: Date.now(),
-  }],
-});
+const result = await runtime.runCommand(
+  'approve',
+  { amount: 1200 },
+  {
+    entityName: 'Expense',
+    instanceId: 'expense-1',
+    correlationId: 'wf-42',
+    causationId: 'event-17',
+    idempotencyKey: 'expense-1:approve:v1',
+    overrideRequests: [
+      {
+        constraintCode: 'MANAGER_LIMIT',
+        reason: 'Emergency exception',
+        authorizedBy: 'director-7',
+        timestamp: Date.now(),
+      },
+    ],
+  },
+);
 
 console.log({
   success: result.success,

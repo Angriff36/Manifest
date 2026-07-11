@@ -37,13 +37,21 @@ describe('emit with explicit payload', () => {
 
   it('populates declared event fields from the payload expressions', async () => {
     const { ir, diagnostics } = await compileToIR(source);
-    expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(ir).not.toBeNull();
 
     const engine = new RuntimeEngine(ir!, {}, { now: () => 1000, generateId: () => 'test-id' });
-    await engine.createInstance('Order', { id: 'order-1', total: 100, status: 'open' } as EntityInstance);
+    await engine.createInstance('Order', {
+      id: 'order-1',
+      total: 100,
+      status: 'open',
+    } as EntityInstance);
 
-    const result = await engine.runCommand('complete', {}, { entityName: 'Order', instanceId: 'order-1' });
+    const result = await engine.runCommand(
+      'complete',
+      {},
+      { entityName: 'Order', instanceId: 'order-1' },
+    );
 
     expect(result.success).toBe(true);
     expect(result.emittedEvents).toHaveLength(1);

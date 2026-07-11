@@ -282,7 +282,7 @@ the generic Prisma store stops double-encoding JSON that arrives as a string.
 - **Prisma projection: `json` object/array column defaults emit valid Prisma.**
   A `property meta: json = {}` emitted no `@default` at all, and `= []` emitted
   the bare `@default([])` that Prisma reserves for scalar lists — `prisma
-  validate` rejected `permissions Json? @default([])` with **P1012** "The default
+validate` rejected `permissions Json? @default([])` with **P1012** "The default
   value of a non-list field cannot be a list." Object/array literal defaults on a
   `Json` column (nullable or not) are now serialized to a double-quoted JSON
   string (`@default("{}")`, `@default("[]")`, `@default("{ \"a\": 1 }")`),
@@ -329,7 +329,7 @@ across processes. Major version: generated-output naming and defaults changed
   a silent in-process stub whose callbacks were never invoked; use the real
   event bus at `@angriff36/manifest/events/redis`.
 - **Server projections emit companion modules by default** (`emitCompanions:
-  true`): generated output now includes `manifest-runtime`,
+true`): generated output now includes `manifest-runtime`,
   `manifest-response`, `database`, auth/tenant helpers at the configured
   import paths. Projects that already hand-maintain those files should set
   `emitCompanions: false` or delete their copies and regenerate.
@@ -426,7 +426,7 @@ against a 199-model multi-schema consumer.
 
 - **`autoBackRelations` now handles self-relations and bidirectional pairs.** A
   self `belongsTo` (e.g. `parent`) gets a named self-inverse; a mutual pair
-  (`A→B` belongsTo *and* `B→A` belongsTo, each auto-gaining an inverse) now names
+  (`A→B` belongsTo _and_ `B→A` belongsTo, each auto-gaining an inverse) now names
   all four fields consistently so the pair resolves. Ambiguity is computed from
   the total relation fields a model will carry to a target (declared **plus**
   auto-emitted), not just declared ones.
@@ -456,7 +456,7 @@ against a 199-model multi-schema consumer.
   (`projections.prisma.options.autoBackRelations: true`), the projection
   auto-emits the inverse relation field on a target model for every
   `belongsTo`/`ref` that lacks an explicit opposite — `<pluralCamelOwner>
-  Owner[]`, with a deterministic `@relation("Owner_<rel>")` name for ambiguous
+Owner[]`, with a deterministic `@relation("Owner_<rel>")` name for ambiguous
   pairs (matching the FK-owning side). This removes the need to hand-author
   inverse `hasMany` on hub entities (a real codebase had User needing 37, Event
   13, Facility 14) and eliminates the Prisma "missing opposite relation field"
@@ -467,7 +467,7 @@ against a 199-model multi-schema consumer.
 ### Fixed
 
 - **`projections.prisma-store` now accepts a top-level `output`.** The schema
-  rejected it even though `manifest generate --all` *skips* any projection
+  rejected it even though `manifest generate --all` _skips_ any projection
   without a top-level `output` — so the prisma-store projection could never run
   under `--all` while passing config validation. Added `output` to
   `PrismaStoreProjectionConfig`.
@@ -602,7 +602,7 @@ against a 199-model multi-schema consumer.
 
 ### Added
 
-- **`manifest compile --all`** — config-driven, *merged* compile: the
+- **`manifest compile --all`** — config-driven, _merged_ compile: the
   symmetric partner to `manifest generate --all`. Reads `manifest.config.yaml`
   (`src` glob + `output`) and produces ONE merged IR, resolving cross-file
   `use` imports and `mixin`/`extends` against entities declared in other files.
@@ -642,7 +642,7 @@ against a 199-model multi-schema consumer.
 
 - **nextjs projection path doubling** — when config set an `appDir` that already
   contained the `output` prefix (e.g. `output: apps/api`, `appDir:
-  apps/api/app/api`), generated artifacts resolved to a doubled path
+apps/api/app/api`), generated artifacts resolved to a doubled path
   (`apps/api/apps/api/app/api/…`). The generator now detects the overlap
   (cwd-independent segment match, Windows-safe) and collapses it, emitting a
   warning instead of writing the doubled path silently.
@@ -767,10 +767,10 @@ _Auto-generated stub — expand with real release notes._
 ### Notes
 
 - Investigated two further audit categories and deliberately did **not** add them as
-  compiler diagnostics, to avoid false positives: *mutate-to-undeclared-field* (the
+  compiler diagnostics, to avoid false positives: _mutate-to-undeclared-field_ (the
   runtime supports dynamic instance fields via the `EntityInstance` index signature,
   so such a write is valid, not a silent no-op — a lint smell, not a guaranteed error)
-  and *event-never-emitted* (events are routinely emitted by reactions and hand-written
+  and _event-never-emitted_ (events are routinely emitted by reactions and hand-written
   runtime middleware the compiler cannot see). Both remain appropriate for an external
   audit script.
 
@@ -800,7 +800,7 @@ _Auto-generated stub — expand with real release notes._
     dropped without a trace.
 
   These are warnings, not hard errors: the runtime merges arbitrary caller-supplied
-  input on create, so the compiler cannot *prove* a field is unset.
+  input on create, so the compiler cannot _prove_ a field is unset.
 
 ## [2.15.0] - 2026-06-18
 
@@ -843,7 +843,7 @@ _Auto-generated stub — expand with real release notes._
   `schedule-shift-count` and `prep-task-station-count` middleware.
 
 - **Reactions — fan-out (`on E fanOut T where f = self.x run cmd`).** A 1:N
-  cascade: dispatch a command on *every* target row matching a foreign-key
+  cascade: dispatch a command on _every_ target row matching a foreign-key
   predicate, replacing the "query children by FK, loop, dispatch" middleware
   pattern (cancel every line item, release every reservation, …). The Convex
   projection reads via `withIndex` on the FK and dispatches each match through
@@ -979,7 +979,7 @@ _Auto-generated stub — expand with real release notes._
   `.manifest` change is required.
 
 - **Convex command params — `array<T>` no longer collapses to `v.any()`.**
-  Array-typed command parameters were validated as `v.any()` (entity *fields*
+  Array-typed command parameters were validated as `v.any()` (entity _fields_
   already got `v.array(...)`, but the parameter path did not), losing element
   typing on the generated mutation arg. Array params now map to
   `v.array(<element>)`, mirroring the field path. Unknown leaf types still fall
@@ -1043,7 +1043,7 @@ _Auto-generated stub — expand with real release notes._
 
 - **Convex `convex.mutations` — create-mutation field completeness.** Running the
   generated backend (`npx convex dev`) revealed that create mutations exposed
-  only the command *parameters* as args, so required entity fields with neither a
+  only the command _parameters_ as args, so required entity fields with neither a
   parameter nor a default (e.g. `tenantId`, `eventDate`, `eventType`) could never
   be provided and `ctx.db.insert` failed schema validation. The create model is
   now completeness-guaranteeing: every stored field is reachable — set by a
@@ -1104,7 +1104,7 @@ _Auto-generated stub — expand with real release notes._
     hard `CONVEX_AMBIGUOUS_NUMBER` diagnostic, unknown types a hard
     `CONVEX_UNKNOWN_TYPE` (no silent fallback), mirroring the Prisma projection.
   - **Typed references** — `belongsTo`/`ref` emit `v.id("<targetTable>")`, and a
-    property that *backs* a relationship is retyped to the reference rather than
+    property that _backs_ a relationship is retyped to the reference rather than
     its declared scalar. `referenceMode: 'stringId'` opts out for app-level ids.
   - Enums → `v.union(v.literal(...))`; `array<T>` → `v.array(...)`; nullable →
     union with `v.null()`; non-required → `v.optional(...)`.
@@ -1113,7 +1113,7 @@ _Auto-generated stub — expand with real release notes._
     diagnostic (cascades belong to the future functions surface).
   - Indexes for `indexed` properties, the tenant column, and every reference;
     composite/named indexes via the `indexes` option. Convex-idiomatic camelCase
-    + pluralized table names by default, overridable via `tableMappings`/`naming`.
+    - pluralized table names by default, overridable via `tableMappings`/`naming`.
   - Options bag (`ConvexProjectionOptions`): `output`, `tableMappings`,
     `typeMappings`, `indexes`, `references`, `referenceMode`, `naming`.
 

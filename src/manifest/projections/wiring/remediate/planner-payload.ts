@@ -4,11 +4,7 @@
 
 import type { WiringCommandDescriptor } from '../types.js';
 import type { ContractMismatch, ConsumerEvidence } from '../inspect/types.js';
-import type {
-  RepairPlan,
-  RepairDecisionClass,
-  RepairEditSpec,
-} from './types.js';
+import type { RepairPlan, RepairDecisionClass, RepairEditSpec } from './types.js';
 import type { PatternAdapter } from './pattern-adapter.js';
 import { readObjectPropertyExpression } from './ast-utils.js';
 import {
@@ -34,7 +30,7 @@ export function planMissingRequired(
 ): RepairPlan {
   const paramName = mismatch.parameter!;
   const findingId = findingIdOf(mismatch);
-  const param = cap.parameters.find(p => p.name === paramName);
+  const param = cap.parameters.find((p) => p.name === paramName);
   if (!param) {
     return classify(
       basePlan(mismatch, cap, evidence, 'add-required-input', findingId),
@@ -45,12 +41,12 @@ export function planMissingRequired(
   }
 
   const stillMissing = missingRequiredClientParams(content, file, cap);
-  const otherMissing = stillMissing.filter(p => p.name !== paramName);
+  const otherMissing = stillMissing.filter((p) => p.name !== paramName);
   if (otherMissing.length > 0) {
     return classify(
       basePlan(mismatch, cap, evidence, 'add-required-input', findingId),
       'ambiguous-product-decision',
-      `Cannot auto-apply '${paramName}': other required inputs still unresolved (${otherMissing.map(p => p.name).join(', ')})`,
+      `Cannot auto-apply '${paramName}': other required inputs still unresolved (${otherMissing.map((p) => p.name).join(', ')})`,
       [],
     );
   }
@@ -128,7 +124,7 @@ export function planMissingRequired(
     },
     'auto-fixable',
     proof.rationale,
-    edits.map(e => e.file),
+    edits.map((e) => e.file),
   );
 }
 
@@ -141,7 +137,7 @@ export function planInvalidLiteral(
 ): RepairPlan {
   const param = mismatch.parameter!;
   const findingId = findingIdOf(mismatch);
-  const p = cap.parameters.find(x => x.name === param);
+  const p = cap.parameters.find((x) => x.name === param);
   const fromExpr = readObjectPropertyExpression(content, param, cap.capabilityId);
   if (!fromExpr || !p) {
     return classify(
@@ -205,7 +201,7 @@ export function planInvalidLiteral(
     },
     'auto-fixable',
     `Invalid finite literal for ${param}; deterministic replacement ${toExpr} proven`,
-    edits.map(e => e.file),
+    edits.map((e) => e.file),
   );
 }
 
@@ -220,7 +216,7 @@ export function planEmptyDate(
   const param = mismatch.parameter!;
   const findingId = findingIdOf(mismatch);
   const fromExpr = readObjectPropertyExpression(content, param, cap.capabilityId);
-  const paramDesc = cap.parameters.find(p => p.name === param);
+  const paramDesc = cap.parameters.find((p) => p.name === param);
   const preferIsoString =
     paramDesc?.constraints.dateLike === true ||
     paramDesc?.irTypeName === 'datetime' ||
@@ -278,6 +274,6 @@ export function planEmptyDate(
     },
     'auto-fixable',
     `Empty date sentinel for ${param}; proven local source ${proven.expression}`,
-    edits.map(e => e.file),
+    edits.map((e) => e.file),
   );
 }

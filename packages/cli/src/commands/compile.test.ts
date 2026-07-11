@@ -10,7 +10,10 @@ import path from 'path';
 import os from 'os';
 
 // Helper to create temp manifest files
-async function createTempManifest(content: string, filename: string = 'test.manifest'): Promise<string> {
+async function createTempManifest(
+  content: string,
+  filename: string = 'test.manifest',
+): Promise<string> {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-compile-test-'));
   const filePath = path.join(tempDir, filename);
   await fs.writeFile(filePath, content, 'utf-8');
@@ -76,7 +79,10 @@ entity Counter {
 
       // Check that IR file was created
       const irPath = filePath.replace('.manifest', '.ir.json');
-      const irExists = await fs.stat(irPath).then(() => true).catch(() => false);
+      const irExists = await fs
+        .stat(irPath)
+        .then(() => true)
+        .catch(() => false);
       expect(irExists).toBe(true);
 
       // Check IR content
@@ -114,7 +120,10 @@ entity Book {
       await compileCommand(filePath, {});
 
       const irPath = filePath.replace('.manifest', '.ir.json');
-      const irExists = await fs.stat(irPath).then(() => true).catch(() => false);
+      const irExists = await fs
+        .stat(irPath)
+        .then(() => true)
+        .catch(() => false);
       expect(irExists).toBe(true);
 
       const irContent = JSON.parse(await fs.readFile(irPath, 'utf-8'));
@@ -193,7 +202,9 @@ describe('Compile Command - Error Handling', () => {
     const capture = captureOutput();
 
     const originalExit = process.exit;
-    const exitMock = vi.fn().mockImplementation(() => { throw new Error('exit'); });
+    const exitMock = vi.fn().mockImplementation(() => {
+      throw new Error('exit');
+    });
     process.exit = exitMock as any;
 
     try {
@@ -218,7 +229,10 @@ describe('Compile Command - Error Handling', () => {
 
       // Empty manifest should still compile (empty IR)
       const irPath = filePath.replace('.manifest', '.ir.json');
-      const irExists = await fs.stat(irPath).then(() => true).catch(() => false);
+      const irExists = await fs
+        .stat(irPath)
+        .then(() => true)
+        .catch(() => false);
       expect(irExists).toBe(true);
 
       capture.restore();
@@ -229,27 +243,37 @@ describe('Compile Command - Error Handling', () => {
 
   it('should fail a multi-file compile before writing IR when exact entity command duplicates exist', async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-compile-test-'));
-    await fs.writeFile(path.join(tempDir, 'recipe-a.manifest'), `
+    await fs.writeFile(
+      path.join(tempDir, 'recipe-a.manifest'),
+      `
 entity Recipe {
   property name: string
   command create(name: string) {
     mutate name = input.name
   }
 }
-`, 'utf-8');
-    await fs.writeFile(path.join(tempDir, 'recipe-b.manifest'), `
+`,
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(tempDir, 'recipe-b.manifest'),
+      `
 entity Recipe {
   property name: string
   command create(name: string) {
     mutate name = input.name
   }
 }
-`, 'utf-8');
+`,
+      'utf-8',
+    );
 
     const { compileCommand } = await import('./compile.js');
     const capture = captureOutput();
     const originalExit = process.exit;
-    const exitMock = vi.fn().mockImplementation(() => { throw new Error('exit'); });
+    const exitMock = vi.fn().mockImplementation(() => {
+      throw new Error('exit');
+    });
     process.exit = exitMock as any;
 
     try {
@@ -270,27 +294,37 @@ entity Recipe {
 
   it('should fail a multi-file compile before writing IR when command intent duplicates exist', async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-compile-test-'));
-    await fs.writeFile(path.join(tempDir, 'recipe-create.manifest'), `
+    await fs.writeFile(
+      path.join(tempDir, 'recipe-create.manifest'),
+      `
 entity Recipe {
   property name: string
   command create(name: string) {
     mutate name = input.name
   }
 }
-`, 'utf-8');
-    await fs.writeFile(path.join(tempDir, 'recipe-add.manifest'), `
+`,
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(tempDir, 'recipe-add.manifest'),
+      `
 entity Recipe {
   property name: string
   command addRecipe(name: string) {
     mutate name = input.name
   }
 }
-`, 'utf-8');
+`,
+      'utf-8',
+    );
 
     const { compileCommand } = await import('./compile.js');
     const capture = captureOutput();
     const originalExit = process.exit;
-    const exitMock = vi.fn().mockImplementation(() => { throw new Error('exit'); });
+    const exitMock = vi.fn().mockImplementation(() => {
+      throw new Error('exit');
+    });
     process.exit = exitMock as any;
 
     try {
@@ -314,14 +348,19 @@ describe('Compile Command - Conformance Fixtures', () => {
 
   it('should compile existing conformance fixtures', async () => {
     // Use existing conformance fixtures that are known to work
-    const fixturePath = path.resolve(process.cwd(), 'src/manifest/conformance/fixtures/01-entity-properties.manifest');
+    const fixturePath = path.resolve(
+      process.cwd(),
+      'src/manifest/conformance/fixtures/01-entity-properties.manifest',
+    );
 
     try {
       await fs.stat(fixturePath);
       const { compileCommand } = await import('./compile.js');
       const capture = captureOutput();
 
-      await compileCommand(fixturePath, { output: path.join(os.tmpdir(), 'manifest-compile-test-output') });
+      await compileCommand(fixturePath, {
+        output: path.join(os.tmpdir(), 'manifest-compile-test-output'),
+      });
 
       // Should complete without throwing
       capture.restore();

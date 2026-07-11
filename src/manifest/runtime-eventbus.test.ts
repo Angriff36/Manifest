@@ -61,7 +61,11 @@ async function compile(source: string): Promise<IR> {
 
 let engineSeq = 0;
 /** Build an engine with a DISTINCT deterministic id source → distinct originId. */
-function makeEngine(ir: IR, extra: Partial<RuntimeOptions> = {}, context: RuntimeContext = {}): RuntimeEngine {
+function makeEngine(
+  ir: IR,
+  extra: Partial<RuntimeOptions> = {},
+  context: RuntimeContext = {},
+): RuntimeEngine {
   const prefix = `e${++engineSeq}`;
   let n = 0;
   return new RuntimeEngine(ir, context, {
@@ -99,7 +103,9 @@ function pushUndo(tx: TransactionHandle | undefined, undo: () => void): void {
 }
 class TxStore implements Store {
   readonly map = new Map<string, EntityInstance>();
-  async getAll(): Promise<EntityInstance[]> { return [...this.map.values()].map((v) => ({ ...v })); }
+  async getAll(): Promise<EntityInstance[]> {
+    return [...this.map.values()].map((v) => ({ ...v }));
+  }
   async getById(id: string): Promise<EntityInstance | undefined> {
     const v = this.map.get(id);
     return v ? { ...v } : undefined;
@@ -109,25 +115,39 @@ class TxStore implements Store {
     const inst = { ...data, id } as EntityInstance;
     const prev = this.map.get(id);
     this.map.set(id, inst);
-    pushUndo(tx, () => { if (prev) this.map.set(id, prev); else this.map.delete(id); });
+    pushUndo(tx, () => {
+      if (prev) this.map.set(id, prev);
+      else this.map.delete(id);
+    });
     return { ...inst };
   }
-  async update(id: string, data: Partial<EntityInstance>, tx?: TransactionHandle): Promise<EntityInstance | undefined> {
+  async update(
+    id: string,
+    data: Partial<EntityInstance>,
+    tx?: TransactionHandle,
+  ): Promise<EntityInstance | undefined> {
     const existing = this.map.get(id);
     if (!existing) return undefined;
     const prev = { ...existing };
     const next = { ...existing, ...data };
     this.map.set(id, next);
-    pushUndo(tx, () => { this.map.set(id, prev); });
+    pushUndo(tx, () => {
+      this.map.set(id, prev);
+    });
     return { ...next };
   }
   async delete(id: string, tx?: TransactionHandle): Promise<boolean> {
     const prev = this.map.get(id);
     const existed = this.map.delete(id);
-    if (existed) pushUndo(tx, () => { this.map.set(id, prev!); });
+    if (existed)
+      pushUndo(tx, () => {
+        this.map.set(id, prev!);
+      });
     return existed;
   }
-  async clear(): Promise<void> { this.map.clear(); }
+  async clear(): Promise<void> {
+    this.map.clear();
+  }
 }
 class TxOutbox implements OutboxStore {
   readonly entries: OutboxEntry[] = [];
@@ -136,17 +156,27 @@ class TxOutbox implements OutboxStore {
     if (this.fail) throw new Error('outbox unavailable');
     const before = this.entries.length;
     this.entries.push(...newEntries.map((e) => ({ ...e })));
-    pushUndo(tx as TransactionHandle, () => { this.entries.length = before; });
+    pushUndo(tx as TransactionHandle, () => {
+      this.entries.length = before;
+    });
   }
-  async claim(): Promise<OutboxEntry[]> { return []; }
+  async claim(): Promise<OutboxEntry[]> {
+    return [];
+  }
   async markDelivered(): Promise<void> {}
   async markFailed(): Promise<void> {}
 }
 class MemoryIdempotency implements IdempotencyStore {
   readonly map = new Map<string, CommandResult>();
-  async has(key: string): Promise<boolean> { return this.map.has(key); }
-  async get(key: string): Promise<CommandResult | undefined> { return this.map.get(key); }
-  async set(key: string, result: CommandResult): Promise<void> { this.map.set(key, result); }
+  async has(key: string): Promise<boolean> {
+    return this.map.has(key);
+  }
+  async get(key: string): Promise<CommandResult | undefined> {
+    return this.map.get(key);
+  }
+  async set(key: string, result: CommandResult): Promise<void> {
+    this.map.set(key, result);
+  }
 }
 
 function txStores(): Map<string, TxStore> {
@@ -156,7 +186,10 @@ function txStores(): Map<string, TxStore> {
 function storeProviderFor(stores: Map<string, TxStore>): (name: string) => TxStore {
   return (name: string) => {
     let s = stores.get(name);
-    if (!s) { s = new TxStore(); stores.set(name, s); }
+    if (!s) {
+      s = new TxStore();
+      stores.set(name, s);
+    }
     return s;
   };
 }
@@ -336,8 +369,16 @@ describe('event bus — idempotency', () => {
     const idem = new MemoryIdempotency();
 
     const rt = makeEngine(ir, { eventBus: bus, idempotencyStore: idem });
-    const first = await rt.runCommand('create', { balance: 10 }, { entityName: 'Account', idempotencyKey: 'dup' });
-    const second = await rt.runCommand('create', { balance: 10 }, { entityName: 'Account', idempotencyKey: 'dup' });
+    const first = await rt.runCommand(
+      'create',
+      { balance: 10 },
+      { entityName: 'Account', idempotencyKey: 'dup' },
+    );
+    const second = await rt.runCommand(
+      'create',
+      { balance: 10 },
+      { entityName: 'Account', idempotencyKey: 'dup' },
+    );
 
     expect(first.success).toBe(true);
     expect(second).toEqual(first); // replayed from cache, not re-executed
@@ -349,7 +390,9 @@ describe('event bus — publish failure is fail-open', () => {
   it('logs a warning but the command still succeeds', async () => {
     const ir = await compile(emitIR);
     const failingBus: EventBus = {
-      publish: async () => { throw new Error('bus down'); },
+      publish: async () => {
+        throw new Error('bus down');
+      },
       subscribe: async () => async () => {},
       close: async () => {},
     };

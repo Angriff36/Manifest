@@ -54,11 +54,9 @@ describe('manifest generate-from-prompt', () => {
     // The command handler calls process.exit(1) on the missing-key guard.
     // Intercept the exit so the failure path is observable in-process (and no
     // fetch to the Anthropic API is attempted).
-    const exitSpy = vi
-      .spyOn(process, 'exit')
-      .mockImplementation(((code?: number) => {
-        throw new Error(`__exit_${code}__`);
-      }) as never);
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new Error(`__exit_${code}__`);
+    }) as never);
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
       await expect(

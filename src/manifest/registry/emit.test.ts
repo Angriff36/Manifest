@@ -5,7 +5,7 @@ import { compileToIR } from '../ir-compiler';
 async function ir(src: string) {
   const result = await compileToIR(src);
   if (!result.ir) {
-    throw new Error(`Compile failed: ${result.diagnostics.map(d => d.message).join('; ')}`);
+    throw new Error(`Compile failed: ${result.diagnostics.map((d) => d.message).join('; ')}`);
   }
   return result.ir;
 }
@@ -26,12 +26,12 @@ describe('emitRegistries', () => {
       event RecipeCreated: "recipe.created" { recipeId: string }
     `);
     const { commands } = emitRegistries(compiled);
-    const create = commands.commands.find(c => c.entity === 'Recipe' && c.command === 'create');
+    const create = commands.commands.find((c) => c.entity === 'Recipe' && c.command === 'create');
     expect(create).toBeDefined();
     expect(create!.commandId).toBe('Recipe.create');
     expect(create!.emits).toContain('RecipeCreated');
 
-    const rename = commands.commands.find(c => c.entity === 'Recipe' && c.command === 'rename');
+    const rename = commands.commands.find((c) => c.entity === 'Recipe' && c.command === 'rename');
     expect(rename).toBeDefined();
     expect(rename!.effects).toContain('mutate');
   });
@@ -44,7 +44,7 @@ describe('emitRegistries', () => {
       }
     `);
     const { entities } = emitRegistries(compiled);
-    const recipe = entities.entities.find(e => e.name === 'Recipe');
+    const recipe = entities.entities.find((e) => e.name === 'Recipe');
     expect(recipe?.classification).toBe('governed');
     expect(recipe?.tenantScoped).toBe(true);
   });
@@ -56,7 +56,7 @@ describe('emitRegistries', () => {
       }
     `);
     const { entities } = emitRegistries(compiled);
-    const log = entities.entities.find(e => e.name === 'SystemLog');
+    const log = entities.entities.find((e) => e.name === 'SystemLog');
     expect(log?.classification).toBe('unknown_nonconforming');
     expect(log?.tenantScoped).toBe(false);
   });
@@ -79,7 +79,7 @@ describe('emitRegistries', () => {
       }
     `);
     const { entities } = emitRegistries(compiled);
-    const order = entities.entities.find(e => e.name === 'Order');
+    const order = entities.entities.find((e) => e.name === 'Order');
     expect(order?.properties).toEqual(['tenantId', 'total', 'status']);
   });
 
@@ -101,7 +101,7 @@ describe('emitRegistries', () => {
       event RecipePublished: "recipe.published" { recipeId: string }
     `);
     const { commands } = emitRegistries(compiled);
-    const cmd = commands.commands.find(c => c.command === 'publishIt');
+    const cmd = commands.commands.find((c) => c.command === 'publishIt');
     expect(cmd?.guardCount).toBe(1);
     expect(cmd?.effects).toContain('mutate');
     expect(cmd?.emits).toContain('RecipePublished');
@@ -113,7 +113,7 @@ describe('emitRegistries', () => {
     // hand-constructed or future-parsed IR.
     const compiled = await ir(`entity Foo { property tenantId: string }`);
     // Inject defaultPolicies + a command with its own policy.
-    const foo = compiled.entities.find(e => e.name === 'Foo')!;
+    const foo = compiled.entities.find((e) => e.name === 'Foo')!;
     foo.defaultPolicies = ['tenantIsolation', 'auditEnabled'];
     compiled.commands.push({
       name: 'doThing',
@@ -125,7 +125,7 @@ describe('emitRegistries', () => {
       policies: ['auditEnabled', 'extraCheck'],
     });
     const { commands } = emitRegistries(compiled);
-    const cmd = commands.commands.find(c => c.commandId === 'Foo.doThing');
+    const cmd = commands.commands.find((c) => c.commandId === 'Foo.doThing');
     expect(cmd?.policies).toEqual(['tenantIsolation', 'auditEnabled', 'extraCheck']);
   });
 
@@ -139,10 +139,12 @@ describe('emitRegistries', () => {
       emits: [],
     });
     const { entities, commands } = emitRegistries(compiled);
-    const unowned = entities.entities.find(e => e.name === UNOWNED_ENTITY_NAME);
+    const unowned = entities.entities.find((e) => e.name === UNOWNED_ENTITY_NAME);
     expect(unowned).toBeDefined();
     expect(unowned!.classification).toBe('infrastructure');
-    expect(commands.commands.some(c => c.commandId === `${UNOWNED_ENTITY_NAME}.standalone`)).toBe(true);
+    expect(commands.commands.some((c) => c.commandId === `${UNOWNED_ENTITY_NAME}.standalone`)).toBe(
+      true,
+    );
   });
 
   it('handles empty IR without throwing', async () => {

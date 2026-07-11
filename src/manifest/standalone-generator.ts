@@ -1,4 +1,18 @@
-import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, StoreNode, OutboxEventNode, RelationshipNode } from './types';
+import {
+  ManifestProgram,
+  EntityNode,
+  FlowNode,
+  EffectNode,
+  ExposeNode,
+  CompositionNode,
+  ExpressionNode,
+  BehaviorNode,
+  ConstraintNode,
+  CommandNode,
+  StoreNode,
+  OutboxEventNode,
+  RelationshipNode,
+} from './types';
 import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
 
 /** Provenance metadata for generated code */
@@ -26,13 +40,34 @@ export class StandaloneGenerator {
     this.line();
 
     for (const store of program.stores) this.genStore(store);
-    for (const e of program.entities) { this.genEntity(e); this.line(); }
-    for (const c of program.commands) { this.genCommand(c); this.line(); }
-    for (const f of program.flows) { this.genFlow(f); this.line(); }
-    for (const e of program.effects) { this.genEffect(e); this.line(); }
-    for (const ev of program.events) { this.genOutboxEvent(ev); this.line(); }
-    for (const x of program.exposures) { this.genExpose(x); this.line(); }
-    for (const c of program.compositions) { this.genComposition(c); this.line(); }
+    for (const e of program.entities) {
+      this.genEntity(e);
+      this.line();
+    }
+    for (const c of program.commands) {
+      this.genCommand(c);
+      this.line();
+    }
+    for (const f of program.flows) {
+      this.genFlow(f);
+      this.line();
+    }
+    for (const e of program.effects) {
+      this.genEffect(e);
+      this.line();
+    }
+    for (const ev of program.events) {
+      this.genOutboxEvent(ev);
+      this.line();
+    }
+    for (const x of program.exposures) {
+      this.genExpose(x);
+      this.line();
+    }
+    for (const c of program.compositions) {
+      this.genComposition(c);
+      this.line();
+    }
 
     this.emitExports(program);
 
@@ -53,7 +88,15 @@ export class StandaloneGenerator {
     this.line('// This file imports from the runtime module');
     this.line();
 
-    const imports = ['Observable', 'EventEmitter', 'EventBus', 'setContext', 'getContext', 'MemoryStore', 'LocalStorageStore'];
+    const imports = [
+      'Observable',
+      'EventEmitter',
+      'EventBus',
+      'setContext',
+      'getContext',
+      'MemoryStore',
+      'LocalStorageStore',
+    ];
     const hasStores = program.stores.length > 0;
     if (hasStores) {
       imports.push('Store');
@@ -71,7 +114,9 @@ export class StandaloneGenerator {
         this.line(`const ${storeName}: Store<I${store.entity}> = new MemoryStore();`);
         break;
       case 'localStorage': {
-        const key = store.config?.['key'] ? this.genExpr(store.config['key']) : `"${store.entity.toLowerCase()}s"`;
+        const key = store.config?.['key']
+          ? this.genExpr(store.config['key'])
+          : `"${store.entity.toLowerCase()}s"`;
         this.line(`const ${storeName}: Store<I${store.entity}> = new LocalStorageStore(${key});`);
         break;
       }
@@ -95,13 +140,18 @@ export class StandaloneGenerator {
       this.line(`readonly ${cp.name}: ${this.tsType(cp.dataType)};`);
     }
     for (const r of e.relationships) {
-      this.line(`${r.name}${r.kind === 'belongsTo' || r.kind === 'ref' ? '?' : ''}: ${this.relationType(r)};`);
+      this.line(
+        `${r.name}${r.kind === 'belongsTo' || r.kind === 'ref' ? '?' : ''}: ${this.relationType(r)};`,
+      );
     }
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
     this.line();
 
     const events = this.collectEvents(e);
-    const evtMap = events.size ? `{ ${[...events].map(ev => `${ev}: unknown`).join('; ')} }` : 'Record<string, unknown>';
+    const evtMap = events.size
+      ? `{ ${[...events].map((ev) => `${ev}: unknown`).join('; ')} }`
+      : 'Record<string, unknown>';
 
     this.line(`export class ${e.name} extends EventEmitter<${evtMap}> {`);
     this.in();
@@ -122,12 +172,15 @@ export class StandaloneGenerator {
         this.line(`const old = this._${p.name}.value;`);
         this.line(`this._${p.name}.set(v);`);
         this.line(`if (old !== v) this._recompute();`);
-        this.de(); this.line('}');
+        this.de();
+        this.line('}');
       }
     }
 
     for (const cp of e.computedProperties) {
-      this.line(`private _computed_${cp.name}: ${this.tsType(cp.dataType)} = ${this.defVal(cp.dataType)};`);
+      this.line(
+        `private _computed_${cp.name}: ${this.tsType(cp.dataType)} = ${this.defVal(cp.dataType)};`,
+      );
       this.line(`get ${cp.name}() { return this._computed_${cp.name}; }`);
     }
 
@@ -135,7 +188,9 @@ export class StandaloneGenerator {
       if (r.kind === 'hasMany') {
         this.line(`private _rel_${r.name}: ${r.target}[] = [];`);
         this.line(`get ${r.name}() { return this._rel_${r.name}; }`);
-        this.line(`add${this.capitalize(r.name.replace(/s$/, ''))}(item: ${r.target}) { this._rel_${r.name}.push(item); }`);
+        this.line(
+          `add${this.capitalize(r.name.replace(/s$/, ''))}(item: ${r.target}) { this._rel_${r.name}.push(item); }`,
+        );
       } else {
         this.line(`private _rel_${r.name}: ${r.target} | null = null;`);
         this.line(`get ${r.name}() { return this._rel_${r.name}; }`);
@@ -145,15 +200,19 @@ export class StandaloneGenerator {
 
     this.line();
     this.line(`constructor(init?: Partial<${iface}>) {`);
-    this.in(); this.line('super();');
+    this.in();
+    this.line('super();');
     this.line('if (init) {');
     this.in();
     this.line('if (init.id) this.id = init.id;');
-    for (const p of e.properties) this.line(`if (init.${p.name} !== undefined) this._${p.name}.set(init.${p.name});`);
-    this.de(); this.line('}');
+    for (const p of e.properties)
+      this.line(`if (init.${p.name} !== undefined) this._${p.name}.set(init.${p.name});`);
+    this.de();
+    this.line('}');
     this.line('this._initBehaviors();');
     this.line('this._recompute();');
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
 
     this.line();
     this.line('private _recompute() {');
@@ -161,13 +220,15 @@ export class StandaloneGenerator {
     for (const cp of e.computedProperties) {
       this.line(`this._computed_${cp.name} = ${this.genExpr(cp.expression)};`);
     }
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
 
     this.line();
     this.line('private _initBehaviors() {');
     this.in();
     for (const b of e.behaviors) this.genBehaviorBinding(b);
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
 
     if (e.policies.length > 0) {
       this.line();
@@ -179,7 +240,8 @@ export class StandaloneGenerator {
         this.line(`if (${actionCheck} && !(${this.genExpr(p.expression)})) return false;`);
       }
       this.line('return true;');
-      this.de(); this.line('}');
+      this.de();
+      this.line('}');
     }
 
     this.line();
@@ -189,18 +251,24 @@ export class StandaloneGenerator {
     this.line('if (obs && typeof (obs as Observable<unknown>).subscribe === "function") {');
     this.in();
     this.line('return (obs as Observable<unknown>).subscribe(fn);');
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
     this.line('return () => {};');
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
 
     this.line();
     this.line('toJSON(): Record<string, unknown> {');
-    this.in(); this.line('return {');
+    this.in();
+    this.line('return {');
     this.in();
     this.line('id: this.id,');
     for (const p of e.properties) this.line(`${p.name}: this.${p.name},`);
     for (const cp of e.computedProperties) this.line(`${cp.name}: this.${cp.name},`);
-    this.de(); this.line('};'); this.de(); this.line('}');
+    this.de();
+    this.line('};');
+    this.de();
+    this.line('}');
 
     for (const cmd of e.commands) this.genCommandMethod(cmd, e);
     for (const b of e.behaviors) {
@@ -209,7 +277,8 @@ export class StandaloneGenerator {
       }
     }
 
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
   }
 
   private collectEvents(e: EntityNode): Set<string> {
@@ -223,7 +292,7 @@ export class StandaloneGenerator {
       }
     }
     for (const cmd of e.commands) {
-      if (cmd.emits) cmd.emits.forEach(ev => events.add(ev));
+      if (cmd.emits) cmd.emits.forEach((ev) => events.add(ev));
     }
     return events;
   }
@@ -234,7 +303,9 @@ export class StandaloneGenerator {
   }
 
   private genCommandMethod(cmd: CommandNode, entity?: EntityNode) {
-    const params = cmd.parameters.map(p => `${p.name}${p.required ? '' : '?'}: ${this.tsType(p.dataType)}`).join(', ');
+    const params = cmd.parameters
+      .map((p) => `${p.name}${p.required ? '' : '?'}: ${this.tsType(p.dataType)}`)
+      .join(', ');
     // Return the last action result type if specified, otherwise infer from actions or default to unknown
     const returnType = cmd.returns ? this.tsType(cmd.returns) : 'unknown';
 
@@ -245,12 +316,16 @@ export class StandaloneGenerator {
     // Check policies first (if entity has policies with execute/all action)
     if (entity && entity.policies.length > 0) {
       this.line('// Policy checks');
-      const hasRelevantPolicies = entity.policies.some(p => p.action === 'all' || p.action === 'execute');
+      const hasRelevantPolicies = entity.policies.some(
+        (p) => p.action === 'all' || p.action === 'execute',
+      );
       if (hasRelevantPolicies) {
         this.line(`const user = getContext().user;`);
         for (const p of entity.policies) {
           if (p.action !== 'all' && p.action !== 'execute') continue;
-          this.line(`if (!(${this.genExpr(p.expression)})) throw new Error(${JSON.stringify(p.message || `Denied by policy '${p.name}'`)});`);
+          this.line(
+            `if (!(${this.genExpr(p.expression)})) throw new Error(${JSON.stringify(p.message || `Denied by policy '${p.name}'`)});`,
+          );
         }
       }
     }
@@ -273,7 +348,7 @@ export class StandaloneGenerator {
 
     if (cmd.emits) {
       for (const ev of cmd.emits) {
-        this.line(`this.emit('${ev}', { ${cmd.parameters.map(p => p.name).join(', ')} });`);
+        this.line(`this.emit('${ev}', { ${cmd.parameters.map((p) => p.name).join(', ')} });`);
       }
     }
 
@@ -282,11 +357,14 @@ export class StandaloneGenerator {
       this.line(`return _result as ${returnType};`);
     }
 
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
   }
 
   private genCommand(cmd: CommandNode) {
-    const params = cmd.parameters.map(p => `${p.name}${p.required ? '' : '?'}: ${this.tsType(p.dataType)}`).join(', ');
+    const params = cmd.parameters
+      .map((p) => `${p.name}${p.required ? '' : '?'}: ${this.tsType(p.dataType)}`)
+      .join(', ');
     const returnType = cmd.returns ? this.tsType(cmd.returns) : 'unknown';
 
     this.line(`export async function ${cmd.name}(${params}): Promise<${returnType}> {`);
@@ -309,7 +387,9 @@ export class StandaloneGenerator {
 
     if (cmd.emits) {
       for (const ev of cmd.emits) {
-        this.line(`EventBus.publish('${ev}', { ${cmd.parameters.map(p => p.name).join(', ')} });`);
+        this.line(
+          `EventBus.publish('${ev}', { ${cmd.parameters.map((p) => p.name).join(', ')} });`,
+        );
       }
     }
 
@@ -318,7 +398,8 @@ export class StandaloneGenerator {
       this.line(`return _result as ${returnType};`);
     }
 
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
   }
 
   private genOutboxEvent(ev: OutboxEventNode) {
@@ -332,19 +413,23 @@ export class StandaloneGenerator {
     this.line(`export const publish${ev.name} = (data: ${ev.name}Event) => {`);
     this.in();
     this.line(`EventBus.publish('${ev.channel}', data);`);
-    this.de(); this.line('};');
+    this.de();
+    this.line('};');
     this.line();
     this.line(`export const subscribe${ev.name} = (fn: (data: ${ev.name}Event) => void) => {`);
     this.in();
     this.line(`return EventBus.subscribe('${ev.channel}', fn as (d: unknown) => void);`);
-    this.de(); this.line('};');
+    this.de();
+    this.line('};');
   }
 
   private genConstraintChecks(constraints: ConstraintNode[], prop: string) {
     for (const c of constraints) {
       const expr = this.genExpr(c.expression);
       if (expr.includes(prop) || expr.includes('this.')) {
-        this.line(`if (!(${expr.replace(new RegExp(`this\\.${prop}`, 'g'), 'v')})) throw new Error(${JSON.stringify(c.message || `Constraint '${c.name}' violated`)});`);
+        this.line(
+          `if (!(${expr.replace(new RegExp(`this\\.${prop}`, 'g'), 'v')})) throw new Error(${JSON.stringify(c.message || `Constraint '${c.name}' violated`)});`,
+        );
       }
     }
   }
@@ -358,20 +443,24 @@ export class StandaloneGenerator {
     this.line(`this.on('${b.trigger.event}', (${params}) => {`);
     this.in();
     if (b.guards?.length) {
-      const g = b.guards.map(x => `(${this.genExpr(x)})`).join(' && ');
+      const g = b.guards.map((x) => `(${this.genExpr(x)})`).join(' && ');
       this.line(`if (!(${g})) return;`);
     }
     for (const a of b.actions) this.line(this.genAction(a));
-    this.de(); this.line('});');
+    this.de();
+    this.line('});');
   }
 
   private genBehaviorMethod(b: BehaviorNode) {
     const params = b.trigger.parameters || [];
     this.line();
-    this.line(`${b.trigger.event}(${params.map(p => `${p}: unknown`).join(', ')}) {`);
+    this.line(`${b.trigger.event}(${params.map((p) => `${p}: unknown`).join(', ')}) {`);
     this.in();
-    this.line(`this.emit('${b.trigger.event}', ${params.length ? `{ ${params.join(', ')} }` : '{}'});`);
-    this.de(); this.line('}');
+    this.line(
+      `this.emit('${b.trigger.event}', ${params.length ? `{ ${params.join(', ')} }` : '{}'});`,
+    );
+    this.de();
+    this.line('}');
   }
 
   private genAction(a: { kind: string; target?: string; expression: ExpressionNode }): string {
@@ -389,37 +478,57 @@ export class StandaloneGenerator {
   }
 
   private genFlow(f: FlowNode) {
-    this.line(`export function ${f.name}(input: ${this.tsType(f.input)}): ${this.tsType(f.output)} {`);
-    this.in(); this.line('let _v = input;'); this.line();
+    this.line(
+      `export function ${f.name}(input: ${this.tsType(f.input)}): ${this.tsType(f.output)} {`,
+    );
+    this.in();
+    this.line('let _v = input;');
+    this.line();
     for (const s of f.steps) {
       const expr = this.genExpr(s.expression);
-      if (s.condition) { this.line(`if (${this.genExpr(s.condition)}) {`); this.in(); }
+      if (s.condition) {
+        this.line(`if (${this.genExpr(s.condition)}) {`);
+        this.in();
+      }
       if (s.operation === 'map') this.line(`_v = (${expr})(_v);`);
-      else if (s.operation === 'filter') this.line(`if (!(${expr})(_v)) return null as unknown as ${this.tsType(f.output)};`);
-      else if (s.operation === 'validate') this.line(`if (!(${expr})(_v)) throw new Error('Validation failed');`);
+      else if (s.operation === 'filter')
+        this.line(`if (!(${expr})(_v)) return null as unknown as ${this.tsType(f.output)};`);
+      else if (s.operation === 'validate')
+        this.line(`if (!(${expr})(_v)) throw new Error('Validation failed');`);
       else if (s.operation === 'transform') this.line(`_v = ${expr};`);
       else if (s.operation === 'tap') this.line(`(${expr})(_v);`);
       else this.line(`_v = ${expr};`);
-      if (s.condition) { this.de(); this.line('}'); }
+      if (s.condition) {
+        this.de();
+        this.line('}');
+      }
     }
-    this.line(); this.line(`return _v as unknown as ${this.tsType(f.output)};`);
-    this.de(); this.line('}');
+    this.line();
+    this.line(`return _v as unknown as ${this.tsType(f.output)};`);
+    this.de();
+    this.line('}');
   }
 
   private genEffect(e: EffectNode) {
     this.line(`export const ${e.name}Effect = {`);
-    this.in(); this.line(`kind: '${e.kind}' as const,`);
+    this.in();
+    this.line(`kind: '${e.kind}' as const,`);
     if (e.kind === 'http') {
       const url = e.config['url'] ? this.genExpr(e.config['url']) : '""';
       const method = e.config['method'] ? this.genExpr(e.config['method']) : '"GET"';
       this.line(`async execute(data?: unknown) {`);
       this.in();
-      this.line(`const res = await fetch(${url}, { method: ${method}, headers: { 'Content-Type': 'application/json' }, body: data ? JSON.stringify(data) : undefined });`);
+      this.line(
+        `const res = await fetch(${url}, { method: ${method}, headers: { 'Content-Type': 'application/json' }, body: data ? JSON.stringify(data) : undefined });`,
+      );
       this.line('return res.json();');
-      this.de(); this.line('},');
+      this.de();
+      this.line('},');
     } else if (e.kind === 'storage') {
       const key = e.config['key'] ? this.genExpr(e.config['key']) : '"data"';
-      this.line(`get() { const d = localStorage.getItem(${key}); return d ? JSON.parse(d) : null; },`);
+      this.line(
+        `get() { const d = localStorage.getItem(${key}); return d ? JSON.parse(d) : null; },`,
+      );
       this.line(`set(v: unknown) { localStorage.setItem(${key}, JSON.stringify(v)); },`);
       this.line(`remove() { localStorage.removeItem(${key}); },`);
     } else if (e.kind === 'timer') {
@@ -427,28 +536,43 @@ export class StandaloneGenerator {
       this.line(`start(cb: () => void) { return setInterval(cb, ${interval}); },`);
       this.line('stop(id: number) { clearInterval(id); },');
     } else {
-      this.line('config: {'); this.in();
+      this.line('config: {');
+      this.in();
       for (const [k, v] of Object.entries(e.config)) this.line(`${k}: ${this.genExpr(v)},`);
-      this.de(); this.line('},');
+      this.de();
+      this.line('},');
       this.line('execute(_data?: unknown) { /* custom */ },');
     }
-    this.de(); this.line('};');
+    this.de();
+    this.line('};');
   }
 
   private genExpose(x: ExposeNode) {
     if (x.protocol === 'rest') {
       this.line(`export const ${x.name}API = {`);
-      this.in(); this.line(`basePath: '/${x.name}',`);
+      this.in();
+      this.line(`basePath: '/${x.name}',`);
       this.line(`entity: '${x.entity}',`);
-      const ops = x.operations.length ? x.operations : ['list', 'get', 'create', 'update', 'delete'];
+      const ops = x.operations.length
+        ? x.operations
+        : ['list', 'get', 'create', 'update', 'delete'];
       if (ops.includes('list')) this.line(`async list() { return ${x.entity}Store.getAll(); },`);
-      if (ops.includes('get')) this.line(`async get(id: string) { return ${x.entity}Store.getById(id); },`);
-      if (ops.includes('create')) this.line(`async create(d: Partial<I${x.entity}>) { return ${x.entity}Store.create(d); },`);
-      if (ops.includes('update')) this.line(`async update(id: string, d: Partial<I${x.entity}>) { return ${x.entity}Store.update(id, d); },`);
-      if (ops.includes('delete')) this.line(`async delete(id: string) { return ${x.entity}Store.delete(id); },`);
-      this.de(); this.line('};');
+      if (ops.includes('get'))
+        this.line(`async get(id: string) { return ${x.entity}Store.getById(id); },`);
+      if (ops.includes('create'))
+        this.line(`async create(d: Partial<I${x.entity}>) { return ${x.entity}Store.create(d); },`);
+      if (ops.includes('update'))
+        this.line(
+          `async update(id: string, d: Partial<I${x.entity}>) { return ${x.entity}Store.update(id, d); },`,
+        );
+      if (ops.includes('delete'))
+        this.line(`async delete(id: string) { return ${x.entity}Store.delete(id); },`);
+      this.de();
+      this.line('};');
     } else if (x.protocol === 'function') {
-      this.line(`export function create${x.entity}(d: Partial<I${x.entity}>) { return new ${x.entity}(d); }`);
+      this.line(
+        `export function create${x.entity}(d: Partial<I${x.entity}>) { return new ${x.entity}(d); }`,
+      );
     }
   }
 
@@ -469,13 +593,19 @@ export class StandaloneGenerator {
     this.line();
     for (const conn of c.connections) {
       if (conn.transform) {
-        this.line(`this.${conn.from.component}.on('${conn.from.output}', (d) => { const t = (${this.genExpr(conn.transform)})(d); this.${conn.to.component}.emit('${conn.to.input}', t); });`);
+        this.line(
+          `this.${conn.from.component}.on('${conn.from.output}', (d) => { const t = (${this.genExpr(conn.transform)})(d); this.${conn.to.component}.emit('${conn.to.input}', t); });`,
+        );
       } else {
-        this.line(`this.${conn.from.component}.on('${conn.from.output}', (d) => this.${conn.to.component}.emit('${conn.to.input}', d));`);
+        this.line(
+          `this.${conn.from.component}.on('${conn.from.output}', (d) => this.${conn.to.component}.emit('${conn.to.input}', d));`,
+        );
       }
     }
-    this.de(); this.line('}');
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
+    this.de();
+    this.line('}');
   }
 
   private emitExports(p: ManifestProgram) {
@@ -504,7 +634,7 @@ export class StandaloneGenerator {
         const op = (e as { operator: string }).operator;
         const l = this.genExpr((e as { left: ExpressionNode }).left);
         const r = this.genExpr((e as { right: ExpressionNode }).right);
-        const m: Record<string, string> = { 'and': '&&', 'or': '||', 'is': '===', 'contains': '.includes' };
+        const m: Record<string, string> = { and: '&&', or: '||', is: '===', contains: '.includes' };
         if (op === 'contains') return `${l}.includes(${r})`;
         return `(${l} ${m[op] || op} ${r})`;
       }
@@ -514,7 +644,9 @@ export class StandaloneGenerator {
       }
       case 'Call': {
         const callee = this.genExpr((e as { callee: ExpressionNode }).callee);
-        const args = (e as { arguments: ExpressionNode[] }).arguments.map(a => this.genExpr(a)).join(', ');
+        const args = (e as { arguments: ExpressionNode[] }).arguments
+          .map((a) => this.genExpr(a))
+          .join(', ');
         return `${callee}(${args})`;
       }
       case 'MemberAccess':
@@ -526,9 +658,9 @@ export class StandaloneGenerator {
         return `(${cond} ? ${cons} : ${alt})`;
       }
       case 'Array':
-        return `[${(e as { elements: ExpressionNode[] }).elements.map(x => this.genExpr(x)).join(', ')}]`;
+        return `[${(e as { elements: ExpressionNode[] }).elements.map((x) => this.genExpr(x)).join(', ')}]`;
       case 'Object':
-        return `{ ${(e as { properties: { key: string; value: ExpressionNode }[] }).properties.map(p => `${p.key}: ${this.genExpr(p.value)}`).join(', ')} }`;
+        return `{ ${(e as { properties: { key: string; value: ExpressionNode }[] }).properties.map((p) => `${p.key}: ${this.genExpr(p.value)}`).join(', ')} }`;
       case 'Lambda':
         return `(${(e as { parameters: string[] }).parameters.join(', ')}) => ${this.genExpr((e as { body: ExpressionNode }).body)}`;
       default:
@@ -536,8 +668,24 @@ export class StandaloneGenerator {
     }
   }
 
-  private tsType(t: { name: string; generic?: { name: string; nullable: boolean }; nullable: boolean }): string {
-    const m: Record<string, string> = { string: 'string', number: 'number', boolean: 'boolean', any: 'unknown', void: 'void', list: 'Array', map: 'Map', date: 'string', time: 'string', datetime: 'number', duration: 'number' };
+  private tsType(t: {
+    name: string;
+    generic?: { name: string; nullable: boolean };
+    nullable: boolean;
+  }): string {
+    const m: Record<string, string> = {
+      string: 'string',
+      number: 'number',
+      boolean: 'boolean',
+      any: 'unknown',
+      void: 'void',
+      list: 'Array',
+      map: 'Map',
+      date: 'string',
+      time: 'string',
+      datetime: 'number',
+      duration: 'number',
+    };
     let r = m[t.name] || t.name;
     if (t.generic) r += `<${this.tsType(t.generic)}>`;
     if (t.nullable) r += ' | null';
@@ -546,7 +694,18 @@ export class StandaloneGenerator {
 
   private defVal(t: { name: string; nullable: boolean }): string {
     if (t.nullable) return 'null';
-    const d: Record<string, string> = { string: '""', number: '0', boolean: 'false', list: '[]', map: 'new Map()', any: 'null', date: '""', time: '""', datetime: '0', duration: '0' };
+    const d: Record<string, string> = {
+      string: '""',
+      number: '0',
+      boolean: 'false',
+      list: '[]',
+      map: 'new Map()',
+      any: 'null',
+      date: '""',
+      time: '""',
+      datetime: '0',
+      duration: '0',
+    };
     return d[t.name] || 'null';
   }
 
@@ -554,7 +713,13 @@ export class StandaloneGenerator {
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
 
-  private line(s = '') { this.out.push('  '.repeat(this.indent) + s); }
-  private in() { this.indent++; }
-  private de() { this.indent = Math.max(0, this.indent - 1); }
+  private line(s = '') {
+    this.out.push('  '.repeat(this.indent) + s);
+  }
+  private in() {
+    this.indent++;
+  }
+  private de() {
+    this.indent = Math.max(0, this.indent - 1);
+  }
 }

@@ -29,8 +29,6 @@ const section = next === -1 ? rest : rest.slice(0, next);
 const dateMatch = section.match(/^\s*-\s*(\d{4}-\d{2}-\d{2})/);
 const body = section.replace(/^\s*-\s*\d{4}-\d{2}-\d{2}\s*\n?/, '').trim();
 
-const title = dateMatch
-  ? `## ${version} (${dateMatch[1]})`
-  : `## ${version}`;
+const title = dateMatch ? `## ${version} (${dateMatch[1]})` : `## ${version}`;
 
 process.stdout.write(`${title}\n\n${body}\n`);

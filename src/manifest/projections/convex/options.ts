@@ -26,9 +26,7 @@ export type PropertyName = string;
  * One index entry. Plain `string[]` is a composite index over those columns;
  * the object form lets the consumer supply an explicit Convex index name.
  */
-export type IndexEntry =
-  | string[]
-  | { fields: string[]; name?: string };
+export type IndexEntry = string[] | { fields: string[]; name?: string };
 
 /**
  * How `belongsTo` / `ref` relationships are represented in the schema.
@@ -181,9 +179,27 @@ export const CONVEX_DEFAULT_NAMING: NamingConventionInput = {
  * Normalize a raw `request.options` bag into a fully-typed options object.
  * Single trust boundary: after this, the projection trusts the contents.
  */
-export function normalizeOptions(raw: Record<string, unknown> | undefined): Required<
-  Pick<ConvexProjectionOptions, 'output' | 'referenceMode' | 'tableMappings' | 'typeMappings' | 'indexes' | 'references' | 'emitEventsTable' | 'eventsTable' | 'idempotencyTable' | 'policyMode' | 'includeTenantFilter' | 'includeSoftDeleteFilter' | 'deletedAtProperty'>
-> & Pick<ConvexProjectionOptions, 'naming' | 'tenantIdProperty'> {
+export function normalizeOptions(
+  raw: Record<string, unknown> | undefined,
+): Required<
+  Pick<
+    ConvexProjectionOptions,
+    | 'output'
+    | 'referenceMode'
+    | 'tableMappings'
+    | 'typeMappings'
+    | 'indexes'
+    | 'references'
+    | 'emitEventsTable'
+    | 'eventsTable'
+    | 'idempotencyTable'
+    | 'policyMode'
+    | 'includeTenantFilter'
+    | 'includeSoftDeleteFilter'
+    | 'deletedAtProperty'
+  >
+> &
+  Pick<ConvexProjectionOptions, 'naming' | 'tenantIdProperty'> {
   const input = (raw ?? {}) as Partial<ConvexProjectionOptions>;
   return {
     output: input.output ?? CONVEX_PROJECTION_DEFAULTS.output,
@@ -196,8 +212,10 @@ export function normalizeOptions(raw: Record<string, unknown> | undefined): Requ
     eventsTable: input.eventsTable ?? CONVEX_PROJECTION_DEFAULTS.eventsTable,
     idempotencyTable: input.idempotencyTable ?? CONVEX_PROJECTION_DEFAULTS.idempotencyTable,
     policyMode: input.policyMode ?? CONVEX_PROJECTION_DEFAULTS.policyMode,
-    includeTenantFilter: input.includeTenantFilter ?? CONVEX_PROJECTION_DEFAULTS.includeTenantFilter,
-    includeSoftDeleteFilter: input.includeSoftDeleteFilter ?? CONVEX_PROJECTION_DEFAULTS.includeSoftDeleteFilter,
+    includeTenantFilter:
+      input.includeTenantFilter ?? CONVEX_PROJECTION_DEFAULTS.includeTenantFilter,
+    includeSoftDeleteFilter:
+      input.includeSoftDeleteFilter ?? CONVEX_PROJECTION_DEFAULTS.includeSoftDeleteFilter,
     deletedAtProperty: input.deletedAtProperty ?? CONVEX_PROJECTION_DEFAULTS.deletedAtProperty,
     tenantIdProperty: input.tenantIdProperty,
     // Absent → Convex-idiomatic default applied by the generator.

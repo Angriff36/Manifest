@@ -17,10 +17,7 @@ describe('tutorial engine', () => {
         starterCode: '',
         expectedCode: 'entity Task {}',
         hints: [],
-        validation: [
-          { type: 'compiles' },
-          { type: 'has-entity', name: 'Task' },
-        ],
+        validation: [{ type: 'compiles' }, { type: 'has-entity', name: 'Task' }],
       };
       const result = await validateStep(step, 'entity Task {}');
       expect(result.passed).toBe(true);
@@ -90,10 +87,7 @@ describe('tutorial engine', () => {
         hints: [],
         validation: [{ type: 'source-contains', text: 'computed' }],
       };
-      const passResult = await validateStep(
-        step,
-        'entity Task { computed total: number = 1 }'
-      );
+      const passResult = await validateStep(step, 'entity Task { computed total: number = 1 }');
       expect(passResult.passed).toBe(true);
 
       const failResult = await validateStep(step, 'entity Task {}');
@@ -124,10 +118,7 @@ describe('tutorial engine', () => {
         hints: [],
         validation: [{ type: 'has-command', name: 'doSomething' }],
       };
-      const passResult = await validateStep(
-        step,
-        'entity Task { command doSomething() {} }'
-      );
+      const passResult = await validateStep(step, 'entity Task { command doSomething() {} }');
       expect(passResult.passed).toBe(true);
     });
 
@@ -266,7 +257,10 @@ describe('built-in tutorials', () => {
   it('all built-in tutorials are valid', () => {
     for (const tutorial of BUILTIN_TUTORIALS) {
       const result = validateTutorialJson(tutorial);
-      expect(result.valid, `Tutorial "${tutorial.id}" is invalid: ${result.errors.join('; ')}`).toBe(true);
+      expect(
+        result.valid,
+        `Tutorial "${tutorial.id}" is invalid: ${result.errors.join('; ')}`,
+      ).toBe(true);
     }
   });
 
@@ -287,7 +281,10 @@ describe('built-in tutorials', () => {
     for (const tutorial of BUILTIN_TUTORIALS) {
       if (tutorial.prerequisites) {
         for (const prereq of tutorial.prerequisites) {
-          expect(allIds.has(prereq), `Tutorial "${tutorial.id}" has unknown prerequisite "${prereq}"`).toBe(true);
+          expect(
+            allIds.has(prereq),
+            `Tutorial "${tutorial.id}" has unknown prerequisite "${prereq}"`,
+          ).toBe(true);
         }
       }
     }

@@ -10,7 +10,10 @@ import path from 'path';
 import os from 'os';
 
 // Helper to create temp manifest files
-async function createTempManifest(content: string, filename: string = 'test.manifest'): Promise<string> {
+async function createTempManifest(
+  content: string,
+  filename: string = 'test.manifest',
+): Promise<string> {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-watch-test-'));
   const filePath = path.join(tempDir, filename);
   await fs.writeFile(filePath, content, 'utf-8');
@@ -121,7 +124,10 @@ entity Timer {
 
     // IR file should have been created
     const irPath = path.join(tempDir, 'test.ir.json');
-    const irExists = await fs.stat(irPath).then(() => true).catch(() => false);
+    const irExists = await fs
+      .stat(irPath)
+      .then(() => true)
+      .catch(() => false);
     expect(irExists).toBe(true);
 
     // Parse and verify IR content
@@ -155,7 +161,7 @@ describe('Watch Command - Debounce behavior', () => {
     debouncedRebuild('c.manifest');
 
     // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     expect(buildCount).toBe(1);
   });
@@ -173,11 +179,11 @@ describe('Watch Command - Debounce behavior', () => {
 
     // First batch
     debouncedRebuild('a.manifest');
-    await new Promise(resolve => setTimeout(resolve, 60));
+    await new Promise((resolve) => setTimeout(resolve, 60));
 
     // Second batch (after debounce settled)
     debouncedRebuild('b.manifest');
-    await new Promise(resolve => setTimeout(resolve, 60));
+    await new Promise((resolve) => setTimeout(resolve, 60));
 
     expect(buildCount).toBe(2);
   });

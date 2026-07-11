@@ -30,10 +30,7 @@ export class ProductionFlowParser {
     this.handlerIndex = buildHandlerIndex(fileContents);
   }
 
-  resolveHandlersFromUi(
-    content: string,
-    routeHelpers?: RouteHelperIndex,
-  ): ApiHandlerLink[] {
+  resolveHandlersFromUi(content: string, routeHelpers?: RouteHelperIndex): ApiHandlerLink[] {
     const out: ApiHandlerLink[] = [];
     for (const apiPath of extractFetchApiPaths(content)) {
       const handlerPath = this.resolveHandlerForApiPath(apiPath);

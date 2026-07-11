@@ -15,7 +15,11 @@ function makeVerificationIR(): IR {
     name: 'User',
     properties: [
       { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-      { name: 'email', type: { name: 'string', nullable: false }, modifiers: ['required', 'unique'] },
+      {
+        name: 'email',
+        type: { name: 'string', nullable: false },
+        modifiers: ['required', 'unique'],
+      },
       { name: 'name', type: { name: 'string', nullable: false }, modifiers: ['required'] },
       { name: 'age', type: { name: 'int', nullable: true }, modifiers: [] },
     ],
@@ -69,9 +73,7 @@ function makeVerificationIR(): IR {
     {
       name: 'completeTask',
       entity: 'Task',
-      parameters: [
-        { name: 'id', type: { name: 'string', nullable: false }, required: true },
-      ],
+      parameters: [{ name: 'id', type: { name: 'string', nullable: false }, required: true }],
       guards: [],
       actions: [],
       emits: [],
@@ -103,10 +105,13 @@ describe('Dart Projection End-to-End Verification', () => {
   const ir = makeVerificationIR();
 
   it('generates valid entity models with fromJson/toJson', () => {
-    const result = projection.generate(ir, { surface: 'dart.entity', options: { emitHeader: false } });
+    const result = projection.generate(ir, {
+      surface: 'dart.entity',
+      options: { emitHeader: false },
+    });
 
     expect(result.artifacts).toHaveLength(2);
-    expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
 
     // Verify User model
     const userCode = result.artifacts[0].code;
@@ -134,7 +139,10 @@ describe('Dart Projection End-to-End Verification', () => {
   });
 
   it('generates command models with params and return types', () => {
-    const result = projection.generate(ir, { surface: 'dart.command', options: { emitHeader: false } });
+    const result = projection.generate(ir, {
+      surface: 'dart.command',
+      options: { emitHeader: false },
+    });
 
     expect(result.artifacts).toHaveLength(2);
 
@@ -153,7 +161,10 @@ describe('Dart Projection End-to-End Verification', () => {
   });
 
   it('generates a complete Dio-based HTTP client', () => {
-    const result = projection.generate(ir, { surface: 'dart.client', options: { emitHeader: false } });
+    const result = projection.generate(ir, {
+      surface: 'dart.client',
+      options: { emitHeader: false },
+    });
 
     const code = result.artifacts[0].code;
     expect(code).toContain('class ManifestClient');
@@ -174,7 +185,10 @@ describe('Dart Projection End-to-End Verification', () => {
   });
 
   it('generates Riverpod providers by default', () => {
-    const result = projection.generate(ir, { surface: 'dart.providers', options: { emitHeader: false } });
+    const result = projection.generate(ir, {
+      surface: 'dart.providers',
+      options: { emitHeader: false },
+    });
 
     const code = result.artifacts[0].code;
     expect(code).toContain("import 'package:flutter_riverpod/flutter_riverpod.dart'");
@@ -203,19 +217,19 @@ describe('Dart Projection End-to-End Verification', () => {
       options: { emitPackageFiles: true, packageName: 'my_app_sdk', emitHeader: false },
     });
 
-    const ids = result.artifacts.map(a => a.id);
+    const ids = result.artifacts.map((a) => a.id);
     expect(ids).toContain('dart.models');
     expect(ids).toContain('dart.client');
     expect(ids).toContain('dart.providers');
     expect(ids).toContain('dart.package.pubspec');
     expect(ids).toContain('dart.package.readme');
 
-    const pubspec = result.artifacts.find(a => a.id === 'dart.package.pubspec');
+    const pubspec = result.artifacts.find((a) => a.id === 'dart.package.pubspec');
     expect(pubspec?.code).toContain('name: my_app_sdk');
     expect(pubspec?.code).toContain('dio: ^5.4.0');
     expect(pubspec?.code).toContain('flutter_riverpod');
 
-    const readme = result.artifacts.find(a => a.id === 'dart.package.readme');
+    const readme = result.artifacts.find((a) => a.id === 'dart.package.readme');
     expect(readme?.code).toContain('my_app_sdk');
     expect(readme?.code).toContain('ManifestClient');
   });
@@ -236,8 +250,14 @@ describe('Dart Projection End-to-End Verification', () => {
   });
 
   it('produces deterministic output', () => {
-    const result1 = projection.generate(ir, { surface: 'dart.entity', options: { emitHeader: false } });
-    const result2 = projection.generate(ir, { surface: 'dart.entity', options: { emitHeader: false } });
+    const result1 = projection.generate(ir, {
+      surface: 'dart.entity',
+      options: { emitHeader: false },
+    });
+    const result2 = projection.generate(ir, {
+      surface: 'dart.entity',
+      options: { emitHeader: false },
+    });
 
     expect(result1.artifacts[0].code).toBe(result2.artifacts[0].code);
     expect(result1.artifacts[1].code).toBe(result2.artifacts[1].code);

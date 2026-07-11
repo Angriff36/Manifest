@@ -48,11 +48,11 @@ export function collectPayloadChains(node: unknown, out: string[][]): void {
       out.push(chain);
       return;
     }
-    walkExpressionChildren(expr, child => collectPayloadChains(child, out));
+    walkExpressionChildren(expr, (child) => collectPayloadChains(child, out));
     return;
   }
 
-  walkExpressionChildren(expr, child => collectPayloadChains(child, out));
+  walkExpressionChildren(expr, (child) => collectPayloadChains(child, out));
 }
 
 export function buildEmittersByEvent(commands: IRCommand[]): Map<string, CommandEmitter[]> {
@@ -63,11 +63,11 @@ export function buildEmittersByEvent(commands: IRCommand[]): Map<string, Command
       list.push({
         entity: cmd.entity ?? '',
         command: cmd.name,
-        paramNames: new Set(cmd.parameters.map(p => p.name)),
+        paramNames: new Set(cmd.parameters.map((p) => p.name)),
         explicitPayloadFieldNames: new Set(
           cmd.emitPayloads
-            ?.filter(payload => payload.eventName === ev)
-            .flatMap(payload => payload.fields.map(field => field.name)) ?? [],
+            ?.filter((payload) => payload.eventName === ev)
+            .flatMap((payload) => payload.fields.map((field) => field.name)) ?? [],
         ),
       });
       emittersByEvent.set(ev, list);

@@ -17,6 +17,7 @@ use "./path/to/other.manifest"
 ```
 
 **Rules:**
+
 - Path must be relative (`./` or `../`)
 - Path must end with `.manifest`
 - `use` declarations MUST appear before all other declarations in the file
@@ -67,12 +68,12 @@ entity Order {
 
 ## Errors
 
-| Condition | Result |
-|-----------|--------|
-| Circular `use` chain | Compile error with cycle path |
-| Absolute path | `use path must be relative` |
-| Wrong extension | `use path must end with '.manifest'` |
-| `use` after other declarations | Parse error |
+| Condition                      | Result                               |
+| ------------------------------ | ------------------------------------ |
+| Circular `use` chain           | Compile error with cycle path        |
+| Absolute path                  | `use path must be relative`          |
+| Wrong extension                | `use path must end with '.manifest'` |
+| `use` after other declarations | Parse error                          |
 
 ## Relationship to modules
 

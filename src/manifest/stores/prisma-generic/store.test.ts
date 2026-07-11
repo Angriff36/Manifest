@@ -74,8 +74,12 @@ describe('GenericPrismaStore', () => {
   });
 
   it('throws when metadata or delegate is missing', () => {
-    expect(() => new GenericPrismaStore({}, 'Missing', 't1', metadata)).toThrow(/no Prisma metadata/);
-    expect(() => new GenericPrismaStore({ widget: {} }, 'Widget', 't1', metadata)).toThrow(/no delegate/);
+    expect(() => new GenericPrismaStore({}, 'Missing', 't1', metadata)).toThrow(
+      /no Prisma metadata/,
+    );
+    expect(() => new GenericPrismaStore({ widget: {} }, 'Widget', 't1', metadata)).toThrow(
+      /no delegate/,
+    );
   });
 });
 
@@ -115,10 +119,50 @@ describe('GenericPrismaStore tenant column resolution', () => {
         whereAccessor: 'id',
         hasDeletedAt: true,
         fields: [
-          { name: 'id', irName: 'id', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: true },
-          { name: 'name', irName: 'name', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: false },
-          { name: 'tenant_id', irName: 'tenantId', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: false },
-          { name: 'deleted_at', irName: 'deletedAt', type: 'DateTime', isEnum: false, isList: false, optional: true, hasDefault: false, isUpdatedAt: false, isId: false },
+          {
+            name: 'id',
+            irName: 'id',
+            type: 'String',
+            isEnum: false,
+            isList: false,
+            optional: false,
+            hasDefault: false,
+            isUpdatedAt: false,
+            isId: true,
+          },
+          {
+            name: 'name',
+            irName: 'name',
+            type: 'String',
+            isEnum: false,
+            isList: false,
+            optional: false,
+            hasDefault: false,
+            isUpdatedAt: false,
+            isId: false,
+          },
+          {
+            name: 'tenant_id',
+            irName: 'tenantId',
+            type: 'String',
+            isEnum: false,
+            isList: false,
+            optional: false,
+            hasDefault: false,
+            isUpdatedAt: false,
+            isId: false,
+          },
+          {
+            name: 'deleted_at',
+            irName: 'deletedAt',
+            type: 'DateTime',
+            isEnum: false,
+            isList: false,
+            optional: true,
+            hasDefault: false,
+            isUpdatedAt: false,
+            isId: false,
+          },
         ],
       },
     };
@@ -156,9 +200,39 @@ describe('GenericPrismaStore tenant column resolution', () => {
         whereAccessor: 'id',
         hasDeletedAt: true,
         fields: [
-          { name: 'id', irName: 'id', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: true },
-          { name: 'name', irName: 'name', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: false },
-          { name: 'deleted_at', irName: 'deletedAt', type: 'DateTime', isEnum: false, isList: false, optional: true, hasDefault: false, isUpdatedAt: false, isId: false },
+          {
+            name: 'id',
+            irName: 'id',
+            type: 'String',
+            isEnum: false,
+            isList: false,
+            optional: false,
+            hasDefault: false,
+            isUpdatedAt: false,
+            isId: true,
+          },
+          {
+            name: 'name',
+            irName: 'name',
+            type: 'String',
+            isEnum: false,
+            isList: false,
+            optional: false,
+            hasDefault: false,
+            isUpdatedAt: false,
+            isId: false,
+          },
+          {
+            name: 'deleted_at',
+            irName: 'deletedAt',
+            type: 'DateTime',
+            isEnum: false,
+            isList: false,
+            optional: true,
+            hasDefault: false,
+            isUpdatedAt: false,
+            isId: false,
+          },
         ],
       },
     };
@@ -189,9 +263,39 @@ describe('GenericPrismaStore tenant column resolution', () => {
           hasDeletedAt: false,
           softDeleteStatus: { column: 'status', deletedValue: 'deleted' },
           fields: [
-            { name: 'id', irName: 'id', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: true },
-            { name: 'status', irName: 'status', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: true, isUpdatedAt: false, isId: false },
-            { name: 'tenantId', irName: 'tenantId', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: false },
+            {
+              name: 'id',
+              irName: 'id',
+              type: 'String',
+              isEnum: false,
+              isList: false,
+              optional: false,
+              hasDefault: false,
+              isUpdatedAt: false,
+              isId: true,
+            },
+            {
+              name: 'status',
+              irName: 'status',
+              type: 'String',
+              isEnum: false,
+              isList: false,
+              optional: false,
+              hasDefault: true,
+              isUpdatedAt: false,
+              isId: false,
+            },
+            {
+              name: 'tenantId',
+              irName: 'tenantId',
+              type: 'String',
+              isEnum: false,
+              isList: false,
+              optional: false,
+              hasDefault: false,
+              isUpdatedAt: false,
+              isId: false,
+            },
           ],
         },
       };
@@ -199,7 +303,12 @@ describe('GenericPrismaStore tenant column resolution', () => {
 
     it('soft-deletes by setting the status column to the deleted value (no hard delete)', async () => {
       const delegate = mockDelegate();
-      const store = new GenericPrismaStore({ widget: delegate }, 'Widget', 'tenant-1', statusMeta());
+      const store = new GenericPrismaStore(
+        { widget: delegate },
+        'Widget',
+        'tenant-1',
+        statusMeta(),
+      );
 
       const ok = await store.delete('w1');
       expect(ok).toBe(true);
@@ -212,14 +321,21 @@ describe('GenericPrismaStore tenant column resolution', () => {
 
     it('excludes status-deleted rows from getAll and getById reads', async () => {
       const delegate = mockDelegate();
-      const store = new GenericPrismaStore({ widget: delegate }, 'Widget', 'tenant-1', statusMeta());
+      const store = new GenericPrismaStore(
+        { widget: delegate },
+        'Widget',
+        'tenant-1',
+        statusMeta(),
+      );
 
       await store.getAll();
       const findManyArgs = delegate.findMany.mock.calls[0][0] as { where: Record<string, unknown> };
       expect(findManyArgs.where.status).toEqual({ not: 'deleted' });
 
       await store.getById('w1');
-      const findFirstArgs = delegate.findFirst.mock.calls[0][0] as { where: Record<string, unknown> };
+      const findFirstArgs = delegate.findFirst.mock.calls[0][0] as {
+        where: Record<string, unknown>;
+      };
       expect(findFirstArgs.where.status).toEqual({ not: 'deleted' });
     });
   });

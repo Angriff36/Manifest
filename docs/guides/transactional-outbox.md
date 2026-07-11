@@ -20,7 +20,7 @@ Ensure entity mutation and event persistence happen atomically in your storage t
 ```ts
 const result = await runtime.runCommand('createOrder', input, {
   entityName: 'Order',
-  instanceId: orderId
+  instanceId: orderId,
 });
 
 if (!result.success) return result;
@@ -33,7 +33,7 @@ await db.transaction(async (tx) => {
       eventName: event.name,
       channel: event.channel,
       payload: event.payload,
-      aggregateId: orderId
+      aggregateId: orderId,
     });
   }
 });

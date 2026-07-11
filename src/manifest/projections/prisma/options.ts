@@ -48,20 +48,13 @@ export interface ForeignKeyConfig {
  * is expected to merge them into an existing schema.prisma).
  */
 export type PrismaProvider =
-  | 'postgresql'
-  | 'mysql'
-  | 'sqlite'
-  | 'sqlserver'
-  | 'mongodb'
-  | 'cockroachdb';
+  'postgresql' | 'mysql' | 'sqlite' | 'sqlserver' | 'mongodb' | 'cockroachdb';
 
 /**
  * One index entry. Plain `string[]` means a composite index on those columns;
  * the object form lets the consumer supply a Prisma `name`.
  */
-export type IndexEntry =
-  | string[]
-  | { fields: string[]; name?: string };
+export type IndexEntry = string[] | { fields: string[]; name?: string };
 
 /**
  * Multi-schema layout config.
@@ -304,7 +297,9 @@ export const PRISMA_PROJECTION_DEFAULTS: Required<Pick<PrismaProjectionOptions, 
  * happens earlier in the CLI's config loader. Once normalized, the
  * projection trusts the contents.
  */
-export function normalizeOptions(raw: Record<string, unknown> | undefined): PrismaProjectionOptions {
+export function normalizeOptions(
+  raw: Record<string, unknown> | undefined,
+): PrismaProjectionOptions {
   const input = (raw ?? {}) as Partial<PrismaProjectionOptions>;
   return {
     provider: input.provider,

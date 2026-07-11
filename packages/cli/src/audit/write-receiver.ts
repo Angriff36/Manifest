@@ -24,7 +24,7 @@ function escapeRegExp(s: string): string {
  */
 export function buildDirectWriteRegex(receiver: string = DEFAULT_WRITE_RECEIVER): RegExp {
   return new RegExp(
-    `\\b${escapeRegExp(receiver)}\\s*\\.\\s*\\w+\\s*\\.\\s*(${WRITE_METHODS})\\s*\\(`
+    `\\b${escapeRegExp(receiver)}\\s*\\.\\s*\\w+\\s*\\.\\s*(${WRITE_METHODS})\\s*\\(`,
   );
 }
 
@@ -36,6 +36,6 @@ export function buildDirectWriteRegex(receiver: string = DEFAULT_WRITE_RECEIVER)
 export function buildEntityWriteRegex(receiver: string = DEFAULT_WRITE_RECEIVER): RegExp {
   return new RegExp(
     `\\b${escapeRegExp(receiver)}\\s*\\.\\s*(\\w+)\\s*\\.\\s*(${WRITE_METHODS})\\s*\\(`,
-    'g'
+    'g',
   );
 }

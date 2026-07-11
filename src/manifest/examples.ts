@@ -78,7 +78,7 @@ store Station in supabase { table: "stations" }
 // API with server generation
 expose PrepTask as rest server "/api/tasks" {
   list, get, create, update
-}`
+}`,
   },
   {
     name: 'Order with Computed',
@@ -130,7 +130,7 @@ entity Order {
 }
 
 store Order in localStorage { key: "orders" }
-expose Order as function`
+expose Order as function`,
   },
   {
     name: 'User with Policies',
@@ -187,7 +187,7 @@ store Team in supabase { table: "teams" }
 
 expose User as rest server "/api/users" {
   list, get, create, update, delete
-}`
+}`,
   },
   {
     name: 'Realtime Events',
@@ -260,7 +260,7 @@ store Order in supabase
 store Product in supabase
 
 expose Order as rest server "/api/orders"
-expose Product as rest server "/api/products"`
+expose Product as rest server "/api/products"`,
   },
   {
     name: 'E-commerce System',
@@ -386,7 +386,7 @@ compose CheckoutFlow {
 
 expose Customer as rest server "/api/customers"
 expose Product as rest server "/api/products"
-expose Order as rest server "/api/orders"`
+expose Order as rest server "/api/orders"`,
   },
   {
     name: 'Simple Counter',
@@ -437,6 +437,6 @@ entity Counter {
 store Counter in localStorage { key: "counter" }
 
 // Generate function factory
-expose Counter as function`
-  }
+expose Counter as function`,
+  },
 ];

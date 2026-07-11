@@ -118,22 +118,62 @@ function randInt(rng: () => number, min: number, max: number): number {
 // ---------- Realistic string templates ----------
 
 const FIRST_NAMES = [
-  'Alice', 'Bob', 'Carol', 'David', 'Eve', 'Frank', 'Grace', 'Hank',
-  'Ivy', 'Jack', 'Kate', 'Leo', 'Maya', 'Nick', 'Olive', 'Paul',
+  'Alice',
+  'Bob',
+  'Carol',
+  'David',
+  'Eve',
+  'Frank',
+  'Grace',
+  'Hank',
+  'Ivy',
+  'Jack',
+  'Kate',
+  'Leo',
+  'Maya',
+  'Nick',
+  'Olive',
+  'Paul',
 ];
 const LAST_NAMES = [
-  'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller',
-  'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez',
+  'Smith',
+  'Johnson',
+  'Williams',
+  'Brown',
+  'Jones',
+  'Garcia',
+  'Miller',
+  'Davis',
+  'Rodriguez',
+  'Martinez',
+  'Hernandez',
+  'Lopez',
 ];
 const DOMAINS = ['example.com', 'test.org', 'demo.io', 'mail.net'];
 const STATUS_WORDS = ['active', 'pending', 'archived', 'draft', 'published'];
 const TITLE_WORDS = [
-  'Introduction to', 'Advanced', 'Practical', 'Modern', 'Essential',
-  'Building', 'Designing', 'Understanding', 'Mastering', 'Exploring',
+  'Introduction to',
+  'Advanced',
+  'Practical',
+  'Modern',
+  'Essential',
+  'Building',
+  'Designing',
+  'Understanding',
+  'Mastering',
+  'Exploring',
 ];
 const NOUN_WORDS = [
-  'Systems', 'Patterns', 'Architecture', 'Workflows', 'Practices',
-  'Foundations', 'Principles', 'Techniques', 'Strategies', 'Concepts',
+  'Systems',
+  'Patterns',
+  'Architecture',
+  'Workflows',
+  'Practices',
+  'Foundations',
+  'Principles',
+  'Techniques',
+  'Strategies',
+  'Concepts',
 ];
 
 function titleCase(s: string): string {
@@ -194,7 +234,7 @@ function generateNumber(rng: () => number, propertyName: string, isInt: boolean)
   }
   if (name === 'year') return randInt(rng, 2020, 2025);
   if (name === 'rating' || name === 'score') {
-    return Math.round((rng() * 5) * 10) / 10;
+    return Math.round(rng() * 5 * 10) / 10;
   }
   if (isInt) return randInt(rng, 1, 1000);
   return Math.round(rng() * 10000 * 100) / 100;
@@ -210,11 +250,16 @@ function generateTimestamp(rng: () => number): string {
 
 function resolveIRValue(v: IRValue): unknown {
   switch (v.kind) {
-    case 'string': return v.value;
-    case 'number': return v.value;
-    case 'boolean': return v.value;
-    case 'null': return null;
-    case 'array': return v.elements.map(resolveIRValue);
+    case 'string':
+      return v.value;
+    case 'number':
+      return v.value;
+    case 'boolean':
+      return v.value;
+    case 'null':
+      return null;
+    case 'array':
+      return v.elements.map(resolveIRValue);
     case 'object': {
       const out: Record<string, unknown> = {};
       for (const [k, val] of Object.entries(v.properties)) {
@@ -222,7 +267,8 @@ function resolveIRValue(v: IRValue): unknown {
       }
       return out;
     }
-    default: return null;
+    default:
+      return null;
   }
 }
 
@@ -298,13 +344,15 @@ function generateId(rng: () => number, entityName: string): string {
   // Fully deterministic — must not read wall-clock time, otherwise FK
   // references generated in a later entity call can't match ids minted
   // earlier in the same run.
-  return `${entityName.toLowerCase()}_${Math.floor(rng() * 0xffffffff).toString(36).padStart(7, '0')}`;
+  return `${entityName.toLowerCase()}_${Math.floor(rng() * 0xffffffff)
+    .toString(36)
+    .padStart(7, '0')}`;
 }
 
 function generatePropertyValue(
   prop: IRProperty,
   ctx: GeneratorContext,
-  seenValues: Set<string>
+  seenValues: Set<string>,
 ): unknown {
   const typeName = baseTypeName(prop.type);
 
@@ -335,7 +383,10 @@ function generatePropertyValue(
     }
     if (typeName === 'uuid') {
       // RFC4122 v4-ish — deterministic enough for our purposes
-      const hex = (_n: number) => Math.floor(ctx.rng() * 0x100000000).toString(16).padStart(8, '0');
+      const hex = (_n: number) =>
+        Math.floor(ctx.rng() * 0x100000000)
+          .toString(16)
+          .padStart(8, '0');
       return `${hex(0)}-${hex(0).slice(0, 4)}-4${hex(0).slice(0, 3)}-${hex(0).slice(0, 4)}-${hex(0)}${hex(0).slice(0, 4)}`;
     }
     if (typeName === 'array') {
@@ -377,7 +428,7 @@ function generatePropertyValue(
 function generateEntityRecords(
   entity: IREntity,
   count: number,
-  ctx: GeneratorContext
+  ctx: GeneratorContext,
 ): Record<string, unknown>[] {
   const records: Record<string, unknown>[] = [];
   const seenValuesPerProp = new Map<string, Set<string>>();
@@ -488,10 +539,7 @@ function formatSupabase(ir: IR, data: Record<string, Record<string, unknown>[]>)
 
 // ---------- Main command ----------
 
-function resolveCount(
-  profile: SeedProfile,
-  override: number | undefined
-): number {
+function resolveCount(profile: SeedProfile, override: number | undefined): number {
   if (override !== undefined && override >= 0) return override;
   return PROFILE_COUNTS[profile];
 }
@@ -503,7 +551,7 @@ function pickEntities(ir: IR, entityFilter: string[] | undefined): IREntity[] {
   if (filtered.length === 0) {
     throw new Error(
       `No matching entities for --entity ${entityFilter.join(', ')}. ` +
-        `Available: ${ir.entities.map((e) => e.name).join(', ')}`
+        `Available: ${ir.entities.map((e) => e.name).join(', ')}`,
     );
   }
   return filtered;
@@ -568,7 +616,10 @@ export async function seedCommand(options: SeedOptions = {}): Promise<void> {
       const ctx: GeneratorContext = { rng, generatedIds };
       const records = generateEntityRecords(entity, count, ctx);
       data[entity.name] = records;
-      generatedIds.set(entity.name, records.map((r) => String(r['id'])));
+      generatedIds.set(
+        entity.name,
+        records.map((r) => String(r['id'])),
+      );
       counts[entity.name] = records.length;
     }
 
@@ -603,7 +654,7 @@ export async function seedCommand(options: SeedOptions = {}): Promise<void> {
     await fs.writeFile(outputPath, body, 'utf-8');
 
     spinner.succeed(
-      `Seeded ${total} record(s) across ${entities.length} entity/entities → ${path.relative(process.cwd(), outputPath)}`
+      `Seeded ${total} record(s) across ${entities.length} entity/entities → ${path.relative(process.cwd(), outputPath)}`,
     );
 
     // Brief human summary
@@ -617,7 +668,7 @@ export async function seedCommand(options: SeedOptions = {}): Promise<void> {
     console.log(`  ${chalk.gray('Output:')}     ${path.relative(process.cwd(), outputPath)}`);
   } catch (error: unknown) {
     spinner.fail(
-      `Seed generation failed: ${error instanceof Error ? error.message : String(error)}`
+      `Seed generation failed: ${error instanceof Error ? error.message : String(error)}`,
     );
     process.exit(1);
   }

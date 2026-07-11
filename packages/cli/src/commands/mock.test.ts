@@ -77,9 +77,7 @@ describe('deriveRoutes', () => {
   it('creates POST routes for entity commands', () => {
     const ir = {
       entities: [{ name: 'Task', properties: [], commands: ['startProgress'] }],
-      commands: [
-        { name: 'startProgress', entity: 'Task', guards: [], actions: [] },
-      ],
+      commands: [{ name: 'startProgress', entity: 'Task', guards: [], actions: [] }],
       policies: [],
       events: [],
       stores: [],
@@ -98,16 +96,14 @@ describe('deriveRoutes', () => {
   it('skips commands without an entity', () => {
     const ir = {
       entities: [],
-      commands: [
-        { name: 'globalAction', guards: [], actions: [] },
-      ],
+      commands: [{ name: 'globalAction', guards: [], actions: [] }],
       policies: [],
       events: [],
       stores: [],
     };
 
     const routes = deriveRoutes(ir);
-    const postRoutes = routes.filter(r => r.method === 'POST');
+    const postRoutes = routes.filter((r) => r.method === 'POST');
     expect(postRoutes).toHaveLength(0);
   });
 
@@ -139,7 +135,7 @@ describe('commandResultToStatus', () => {
           contextKeys: [],
         },
         emittedEvents: [],
-      })
+      }),
     ).toBe(403);
   });
 
@@ -153,7 +149,7 @@ describe('commandResultToStatus', () => {
           formatted: 'guard failed',
         },
         emittedEvents: [],
-      })
+      }),
     ).toBe(422);
   });
 
@@ -163,7 +159,7 @@ describe('commandResultToStatus', () => {
         success: false,
         concurrencyConflict: {} as any,
         emittedEvents: [],
-      })
+      }),
     ).toBe(409);
   });
 
@@ -173,7 +169,7 @@ describe('commandResultToStatus', () => {
         success: false,
         error: 'something went wrong',
         emittedEvents: [],
-      })
+      }),
     ).toBe(400);
   });
 });
@@ -182,7 +178,10 @@ describe('commandResultToStatus', () => {
 // Integration tests — real server on port 0 (OS-assigned)
 // ---------------------------------------------------------------------------
 
-function fetch(url: string, options?: { method?: string; body?: string }): Promise<{
+function fetch(
+  url: string,
+  options?: { method?: string; body?: string },
+): Promise<{
   status: number;
   json: () => Promise<unknown>;
 }> {
@@ -208,7 +207,7 @@ function fetch(url: string, options?: { method?: string; body?: string }): Promi
             json: async () => JSON.parse(raw),
           });
         });
-      }
+      },
     );
 
     req.on('error', reject);
@@ -246,11 +245,15 @@ entity Task {
 `;
 
     const { ir } = await compileToIR(manifestSource);
-     
-    const engine = new RuntimeEngine(ir as any, {}, {
-      deterministicMode: true,
-      requireValidProvenance: false,
-    });
+
+    const engine = new RuntimeEngine(
+      ir as any,
+      {},
+      {
+        deterministicMode: true,
+        requireValidProvenance: false,
+      },
+    );
 
     const routes = deriveRoutes(ir as any);
     server = createMockServer(engine, routes, { cors: true });
@@ -301,7 +304,7 @@ entity Task {
   it('unknown route returns 404', async () => {
     const res = await fetch(`${baseUrl}/api/nonexistent/list`);
     expect(res.status).toBe(404);
-    const body = await res.json() as { error: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe('Not found');
   });
 

@@ -63,11 +63,7 @@ function irTypeToTsParam(typeName: string): string {
  * Derive a stable route ID from source information.
  * Deterministic: same input always produces same ID.
  */
-function deriveRouteId(
-  source: RouteEntry['source'],
-  method: string,
-  pathSuffix: string
-): string {
+function deriveRouteId(source: RouteEntry['source'], method: string, pathSuffix: string): string {
   switch (source.kind) {
     case 'entity-read':
       return `${source.entity}.${method.toLowerCase()}.${pathSuffix}`;
@@ -91,7 +87,7 @@ function deriveEntityReadRoutes(
   entity: IREntity,
   contract: RouteContract,
   includeAuth: boolean,
-  includeTenant: boolean
+  includeTenant: boolean,
 ): RouteEntry[] {
   const routes: RouteEntry[] = [];
 
@@ -137,7 +133,7 @@ function deriveCommandRoutes(
   includeAuth: boolean,
   includeTenant: boolean,
   dispatcherEnabled: boolean,
-  concreteEnabled: boolean
+  concreteEnabled: boolean,
 ): RouteEntry[] {
   if (!command.entity) return [];
   const entity = command.entity;
@@ -214,7 +210,7 @@ function manualToRouteEntry(decl: ManualRouteDeclaration): RouteEntry {
  */
 function buildRouteManifest(
   ir: IR,
-  options: RoutesProjectionOptions
+  options: RoutesProjectionOptions,
 ): { manifest: RouteManifest; diagnostics: ProjectionDiagnostic[] } {
   const diagnostics: ProjectionDiagnostic[] = [];
   // Resolve URL layout through the shared contract so this surface matches the
@@ -325,9 +321,9 @@ function generateTypedPathBuilders(manifest: RouteManifest): string {
   lines.push('');
 
   // Group routes by source for organized output
-  const entityReadRoutes = manifest.routes.filter(r => r.source.kind === 'entity-read');
-  const commandRoutes = manifest.routes.filter(r => r.source.kind === 'command');
-  const manualRoutes = manifest.routes.filter(r => r.source.kind === 'manual');
+  const entityReadRoutes = manifest.routes.filter((r) => r.source.kind === 'entity-read');
+  const commandRoutes = manifest.routes.filter((r) => r.source.kind === 'command');
+  const manualRoutes = manifest.routes.filter((r) => r.source.kind === 'manual');
 
   // --- Entity read helpers ---
   if (entityReadRoutes.length > 0) {
@@ -346,8 +342,8 @@ function generateTypedPathBuilders(manifest: RouteManifest): string {
     }
 
     for (const [entity, routes] of byEntity) {
-      const listRoute = routes.find(r => r.path.endsWith('/list'));
-      const detailRoute = routes.find(r => r.params.some(p => p.name === 'id'));
+      const listRoute = routes.find((r) => r.path.endsWith('/list'));
+      const detailRoute = routes.find((r) => r.params.some((p) => p.name === 'id'));
 
       if (listRoute) {
         lines.push(`/** ${listRoute.method} ${listRoute.path} */`);
@@ -400,18 +396,21 @@ function generateTypedPathBuilders(manifest: RouteManifest): string {
       if (route.source.kind !== 'manual') continue;
 
       // Build function name from manual route id
-      const fnName = route.source.id
-        .replace(/[^a-zA-Z0-9]+/g, ' ')
-        .trim()
-        .split(/\s+/)
-        .map((w, i) => (i === 0 ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1).toLowerCase()))
-        .join('') + 'Path';
+      const fnName =
+        route.source.id
+          .replace(/[^a-zA-Z0-9]+/g, ' ')
+          .trim()
+          .split(/\s+/)
+          .map((w, i) =>
+            i === 0 ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1).toLowerCase(),
+          )
+          .join('') + 'Path';
 
       // Determine if route has path params
-      const pathParams = route.params.filter(p => p.location === 'path');
+      const pathParams = route.params.filter((p) => p.location === 'path');
 
       if (pathParams.length > 0) {
-        const paramList = pathParams.map(p => `${p.name}: string`).join(', ');
+        const paramList = pathParams.map((p) => `${p.name}: string`).join(', ');
         lines.push(`/** ${route.method} ${route.path} */`);
         lines.push(`export function ${fnName}(${paramList}): string {`);
 
@@ -448,7 +447,9 @@ function generateTypedPathBuilders(manifest: RouteManifest): string {
   lines.push('');
   lines.push('export const ROUTE_MANIFEST: readonly RouteMetadata[] = [');
   for (const route of manifest.routes) {
-    lines.push(`  { id: "${route.id}", path: "${route.path}", method: "${route.method}", source: "${route.source.kind}", auth: ${route.auth}, tenant: ${route.tenant} },`);
+    lines.push(
+      `  { id: "${route.id}", path: "${route.path}", method: "${route.method}", source: "${route.source.kind}", auth: ${route.auth}, tenant: ${route.tenant} },`,
+    );
   }
   lines.push('] as const;');
   lines.push('');
@@ -469,7 +470,8 @@ function generateTypedPathBuilders(manifest: RouteManifest): string {
  */
 export class RoutesProjection implements ProjectionTarget {
   readonly name = 'routes';
-  readonly description = 'Canonical route surface — deterministic route manifest and typed path builders';
+  readonly description =
+    'Canonical route surface — deterministic route manifest and typed path builders';
   readonly surfaces = ['routes.manifest', 'routes.ts'] as const;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
@@ -479,29 +481,33 @@ export class RoutesProjection implements ProjectionTarget {
       case 'routes.manifest': {
         const { manifest, diagnostics } = buildRouteManifest(ir, options);
         return {
-          artifacts: [{
-            id: 'routes.manifest',
-            pathHint: 'routes.manifest.json',
-            contentType: 'json',
-            code: JSON.stringify(manifest, null, 2),
-          }],
+          artifacts: [
+            {
+              id: 'routes.manifest',
+              pathHint: 'routes.manifest.json',
+              contentType: 'json',
+              code: JSON.stringify(manifest, null, 2),
+            },
+          ],
           diagnostics,
         };
       }
 
       case 'routes.ts': {
         const { manifest, diagnostics } = buildRouteManifest(ir, options);
-        if (diagnostics.some(d => d.severity === 'error')) {
+        if (diagnostics.some((d) => d.severity === 'error')) {
           return { artifacts: [], diagnostics };
         }
         const code = generateTypedPathBuilders(manifest);
         return {
-          artifacts: [{
-            id: 'routes.ts',
-            pathHint: 'src/routes.ts',
-            contentType: 'typescript',
-            code,
-          }],
+          artifacts: [
+            {
+              id: 'routes.ts',
+              pathHint: 'src/routes.ts',
+              contentType: 'typescript',
+              code,
+            },
+          ],
           diagnostics,
         };
       }
@@ -509,15 +515,23 @@ export class RoutesProjection implements ProjectionTarget {
       default:
         return {
           artifacts: [],
-          diagnostics: [{
-            severity: 'error',
-            code: 'UNKNOWN_SURFACE',
-            message: `Unknown surface: "${request.surface}". Available: routes.manifest, routes.ts`,
-          }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'UNKNOWN_SURFACE',
+              message: `Unknown surface: "${request.surface}". Available: routes.manifest, routes.ts`,
+            },
+          ],
         };
     }
   }
 }
 
 // Re-export types for consumers
-export type { RouteEntry, RouteManifest, RouteParam, RoutesProjectionOptions, ManualRouteDeclaration } from './types';
+export type {
+  RouteEntry,
+  RouteManifest,
+  RouteParam,
+  RoutesProjectionOptions,
+  ManualRouteDeclaration,
+} from './types';

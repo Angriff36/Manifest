@@ -130,7 +130,11 @@ describe('Runtime Engine Benchmarks', () => {
       const result = await compileToIR(simpleSource);
       const ir = result.ir!;
       const engine = new RuntimeEngine(ir, basicContext);
-      await engine.checkConstraints('User', { id: 'user-1', name: 'John Doe', email: 'john@example.com' });
+      await engine.checkConstraints('User', {
+        id: 'user-1',
+        name: 'John Doe',
+        email: 'john@example.com',
+      });
     });
 
     bench('check 13 constraints (medium)', async () => {

@@ -1,7 +1,7 @@
 ---
-title: "Flutter / Dart model projection"
-sidebarTitle: "Flutter"
-description: "Generate Dart model classes with fromJson/toJson serialization, copyWith patterns, constraint validation, and Riverpod or Provider state management hooks from Manifest IR."
+title: 'Flutter / Dart model projection'
+sidebarTitle: 'Flutter'
+description: 'Generate Dart model classes with fromJson/toJson serialization, copyWith patterns, constraint validation, and Riverpod or Provider state management hooks from Manifest IR.'
 ---
 
 The Flutter projection generates type-safe Dart model classes from compiled Manifest IR. Use it when you are building a Flutter or Dart application and want Manifest entities represented as first-class Dart types with JSON serialization, equality, `copyWith`, constraint validation, and optional state management integration via Riverpod or Provider. The projection follows the same compile-time, app-agnostic contract as the [Pydantic projection](/projections/python-pydantic) but targets Dart conventions.
@@ -61,17 +61,17 @@ manifest generate ir/widget.ir.json --projection dart --surface dart.models --ou
 
 The projection maps Manifest IR types to Dart types:
 
-| Manifest type | Dart type |
-|---------------|-----------|
-| `string` | `String` |
-| `int` | `int` |
-| `number` / `float` | `double` |
-| `boolean` / `bool` | `bool` |
-| `datetime` | `DateTime` |
-| `uuid` | `String` |
-| `decimal` | `String` |
-| `array<T>` | `List<T>` |
-| `map<V>` | `Map<String, V>` |
+| Manifest type      | Dart type        |
+| ------------------ | ---------------- |
+| `string`           | `String`         |
+| `int`              | `int`            |
+| `number` / `float` | `double`         |
+| `boolean` / `bool` | `bool`           |
+| `datetime`         | `DateTime`       |
+| `uuid`             | `String`         |
+| `decimal`          | `String`         |
+| `array<T>`         | `List<T>`        |
+| `map<V>`           | `Map<String, V>` |
 
 Nullable types use Dart's `T?` syntax with null-checked JSON parsing. Enum types generate a Dart `enum` class with a `fromString` lookup factory. Computed properties are emitted as getter stubs annotated with a comment indicating they must be evaluated server-side.
 
@@ -142,7 +142,11 @@ class Order {
 ## Notes & limitations
 
 <Note>
-The projection generates syntactically valid Dart code with `camelCase` field names and `PascalCase` class names. The Dio HTTP client is the default networking layer for the `dart.client` surface. Computed properties are emitted as getter stubs only — they carry a comment noting that the value must be computed server-side, since Manifest computed properties are evaluated by the runtime engine, not by the client.
+  The projection generates syntactically valid Dart code with `camelCase` field names and
+  `PascalCase` class names. The Dio HTTP client is the default networking layer for the
+  `dart.client` surface. Computed properties are emitted as getter stubs only — they carry a comment
+  noting that the value must be computed server-side, since Manifest computed properties are
+  evaluated by the runtime engine, not by the client.
 </Note>
 
 The `dart.providers` surface generates Riverpod or Provider state management hooks that wrap the HTTP client methods. The generated providers handle loading, error, and data states following the conventions of the chosen state management library.

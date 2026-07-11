@@ -116,7 +116,7 @@ export class MemoryOutboxStore implements OutboxStore {
    * Not part of the OutboxStore contract — for tests and observability.
    */
   list(): OutboxEntry[] {
-    return this.entries.map(e => this.exposeEntry(e));
+    return this.entries.map((e) => this.exposeEntry(e));
   }
 
   /** Number of entries currently stored. */

@@ -47,14 +47,18 @@ const validData = {
 
 async function setup() {
   const { ir, diagnostics } = await compileToIR(source);
-  expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+  expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   expect(ir).not.toBeNull();
 
   let nextId = 0;
-  const engine = new RuntimeEngine(ir!, {}, {
-    now: () => FIXED_NOW,
-    generateId: () => `test-id-${++nextId}`,
-  });
+  const engine = new RuntimeEngine(
+    ir!,
+    {},
+    {
+      now: () => FIXED_NOW,
+      generateId: () => `test-id-${++nextId}`,
+    },
+  );
   return engine;
 }
 
@@ -110,11 +114,11 @@ describe('Date/time write-time validation', () => {
     const result = await engine.runCommand(
       'create',
       { ...validData, day: '2026-02-30' },
-      { entityName: 'Event' }
+      { entityName: 'Event' },
     );
 
     expect(result.success).toBe(false);
-    const outcome = result.constraintOutcomes?.find(o => o.code === 'E_TYPE_DATE');
+    const outcome = result.constraintOutcomes?.find((o) => o.code === 'E_TYPE_DATE');
     expect(outcome).toMatchObject({
       code: 'E_TYPE_DATE',
       constraintName: 'day',

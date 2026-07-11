@@ -454,8 +454,7 @@ describe('translateExpression — IRExpression to SQL', () => {
   });
 
   it('reports an error for an unknown identifier', () => {
-    const strictResolver = (name: string) =>
-      name === 'known' ? `col_${name}` : undefined;
+    const strictResolver = (name: string) => (name === 'known' ? `col_${name}` : undefined);
     const { diagnostics } = translateExpression(
       { kind: 'identifier', name: 'ghost' },
       strictResolver,

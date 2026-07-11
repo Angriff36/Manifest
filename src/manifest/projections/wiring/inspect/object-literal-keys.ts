@@ -26,8 +26,7 @@ export function scanObjectLiteralKeys(objectLiteral: string): ObjectLiteralKey[]
   let depthBracket = 0;
   let inStr: string | null = null;
 
-  const atTopLevel = () =>
-    depthBrace === 0 && depthParen === 0 && depthBracket === 0;
+  const atTopLevel = () => depthBrace === 0 && depthParen === 0 && depthBracket === 0;
 
   while (i < objectLiteral.length) {
     const ch = objectLiteral[i]!;
@@ -114,10 +113,7 @@ export function scanObjectLiteralKeys(objectLiteral: string): ObjectLiteralKey[]
       }
 
       // Shorthand: ident followed by `,` or `}`
-      if (
-        objectLiteral[afterName] === ',' ||
-        objectLiteral[afterName] === '}'
-      ) {
+      if (objectLiteral[afterName] === ',' || objectLiteral[afterName] === '}') {
         keys.push({
           name,
           shorthand: true,
@@ -286,7 +282,7 @@ export function extractObjectFieldNames(objectLiteral: string): string[] {
 
 /** True when `key` is a top-level property (explicit `key:` or shorthand `key`). */
 export function objectLiteralHasKey(objectLiteral: string, key: string): boolean {
-  return scanObjectLiteralKeys(objectLiteral).some(k => k.name === key);
+  return scanObjectLiteralKeys(objectLiteral).some((k) => k.name === key);
 }
 
 /**
@@ -296,7 +292,7 @@ export function readObjectLiteralFieldExpression(
   objectLiteral: string,
   key: string,
 ): string | undefined {
-  const hit = scanObjectLiteralKeys(objectLiteral).find(k => k.name === key);
+  const hit = scanObjectLiteralKeys(objectLiteral).find((k) => k.name === key);
   if (!hit) return undefined;
   if (hit.shorthand) return hit.name;
   return objectLiteral.slice(hit.valueStart, hit.valueEnd).trim();

@@ -38,13 +38,17 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write     # push version commit + tag, create the GitHub Release
-      id-token: write     # OIDC trusted publishing to npm (no NPM_TOKEN)
+      contents: write # push version commit + tag, create the GitHub Release
+      id-token: write # OIDC trusted publishing to npm (no NPM_TOKEN)
     steps:
       - uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
+          # Dedicated write deploy key. The main-branch ruleset exempts deploy
+          # keys so the publish-first workflow can push its release commit/tag
+          # after npm succeeds without granting general Actions bypass.
+          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
       - name: Setup pnpm
         # Version comes from the "packageManager" field in package.json.

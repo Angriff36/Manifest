@@ -3,7 +3,11 @@
  * Client types exclude server-owned fields; server helpers strip + inject.
  */
 
-import type { WiringContract, WiringCommandDescriptor, WiringParameterDescriptor } from './types.js';
+import type {
+  WiringContract,
+  WiringCommandDescriptor,
+  WiringParameterDescriptor,
+} from './types.js';
 
 function pascal(entity: string, command: string): string {
   const e = entity === '_program' ? '' : entity;
@@ -12,11 +16,11 @@ function pascal(entity: string, command: string): string {
 
 function emitClientInputType(cap: WiringCommandDescriptor): string {
   const name = `${pascal(cap.entity, cap.command)}ClientInput`;
-  const clientParams = cap.parameters.filter(p => p.ownership === 'client');
+  const clientParams = cap.parameters.filter((p) => p.ownership === 'client');
   if (clientParams.length === 0) {
     return `export type ${name} = Record<string, never>;`;
   }
-  const fields = clientParams.map(p => paramField(p)).join('\n');
+  const fields = clientParams.map((p) => paramField(p)).join('\n');
   return `export interface ${name} {\n${fields}\n}`;
 }
 
@@ -24,17 +28,21 @@ function paramField(p: WiringParameterDescriptor): string {
   const opt = p.required ? '' : '?';
   let ts = p.tsType;
   // Required date-like: exclude empty string at the type level when wire is string.
-  if (p.constraints.rejectEmptyString && p.required && (ts === 'string' || ts.startsWith('string'))) {
+  if (
+    p.constraints.rejectEmptyString &&
+    p.required &&
+    (ts === 'string' || ts.startsWith('string'))
+  ) {
     ts = 'string & {}'; // non-empty brand hint; runtime still validates
   }
   const lines = [`  ${p.name}${opt}: ${ts};`];
   if (p.constraints.enumValues?.length) {
-    lines.unshift(`  /** Allowed: ${p.constraints.enumValues.map(v => JSON.stringify(v)).join(' | ')} */`);
+    lines.unshift(
+      `  /** Allowed: ${p.constraints.enumValues.map((v) => JSON.stringify(v)).join(' | ')} */`,
+    );
   }
   if (p.constraints.min !== undefined || p.constraints.max !== undefined) {
-    lines.unshift(
-      `  /** Bounds: ${p.constraints.min ?? '-∞'}..${p.constraints.max ?? '∞'} */`,
-    );
+    lines.unshift(`  /** Bounds: ${p.constraints.min ?? '-∞'}..${p.constraints.max ?? '∞'} */`);
   }
   if (p.constraints.nonEmpty) {
     lines.unshift('  /** Non-empty string required (static). */');
@@ -46,11 +54,11 @@ function paramField(p: WiringParameterDescriptor): string {
 }
 
 function emitServerContextType(cap: WiringCommandDescriptor): string | null {
-  const serverParams = cap.parameters.filter(p => p.ownership === 'server');
+  const serverParams = cap.parameters.filter((p) => p.ownership === 'server');
   if (serverParams.length === 0) return null;
   const name = `${pascal(cap.entity, cap.command)}TrustedContext`;
   const fields = serverParams
-    .map(p => {
+    .map((p) => {
       const path = p.trustedSource ?? 'context';
       return `  /** Injected from ${path} */\n  ${p.name}: ${p.tsType};`;
     })
@@ -96,7 +104,9 @@ function emitBindFunction(cap: WiringCommandDescriptor): string {
 
   lines.push('');
   lines.push(`/** Invalidation targets after a successful ${cap.capabilityId}. */`);
-  lines.push(`export const ${base}Invalidation = ${JSON.stringify(cap.invalidation, null, 2)} as const;`);
+  lines.push(
+    `export const ${base}Invalidation = ${JSON.stringify(cap.invalidation, null, 2)} as const;`,
+  );
 
   if (cap.lifecycleTransitions.length > 0) {
     lines.push('');
@@ -159,7 +169,7 @@ export function generateWiringBindings(contract: WiringContract): string {
   lines.push('/** All capability ids in this contract (sorted). */');
   lines.push(
     `export const ALL_CAPABILITY_IDS = ${JSON.stringify(
-      contract.capabilities.map(c => c.capabilityId),
+      contract.capabilities.map((c) => c.capabilityId),
       null,
       2,
     )} as const;`,

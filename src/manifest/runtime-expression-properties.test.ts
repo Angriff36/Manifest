@@ -48,9 +48,12 @@ function createTestRuntime(context?: RuntimeContext): RuntimeEngine {
  * Helper for JavaScript identifiers
  */
 const jsIdentifier = fc
-  .array(fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789'.split('')), { minLength: 1, maxLength: 20 })
-  .map(chars => chars.join(''))
-  .filter(name => /^[a-zA-Z_]/.test(name));
+  .array(
+    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789'.split('')),
+    { minLength: 1, maxLength: 20 },
+  )
+  .map((chars) => chars.join(''))
+  .filter((name) => /^[a-zA-Z_]/.test(name));
 
 describe('Runtime Expression Evaluator - Property Tests', () => {
   describe('Literal Expressions', () => {
@@ -61,7 +64,7 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
           const expr: IRExpression = { kind: 'literal', value: { kind: 'string', value: s } };
           const result = await runtime['evaluateExpression'](expr, {});
           expect(result).toBe(s);
-        })
+        }),
       );
     });
 
@@ -72,7 +75,7 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
           const expr: IRExpression = { kind: 'literal', value: { kind: 'number', value: n } };
           const result = await runtime['evaluateExpression'](expr, {});
           expect(result).toBe(n);
-        })
+        }),
       );
     });
 
@@ -83,7 +86,7 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
           const expr: IRExpression = { kind: 'literal', value: { kind: 'boolean', value: b } };
           const result = await runtime['evaluateExpression'](expr, {});
           expect(result).toBe(b);
-        })
+        }),
       );
     });
 
@@ -100,15 +103,20 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(
           jsIdentifier,
-          fc.oneof(fc.string(), fc.float({ max: 1e6, min: -1e6, noNaN: true }), fc.boolean(), fc.constant(null)),
+          fc.oneof(
+            fc.string(),
+            fc.float({ max: 1e6, min: -1e6, noNaN: true }),
+            fc.boolean(),
+            fc.constant(null),
+          ),
           async (name, value) => {
             const runtime = createTestRuntime();
             const expr: IRExpression = { kind: 'identifier', name };
             const context = { [name]: value };
             const result = await runtime['evaluateExpression'](expr, context);
             expect(result).toBe(value);
-          }
-        )
+          },
+        ),
       );
     });
 
@@ -119,7 +127,7 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
           const expr: IRExpression = { kind: 'identifier', name };
           const result = await runtime['evaluateExpression'](expr, {});
           expect(result).toBeUndefined();
-        })
+        }),
       );
     });
   });
@@ -129,7 +137,13 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(
           fc.float({ max: 1e6, min: -1e6, noNaN: true, noDefaultInfinity: true }),
-          fc.float({ max: 1e6, min: -1e6, noNaN: true, minExcluded: true, noDefaultInfinity: true }),
+          fc.float({
+            max: 1e6,
+            min: -1e6,
+            noNaN: true,
+            minExcluded: true,
+            noDefaultInfinity: true,
+          }),
           fc.constantFrom('+', '-', '*', '/', '%', '==', '!=', '<', '>', '<=', '>='),
           async (a, b, op) => {
             const runtime = createTestRuntime();
@@ -157,8 +171,8 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
             } else {
               expect(result1).toEqual(result2);
             }
-          }
-        )
+          },
+        ),
       );
     });
 
@@ -172,8 +186,18 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
             const aExpr: IRExpression = { kind: 'literal', value: { kind: 'number', value: a } };
             const bExpr: IRExpression = { kind: 'literal', value: { kind: 'number', value: b } };
 
-            const abExpr: IRExpression = { kind: 'binary', operator: '+', left: aExpr, right: bExpr };
-            const baExpr: IRExpression = { kind: 'binary', operator: '+', left: bExpr, right: aExpr };
+            const abExpr: IRExpression = {
+              kind: 'binary',
+              operator: '+',
+              left: aExpr,
+              right: bExpr,
+            };
+            const baExpr: IRExpression = {
+              kind: 'binary',
+              operator: '+',
+              left: bExpr,
+              right: aExpr,
+            };
 
             const ab = await runtime['evaluateExpression'](abExpr, {});
             const ba = await runtime['evaluateExpression'](baExpr, {});
@@ -183,8 +207,8 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
             } else {
               expect(ab).toEqual(ba);
             }
-          }
-        )
+          },
+        ),
       );
     });
 
@@ -198,8 +222,18 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
             const aExpr: IRExpression = { kind: 'literal', value: { kind: 'number', value: a } };
             const bExpr: IRExpression = { kind: 'literal', value: { kind: 'number', value: b } };
 
-            const abExpr: IRExpression = { kind: 'binary', operator: '*', left: aExpr, right: bExpr };
-            const baExpr: IRExpression = { kind: 'binary', operator: '*', left: bExpr, right: aExpr };
+            const abExpr: IRExpression = {
+              kind: 'binary',
+              operator: '*',
+              left: aExpr,
+              right: bExpr,
+            };
+            const baExpr: IRExpression = {
+              kind: 'binary',
+              operator: '*',
+              left: bExpr,
+              right: aExpr,
+            };
 
             const ab = await runtime['evaluateExpression'](abExpr, {});
             const ba = await runtime['evaluateExpression'](baExpr, {});
@@ -209,22 +243,25 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
             } else {
               expect(ab).toEqual(ba);
             }
-          }
-        )
+          },
+        ),
       );
     });
 
     it('should satisfy equality reflexivity', async () => {
       await fc.assert(
-        fc.asyncProperty(fc.oneof(fc.string(), fc.float({ max: 1e6, min: -1e6, noNaN: true }), fc.boolean()), async (value) => {
-          const runtime = createTestRuntime();
-          const expr: IRExpression = { kind: 'literal', value: jsToIRValue(value) };
-          const result = await runtime['evaluateExpression'](
-            { kind: 'binary', operator: '==', left: expr, right: expr },
-            {}
-          );
-          expect(result).toBe(true);
-        })
+        fc.asyncProperty(
+          fc.oneof(fc.string(), fc.float({ max: 1e6, min: -1e6, noNaN: true }), fc.boolean()),
+          async (value) => {
+            const runtime = createTestRuntime();
+            const expr: IRExpression = { kind: 'literal', value: jsToIRValue(value) };
+            const result = await runtime['evaluateExpression'](
+              { kind: 'binary', operator: '==', left: expr, right: expr },
+              {},
+            );
+            expect(result).toBe(true);
+          },
+        ),
       );
     });
 
@@ -232,15 +269,18 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(fc.float({ max: 1e6, min: -1e6, noNaN: true }), async (x) => {
           const runtime = createTestRuntime();
-          const falseExpr: IRExpression = { kind: 'literal', value: { kind: 'boolean', value: false } };
+          const falseExpr: IRExpression = {
+            kind: 'literal',
+            value: { kind: 'boolean', value: false },
+          };
           const xExpr: IRExpression = { kind: 'literal', value: { kind: 'number', value: x } };
 
           const result = await runtime['evaluateExpression'](
             { kind: 'binary', operator: '&&', left: falseExpr, right: xExpr },
-            {}
+            {},
           );
           expect(result).toBe(false);
-        })
+        }),
       );
     });
 
@@ -248,15 +288,18 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(fc.float({ max: 1e6, min: -1e6, noNaN: true }), async (x) => {
           const runtime = createTestRuntime();
-          const trueExpr: IRExpression = { kind: 'literal', value: { kind: 'boolean', value: true } };
+          const trueExpr: IRExpression = {
+            kind: 'literal',
+            value: { kind: 'boolean', value: true },
+          };
           const xExpr: IRExpression = { kind: 'literal', value: { kind: 'number', value: x } };
 
           const result = await runtime['evaluateExpression'](
             { kind: 'binary', operator: '||', left: trueExpr, right: xExpr },
-            {}
+            {},
           );
           expect(result).toBe(true);
-        })
+        }),
       );
     });
 
@@ -269,10 +312,10 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
 
           const result = await runtime['evaluateExpression'](
             { kind: 'binary', operator: '+', left: aExpr, right: bExpr },
-            {}
+            {},
           );
           expect(result).toBe(a + b);
-        })
+        }),
       );
     });
   });
@@ -292,7 +335,7 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
           if (typeof result === 'number' && typeof original === 'number') {
             expect(Math.abs((result as number) - (original as number))).toBeLessThan(1e-10);
           }
-        })
+        }),
       );
     });
 
@@ -306,7 +349,7 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
 
           const result = await runtime['evaluateExpression'](not2, {});
           expect(result).toBe(b);
-        })
+        }),
       );
     });
   });
@@ -314,15 +357,21 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
   describe('Array Expression Properties', () => {
     it('should evaluate array literals correctly', async () => {
       await fc.assert(
-        fc.asyncProperty(fc.array(fc.float({ max: 100, min: -100, noNaN: true }), { minLength: 1, maxLength: 5 }), async (numbers) => {
-          const runtime = createTestRuntime();
-          const elements = numbers.map(n => ({ kind: 'literal' as const, value: { kind: 'number' as const, value: n } }));
-          const expr: IRExpression = { kind: 'array', elements };
+        fc.asyncProperty(
+          fc.array(fc.float({ max: 100, min: -100, noNaN: true }), { minLength: 1, maxLength: 5 }),
+          async (numbers) => {
+            const runtime = createTestRuntime();
+            const elements = numbers.map((n) => ({
+              kind: 'literal' as const,
+              value: { kind: 'number' as const, value: n },
+            }));
+            const expr: IRExpression = { kind: 'array', elements };
 
-          const result = await runtime['evaluateExpression'](expr, {});
-          expect(Array.isArray(result)).toBe(true);
-          expect((result as unknown[]).length).toBe(numbers.length);
-        })
+            const result = await runtime['evaluateExpression'](expr, {});
+            expect(Array.isArray(result)).toBe(true);
+            expect((result as unknown[]).length).toBe(numbers.length);
+          },
+        ),
       );
     });
   });
@@ -331,19 +380,21 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
     it('should evaluate object literals correctly', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.dictionary(fc.string(), fc.float({ max: 100, min: -100, noNaN: true }), { maxKeys: 3 }),
+          fc.dictionary(fc.string(), fc.float({ max: 100, min: -100, noNaN: true }), {
+            maxKeys: 3,
+          }),
           async (obj) => {
             const runtime = createTestRuntime();
             const properties = Object.entries(obj).map(([key, value]) => ({
               key,
-              value: { kind: 'literal' as const, value: { kind: 'number' as const, value } }
+              value: { kind: 'literal' as const, value: { kind: 'number' as const, value } },
             }));
             const expr: IRExpression = { kind: 'object', properties };
 
             const result = await runtime['evaluateExpression'](expr, {});
             expect(result && typeof result === 'object').toBe(true);
-          }
-        )
+          },
+        ),
       );
     });
   });
@@ -353,16 +404,19 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(fc.float({ max: 1e6, min: -1e6, noNaN: true }), async (n) => {
           const runtime = createTestRuntime();
-          const condition: IRExpression = { kind: 'literal', value: { kind: 'boolean', value: true } };
+          const condition: IRExpression = {
+            kind: 'literal',
+            value: { kind: 'boolean', value: true },
+          };
           const consequent: IRExpression = { kind: 'literal', value: { kind: 'number', value: n } };
           const alternate: IRExpression = { kind: 'literal', value: { kind: 'number', value: 0 } };
 
           const result = await runtime['evaluateExpression'](
             { kind: 'conditional', condition, consequent, alternate },
-            {}
+            {},
           );
           expect(result).toBe(n);
-        })
+        }),
       );
     });
 
@@ -370,16 +424,19 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(fc.float({ max: 1e6, min: -1e6, noNaN: true }), async (n) => {
           const runtime = createTestRuntime();
-          const condition: IRExpression = { kind: 'literal', value: { kind: 'boolean', value: false } };
+          const condition: IRExpression = {
+            kind: 'literal',
+            value: { kind: 'boolean', value: false },
+          };
           const consequent: IRExpression = { kind: 'literal', value: { kind: 'number', value: 0 } };
           const alternate: IRExpression = { kind: 'literal', value: { kind: 'number', value: n } };
 
           const result = await runtime['evaluateExpression'](
             { kind: 'conditional', condition, consequent, alternate },
-            {}
+            {},
           );
           expect(result).toBe(n);
-        })
+        }),
       );
     });
   });
@@ -387,17 +444,24 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
   describe('Member Expression Properties', () => {
     it('should access object properties correctly', async () => {
       await fc.assert(
-        fc.asyncProperty(jsIdentifier, fc.float({ max: 1e6, min: -1e6, noNaN: true }), async (prop, value) => {
-          const runtime = createTestRuntime();
-          const objValue: IRValue = { kind: 'object', properties: { [prop]: { kind: 'number', value } } };
-          const objExpr: IRExpression = { kind: 'literal', value: objValue };
+        fc.asyncProperty(
+          jsIdentifier,
+          fc.float({ max: 1e6, min: -1e6, noNaN: true }),
+          async (prop, value) => {
+            const runtime = createTestRuntime();
+            const objValue: IRValue = {
+              kind: 'object',
+              properties: { [prop]: { kind: 'number', value } },
+            };
+            const objExpr: IRExpression = { kind: 'literal', value: objValue };
 
-          const result = await runtime['evaluateExpression'](
-            { kind: 'member', object: objExpr, property: prop },
-            {}
-          );
-          expect(result).toBe(value);
-        })
+            const result = await runtime['evaluateExpression'](
+              { kind: 'member', object: objExpr, property: prop },
+              {},
+            );
+            expect(result).toBe(value);
+          },
+        ),
       );
     });
 
@@ -405,14 +469,17 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(jsIdentifier, async (prop) => {
           const runtime = createTestRuntime();
-          const objExpr: IRExpression = { kind: 'literal', value: { kind: 'object', properties: {} } };
+          const objExpr: IRExpression = {
+            kind: 'literal',
+            value: { kind: 'object', properties: {} },
+          };
 
           const result = await runtime['evaluateExpression'](
             { kind: 'member', object: objExpr, property: prop },
-            {}
+            {},
           );
           expect(result).toBeUndefined();
-        })
+        }),
       );
     });
   });
@@ -425,13 +492,16 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
           const lambda: IRExpression = {
             kind: 'lambda',
             params: ['x'],
-            body: { kind: 'identifier', name: 'x' }
+            body: { kind: 'identifier', name: 'x' },
           };
           const arg: IRExpression = { kind: 'literal', value: { kind: 'number', value: x } };
 
-          const result = await runtime['evaluateExpression']({ kind: 'call', callee: lambda, args: [arg] }, {});
+          const result = await runtime['evaluateExpression'](
+            { kind: 'call', callee: lambda, args: [arg] },
+            {},
+          );
           expect(result).toBe(x);
-        })
+        }),
       );
     });
 
@@ -442,15 +512,23 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
           const lambda: IRExpression = {
             kind: 'lambda',
             params: ['x'],
-            body: { kind: 'binary', operator: '+', left: { kind: 'identifier', name: 'x' }, right: { kind: 'identifier', name: 'y' } }
+            body: {
+              kind: 'binary',
+              operator: '+',
+              left: { kind: 'identifier', name: 'x' },
+              right: { kind: 'identifier', name: 'y' },
+            },
           };
           const arg: IRExpression = { kind: 'literal', value: { kind: 'number', value: 10 } };
 
-          const result = await runtime['evaluateExpression']({ kind: 'call', callee: lambda, args: [arg] }, { y });
+          const result = await runtime['evaluateExpression'](
+            { kind: 'call', callee: lambda, args: [arg] },
+            { y },
+          );
           if (typeof result === 'number' && typeof y === 'number') {
             expect(Math.abs(result - (10 + y))).toBeLessThan(1e-10);
           }
-        })
+        }),
       );
     });
   });
@@ -461,7 +539,12 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
       // Create a deeply nested expression that would exceed step limit
       let expr: IRExpression = { kind: 'literal', value: { kind: 'number', value: 1 } };
       for (let i = 0; i < 100; i++) {
-        expr = { kind: 'binary', operator: '+', left: expr, right: { kind: 'literal', value: { kind: 'number', value: 1 } } };
+        expr = {
+          kind: 'binary',
+          operator: '+',
+          left: expr,
+          right: { kind: 'literal', value: { kind: 'number', value: 1 } },
+        };
       }
 
       const result = await runtime['evaluateExpression'](expr, {});
@@ -508,8 +591,8 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
               expect(results[0]).toEqual(results[1]);
               expect(results[0]).toEqual(results[2]);
             }
-          }
-        )
+          },
+        ),
       );
     });
   });

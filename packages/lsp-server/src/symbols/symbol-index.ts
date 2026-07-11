@@ -8,7 +8,22 @@ interface SagaNode {
 
 export interface SymbolEntry {
   name: string;
-  kind: 'entity' | 'enum' | 'command' | 'property' | 'computed' | 'relationship' | 'policy' | 'constraint' | 'store' | 'event' | 'module' | 'reaction' | 'saga' | 'role' | 'parameter';
+  kind:
+    | 'entity'
+    | 'enum'
+    | 'command'
+    | 'property'
+    | 'computed'
+    | 'relationship'
+    | 'policy'
+    | 'constraint'
+    | 'store'
+    | 'event'
+    | 'module'
+    | 'reaction'
+    | 'saga'
+    | 'role'
+    | 'parameter';
   position?: Position;
   /** The enclosing entity or module name */
   container?: string;
@@ -30,7 +45,12 @@ export function buildSymbolIndex(program: ManifestProgram): SymbolEntry[] {
     addStoreSymbols(symbols, mod.stores, mod.name);
     addEventSymbols(symbols, mod.events, mod.name);
     for (const reaction of mod.reactions) {
-      symbols.push({ name: reaction.event, kind: 'reaction', position: reaction.position, container: mod.name });
+      symbols.push({
+        name: reaction.event,
+        kind: 'reaction',
+        position: reaction.position,
+        container: mod.name,
+      });
     }
     for (const saga of (mod as { sagas?: SagaNode[] }).sagas ?? []) {
       symbols.push({ name: saga.name, kind: 'saga', position: saga.position, container: mod.name });
@@ -60,62 +80,126 @@ export function buildSymbolIndex(program: ManifestProgram): SymbolEntry[] {
   return symbols;
 }
 
-function addEntitySymbols(symbols: SymbolEntry[], entities: ManifestProgram['entities'], container?: string) {
+function addEntitySymbols(
+  symbols: SymbolEntry[],
+  entities: ManifestProgram['entities'],
+  container?: string,
+) {
   for (const entity of entities) {
     symbols.push({ name: entity.name, kind: 'entity', position: entity.position, container });
 
     for (const prop of entity.properties) {
-      symbols.push({ name: prop.name, kind: 'property', position: prop.position, container: entity.name });
+      symbols.push({
+        name: prop.name,
+        kind: 'property',
+        position: prop.position,
+        container: entity.name,
+      });
     }
     for (const comp of entity.computedProperties) {
-      symbols.push({ name: comp.name, kind: 'computed', position: comp.position, container: entity.name });
+      symbols.push({
+        name: comp.name,
+        kind: 'computed',
+        position: comp.position,
+        container: entity.name,
+      });
     }
     for (const rel of entity.relationships) {
-      symbols.push({ name: rel.name, kind: 'relationship', position: rel.position, container: entity.name });
+      symbols.push({
+        name: rel.name,
+        kind: 'relationship',
+        position: rel.position,
+        container: entity.name,
+      });
     }
     for (const cmd of entity.commands) {
-      symbols.push({ name: cmd.name, kind: 'command', position: cmd.position, container: entity.name });
+      symbols.push({
+        name: cmd.name,
+        kind: 'command',
+        position: cmd.position,
+        container: entity.name,
+      });
       for (const param of cmd.parameters) {
-        symbols.push({ name: param.name, kind: 'parameter', position: param.position, container: `${entity.name}.${cmd.name}` });
+        symbols.push({
+          name: param.name,
+          kind: 'parameter',
+          position: param.position,
+          container: `${entity.name}.${cmd.name}`,
+        });
       }
     }
     for (const constraint of entity.constraints) {
-      symbols.push({ name: constraint.name, kind: 'constraint', position: constraint.position, container: entity.name });
+      symbols.push({
+        name: constraint.name,
+        kind: 'constraint',
+        position: constraint.position,
+        container: entity.name,
+      });
     }
     for (const policy of entity.policies) {
-      symbols.push({ name: policy.name, kind: 'policy', position: policy.position, container: entity.name });
+      symbols.push({
+        name: policy.name,
+        kind: 'policy',
+        position: policy.position,
+        container: entity.name,
+      });
     }
   }
 }
 
-function addEnumSymbols(symbols: SymbolEntry[], enums: ManifestProgram['enums'], container?: string) {
+function addEnumSymbols(
+  symbols: SymbolEntry[],
+  enums: ManifestProgram['enums'],
+  container?: string,
+) {
   for (const en of enums) {
     symbols.push({ name: en.name, kind: 'enum', position: en.position, container });
   }
 }
 
-function addCommandSymbols(symbols: SymbolEntry[], commands: ManifestProgram['commands'], container?: string) {
+function addCommandSymbols(
+  symbols: SymbolEntry[],
+  commands: ManifestProgram['commands'],
+  container?: string,
+) {
   for (const cmd of commands) {
     symbols.push({ name: cmd.name, kind: 'command', position: cmd.position, container });
     for (const param of cmd.parameters) {
-      symbols.push({ name: param.name, kind: 'parameter', position: param.position, container: cmd.name });
+      symbols.push({
+        name: param.name,
+        kind: 'parameter',
+        position: param.position,
+        container: cmd.name,
+      });
     }
   }
 }
 
-function addPolicySymbols(symbols: SymbolEntry[], policies: ManifestProgram['policies'], container?: string) {
+function addPolicySymbols(
+  symbols: SymbolEntry[],
+  policies: ManifestProgram['policies'],
+  container?: string,
+) {
   for (const policy of policies) {
     symbols.push({ name: policy.name, kind: 'policy', position: policy.position, container });
   }
 }
 
-function addStoreSymbols(symbols: SymbolEntry[], stores: ManifestProgram['stores'], container?: string) {
+function addStoreSymbols(
+  symbols: SymbolEntry[],
+  stores: ManifestProgram['stores'],
+  container?: string,
+) {
   for (const store of stores) {
     symbols.push({ name: store.entity, kind: 'store', position: store.position, container });
   }
 }
 
-function addEventSymbols(symbols: SymbolEntry[], events: ManifestProgram['events'], container?: string) {
+function addEventSymbols(
+  symbols: SymbolEntry[],
+  events: ManifestProgram['events'],
+  container?: string,
+) {
   for (const event of events) {
     symbols.push({ name: event.name, kind: 'event', position: event.position, container });
   }
@@ -125,9 +209,13 @@ function addEventSymbols(symbols: SymbolEntry[], events: ManifestProgram['events
  * Find a symbol by name. Returns the first match.
  * For qualified names like "Entity.property", searches with container match.
  */
-export function findSymbol(symbols: SymbolEntry[], name: string, container?: string): SymbolEntry | undefined {
+export function findSymbol(
+  symbols: SymbolEntry[],
+  name: string,
+  container?: string,
+): SymbolEntry | undefined {
   if (container) {
-    return symbols.find(s => s.name === name && s.container === container);
+    return symbols.find((s) => s.name === name && s.container === container);
   }
-  return symbols.find(s => s.name === name);
+  return symbols.find((s) => s.name === name);
 }

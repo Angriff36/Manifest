@@ -75,7 +75,9 @@ const DEFAULT_INTERVAL_MS = 30_000;
 function hasExpiringApprovals(runtime: ScheduleRuntime): boolean {
   return runtime
     .getEntities()
-    .some((entity) => (entity.approvals ?? []).some((approval) => typeof approval.timeout === 'number'));
+    .some((entity) =>
+      (entity.approvals ?? []).some((approval) => typeof approval.timeout === 'number'),
+    );
 }
 
 /** Per-run bookkeeping so cron dedupes per minute and interval/every track elapsed time. */
@@ -197,7 +199,8 @@ export function startScheduleWorker(
   const now = options.now ?? Date.now;
   const intervalMs = options.intervalMs ?? DEFAULT_INTERVAL_MS;
   const setTimer =
-    options.setTimer ?? ((callback: () => void, ms: number): TimerHandle => setInterval(callback, ms));
+    options.setTimer ??
+    ((callback: () => void, ms: number): TimerHandle => setInterval(callback, ms));
   const clearTimer =
     options.clearTimer ??
     ((handle: TimerHandle): void => clearInterval(handle as Parameters<typeof clearInterval>[0]));

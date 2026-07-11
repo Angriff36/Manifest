@@ -5,20 +5,18 @@
 
 export type DecimalInput = string | number | null;
 
-export type JsonInput =
-  | string
-  | number
-  | boolean
-  | null
-  | { [k: string]: JsonInput }
-  | JsonInput[];
+export type JsonInput = string | number | boolean | null | { [k: string]: JsonInput } | JsonInput[];
 
 export function toDecimalInput(value: unknown): DecimalInput {
   if (value === null || value === undefined || value === '') return null;
-  const PrismaDecimal = (globalThis as { Prisma?: { Decimal?: new (v: string | number) => unknown } }).Prisma?.Decimal;
+  const PrismaDecimal = (
+    globalThis as { Prisma?: { Decimal?: new (v: string | number) => unknown } }
+  ).Prisma?.Decimal;
   if (typeof PrismaDecimal === 'function') {
     try {
-      return new PrismaDecimal(typeof value === 'number' ? value : String(value)) as unknown as DecimalInput;
+      return new PrismaDecimal(
+        typeof value === 'number' ? value : String(value),
+      ) as unknown as DecimalInput;
     } catch {
       return null;
     }
@@ -83,13 +81,13 @@ export function asNullableDate(value: unknown): Date | null {
 
 export function asStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
-    return value.filter(v => v !== null && v !== undefined).map(String);
+    return value.filter((v) => v !== null && v !== undefined).map(String);
   }
   if (typeof value === 'string' && value.trim().startsWith('[')) {
     try {
       const parsed = JSON.parse(value) as unknown;
       if (Array.isArray(parsed)) {
-        return parsed.filter(v => v !== null && v !== undefined).map(String);
+        return parsed.filter((v) => v !== null && v !== undefined).map(String);
       }
     } catch {
       return [];

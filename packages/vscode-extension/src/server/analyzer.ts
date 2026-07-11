@@ -15,9 +15,7 @@ export function analyze(uri: string, source: string): AnalysisResult {
 
   // Also run compile to get richer diagnostics (generator errors)
   const compileResult = compiler.compile(source);
-  const allErrors: CompilationError[] = [
-    ...(parseErrors as CompilationError[]),
-  ];
+  const allErrors: CompilationError[] = [...(parseErrors as CompilationError[])];
 
   // Add any compilation errors not already captured by parse
   if (compileResult.errors) {

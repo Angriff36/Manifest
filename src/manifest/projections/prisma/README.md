@@ -14,11 +14,11 @@ Prisma schema artifacts. It does NOT participate in runtime semantics.
 
 ### Three layers
 
-| Layer | Contents | Example |
-|---|---|---|
-| **Manifest IR** | Entity names, property types, relationships, constraints, commands | `property required subtotal: money` |
+| Layer                 | Contents                                                           | Example                                    |
+| --------------------- | ------------------------------------------------------------------ | ------------------------------------------ |
+| **Manifest IR**       | Entity names, property types, relationships, constraints, commands | `property required subtotal: money`        |
 | **projection-config** | Table/column names, DB types, precision, indexes, field attributes | `columnMappings: { subtotal: "subtotal" }` |
-| **Generated Prisma** | The concrete `schema.prisma` output | `subtotal Decimal @db.Decimal(12, 2)` |
+| **Generated Prisma**  | The concrete `schema.prisma` output                                | `subtotal Decimal @db.Decimal(12, 2)`      |
 
 ### What goes where
 
@@ -32,12 +32,12 @@ A scalar column's Prisma optionality is driven **solely by the IR type's
 `nullable` flag** — i.e. whether the `.manifest` source wrote an explicit `?` on
 the property type:
 
-| `.manifest` source | IR `type.nullable` | Prisma column |
-|---|---|---|
-| `property name: string` | `false` | `name String` (NOT NULL) |
-| `property name: string?` | `true` | `name String?` (nullable) |
-| `property required name: string` | `false` | `name String` (NOT NULL) |
-| `property required name: string?` | `true` | `name String?` — the type wins |
+| `.manifest` source                | IR `type.nullable` | Prisma column                  |
+| --------------------------------- | ------------------ | ------------------------------ |
+| `property name: string`           | `false`            | `name String` (NOT NULL)       |
+| `property name: string?`          | `true`             | `name String?` (nullable)      |
+| `property required name: string`  | `false`            | `name String` (NOT NULL)       |
+| `property required name: string?` | `true`             | `name String?` — the type wins |
 
 The `required` modifier and the `id` identity do **not** drive column
 nullability: a non-`required` property with a non-nullable type still emits a
@@ -59,19 +59,19 @@ Two structural exceptions keep their existing behavior:
 
 ## Config Keys
 
-| Key | Shape | Purpose |
-|---|---|---|
-| `provider` | `'postgresql' \| ...` | Datasource provider |
-| `tableMappings` | `Record<Entity, string>` | `@@map("table_name")` |
-| `columnMappings` | `Record<Entity, Record<Prop, string>>` | `@map("col_name")` |
-| `typeMappings` | `Record<Entity, Record<Prop, string>>` | Override IR type → Prisma base scalar |
-| `dbAttributes` | `Record<Entity, Record<Prop, string>>` | `@db.Uuid`, `@db.Timestamptz(6)`, etc. |
-| `precision` | `Record<Entity, Record<Prop, {p,s}>>` | `@db.Decimal(precision, scale)` |
-| `fieldAttributes` | `Record<Entity, Record<Prop, string[]>>` | `@unique`, `@default(now())`, `@updatedAt` |
-| `indexes` | `Record<Entity, IndexEntry[]>` | `@@index([...])` |
-| `foreignKeys` | `Record<Entity, Record<Rel, string>>` | Override FK column name |
-| `multiSchema` | `{ enabled, schemas?, entitySchema?, defaultSchema? }` | `@@schema("...")` per model + `schemas=[...]` on datasource |
-| `naming` | `'snake_case' \| { table?, column?, pluralizeTables? }` | Auto-casing: emits `@map`/`@@map` for camelCase→snake_case, etc. |
+| Key               | Shape                                                   | Purpose                                                          |
+| ----------------- | ------------------------------------------------------- | ---------------------------------------------------------------- |
+| `provider`        | `'postgresql' \| ...`                                   | Datasource provider                                              |
+| `tableMappings`   | `Record<Entity, string>`                                | `@@map("table_name")`                                            |
+| `columnMappings`  | `Record<Entity, Record<Prop, string>>`                  | `@map("col_name")`                                               |
+| `typeMappings`    | `Record<Entity, Record<Prop, string>>`                  | Override IR type → Prisma base scalar                            |
+| `dbAttributes`    | `Record<Entity, Record<Prop, string>>`                  | `@db.Uuid`, `@db.Timestamptz(6)`, etc.                           |
+| `precision`       | `Record<Entity, Record<Prop, {p,s}>>`                   | `@db.Decimal(precision, scale)`                                  |
+| `fieldAttributes` | `Record<Entity, Record<Prop, string[]>>`                | `@unique`, `@default(now())`, `@updatedAt`                       |
+| `indexes`         | `Record<Entity, IndexEntry[]>`                          | `@@index([...])`                                                 |
+| `foreignKeys`     | `Record<Entity, Record<Rel, string>>`                   | Override FK column name                                          |
+| `multiSchema`     | `{ enabled, schemas?, entitySchema?, defaultSchema? }`  | `@@schema("...")` per model + `schemas=[...]` on datasource      |
+| `naming`          | `'snake_case' \| { table?, column?, pluralizeTables? }` | Auto-casing: emits `@map`/`@@map` for camelCase→snake_case, etc. |
 
 ## Naming convention (auto casing)
 
@@ -83,7 +83,7 @@ identifiers as `snake_case` database columns you would hand-write a
 projections:
   prisma:
     options:
-      naming: snake_case        # createdAt → @map("created_at"), Widget → @@map("widgets")
+      naming: snake_case # createdAt → @map("created_at"), Widget → @@map("widgets")
 ```
 
 The shorthand `snake_case` expands to
@@ -91,14 +91,14 @@ The shorthand `snake_case` expands to
 form lets you tune each axis:
 
 ```yaml
-      naming:
-        table: snake_case       # snake_case | camelCase | PascalCase | preserve
-        column: snake_case      # snake_case | camelCase | preserve
-        pluralizeTables: true   # Widget → widgets (default true)
+naming:
+  table: snake_case # snake_case | camelCase | PascalCase | preserve
+  column: snake_case # snake_case | camelCase | preserve
+  pluralizeTables: true # Widget → widgets (default true)
 ```
 
-**It only ever adds `@map`/`@@map`.** The Prisma *model name* and *field
-identifiers* stay as the IR name, so relation `fields`/`references`, `@@id`,
+**It only ever adds `@map`/`@@map`.** The Prisma _model name_ and _field
+identifiers_ stay as the IR name, so relation `fields`/`references`, `@@id`,
 `@@unique`, and `@@index` references are unaffected — only the physical database
 name changes. A `@map`/`@@map` is emitted only when the physical name actually
 differs (so `id` stays bare).
@@ -127,13 +127,13 @@ Enabling `multiSchema` preserves the real module layout:
 projections:
   prisma:
     options:
-      provider: postgresql            # postgresql | cockroachdb | sqlserver only
+      provider: postgresql # postgresql | cockroachdb | sqlserver only
       multiSchema:
-        enabled: true                 # default false (flat, back-compatible)
-        schemas: ["public", "auth"]   # optional explicit order; used schemas auto-appended
-        entitySchema:                 # optional per-entity override (beats module)
+        enabled: true # default false (flat, back-compatible)
+        schemas: ['public', 'auth'] # optional explicit order; used schemas auto-appended
+        entitySchema: # optional per-entity override (beats module)
           LegacyUser: identity
-        defaultSchema: public         # for entities with no module/override
+        defaultSchema: public # for entities with no module/override
 ```
 
 Per-model schema resolution: `entitySchema[name]` → `entity.module` →
@@ -171,11 +171,11 @@ diffs (e.g., Manifest default="" on optional fields, extra declared properties).
 
 ## Known Gaps
 
-| Feature | Status |
-|---|---|
-| `@@schema("name")` | **Available via `multiSchema` config** — derives from `IREntity.module` (G6) |
-| Multi-file schema output (one file per schema) | Not yet — single-artifact only (deferred) |
-| `@default(dbgenerated(...))` auto-detection | Available via `fieldAttributes` config |
-| `@default(now())` auto-detection | Available via `fieldAttributes` config |
-| `@updatedAt` auto-detection | Available via `fieldAttributes` config |
-| `@unique` on composite-key id | Available via `fieldAttributes` config |
+| Feature                                        | Status                                                                       |
+| ---------------------------------------------- | ---------------------------------------------------------------------------- |
+| `@@schema("name")`                             | **Available via `multiSchema` config** — derives from `IREntity.module` (G6) |
+| Multi-file schema output (one file per schema) | Not yet — single-artifact only (deferred)                                    |
+| `@default(dbgenerated(...))` auto-detection    | Available via `fieldAttributes` config                                       |
+| `@default(now())` auto-detection               | Available via `fieldAttributes` config                                       |
+| `@updatedAt` auto-detection                    | Available via `fieldAttributes` config                                       |
+| `@unique` on composite-key id                  | Available via `fieldAttributes` config                                       |

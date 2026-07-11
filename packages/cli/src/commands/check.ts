@@ -24,7 +24,7 @@ interface CheckOptions {
  */
 export async function checkCommand(
   source: string | undefined,
-  options: CheckOptions = {}
+  options: CheckOptions = {},
 ): Promise<void> {
   const startedAt = Date.now();
   const validateTarget = options.output;
@@ -45,4 +45,3 @@ export async function checkCommand(
   console.log('');
   console.log(chalk.bold.green(`✓ Check complete in ${elapsedMs}ms`));
 }
-

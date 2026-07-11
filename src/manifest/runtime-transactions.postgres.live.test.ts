@@ -55,10 +55,7 @@ describe.runIf(DB_URL)('engine transaction boundary — live Postgres end-to-end
 
   beforeAll(async () => {
     pool = new Pool({ connectionString: DB_URL });
-    const outboxSql = readFileSync(
-      resolve(__dirname, './outbox/stores/postgres.sql'),
-      'utf-8'
-    )
+    const outboxSql = readFileSync(resolve(__dirname, './outbox/stores/postgres.sql'), 'utf-8')
       .replace(/manifest_outbox_entries/g, outboxTable)
       // Index names in the shared schema don't embed the table name; leaving
       // them fixed makes parallel suites race on pg_class (duplicate relname).
@@ -66,7 +63,7 @@ describe.runIf(DB_URL)('engine transaction boundary — live Postgres end-to-end
     await pool.query(outboxSql);
     const idemSql = readFileSync(
       resolve(__dirname, './idempotency/stores/postgres.sql'),
-      'utf-8'
+      'utf-8',
     ).replace(/manifest_idempotency_keys/g, idemTable);
     await pool.query(idemSql);
 
@@ -94,7 +91,7 @@ describe.runIf(DB_URL)('engine transaction boundary — live Postgres end-to-end
           ? { idempotencyStore: new PostgresIdempotencyStore({ pool, tableName: idemTable }) }
           : {}),
         transactionProvider: new PostgresTransactionProvider({ pool }),
-      }
+      },
     );
   }
 
@@ -118,7 +115,7 @@ describe.runIf(DB_URL)('engine transaction boundary — live Postgres end-to-end
     const result = await engine.runCommand(
       'stock',
       { newName: 'atomic-widget', amount: 7 },
-      { entityName: 'Widget', instanceId: inst.id, idempotencyKey: `${runTag}-commit` }
+      { entityName: 'Widget', instanceId: inst.id, idempotencyKey: `${runTag}-commit` },
     );
     expect(result.success).toBe(true);
 
@@ -127,16 +124,16 @@ describe.runIf(DB_URL)('engine transaction boundary — live Postgres end-to-end
     expect(row?.total).toBe(7);
 
     const outboxRows = await pool.query(
-      `SELECT event FROM "${outboxTable}" WHERE status = 'pending'`
+      `SELECT event FROM "${outboxTable}" WHERE status = 'pending'`,
     );
-    const names = outboxRows.rows.map((r) =>
-      (typeof r.event === 'string' ? JSON.parse(r.event) : r.event).name
+    const names = outboxRows.rows.map(
+      (r) => (typeof r.event === 'string' ? JSON.parse(r.event) : r.event).name,
     );
     expect(names).toContain('WidgetStocked');
 
     const idem = await pool.query(
       `SELECT idempotency_key FROM "${idemTable}" WHERE idempotency_key = $1`,
-      [`${runTag}-commit`]
+      [`${runTag}-commit`],
     );
     expect(idem.rows).toHaveLength(1);
   });
@@ -149,7 +146,7 @@ describe.runIf(DB_URL)('engine transaction boundary — live Postgres end-to-end
     const first = await engine.runCommand(
       'stock',
       { newName: 'dup-widget', amount: 3 },
-      { entityName: 'Widget', instanceId: inst.id, idempotencyKey: key }
+      { entityName: 'Widget', instanceId: inst.id, idempotencyKey: key },
     );
     expect(first.success).toBe(true);
 
@@ -158,7 +155,7 @@ describe.runIf(DB_URL)('engine transaction boundary — live Postgres end-to-end
     const second = await engine2.runCommand(
       'stock',
       { newName: 'dup-widget-CHANGED', amount: 99 },
-      { entityName: 'Widget', instanceId: inst.id, idempotencyKey: key }
+      { entityName: 'Widget', instanceId: inst.id, idempotencyKey: key },
     );
     expect(second.success).toBe(true);
 
@@ -174,7 +171,7 @@ describe.runIf(DB_URL)('engine transaction boundary — live Postgres end-to-end
     const result = await engine.runCommand(
       'stock',
       { newName: 'ghost-widget', amount: 5 },
-      { entityName: 'Widget', instanceId: inst.id }
+      { entityName: 'Widget', instanceId: inst.id },
     );
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/OUTBOX_ENQUEUE_FAILED/);
@@ -191,7 +188,7 @@ describe.runIf(DB_URL)('engine transaction boundary — live Postgres end-to-end
     const result = await engine.runCommand(
       'stock',
       { newName: 'rejected-widget', amount: -1 }, // guard amount > 0 fails
-      { entityName: 'Widget', instanceId: inst.id, idempotencyKey: `${runTag}-guardfail` }
+      { entityName: 'Widget', instanceId: inst.id, idempotencyKey: `${runTag}-guardfail` },
     );
     expect(result.success).toBe(false);
 
@@ -203,7 +200,7 @@ describe.runIf(DB_URL)('engine transaction boundary — live Postgres end-to-end
     // never happened), so the key must be absent.
     const idem = await pool.query(
       `SELECT idempotency_key FROM "${idemTable}" WHERE idempotency_key = $1`,
-      [`${runTag}-guardfail`]
+      [`${runTag}-guardfail`],
     );
     expect(idem.rows).toHaveLength(0);
   });

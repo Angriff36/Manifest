@@ -152,8 +152,9 @@ function irValueToPythonLiteral(value: IRValue): string {
     case 'array':
       return `[${value.elements.map(irValueToPythonLiteral).join(', ')}]`;
     case 'object': {
-      const entries = Object.entries(value.properties)
-        .map(([k, v]) => `"${k}": ${irValueToPythonLiteral(v)}`);
+      const entries = Object.entries(value.properties).map(
+        ([k, v]) => `"${k}": ${irValueToPythonLiteral(v)}`,
+      );
       return `{${entries.join(', ')}}`;
     }
   }
@@ -163,7 +164,7 @@ function irValueToPythonLiteral(value: IRValue): string {
 function pascalCase(name: string): string {
   // Handle snake_case and kebab-case
   const words = name.replace(/-/g, '_').split('_');
-  return words.map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
+  return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join('');
 }
 
 /** snake_case conversion for field names (Python convention). */
@@ -214,7 +215,9 @@ function lengthConstraintToValidator(lc: LengthConstraint, fieldName: string): s
 
   if (lc.minLength !== undefined && lc.maxLength !== undefined) {
     parts.push(`    if len(v) < ${lc.minLength} or len(v) > ${lc.maxLength}:`);
-    parts.push(`        raise ValueError('length must be between ${lc.minLength} and ${lc.maxLength}')`);
+    parts.push(
+      `        raise ValueError('length must be between ${lc.minLength} and ${lc.maxLength}')`,
+    );
   } else if (lc.minLength !== undefined) {
     parts.push(`    if len(v) < ${lc.minLength}:`);
     parts.push(`        raise ValueError('length must be at least ${lc.minLength}')`);
@@ -238,7 +241,10 @@ function lengthConstraintToValidator(lc: LengthConstraint, fieldName: string): s
 }
 
 /** Generate field validator method for pattern constraints. */
-function patternConstraintToValidator(pc: PatternConstraint, fieldName: string): string | undefined {
+function patternConstraintToValidator(
+  pc: PatternConstraint,
+  fieldName: string,
+): string | undefined {
   const methodName = `validate_${snakeCase(fieldName)}_pattern`;
 
   // Use Python's re module
@@ -324,7 +330,7 @@ function generateEntityModel(
       imports,
       opts,
     );
-    lines.push(...propResult.lines.map(l => '    ' + l));
+    lines.push(...propResult.lines.map((l) => '    ' + l));
   }
 
   // Add validators after all fields
@@ -494,7 +500,7 @@ function generateCommandModel(
 
     for (const param of command.parameters) {
       const paramResult = generateParameterLine(param, diagnostics, imports, opts);
-      lines.push(...paramResult.lines.map(l => '    ' + l));
+      lines.push(...paramResult.lines.map((l) => '    ' + l));
     }
   }
 
@@ -669,8 +675,14 @@ function generateImports(
 
 export class PydanticProjection implements ProjectionTarget {
   readonly name = 'pydantic';
-  readonly description = 'Pydantic v2 models for IR entities and commands with field validators and JSON schema export';
-  readonly surfaces = ['pydantic.entity', 'pydantic.command', 'pydantic.models', 'pydantic.client'] as const;
+  readonly description =
+    'Pydantic v2 models for IR entities and commands with field validators and JSON schema export';
+  readonly surfaces = [
+    'pydantic.entity',
+    'pydantic.command',
+    'pydantic.models',
+    'pydantic.client',
+  ] as const;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const diagnostics: ProjectionDiagnostic[] = [];
@@ -688,11 +700,13 @@ export class PydanticProjection implements ProjectionTarget {
       default:
         return {
           artifacts: [],
-          diagnostics: [{
-            severity: 'error',
-            code: 'PYDANTIC_UNKNOWN_SURFACE',
-            message: `Unknown surface "${request.surface}". Expected one of: ${this.surfaces.join(', ')}`,
-          }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'PYDANTIC_UNKNOWN_SURFACE',
+              message: `Unknown surface "${request.surface}". Expected one of: ${this.surfaces.join(', ')}`,
+            },
+          ],
         };
     }
   }
@@ -704,18 +718,20 @@ export class PydanticProjection implements ProjectionTarget {
     diagnostics: ProjectionDiagnostic[],
   ): ProjectionResult {
     const entities = request.entity
-      ? ir.entities.filter(e => e.name === request.entity)
+      ? ir.entities.filter((e) => e.name === request.entity)
       : ir.entities;
 
     if (request.entity && entities.length === 0) {
       return {
         artifacts: [],
-        diagnostics: [{
-          severity: 'error',
-          code: 'PYDANTIC_ENTITY_NOT_FOUND',
-          message: `Entity "${request.entity}" not found in IR`,
-          entity: request.entity,
-        }],
+        diagnostics: [
+          {
+            severity: 'error',
+            code: 'PYDANTIC_ENTITY_NOT_FOUND',
+            message: `Entity "${request.entity}" not found in IR`,
+            entity: request.entity,
+          },
+        ],
       };
     }
 
@@ -754,17 +770,19 @@ export class PydanticProjection implements ProjectionTarget {
     diagnostics: ProjectionDiagnostic[],
   ): ProjectionResult {
     const commands = request.command
-      ? ir.commands.filter(c => c.name === request.command)
+      ? ir.commands.filter((c) => c.name === request.command)
       : ir.commands;
 
     if (request.command && commands.length === 0) {
       return {
         artifacts: [],
-        diagnostics: [{
-          severity: 'error',
-          code: 'PYDANTIC_COMMAND_NOT_FOUND',
-          message: `Command "${request.command}" not found in IR`,
-        }],
+        diagnostics: [
+          {
+            severity: 'error',
+            code: 'PYDANTIC_COMMAND_NOT_FOUND',
+            message: `Command "${request.command}" not found in IR`,
+          },
+        ],
       };
     }
 
@@ -864,12 +882,14 @@ export class PydanticProjection implements ProjectionTarget {
     const code = [...finalImports, ...lines].join('\n');
 
     return {
-      artifacts: [{
-        id: 'pydantic.models',
-        pathHint: 'models/manifest_models.py',
-        contentType: 'python',
-        code,
-      }],
+      artifacts: [
+        {
+          id: 'pydantic.models',
+          pathHint: 'models/manifest_models.py',
+          contentType: 'python',
+          code,
+        },
+      ],
       diagnostics,
     };
   }
@@ -881,12 +901,14 @@ export class PydanticProjection implements ProjectionTarget {
   ): ProjectionResult {
     const result = generatePythonClient(ir, opts, diagnostics);
     return {
-      artifacts: [{
-        id: 'pydantic.client',
-        pathHint: 'client/manifest_client.py',
-        contentType: 'python',
-        code: result.code,
-      }],
+      artifacts: [
+        {
+          id: 'pydantic.client',
+          pathHint: 'client/manifest_client.py',
+          contentType: 'python',
+          code: result.code,
+        },
+      ],
       diagnostics: result.diagnostics,
     };
   }
@@ -913,7 +935,9 @@ function generatePythonClient(
     lines.push('# Auto-generated Python client SDK from Manifest IR');
     lines.push(`# Generated at: ${new Date().toISOString()}`);
     lines.push('');
-    lines.push('# This code generates an async httpx-based client for Manifest entities and commands.');
+    lines.push(
+      '# This code generates an async httpx-based client for Manifest entities and commands.',
+    );
     lines.push('# Compatible with Python 3.10+');
     lines.push('');
   }
@@ -933,11 +957,15 @@ function generatePythonClient(
   lines.push('    ');
   lines.push('    Example:');
   lines.push('        async with ManifestClient(base_url="http://localhost:3000") as client:');
-  lines.push('            result = await client.create_user(email="user@example.com", name="John")');
+  lines.push(
+    '            result = await client.create_user(email="user@example.com", name="John")',
+  );
   lines.push('    """');
   lines.push('');
   lines.push('');
-  lines.push('    def __init__(self, base_url: str = "http://localhost:3000", api_key: Optional[str] = None):');
+  lines.push(
+    '    def __init__(self, base_url: str = "http://localhost:3000", api_key: Optional[str] = None):',
+  );
   lines.push('        self._base_url = base_url.rstrip("/")');
   lines.push('        self._api_key = api_key');
   lines.push('        self._client: Optional[httpx.AsyncClient] = None');
@@ -945,7 +973,9 @@ function generatePythonClient(
   lines.push('    async def __aenter__(self):');
   lines.push('        self._client = httpx.AsyncClient(');
   lines.push('            base_url=self._base_url,');
-  lines.push('            headers={"Authorization": f"Bearer {self._api_key}"} if self._api_key else {},');
+  lines.push(
+    '            headers={"Authorization": f"Bearer {self._api_key}"} if self._api_key else {},',
+  );
   lines.push('        )');
   lines.push('        return self');
   lines.push('    ');
@@ -956,7 +986,9 @@ function generatePythonClient(
   lines.push('    async def _request(self, method: str, path: str, **kwargs) -> dict[str, Any]:');
   lines.push('        """Make an HTTP request and return the JSON response."""');
   lines.push('        if not self._client:');
-  lines.push('            raise RuntimeError("Client not initialized. Use `async with ManifestClient(...) as client:`")');
+  lines.push(
+    '            raise RuntimeError("Client not initialized. Use `async with ManifestClient(...) as client:`")',
+  );
   lines.push('        response = await self._client.request(method, path, **kwargs)');
   lines.push('        response.raise_for_status()');
   lines.push('        return response.json()');
@@ -998,7 +1030,12 @@ function generatePythonClient(
     // Add parameters
     for (const param of command.parameters) {
       const snakeParam = snakeCase(param.name);
-      const typeAnnotation = irTypeToPython(param.type, diagnostics, { needsDatetime: false, needsTyping: true, needsUuid: false, needsDecimal: false });
+      const typeAnnotation = irTypeToPython(param.type, diagnostics, {
+        needsDatetime: false,
+        needsTyping: true,
+        needsUuid: false,
+        needsDecimal: false,
+      });
 
       if (!param.required) {
         lines.push(`        ${snakeParam}: ${typeAnnotation} | None = None,`);
@@ -1023,7 +1060,9 @@ function generatePythonClient(
       const lowerEntity = command.entity.toLowerCase();
       lines.push(`        # Filter out None values`);
       lines.push(`        payload = {k: v for k, v in payload.items() if v is not None}`);
-      lines.push(`        return await self._request("POST", f"/api/${lowerEntity}/commands/${command.name}", json=payload)`);
+      lines.push(
+        `        return await self._request("POST", f"/api/${lowerEntity}/commands/${command.name}", json=payload)`,
+      );
     }
 
     lines.push('');
@@ -1072,7 +1111,12 @@ function generatePythonClient(
 
     for (const param of command.parameters) {
       const snakeParam = snakeCase(param.name);
-      const typeAnnotation = irTypeToPython(param.type, diagnostics, { needsDatetime: false, needsTyping: true, needsUuid: false, needsDecimal: false });
+      const typeAnnotation = irTypeToPython(param.type, diagnostics, {
+        needsDatetime: false,
+        needsTyping: true,
+        needsUuid: false,
+        needsDecimal: false,
+      });
 
       if (!param.required) {
         lines.push(`    ${snakeParam}: ${typeAnnotation} | None = None,`);

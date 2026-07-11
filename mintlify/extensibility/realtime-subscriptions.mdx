@@ -1,7 +1,7 @@
 ---
-title: "Real-time entity subscriptions"
-description: "Stream runtime events for realtime entities over SSE with a generated subscription route, a typed auto-reconnecting React hook, and a shared singleton runtime."
-sidebarTitle: "Realtime Subscriptions"
+title: 'Real-time entity subscriptions'
+description: 'Stream runtime events for realtime entities over SSE with a generated subscription route, a typed auto-reconnecting React hook, and a shared singleton runtime.'
+sidebarTitle: 'Realtime Subscriptions'
 ---
 
 The `realtime` entity modifier marks an entity for live event streaming. When you declare `realtime` inside an entity block, the Next.js projection emits three additional surfaces: an SSE (Server-Sent Events) subscription route, a typed React hook with exponential-backoff reconnect, and a shared singleton runtime accessor that lets command routes and subscriptions observe the same event stream.
@@ -34,11 +34,11 @@ entity Task {
 
 The Next.js projection exposes three realtime surfaces:
 
-| Surface | Output path | What it emits |
-|---------|-------------|---------------|
-| `nextjs.subscribe` | `app/api/{entity}/subscribe/route.ts` | SSE `GET` route streaming runtime events for the entity |
+| Surface                   | Output path                            | What it emits                                            |
+| ------------------------- | -------------------------------------- | -------------------------------------------------------- |
+| `nextjs.subscribe`        | `app/api/{entity}/subscribe/route.ts`  | SSE `GET` route streaming runtime events for the entity  |
 | `nextjs.subscriptionHook` | `src/hooks/use{Entity}Subscription.ts` | Typed client-side `EventSource` hook with auto-reconnect |
-| `nextjs.sharedRuntime` | `src/lib/manifest-shared-runtime.ts` | Module-scoped `getSharedRuntime()` singleton accessor |
+| `nextjs.sharedRuntime`    | `src/lib/manifest-shared-runtime.ts`   | Module-scoped `getSharedRuntime()` singleton accessor    |
 
 Generate them programmatically:
 
@@ -99,18 +99,18 @@ function TaskFeed() {
 
 ### Hook return value
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `connected` | `boolean` | Whether the SSE connection is currently open |
-| `lastEvent` | `{Entity}SubscriptionEvent \| null` | The most recently received event |
+| Field       | Type                                | Description                                  |
+| ----------- | ----------------------------------- | -------------------------------------------- |
+| `connected` | `boolean`                           | Whether the SSE connection is currently open |
+| `lastEvent` | `{Entity}SubscriptionEvent \| null` | The most recently received event             |
 
 ### Hook options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `onEvent` | `(event: {Entity}SubscriptionEvent) => void` | — | Callback fired for every event received |
-| `initialRetryDelayMs` | `number` | `1000` | Initial reconnect delay after a disconnect |
-| `maxRetryDelayMs` | `number` | `30000` | Reconnect delay ceiling |
+| Option                | Type                                         | Default | Description                                |
+| --------------------- | -------------------------------------------- | ------- | ------------------------------------------ |
+| `onEvent`             | `(event: {Entity}SubscriptionEvent) => void` | —       | Callback fired for every event received    |
+| `initialRetryDelayMs` | `number`                                     | `1000`  | Initial reconnect delay after a disconnect |
+| `maxRetryDelayMs`     | `number`                                     | `30000` | Reconnect delay ceiling                    |
 
 ### Auto-reconnect behavior
 
@@ -146,7 +146,9 @@ const shared = projection.generate(ir, {
 ```
 
 <Note>
-The default companion runtime factory does not inject a bus — supply the `eventBus` through the runtime's `RuntimeOptions` (a custom runtime factory or your app's runtime wiring). See `docs/spec/semantics.md` § "Realtime Entities" and `docs/spec/adapters.md` § "Event Bus".
+  The default companion runtime factory does not inject a bus — supply the `eventBus` through the
+  runtime's `RuntimeOptions` (a custom runtime factory or your app's runtime wiring). See
+  `docs/spec/semantics.md` § "Realtime Entities" and `docs/spec/adapters.md` § "Event Bus".
 </Note>
 
 ## Runtime `subscribe()` contract
@@ -183,5 +185,6 @@ The `realtime` modifier adds a boolean field to the entity IR:
 Projections inspect `entity.realtime === true` to decide whether to generate subscription artifacts. Entities without the modifier produce no realtime artifacts.
 
 <Note>
-The `realtime` modifier is a declaration only. The SSE transport is implemented by the projection target (the generated Next.js route). The runtime engine itself is transport-agnostic.
+  The `realtime` modifier is a declaration only. The SSE transport is implemented by the projection
+  target (the generated Next.js route). The runtime engine itself is transport-agnostic.
 </Note>

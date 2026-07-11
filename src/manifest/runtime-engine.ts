@@ -97,11 +97,7 @@ export interface EncryptionProvider {
  * Middleware hook types. Each corresponds to a lifecycle point in command
  * execution where middleware can observe, patch context, or short-circuit.
  */
-export type MiddlewareHook =
-  | 'before-policy'
-  | 'before-guard'
-  | 'before-action'
-  | 'after-emit';
+export type MiddlewareHook = 'before-policy' | 'before-guard' | 'before-action' | 'after-emit';
 
 /**
  * Context passed to middleware handlers at each lifecycle points.
@@ -483,8 +479,7 @@ export interface ApprovalRequestState {
  * are made available to the stage policy as `user.*`, independent of `id`.
  */
 export type ApprovalApprover =
-  | string
-  | { id: string; role?: string; roles?: string[]; [key: string]: unknown };
+  string | { id: string; role?: string; roles?: string[]; [key: string]: unknown };
 
 export interface ApprovalRequiredInfo {
   approvalName: string;
@@ -600,8 +595,8 @@ export class ManifestEffectBoundaryError extends Error {
   constructor(actionKind: string) {
     super(
       `Action '${actionKind}' is not allowed in deterministicMode. ` +
-      `Adapter actions (persist/publish/effect) must be handled externally. ` +
-      `See docs/spec/adapters.md.`
+        `Adapter actions (persist/publish/effect) must be handled externally. ` +
+        `See docs/spec/adapters.md.`,
     );
     this.name = 'ManifestEffectBoundaryError';
     this.actionKind = actionKind;
@@ -620,8 +615,8 @@ export class ManifestReactionDepthError extends Error {
   constructor(depth: number, triggerEvent: string, targetCommand: string) {
     super(
       `Reaction depth limit (${depth}) exceeded. ` +
-      `Event '${triggerEvent}' → command '${targetCommand}' would exceed max depth. ` +
-      `Check for circular reaction chains.`
+        `Event '${triggerEvent}' → command '${targetCommand}' would exceed max depth. ` +
+        `Check for circular reaction chains.`,
     );
     this.name = 'ManifestReactionDepthError';
     this.depth = depth;
@@ -667,15 +662,19 @@ export class MemoryJobQueue implements JobQueue {
   }
 
   async drainPending(): Promise<JobRecord[]> {
-    const pending = this.jobs.filter(j => j.status === 'pending');
+    const pending = this.jobs.filter((j) => j.status === 'pending');
     for (const job of pending) {
       job.status = 'running';
     }
     return pending;
   }
 
-  async updateStatus(jobId: string, status: JobRecord['status'], detail?: { result?: unknown; error?: string }): Promise<void> {
-    const job = this.jobs.find(j => j.jobId === jobId);
+  async updateStatus(
+    jobId: string,
+    status: JobRecord['status'],
+    detail?: { result?: unknown; error?: string },
+  ): Promise<void> {
+    const job = this.jobs.find((j) => j.jobId === jobId);
     if (job) {
       job.status = status;
       if (detail) {
@@ -783,7 +782,7 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
   }
 
   async getById(id: string): Promise<T | undefined> {
-    return this.load().find(item => item.id === id);
+    return this.load().find((item) => item.id === id);
   }
 
   async create(data: Partial<T>): Promise<T> {
@@ -797,7 +796,7 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
 
   async update(id: string, data: Partial<T>): Promise<T | undefined> {
     const items = this.load();
-    const idx = items.findIndex(item => item.id === id);
+    const idx = items.findIndex((item) => item.id === id);
     if (idx === -1) return undefined;
     const updated = { ...items[idx], ...data, id };
     items[idx] = updated;
@@ -807,7 +806,7 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
 
   async delete(id: string): Promise<boolean> {
     const items = this.load();
-    const idx = items.findIndex(item => item.id === id);
+    const idx = items.findIndex((item) => item.id === id);
     if (idx === -1) return false;
     items.splice(idx, 1);
     this.save(items);
@@ -839,19 +838,25 @@ export class RuntimeEngine {
   private reactionDepth = 0;
   private static readonly MAX_REACTION_DEPTH = 10;
   /** Index of relationships for efficient lookup during expression evaluation */
-  private relationshipIndex: Map<string, {
-    entityName: string;
-    relationshipName: string;
-    kind: 'hasMany' | 'hasOne' | 'belongsTo' | 'ref';
-    targetEntity: string;
-    foreignKey?: string; // single-column FK field name for runtime lookup
-  }> = new Map();
+  private relationshipIndex: Map<
+    string,
+    {
+      entityName: string;
+      relationshipName: string;
+      kind: 'hasMany' | 'hasOne' | 'belongsTo' | 'ref';
+      targetEntity: string;
+      foreignKey?: string; // single-column FK field name for runtime lookup
+    }
+  > = new Map();
 
   /** Memoization cache for resolved relationships to avoid repeated store queries */
-  private relationshipMemoCache: Map<string, {
-    result: EntityInstance | EntityInstance[] | null;
-    timestamp: number;
-  }> = new Map();
+  private relationshipMemoCache: Map<
+    string,
+    {
+      result: EntityInstance | EntityInstance[] | null;
+      timestamp: number;
+    }
+  > = new Map();
 
   /** Index of roles by name for O(1) permission checks */
   private roleIndex: Map<string, IRRole> = new Map();
@@ -871,16 +876,14 @@ export class RuntimeEngine {
    * write rather than N. Scoped to the command's target instance only; nested
    * (reaction/fan-out) commands save and restore the outer buffer.
    */
-  private commandBuffer:
-    | {
-        entityName: string;
-        id: string;
-        /** Decrypted working copy; null until first loaded from the store. */
-        instance: EntityInstance | null;
-        /** Accumulated store-form (encrypted) field changes to flush once. */
-        patch: Partial<EntityInstance>;
-      }
-    | null = null;
+  private commandBuffer: {
+    entityName: string;
+    id: string;
+    /** Decrypted working copy; null until first loaded from the store. */
+    instance: EntityInstance | null;
+    /** Accumulated store-form (encrypted) field changes to flush once. */
+    patch: Partial<EntityInstance>;
+  } | null = null;
 
   /** Last transition validation error (set by updateInstance, checked by _executeCommandInternal) */
   private lastTransitionError: string | null = null;
@@ -1000,21 +1003,28 @@ export class RuntimeEngine {
   }
 
   /** Per-entry-point evaluation budget for bounded complexity enforcement */
-  private evalBudget: { depth: number; steps: number; maxDepth: number; maxSteps: number } | null = null;
+  private evalBudget: { depth: number; steps: number; maxDepth: number; maxSteps: number } | null =
+    null;
 
   /** Cache for computed property values, keyed by "entityName:instanceId:propertyName" */
-  private computedPropertyCache: Map<string, {
-    value: unknown;
-    computedAt: number;
-    stale: boolean;
-  }> = new Map();
+  private computedPropertyCache: Map<
+    string,
+    {
+      value: unknown;
+      computedAt: number;
+      stale: boolean;
+    }
+  > = new Map();
 
   /** Request-scoped cache for computed properties (cleared per command) */
-  private computedPropertyRequestCache: Map<string, {
-    value: unknown;
-    computedAt: number;
-    stale: boolean;
-  }> = new Map();
+  private computedPropertyRequestCache: Map<
+    string,
+    {
+      value: unknown;
+      computedAt: number;
+      stale: boolean;
+    }
+  > = new Map();
 
   /**
    * Initialize evaluation budget if not already active (re-entrant safe).
@@ -1067,7 +1077,7 @@ export class RuntimeEngine {
    */
   private async encryptProperties(
     entityName: string,
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     const provider = this.options.encryptionProvider;
     if (!provider) return data;
@@ -1091,7 +1101,7 @@ export class RuntimeEngine {
    */
   private async decryptProperties(
     entityName: string,
-    instance: EntityInstance
+    instance: EntityInstance,
   ): Promise<EntityInstance> {
     const provider = this.options.encryptionProvider;
     if (!provider) return instance;
@@ -1163,15 +1173,16 @@ export class RuntimeEngine {
       }
 
       // Fall back to default store initialization
-      const storeConfig = this.ir.stores.find(s => s.entity === entity.name);
+      const storeConfig = this.ir.stores.find((s) => s.entity === entity.name);
       let store: Store;
 
       if (storeConfig) {
         switch (storeConfig.target) {
           case 'localStorage': {
-            const key = storeConfig.config.key?.kind === 'string'
-              ? storeConfig.config.key.value
-              : `${entity.name.toLowerCase()}s`;
+            const key =
+              storeConfig.config.key?.kind === 'string'
+                ? storeConfig.config.key.value
+                : `${entity.name.toLowerCase()}s`;
             store = new LocalStorageStore(key);
             break;
           }
@@ -1181,20 +1192,20 @@ export class RuntimeEngine {
           case 'postgres':
             throw new Error(
               `PostgreSQL storage for entity '${entity.name}' is not available in browser environments. ` +
-              `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
-              `For server-side use, import PostgresStore from stores.node.ts.`
+                `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
+                `For server-side use, import PostgresStore from stores.node.ts.`,
             );
           case 'supabase':
             throw new Error(
               `Supabase storage for entity '${entity.name}' is not available in browser environments. ` +
-              `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
-              `For server-side use, import SupabaseStore from stores.node.ts.`
+                `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
+                `For server-side use, import SupabaseStore from stores.node.ts.`,
             );
           case 'mongodb':
             throw new Error(
               `MongoDB storage for entity '${entity.name}' is not available in browser environments. ` +
-              `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
-              `For server-side use, import MongoDBStore from stores.node.ts.`
+                `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
+                `For server-side use, import MongoDBStore from stores.node.ts.`,
             );
           case 'durable':
             // `'durable'` is a backend-neutral semantic signal — it intentionally does NOT
@@ -1203,7 +1214,7 @@ export class RuntimeEngine {
             // handoff point: core stays backend-neutral. (Matches v0.9.0 behavior.)
             throw new Error(
               `Entity '${entity.name}' declares 'store ... in durable' but no storeProvider is bound. ` +
-              `'durable' is backend-neutral and requires a runtime store adapter supplied via the storeProvider option.`
+                `'durable' is backend-neutral and requires a runtime store adapter supplied via the storeProvider option.`,
             );
           default:
             // Custom store adapter scheme — requires a storeProvider that handles this target.
@@ -1211,8 +1222,8 @@ export class RuntimeEngine {
             // CompositeStoreProvider built by the plugin loader.
             throw new Error(
               `Entity '${entity.name}' declares store target '${storeConfig.target}' but no storeProvider ` +
-              `returned a store for it. Custom store targets require a matching StoreAdapterPlugin registered ` +
-              `via the plugin API, or a storeProvider that handles the '${storeConfig.target}' scheme.`
+                `returned a store for it. Custom store targets require a matching StoreAdapterPlugin registered ` +
+                `via the plugin API, or a storeProvider that handles the '${storeConfig.target}' scheme.`,
             );
         }
       } else {
@@ -1240,9 +1251,10 @@ export class RuntimeEngine {
           // (fields.length > 1) are left undefined here; resolveRelationship
           // reads the raw IR and matches every mapped fields/references column
           // (see fkColumnPairs) instead of a single indexed field name.
-          foreignKey: rel.foreignKey && rel.foreignKey.fields.length === 1
-            ? rel.foreignKey.fields[0]
-            : undefined,
+          foreignKey:
+            rel.foreignKey && rel.foreignKey.fields.length === 1
+              ? rel.foreignKey.fields[0]
+              : undefined,
         });
       }
     }
@@ -1264,7 +1276,7 @@ export class RuntimeEngine {
   private roleHasPermission(roleName: string, action: string, target?: string): boolean {
     const role = this.roleIndex.get(roleName);
     if (!role) return false;
-    return role.effectivePermissions.some(p => {
+    return role.effectivePermissions.some((p) => {
       const actionMatch = p.action === 'all' || p.action === action;
       const targetMatch = p.target === undefined || p.target === target;
       return actionMatch && targetMatch;
@@ -1291,7 +1303,7 @@ export class RuntimeEngine {
   private async resolveRelationship(
     entityName: string,
     instance: EntityInstance,
-    relationshipName: string
+    relationshipName: string,
   ): Promise<EntityInstance | EntityInstance[] | null> {
     const key = `${entityName}.${relationshipName}`;
     const rel = this.relationshipIndex.get(key);
@@ -1302,9 +1314,10 @@ export class RuntimeEngine {
     // Source identity: composite tuple when the source entity declares `key`,
     // else the bare `id`. Used for single-column inverse matching and memo keys.
     const sourceEntity = this.getEntity(entityName);
-    const sourceId = sourceEntity?.key && sourceEntity.key.length > 0
-      ? this.compositeId(sourceEntity, instance)
-      : instance.id;
+    const sourceId =
+      sourceEntity?.key && sourceEntity.key.length > 0
+        ? this.compositeId(sourceEntity, instance)
+        : instance.id;
     if (!sourceId) {
       return null;
     }
@@ -1324,7 +1337,7 @@ export class RuntimeEngine {
       case 'belongsTo':
       case 'ref': {
         // For belongsTo/ref the foreign key lives on the source relationship.
-        const rawRel = sourceEntity?.relationships.find(r => r.name === relationshipName);
+        const rawRel = sourceEntity?.relationships.find((r) => r.name === relationshipName);
         if (rawRel?.foreignKey && rawRel.foreignKey.fields.length > 1) {
           // Composite FK: resolve the target by matching every FK column against
           // the target's referenced columns. Generalizes the single-column
@@ -1332,12 +1345,17 @@ export class RuntimeEngine {
           // row even when several targets share an `id`/first-column value.
           const targetEntity = this.getEntity(rel.targetEntity);
           const pairs = this.fkColumnPairs(rawRel.foreignKey, targetEntity);
-          const unset = pairs.some(([local]) => instance[local] === undefined || instance[local] === null);
+          const unset = pairs.some(
+            ([local]) => instance[local] === undefined || instance[local] === null,
+          );
           if (unset) {
             result = null;
           } else {
             const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
-            result = allTargets.find(t => pairs.every(([local, remote]) => t[remote] === instance[local])) ?? null;
+            result =
+              allTargets.find((t) =>
+                pairs.every(([local, remote]) => t[remote] === instance[local]),
+              ) ?? null;
           }
           break;
         }
@@ -1347,7 +1365,7 @@ export class RuntimeEngine {
         if (!targetId) {
           result = null;
         } else {
-          result = await this.getInstanceRaw(rel.targetEntity, targetId) ?? null;
+          result = (await this.getInstanceRaw(rel.targetEntity, targetId)) ?? null;
         }
         break;
       }
@@ -1363,8 +1381,7 @@ export class RuntimeEngine {
 
         // Find the inverse belongsTo relationship
         const inverseRel = targetEntity.relationships.find(
-          r => (r.kind === 'belongsTo' || r.kind === 'ref') &&
-               r.target === entityName
+          (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === entityName,
         );
 
         if (inverseRel) {
@@ -1373,18 +1390,21 @@ export class RuntimeEngine {
             // source's referenced key columns (target[local] === source[remote]).
             const pairs = this.fkColumnPairs(inverseRel.foreignKey, sourceEntity);
             const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
-            result = allTargets.find(t => pairs.every(([local, remote]) => t[local] === instance[remote])) ?? null;
+            result =
+              allTargets.find((t) =>
+                pairs.every(([local, remote]) => t[local] === instance[remote]),
+              ) ?? null;
             break;
           }
           // Use the inverse relationship's foreign key
           const fkProperty = inverseRel.foreignKey?.fields[0] ?? `${inverseRel.name}Id`;
           const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
-          result = allTargets.find(t => t[fkProperty] === sourceId) ?? null;
+          result = allTargets.find((t) => t[fkProperty] === sourceId) ?? null;
         } else {
           // Fallback: assume the foreign key is named after the source entity
           const assumedFk = `${entityName.toLowerCase()}Id`;
           const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
-          result = allTargets.find(t => t[assumedFk] === sourceId) ?? null;
+          result = allTargets.find((t) => t[assumedFk] === sourceId) ?? null;
         }
         break;
       }
@@ -1399,8 +1419,7 @@ export class RuntimeEngine {
 
         // Find the inverse belongsTo relationship
         const inverseRel = targetEntity.relationships.find(
-          r => (r.kind === 'belongsTo' || r.kind === 'ref') &&
-               r.target === entityName
+          (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === entityName,
         );
 
         if (inverseRel) {
@@ -1409,17 +1428,19 @@ export class RuntimeEngine {
             // source's referenced key columns (target[local] === source[remote]).
             const pairs = this.fkColumnPairs(inverseRel.foreignKey, sourceEntity);
             const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
-            result = allTargets.filter(t => pairs.every(([local, remote]) => t[local] === instance[remote]));
+            result = allTargets.filter((t) =>
+              pairs.every(([local, remote]) => t[local] === instance[remote]),
+            );
             break;
           }
           const fkProperty = inverseRel.foreignKey?.fields[0] ?? `${inverseRel.name}Id`;
           const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
-          result = allTargets.filter(t => t[fkProperty] === sourceId);
+          result = allTargets.filter((t) => t[fkProperty] === sourceId);
         } else {
           // Fallback: assume the foreign key is named after the source entity
           const assumedFk = `${entityName.toLowerCase()}Id`;
           const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
-          result = allTargets.filter(t => t[assumedFk] === sourceId);
+          result = allTargets.filter((t) => t[assumedFk] === sourceId);
         }
         break;
       }
@@ -1432,7 +1453,7 @@ export class RuntimeEngine {
     // (e.g., self.order.customer.name follows Order → Customer → name)
     if (result !== null) {
       if (Array.isArray(result)) {
-        result = result.map(r => ({ ...r, _entity: rel.targetEntity }));
+        result = result.map((r) => ({ ...r, _entity: rel.targetEntity }));
       } else {
         result = { ...result, _entity: rel.targetEntity };
       }
@@ -1464,7 +1485,7 @@ export class RuntimeEngine {
    */
   private compositeId(entity: IREntity | undefined, instance: Record<string, unknown>): string {
     if (entity?.key && entity.key.length > 0) {
-      return entity.key.map(k => this.encodeKeyComponent(String(instance[k]))).join('|');
+      return entity.key.map((k) => this.encodeKeyComponent(String(instance[k]))).join('|');
     }
     return String(instance.id);
   }
@@ -1483,11 +1504,12 @@ export class RuntimeEngine {
    */
   private fkColumnPairs(fk: IRForeignKey, referencedEntity?: IREntity): Array<[string, string]> {
     const fields = fk.fields;
-    const refs = fk.references && fk.references.length === fields.length
-      ? fk.references
-      : (referencedEntity?.key && referencedEntity.key.length === fields.length
+    const refs =
+      fk.references && fk.references.length === fields.length
+        ? fk.references
+        : referencedEntity?.key && referencedEntity.key.length === fields.length
           ? referencedEntity.key
-          : fields);
+          : fields;
     return fields.map((f, i) => [f, refs[i]] as [string, string]);
   }
 
@@ -1510,18 +1532,25 @@ export class RuntimeEngine {
       ...(custom ? Object.fromEntries(custom) : undefined),
       // Core builtins
       now: () => this.getNow(),
-      uuid: () => this.options.generateId ? this.options.generateId() : crypto.randomUUID(),
+      uuid: () => (this.options.generateId ? this.options.generateId() : crypto.randomUUID()),
 
       // String builtins
-      trim: (s: unknown) => typeof s === 'string' ? s.trim() : s,
-      split: (s: unknown, sep: unknown) => typeof s === 'string' ? s.split(sep as string) : s,
-      count: (v: unknown) => Array.isArray(v) ? v.length : v,
-      startsWith: (s: unknown, prefix: unknown) => typeof s === 'string' ? s.startsWith(prefix as string) : false,
-      endsWith: (s: unknown, suffix: unknown) => typeof s === 'string' ? s.endsWith(suffix as string) : false,
+      trim: (s: unknown) => (typeof s === 'string' ? s.trim() : s),
+      split: (s: unknown, sep: unknown) => (typeof s === 'string' ? s.split(sep as string) : s),
+      count: (v: unknown) => (Array.isArray(v) ? v.length : v),
+      startsWith: (s: unknown, prefix: unknown) =>
+        typeof s === 'string' ? s.startsWith(prefix as string) : false,
+      endsWith: (s: unknown, suffix: unknown) =>
+        typeof s === 'string' ? s.endsWith(suffix as string) : false,
       replace: (s: unknown, search: unknown, replacement: unknown) =>
-        typeof s === 'string' ? s.replace(new RegExp((search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), () => replacement as string) : s,
-      toUpperCase: (s: unknown) => typeof s === 'string' ? s.toUpperCase() : s,
-      toLowerCase: (s: unknown) => typeof s === 'string' ? s.toLowerCase() : s,
+        typeof s === 'string'
+          ? s.replace(
+              new RegExp((search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+              () => replacement as string,
+            )
+          : s,
+      toUpperCase: (s: unknown) => (typeof s === 'string' ? s.toUpperCase() : s),
+      toLowerCase: (s: unknown) => (typeof s === 'string' ? s.toLowerCase() : s),
       length: (v: unknown) => {
         if (typeof v === 'string') return v.length;
         if (Array.isArray(v)) return v.length;
@@ -1529,9 +1558,12 @@ export class RuntimeEngine {
       },
       substring: (s: unknown, start: unknown, end?: unknown) =>
         typeof s === 'string'
-          ? (end !== undefined ? s.substring(start as number, end as number) : s.substring(start as number))
+          ? end !== undefined
+            ? s.substring(start as number, end as number)
+            : s.substring(start as number)
           : s,
-      indexOf: (s: unknown, search: unknown) => typeof s === 'string' ? s.indexOf(search as string) : -1,
+      indexOf: (s: unknown, search: unknown) =>
+        typeof s === 'string' ? s.indexOf(search as string) : -1,
       matches: (s: unknown, pattern: unknown) => {
         if (typeof s !== 'string' || typeof pattern !== 'string') return false;
         try {
@@ -1542,18 +1574,22 @@ export class RuntimeEngine {
       },
       search: (text: unknown, query: unknown) => {
         if (typeof text !== 'string' || typeof query !== 'string') return false;
-        const tokenize = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/i).filter(Boolean);
+        const tokenize = (s: string) =>
+          s
+            .toLowerCase()
+            .split(/[^a-z0-9]+/i)
+            .filter(Boolean);
         const haystack = new Set(tokenize(text));
         const needles = tokenize(query);
         if (needles.length === 0) return false;
-        return needles.every(n => haystack.has(n));
+        return needles.every((n) => haystack.has(n));
       },
 
       // Math builtins
-      abs: (v: unknown) => typeof v === 'number' ? Math.abs(v) : v,
-      round: (v: unknown) => typeof v === 'number' ? Math.round(v) : v,
-      floor: (v: unknown) => typeof v === 'number' ? Math.floor(v) : v,
-      ceil: (v: unknown) => typeof v === 'number' ? Math.ceil(v) : v,
+      abs: (v: unknown) => (typeof v === 'number' ? Math.abs(v) : v),
+      round: (v: unknown) => (typeof v === 'number' ? Math.round(v) : v),
+      floor: (v: unknown) => (typeof v === 'number' ? Math.floor(v) : v),
+      ceil: (v: unknown) => (typeof v === 'number' ? Math.ceil(v) : v),
       min: (...args: unknown[]) => {
         const nums = args.filter((a): a is number => typeof a === 'number');
         return nums.length > 0 ? Math.min(...nums) : undefined;
@@ -1580,7 +1616,10 @@ export class RuntimeEngine {
               return total;
             })();
           }
-          return (arr as unknown[]).reduce((acc: number, v) => typeof v === 'number' ? acc + v : acc, 0);
+          return (arr as unknown[]).reduce(
+            (acc: number, v) => (typeof v === 'number' ? acc + v : acc),
+            0,
+          );
         }
         return arr;
       },
@@ -1592,7 +1631,10 @@ export class RuntimeEngine {
               let count = 0;
               for (const element of arr as unknown[]) {
                 const v = await Promise.resolve((mapper as (...a: unknown[]) => unknown)(element));
-                if (typeof v === 'number') { total += v; count++; }
+                if (typeof v === 'number') {
+                  total += v;
+                  count++;
+                }
               }
               return count > 0 ? total / count : 0;
             })();
@@ -1642,7 +1684,9 @@ export class RuntimeEngine {
             return (async () => {
               let count = 0;
               for (const element of arr as unknown[]) {
-                const v = await Promise.resolve((predicate as (...a: unknown[]) => unknown)(element));
+                const v = await Promise.resolve(
+                  (predicate as (...a: unknown[]) => unknown)(element),
+                );
                 if (v) count++;
               }
               return count;
@@ -1679,12 +1723,12 @@ export class RuntimeEngine {
       },
 
       // Date builtins (UTC components; ts is milliseconds since epoch)
-      year: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCFullYear() : ts,
-      month: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCMonth() + 1 : ts,
-      day: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCDate() : ts,
-      hours: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCHours() : ts,
-      minutes: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCMinutes() : ts,
-      seconds: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCSeconds() : ts,
+      year: (ts: unknown) => (typeof ts === 'number' ? new Date(ts).getUTCFullYear() : ts),
+      month: (ts: unknown) => (typeof ts === 'number' ? new Date(ts).getUTCMonth() + 1 : ts),
+      day: (ts: unknown) => (typeof ts === 'number' ? new Date(ts).getUTCDate() : ts),
+      hours: (ts: unknown) => (typeof ts === 'number' ? new Date(ts).getUTCHours() : ts),
+      minutes: (ts: unknown) => (typeof ts === 'number' ? new Date(ts).getUTCMinutes() : ts),
+      seconds: (ts: unknown) => (typeof ts === 'number' ? new Date(ts).getUTCSeconds() : ts),
 
       // Date/time primitive builtins (pure, UTC-only).
       // Convention note: the legacy `year`..`seconds` builtins above pass non-number
@@ -1694,13 +1738,21 @@ export class RuntimeEngine {
       timeOf: (ts: unknown) => timeOf(ts),
       datetimeOf: (d: unknown, t?: unknown) => datetimeOf(d, t),
       addDuration: (ts: unknown, d: unknown) =>
-        typeof ts === 'number' && Number.isFinite(ts) && typeof d === 'number' && Number.isFinite(d) ? ts + d : null,
+        typeof ts === 'number' && Number.isFinite(ts) && typeof d === 'number' && Number.isFinite(d)
+          ? ts + d
+          : null,
       durationBetween: (a: unknown, b: unknown) =>
-        typeof a === 'number' && Number.isFinite(a) && typeof b === 'number' && Number.isFinite(b) ? b - a : null,
-      durationDays: (n: unknown) => typeof n === 'number' && Number.isFinite(n) ? n * 86400000 : null,
-      durationHours: (n: unknown) => typeof n === 'number' && Number.isFinite(n) ? n * 3600000 : null,
-      durationMinutes: (n: unknown) => typeof n === 'number' && Number.isFinite(n) ? n * 60000 : null,
-      durationSeconds: (n: unknown) => typeof n === 'number' && Number.isFinite(n) ? n * 1000 : null,
+        typeof a === 'number' && Number.isFinite(a) && typeof b === 'number' && Number.isFinite(b)
+          ? b - a
+          : null,
+      durationDays: (n: unknown) =>
+        typeof n === 'number' && Number.isFinite(n) ? n * 86400000 : null,
+      durationHours: (n: unknown) =>
+        typeof n === 'number' && Number.isFinite(n) ? n * 3600000 : null,
+      durationMinutes: (n: unknown) =>
+        typeof n === 'number' && Number.isFinite(n) ? n * 60000 : null,
+      durationSeconds: (n: unknown) =>
+        typeof n === 'number' && Number.isFinite(n) ? n * 1000 : null,
 
       // Feature flag builtin
       flag: (name: unknown) => {
@@ -1716,11 +1768,19 @@ export class RuntimeEngine {
         if (typeof action !== 'string') return false;
         const roleName = this.context.user?.role;
         if (typeof roleName !== 'string') return false;
-        return this.roleHasPermission(roleName, action, typeof target === 'string' ? target : undefined);
+        return this.roleHasPermission(
+          roleName,
+          action,
+          typeof target === 'string' ? target : undefined,
+        );
       },
       roleAllows: (roleName: unknown, action: unknown, target?: unknown) => {
         if (typeof roleName !== 'string' || typeof action !== 'string') return false;
-        return this.roleHasPermission(roleName, action, typeof target === 'string' ? target : undefined);
+        return this.roleHasPermission(
+          roleName,
+          action,
+          typeof target === 'string' ? target : undefined,
+        );
       },
     };
   }
@@ -1805,16 +1865,16 @@ export class RuntimeEngine {
       const data = encoder.encode(json);
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const computedHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      const computedHash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 
       const isValid = computedHash === targetHash;
 
       if (!isValid) {
         console.error(
           `[Manifest Runtime] IR hash verification failed!\n` +
-          `  Expected: ${targetHash}\n` +
-          `  Computed: ${computedHash}\n` +
-          `  The IR may have been tampered with or modified since compilation.`
+            `  Expected: ${targetHash}\n` +
+            `  Computed: ${computedHash}\n` +
+            `  The IR may have been tampered with or modified since compilation.`,
         );
       }
 
@@ -1835,7 +1895,7 @@ export class RuntimeEngine {
       if (!isValid) {
         throw new Error(
           'IR provenance verification failed. The IR may have been modified since compilation. ' +
-          'This runtime requires valid provenance for execution.'
+            'This runtime requires valid provenance for execution.',
         );
       }
     }
@@ -1858,7 +1918,7 @@ export class RuntimeEngine {
   }
 
   getEntity(name: string): IREntity | undefined {
-    return this.ir.entities.find(e => e.name === name);
+    return this.ir.entities.find((e) => e.name === name);
   }
 
   getCommands(): IRCommand[] {
@@ -1869,9 +1929,9 @@ export class RuntimeEngine {
     if (entityName) {
       const entity = this.getEntity(entityName);
       if (!entity || !entity.commands.includes(name)) return undefined;
-      return this.ir.commands.find(c => c.name === name && c.entity === entityName);
+      return this.ir.commands.find((c) => c.name === name && c.entity === entityName);
     }
-    return this.ir.commands.find(c => c.name === name);
+    return this.ir.commands.find((c) => c.name === name);
   }
 
   getPolicies(): IRPolicy[] {
@@ -1889,7 +1949,7 @@ export class RuntimeEngine {
    */
   async runSchedule(
     scheduleName: string,
-    options: { correlationId?: string; causationId?: string } = {}
+    options: { correlationId?: string; causationId?: string } = {},
   ): Promise<CommandResult> {
     const schedule = getSchedulesFromIR(this.ir).get(scheduleName);
     if (!schedule) {
@@ -2014,7 +2074,7 @@ export class RuntimeEngine {
       const tv = this.resolveTenantValue();
       if (tv) {
         const prop = this.ir.tenant.property;
-        all = all.filter(inst => inst[prop] === tv);
+        all = all.filter((inst) => inst[prop] === tv);
       }
     }
     // Decrypt encrypted fields after store read
@@ -2038,7 +2098,10 @@ export class RuntimeEngine {
   }
 
   /** Internal read path: tenant filter + decryption, NO masking. */
-  private async getInstanceRaw(entityName: string, id: string): Promise<EntityInstance | undefined> {
+  private async getInstanceRaw(
+    entityName: string,
+    id: string,
+  ): Promise<EntityInstance | undefined> {
     // Command working copy: during command execution, reads of the target
     // instance return the in-memory copy carrying this command's mutations,
     // so guards/computes/refreshes see pending changes without a store read.
@@ -2067,7 +2130,7 @@ export class RuntimeEngine {
     let cached = this.maskedPropertiesCache.get(entityName);
     if (cached) return cached;
     const entity = this.getEntity(entityName);
-    cached = entity ? entity.properties.filter(p => p.maskStrategy !== undefined) : [];
+    cached = entity ? entity.properties.filter((p) => p.maskStrategy !== undefined) : [];
     this.maskedPropertiesCache.set(entityName, cached);
     return cached;
   }
@@ -2078,7 +2141,9 @@ export class RuntimeEngine {
     let cached = this.privatePropertiesCache.get(entityName);
     if (cached) return cached;
     const entity = this.getEntity(entityName);
-    cached = entity ? entity.properties.filter(p => p.modifiers.includes('private')).map(p => p.name) : [];
+    cached = entity
+      ? entity.properties.filter((p) => p.modifiers.includes('private')).map((p) => p.name)
+      : [];
     this.privatePropertiesCache.set(entityName, cached);
     return cached;
   }
@@ -2091,7 +2156,10 @@ export class RuntimeEngine {
    *   An evaluation error additionally surfaces a diagnostic; it never changes
    *   the masked outcome (diagnostics explain, never compensate).
    */
-  private async applyMasking(entityName: string, instance: EntityInstance): Promise<EntityInstance> {
+  private async applyMasking(
+    entityName: string,
+    instance: EntityInstance,
+  ): Promise<EntityInstance> {
     const maskedProps = this.maskedProperties(entityName);
     const privateProps = this.privateProperties(entityName);
     if (maskedProps.length === 0 && privateProps.length === 0) return instance;
@@ -2135,7 +2203,7 @@ export class RuntimeEngine {
               expression: this.formatExpression(strategy.unmaskWhen),
               resolved,
               error: error instanceof Error ? error.message : String(error),
-            }
+            },
           );
         } finally {
           if (ownsEvalBudget) this.clearEvalBudget();
@@ -2160,9 +2228,9 @@ export class RuntimeEngine {
     let cached = this.readPoliciesCache.get(entityName);
     if (cached) return cached;
     cached = this.ir.policies.filter(
-      p =>
+      (p) =>
         (p.action === 'read' || p.action === 'all') &&
-        (p.entity === undefined || p.entity === entityName)
+        (p.entity === undefined || p.entity === entityName),
     );
     this.readPoliciesCache.set(entityName, cached);
     return cached;
@@ -2175,7 +2243,9 @@ export class RuntimeEngine {
    */
   private isContextOnlyExpression(expr: IRExpression): boolean {
     const keys = this.extractContextKeys(expr);
-    return !keys.some(k => k === 'self' || k === 'this' || k.startsWith('self.') || k.startsWith('this.'));
+    return !keys.some(
+      (k) => k === 'self' || k === 'this' || k.startsWith('self.') || k.startsWith('this.'),
+    );
   }
 
   /**
@@ -2187,7 +2257,7 @@ export class RuntimeEngine {
   private async evaluateReadPolicy(
     policy: IRPolicy,
     evalContext: Record<string, unknown>,
-    entityName: string
+    entityName: string,
   ): Promise<boolean> {
     if (policyHasRateLimit(policy) && policy.rateLimit) {
       const tenantValue = this.ir.tenant ? this.resolveTenantValue() : this.context.tenantId;
@@ -2197,7 +2267,7 @@ export class RuntimeEngine {
         evalContext,
         tenantValue,
         this.getNow(),
-        `policy:${policy.name}`
+        `policy:${policy.name}`,
       );
       if (!rl.allowed) return false;
     }
@@ -2217,7 +2287,7 @@ export class RuntimeEngine {
           expression: this.formatExpression(policy.expression),
           resolved,
           error: error instanceof Error ? error.message : String(error),
-        }
+        },
       );
       return false;
     }
@@ -2250,7 +2320,7 @@ export class RuntimeEngine {
    */
   private async applyReadGateToRows(
     entityName: string,
-    rows: EntityInstance[]
+    rows: EntityInstance[],
   ): Promise<EntityInstance[]> {
     const policies = this.selectReadPolicies(entityName);
     if (policies.length === 0) return rows;
@@ -2297,7 +2367,10 @@ export class RuntimeEngine {
    * Returns array of constraint failures (empty if all pass)
    * Useful for diagnostic purposes without mutating state
    */
-  async checkConstraints(entityName: string, data: Record<string, unknown>): Promise<ConstraintOutcome[]> {
+  async checkConstraints(
+    entityName: string,
+    data: Record<string, unknown>,
+  ): Promise<ConstraintOutcome[]> {
     const entity = this.getEntity(entityName);
     if (!entity) return [];
     const ownsEvalBudget = this.initEvalBudget();
@@ -2305,7 +2378,7 @@ export class RuntimeEngine {
       const outcomes = await this.validateConstraints(entity, data);
       // Return only failed constraints for backwards compatibility with test patterns
       // (Callers can still see all outcomes by using validateConstraints directly)
-      return outcomes.filter(o => !o.passed);
+      return outcomes.filter((o) => !o.passed);
     } finally {
       if (ownsEvalBudget) this.clearEvalBudget();
     }
@@ -2315,7 +2388,10 @@ export class RuntimeEngine {
    * Evaluate all entity constraints against instance data, returning every outcome
    * (both passed and failed). Useful for diagnostic UIs that show full constraint status.
    */
-  async evaluateAllConstraints(entityName: string, data: Record<string, unknown>): Promise<ConstraintOutcome[]> {
+  async evaluateAllConstraints(
+    entityName: string,
+    data: Record<string, unknown>,
+  ): Promise<ConstraintOutcome[]> {
     const entity = this.getEntity(entityName);
     if (!entity) return [];
     const ownsEvalBudget = this.initEvalBudget();
@@ -2326,7 +2402,10 @@ export class RuntimeEngine {
     }
   }
 
-  async createInstance(entityName: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
+  async createInstance(
+    entityName: string,
+    data: Partial<EntityInstance>,
+  ): Promise<EntityInstance | undefined> {
     const ownsEvalBudget = this.initEvalBudget();
     try {
       return (await this.createInstanceWithOutcomes(entityName, data)).instance;
@@ -2337,7 +2416,7 @@ export class RuntimeEngine {
 
   private prepareCreateData(
     entity: IREntity,
-    data: Partial<EntityInstance>
+    data: Partial<EntityInstance>,
   ): Record<string, unknown> {
     const defaults: Record<string, unknown> = {};
     for (const prop of entity.properties) {
@@ -2397,9 +2476,7 @@ export class RuntimeEngine {
   }
 
   private reportConstraintOutcomes(constraintOutcomes: ConstraintOutcome[]): boolean {
-    const blockingFailures = constraintOutcomes.filter(
-      o => !o.passed && o.severity === 'block'
-    );
+    const blockingFailures = constraintOutcomes.filter((o) => !o.passed && o.severity === 'block');
 
     if (blockingFailures.length > 0) {
       // Log blocking constraint failures for diagnostics
@@ -2408,7 +2485,9 @@ export class RuntimeEngine {
     }
 
     // Log non-blocking outcomes (warn/ok) for diagnostics
-    const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
+    const nonBlockingOutcomes = constraintOutcomes.filter(
+      (o) => !o.passed && o.severity !== 'block',
+    );
     if (nonBlockingOutcomes.length > 0) {
       console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
     }
@@ -2418,7 +2497,7 @@ export class RuntimeEngine {
 
   private async createInstanceWithOutcomes(
     entityName: string,
-    data: Partial<EntityInstance>
+    data: Partial<EntityInstance>,
   ): Promise<{ instance?: EntityInstance; constraintOutcomes?: ConstraintOutcome[] }> {
     const entity = this.getEntity(entityName);
     if (!entity) return {};
@@ -2431,7 +2510,7 @@ export class RuntimeEngine {
   /** Date/time primitive write-time validation (docs/spec/semantics.md, Date/Time Types). */
   private validateDateTimeTypes(
     entity: IREntity,
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
   ): ConstraintOutcome[] {
     const outcomes: ConstraintOutcome[] = [];
     for (const prop of entity.properties) {
@@ -2457,7 +2536,8 @@ export class RuntimeEngine {
         code = 'E_TYPE_DURATION';
       }
       if (!ok) {
-        const shown = typeof value === 'number' ? String(value) : JSON.stringify(value) ?? String(value);
+        const shown =
+          typeof value === 'number' ? String(value) : (JSON.stringify(value) ?? String(value));
         const message = `Property "${prop.name}" expects ${t}; got ${shown}`;
         outcomes.push({
           code,
@@ -2560,7 +2640,7 @@ export class RuntimeEngine {
     onlyProps?: Set<string>,
   ): Promise<ConstraintOutcome[]> {
     const uniqueProps = entity.properties.filter(
-      p => p.modifiers.includes('unique') && (!onlyProps || onlyProps.has(p.name)),
+      (p) => p.modifiers.includes('unique') && (!onlyProps || onlyProps.has(p.name)),
     );
     if (uniqueProps.length === 0) return [];
     const existing = await this.getAllInstancesRaw(entityName);
@@ -2568,7 +2648,7 @@ export class RuntimeEngine {
     for (const prop of uniqueProps) {
       const value = candidate[prop.name];
       if (value === undefined || value === null) continue;
-      const collides = existing.some(row => row.id !== excludeId && row[prop.name] === value);
+      const collides = existing.some((row) => row.id !== excludeId && row[prop.name] === value);
       if (collides) {
         const message = `Property '${prop.name}' must be unique; value already exists`;
         outcomes.push({
@@ -2594,8 +2674,8 @@ export class RuntimeEngine {
     const constraintOutcomes = [
       ...requiredOutcomes,
       ...this.validateDateTimeTypes(entity, mergedData),
-      ...await this.uniqueModifierOutcomes(entityName, entity, mergedData),
-      ...await this.validateConstraints(entity, mergedData),
+      ...(await this.uniqueModifierOutcomes(entityName, entity, mergedData)),
+      ...(await this.validateConstraints(entity, mergedData)),
     ];
     if (!this.reportConstraintOutcomes(constraintOutcomes)) {
       return { constraintOutcomes };
@@ -2618,7 +2698,11 @@ export class RuntimeEngine {
     return { instance: decrypted, constraintOutcomes };
   }
 
-  async updateInstance(entityName: string, id: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
+  async updateInstance(
+    entityName: string,
+    id: string,
+    data: Partial<EntityInstance>,
+  ): Promise<EntityInstance | undefined> {
     const entity = this.getEntity(entityName);
     const store = this.stores.get(entityName);
     if (!store || !entity) return undefined;
@@ -2645,7 +2729,8 @@ export class RuntimeEngine {
       // Block a post-creation change to a readonly property. Writes issued while
       // the creating command runs are allowed (its id is just-created within the
       // same command); a same-value write is a no-op and passes.
-      const createdWithinCommand = this.commandExecutionDepth > 0 && this.justCreatedInstanceIds.has(id);
+      const createdWithinCommand =
+        this.commandExecutionDepth > 0 && this.justCreatedInstanceIds.has(id);
       if (!createdWithinCommand) {
         for (const prop of entity.properties) {
           if (!prop.modifiers.includes('readonly')) continue;
@@ -2662,7 +2747,11 @@ export class RuntimeEngine {
 
       // ── unique modifier: reject an update colliding with another instance ──
       const uniqueOutcomes = await this.uniqueModifierOutcomes(
-        entityName, entity, data, id, new Set(Object.keys(data)),
+        entityName,
+        entity,
+        data,
+        id,
+        new Set(Object.keys(data)),
       );
       if (uniqueOutcomes.length > 0) {
         const first = uniqueOutcomes[0];
@@ -2689,7 +2778,12 @@ export class RuntimeEngine {
               actualVersion: existingVersion,
               conflictCode: 'VERSION_MISMATCH',
             };
-            await this.emitConcurrencyConflictEvent(entityName, id, providedVersion, existingVersion);
+            await this.emitConcurrencyConflictEvent(
+              entityName,
+              id,
+              providedVersion,
+              existingVersion,
+            );
             return undefined;
           }
         }
@@ -2699,7 +2793,11 @@ export class RuntimeEngine {
         // If version is explicitly provided in data, use that (for optimistic concurrency checks)
         // Skip increment for instances that were just created in the same command (e.g., create command's mutate actions)
         const wasJustCreated = this.justCreatedInstanceIds.has(id);
-        if (providedVersion === undefined && !this.versionIncrementedForCommand && !wasJustCreated) {
+        if (
+          providedVersion === undefined &&
+          !this.versionIncrementedForCommand &&
+          !wasJustCreated
+        ) {
           data[entity.versionProperty] = (existingVersion || 0) + 1;
           this.versionIncrementedForCommand = true;
         }
@@ -2719,13 +2817,13 @@ export class RuntimeEngine {
       // Validate state transitions if entity declares them
       if (entity.transitions && entity.transitions.length > 0) {
         for (const [prop, newValue] of Object.entries(data)) {
-          const rules = entity.transitions.filter(t => t.property === prop);
+          const rules = entity.transitions.filter((t) => t.property === prop);
           if (rules.length === 0) continue;
           const currentValue = existing[prop];
           if (currentValue === undefined) continue;
-          const matchingRule = rules.find(t => t.from === String(currentValue));
+          const matchingRule = rules.find((t) => t.from === String(currentValue));
           if (matchingRule && !matchingRule.to.includes(String(newValue))) {
-            const allowed = matchingRule.to.map(v => `'${v}'`).join(', ');
+            const allowed = matchingRule.to.map((v) => `'${v}'`).join(', ');
             this.lastTransitionError = `Invalid state transition for '${prop}': '${currentValue}' -> '${newValue}' is not allowed. Allowed from '${currentValue}': [${allowed}]`;
             return undefined;
           }
@@ -2737,12 +2835,12 @@ export class RuntimeEngine {
       // stored values are not re-validated on unrelated updates.
       const constraintOutcomes = [
         ...this.validateDateTimeTypes(entity, data),
-        ...await this.validateConstraints(entity, mergedData),
+        ...(await this.validateConstraints(entity, mergedData)),
       ];
 
       // Only block on severity='block' constraints that failed
       const blockingFailures = constraintOutcomes.filter(
-        o => !o.passed && o.severity === 'block'
+        (o) => !o.passed && o.severity === 'block',
       );
 
       if (blockingFailures.length > 0) {
@@ -2752,7 +2850,9 @@ export class RuntimeEngine {
       }
 
       // Log non-blocking outcomes (warn/ok) for diagnostics
-      const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
+      const nonBlockingOutcomes = constraintOutcomes.filter(
+        (o) => !o.passed && o.severity !== 'block',
+      );
       if (nonBlockingOutcomes.length > 0) {
         console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
       }
@@ -2782,13 +2882,18 @@ export class RuntimeEngine {
    * Scans the entity's computed properties for any that depend on the changed properties,
    * and sets their cache entries' stale flag to true. Handles transitive staleness.
    */
-  private markComputedPropertiesStale(entityName: string, instanceId: string, changedProperties: string[], visited: Set<string> = new Set()): void {
+  private markComputedPropertiesStale(
+    entityName: string,
+    instanceId: string,
+    changedProperties: string[],
+    visited: Set<string> = new Set(),
+  ): void {
     const entity = this.getEntity(entityName);
     if (!entity) return;
 
     for (const cp of entity.computedProperties) {
       if (visited.has(cp.name)) continue;
-      const dependsOnChanged = cp.dependencies.some(dep => changedProperties.includes(dep));
+      const dependsOnChanged = cp.dependencies.some((dep) => changedProperties.includes(dep));
       if (!dependsOnChanged) continue;
 
       visited.add(cp.name);
@@ -2825,7 +2930,7 @@ export class RuntimeEngine {
       causationId?: string;
       /** Caller-provided idempotency key for dedup. Required if idempotencyStore is configured. */
       idempotencyKey?: string;
-    } = {}
+    } = {},
   ): Promise<CommandResult> {
     // Per docs/spec/adapters.md § "Audit Sink": when an AuditSink is wired in,
     // runCommand emits exactly one AuditRecord per invocation regardless of
@@ -2890,7 +2995,8 @@ export class RuntimeEngine {
         if (!this.options.jobQueue) {
           result = {
             success: false,
-            error: 'MISSING_JOB_QUEUE: async command invoked but no jobQueue is configured in RuntimeOptions',
+            error:
+              'MISSING_JOB_QUEUE: async command invoked but no jobQueue is configured in RuntimeOptions',
             emittedEvents: [],
           };
           return result;
@@ -2901,17 +3007,20 @@ export class RuntimeEngine {
         // Threads the active transaction when this async command is dispatched
         // from inside another command's transaction (e.g. a reaction target);
         // null at top level, where a single enqueue needs no transaction.
-        await this.options.jobQueue.enqueue({
-          jobId,
-          commandName,
-          entityName: options.entityName,
-          instanceId: options.instanceId,
-          input,
-          correlationId: options.correlationId,
-          causationId: options.causationId,
-          enqueuedAt,
-          status: 'pending',
-        }, this.activeTx ?? undefined);
+        await this.options.jobQueue.enqueue(
+          {
+            jobId,
+            commandName,
+            entityName: options.entityName,
+            instanceId: options.instanceId,
+            input,
+            correlationId: options.correlationId,
+            causationId: options.causationId,
+            enqueuedAt,
+            status: 'pending',
+          },
+          this.activeTx ?? undefined,
+        );
 
         result = {
           success: true,
@@ -2936,7 +3045,11 @@ export class RuntimeEngine {
       // instead of opening a second transaction.
       if (this.options.transactionProvider && this.activeTx === null) {
         result = await this._runCommandInTransaction(
-          this.options.transactionProvider, command, commandName, input, options,
+          this.options.transactionProvider,
+          command,
+          commandName,
+          input,
+          options,
         );
         return result;
       }
@@ -2974,11 +3087,7 @@ export class RuntimeEngine {
       throw e;
     } finally {
       if (this.profilingBridge.isEnabled() && result !== undefined) {
-        this.profilingBridge.complete(
-          result.success,
-          this.ir.entities.length,
-          this.stores.size,
-        );
+        this.profilingBridge.complete(result.success, this.ir.entities.length, this.stores.size);
       }
       if (auditEnabled) {
         await this.emitAudit({
@@ -3014,13 +3123,16 @@ export class RuntimeEngine {
   async runSaga(
     sagaName: string,
     stepInputs: Record<string, { input?: Record<string, unknown>; instanceId?: string }> = {},
-    options: { correlationId?: string } = {}
+    options: { correlationId?: string } = {},
   ): Promise<SagaResult> {
-    const saga = (this.ir.sagas || []).find(s => s.name === sagaName);
+    const saga = (this.ir.sagas || []).find((s) => s.name === sagaName);
     if (!saga) {
       return {
-        saga: sagaName, success: false, status: 'aborted',
-        steps: [], emittedEvents: [],
+        saga: sagaName,
+        success: false,
+        status: 'aborted',
+        steps: [],
+        emittedEvents: [],
         error: `Unknown saga '${sagaName}'`,
       };
     }
@@ -3031,7 +3143,13 @@ export class RuntimeEngine {
     const completed: { step: IRSaga['steps'][number]; instanceId?: string }[] = [];
 
     // 1. Emit SagaStarted (only if declared in saga's emits)
-    this.emitSagaLifecycle(saga, 'SagaStarted', { sagaName: saga.name }, correlationId, emittedEvents);
+    this.emitSagaLifecycle(
+      saga,
+      'SagaStarted',
+      { sagaName: saga.name },
+      correlationId,
+      emittedEvents,
+    );
 
     // 2. Execute steps in declaration order
     for (const step of saga.steps) {
@@ -3047,42 +3165,91 @@ export class RuntimeEngine {
       if (!res.success) {
         // Step failed
         stepResults.push({
-          step: step.name, command: `${step.commandEntity}.${step.command}`,
-          status: 'failed', result: res, error: res.error,
+          step: step.name,
+          command: `${step.commandEntity}.${step.command}`,
+          status: 'failed',
+          result: res,
+          error: res.error,
         });
 
         if (saga.onFailure === 'compensate') {
           // Compensate completed steps in reverse order
-          await this.compensateSagaSteps(saga, completed, stepInputs, correlationId, emittedEvents, stepResults);
-          this.emitSagaLifecycle(saga, 'SagaFailed', { sagaName: saga.name, failedStep: step.name }, correlationId, emittedEvents);
+          await this.compensateSagaSteps(
+            saga,
+            completed,
+            stepInputs,
+            correlationId,
+            emittedEvents,
+            stepResults,
+          );
+          this.emitSagaLifecycle(
+            saga,
+            'SagaFailed',
+            { sagaName: saga.name, failedStep: step.name },
+            correlationId,
+            emittedEvents,
+          );
           return {
-            saga: saga.name, success: false, status: 'compensated',
-            steps: stepResults, emittedEvents, failedStep: step.name, error: res.error,
+            saga: saga.name,
+            success: false,
+            status: 'compensated',
+            steps: stepResults,
+            emittedEvents,
+            failedStep: step.name,
+            error: res.error,
           };
         } else {
           // Abort: no compensation
-          this.emitSagaLifecycle(saga, 'SagaFailed', { sagaName: saga.name, failedStep: step.name }, correlationId, emittedEvents);
+          this.emitSagaLifecycle(
+            saga,
+            'SagaFailed',
+            { sagaName: saga.name, failedStep: step.name },
+            correlationId,
+            emittedEvents,
+          );
           return {
-            saga: saga.name, success: false, status: 'aborted',
-            steps: stepResults, emittedEvents, failedStep: step.name, error: res.error,
+            saga: saga.name,
+            success: false,
+            status: 'aborted',
+            steps: stepResults,
+            emittedEvents,
+            failedStep: step.name,
+            error: res.error,
           };
         }
       }
 
       // Step succeeded
       stepResults.push({
-        step: step.name, command: `${step.commandEntity}.${step.command}`,
-        status: 'completed', result: res,
+        step: step.name,
+        command: `${step.commandEntity}.${step.command}`,
+        status: 'completed',
+        result: res,
       });
       completed.push({ step, instanceId: cfg.instanceId });
-      this.emitSagaLifecycle(saga, 'SagaStepCompleted', { sagaName: saga.name, step: step.name }, correlationId, emittedEvents);
+      this.emitSagaLifecycle(
+        saga,
+        'SagaStepCompleted',
+        { sagaName: saga.name, step: step.name },
+        correlationId,
+        emittedEvents,
+      );
     }
 
     // 3. All steps completed successfully
-    this.emitSagaLifecycle(saga, 'SagaCompleted', { sagaName: saga.name }, correlationId, emittedEvents);
+    this.emitSagaLifecycle(
+      saga,
+      'SagaCompleted',
+      { sagaName: saga.name },
+      correlationId,
+      emittedEvents,
+    );
     return {
-      saga: saga.name, success: true, status: 'completed',
-      steps: stepResults, emittedEvents,
+      saga: saga.name,
+      success: true,
+      status: 'completed',
+      steps: stepResults,
+      emittedEvents,
     };
   }
 
@@ -3102,7 +3269,7 @@ export class RuntimeEngine {
     // Iterate completed steps in reverse
     for (let i = completed.length - 1; i >= 0; i--) {
       const { step, instanceId } = completed[i];
-      const matchingResult = stepResults.find(r => r.step === step.name);
+      const matchingResult = stepResults.find((r) => r.step === step.name);
 
       if (!step.compensate || !step.compensateEntity) {
         // No compensation declared — mark as skipped
@@ -3162,7 +3329,7 @@ export class RuntimeEngine {
   ): void {
     if (!saga.emits.includes(eventName)) return;
 
-    const event = (this.ir.events || []).find(e => e.name === eventName);
+    const event = (this.ir.events || []).find((e) => e.name === eventName);
     const prov = this.ir.provenance;
 
     const emitted: EmittedEvent = {
@@ -3170,13 +3337,15 @@ export class RuntimeEngine {
       channel: event?.channel || eventName,
       payload,
       timestamp: this.getNow(),
-      ...(prov ? {
-        provenance: {
-          contentHash: prov.contentHash,
-          compilerVersion: prov.compilerVersion,
-          schemaVersion: prov.schemaVersion,
-        },
-      } : {}),
+      ...(prov
+        ? {
+            provenance: {
+              contentHash: prov.contentHash,
+              compilerVersion: prov.compilerVersion,
+              schemaVersion: prov.schemaVersion,
+            },
+          }
+        : {}),
       correlationId,
       causationId: `saga:${saga.name}`,
     };
@@ -3194,7 +3363,7 @@ export class RuntimeEngine {
    */
   private classifyOutcome(
     result: CommandResult | undefined,
-    thrown: unknown
+    thrown: unknown,
   ): import('./audit/audit-sink').CommandOutcome {
     if (thrown !== undefined) return 'error';
     if (!result) return 'error';
@@ -3209,7 +3378,9 @@ export class RuntimeEngine {
     // A blocking constraint failure is distinguishable by the presence of a
     // blocking outcome on result.constraintOutcomes (non-blocking warn/ok
     // outcomes ride along with success too, so we must check severity).
-    if (result.constraintOutcomes?.some(o => !o.passed && !o.overridden && o.severity === 'block')) {
+    if (
+      result.constraintOutcomes?.some((o) => !o.passed && !o.overridden && o.severity === 'block')
+    ) {
       return 'constraint_failed';
     }
     return 'error';
@@ -3256,7 +3427,7 @@ export class RuntimeEngine {
       if (Object.keys(parts).length > 0) diagnostics = parts;
     }
 
-    const emittedEventNames = result?.emittedEvents?.map(e => e.name);
+    const emittedEventNames = result?.emittedEvents?.map((e) => e.name);
 
     const record: import('./audit/audit-sink').AuditRecord = {
       recordId,
@@ -3282,7 +3453,7 @@ export class RuntimeEngine {
       // Surface the failure on stderr so operators can wire alerts off it.
       console.warn(
         '[Manifest Runtime] AuditSink.emit failed; record dropped:',
-        sinkError instanceof Error ? sinkError.message : sinkError
+        sinkError instanceof Error ? sinkError.message : sinkError,
       );
     }
   }
@@ -3302,13 +3473,13 @@ export class RuntimeEngine {
   private async enqueueOutbox(
     events: EmittedEvent[],
     _commandName: string,
-    _runOptions: { entityName?: string; instanceId?: string }
+    _runOptions: { entityName?: string; instanceId?: string },
   ): Promise<void> {
     const store = this.options.outboxStore;
     if (!store) return;
 
     const enqueuedAt = this.getNow();
-    const entries: import('./outbox/outbox-store').OutboxEntry[] = events.map(event => ({
+    const entries: import('./outbox/outbox-store').OutboxEntry[] = events.map((event) => ({
       entryId: this.nextRuntimeId(),
       enqueuedAt,
       event,
@@ -3326,7 +3497,7 @@ export class RuntimeEngine {
       }
       console.warn(
         '[Manifest Runtime] OutboxStore.enqueue failed; events not durably persisted:',
-        storeError instanceof Error ? storeError.message : storeError
+        storeError instanceof Error ? storeError.message : storeError,
       );
     }
   }
@@ -3519,7 +3690,7 @@ export class RuntimeEngine {
       overrideRequests?: OverrideRequest[];
       correlationId?: string;
       causationId?: string;
-    }
+    },
   ): Promise<CommandResult> {
     const command = this.getCommand(commandName, options.entityName);
     if (!command) {
@@ -3544,9 +3715,10 @@ export class RuntimeEngine {
     }
     input = paramResult.input;
 
-    const instance = options.instanceId && options.entityName
-      ? await this.getInstanceRaw(options.entityName, options.instanceId)
-      : undefined;
+    const instance =
+      options.instanceId && options.entityName
+        ? await this.getInstanceRaw(options.entityName, options.instanceId)
+        : undefined;
 
     const evalContext = this.buildEvalContext(input, instance, options.entityName);
 
@@ -3563,10 +3735,21 @@ export class RuntimeEngine {
     }
 
     // Evaluate constraints
-    const commandContext = { commandName, entityName: options.entityName, instanceId: options.instanceId };
-    const constraintResult = await this.evaluateCommandConstraints(command, evalContext, options.overrideRequests, commandContext);
+    const commandContext = {
+      commandName,
+      entityName: options.entityName,
+      instanceId: options.instanceId,
+    };
+    const constraintResult = await this.evaluateCommandConstraints(
+      command,
+      evalContext,
+      options.overrideRequests,
+      commandContext,
+    );
     if (!constraintResult.allowed) {
-      const blocking = constraintResult.outcomes.find(o => !o.passed && !o.overridden && o.severity === 'block');
+      const blocking = constraintResult.outcomes.find(
+        (o) => !o.passed && !o.overridden && o.severity === 'block',
+      );
       return {
         success: false,
         error: blocking?.message || `Command blocked by constraint '${blocking?.constraintName}'`,
@@ -3589,7 +3772,8 @@ export class RuntimeEngine {
             formatted: this.formatExpression(guard),
             resolved: await this.resolveExpressionValues(guard, evalContext),
           },
-          constraintOutcomes: constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
+          constraintOutcomes:
+            constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
           emittedEvents: [],
         };
       }
@@ -3633,7 +3817,9 @@ export class RuntimeEngine {
         });
 
         if (result.success) {
-          await this.options.jobQueue.updateStatus(job.jobId, 'completed', { result: result.result });
+          await this.options.jobQueue.updateStatus(job.jobId, 'completed', {
+            result: result.result,
+          });
 
           // Emit synthesized completion event
           const command = this.getCommand(job.commandName, job.entityName);
@@ -3657,7 +3843,11 @@ export class RuntimeEngine {
             const failureEvent: EmittedEvent = {
               name: command.failureEvent,
               channel: `jobs.${job.commandName}`,
-              payload: { jobId: job.jobId, error: result.error || 'Unknown error', failedAt: this.getNow() },
+              payload: {
+                jobId: job.jobId,
+                error: result.error || 'Unknown error',
+                failedAt: this.getNow(),
+              },
               timestamp: this.getNow(),
               correlationId: job.correlationId,
               causationId: job.causationId,
@@ -3678,7 +3868,11 @@ export class RuntimeEngine {
           const failureEvent: EmittedEvent = {
             name: command.failureEvent,
             channel: `jobs.${job.commandName}`,
-            payload: { jobId: job.jobId, error: e instanceof Error ? e.message : String(e), failedAt: this.getNow() },
+            payload: {
+              jobId: job.jobId,
+              error: e instanceof Error ? e.message : String(e),
+              failedAt: this.getNow(),
+            },
             timestamp: this.getNow(),
             correlationId: job.correlationId,
             causationId: job.causationId,
@@ -3714,7 +3908,7 @@ export class RuntimeEngine {
       correlationId?: string;
       causationId?: string;
       idempotencyKey?: string;
-    }
+    },
   ): Promise<CommandResult> {
     // Clear relationship memoization cache at the start of each command execution
     // to ensure fresh data after any mutations
@@ -3741,184 +3935,136 @@ export class RuntimeEngine {
     const ownsEvalBudget = this.initEvalBudget();
     this.commandExecutionDepth += 1;
     try {
-
-    const command = this.getCommand(commandName, options.entityName);
-    if (!command) {
-      return {
-        success: false,
-        error: `Command '${commandName}' not found`,
-        ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
-        ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
-        emittedEvents: [],
-      };
-    }
-
-    // Command parameter processing (spec: Commands): trusted-source inject,
-    // apply defaults, then fail closed on a missing required parameter before
-    // any gate (rate-limit/policy/constraint/guard) runs.
-    const paramResult = this.processCommandParameters(command, input);
-    if (!paramResult.ok) {
-      const code = paramResult.failure.code ?? 'MISSING_REQUIRED_PARAMETER';
-      return {
-        success: false,
-        error: `${code}: command '${commandName}' requires parameter '${paramResult.failure.parameter}'`,
-        parameterFailure: paramResult.failure,
-        ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
-        ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
-        emittedEvents: [],
-      };
-    }
-    input = paramResult.input;
-
-    const shouldAutoCreateInstance = commandName === 'create' && !!options.entityName && !options.instanceId;
-    let autoCreateEntity: IREntity | undefined;
-    let autoCreatePreparedData: Record<string, unknown> | undefined;
-    let autoCreateEvalInput: Record<string, unknown> | undefined;
-
-    if (shouldAutoCreateInstance && options.entityName) {
-      autoCreateEntity = this.getEntity(options.entityName);
-      if (autoCreateEntity) {
-        const bodyId = typeof input.id === 'string' && input.id !== '' ? input.id : this.nextRuntimeId();
-        autoCreatePreparedData = this.prepareCreateData(autoCreateEntity, {
-          ...input,
-          id: bodyId,
-        });
-        autoCreateEvalInput = { ...input, id: autoCreatePreparedData.id };
-      }
-    }
-
-    const instance = options.instanceId && options.entityName
-      ? await this.getInstanceRaw(options.entityName, options.instanceId)
-      : autoCreatePreparedData as EntityInstance | undefined;
-
-    const evalContext = this.buildEvalContext(autoCreateEvalInput ?? input, instance, options.entityName);
-
-    if (command.rateLimit) {
-      const tenantValue = this.ir.tenant ? this.resolveTenantValue() : this.context.tenantId;
-      const rl = checkRateLimitGate(
-        this.rateLimiter,
-        command.rateLimit,
-        evalContext,
-        tenantValue,
-        this.getNow(),
-      );
-      if (!rl.allowed) {
+      const command = this.getCommand(commandName, options.entityName);
+      if (!command) {
         return {
           success: false,
-          error: `Rate limit exceeded for scope ${rl.denial.scopeKey}`,
-          rateLimitDenial: rl.denial,
+          error: `Command '${commandName}' not found`,
           ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
           ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
           emittedEvents: [],
         };
       }
-    }
 
-    // Middleware: before-policy hook
-    const beforePolicyResult = await this.runMiddleware('before-policy', command, evalContext, input, options);
-    if (beforePolicyResult) return beforePolicyResult;
-
-    const policyResult = await this.profilingBridge.trackPhase(
-      'policyEvaluation',
-      () => this.checkPolicies(command, evalContext),
-    );
-    if (!policyResult.allowed) {
-      return {
-        success: false,
-        error: policyResult.denial?.message,
-        deniedBy: policyResult.denial?.policyName,
-        policyDenial: policyResult.denial,
-        ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
-        ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
-        emittedEvents: [],
-      };
-    }
-
-    // vNext: Evaluate command constraints (after policies, before guards)
-    // Pass command context so OverrideApplied events include commandName/entityName/instanceId per spec
-    const commandContext = { commandName, entityName: options.entityName, instanceId: options.instanceId };
-    const constraintResult = await this.profilingBridge.trackPhase(
-      'constraintValidation',
-      () => this.evaluateCommandConstraints(command, evalContext, options.overrideRequests, commandContext),
-    );
-    if (!constraintResult.allowed) {
-      // Find the blocking constraint for the error message
-      const blocking = constraintResult.outcomes.find(o => !o.passed && !o.overridden && o.severity === 'block');
-      return {
-        success: false,
-        error: blocking?.message || `Command blocked by constraint '${blocking?.constraintName}'`,
-        constraintOutcomes: constraintResult.outcomes,
-        overrideRequests: options.overrideRequests,
-        ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
-        ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
-        emittedEvents: [],
-      };
-    }
-
-    // Middleware: before-guard hook
-    const beforeGuardResult = await this.runMiddleware('before-guard', command, evalContext, input, options);
-    if (beforeGuardResult) return beforeGuardResult;
-
-    this.profilingBridge.startPhase('guardEvaluation');
-    for (let i = 0; i < command.guards.length; i += 1) {
-      const guard = command.guards[i];
-      const result = await this.evaluateExpression(guard, evalContext);
-      if (!result) {
-        this.profilingBridge.endPhase('guardEvaluation');
+      // Command parameter processing (spec: Commands): trusted-source inject,
+      // apply defaults, then fail closed on a missing required parameter before
+      // any gate (rate-limit/policy/constraint/guard) runs.
+      const paramResult = this.processCommandParameters(command, input);
+      if (!paramResult.ok) {
+        const code = paramResult.failure.code ?? 'MISSING_REQUIRED_PARAMETER';
         return {
           success: false,
-          error: `Guard condition failed for command '${commandName}'`,
-          guardFailure: {
-            index: i + 1,
-            expression: guard,
-            formatted: this.formatExpression(guard),
-            resolved: await this.resolveExpressionValues(guard, evalContext),
-          },
-          // Include constraint outcomes even if guards fail
-          constraintOutcomes: constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
+          error: `${code}: command '${commandName}' requires parameter '${paramResult.failure.parameter}'`,
+          parameterFailure: paramResult.failure,
           ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
           ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
           emittedEvents: [],
         };
       }
-    }
-    this.profilingBridge.endPhase('guardEvaluation');
+      input = paramResult.input;
 
-    // ── Approval gate: block command if pending approval required ──
-    this.profilingBridge.startPhase('approvalGate');
-    if (options.entityName) {
-      const approvalResult = await this.checkApprovalGate(
-        commandName, options.entityName, options.instanceId, evalContext, options,
-      );
-      if (approvalResult) {
-        this.profilingBridge.endPhase('approvalGate');
-        return approvalResult;
+      const shouldAutoCreateInstance =
+        commandName === 'create' && !!options.entityName && !options.instanceId;
+      let autoCreateEntity: IREntity | undefined;
+      let autoCreatePreparedData: Record<string, unknown> | undefined;
+      let autoCreateEvalInput: Record<string, unknown> | undefined;
+
+      if (shouldAutoCreateInstance && options.entityName) {
+        autoCreateEntity = this.getEntity(options.entityName);
+        if (autoCreateEntity) {
+          const bodyId =
+            typeof input.id === 'string' && input.id !== '' ? input.id : this.nextRuntimeId();
+          autoCreatePreparedData = this.prepareCreateData(autoCreateEntity, {
+            ...input,
+            id: bodyId,
+          });
+          autoCreateEvalInput = { ...input, id: autoCreatePreparedData.id };
+        }
       }
-    }
-    this.profilingBridge.endPhase('approvalGate');
 
-    let autoCreatedInstance: EntityInstance | undefined;
-    let createConstraintOutcomes: ConstraintOutcome[] | undefined;
+      const instance =
+        options.instanceId && options.entityName
+          ? await this.getInstanceRaw(options.entityName, options.instanceId)
+          : (autoCreatePreparedData as EntityInstance | undefined);
 
-    if (shouldAutoCreateInstance && options.entityName && autoCreateEntity && autoCreatePreparedData) {
-      this.profilingBridge.startPhase('autoCreate');
-      const createResult = await this.persistPreparedCreate(
+      const evalContext = this.buildEvalContext(
+        autoCreateEvalInput ?? input,
+        instance,
         options.entityName,
-        autoCreateEntity,
-        autoCreatePreparedData,
-        this.requiredModifierOutcomes(autoCreateEntity, input, this.commandProducedFields(command)),
       );
-      this.profilingBridge.endPhase('autoCreate');
-      createConstraintOutcomes = createResult.constraintOutcomes;
 
-      if (!createResult.instance) {
-        const blocking = createConstraintOutcomes?.find(
-          o => !o.passed && !o.overridden && o.severity === 'block'
+      if (command.rateLimit) {
+        const tenantValue = this.ir.tenant ? this.resolveTenantValue() : this.context.tenantId;
+        const rl = checkRateLimitGate(
+          this.rateLimiter,
+          command.rateLimit,
+          evalContext,
+          tenantValue,
+          this.getNow(),
+        );
+        if (!rl.allowed) {
+          return {
+            success: false,
+            error: `Rate limit exceeded for scope ${rl.denial.scopeKey}`,
+            rateLimitDenial: rl.denial,
+            ...(options.correlationId !== undefined
+              ? { correlationId: options.correlationId }
+              : {}),
+            ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
+            emittedEvents: [],
+          };
+        }
+      }
+
+      // Middleware: before-policy hook
+      const beforePolicyResult = await this.runMiddleware(
+        'before-policy',
+        command,
+        evalContext,
+        input,
+        options,
+      );
+      if (beforePolicyResult) return beforePolicyResult;
+
+      const policyResult = await this.profilingBridge.trackPhase('policyEvaluation', () =>
+        this.checkPolicies(command, evalContext),
+      );
+      if (!policyResult.allowed) {
+        return {
+          success: false,
+          error: policyResult.denial?.message,
+          deniedBy: policyResult.denial?.policyName,
+          policyDenial: policyResult.denial,
+          ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+          ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
+          emittedEvents: [],
+        };
+      }
+
+      // vNext: Evaluate command constraints (after policies, before guards)
+      // Pass command context so OverrideApplied events include commandName/entityName/instanceId per spec
+      const commandContext = {
+        commandName,
+        entityName: options.entityName,
+        instanceId: options.instanceId,
+      };
+      const constraintResult = await this.profilingBridge.trackPhase('constraintValidation', () =>
+        this.evaluateCommandConstraints(
+          command,
+          evalContext,
+          options.overrideRequests,
+          commandContext,
+        ),
+      );
+      if (!constraintResult.allowed) {
+        // Find the blocking constraint for the error message
+        const blocking = constraintResult.outcomes.find(
+          (o) => !o.passed && !o.overridden && o.severity === 'block',
         );
         return {
           success: false,
           error: blocking?.message || `Command blocked by constraint '${blocking?.constraintName}'`,
-          constraintOutcomes: createConstraintOutcomes,
+          constraintOutcomes: constraintResult.outcomes,
           overrideRequests: options.overrideRequests,
           ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
           ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
@@ -3926,353 +4072,528 @@ export class RuntimeEngine {
         };
       }
 
-      autoCreatedInstance = createResult.instance;
-      options.instanceId = createResult.instance.id;
-      const createdEvalContext = this.buildEvalContext(autoCreateEvalInput ?? input, createResult.instance, options.entityName);
-      Object.assign(evalContext, createdEvalContext);
-    }
+      // Middleware: before-guard hook
+      const beforeGuardResult = await this.runMiddleware(
+        'before-guard',
+        command,
+        evalContext,
+        input,
+        options,
+      );
+      if (beforeGuardResult) return beforeGuardResult;
 
-    // Include any OverrideApplied events from constraint evaluation
-    // Per spec: OverrideApplied events are included in CommandResult.emittedEvents
-    // alongside command-declared events (override events come first)
-    const emittedEvents: EmittedEvent[] = [...constraintResult.overrideEvents];
-    let result: unknown;
-    const emitCounter = { value: emittedEvents.length };
-    const workflowMeta = {
-      correlationId: options.correlationId,
-      causationId: options.causationId,
-    };
-
-    // Pre-compute base subject for action-emitted events (entity + command + instanceId).
-    // Full subject.id resolution (created-id / payload.id fallbacks) happens after the
-    // action loop for command-declared events.
-    const baseSubject: EventSubject = { command: commandName };
-    if (options.entityName) {
-      baseSubject.entity = options.entityName;
-    }
-    if (options.instanceId) {
-      baseSubject.id = options.instanceId;
-    }
-
-    // Middleware: before-action hook (before each action in the loop)
-    const beforeActionResult = await this.runMiddleware('before-action', command, evalContext, input, options);
-    if (beforeActionResult) return beforeActionResult;
-
-    // Open a command-scoped write buffer so mutate/compute actions batch into a
-    // single store.update (flushed once below) instead of one read+write each.
-    // Seeded with the already-loaded instance so no extra read is incurred.
-    // Nested (reaction) commands save and restore the outer buffer.
-    const prevBuffer = this.commandBuffer;
-    if (options.entityName && options.instanceId) {
-      this.commandBuffer = {
-        entityName: options.entityName,
-        id: options.instanceId,
-        instance: (autoCreatedInstance ?? instance) ?? null,
-        patch: {},
-      };
-    }
-    try {
-      this.profilingBridge.startPhase('actionExecution');
-      for (const action of command.actions) {
-        const actionResult = await this.executeAction(action, evalContext, options, emitCounter, workflowMeta, baseSubject, emittedEvents, commandName);
-
-        // Fail closed on an adapter-action configuration fault (MISSING_OUTBOX_STORE
-        // / MISSING_EFFECT_HANDLER). Returning here skips the flush below: a failed
-        // command persists nothing.
-        if (this.lastActionError) {
-          const actionError = this.lastActionError;
-          this.lastActionError = null;
+      this.profilingBridge.startPhase('guardEvaluation');
+      for (let i = 0; i < command.guards.length; i += 1) {
+        const guard = command.guards[i];
+        const result = await this.evaluateExpression(guard, evalContext);
+        if (!result) {
+          this.profilingBridge.endPhase('guardEvaluation');
           return {
             success: false,
-            error: actionError,
-            ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
-            ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
-            emittedEvents: [],
-          };
-        }
-
-        // Check for transition validation errors after mutate/compute actions.
-        // Returning here skips the flush below: a failed command persists nothing.
-        if (this.lastTransitionError) {
-          return {
-            success: false,
-            error: this.lastTransitionError,
-            ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
-            ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
-            emittedEvents: [],
-          };
-        }
-
-        // Check for a modifier write-rejection (readonly change / unique collision)
-        // after mutate/compute actions. A rejected write persists nothing.
-        if (this.lastWriteRejection) {
-          const rej: { code: string; message: string; property?: string } = this.lastWriteRejection;
-          this.lastWriteRejection = null;
-          return {
-            success: false,
-            error: `${rej.code}: ${rej.message}`,
-            constraintOutcomes: [{
-              code: rej.code,
-              constraintName: rej.property ?? rej.code,
-              severity: 'block',
-              passed: false,
-              formatted: rej.message,
-              message: rej.message,
-              ...(rej.property ? { details: { property: rej.property } } : {}),
-            }],
-            ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
-            ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
-            emittedEvents: [],
-          };
-        }
-
-        // Check for concurrency conflict after mutate/compute actions
-        // Per spec: "Commands receiving a ConcurrencyConflict MUST NOT apply mutations"
-        if (this.lastConcurrencyConflict) {
-          const conflict: ConcurrencyConflict = this.lastConcurrencyConflict;
-          this.lastConcurrencyConflict = null;
-          return {
-            success: false,
-            error: `Concurrency conflict on ${conflict.entityType}#${conflict.entityId}: expected version ${conflict.expectedVersion}, actual ${conflict.actualVersion}`,
-            concurrencyConflict: conflict,
-            ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
-            ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
-            emittedEvents: [],
-          };
-        }
-
-        // Only `mutate` changes the instance now (compute is a non-persisting
-        // local binding, set directly into evalContext by executeAction), so the
-        // post-action instance refresh runs for mutate alone — refreshing after a
-        // compute would clobber the fresh binding with re-fetched instance fields.
-        if (action.kind === 'mutate' && options.instanceId && options.entityName) {
-          const currentInstance = await this.getInstanceRaw(options.entityName, options.instanceId);
-          // Enrich re-fetched instance with _entity for relationship resolution
-          const enriched = currentInstance ? { ...currentInstance, _entity: options.entityName } : currentInstance;
-          // Refresh both self/this bindings and spread instance properties into evalContext
-          evalContext.self = enriched;
-          evalContext.this = enriched;
-          Object.assign(evalContext, enriched);
-          Object.assign(evalContext, input);
-        }
-        result = actionResult;
-      }
-      this.profilingBridge.endPhase('actionExecution');
-
-      if (autoCreatedInstance && options.entityName) {
-        const currentInstance = await this.getInstanceRaw(options.entityName, autoCreatedInstance.id);
-        autoCreatedInstance = currentInstance ?? autoCreatedInstance;
-        result = autoCreatedInstance;
-      }
-
-      // Flush the accumulated field changes in a single store write. Runs before
-      // event emission and reaction dispatch so emitted events and any reactions
-      // observe the final committed command state. An explicit `persist` action
-      // may already have flushed and cleared the patch; this flushes the remainder.
-      await this.flushCommandBuffer();
-    } finally {
-      this.commandBuffer = prevBuffer;
-    }
-
-    this.profilingBridge.startPhase('eventEmission');
-    // Finalize canonical subject metadata for command-declared events.
-    // Resolution order for subject.id:
-    //   1. instanceId passed to runCommand (already set on baseSubject)
-    //   2. A single deterministically created record id (justCreatedInstanceIds)
-    //   3. Top-level payload.id from the emitted event payload (checked per-event below)
-    //   4. Unset
-    const subject: EventSubject = { ...baseSubject };
-    if (!subject.id && this.justCreatedInstanceIds.size === 1) {
-      const [createdId] = this.justCreatedInstanceIds;
-      subject.id = createdId;
-    }
-
-    for (const eventName of command.emits) {
-      const event = this.ir.events.find(e => e.name === eventName);
-      const prov = this.ir.provenance;
-      const eventPayload: Record<string, unknown> = { ...input, result };
-
-      // G7: populate explicitly-declared payload fields (`emit Event { field: expr }`).
-      // Evaluated against the post-action evalContext (self = current instance,
-      // command input, user, context) so reactions can read declared event fields
-      // instead of finding them undefined.
-      const payloadSpec = command.emitPayloads?.find(ep => ep.eventName === eventName);
-      if (payloadSpec) {
-        for (const field of payloadSpec.fields) {
-          eventPayload[field.name] = await this.evaluateExpression(field.expression, evalContext);
-        }
-      }
-
-      // Fallback: resolve subject.id from payload.id if not yet set
-      const eventSubject: EventSubject = subject.id
-        ? { ...subject }
-        : {
-            ...subject,
-            ...(typeof (eventPayload as Record<string, unknown>).id === 'string' &&
-              (eventPayload as Record<string, unknown>).id !== ''
-              ? { id: (eventPayload as Record<string, unknown>).id as string }
+            error: `Guard condition failed for command '${commandName}'`,
+            guardFailure: {
+              index: i + 1,
+              expression: guard,
+              formatted: this.formatExpression(guard),
+              resolved: await this.resolveExpressionValues(guard, evalContext),
+            },
+            // Include constraint outcomes even if guards fail
+            constraintOutcomes:
+              constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
+            ...(options.correlationId !== undefined
+              ? { correlationId: options.correlationId }
               : {}),
+            ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
+            emittedEvents: [],
           };
+        }
+      }
+      this.profilingBridge.endPhase('guardEvaluation');
 
-      const emitted: EmittedEvent = {
-        name: eventName,
-        channel: event?.channel || eventName,
-        payload: eventPayload,
-        subject: eventSubject,
-        timestamp: this.getNow(),
-        ...(prov ? {
-          provenance: {
-            contentHash: prov.contentHash,
-            compilerVersion: prov.compilerVersion,
-            schemaVersion: prov.schemaVersion,
-          },
-        } : {}),
-        ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
-        ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
-        emitIndex: emitCounter.value++,
+      // ── Approval gate: block command if pending approval required ──
+      this.profilingBridge.startPhase('approvalGate');
+      if (options.entityName) {
+        const approvalResult = await this.checkApprovalGate(
+          commandName,
+          options.entityName,
+          options.instanceId,
+          evalContext,
+          options,
+        );
+        if (approvalResult) {
+          this.profilingBridge.endPhase('approvalGate');
+          return approvalResult;
+        }
+      }
+      this.profilingBridge.endPhase('approvalGate');
+
+      let autoCreatedInstance: EntityInstance | undefined;
+      let createConstraintOutcomes: ConstraintOutcome[] | undefined;
+
+      if (
+        shouldAutoCreateInstance &&
+        options.entityName &&
+        autoCreateEntity &&
+        autoCreatePreparedData
+      ) {
+        this.profilingBridge.startPhase('autoCreate');
+        const createResult = await this.persistPreparedCreate(
+          options.entityName,
+          autoCreateEntity,
+          autoCreatePreparedData,
+          this.requiredModifierOutcomes(
+            autoCreateEntity,
+            input,
+            this.commandProducedFields(command),
+          ),
+        );
+        this.profilingBridge.endPhase('autoCreate');
+        createConstraintOutcomes = createResult.constraintOutcomes;
+
+        if (!createResult.instance) {
+          const blocking = createConstraintOutcomes?.find(
+            (o) => !o.passed && !o.overridden && o.severity === 'block',
+          );
+          return {
+            success: false,
+            error:
+              blocking?.message || `Command blocked by constraint '${blocking?.constraintName}'`,
+            constraintOutcomes: createConstraintOutcomes,
+            overrideRequests: options.overrideRequests,
+            ...(options.correlationId !== undefined
+              ? { correlationId: options.correlationId }
+              : {}),
+            ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
+            emittedEvents: [],
+          };
+        }
+
+        autoCreatedInstance = createResult.instance;
+        options.instanceId = createResult.instance.id;
+        const createdEvalContext = this.buildEvalContext(
+          autoCreateEvalInput ?? input,
+          createResult.instance,
+          options.entityName,
+        );
+        Object.assign(evalContext, createdEvalContext);
+      }
+
+      // Include any OverrideApplied events from constraint evaluation
+      // Per spec: OverrideApplied events are included in CommandResult.emittedEvents
+      // alongside command-declared events (override events come first)
+      const emittedEvents: EmittedEvent[] = [...constraintResult.overrideEvents];
+      let result: unknown;
+      const emitCounter = { value: emittedEvents.length };
+      const workflowMeta = {
+        correlationId: options.correlationId,
+        causationId: options.causationId,
       };
-      emittedEvents.push(emitted);
-      this.eventLog.push(emitted);
-      this.notifyListeners(emitted);
-    }
 
-    // Execute matching reaction rules for emitted events (declaration order)
-    const reactions = this.ir.reactions || [];
-    if (reactions.length > 0 && emittedEvents.length > 0) {
-      // Use index-based iteration since cascading reactions may append to emittedEvents
-      const initialLength = emittedEvents.length;
-      for (let ei = 0; ei < initialLength; ei++) {
-        const emitted = emittedEvents[ei];
-        const matchingReactions = reactions.filter(r => r.event === emitted.name);
-        for (const reaction of matchingReactions) {
-          if (this.reactionDepth >= RuntimeEngine.MAX_REACTION_DEPTH) {
-            throw new ManifestReactionDepthError(this.reactionDepth, reaction.event, `${reaction.targetEntity}.${reaction.targetCommand}`);
+      // Pre-compute base subject for action-emitted events (entity + command + instanceId).
+      // Full subject.id resolution (created-id / payload.id fallbacks) happens after the
+      // action loop for command-declared events.
+      const baseSubject: EventSubject = { command: commandName };
+      if (options.entityName) {
+        baseSubject.entity = options.entityName;
+      }
+      if (options.instanceId) {
+        baseSubject.id = options.instanceId;
+      }
+
+      // Middleware: before-action hook (before each action in the loop)
+      const beforeActionResult = await this.runMiddleware(
+        'before-action',
+        command,
+        evalContext,
+        input,
+        options,
+      );
+      if (beforeActionResult) return beforeActionResult;
+
+      // Open a command-scoped write buffer so mutate/compute actions batch into a
+      // single store.update (flushed once below) instead of one read+write each.
+      // Seeded with the already-loaded instance so no extra read is incurred.
+      // Nested (reaction) commands save and restore the outer buffer.
+      const prevBuffer = this.commandBuffer;
+      if (options.entityName && options.instanceId) {
+        this.commandBuffer = {
+          entityName: options.entityName,
+          id: options.instanceId,
+          instance: autoCreatedInstance ?? instance ?? null,
+          patch: {},
+        };
+      }
+      try {
+        this.profilingBridge.startPhase('actionExecution');
+        for (const action of command.actions) {
+          const actionResult = await this.executeAction(
+            action,
+            evalContext,
+            options,
+            emitCounter,
+            workflowMeta,
+            baseSubject,
+            emittedEvents,
+            commandName,
+          );
+
+          // Fail closed on an adapter-action configuration fault (MISSING_OUTBOX_STORE
+          // / MISSING_EFFECT_HANDLER). Returning here skips the flush below: a failed
+          // command persists nothing.
+          if (this.lastActionError) {
+            const actionError = this.lastActionError;
+            this.lastActionError = null;
+            return {
+              success: false,
+              error: actionError,
+              ...(workflowMeta.correlationId !== undefined
+                ? { correlationId: workflowMeta.correlationId }
+                : {}),
+              ...(workflowMeta.causationId !== undefined
+                ? { causationId: workflowMeta.causationId }
+                : {}),
+              emittedEvents: [],
+            };
           }
-          // Evaluate resolve and params expressions against event context.
-          // Available bindings:
-          //   payload  — event payload fields merged with subject metadata
-          //   self     — alias for payload (convenient for member access)
-          const eventPayloadBase = typeof emitted.payload === 'object' && emitted.payload !== null ? emitted.payload as Record<string, unknown> : {};
-          const enrichedPayload = {
-            ...eventPayloadBase,
-            // Alias the event source id to top-level `id` so reaction expressions
-            // like `self.id` / `payload.id` resolve (the Convex projection's
-            // reaction payload does the same). Only when the payload has no id.
-            ...(eventPayloadBase.id === undefined && emitted.subject?.id !== undefined ? { id: emitted.subject.id } : {}),
-            _subject: emitted.subject,
-            _eventName: emitted.name,
-            _channel: emitted.channel,
-          };
-          const reactionContext: Record<string, unknown> = {
-            payload: enrichedPayload,
-            self: enrichedPayload,
-          };
-          // Fan-out reaction: dispatch the command on EVERY target row where
-          // row.<matchField> == matchSource (evaluated against the event payload),
-          // instead of one resolved target. The collection match replaces resolve.
-          if (reaction.fanOut) {
-            const matchValue = await this.evaluateExpression(reaction.fanOut.matchSource, reactionContext);
-            const fanInput: Record<string, unknown> = {};
-            if (reaction.params) {
-              for (const p of reaction.params) {
-                fanInput[p.name] = await this.evaluateExpression(p.expression, reactionContext);
+
+          // Check for transition validation errors after mutate/compute actions.
+          // Returning here skips the flush below: a failed command persists nothing.
+          if (this.lastTransitionError) {
+            return {
+              success: false,
+              error: this.lastTransitionError,
+              ...(workflowMeta.correlationId !== undefined
+                ? { correlationId: workflowMeta.correlationId }
+                : {}),
+              ...(workflowMeta.causationId !== undefined
+                ? { causationId: workflowMeta.causationId }
+                : {}),
+              emittedEvents: [],
+            };
+          }
+
+          // Check for a modifier write-rejection (readonly change / unique collision)
+          // after mutate/compute actions. A rejected write persists nothing.
+          if (this.lastWriteRejection) {
+            const rej: { code: string; message: string; property?: string } =
+              this.lastWriteRejection;
+            this.lastWriteRejection = null;
+            return {
+              success: false,
+              error: `${rej.code}: ${rej.message}`,
+              constraintOutcomes: [
+                {
+                  code: rej.code,
+                  constraintName: rej.property ?? rej.code,
+                  severity: 'block',
+                  passed: false,
+                  formatted: rej.message,
+                  message: rej.message,
+                  ...(rej.property ? { details: { property: rej.property } } : {}),
+                },
+              ],
+              ...(workflowMeta.correlationId !== undefined
+                ? { correlationId: workflowMeta.correlationId }
+                : {}),
+              ...(workflowMeta.causationId !== undefined
+                ? { causationId: workflowMeta.causationId }
+                : {}),
+              emittedEvents: [],
+            };
+          }
+
+          // Check for concurrency conflict after mutate/compute actions
+          // Per spec: "Commands receiving a ConcurrencyConflict MUST NOT apply mutations"
+          if (this.lastConcurrencyConflict) {
+            const conflict: ConcurrencyConflict = this.lastConcurrencyConflict;
+            this.lastConcurrencyConflict = null;
+            return {
+              success: false,
+              error: `Concurrency conflict on ${conflict.entityType}#${conflict.entityId}: expected version ${conflict.expectedVersion}, actual ${conflict.actualVersion}`,
+              concurrencyConflict: conflict,
+              ...(workflowMeta.correlationId !== undefined
+                ? { correlationId: workflowMeta.correlationId }
+                : {}),
+              ...(workflowMeta.causationId !== undefined
+                ? { causationId: workflowMeta.causationId }
+                : {}),
+              emittedEvents: [],
+            };
+          }
+
+          // Only `mutate` changes the instance now (compute is a non-persisting
+          // local binding, set directly into evalContext by executeAction), so the
+          // post-action instance refresh runs for mutate alone — refreshing after a
+          // compute would clobber the fresh binding with re-fetched instance fields.
+          if (action.kind === 'mutate' && options.instanceId && options.entityName) {
+            const currentInstance = await this.getInstanceRaw(
+              options.entityName,
+              options.instanceId,
+            );
+            // Enrich re-fetched instance with _entity for relationship resolution
+            const enriched = currentInstance
+              ? { ...currentInstance, _entity: options.entityName }
+              : currentInstance;
+            // Refresh both self/this bindings and spread instance properties into evalContext
+            evalContext.self = enriched;
+            evalContext.this = enriched;
+            Object.assign(evalContext, enriched);
+            Object.assign(evalContext, input);
+          }
+          result = actionResult;
+        }
+        this.profilingBridge.endPhase('actionExecution');
+
+        if (autoCreatedInstance && options.entityName) {
+          const currentInstance = await this.getInstanceRaw(
+            options.entityName,
+            autoCreatedInstance.id,
+          );
+          autoCreatedInstance = currentInstance ?? autoCreatedInstance;
+          result = autoCreatedInstance;
+        }
+
+        // Flush the accumulated field changes in a single store write. Runs before
+        // event emission and reaction dispatch so emitted events and any reactions
+        // observe the final committed command state. An explicit `persist` action
+        // may already have flushed and cleared the patch; this flushes the remainder.
+        await this.flushCommandBuffer();
+      } finally {
+        this.commandBuffer = prevBuffer;
+      }
+
+      this.profilingBridge.startPhase('eventEmission');
+      // Finalize canonical subject metadata for command-declared events.
+      // Resolution order for subject.id:
+      //   1. instanceId passed to runCommand (already set on baseSubject)
+      //   2. A single deterministically created record id (justCreatedInstanceIds)
+      //   3. Top-level payload.id from the emitted event payload (checked per-event below)
+      //   4. Unset
+      const subject: EventSubject = { ...baseSubject };
+      if (!subject.id && this.justCreatedInstanceIds.size === 1) {
+        const [createdId] = this.justCreatedInstanceIds;
+        subject.id = createdId;
+      }
+
+      for (const eventName of command.emits) {
+        const event = this.ir.events.find((e) => e.name === eventName);
+        const prov = this.ir.provenance;
+        const eventPayload: Record<string, unknown> = { ...input, result };
+
+        // G7: populate explicitly-declared payload fields (`emit Event { field: expr }`).
+        // Evaluated against the post-action evalContext (self = current instance,
+        // command input, user, context) so reactions can read declared event fields
+        // instead of finding them undefined.
+        const payloadSpec = command.emitPayloads?.find((ep) => ep.eventName === eventName);
+        if (payloadSpec) {
+          for (const field of payloadSpec.fields) {
+            eventPayload[field.name] = await this.evaluateExpression(field.expression, evalContext);
+          }
+        }
+
+        // Fallback: resolve subject.id from payload.id if not yet set
+        const eventSubject: EventSubject = subject.id
+          ? { ...subject }
+          : {
+              ...subject,
+              ...(typeof (eventPayload as Record<string, unknown>).id === 'string' &&
+              (eventPayload as Record<string, unknown>).id !== ''
+                ? { id: (eventPayload as Record<string, unknown>).id as string }
+                : {}),
+            };
+
+        const emitted: EmittedEvent = {
+          name: eventName,
+          channel: event?.channel || eventName,
+          payload: eventPayload,
+          subject: eventSubject,
+          timestamp: this.getNow(),
+          ...(prov
+            ? {
+                provenance: {
+                  contentHash: prov.contentHash,
+                  compilerVersion: prov.compilerVersion,
+                  schemaVersion: prov.schemaVersion,
+                },
               }
+            : {}),
+          ...(workflowMeta.correlationId !== undefined
+            ? { correlationId: workflowMeta.correlationId }
+            : {}),
+          ...(workflowMeta.causationId !== undefined
+            ? { causationId: workflowMeta.causationId }
+            : {}),
+          emitIndex: emitCounter.value++,
+        };
+        emittedEvents.push(emitted);
+        this.eventLog.push(emitted);
+        this.notifyListeners(emitted);
+      }
+
+      // Execute matching reaction rules for emitted events (declaration order)
+      const reactions = this.ir.reactions || [];
+      if (reactions.length > 0 && emittedEvents.length > 0) {
+        // Use index-based iteration since cascading reactions may append to emittedEvents
+        const initialLength = emittedEvents.length;
+        for (let ei = 0; ei < initialLength; ei++) {
+          const emitted = emittedEvents[ei];
+          const matchingReactions = reactions.filter((r) => r.event === emitted.name);
+          for (const reaction of matchingReactions) {
+            if (this.reactionDepth >= RuntimeEngine.MAX_REACTION_DEPTH) {
+              throw new ManifestReactionDepthError(
+                this.reactionDepth,
+                reaction.event,
+                `${reaction.targetEntity}.${reaction.targetCommand}`,
+              );
             }
-            const matchField = reaction.fanOut.matchField;
-            const matches = (await this.getAllInstancesRaw(reaction.targetEntity))
-              .filter(inst => (inst as Record<string, unknown>)[matchField] === matchValue);
-            for (const m of matches) {
-              if (this.reactionDepth >= RuntimeEngine.MAX_REACTION_DEPTH) {
-                throw new ManifestReactionDepthError(this.reactionDepth, reaction.event, `${reaction.targetEntity}.${reaction.targetCommand}`);
+            // Evaluate resolve and params expressions against event context.
+            // Available bindings:
+            //   payload  — event payload fields merged with subject metadata
+            //   self     — alias for payload (convenient for member access)
+            const eventPayloadBase =
+              typeof emitted.payload === 'object' && emitted.payload !== null
+                ? (emitted.payload as Record<string, unknown>)
+                : {};
+            const enrichedPayload = {
+              ...eventPayloadBase,
+              // Alias the event source id to top-level `id` so reaction expressions
+              // like `self.id` / `payload.id` resolve (the Convex projection's
+              // reaction payload does the same). Only when the payload has no id.
+              ...(eventPayloadBase.id === undefined && emitted.subject?.id !== undefined
+                ? { id: emitted.subject.id }
+                : {}),
+              _subject: emitted.subject,
+              _eventName: emitted.name,
+              _channel: emitted.channel,
+            };
+            const reactionContext: Record<string, unknown> = {
+              payload: enrichedPayload,
+              self: enrichedPayload,
+            };
+            // Fan-out reaction: dispatch the command on EVERY target row where
+            // row.<matchField> == matchSource (evaluated against the event payload),
+            // instead of one resolved target. The collection match replaces resolve.
+            if (reaction.fanOut) {
+              const matchValue = await this.evaluateExpression(
+                reaction.fanOut.matchSource,
+                reactionContext,
+              );
+              const fanInput: Record<string, unknown> = {};
+              if (reaction.params) {
+                for (const p of reaction.params) {
+                  fanInput[p.name] = await this.evaluateExpression(p.expression, reactionContext);
+                }
               }
-              this.reactionDepth++;
-              try {
-                const fanResult = await this.runCommand(
-                  reaction.targetCommand,
-                  fanInput,
-                  {
+              const matchField = reaction.fanOut.matchField;
+              const matches = (await this.getAllInstancesRaw(reaction.targetEntity)).filter(
+                (inst) => (inst as Record<string, unknown>)[matchField] === matchValue,
+              );
+              for (const m of matches) {
+                if (this.reactionDepth >= RuntimeEngine.MAX_REACTION_DEPTH) {
+                  throw new ManifestReactionDepthError(
+                    this.reactionDepth,
+                    reaction.event,
+                    `${reaction.targetEntity}.${reaction.targetCommand}`,
+                  );
+                }
+                this.reactionDepth++;
+                try {
+                  const fanResult = await this.runCommand(reaction.targetCommand, fanInput, {
                     entityName: reaction.targetEntity,
                     instanceId: String((m as Record<string, unknown>).id ?? ''),
                     correlationId: workflowMeta.correlationId,
                     causationId: emitted.name,
-                  },
+                  });
+                  if (fanResult.emittedEvents) emittedEvents.push(...fanResult.emittedEvents);
+                } finally {
+                  this.reactionDepth--;
+                }
+              }
+              continue;
+            }
+            // Single-target reaction: fanOut reactions have no resolve and continue above.
+            if (!reaction.resolve) continue;
+            const resolvedId = await this.evaluateExpression(reaction.resolve, reactionContext);
+            // Evaluate param mappings
+            const reactionInput: Record<string, unknown> = {};
+            if (reaction.params) {
+              for (const param of reaction.params) {
+                reactionInput[param.name] = await this.evaluateExpression(
+                  param.expression,
+                  reactionContext,
                 );
-                if (fanResult.emittedEvents) emittedEvents.push(...fanResult.emittedEvents);
-              } finally {
-                this.reactionDepth--;
               }
             }
-            continue;
-          }
-          // Single-target reaction: fanOut reactions have no resolve and continue above.
-          if (!reaction.resolve) continue;
-          const resolvedId = await this.evaluateExpression(reaction.resolve, reactionContext);
-          // Evaluate param mappings
-          const reactionInput: Record<string, unknown> = {};
-          if (reaction.params) {
-            for (const param of reaction.params) {
-              reactionInput[param.name] = await this.evaluateExpression(param.expression, reactionContext);
+            // A reaction whose target command is `create` must flow through the
+            // auto-create path (runCommand only auto-creates when instanceId is
+            // ABSENT). Forcing instanceId here made create-target reactions run
+            // mutate actions against a non-existent instance and persist nothing.
+            // For create targets the resolved value identifies the NEW instance's
+            // id, so thread it through as input.id (unless params set one).
+            const isCreateTarget = reaction.targetCommand === 'create';
+            let reactionInstanceId: string | undefined = String(resolvedId);
+            if (isCreateTarget) {
+              reactionInstanceId = undefined;
+              if (
+                reactionInput.id === undefined &&
+                resolvedId !== undefined &&
+                resolvedId !== null
+              ) {
+                reactionInput.id = String(resolvedId);
+              }
             }
-          }
-          // A reaction whose target command is `create` must flow through the
-          // auto-create path (runCommand only auto-creates when instanceId is
-          // ABSENT). Forcing instanceId here made create-target reactions run
-          // mutate actions against a non-existent instance and persist nothing.
-          // For create targets the resolved value identifies the NEW instance's
-          // id, so thread it through as input.id (unless params set one).
-          const isCreateTarget = reaction.targetCommand === 'create';
-          let reactionInstanceId: string | undefined = String(resolvedId);
-          if (isCreateTarget) {
-            reactionInstanceId = undefined;
-            if (reactionInput.id === undefined && resolvedId !== undefined && resolvedId !== null) {
-              reactionInput.id = String(resolvedId);
-            }
-          }
-          // Dispatch the reaction command
-          this.reactionDepth++;
-          try {
-            const reactionResult = await this.runCommand(
-              reaction.targetCommand,
-              reactionInput,
-              {
+            // Dispatch the reaction command
+            this.reactionDepth++;
+            try {
+              const reactionResult = await this.runCommand(reaction.targetCommand, reactionInput, {
                 entityName: reaction.targetEntity,
                 instanceId: reactionInstanceId,
                 correlationId: workflowMeta.correlationId,
                 causationId: emitted.name,
+              });
+              // Collect events from reaction-triggered commands
+              if (reactionResult.emittedEvents) {
+                emittedEvents.push(...reactionResult.emittedEvents);
               }
-            );
-            // Collect events from reaction-triggered commands
-            if (reactionResult.emittedEvents) {
-              emittedEvents.push(...reactionResult.emittedEvents);
+            } finally {
+              this.reactionDepth--;
             }
-          } finally {
-            this.reactionDepth--;
           }
         }
       }
-    }
 
-    this.profilingBridge.endPhase('eventEmission');
+      this.profilingBridge.endPhase('eventEmission');
 
-    const commandResult: CommandResult = {
-      success: true,
-      result,
-      ...(autoCreatedInstance ? { instance: autoCreatedInstance } : {}),
-      // Include constraint outcomes in successful result
-      constraintOutcomes: [...constraintResult.outcomes, ...(createConstraintOutcomes ?? [])].length > 0
-        ? [...constraintResult.outcomes, ...(createConstraintOutcomes ?? [])]
-        : undefined,
-      ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
-      ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
-      emittedEvents,
-    };
+      const commandResult: CommandResult = {
+        success: true,
+        result,
+        ...(autoCreatedInstance ? { instance: autoCreatedInstance } : {}),
+        // Include constraint outcomes in successful result
+        constraintOutcomes:
+          [...constraintResult.outcomes, ...(createConstraintOutcomes ?? [])].length > 0
+            ? [...constraintResult.outcomes, ...(createConstraintOutcomes ?? [])]
+            : undefined,
+        ...(workflowMeta.correlationId !== undefined
+          ? { correlationId: workflowMeta.correlationId }
+          : {}),
+        ...(workflowMeta.causationId !== undefined
+          ? { causationId: workflowMeta.causationId }
+          : {}),
+        emittedEvents,
+      };
 
-    // Middleware: after-emit hook
-    const afterEmitResult = await this.runMiddleware('after-emit', command, evalContext, input, options, emittedEvents);
-    if (afterEmitResult) return afterEmitResult;
+      // Middleware: after-emit hook
+      const afterEmitResult = await this.runMiddleware(
+        'after-emit',
+        command,
+        evalContext,
+        input,
+        options,
+        emittedEvents,
+      );
+      if (afterEmitResult) return afterEmitResult;
 
-    return commandResult;
-
+      return commandResult;
     } catch (e) {
       if (e instanceof EvaluationBudgetExceededError) {
         return {
@@ -4293,13 +4614,12 @@ export class RuntimeEngine {
   private buildEvalContext(
     input: Record<string, unknown>,
     instance?: EntityInstance,
-    entityName?: string
+    entityName?: string,
   ): Record<string, unknown> {
     // Enrich instance with _entity metadata so relationship resolution works
     // when the member expression handler reads _entity from self/this
-    const enrichedInstance = (instance && entityName)
-      ? { ...instance, _entity: entityName }
-      : instance;
+    const enrichedInstance =
+      instance && entityName ? { ...instance, _entity: entityName } : instance;
     const baseContext = {
       ...(enrichedInstance || {}),
       ...input,
@@ -4314,7 +4634,7 @@ export class RuntimeEngine {
 
   private async checkPolicies(
     command: IRCommand,
-    evalContext: Record<string, unknown>
+    evalContext: Record<string, unknown>,
   ): Promise<{ allowed: boolean; denial?: PolicyDenial }> {
     // If command has explicit policies (expanded from entity defaults or declared),
     // evaluate only those policies by name
@@ -4322,10 +4642,10 @@ export class RuntimeEngine {
     if (command.policies && command.policies.length > 0) {
       // Filter by policy names specified on the command
       const policyNames = new Set(command.policies);
-      relevantPolicies = this.ir.policies.filter(p => policyNames.has(p.name));
+      relevantPolicies = this.ir.policies.filter((p) => policyNames.has(p.name));
     } else {
       // Fallback: filter by entity match and action type (legacy behavior)
-      relevantPolicies = this.ir.policies.filter(p => {
+      relevantPolicies = this.ir.policies.filter((p) => {
         if (p.entity && command.entity && p.entity !== command.entity) return false;
         if (p.action !== 'all' && p.action !== 'execute') return false;
         return true;
@@ -4404,7 +4724,7 @@ export class RuntimeEngine {
    */
   private async validateConstraints(
     entity: IREntity,
-    instanceData: Record<string, unknown>
+    instanceData: Record<string, unknown>,
   ): Promise<ConstraintOutcome[]> {
     const outcomes: ConstraintOutcome[] = [];
 
@@ -4435,7 +4755,12 @@ export class RuntimeEngine {
       switch (node.kind) {
         case 'identifier':
           // Add built-in identifiers and any user-defined identifiers
-          if (node.name === 'self' || node.name === 'this' || node.name === 'user' || node.name === 'context') {
+          if (
+            node.name === 'self' ||
+            node.name === 'this' ||
+            node.name === 'user' ||
+            node.name === 'context'
+          ) {
             keys.add(node.name);
           }
           return;
@@ -4466,7 +4791,7 @@ export class RuntimeEngine {
           node.elements.forEach(walk);
           return;
         case 'object':
-          node.properties.forEach(p => walk(p.value));
+          node.properties.forEach((p) => walk(p.value));
           return;
         case 'lambda':
           walk(node.body);
@@ -4495,13 +4820,13 @@ export class RuntimeEngine {
           ? `not ${this.formatExpression(expr.operand)}`
           : `${expr.operator}${this.formatExpression(expr.operand)}`;
       case 'call':
-        return `${this.formatExpression(expr.callee)}(${expr.args.map(arg => this.formatExpression(arg)).join(', ')})`;
+        return `${this.formatExpression(expr.callee)}(${expr.args.map((arg) => this.formatExpression(arg)).join(', ')})`;
       case 'conditional':
         return `${this.formatExpression(expr.condition)} ? ${this.formatExpression(expr.consequent)} : ${this.formatExpression(expr.alternate)}`;
       case 'array':
-        return `[${expr.elements.map(el => this.formatExpression(el)).join(', ')}]`;
+        return `[${expr.elements.map((el) => this.formatExpression(el)).join(', ')}]`;
       case 'object':
-        return `{ ${expr.properties.map(p => `${p.key}: ${this.formatExpression(p.value)}`).join(', ')} }`;
+        return `{ ${expr.properties.map((p) => `${p.key}: ${this.formatExpression(p.value)}`).join(', ')} }`;
       case 'lambda':
         return `(${expr.params.join(', ')}) => ${this.formatExpression(expr.body)}`;
       default:
@@ -4520,9 +4845,11 @@ export class RuntimeEngine {
       case 'null':
         return 'null';
       case 'array':
-        return `[${value.elements.map(el => this.formatValue(el)).join(', ')}]`;
+        return `[${value.elements.map((el) => this.formatValue(el)).join(', ')}]`;
       case 'object':
-        return `{ ${Object.entries(value.properties).map(([k, v]) => `${k}: ${this.formatValue(v)}`).join(', ')} }`;
+        return `{ ${Object.entries(value.properties)
+          .map(([k, v]) => `${k}: ${this.formatValue(v)}`)
+          .join(', ')} }`;
       default:
         return 'null';
     }
@@ -4530,7 +4857,7 @@ export class RuntimeEngine {
 
   private async resolveExpressionValues(
     expr: IRExpression,
-    evalContext: Record<string, unknown>
+    evalContext: Record<string, unknown>,
   ): Promise<GuardResolvedValue[]> {
     const entries: GuardResolvedValue[] = [];
     const seen = new Set<string>();
@@ -4626,8 +4953,10 @@ export class RuntimeEngine {
     // then context.deterministic (ambient context). See docs/spec/semantics.md
     // § "Runtime Context Schema".
     const deterministic = this.options.deterministicMode ?? this.context.deterministic ?? false;
-    if (deterministic &&
-        (action.kind === 'persist' || action.kind === 'publish' || action.kind === 'effect')) {
+    if (
+      deterministic &&
+      (action.kind === 'persist' || action.kind === 'publish' || action.kind === 'effect')
+    ) {
       throw new ManifestEffectBoundaryError(action.kind);
     }
 
@@ -4732,27 +5061,32 @@ export class RuntimeEngine {
     emitCounter: { value: number },
   ): EmittedEvent {
     const eventName = action.target ?? 'action_event';
-    const irEvent = this.ir.events.find(e => e.name === eventName);
+    const irEvent = this.ir.events.find((e) => e.name === eventName);
     const prov = this.ir.provenance;
-    const payload: unknown = value == null
-      ? {}
-      : (typeof value === 'object' && !Array.isArray(value))
-        ? value
-        : { result: value };
+    const payload: unknown =
+      value == null
+        ? {}
+        : typeof value === 'object' && !Array.isArray(value)
+          ? value
+          : { result: value };
     return {
       name: eventName,
       channel: irEvent?.channel || eventName,
       payload,
       ...(subject ? { subject } : {}),
       timestamp: this.getNow(),
-      ...(prov ? {
-        provenance: {
-          contentHash: prov.contentHash,
-          compilerVersion: prov.compilerVersion,
-          schemaVersion: prov.schemaVersion,
-        },
-      } : {}),
-      ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+      ...(prov
+        ? {
+            provenance: {
+              contentHash: prov.contentHash,
+              compilerVersion: prov.compilerVersion,
+              schemaVersion: prov.schemaVersion,
+            },
+          }
+        : {}),
+      ...(workflowMeta.correlationId !== undefined
+        ? { correlationId: workflowMeta.correlationId }
+        : {}),
       ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
       emitIndex: emitCounter.value++,
     };
@@ -4786,170 +5120,182 @@ export class RuntimeEngine {
       }
     }
     try {
-    // WASM fast path: if a WASM evaluator is configured and ready, and the
-    // expression is a pure computational expression (no relationship resolution
-    // needed), use the WASM module for near-native execution speed.
-    // Falls back transparently to TypeScript on any error.
-    if (this.options.wasmEvaluator?.isReady() && this.isWasmCompatible(expr)) {
-      try {
-        const result = await this.options.wasmEvaluator.evaluate(expr, context);
-        return result;
-      } catch {
-        // Fall through to TypeScript evaluation on WASM error
+      // WASM fast path: if a WASM evaluator is configured and ready, and the
+      // expression is a pure computational expression (no relationship resolution
+      // needed), use the WASM module for near-native execution speed.
+      // Falls back transparently to TypeScript on any error.
+      if (this.options.wasmEvaluator?.isReady() && this.isWasmCompatible(expr)) {
+        try {
+          const result = await this.options.wasmEvaluator.evaluate(expr, context);
+          return result;
+        } catch {
+          // Fall through to TypeScript evaluation on WASM error
+        }
       }
-    }
-    switch (expr.kind) {
-      case 'literal':
-        return this.irValueToJs(expr.value);
+      switch (expr.kind) {
+        case 'literal':
+          return this.irValueToJs(expr.value);
 
-      case 'identifier': {
-        const name = expr.name;
-        if (name in context) return context[name];
-        if (name === 'true') return true;
-        if (name === 'false') return false;
-        if (name === 'null') return null;
-        return undefined;
-      }
+        case 'identifier': {
+          const name = expr.name;
+          if (name in context) return context[name];
+          if (name === 'true') return true;
+          if (name === 'false') return false;
+          if (name === 'null') return null;
+          return undefined;
+        }
 
-      case 'member': {
-        const obj = await this.evaluateExpression(expr.object, context);
-        if (obj && typeof obj === 'object') {
-          // Check if this is an entity instance that may have relationships
-          // Works for direct self/this access AND chained traversal (self.order.customer)
-          // because resolveRelationship enriches results with _entity metadata
-          if ('id' in obj && typeof obj.id === 'string') {
-            const entityName = (obj as Record<string, unknown>)._entity as string | undefined;
-            if (entityName) {
-              const relKey = `${entityName}.${expr.property}`;
-              if (this.relationshipIndex.has(relKey)) {
-                return await this.resolveRelationship(entityName, obj as EntityInstance, expr.property);
+        case 'member': {
+          const obj = await this.evaluateExpression(expr.object, context);
+          if (obj && typeof obj === 'object') {
+            // Check if this is an entity instance that may have relationships
+            // Works for direct self/this access AND chained traversal (self.order.customer)
+            // because resolveRelationship enriches results with _entity metadata
+            if ('id' in obj && typeof obj.id === 'string') {
+              const entityName = (obj as Record<string, unknown>)._entity as string | undefined;
+              if (entityName) {
+                const relKey = `${entityName}.${expr.property}`;
+                if (this.relationshipIndex.has(relKey)) {
+                  return await this.resolveRelationship(
+                    entityName,
+                    obj as EntityInstance,
+                    expr.property,
+                  );
+                }
               }
             }
+
+            // Use hasOwnProperty check to prevent prototype pollution
+            return Object.prototype.hasOwnProperty.call(obj, expr.property)
+              ? (obj as Record<string, unknown>)[expr.property]
+              : undefined;
           }
-
-          // Use hasOwnProperty check to prevent prototype pollution
-          return Object.prototype.hasOwnProperty.call(obj, expr.property)
-            ? (obj as Record<string, unknown>)[expr.property]
-            : undefined;
-        }
-        return undefined;
-      }
-
-      case 'binary': {
-        const left = await this.evaluateExpression(expr.left, context);
-        const right = await this.evaluateExpression(expr.right, context);
-        return this.evaluateBinaryOp(expr.operator, left, right);
-      }
-
-      case 'unary': {
-        const operand = await this.evaluateExpression(expr.operand, context);
-        return this.evaluateUnaryOp(expr.operator, operand);
-      }
-
-      case 'call': {
-        // Check if callee is a built-in function identifier
-        const calleeExpr = expr.callee;
-        if (calleeExpr.kind === 'identifier') {
-          const builtins = this.getBuiltins();
-          if (calleeExpr.name in builtins) {
-            const args = await Promise.all(expr.args.map(a => this.evaluateExpression(a, context)));
-            return builtins[calleeExpr.name](...args);
-          }
+          return undefined;
         }
 
-        // Array method calls: arr.contains(x), arr.all(pred), arr.any(pred)
-        if (calleeExpr.kind === 'member') {
-          const property = calleeExpr.property;
-          const arr = await this.evaluateExpression(calleeExpr.object, context);
-          if (Array.isArray(arr)) {
-            if (property === 'contains') {
-              const needle = await this.evaluateExpression(expr.args[0], context);
-              return arr.includes(needle);
+        case 'binary': {
+          const left = await this.evaluateExpression(expr.left, context);
+          const right = await this.evaluateExpression(expr.right, context);
+          return this.evaluateBinaryOp(expr.operator, left, right);
+        }
+
+        case 'unary': {
+          const operand = await this.evaluateExpression(expr.operand, context);
+          return this.evaluateUnaryOp(expr.operator, operand);
+        }
+
+        case 'call': {
+          // Check if callee is a built-in function identifier
+          const calleeExpr = expr.callee;
+          if (calleeExpr.kind === 'identifier') {
+            const builtins = this.getBuiltins();
+            if (calleeExpr.name in builtins) {
+              const args = await Promise.all(
+                expr.args.map((a) => this.evaluateExpression(a, context)),
+              );
+              return builtins[calleeExpr.name](...args);
             }
-            if (property === 'all' || property === 'any') {
-              const predicate = await this.evaluateExpression(expr.args[0], context);
-              if (typeof predicate === 'function') {
-                if (property === 'all') {
+          }
+
+          // Array method calls: arr.contains(x), arr.all(pred), arr.any(pred)
+          if (calleeExpr.kind === 'member') {
+            const property = calleeExpr.property;
+            const arr = await this.evaluateExpression(calleeExpr.object, context);
+            if (Array.isArray(arr)) {
+              if (property === 'contains') {
+                const needle = await this.evaluateExpression(expr.args[0], context);
+                return arr.includes(needle);
+              }
+              if (property === 'all' || property === 'any') {
+                const predicate = await this.evaluateExpression(expr.args[0], context);
+                if (typeof predicate === 'function') {
+                  if (property === 'all') {
+                    for (const element of arr) {
+                      const result = await Promise.resolve(predicate(element));
+                      if (!result) return false;
+                    }
+                    return true;
+                  }
                   for (const element of arr) {
                     const result = await Promise.resolve(predicate(element));
-                    if (!result) return false;
+                    if (result) return true;
                   }
-                  return true;
+                  return false;
                 }
-                for (const element of arr) {
-                  const result = await Promise.resolve(predicate(element));
-                  if (result) return true;
-                }
-                return false;
               }
             }
           }
-        }
 
-        // Default: evaluate callee and call as function
-        const callee = await this.evaluateExpression(expr.callee, context);
-        const args = await Promise.all(expr.args.map(a => this.evaluateExpression(a, context)));
-        if (typeof callee === 'function') {
-          return callee(...args);
-        }
-        return undefined;
-      }
-
-      case 'conditional': {
-        const condition = await this.evaluateExpression(expr.condition, context);
-        return condition
-          ? await this.evaluateExpression(expr.consequent, context)
-          : await this.evaluateExpression(expr.alternate, context);
-      }
-
-      case 'array':
-        return await Promise.all(expr.elements.map(e => this.evaluateExpression(e, context)));
-
-      case 'object': {
-        const result: Record<string, unknown> = {};
-        for (const prop of expr.properties) {
-          result[prop.key] = await this.evaluateExpression(prop.value, context);
-        }
-        return result;
-      }
-
-      case 'lambda': {
-        return (...args: unknown[]) => {
-          const localContext = { ...context };
-          expr.params.forEach((p, i) => {
-            localContext[p] = args[i];
-          });
-          return this.evaluateExpression(expr.body, localContext);
-        };
-      }
-
-      case 'aggregate': {
-        // count(Entity where field == value, ...) — count rows of `entity`
-        // matching every ANDed equality predicate. Predicate values resolve in
-        // the surrounding context (reaction params: the event payload). Count
-        // is order-independent, so this is deterministic for a given store
-        // snapshot regardless of row ordering.
-        if (expr.op !== 'count') return undefined;
-        // Resolve predicate values once (they do not depend on the counted row).
-        const resolved = await Promise.all(
-          expr.predicates.map(async p => ({ field: p.field, value: await this.evaluateExpression(p.value, context) })),
-        );
-        const rows = await this.getAllInstancesRaw(expr.entity);
-        let count = 0;
-        for (const row of rows) {
-          const r = row as Record<string, unknown>;
-          let match = true;
-          for (const pred of resolved) {
-            if (r[pred.field] !== pred.value) { match = false; break; }
+          // Default: evaluate callee and call as function
+          const callee = await this.evaluateExpression(expr.callee, context);
+          const args = await Promise.all(expr.args.map((a) => this.evaluateExpression(a, context)));
+          if (typeof callee === 'function') {
+            return callee(...args);
           }
-          if (match) count++;
+          return undefined;
         }
-        return count;
-      }
 
-      default:
-        return undefined;
-    }
+        case 'conditional': {
+          const condition = await this.evaluateExpression(expr.condition, context);
+          return condition
+            ? await this.evaluateExpression(expr.consequent, context)
+            : await this.evaluateExpression(expr.alternate, context);
+        }
+
+        case 'array':
+          return await Promise.all(expr.elements.map((e) => this.evaluateExpression(e, context)));
+
+        case 'object': {
+          const result: Record<string, unknown> = {};
+          for (const prop of expr.properties) {
+            result[prop.key] = await this.evaluateExpression(prop.value, context);
+          }
+          return result;
+        }
+
+        case 'lambda': {
+          return (...args: unknown[]) => {
+            const localContext = { ...context };
+            expr.params.forEach((p, i) => {
+              localContext[p] = args[i];
+            });
+            return this.evaluateExpression(expr.body, localContext);
+          };
+        }
+
+        case 'aggregate': {
+          // count(Entity where field == value, ...) — count rows of `entity`
+          // matching every ANDed equality predicate. Predicate values resolve in
+          // the surrounding context (reaction params: the event payload). Count
+          // is order-independent, so this is deterministic for a given store
+          // snapshot regardless of row ordering.
+          if (expr.op !== 'count') return undefined;
+          // Resolve predicate values once (they do not depend on the counted row).
+          const resolved = await Promise.all(
+            expr.predicates.map(async (p) => ({
+              field: p.field,
+              value: await this.evaluateExpression(p.value, context),
+            })),
+          );
+          const rows = await this.getAllInstancesRaw(expr.entity);
+          let count = 0;
+          for (const row of rows) {
+            const r = row as Record<string, unknown>;
+            let match = true;
+            for (const pred of resolved) {
+              if (r[pred.field] !== pred.value) {
+                match = false;
+                break;
+              }
+            }
+            if (match) count++;
+          }
+          return count;
+        }
+
+        default:
+          return undefined;
+      }
     } finally {
       if (this.evalBudget) {
         this.evalBudget.depth--;
@@ -4994,7 +5340,7 @@ export class RuntimeEngine {
         case 'array':
           return node.elements.every(walk);
         case 'object':
-          return node.properties.every(p => walk(p.value));
+          return node.properties.every((p) => walk(p.value));
         case 'lambda':
           // Lambdas are not yet supported in WASM core
           return false;
@@ -5012,21 +5358,33 @@ export class RuntimeEngine {
           return String(left) + String(right);
         }
         return (left as number) + (right as number);
-      case '-': return (left as number) - (right as number);
-      case '*': return (left as number) * (right as number);
-      case '/': return (left as number) / (right as number);
-      case '%': return (left as number) % (right as number);
+      case '-':
+        return (left as number) - (right as number);
+      case '*':
+        return (left as number) * (right as number);
+      case '/':
+        return (left as number) / (right as number);
+      case '%':
+        return (left as number) % (right as number);
       case '==':
-      case 'is': return left == right; // Loose equality: undefined == null is true
-      case '!=': return left != right; // Loose inequality: undefined != null is false
-      case '<': return (left as number) < (right as number);
-      case '>': return (left as number) > (right as number);
-      case '<=': return (left as number) <= (right as number);
-      case '>=': return (left as number) >= (right as number);
+      case 'is':
+        return left == right; // Loose equality: undefined == null is true
+      case '!=':
+        return left != right; // Loose inequality: undefined != null is false
+      case '<':
+        return (left as number) < (right as number);
+      case '>':
+        return (left as number) > (right as number);
+      case '<=':
+        return (left as number) <= (right as number);
+      case '>=':
+        return (left as number) >= (right as number);
       case '&&':
-      case 'and': return Boolean(left) && Boolean(right);
+      case 'and':
+        return Boolean(left) && Boolean(right);
       case '||':
-      case 'or': return Boolean(left) || Boolean(right);
+      case 'or':
+        return Boolean(left) || Boolean(right);
       case 'in':
         if (Array.isArray(right)) return right.includes(left);
         if (typeof right === 'string') return (right as string).includes(String(left));
@@ -5043,19 +5401,27 @@ export class RuntimeEngine {
   private evaluateUnaryOp(op: string, operand: unknown): unknown {
     switch (op) {
       case '!':
-      case 'not': return !operand;
-      case '-': return -(operand as number);
-      default: return operand;
+      case 'not':
+        return !operand;
+      case '-':
+        return -(operand as number);
+      default:
+        return operand;
     }
   }
 
   private irValueToJs(value: IRValue): unknown {
     switch (value.kind) {
-      case 'string': return value.value;
-      case 'number': return value.value;
-      case 'boolean': return value.value;
-      case 'null': return null;
-      case 'array': return value.elements.map(e => this.irValueToJs(e));
+      case 'string':
+        return value.value;
+      case 'number':
+        return value.value;
+      case 'boolean':
+        return value.value;
+      case 'null':
+        return null;
+      case 'array':
+        return value.elements.map((e) => this.irValueToJs(e));
       case 'object': {
         const result: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(value.properties)) {
@@ -5069,17 +5435,28 @@ export class RuntimeEngine {
   private getDefaultForType(type: IRType): unknown {
     if (type.nullable) return null;
     switch (type.name) {
-      case 'string': return '';
-      case 'number': return 0;
-      case 'boolean': return false;
-      case 'list': return [];
-      case 'array': return [];
-      case 'map': return {};
-      default: return null;
+      case 'string':
+        return '';
+      case 'number':
+        return 0;
+      case 'boolean':
+        return false;
+      case 'list':
+        return [];
+      case 'array':
+        return [];
+      case 'map':
+        return {};
+      default:
+        return null;
     }
   }
 
-  async evaluateComputed(entityName: string, instanceId: string, propertyName: string): Promise<unknown> {
+  async evaluateComputed(
+    entityName: string,
+    instanceId: string,
+    propertyName: string,
+  ): Promise<unknown> {
     const meta = await this.evaluateComputedWithMeta(entityName, instanceId, propertyName);
     return meta?.value;
   }
@@ -5091,12 +5468,12 @@ export class RuntimeEngine {
   async evaluateComputedWithMeta(
     entityName: string,
     instanceId: string,
-    propertyName: string
+    propertyName: string,
   ): Promise<{ value: unknown; stale: boolean; cached: boolean } | undefined> {
     const entity = this.getEntity(entityName);
     if (!entity) return undefined;
 
-    const computed = entity.computedProperties.find(c => c.name === propertyName);
+    const computed = entity.computedProperties.find((c) => c.name === propertyName);
     if (!computed) return undefined;
 
     const instance = await this.getInstanceRaw(entityName, instanceId);
@@ -5133,7 +5510,7 @@ export class RuntimeEngine {
    */
   private getCachedComputedValue(
     cacheConfig: { strategy: string; ttlSeconds?: number },
-    cacheKey: string
+    cacheKey: string,
   ): { value: unknown; stale: boolean } | undefined {
     switch (cacheConfig.strategy) {
       case 'request': {
@@ -5170,7 +5547,7 @@ export class RuntimeEngine {
   private setCachedComputedValue(
     cacheConfig: { strategy: string; ttlSeconds?: number },
     cacheKey: string,
-    value: unknown
+    value: unknown,
   ): void {
     const entry = { value, computedAt: this.getNow(), stale: false };
     switch (cacheConfig.strategy) {
@@ -5188,20 +5565,25 @@ export class RuntimeEngine {
     entity: IREntity,
     instance: EntityInstance,
     propertyName: string,
-    visited: Set<string>
+    visited: Set<string>,
   ): Promise<unknown> {
     if (visited.has(propertyName)) return undefined;
     visited.add(propertyName);
 
-    const computed = entity.computedProperties.find(c => c.name === propertyName);
+    const computed = entity.computedProperties.find((c) => c.name === propertyName);
     if (!computed) return undefined;
 
     const computedValues: Record<string, unknown> = {};
     if (computed.dependencies) {
       for (const dep of computed.dependencies) {
-        const depComputed = entity.computedProperties.find(c => c.name === dep);
+        const depComputed = entity.computedProperties.find((c) => c.name === dep);
         if (depComputed && !visited.has(dep)) {
-          computedValues[dep] = await this.evaluateComputedInternal(entity, instance, dep, new Set(visited));
+          computedValues[dep] = await this.evaluateComputedInternal(
+            entity,
+            instance,
+            dep,
+            new Set(visited),
+          );
         }
       }
     }
@@ -5232,7 +5614,7 @@ export class RuntimeEngine {
     template: string,
     evalContext: Record<string, unknown>,
     details?: Record<string, unknown>,
-    resolved?: Array<{ expression: string; value: unknown }>
+    resolved?: Array<{ expression: string; value: unknown }>,
   ): string {
     // Create a lookup map for resolved values by expression
     const resolvedMap = new Map<string, unknown>();
@@ -5268,7 +5650,7 @@ export class RuntimeEngine {
    */
   private async evaluateConstraint(
     constraint: IRConstraint,
-    evalContext: Record<string, unknown>
+    evalContext: Record<string, unknown>,
   ): Promise<ConstraintOutcome> {
     const result = await this.evaluateExpression(constraint.expression, evalContext);
 
@@ -5295,7 +5677,12 @@ export class RuntimeEngine {
     // Build message with template interpolation if messageTemplate is used
     let message: string | undefined = constraint.message;
     if (constraint.messageTemplate && !message) {
-      message = this.interpolateTemplate(constraint.messageTemplate, evalContext, details, resolved.map(r => ({ expression: r.expression, value: r.value })));
+      message = this.interpolateTemplate(
+        constraint.messageTemplate,
+        evalContext,
+        details,
+        resolved.map((r) => ({ expression: r.expression, value: r.value })),
+      );
     }
 
     return {
@@ -5306,7 +5693,7 @@ export class RuntimeEngine {
       message,
       details,
       passed,
-      resolved: resolved.map(r => ({ expression: r.expression, value: r.value })),
+      resolved: resolved.map((r) => ({ expression: r.expression, value: r.value })),
     };
   }
 
@@ -5320,7 +5707,7 @@ export class RuntimeEngine {
     command: IRCommand,
     evalContext: Record<string, unknown>,
     overrideRequests?: OverrideRequest[],
-    commandContext?: { commandName: string; entityName?: string; instanceId?: string }
+    commandContext?: { commandName: string; entityName?: string; instanceId?: string },
   ): Promise<{ allowed: boolean; outcomes: ConstraintOutcome[]; overrideEvents: EmittedEvent[] }> {
     const outcomes: ConstraintOutcome[] = [];
     const overrideEvents: EmittedEvent[] = [];
@@ -5332,9 +5719,13 @@ export class RuntimeEngine {
       if (!outcome.passed && constraint.overrideable) {
         // First check for explicit override request
         if (overrideRequests) {
-          const overrideReq = overrideRequests.find(o => o.constraintCode === constraint.code);
+          const overrideReq = overrideRequests.find((o) => o.constraintCode === constraint.code);
           if (overrideReq) {
-            const authorized = await this.validateOverrideAuthorization(constraint, overrideReq, evalContext);
+            const authorized = await this.validateOverrideAuthorization(
+              constraint,
+              overrideReq,
+              evalContext,
+            );
             if (authorized) {
               outcome.overridden = true;
               outcome.overriddenBy = overrideReq.authorizedBy;
@@ -5348,7 +5739,7 @@ export class RuntimeEngine {
 
         // If still not overridden and has overridePolicyRef, automatically check policy
         if (!outcome.overridden && constraint.overridePolicyRef) {
-          const policy = this.ir.policies.find(p => p.name === constraint.overridePolicyRef);
+          const policy = this.ir.policies.find((p) => p.name === constraint.overridePolicyRef);
           if (policy && policy.action === 'override') {
             const policyResult = await this.evaluateExpression(policy.expression, evalContext);
             const authorized = Boolean(policyResult);
@@ -5363,10 +5754,14 @@ export class RuntimeEngine {
               const syntheticReq: OverrideRequest = {
                 constraintCode: constraint.code,
                 reason: `Auto-authorized by policy '${policy.name}'`,
-                authorizedBy: actingUser ?? ('policy:' + policy.name),
+                authorizedBy: actingUser ?? 'policy:' + policy.name,
                 timestamp: this.getNow(),
               };
-              const event = this.buildOverrideAppliedEvent(constraint, syntheticReq, commandContext);
+              const event = this.buildOverrideAppliedEvent(
+                constraint,
+                syntheticReq,
+                commandContext,
+              );
               overrideEvents.push(event);
               this.eventLog.push(event);
               this.notifyListeners(event);
@@ -5392,11 +5787,11 @@ export class RuntimeEngine {
   private async validateOverrideAuthorization(
     constraint: IRConstraint,
     overrideReq: OverrideRequest,
-    evalContext: Record<string, unknown>
+    evalContext: Record<string, unknown>,
   ): Promise<boolean> {
     // If constraint has overridePolicyRef, check that policy
     if (constraint.overridePolicyRef) {
-      const policy = this.ir.policies.find(p => p.name === constraint.overridePolicyRef);
+      const policy = this.ir.policies.find((p) => p.name === constraint.overridePolicyRef);
       if (policy) {
         const overrideContext = {
           ...evalContext,
@@ -5428,7 +5823,7 @@ export class RuntimeEngine {
   private buildOverrideAppliedEvent(
     constraint: IRConstraint,
     overrideReq: OverrideRequest,
-    commandContext?: { commandName: string; entityName?: string; instanceId?: string }
+    commandContext?: { commandName: string; entityName?: string; instanceId?: string },
   ): EmittedEvent {
     const payload: Record<string, unknown> = {
       constraintCode: constraint.code,
@@ -5460,7 +5855,7 @@ export class RuntimeEngine {
     entityName: string,
     entityId: string,
     expectedVersion: number,
-    actualVersion: number
+    actualVersion: number,
   ): Promise<void> {
     const event: EmittedEvent = {
       name: 'ConcurrencyConflict',
@@ -5484,7 +5879,8 @@ export class RuntimeEngine {
   /**
    * vNext: Get provenance info for events
    */
-  private getProvenanceInfo(): { contentHash: string; compilerVersion: string; schemaVersion: string } | undefined {
+  private getProvenanceInfo():
+    { contentHash: string; compilerVersion: string; schemaVersion: string } | undefined {
     const prov = this.ir.provenance;
     if (!prov) return undefined;
     return {
@@ -5625,7 +6021,11 @@ export class RuntimeEngine {
     this.eventLog = [];
   }
 
-  async serialize(): Promise<{ ir: IR; context: RuntimeContext; stores: Record<string, EntityInstance[]> }> {
+  async serialize(): Promise<{
+    ir: IR;
+    context: RuntimeContext;
+    stores: Record<string, EntityInstance[]>;
+  }> {
     const storeData: Record<string, EntityInstance[]> = {};
     for (const [name, store] of this.stores) {
       storeData[name] = await store.getAll();
@@ -5688,7 +6088,7 @@ export class RuntimeEngine {
   private findApprovalsForCommand(entityName: string, commandName: string): IRApproval[] {
     const entity = this.getEntity(entityName);
     if (!entity?.approvals) return [];
-    return entity.approvals.filter(a => a.command === commandName);
+    return entity.approvals.filter((a) => a.command === commandName);
   }
 
   /**
@@ -5773,9 +6173,9 @@ export class RuntimeEngine {
   private getPendingStages(request: ApprovalRequestState, approval: IRApproval): string[] {
     const pending: string[] = [];
     for (const stageName of request.requiredStages) {
-      const stageSpec = approval.stages.find(s => s.name === stageName);
+      const stageSpec = approval.stages.find((s) => s.name === stageName);
       if (!stageSpec) continue;
-      const grantCount = request.grants.filter(g => g.stage === stageName).length;
+      const grantCount = request.grants.filter((g) => g.stage === stageName).length;
       if (grantCount < stageSpec.required) {
         pending.push(stageName);
       }
@@ -5797,7 +6197,7 @@ export class RuntimeEngine {
     if (existing) return existing;
 
     const entity = this.getEntity(entityName);
-    const approval = entity?.approvals?.find(a => a.name === approvalName);
+    const approval = entity?.approvals?.find((a) => a.name === approvalName);
     if (!approval) {
       throw new Error(`Approval '${approvalName}' not found on entity '${entityName}'`);
     }
@@ -5854,12 +6254,12 @@ export class RuntimeEngine {
     }
 
     const entity = this.getEntity(entityName);
-    const approval = entity?.approvals?.find(a => a.name === approvalName);
+    const approval = entity?.approvals?.find((a) => a.name === approvalName);
     if (!approval) {
       throw new Error(`Approval '${approvalName}' not found on entity '${entityName}'`);
     }
 
-    const stageSpec = approval.stages.find(s => s.name === stageName);
+    const stageSpec = approval.stages.find((s) => s.name === stageName);
     if (!stageSpec) {
       throw new Error(`Stage '${stageName}' not found in approval '${approvalName}'`);
     }
@@ -5875,9 +6275,7 @@ export class RuntimeEngine {
     // evaluate against the actual role rather than the user id.
     const approverId = typeof approver === 'string' ? approver : approver.id;
     const userContext: Record<string, unknown> =
-      typeof approver === 'string'
-        ? { id: approver, role: approver }
-        : { ...approver };
+      typeof approver === 'string' ? { id: approver, role: approver } : { ...approver };
 
     const instance = await this.getInstanceRaw(entityName, instanceId);
     const evalContext = this.buildEvalContext({}, instance, entityName);
@@ -5970,7 +6368,7 @@ export class RuntimeEngine {
   static async create(
     ir: IR,
     context: RuntimeContext = {},
-    options: RuntimeOptions = {}
+    options: RuntimeOptions = {},
   ): Promise<[RuntimeEngine, ProvenanceVerificationResult]> {
     const runtime = new RuntimeEngine(ir, context, options);
     let result: ProvenanceVerificationResult = { valid: true };

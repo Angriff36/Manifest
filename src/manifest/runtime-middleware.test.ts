@@ -10,7 +10,12 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { RuntimeEngine, type RuntimeContext, type Middleware, type MiddlewareContext } from './runtime-engine';
+import {
+  RuntimeEngine,
+  type RuntimeContext,
+  type Middleware,
+  type MiddlewareContext,
+} from './runtime-engine';
 import { IRCompiler } from './ir-compiler';
 import type { IR } from './ir';
 
@@ -19,7 +24,7 @@ async function compileToIR(source: string): Promise<IR> {
   const compiler = new IRCompiler();
   const result = await compiler.compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compilation failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compilation failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
@@ -84,7 +89,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      const result = await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const result = await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(hookOrder).toEqual(['before-policy']);
       expect(result.success).toBe(true);
@@ -99,7 +108,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      const result = await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const result = await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(result.success).toBe(true);
     });
@@ -120,7 +133,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      const result = await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const result = await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Blocked by before-policy middleware');
@@ -139,7 +156,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      const result = await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const result = await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(hookOrder).toEqual(['before-guard']);
       expect(result.success).toBe(true);
@@ -161,7 +182,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      const result = await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const result = await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Blocked by before-guard middleware');
@@ -180,7 +205,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      const result = await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const result = await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(hookOrder).toEqual(['before-action']);
       expect(result.success).toBe(true);
@@ -202,7 +231,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      const result = await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const result = await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Blocked by before-action middleware');
@@ -223,7 +256,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      const result = await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const result = await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(hookOrder).toEqual(['after-emit']);
       expect(capturedEvents.length).toBeGreaterThan(0);
@@ -241,7 +278,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      const result = await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const result = await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(result.success).toBe(true);
       expect(capturedEvents.length).toBe(1);
@@ -264,7 +305,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      const result = await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const result = await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Blocked by after-emit middleware');
@@ -292,7 +337,11 @@ describe('Runtime Middleware API', () => {
       const runtime = new RuntimeEngine(ir, testContext, {
         middleware: [middleware1, middleware2],
       });
-      await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(executionOrder).toEqual(['middleware1', 'middleware2']);
     });
@@ -324,7 +373,11 @@ describe('Runtime Middleware API', () => {
       const runtime = new RuntimeEngine(ir, testContext, {
         middleware: [middleware1, middleware2],
       });
-      await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(executionOrder).toEqual(['middleware1']);
     });
@@ -342,7 +395,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
       await runtime.runCommand('reset', {}, { entityName: 'Counter', instanceId: 'test-counter' });
 
       expect(hookOrder).toEqual([
@@ -368,7 +425,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(hookOrder).toEqual(['before-policy']);
     });
@@ -386,7 +447,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect((capturedCommand as { name: string }).name).toBe('increment');
     });
@@ -402,7 +467,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      await runtime.runCommand('setValue', { newValue: 42 }, { entityName: 'Counter', instanceId: 'test-counter' });
+      await runtime.runCommand(
+        'setValue',
+        { newValue: 42 },
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(capturedEvalContext).toBeDefined();
       expect((capturedEvalContext as Record<string, unknown>).newValue).toBe(42);
@@ -419,7 +488,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      await runtime.runCommand('setValue', { newValue: 42 }, { entityName: 'Counter', instanceId: 'test-counter' });
+      await runtime.runCommand(
+        'setValue',
+        { newValue: 42 },
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(capturedInput).toEqual({ newValue: 42 });
     });
@@ -436,7 +509,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, customContext, { middleware: [middleware] });
-      await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(capturedRuntimeContext).toBe(customContext);
     });
@@ -452,7 +529,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(capturedEntityName).toBe('Counter');
     });
@@ -468,7 +549,11 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [middleware] });
-      await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(capturedInstanceId).toBe('test-counter');
     });
@@ -486,15 +571,23 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [loggingMiddleware] });
-      const result1 = await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const result1 = await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
       expect(result1.success).toBe(true);
 
-      const result2 = await runtime.runCommand('reset', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const result2 = await runtime.runCommand(
+        'reset',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
       expect(result2.success).toBe(true);
 
       expect(log.length).toBeGreaterThan(0);
-      expect(log.some(entry => entry.includes('before-policy'))).toBe(true);
-      expect(log.some(entry => entry.includes('after-emit'))).toBe(true);
+      expect(log.some((entry) => entry.includes('before-policy'))).toBe(true);
+      expect(log.some((entry) => entry.includes('after-emit'))).toBe(true);
     });
 
     it('should allow middleware to enrich context with timestamps', async () => {
@@ -519,7 +612,11 @@ describe('Runtime Middleware API', () => {
       const runtime = new RuntimeEngine(ir, testContext, {
         middleware: [timestampMiddleware, verifyingMiddleware],
       });
-      await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
 
       expect(capturedTimestamp).toBeDefined();
       expect(typeof capturedTimestamp).toBe('number');
@@ -545,10 +642,18 @@ describe('Runtime Middleware API', () => {
       };
 
       const runtime = new RuntimeEngine(ir, testContext, { middleware: [conditionalMiddleware] });
-      const incrementResult = await runtime.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const incrementResult = await runtime.runCommand(
+        'increment',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
       expect(incrementResult.success).toBe(true);
 
-      const resetResult = await runtime.runCommand('reset', {}, { entityName: 'Counter', instanceId: 'test-counter' });
+      const resetResult = await runtime.runCommand(
+        'reset',
+        {},
+        { entityName: 'Counter', instanceId: 'test-counter' },
+      );
       expect(resetResult.success).toBe(false);
       expect(resetResult.error).toBe('Reset commands are blocked by middleware');
     });

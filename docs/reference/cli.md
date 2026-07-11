@@ -173,27 +173,27 @@ Reference merge skeleton:
 
 ```ts
 const mergedIR: IR = {
-	version: '1.0',
-	provenance: firstProvenance,
-	modules: [],
-	values: [],
-	entities: [],
-	enums: [],
-	stores: [],
-	events: [],
-	commands: [],
-	policies: [],
+  version: '1.0',
+  provenance: firstProvenance,
+  modules: [],
+  values: [],
+  entities: [],
+  enums: [],
+  stores: [],
+  events: [],
+  commands: [],
+  policies: [],
 };
 
 for (const ir of inputIRs) {
-	mergedIR.modules.push(...ir.modules);
-	mergedIR.values.push(...ir.values);
-	mergedIR.entities.push(...ir.entities);
-	mergedIR.enums.push(...ir.enums);
-	mergedIR.stores.push(...ir.stores);
-	mergedIR.events.push(...ir.events);
-	mergedIR.commands.push(...ir.commands);
-	mergedIR.policies.push(...ir.policies);
+  mergedIR.modules.push(...ir.modules);
+  mergedIR.values.push(...ir.values);
+  mergedIR.entities.push(...ir.entities);
+  mergedIR.enums.push(...ir.enums);
+  mergedIR.stores.push(...ir.stores);
+  mergedIR.events.push(...ir.events);
+  mergedIR.commands.push(...ir.commands);
+  mergedIR.policies.push(...ir.policies);
 }
 ```
 

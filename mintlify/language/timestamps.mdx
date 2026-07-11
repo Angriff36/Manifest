@@ -1,7 +1,7 @@
 ---
-title: "Automatic timestamp fields"
-sidebarTitle: "Timestamps"
-description: "The timestamps modifier auto-injects read-only createdAt and updatedAt fields and populates them from the deterministic runtime clock on create and update."
+title: 'Automatic timestamp fields'
+sidebarTitle: 'Timestamps'
+description: 'The timestamps modifier auto-injects read-only createdAt and updatedAt fields and populates them from the deterministic runtime clock on create and update.'
 ---
 
 The `timestamps` entity modifier auto-injects read-only `createdAt` and `updatedAt` properties and populates them at runtime, removing the boilerplate of declaring and maintaining audit timestamps by hand.
@@ -43,7 +43,12 @@ property createdAt: datetime = now()
 This call-expression default lowers to the `IRProperty.autoNow` flag (recognized: `now()`/`today()`, called with no arguments). The runtime stamps the field with the current time on create when the caller does not supply a value, and the Prisma projection emits `@default(now())`.
 
 <Note>
-Before this lowering existed, a `= now()` default compiled to **no** default and was null-filled at runtime, breaking non-null store columns (the `createdAt must not be null` class of bug). The compiler also folds negative numeric literal defaults like `= -1` into a real static default, and emits a **warning** for an unsupported call-expression default such as `= uuid()` (which would otherwise be silently dropped). See [Types](/language/types) for the full `autoNow` and diagnostics behavior.
+  Before this lowering existed, a `= now()` default compiled to **no** default and was null-filled
+  at runtime, breaking non-null store columns (the `createdAt must not be null` class of bug). The
+  compiler also folds negative numeric literal defaults like `= -1` into a real static default, and
+  emits a **warning** for an unsupported call-expression default such as `= uuid()` (which would
+  otherwise be silently dropped). See [Types](/language/types) for the full `autoNow` and
+  diagnostics behavior.
 </Note>
 
 ## Reference
@@ -55,5 +60,9 @@ Before this lowering existed, a `= now()` default compiled to **no** default and
 - Prisma attributes: `@default(now())`, `@updatedAt`.
 
 <Note>
-The injected fields carry the `readonly` modifier, so they cannot be mutated through commands. If a program manually declares `createdAt` or `updatedAt`, the auto-injection defers entirely to the manual declaration and does not add or override anything for that name. Population is driven by the runtime engine's create/update paths — stores or code paths that write instances without going through `createInstance`/`updateInstance` will not receive automatic timestamps.
+  The injected fields carry the `readonly` modifier, so they cannot be mutated through commands. If
+  a program manually declares `createdAt` or `updatedAt`, the auto-injection defers entirely to the
+  manual declaration and does not add or override anything for that name. Population is driven by
+  the runtime engine's create/update paths — stores or code paths that write instances without going
+  through `createInstance`/`updateInstance` will not receive automatic timestamps.
 </Note>

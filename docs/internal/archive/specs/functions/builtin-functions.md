@@ -9,6 +9,7 @@ As a developer writing Manifest programs, I want access to standard library func
 **Implementation Date:** 2026-02-05 (Loop 1)
 
 Per `docs/spec/builtins.md`:
+
 - `now()`: ✅ Implemented (returns milliseconds since epoch)
 - `uuid()`: ✅ Implemented (returns UUID v4 string)
 - Built-in identifiers (self, this, user, context): ✅ Implemented

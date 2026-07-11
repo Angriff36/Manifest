@@ -75,7 +75,9 @@ describe('layerProjectionOptions (per-projection + global naming merge)', () => 
   });
 
   it('is a no-op (no naming key) when no global naming is set', () => {
-    const noNaming: ManifestConfig = { projections: { prisma: { options: { provider: 'sqlite' } } } };
+    const noNaming: ManifestConfig = {
+      projections: { prisma: { options: { provider: 'sqlite' } } },
+    };
     expect(layerProjectionOptions(noNaming, 'prisma')).toEqual({ provider: 'sqlite' });
   });
 });
@@ -124,7 +126,15 @@ describe('CLI single-run — generate -p prisma resolves global naming from conf
     // Global naming, and a prisma projection block that sets NO naming of its own.
     await fs.writeFile(
       path.join(tempDir, 'manifest.config.yaml'),
-      ['src: src/**/*.manifest', 'output: ir/', 'naming: snake_case', 'projections:', '  prisma:', '    output: prisma/', ''].join('\n'),
+      [
+        'src: src/**/*.manifest',
+        'output: ir/',
+        'naming: snake_case',
+        'projections:',
+        '  prisma:',
+        '    output: prisma/',
+        '',
+      ].join('\n'),
       'utf-8',
     );
 
@@ -132,14 +142,19 @@ describe('CLI single-run — generate -p prisma resolves global naming from conf
     console.log = () => {};
     try {
       // Absolute paths keep the in-process compile cwd-independent.
-      await compileCommand(path.join(tempDir, 'src', 'widget.manifest'), { output: path.join(tempDir, 'ir') });
+      await compileCommand(path.join(tempDir, 'src', 'widget.manifest'), {
+        output: path.join(tempDir, 'ir'),
+      });
     } finally {
       console.log = originalLog;
     }
 
     try {
       // Real index.ts single-run path: resolves prisma's block + global naming.
-      const { code, stderr } = await runCli(['generate', 'ir/widget.ir.json', '-p', 'prisma', '-o', 'prisma'], tempDir);
+      const { code, stderr } = await runCli(
+        ['generate', 'ir/widget.ir.json', '-p', 'prisma', '-o', 'prisma'],
+        tempDir,
+      );
       expect(code, stderr).toBe(0);
       const schema = await fs.readFile(path.join(tempDir, 'prisma', 'schema.prisma'), 'utf-8');
       expect(schema).toMatch(/@@map\("widgets"\)/);

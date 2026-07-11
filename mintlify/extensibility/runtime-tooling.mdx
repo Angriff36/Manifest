@@ -1,7 +1,7 @@
 ---
-title: "Runtime tooling: REPL, time-travel debugger, profiler"
-description: "Interactive developer tools for inspecting and debugging Manifest programs — an interactive REPL, a time-travel debugger for stepping through command execution, and a performance profiler."
-sidebarTitle: "Runtime tooling"
+title: 'Runtime tooling: REPL, time-travel debugger, profiler'
+description: 'Interactive developer tools for inspecting and debugging Manifest programs — an interactive REPL, a time-travel debugger for stepping through command execution, and a performance profiler.'
+sidebarTitle: 'Runtime tooling'
 ---
 
 Manifest ships with three interactive developer tools for inspecting, debugging, and profiling runtime execution. All three are designed for development and testing — they are not intended for production use.
@@ -22,18 +22,18 @@ manifest repl src/app.manifest
 
 ### Available commands
 
-| Command | Description |
-|---------|-------------|
-| `load <path>` | Load IR or source file |
-| `create <Entity> <json>` | Create an entity instance |
-| `run <Entity>.<command> <json>` | Execute a command |
-| `get <Entity> <id>` | Retrieve an instance |
-| `list <Entity>` | List all instances of an entity |
-| `eval <expression>` | Evaluate an expression in context |
-| `events` | Show the event log |
-| `reset` | Clear all state |
-| `help` | Show available commands |
-| `exit` | Exit the REPL |
+| Command                         | Description                       |
+| ------------------------------- | --------------------------------- |
+| `load <path>`                   | Load IR or source file            |
+| `create <Entity> <json>`        | Create an entity instance         |
+| `run <Entity>.<command> <json>` | Execute a command                 |
+| `get <Entity> <id>`             | Retrieve an instance              |
+| `list <Entity>`                 | List all instances of an entity   |
+| `eval <expression>`             | Evaluate an expression in context |
+| `events`                        | Show the event log                |
+| `reset`                         | Clear all state                   |
+| `help`                          | Show available commands           |
+| `exit`                          | Exit the REPL                     |
 
 ### Usage example
 
@@ -55,7 +55,8 @@ manifest> events
 ```
 
 <Note>
-The REPL uses an in-memory store by default. State is lost when you exit. For persistent debugging, consider the snapshot testing infrastructure instead.
+  The REPL uses an in-memory store by default. State is lost when you exit. For persistent
+  debugging, consider the snapshot testing infrastructure instead.
 </Note>
 
 ## Time-travel debugger
@@ -65,15 +66,15 @@ The time-travel debugger records every state mutation during command execution a
 ### Enabling time-travel
 
 ```typescript
-import { RuntimeEngine } from "@angriff36/manifest";
-import { TimeTravelDebugger } from "@angriff36/manifest/debug";
+import { RuntimeEngine } from '@angriff36/manifest';
+import { TimeTravelDebugger } from '@angriff36/manifest/debug';
 
-const runtime = new RuntimeEngine(ir, { /* options */ });
+const runtime = new RuntimeEngine(ir, {/* options */});
 const debugger_ = new TimeTravelDebugger(runtime);
 
 // Run a command — debugger captures the full timeline
-const result = await debugger_.runCommand("Order", "complete", {
-  instanceId: "order-1",
+const result = await debugger_.runCommand('Order', 'complete', {
+  instanceId: 'order-1',
 });
 
 // Inspect the timeline
@@ -108,15 +109,17 @@ const diff = debugger_.diff(0, 3);
 
 Each timeline entry contains:
 
-| Field | Description |
-|-------|-------------|
-| `step` | Zero-based step index |
-| `action` | Label for the execution phase (e.g., `before-guard`, `after-mutate`) |
-| `state` | Complete entity state snapshot at this point |
-| `timestamp` | Millisecond timestamp when the step was captured |
+| Field       | Description                                                          |
+| ----------- | -------------------------------------------------------------------- |
+| `step`      | Zero-based step index                                                |
+| `action`    | Label for the execution phase (e.g., `before-guard`, `after-mutate`) |
+| `state`     | Complete entity state snapshot at this point                         |
+| `timestamp` | Millisecond timestamp when the step was captured                     |
 
 <Warning>
-Time-travel captures full entity state at each step. For entities with large data or high-frequency command execution, this can consume significant memory. Use it in development and testing only.
+  Time-travel captures full entity state at each step. For entities with large data or
+  high-frequency command execution, this can consume significant memory. Use it in development and
+  testing only.
 </Warning>
 
 ## Performance profiler
@@ -126,15 +129,15 @@ The runtime profiler measures execution time for each phase of command execution
 ### Running the profiler
 
 ```typescript
-import { RuntimeEngine } from "@angriff36/manifest";
-import { RuntimeProfiler } from "@angriff36/manifest/profiler";
+import { RuntimeEngine } from '@angriff36/manifest';
+import { RuntimeProfiler } from '@angriff36/manifest/profiler';
 
-const runtime = new RuntimeEngine(ir, { /* options */ });
+const runtime = new RuntimeEngine(ir, {/* options */});
 const profiler = new RuntimeProfiler(runtime);
 
 // Run a command — profiler records timing
-const result = await profiler.runCommand("Order", "complete", {
-  instanceId: "order-1",
+const result = await profiler.runCommand('Order', 'complete', {
+  instanceId: 'order-1',
 });
 
 // Get the profile report
@@ -149,11 +152,11 @@ interface ProfileReport {
   entityName: string;
   totalMs: number;
   phases: {
-    policy: number;      // ms spent evaluating policies
+    policy: number; // ms spent evaluating policies
     constraints: number; // ms spent evaluating constraints
-    guards: number;      // ms spent evaluating guards
-    actions: number;     // ms spent executing actions
-    emits: number;       // ms spent emitting events
+    guards: number; // ms spent evaluating guards
+    actions: number; // ms spent executing actions
+    emits: number; // ms spent emitting events
   };
   computedEvaluations: {
     name: string;
@@ -174,10 +177,12 @@ console.log(`  Emits:       ${report.phases.emits.toFixed(2)}ms`);
 
 // Identify slow computed properties
 report.computedEvaluations
-  .filter(e => e.durationMs > 1)
-  .forEach(e => console.log(`  Slow computed: ${e.name} (${e.durationMs.toFixed(2)}ms)`));
+  .filter((e) => e.durationMs > 1)
+  .forEach((e) => console.log(`  Slow computed: ${e.name} (${e.durationMs.toFixed(2)}ms)`));
 ```
 
 <Note>
-The profiler wraps the runtime engine and adds instrumentation overhead. Absolute timing values are useful for relative comparison between phases, not as production benchmarks. For production performance testing, use load testing fixtures without the profiler wrapper.
+  The profiler wraps the runtime engine and adds instrumentation overhead. Absolute timing values
+  are useful for relative comparison between phases, not as production benchmarks. For production
+  performance testing, use load testing fixtures without the profiler wrapper.
 </Note>

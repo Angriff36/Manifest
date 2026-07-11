@@ -28,7 +28,10 @@ import { promises as fs } from 'node:fs';
 import chalk from 'chalk';
 import { auditGovernanceCommand, type AuditGovernanceResult } from './audit-governance.js';
 import { auditBypassesCommand, type AuditBypassesResult } from './audit-bypasses.js';
-import { checkDispatcherPresence, type DispatcherPresenceResult } from '../checks/dispatcher-presence.js';
+import {
+  checkDispatcherPresence,
+  type DispatcherPresenceResult,
+} from '../checks/dispatcher-presence.js';
 import { runRuntimeSmoke, type RuntimeSmokeResult } from '../checks/runtime-smoke.js';
 import { checkPackageShape, type PackageShapeResult } from '../checks/package-shape.js';
 
@@ -103,7 +106,7 @@ async function resolvePackageRoot(explicit?: string): Promise<string> {
 }
 
 export async function integrationCheckCommand(
-  options: IntegrationCheckOptions = {}
+  options: IntegrationCheckOptions = {},
 ): Promise<IntegrationCheckResult> {
   const root = path.resolve(options.root ?? '.');
   const format = options.format ?? 'text';
@@ -132,7 +135,12 @@ export async function integrationCheckCommand(
   } catch (e) {
     governance = {
       findings: [
-        { severity: 'error', code: 'GOVERNANCE_AUDIT_THREW', message: e instanceof Error ? e.message : String(e), detector: 'audit-governance' },
+        {
+          severity: 'error',
+          code: 'GOVERNANCE_AUDIT_THREW',
+          message: e instanceof Error ? e.message : String(e),
+          detector: 'audit-governance',
+        },
       ],
       errorCount: 1,
       warningCount: 0,
@@ -154,7 +162,8 @@ export async function integrationCheckCommand(
   let bypassesOk = true;
   let bypassesSummary = 'no bypass registry — skipped';
   const conventionalBypass = path.join(root, 'bypasses.json');
-  const registryPath = bypassRegistryAbs ?? (await fileExists(conventionalBypass) ? conventionalBypass : undefined);
+  const registryPath =
+    bypassRegistryAbs ?? ((await fileExists(conventionalBypass)) ? conventionalBypass : undefined);
 
   if (!registryPath) {
     bypasses = { skipped: true, reason: 'no bypasses.json under root' };
@@ -171,7 +180,11 @@ export async function integrationCheckCommand(
     } catch (e) {
       bypasses = {
         findings: [
-          { severity: 'error', code: 'AUDIT_BYPASSES_THREW', message: e instanceof Error ? e.message : String(e) },
+          {
+            severity: 'error',
+            code: 'AUDIT_BYPASSES_THREW',
+            message: e instanceof Error ? e.message : String(e),
+          },
         ],
         errorCount: 1,
         warningCount: 0,
@@ -216,7 +229,7 @@ export async function integrationCheckCommand(
       ok: result.ok,
       summary: result.fatal
         ? `fatal: ${result.fatal}`
-        : `${result.assertions.filter(a => a.passed).length}/${result.assertions.length} assertions passed`,
+        : `${result.assertions.filter((a) => a.passed).length}/${result.assertions.length} assertions passed`,
       detail: result,
     });
   }
@@ -235,7 +248,7 @@ export async function integrationCheckCommand(
     const packageRoot = await resolvePackageRoot(options.packageRoot);
     const shape = await checkPackageShape({ packageRoot, skipTarball: options.skipTarball });
     packageShape = shape;
-    const failed = shape.subpathImports.filter(r => !r.ok).length;
+    const failed = shape.subpathImports.filter((r) => !r.ok).length;
     let tarballNote: string;
     if (shape.tarballSkipped) {
       tarballNote = 'tarball check skipped';
@@ -256,7 +269,7 @@ export async function integrationCheckCommand(
   }
 
   // --- Aggregate ------------------------------------------------------------
-  const ok = sections.every(s => s.ok);
+  const ok = sections.every((s) => s.ok);
   const result: IntegrationCheckResult = { ok, sections };
 
   if (format === 'json') {
@@ -290,7 +303,9 @@ function renderSectionDetail(section: IntegrationCheckSection): void {
     const detail = section.detail as AuditGovernanceResult;
     for (const f of detail.findings) {
       const tag = f.severity === 'error' ? chalk.red('error') : chalk.yellow('warning');
-      console.log(`      ${tag} ${f.detector} ${f.code}: ${f.message}${f.file ? ` [${f.file}]` : ''}`);
+      console.log(
+        `      ${tag} ${f.detector} ${f.code}: ${f.message}${f.file ? ` [${f.file}]` : ''}`,
+      );
     }
   } else if (section.name === 'bypasses') {
     if ('skipped' in (section.detail as object)) return;
@@ -311,15 +326,21 @@ function renderSectionDetail(section: IntegrationCheckSection): void {
     const detail = section.detail as RuntimeSmokeResult;
     if (detail.fatal) {
       console.log(`      ${chalk.red('fatal')}: ${detail.fatal}`);
-      console.log(chalk.gray('      most common cause: package install missing v0.5+ audit/outbox subpath exports'));
+      console.log(
+        chalk.gray(
+          '      most common cause: package install missing v0.5+ audit/outbox subpath exports',
+        ),
+      );
     } else {
-      for (const a of detail.assertions.filter(a => !a.passed)) {
-        console.log(`      ${chalk.red('assertion')} ${a.name}: expected ${JSON.stringify(a.expected)}, got ${JSON.stringify(a.actual)}`);
+      for (const a of detail.assertions.filter((a) => !a.passed)) {
+        console.log(
+          `      ${chalk.red('assertion')} ${a.name}: expected ${JSON.stringify(a.expected)}, got ${JSON.stringify(a.actual)}`,
+        );
       }
     }
   } else if (section.name === 'package-shape') {
     const detail = section.detail as PackageShapeResult;
-    for (const r of detail.subpathImports.filter(r => !r.ok)) {
+    for (const r of detail.subpathImports.filter((r) => !r.ok)) {
       console.log(`      ${chalk.red('subpath')} ${r.subpath}: ${r.error}`);
     }
     if (detail.tarball.ran && detail.tarball.ok === false) {

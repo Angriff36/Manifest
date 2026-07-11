@@ -24,7 +24,7 @@ describe('manifest audit-governance', () => {
         'route-drift',
         'missing-tests',
         'bypass-violations',
-      ])
+      ]),
     );
   });
 
@@ -42,7 +42,7 @@ describe('manifest audit-governance', () => {
     const dir = await tempDir('manifest-audit-gov-dw-');
     await writeFile(
       path.join(dir, 'app/api/recipes/route.ts'),
-      `import { prisma } from "@/db";\nexport async function POST() {\n  await prisma.recipe.create({ data: {} });\n}\n`
+      `import { prisma } from "@/db";\nexport async function POST() {\n  await prisma.recipe.create({ data: {} });\n}\n`,
     );
     const result = await auditGovernanceCommand({
       root: dir,
@@ -57,7 +57,7 @@ describe('manifest audit-governance', () => {
     const dir = await tempDir('manifest-audit-gov-ef-');
     await writeFile(
       path.join(dir, 'app/api/recipes/route.ts'),
-      `import { eventBus } from "@/events";\nexport async function POST() {\n  await eventBus.publish('Recipe.published', {});\n}\n`
+      `import { eventBus } from "@/events";\nexport async function POST() {\n  await eventBus.publish('Recipe.published', {});\n}\n`,
     );
     const result = await auditGovernanceCommand({
       root: dir,
@@ -72,7 +72,7 @@ describe('manifest audit-governance', () => {
     const dir = await tempDir('manifest-audit-gov-canonical-');
     await writeFile(
       path.join(dir, 'app/api/manifest/[entity]/commands/[command]/route.ts'),
-      `export async function POST() { return runCommand('x', {}, {}); }\n`
+      `export async function POST() { return runCommand('x', {}, {}); }\n`,
     );
     const result = await auditGovernanceCommand({
       root: dir,
@@ -86,7 +86,7 @@ describe('manifest audit-governance', () => {
     const dir = await tempDir('manifest-audit-gov-drift-');
     await writeFile(
       path.join(dir, 'app/api/recipes/create/route.ts'),
-      `export async function POST() { return runCommand('create', {}, {}); }\n`
+      `export async function POST() { return runCommand('create', {}, {}); }\n`,
     );
     const result = await auditGovernanceCommand({
       root: dir,
@@ -101,7 +101,7 @@ describe('manifest audit-governance', () => {
     const dir = await tempDir('manifest-audit-gov-aliased-');
     await writeFile(
       path.join(dir, 'app/api/recipes/create/route.ts'),
-      `// DEPRECATED ALIAS — see /api/manifest/[entity]/commands/[command]\nexport async function POST() { return runCommand('create', {}, {}); }\n`
+      `// DEPRECATED ALIAS — see /api/manifest/[entity]/commands/[command]\nexport async function POST() { return runCommand('create', {}, {}); }\n`,
     );
     const result = await auditGovernanceCommand({
       root: dir,
@@ -131,7 +131,7 @@ describe('manifest audit-governance', () => {
         irHash: 'h',
         compilerVersion: 'v',
         commands: [{ entity: 'Recipe', command: 'create', commandId: 'Recipe.create' }],
-      })
+      }),
     );
     const result = await auditGovernanceCommand({
       root: dir,
@@ -152,11 +152,11 @@ describe('manifest audit-governance', () => {
         irHash: 'h',
         compilerVersion: 'v',
         commands: [{ entity: 'Recipe', command: 'create', commandId: 'Recipe.create' }],
-      })
+      }),
     );
     await writeFile(
       path.join(dir, 'tests/recipe.test.ts'),
-      `import { describe } from 'vitest';\ndescribe('Recipe.create', () => {});\n`
+      `import { describe } from 'vitest';\ndescribe('Recipe.create', () => {});\n`,
     );
     const result = await auditGovernanceCommand({
       root: dir,
@@ -171,7 +171,7 @@ describe('manifest audit-governance', () => {
     const dir = await tempDir('manifest-audit-gov-bv-');
     await writeFile(
       path.join(dir, 'app/api/recipes/route.ts'),
-      `import { prisma } from "@/db";\nexport async function POST() {\n  await prisma.recipe.create({ data: {} });\n}\n`
+      `import { prisma } from "@/db";\nexport async function POST() {\n  await prisma.recipe.create({ data: {} });\n}\n`,
     );
     const bypassPath = path.join(dir, 'bypasses.json');
     await writeFile(
@@ -190,7 +190,7 @@ describe('manifest audit-governance', () => {
             reviewBy: '2099-01-01',
           },
         ],
-      })
+      }),
     );
     const result = await auditGovernanceCommand({
       root: dir,
@@ -206,7 +206,7 @@ describe('manifest audit-governance', () => {
     const dir = await tempDir('manifest-audit-gov-bv-ok-');
     await writeFile(
       path.join(dir, 'app/api/recipes/route.ts'),
-      `import { prisma } from "@/db";\nexport async function POST() {\n  await prisma.recipe.create({ data: {} });\n}\n`
+      `import { prisma } from "@/db";\nexport async function POST() {\n  await prisma.recipe.create({ data: {} });\n}\n`,
     );
     const bypassPath = path.join(dir, 'bypasses.json');
     await writeFile(
@@ -225,7 +225,7 @@ describe('manifest audit-governance', () => {
             reviewBy: '2099-01-01',
           },
         ],
-      })
+      }),
     );
     const result = await auditGovernanceCommand({
       root: dir,

@@ -70,7 +70,7 @@ describe('add-required-input sibling-proven parameter binding', () => {
       capabilityId: 'Task.complete',
       autoFixableOnly: true,
     });
-    expect(result.applied.some(a => a.applied && a.verification?.ok)).toBe(true);
+    expect(result.applied.some((a) => a.applied && a.verification?.ok)).toBe(true);
     const after = [...resultToMap(files, result).values()][0]!;
     expect(after).toMatch(/taskComplete\(\{[^}]*userId\s*:\s*currentUserId/);
     expect(after).toMatch(/taskClaim\(\{[^}]*userId\s*:\s*currentUserId/);
@@ -81,7 +81,7 @@ describe('add-required-input sibling-proven parameter binding', () => {
     });
     expect(
       report.mismatches.some(
-        m =>
+        (m) =>
           m.kind === 'missing_required_input' &&
           m.capabilityId === 'Task.complete' &&
           m.parameter === 'userId',
@@ -109,9 +109,7 @@ describe('add-required-input sibling-proven parameter binding', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p =>
-        p.mismatch?.kind === 'missing_required_input' &&
-        p.mismatch.parameter === 'userId',
+      (p) => p.mismatch?.kind === 'missing_required_input' && p.mismatch.parameter === 'userId',
     );
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
@@ -150,7 +148,7 @@ describe('add-required-input sibling-proven parameter binding', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p =>
+      (p) =>
         p.mismatch?.kind === 'missing_required_input' &&
         p.capabilityId === 'Task.complete' &&
         p.mismatch.parameter === 'userId',
@@ -182,9 +180,7 @@ describe('add-required-input sibling-proven parameter binding', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p =>
-        p.mismatch?.kind === 'missing_required_input' &&
-        p.capabilityId === 'Task.complete',
+      (p) => p.mismatch?.kind === 'missing_required_input' && p.capabilityId === 'Task.complete',
     );
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
@@ -218,9 +214,7 @@ describe('add-required-input sibling-proven parameter binding', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p =>
-        p.mismatch?.kind === 'missing_required_input' &&
-        p.capabilityId === 'Task.complete',
+      (p) => p.mismatch?.kind === 'missing_required_input' && p.capabilityId === 'Task.complete',
     );
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
@@ -257,7 +251,7 @@ describe('add-required-input sibling-proven parameter binding', () => {
       capabilityId: 'Task.complete',
       autoFixableOnly: true,
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
+    expect(result.applied.some((a) => a.applied)).toBe(true);
     const after = [...resultToMap(files, result).values()][0]!;
     expect(after).toMatch(/taskComplete\(\{[^}]*userId\s*:\s*currentUserId/);
     // start still missing userId — not patched in this capability-scoped run
@@ -293,9 +287,7 @@ describe('add-required-input sibling-proven parameter binding', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p =>
-        p.mismatch?.kind === 'missing_required_input' &&
-        p.automaticApplicationAllowed,
+      (p) => p.mismatch?.kind === 'missing_required_input' && p.automaticApplicationAllowed,
     );
     expect(plan).toBeTruthy();
     const stale = new Map(
@@ -340,7 +332,7 @@ describe('add-required-input sibling-proven parameter binding', () => {
       capabilityId: 'Task.complete',
       autoFixableOnly: true,
     });
-    expect(first.applied.some(a => a.applied)).toBe(true);
+    expect(first.applied.some((a) => a.applied)).toBe(true);
     const after = resultToMap(files, first);
     const second = remediateWiringSync({
       contract,
@@ -351,7 +343,7 @@ describe('add-required-input sibling-proven parameter binding', () => {
     });
     expect(
       second.applied.filter(
-        a =>
+        (a) =>
           a.applied &&
           a.findingId.includes('missing_required_input') &&
           a.findingId.includes('userId'),
@@ -390,7 +382,7 @@ describe('add-required-input sibling-proven parameter binding', () => {
       mode: 'one-defect',
       autoFixableOnly: true,
     });
-    const applied = result.applied.find(a => a.applied);
+    const applied = result.applied.find((a) => a.applied);
     expect(applied?.findingId).toMatch(/missing_required_input/);
     expect(applied?.findingId).toMatch(/userId/);
   });
@@ -417,7 +409,7 @@ describe('add-required-input sibling-proven parameter binding', () => {
       capabilityId: 'Task.create',
       autoFixableOnly: true,
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
+    expect(result.applied.some((a) => a.applied)).toBe(true);
     expect([...resultToMap(files, result).values()][0]).toMatch(/summary\s*:\s*summary/);
   });
 
@@ -452,7 +444,7 @@ describe('add-required-input sibling-proven parameter binding', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p =>
+      (p) =>
         p.mismatch?.kind === 'missing_required_input' &&
         p.capabilityId === 'Task.complete' &&
         p.mismatch.parameter === 'userId',
@@ -498,8 +490,8 @@ describe('add-required-input sibling-proven parameter binding', () => {
       capabilityId: 'Task.complete',
       autoFixableOnly: true,
     });
-    expect(result.applied.some(a => a.applied && a.verification?.ok)).toBe(true);
-    expect(result.changedFiles.some(f => f.includes('task-card'))).toBe(true);
+    expect(result.applied.some((a) => a.applied && a.verification?.ok)).toBe(true);
+    expect(result.changedFiles.some((f) => f.includes('task-card'))).toBe(true);
     const after = resultToMap(files, result);
     expect([...after.entries()].find(([k]) => k.includes('task-card'))?.[1]).toMatch(
       /userId\s*:\s*currentUserId/,

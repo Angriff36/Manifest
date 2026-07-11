@@ -994,7 +994,9 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('// DO NOT EDIT - This file is generated from .manifest source');
     lines.push('');
     if (ir.entities.length > 0) {
-      lines.push(`import type { ${ir.entities.map((entity) => entity.name).join(', ')} } from '${relativeArtifactImport(options.paths.clientFile, options.paths.typesFile)}';`);
+      lines.push(
+        `import type { ${ir.entities.map((entity) => entity.name).join(', ')} } from '${relativeArtifactImport(options.paths.clientFile, options.paths.typesFile)}';`,
+      );
       lines.push('');
     }
 

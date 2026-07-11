@@ -22,5 +22,15 @@
     "noEmitOnError": true
   },
   "include": ["src/manifest/**/*", "src/index.ts"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.bench.ts", "src/**/*.test.ts", "src/**/*.bench.ts", "src/App.tsx", "src/main.tsx", "src/manifest/property-test-utils.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.bench.ts",
+    "src/**/*.test.ts",
+    "src/**/*.bench.ts",
+    "src/App.tsx",
+    "src/main.tsx",
+    "src/manifest/property-test-utils.ts"
+  ]
 }

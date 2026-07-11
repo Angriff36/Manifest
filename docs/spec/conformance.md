@@ -45,6 +45,7 @@ Conformance tests are the executable source of truth for Manifest semantics.
 ### Instance Creation and Defaults
 
 When testing instance creation behavior:
+
 - Omitted properties in test data receive default values from the property definition.
 - Explicit empty strings (`""`) are treated as provided values and do not trigger defaults.
 - Test fixtures verify that defaults apply correctly when properties are omitted (see `18-empty-string-defaults.manifest`).
@@ -54,17 +55,20 @@ When testing instance creation behavior:
 When testing default policy behavior:
 
 **IR Requirements**:
+
 - Entities with `default policy` declarations MUST have `defaultPolicies` array in IR
 - Commands without explicit policies MUST have `policies` array populated from entity defaults
 - Commands with explicit policies MUST NOT inherit entity defaults (override, not merge)
 - Default policy synthesis creates named policies with pattern: `{EntityName}_Default_Execute` or similar
 
 **Runtime Requirements**:
+
 - Commands with inherited policies evaluate the synthesized default policy
 - Commands with overridden policies evaluate only the declared policies
 - Policy denial message indicates whether policy was inherited or declared
 
 **Test Coverage**:
+
 - Fixture should verify:
   1. Command without policies inherits entity default
   2. Command with explicit policies does not inherit default
@@ -105,6 +109,3 @@ were updated to match the specification.
 
 This demonstrates that the conformance suite detects partial or inconsistent
 language changes and prevents unintentional semantic drift.
-
-
-

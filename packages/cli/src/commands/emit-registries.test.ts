@@ -23,7 +23,7 @@ describe('manifest emit registries', () => {
       }
       event RecipeCreated: "recipe.created" { recipeId: string }
       `,
-      'utf-8'
+      'utf-8',
     );
 
     await emitRegistriesCommand({ source: srcPath, out: outDir });
@@ -56,7 +56,9 @@ describe('manifest emit registries', () => {
       entities: [
         {
           name: 'Foo',
-          properties: [{ name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: [] }],
+          properties: [
+            { name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: [] },
+          ],
           computedProperties: [],
           relationships: [],
           commands: ['bar'],
@@ -126,7 +128,12 @@ describe('manifest emit registries', () => {
       irPath,
       JSON.stringify({
         version: '1.0',
-        provenance: { contentHash: 'h', compilerVersion: 'v', schemaVersion: '1.0', compiledAt: '' },
+        provenance: {
+          contentHash: 'h',
+          compilerVersion: 'v',
+          schemaVersion: '1.0',
+          compiledAt: '',
+        },
         modules: [],
         values: [],
         entities: [],
@@ -135,10 +142,8 @@ describe('manifest emit registries', () => {
         commands: [],
         policies: [],
       }),
-      'utf-8'
+      'utf-8',
     );
-    await expect(
-      emitRegistriesCommand({ ir: irPath, out: outDir })
-    ).resolves.toBeUndefined();
+    await expect(emitRegistriesCommand({ ir: irPath, out: outDir })).resolves.toBeUndefined();
   });
 });

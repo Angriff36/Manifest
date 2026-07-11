@@ -117,7 +117,7 @@ export async function runRuntimeSmoke(): Promise<RuntimeSmokeResult> {
         outboxStore: store,
         generateId: () => 'smoke-id',
         now: () => 1_700_000_000_000,
-      }
+      },
     );
   } catch (e) {
     return {
@@ -132,7 +132,7 @@ export async function runRuntimeSmoke(): Promise<RuntimeSmokeResult> {
   try {
     const result = await runtime.runCommand('fire', {}, { entityName: 'Smoke' });
     success = result.success;
-    emittedEventNames = result.emittedEvents.map(e => e.name);
+    emittedEventNames = result.emittedEvents.map((e) => e.name);
   } catch (e) {
     return {
       ok: false,
@@ -141,7 +141,12 @@ export async function runRuntimeSmoke(): Promise<RuntimeSmokeResult> {
     };
   }
 
-  assertions.push({ name: 'command.success', expected: true, actual: success, passed: success === true });
+  assertions.push({
+    name: 'command.success',
+    expected: true,
+    actual: success,
+    passed: success === true,
+  });
 
   // Exactly one audit record was emitted.
   const auditRecords = sink.list();
@@ -154,10 +159,30 @@ export async function runRuntimeSmoke(): Promise<RuntimeSmokeResult> {
 
   if (auditRecords.length === 1) {
     const rec = auditRecords[0];
-    assertions.push({ name: 'audit.outcome', expected: 'success', actual: rec.outcome, passed: rec.outcome === 'success' });
-    assertions.push({ name: 'audit.tenantId', expected: 't_smoke', actual: rec.tenantId, passed: rec.tenantId === 't_smoke' });
-    assertions.push({ name: 'audit.actorId', expected: 'u_smoke', actual: rec.actorId, passed: rec.actorId === 'u_smoke' });
-    assertions.push({ name: 'audit.source', expected: 'integration-check', actual: rec.source, passed: rec.source === 'integration-check' });
+    assertions.push({
+      name: 'audit.outcome',
+      expected: 'success',
+      actual: rec.outcome,
+      passed: rec.outcome === 'success',
+    });
+    assertions.push({
+      name: 'audit.tenantId',
+      expected: 't_smoke',
+      actual: rec.tenantId,
+      passed: rec.tenantId === 't_smoke',
+    });
+    assertions.push({
+      name: 'audit.actorId',
+      expected: 'u_smoke',
+      actual: rec.actorId,
+      passed: rec.actorId === 'u_smoke',
+    });
+    assertions.push({
+      name: 'audit.source',
+      expected: 'integration-check',
+      actual: rec.source,
+      passed: rec.source === 'integration-check',
+    });
     assertions.push({
       name: 'audit.emittedEventNames',
       expected: ['SmokeFired'],
@@ -184,12 +209,22 @@ export async function runRuntimeSmoke(): Promise<RuntimeSmokeResult> {
   });
   if (outboxEntries.length === 1) {
     const entry = outboxEntries[0];
-    assertions.push({ name: 'outbox.entry.status', expected: 'pending', actual: entry.status, passed: entry.status === 'pending' });
-    assertions.push({ name: 'outbox.entry.event.name', expected: 'SmokeFired', actual: entry.event.name, passed: entry.event.name === 'SmokeFired' });
+    assertions.push({
+      name: 'outbox.entry.status',
+      expected: 'pending',
+      actual: entry.status,
+      passed: entry.status === 'pending',
+    });
+    assertions.push({
+      name: 'outbox.entry.event.name',
+      expected: 'SmokeFired',
+      actual: entry.event.name,
+      passed: entry.event.name === 'SmokeFired',
+    });
   }
 
   return {
-    ok: assertions.every(a => a.passed),
+    ok: assertions.every((a) => a.passed),
     assertions,
   };
 }

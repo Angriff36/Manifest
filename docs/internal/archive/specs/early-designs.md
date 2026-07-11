@@ -19,6 +19,7 @@ The contract boundary: **The runtime must be able to prove what it is executing 
 ## Loop 3 Priorities
 
 ### Priority 1: Relationship Traversal ✅ COMPLETED
+
 Enable cross-entity relationship access in expressions.
 
 - [x] Update semantics.md spec to define relationship traversal behavior
@@ -29,6 +30,7 @@ Enable cross-entity relationship access in expressions.
 - [x] Update all call sites to use async expression evaluation
 
 **Implementation Details (2026-02-05):**
+
 - Added `relationshipIndex` Map to RuntimeEngine for efficient relationship lookups
 - Added `buildRelationshipIndex()` method to index all relationships at initialization
 - Added `resolveRelationship()` async method that:
@@ -48,6 +50,7 @@ Enable cross-entity relationship access in expressions.
 - All 100 conformance tests passing
 
 **Relationship Resolution Rules (from updated semantics.md):**
+
 - For `belongsTo`/`ref`: foreign key on source contains target ID
 - For `hasOne`: find target where its belongsTo foreign key equals source ID
 - For `hasMany`: find all targets where their belongsTo foreign key equals source ID
@@ -55,6 +58,7 @@ Enable cross-entity relationship access in expressions.
 - Returns `[]` for empty hasMany relationships
 
 ### Priority 2: Storage Adapters (PostgreSQL, Supabase) ✅ COMPLETED
+
 Implement real database persistence for production use cases.
 
 - [x] PostgreSQL adapter with connection pooling
@@ -67,11 +71,13 @@ Implement real database persistence for production use cases.
 **Implementation Details (2026-02-05):**
 
 **Discovery:**
+
 - PostgresStore and SupabaseStore were ALREADY fully implemented in `stores.node.ts`
 - The issue was that browser runtime couldn't use them (security restriction)
 - Documentation incorrectly listed them as "not implemented"
 
 **Solution Implemented:**
+
 - Added `storeProvider` option to `RuntimeOptions` interface
 - Modified `initializeStores()` to check for custom stores first
 - Updated error messages to guide users to use `storeProvider` for server-side stores
@@ -79,6 +85,7 @@ Implement real database persistence for production use cases.
 - Updated `specs/storage-adapters.md` to mark as completed
 
 **Usage Pattern:**
+
 ```typescript
 import { RuntimeEngine } from './runtime-engine.js';
 import { PostgresStore } from './stores.node.js';
@@ -87,13 +94,14 @@ const runtime = new RuntimeEngine(ir, context, {
   storeProvider: (entityName) => {
     return new PostgresStore({
       connectionString: process.env.DATABASE_URL,
-      tableName: entityName.toLowerCase()
+      tableName: entityName.toLowerCase(),
     });
-  }
+  },
 });
 ```
 
 **Key Features of Existing Implementations:**
+
 - `PostgresStore<T>`: Connection pooling, JSONB storage, automatic table creation, GIN indexing
 - `SupabaseStore<T>`: Full Supabase client integration, proper error handling
 - Both implement the `Store<T>` interface with all required CRUD methods
@@ -104,6 +112,7 @@ const runtime = new RuntimeEngine(ir, context, {
 Unified Runtime UI provides interactive demo capabilities for ANY manifest.
 
 **Implementation (2026-02-05):**
+
 - Entity selector dropdown (populated from compiled IR entities)
 - Instance list for selected entity (clickable, shows key properties)
 - "Create Instance" button that creates with default values
@@ -115,10 +124,12 @@ Unified Runtime UI provides interactive demo capabilities for ANY manifest.
 - Fixed IRValue extraction bug (was using IRValue object instead of actual value)
 
 **Bug Fixed:**
+
 - `extractIRValue()` helper properly extracts JavaScript values from IRValue objects
 - Handles string, number, boolean, null, array, and object types
 
 **Testing Completed:**
+
 - Created PrepTask instance with correct defaults (status="pending", priority=1)
 - Executed `claim` command successfully
 - Verified properties updated (assignedTo="u1", status="in_progress")
@@ -126,10 +137,12 @@ Unified Runtime UI provides interactive demo capabilities for ANY manifest.
 - Verified computed property isUrgent updates correctly (priority < 3 = false)
 
 **Cleanup:**
+
 - Removed TinyAppPanel.tsx (no longer needed - unified RuntimePanel is superior)
 - Added *.png to .gitignore to exclude temporary test screenshots
 
 ### Priority 3: Generated Code Conformance Fixes ✅ COMPLETED
+
 Align generated server/client code with runtime semantics.
 
 - [x] Update spec to clarify generated code expectations
@@ -141,6 +154,7 @@ Align generated server/client code with runtime semantics.
 **Implementation Details (2026-02-05):**
 
 **Spec Updates:**
+
 - Updated `docs/spec/semantics.md` to define generated code requirements
 - Added "Generated Artifacts" section specifying:
   - Server code MUST enforce policies (action `execute` or `all`) before executing commands
@@ -167,15 +181,18 @@ Align generated server/client code with runtime semantics.
    - Only policies with action `execute` or `all` are enforced
 
 **StandaloneGenerator Changes (`src/manifest/standalone-generator.ts`):**
+
 - Applied identical changes to `genCommandMethod()` and `genCommand()`
 - Entity command methods receive entity parameter for policy access
 - Standalone commands also return the last action result
 
 **Test Results:**
+
 - All 100 conformance tests passing
 - No regressions introduced
 
 **Example Generated Client Code (Before):**
+
 ```typescript
 async claim(userId: string): Promise<void> {
   if (!(userId === user.id)) throw new Error("Guard failed");
@@ -187,6 +204,7 @@ async claim(userId: string): Promise<void> {
 ```
 
 **Example Generated Client Code (After):**
+
 ```typescript
 async claim(userId: string): Promise<unknown> {
   // Policy checks
@@ -207,12 +225,13 @@ async claim(userId: string): Promise<unknown> {
 ```
 
 **Example Generated Server Code (Before):**
+
 ```typescript
-app.post("/commands/claim", async (c) => {
+app.post('/commands/claim', async (c) => {
   const body = await c.req.json();
   // Only guards checked
-  if (!(body.userId === c.get("user"))) {
-    return c.json({ error: "Unauthorized" }, 403);
+  if (!(body.userId === c.get('user'))) {
+    return c.json({ error: 'Unauthorized' }, 403);
   }
   const result = await claim(body.userId);
   return c.json({ success: true, result });
@@ -220,19 +239,20 @@ app.post("/commands/claim", async (c) => {
 ```
 
 **Example Generated Server Code (After):**
+
 ```typescript
-app.post("/commands/claim", async (c) => {
+app.post('/commands/claim', async (c) => {
   const body = await c.req.json();
-  const user = c.get("user");
+  const user = c.get('user');
 
   // Policy checks first
-  if (!(user.role === "staff" || user.role === "admin")) {
+  if (!(user.role === 'staff' || user.role === 'admin')) {
     return c.json({ error: "Denied by policy 'staffOnly'" }, 403);
   }
 
   // Guard checks
   if (!(body.userId === user.id)) {
-    return c.json({ error: "Unauthorized" }, 403);
+    return c.json({ error: 'Unauthorized' }, 403);
   }
 
   const result = await claim(body.userId);
@@ -241,6 +261,7 @@ app.post("/commands/claim", async (c) => {
 ```
 
 ### Priority 4: UI Enhancements ✅ COMPLETED
+
 Improve Runtime UI for better observability and diagnostics.
 
 - [x] Implement Event Log Viewer (specs/event-log-viewer.md)
@@ -255,6 +276,7 @@ All UI enhancements specified in `specs/event-log-viewer.md` and `specs/policy-g
 were already fully implemented in `src/artifacts/RuntimePanel.tsx`.
 
 **Event Log Viewer (lines 845-895):**
+
 - Event log sidebar showing all emitted events
 - Each event displays: name, channel, formatted JSON payload, timestamp
 - Events persist across command executions (append to log)
@@ -280,6 +302,7 @@ were already fully implemented in `src/artifacts/RuntimePanel.tsx`.
    - Amber/yellow color scheme for visual distinction from guard failures
 
 **Additional UI Features:**
+
 - Entity selector with property/computed property counts
 - Instance list with key property previews
 - Create/Delete instance buttons
@@ -290,10 +313,12 @@ were already fully implemented in `src/artifacts/RuntimePanel.tsx`.
 - Emitted events listed in command results
 
 **Spec References:**
+
 - `specs/event-log-viewer.md` - ✅ Fully implemented
 - `specs/policy-guard-diagnostics.md` - ✅ Fully implemented
 
 ### Priority 5: Tiny App Demo [SUPERSEDED BY PRIORITY 0]
+
 ~~Complete working demonstration of Manifest capabilities.~~
 
 **Status:** Superseded by Priority 0 (Unify Runtime UI).
@@ -309,6 +334,7 @@ is being removed in favor of the unified approach.
 ## Loop 2 Completed Work (Reference)
 
 ### Priority 1: Provenance Metadata ✅ COMPLETED
+
 Add traceability everywhere so drift becomes visible.
 
 - [x] IR includes: manifest content hash, compiler version, schema version
@@ -318,6 +344,7 @@ Add traceability everywhere so drift becomes visible.
 - [x] Conformance tests verify provenance is preserved
 
 **UI Provenance Display Implementation (2026-02-05):**
+
 - Added collapsible "IR Provenance" section to Runtime UI header
 - Shows compiler version, schema version (if available), and IR hash (truncated)
 - Uses Shield icon with emerald color to indicate integrity/trust
@@ -326,6 +353,7 @@ Add traceability everywhere so drift becomes visible.
 - All 100 conformance tests passing
 
 ### Priority 2: Diagnostic Hardening ✅ COMPLETED
+
 Make the system hostile to weaseling. When constraints block something, explain exactly why.
 
 - [x] Policy denials: include "what you tried" + "which rule blocked" + resolved context values
@@ -334,6 +362,7 @@ Make the system hostile to weaseling. When constraints block something, explain 
 - [x] Add diagnostic conformance tests for each failure mode
 
 **Implementation Details:**
+
 - Added `resolved?: GuardResolvedValue[]` field to `PolicyDenial` interface
 - Policy denials now include resolved expression values showing what was evaluated
 - Added `ConstraintFailure` interface for entity constraint diagnostics
@@ -345,6 +374,7 @@ Make the system hostile to weaseling. When constraints block something, explain 
 - New fixture 19-entity-constraints.manifold tests entity constraint diagnostics
 
 ### Priority 3: IR-First Runtime ✅ COMPLETED
+
 TS output is a view, not authority. IR is the executable contract.
 
 - [x] Runtime loads IR directly (already does this)
@@ -352,6 +382,7 @@ TS output is a view, not authority. IR is the executable contract.
 - [x] Runtime refuses to execute if IR hash doesn't match expected (via requireValidProvenance option)
 
 **Implementation Details:**
+
 - Added `irHash` field to `IRProvenance` interface (SHA-256 hash of the IR itself)
 - Updated IR schema (`docs/spec/ir/ir-v1.schema.json`) to include optional `irHash` field
 - Modified `IRCompiler` to compute IR hash during compilation (canonical JSON representation)
@@ -369,6 +400,7 @@ TS output is a view, not authority. IR is the executable contract.
 - All 99 conformance tests passing
 
 ### Priority 4: Build Something Real ✅ COMPLETED
+
 Find where the choke point leaks by actually using it.
 
 - [x] Pick a small but real use case
@@ -377,6 +409,7 @@ Find where the choke point leaks by actually using it.
 - [x] Those temptations become Priority 5 items
 
 **Implementation (2026-02-05):**
+
 - Created fixture 20-blog-app.manifest with 3 entities (User, Post, Comment)
 - Tests cross-entity operations via foreign key IDs (not relationship traversal)
 - Exercises: computed properties, guards, policies, events, multiple commands
@@ -414,6 +447,7 @@ Find where the choke point leaks by actually using it.
    - Manual ID references instead of declarative relationships (no longer needed!)
 
 ### Priority 5: Seal the Output ✅ COMPLETED
+
 After learning what "real" output needs to look like:
 
 - [x] Runtime defaults to provenance verification in production mode
@@ -423,12 +457,14 @@ After learning what "real" output needs to look like:
 **Implementation Details (2026-02-05):**
 
 **Production-First Security:**
+
 - Added `isProductionMode()` function to detect NODE_ENV=production
 - `RuntimeEngine.create()` now defaults `requireValidProvenance` to `true` in production
 - Users can explicitly set `requireValidProvenance: false` for debugging
 - Updated JSDoc comments to explain the new default behavior
 
 **Generated Code Provenance:**
+
 - Added `GeneratedProvenance` interface with: compilerVersion, schemaVersion, generatedAt
 - Updated `CodeGenerator.emitRuntime()` to include provenance header comments:
   - "This code is a PROJECTION from a Manifest source file"

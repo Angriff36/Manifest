@@ -1,7 +1,7 @@
 ---
-title: "Events: typed outbox and pub/sub primitives"
-description: "Declare typed events with channels and payload schemas. Commands emit them via the emits keyword. The runtime logs each emission with full metadata."
-sidebarTitle: "Events"
+title: 'Events: typed outbox and pub/sub primitives'
+description: 'Declare typed events with channels and payload schemas. Commands emit them via the emits keyword. The runtime logs each emission with full metadata.'
+sidebarTitle: 'Events'
 ---
 
 Events in Manifest are first-class declarations. You define a schema, assign a channel, and commands reference the event by name using the `emit` action. Every emission is recorded in the runtime's event log with a payload, timestamp, and workflow metadata.
@@ -61,11 +61,11 @@ Every emitted event is recorded as an `EmittedEvent` object in `CommandResult.em
 
 ```typescript
 interface EmittedEvent {
-  name: string;        // Event name, e.g. "TaskCompleted"
-  channel: string;     // Channel string, e.g. "task.completed"
-  payload: object;     // Command input + last action result
-  timestamp: number;   // Milliseconds since epoch (from runtime time source)
-  emitIndex: number;   // Zero-based index within this runCommand invocation (vNext)
+  name: string; // Event name, e.g. "TaskCompleted"
+  channel: string; // Channel string, e.g. "task.completed"
+  payload: object; // Command input + last action result
+  timestamp: number; // Milliseconds since epoch (from runtime time source)
+  emitIndex: number; // Zero-based index within this runCommand invocation (vNext)
 
   // Workflow metadata (vNext — present when supplied in command options)
   correlationId?: string;
@@ -81,13 +81,13 @@ Pass `correlationId` and `causationId` in the command options to propagate ident
 
 ```typescript
 const result = await runtime.runCommand(
-  "Order",
-  "complete",
-  { instanceId: "order-123" },
+  'Order',
+  'complete',
+  { instanceId: 'order-123' },
   {
-    correlationId: "workflow-abc",
-    causationId: "step-2",
-  }
+    correlationId: 'workflow-abc',
+    causationId: 'step-2',
+  },
 );
 
 // result.emittedEvents[0].correlationId === "workflow-abc"
@@ -97,7 +97,8 @@ const result = await runtime.runCommand(
 `emitIndex` is a per-command zero-based counter. It resets to `0` at the start of each `runCommand` call. It is not a global sequence — cross-command ordering is the caller's responsibility.
 
 <Note>
-Given identical IR, identical runtime context, identical input, and identical options, emitted events will always have identical `emitIndex` values. This is a determinism guarantee.
+  Given identical IR, identical runtime context, identical input, and identical options, emitted
+  events will always have identical `emitIndex` values. This is a determinism guarantee.
 </Note>
 
 ## Subscribing to events
@@ -105,20 +106,20 @@ Given identical IR, identical runtime context, identical input, and identical op
 Use `runtime.onEvent(listener)` to register a listener. The listener receives **every** emitted event — filter by `event.name` inside the callback. It returns an unsubscribe function.
 
 ```typescript
-import { RuntimeEngine } from "@angriff36/manifest";
+import { RuntimeEngine } from '@angriff36/manifest';
 
 const runtime = new RuntimeEngine(ir, {
-  user: { id: "worker-1", role: "system" },
+  user: { id: 'worker-1', role: 'system' },
 });
 
 const unsubscribe = runtime.onEvent((event) => {
-  if (event.name === "TaskCompleted") {
-    console.log("Task completed:", event.payload);
+  if (event.name === 'TaskCompleted') {
+    console.log('Task completed:', event.payload);
     sendNotification(event.payload.completedBy);
   }
-  if (event.name === "OrderCreated") {
-    console.log("New order on channel:", event.channel);
-    console.log("Correlation:", event.correlationId);
+  if (event.name === 'OrderCreated') {
+    console.log('New order on channel:', event.channel);
+    console.log('Correlation:', event.correlationId);
   }
 });
 
@@ -164,13 +165,13 @@ event OrderCompleted: "order.completed" {
 const runtime = new RuntimeEngine(ir);
 
 runtime.onEvent((event) => {
-  if (event.name === "OrderCompleted") {
+  if (event.name === 'OrderCompleted') {
     console.log(`Order ${event.payload.orderId} completed.`);
   }
 });
 
-const result = await runtime.runCommand("Order", "complete", {
-  instanceId: "order-001",
+const result = await runtime.runCommand('Order', 'complete', {
+  instanceId: 'order-001',
 });
 
 console.log(result.emittedEvents);
@@ -238,15 +239,22 @@ webhook paymentCallback "/webhooks/payment" run Order.handlePayment
 
 A webhook is declared as `webhook <name> "<path>" run [Entity.]<command>`, where the path string is the generated route and `run` names the command to invoke. The declaration may be followed by optional colon clauses:
 
-| Field | Description |
-|-------|-------------|
-| `method:` | HTTP method as a string (e.g. `method: "PUT"`); defaults to `POST` when omitted |
-| `idempotencyHeader:` | Optional header name carrying an idempotency key for deduplication |
-| `transform:` | Optional `{ <param>: <expr>, ... }` block mapping request data onto command parameters |
-| `signature { ... }` | Optional verification block with `algorithm` (`hmac-sha256` or `hmac-sha512`), `header`, and `secret` (a context path string) |
+| Field                | Description                                                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `method:`            | HTTP method as a string (e.g. `method: "PUT"`); defaults to `POST` when omitted                                               |
+| `idempotencyHeader:` | Optional header name carrying an idempotency key for deduplication                                                            |
+| `transform:`         | Optional `{ <param>: <expr>, ... }` block mapping request data onto command parameters                                        |
+| `signature { ... }`  | Optional verification block with `algorithm` (`hmac-sha256` or `hmac-sha512`), `header`, and `secret` (a context path string) |
 
 <Note>
-When a `signature` block is declared, the reference runtime verifies the HMAC over the exact received request bytes before the command is dispatched, comparing with `crypto.timingSafeEqual`. The provided signature may be bare hex or a `sha256=`/`sha512=`-prefixed hex (GitHub convention). A missing or invalid signature is rejected `401` and no command runs; an unresolvable `secret` context path or an unsupported `algorithm` is a fail-closed `500`. A webhook with **no** `signature` block is unauthenticated by design — declare one to require authentication. The full request pipeline (matching, idempotency, transform, dispatch statuses) is specified in `docs/spec/semantics.md` § "Webhooks (Inbound HTTP Triggers)".
+  When a `signature` block is declared, the reference runtime verifies the HMAC over the exact
+  received request bytes before the command is dispatched, comparing with `crypto.timingSafeEqual`.
+  The provided signature may be bare hex or a `sha256=`/`sha512=`-prefixed hex (GitHub convention).
+  A missing or invalid signature is rejected `401` and no command runs; an unresolvable `secret`
+  context path or an unsupported `algorithm` is a fail-closed `500`. A webhook with **no**
+  `signature` block is unauthenticated by design — declare one to require authentication. The full
+  request pipeline (matching, idempotency, transform, dispatch statuses) is specified in
+  `docs/spec/semantics.md` § "Webhooks (Inbound HTTP Triggers)".
 </Note>
 
 ## Event sourcing store
@@ -265,5 +273,7 @@ The event-sourced store supports:
 - **Projections** — read models can be built by subscribing to the event stream
 
 <Warning>
-Event sourcing is a storage strategy, not a runtime behavior change. Commands execute identically regardless of whether the backing store is memory, postgres, or event-sourced. The difference is how state is persisted and recovered.
+  Event sourcing is a storage strategy, not a runtime behavior change. Commands execute identically
+  regardless of whether the backing store is memory, postgres, or event-sourced. The difference is
+  how state is persisted and recovered.
 </Warning>

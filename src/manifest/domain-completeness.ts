@@ -88,8 +88,12 @@ function defaultFkField(relationshipName: string): string {
   return `${relationshipName}Id`;
 }
 
-function entityHasBelongsToTarget(entity: IREntity, targetEntity: string, fkField?: string): boolean {
-  return entity.relationships.some(r => {
+function entityHasBelongsToTarget(
+  entity: IREntity,
+  targetEntity: string,
+  fkField?: string,
+): boolean {
+  return entity.relationships.some((r) => {
     if (r.kind !== 'belongsTo' && r.kind !== 'ref') return false;
     if (r.target !== targetEntity) return false;
     if (!fkField) return true;
@@ -100,15 +104,19 @@ function entityHasBelongsToTarget(entity: IREntity, targetEntity: string, fkFiel
 
 function parentHasInverseRelation(parent: IREntity, childEntity: string): boolean {
   return parent.relationships.some(
-    r => (r.kind === 'hasMany' || r.kind === 'hasOne') && r.target === childEntity,
+    (r) => (r.kind === 'hasMany' || r.kind === 'hasOne') && r.target === childEntity,
   );
 }
 
-function parentHasNestedChildCreate(parent: IREntity, childEntity: string, commands: IRCommand[]): boolean {
-  return commands.some(cmd => {
+function parentHasNestedChildCreate(
+  parent: IREntity,
+  childEntity: string,
+  commands: IRCommand[],
+): boolean {
+  return commands.some((cmd) => {
     if (cmd.entity !== parent.name || cmd.module !== parent.module) return false;
     if (cmd.name === 'create') return false;
-    return cmd.actions.some(a => {
+    return cmd.actions.some((a) => {
       if (a.kind !== 'persist' && a.kind !== 'mutate') return false;
       const target = a.target ?? '';
       return target.toLowerCase().includes(childEntity.toLowerCase());
@@ -122,11 +130,11 @@ function reactionWiresParentIdForCreate(
   childModule: string | undefined,
   fkField: string,
 ): boolean {
-  return reactions.some(r => {
+  return reactions.some((r) => {
     if (r.targetEntity !== childEntity) return false;
     if (r.targetCommand !== 'create') return false;
     if ((childModule ?? undefined) !== (r.module ?? undefined)) return false;
-    return r.params?.some(p => p.name === fkField) ?? false;
+    return r.params?.some((p) => p.name === fkField) ?? false;
   });
 }
 
@@ -144,12 +152,12 @@ function collectFkFieldsForEntity(entity: IREntity, createCmd: IRCommand | undef
 }
 
 function findEntity(entities: IREntity[], name: string, module?: string): IREntity | undefined {
-  return entities.find(e => e.name === name && e.module === module);
+  return entities.find((e) => e.name === name && e.module === module);
 }
 
 function findCreateCommand(entity: IREntity, commands: IRCommand[]): IRCommand | undefined {
   return commands.find(
-    c => c.name === 'create' && c.entity === entity.name && c.module === entity.module,
+    (c) => c.name === 'create' && c.entity === entity.name && c.module === entity.module,
   );
 }
 
@@ -158,9 +166,9 @@ function entityHasDomainWiringSignals(
   createCmd: IRCommand | undefined,
   entityNames: ReadonlySet<string>,
 ): boolean {
-  if (entity.relationships.some(r => r.kind === 'belongsTo' || r.kind === 'ref')) return true;
+  if (entity.relationships.some((r) => r.kind === 'belongsTo' || r.kind === 'ref')) return true;
   return collectFkFieldsForEntity(entity, createCmd).some(
-    fk => resolveEntityForFkField(fk, entityNames) != null,
+    (fk) => resolveEntityForFkField(fk, entityNames) != null,
   );
 }
 
@@ -173,7 +181,7 @@ function isAutoProvidedCreateParam(
   // Explicit `from context.*` params are intentionally server-owned. They are
   // excluded from client forms by the wiring layer, so they are NOT a
   // create-form completeness violation (unlike unnamed context-injected names).
-  if (createCmd?.parameters.some(p => p.name === paramName && !!p.trustedSource)) {
+  if (createCmd?.parameters.some((p) => p.name === paramName && !!p.trustedSource)) {
     return false;
   }
   if (tenant?.property && paramName === tenant.property) return true;
@@ -193,19 +201,19 @@ function checkEntityReachability(
   emit: DomainCompletenessEmit,
 ): void {
   const qualified = qualifyEntity(entity);
-  const hasStore = stores.some(s => s.entity === entity.name);
-  const isRelationshipTarget = entities.some(e =>
-    e.relationships.some(r => r.target === entity.name),
+  const hasStore = stores.some((s) => s.entity === entity.name);
+  const isRelationshipTarget = entities.some((e) =>
+    e.relationships.some((r) => r.target === entity.name),
   );
-  const hasCommands = commands.some(c => c.entity === entity.name);
+  const hasCommands = commands.some((c) => c.entity === entity.name);
   const createCmd = findCreateCommand(entity, commands);
-  const isUnused =
-    !hasCommands && !isRelationshipTarget && entity.computedProperties.length === 0;
+  const isUnused = !hasCommands && !isRelationshipTarget && entity.computedProperties.length === 0;
 
   if (hasStore && isUnused) {
     const msg = `Entity '${qualified}' is persisted (has store) but has no commands and is not referenced by any relationship — it is unreachable in the product. Add commands or relationships, or remove the entity.`;
     const strictOrphan =
-      entity.constraints.length === 0 && entityHasDomainWiringSignals(entity, createCmd, entityNames);
+      entity.constraints.length === 0 &&
+      entityHasDomainWiringSignals(entity, createCmd, entityNames);
     emit(strictOrphan ? 'error' : 'warning', msg);
     return;
   }
@@ -240,7 +248,7 @@ function checkCreateCommandParams(
     }
   }
 
-  const childProps = new Map(entity.properties.map(p => [p.name, scalarTypeName(p.type)]));
+  const childProps = new Map(entity.properties.map((p) => [p.name, scalarTypeName(p.type)]));
   for (const rel of entity.relationships) {
     if (rel.kind !== 'belongsTo' && rel.kind !== 'ref') continue;
     const parent = findEntity(entities, rel.target);
@@ -251,7 +259,7 @@ function checkCreateCommandParams(
     // create param that is also a property of the entity is falsely flagged.
     if (parent.name === entity.name && parent.module === entity.module) continue;
     const parentQualified = qualifyEntity(parent);
-    const parentProps = new Map(parent.properties.map(p => [p.name, scalarTypeName(p.type)]));
+    const parentProps = new Map(parent.properties.map((p) => [p.name, scalarTypeName(p.type)]));
     const fkFields = new Set(rel.foreignKey?.fields ?? [defaultFkField(rel.name)]);
 
     for (const param of createCmd.parameters) {
@@ -318,7 +326,7 @@ function checkFkDomainWiring(
     }
 
     const manualParentId =
-      createCmd?.parameters.some(p => p.required && p.name === fkField) ?? false;
+      createCmd?.parameters.some((p) => p.required && p.name === fkField) ?? false;
     const nestedCreate = parentHasNestedChildCreate(parent, entity.name, commands);
     const reactionWired = reactionWiresParentIdForCreate(
       reactions,
@@ -347,7 +355,7 @@ export function checkDomainCompleteness(
   reactions: IRReactionRule[] = [],
   tenant?: IRTenant,
 ): void {
-  const entityNames = new Set(entities.map(e => e.name));
+  const entityNames = new Set(entities.map((e) => e.name));
 
   for (const entity of entities) {
     if (entity.external) continue;

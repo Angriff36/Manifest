@@ -57,9 +57,7 @@ describe('diagnostics', () => {
   });
 
   it('handles errors without positions', () => {
-    const parseErrors: CompilationError[] = [
-      { message: 'Global error', severity: 'error' },
-    ];
+    const parseErrors: CompilationError[] = [{ message: 'Global error', severity: 'error' }];
 
     const diagnostics = toDiagnostics(parseErrors, []);
 

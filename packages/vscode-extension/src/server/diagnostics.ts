@@ -1,9 +1,4 @@
-import {
-  Diagnostic,
-  DiagnosticSeverity,
-  Range,
-  Position,
-} from 'vscode-languageserver/node';
+import { Diagnostic, DiagnosticSeverity, Range, Position } from 'vscode-languageserver/node';
 import type { CompilationError } from '@angriff36/manifest/compiler';
 
 /**
@@ -20,9 +15,7 @@ export function toDiagnostics(errors: CompilationError[]): Diagnostic[] {
     return Diagnostic.create(
       Range.create(Position.create(line, col), Position.create(line, col + 1)),
       err.message,
-      err.severity === 'warning'
-        ? DiagnosticSeverity.Warning
-        : DiagnosticSeverity.Error,
+      err.severity === 'warning' ? DiagnosticSeverity.Warning : DiagnosticSeverity.Error,
       undefined,
       'manifest',
     );

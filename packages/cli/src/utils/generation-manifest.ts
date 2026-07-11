@@ -80,11 +80,10 @@ export class GenerationManifestRecorder {
       version: 1,
       artifacts: dedupe(this.artifacts).sort(
         (a, b) =>
-          a.outputFile.localeCompare(b.outputFile) ||
-          a.artifactId.localeCompare(b.artifactId)
+          a.outputFile.localeCompare(b.outputFile) || a.artifactId.localeCompare(b.artifactId),
       ),
       dispatchers: dedupe(this.dispatchers).sort((a, b) =>
-        a.outputFile.localeCompare(b.outputFile)
+        a.outputFile.localeCompare(b.outputFile),
       ),
     };
   }

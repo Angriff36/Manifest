@@ -36,7 +36,7 @@ export class CommandTraceRecorder {
     this.steps.push({
       index: 0,
       label: 'before',
-      snapshot: await this.engine.serialize() as SerializedRuntimeSnapshot,
+      snapshot: (await this.engine.serialize()) as SerializedRuntimeSnapshot,
     });
 
     const result = await this.engine.runCommand(commandName, input, options);
@@ -44,7 +44,7 @@ export class CommandTraceRecorder {
     this.steps.push({
       index: this.steps.length,
       label: 'after',
-      snapshot: await this.engine.serialize() as SerializedRuntimeSnapshot,
+      snapshot: (await this.engine.serialize()) as SerializedRuntimeSnapshot,
     });
 
     return result;
@@ -70,12 +70,12 @@ export class CommandTraceRecorder {
     entityName?: string;
     instanceId?: string;
   }) => Promise<void> {
-    return async info => {
+    return async (info) => {
       this.actionIndex += 1;
       this.steps.push({
         index: this.steps.length,
         label: `action:${info.index}:${info.kind}${info.target ? `:${info.target}` : ''}`,
-        snapshot: await this.engine.serialize() as SerializedRuntimeSnapshot,
+        snapshot: (await this.engine.serialize()) as SerializedRuntimeSnapshot,
       });
     };
   }

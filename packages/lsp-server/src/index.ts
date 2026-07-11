@@ -1,7 +1,4 @@
-import {
-  createConnection,
-  ProposedFeatures,
-} from 'vscode-languageserver/node.js';
+import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.js';
 import { ManifestLspServer } from './server.js';
 
 /**

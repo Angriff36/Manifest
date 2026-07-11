@@ -97,12 +97,14 @@ export async function resolveModuleGraph(
   }
 
   // If there were file-not-found errors, we can't reliably build a graph
-  if (diagnostics.some(d => d.severity === 'error')) {
+  if (diagnostics.some((d) => d.severity === 'error')) {
     return { order: [], files, diagnostics };
   }
 
   // Phase 2: Cycle detection via DFS coloring
-  const WHITE = 0, GREY = 1, BLACK = 2;
+  const WHITE = 0,
+    GREY = 1,
+    BLACK = 2;
   const color = new Map<string, number>();
   for (const path of files.keys()) color.set(path, WHITE);
 
@@ -212,7 +214,10 @@ export async function resolveModuleGraph(
 
   if (order.length !== files.size) {
     // This shouldn't happen if cycle detection worked, but be defensive
-    diagnostics.push({ message: 'Internal error: topological sort did not process all files', severity: 'error' });
+    diagnostics.push({
+      message: 'Internal error: topological sort did not process all files',
+      severity: 'error',
+    });
   }
 
   return { order, files, diagnostics };

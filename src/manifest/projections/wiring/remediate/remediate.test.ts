@@ -41,7 +41,7 @@ describe('wiring remediate', () => {
       mode: 'one-defect',
       capabilityId: 'Task.create',
     });
-    expect(result.applied.some(a => a.applied && a.verification?.ok)).toBe(true);
+    expect(result.applied.some((a) => a.applied && a.verification?.ok)).toBe(true);
     const next = [...result.applied[0]!.filesChanged];
     expect(next.length).toBeGreaterThan(0);
     // Re-read from apply path via second remediate dry check
@@ -51,9 +51,7 @@ describe('wiring remediate', () => {
       config: { roots: ['.'] },
     });
     expect(
-      afterInspect.mismatches.some(
-        m => m.kind === 'wrong_input_shape' && m.parameter === 'tags',
-      ),
+      afterInspect.mismatches.some((m) => m.kind === 'wrong_input_shape' && m.parameter === 'tags'),
     ).toBe(false);
   });
 
@@ -83,7 +81,7 @@ describe('wiring remediate', () => {
     });
     expect(
       report.mismatches.some(
-        m => m.kind === 'missing_required_input' && m.parameter === 'summary',
+        (m) => m.kind === 'missing_required_input' && m.parameter === 'summary',
       ),
     ).toBe(false);
   });
@@ -110,7 +108,7 @@ describe('wiring remediate', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p => p.mismatch?.kind === 'missing_required_input' && p.mismatch.parameter === 'summary',
+      (p) => p.mismatch?.kind === 'missing_required_input' && p.mismatch.parameter === 'summary',
     );
     expect(plan?.decision).toBe('ambiguous-product-decision');
     expect(plan?.automaticApplicationAllowed).toBe(false);
@@ -120,7 +118,7 @@ describe('wiring remediate', () => {
       mode: 'apply',
       autoFixableOnly: true,
     });
-    const summaryFix = result.applied.find(a => a.findingId.includes('summary'));
+    const summaryFix = result.applied.find((a) => a.findingId.includes('summary'));
     expect(summaryFix?.applied).not.toBe(true);
   });
 
@@ -150,7 +148,7 @@ describe('wiring remediate', () => {
     });
     expect(
       report.mismatches.some(
-        m => m.kind === 'invalid_finite_literal' && m.parameter === 'priority',
+        (m) => m.kind === 'invalid_finite_literal' && m.parameter === 'priority',
       ),
     ).toBe(false);
   });
@@ -181,7 +179,7 @@ describe('wiring remediate', () => {
     });
     expect(
       report.mismatches.some(
-        m => m.kind === 'invalid_date_sentinel' && m.parameter === 'dueDate',
+        (m) => m.kind === 'invalid_date_sentinel' && m.parameter === 'dueDate',
       ),
     ).toBe(false);
   });
@@ -207,9 +205,7 @@ describe('wiring remediate', () => {
       fileContents: map,
       config: { roots: ['.'] },
     });
-    expect(
-      report.mismatches.some(m => m.kind === 'trusted_field_spoofing'),
-    ).toBe(false);
+    expect(report.mismatches.some((m) => m.kind === 'trusted_field_spoofing')).toBe(false);
   });
 
   it('7. trusted server context injection path remains after strip', async () => {
@@ -236,10 +232,10 @@ describe('wiring remediate', () => {
       fileContents: map,
       config: { roots: ['.'] },
     });
-    expect(
-      report.findings.find(f => f.capabilityId === 'Task.markCompleted')?.status,
-    ).toBe('consumed');
-    expect(report.mismatches.filter(m => m.capabilityId === 'Task.markCompleted')).toHaveLength(
+    expect(report.findings.find((f) => f.capabilityId === 'Task.markCompleted')?.status).toBe(
+      'consumed',
+    );
+    expect(report.mismatches.filter((m) => m.capabilityId === 'Task.markCompleted')).toHaveLength(
       0,
     );
   });
@@ -266,7 +262,7 @@ describe('wiring remediate', () => {
       mode: 'apply',
       capabilityId: 'Task.markCompleted',
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
+    expect(result.applied.some((a) => a.applied)).toBe(true);
     const map = resultToMap(files, result);
     const content = map.get('apps/app/app/ui/complete.tsx') ?? '';
     expect(content).toMatch(/manifest-wiring-bindings/);
@@ -284,7 +280,7 @@ describe('wiring remediate', () => {
     });
     const { PatternAdapter } = await import('./pattern-adapter.js');
     const adapter = new PatternAdapter(files);
-    const cap = contract.capabilities.find(c => c.capabilityId === 'Task.create')!;
+    const cap = contract.capabilities.find((c) => c.capabilityId === 'Task.create')!;
     const route = adapter.findCompositeRoute(cap);
     expect(route).toBeTruthy();
     expect(route!.replace(/\\/g, '/')).toMatch(/composite|task\/create/);
@@ -316,12 +312,12 @@ describe('wiring remediate', () => {
       defect: true,
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
-    const plan = bundle.plans.find(p => p.repairKind === 'replace-fake-lifecycle-binding');
+    const plan = bundle.plans.find((p) => p.repairKind === 'replace-fake-lifecycle-binding');
     expect(plan).toBeTruthy();
     expect(plan!.automaticApplicationAllowed).toBe(true);
     const patch = applyRepairPlan(plan!, files);
     expect(patch.ok).toBe(true);
-    const content = [...patch.nextContents.values()].find(c => c.includes('executeCommand'))!;
+    const content = [...patch.nextContents.values()].find((c) => c.includes('executeCommand'))!;
     expect(content).toMatch(/markPublished/);
   });
 });

@@ -111,18 +111,14 @@ describe('MermaidProjection', () => {
             properties: [
               { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
             ],
-            relationships: [
-              { name: 'books', kind: 'hasMany', target: 'Book' },
-            ],
+            relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
           }),
           makeEntity({
             name: 'Book',
             properties: [
               { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
             ],
-            relationships: [
-              { name: 'author', kind: 'belongsTo', target: 'Author' },
-            ],
+            relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
           }),
         ],
       });
@@ -146,8 +142,14 @@ describe('MermaidProjection', () => {
     it('produces deterministic output', () => {
       const ir = makeIR({
         entities: [
-          makeEntity({ name: 'Zebra', properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: [] }] }),
-          makeEntity({ name: 'Apple', properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: [] }] }),
+          makeEntity({
+            name: 'Zebra',
+            properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: [] }],
+          }),
+          makeEntity({
+            name: 'Apple',
+            properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: [] }],
+          }),
         ],
       });
 
@@ -165,7 +167,10 @@ describe('MermaidProjection', () => {
     it('supports markdown wrapping', () => {
       const ir = makeIR({
         entities: [
-          makeEntity({ name: 'Foo', properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: [] }] }),
+          makeEntity({
+            name: 'Foo',
+            properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: [] }],
+          }),
         ],
       });
 
@@ -209,7 +214,12 @@ describe('MermaidProjection', () => {
           makeEntity({
             name: 'Document',
             properties: [
-              { name: 'status', type: { name: 'string', nullable: false }, modifiers: [], defaultValue: { kind: 'string', value: 'draft' } },
+              {
+                name: 'status',
+                type: { name: 'string', nullable: false },
+                modifiers: [],
+                defaultValue: { kind: 'string', value: 'draft' },
+              },
             ],
             transitions: [
               { property: 'status', from: 'draft', to: ['review'] },
@@ -235,9 +245,7 @@ describe('MermaidProjection', () => {
 
     it('returns info diagnostic when no transitions exist', () => {
       const ir = makeIR({
-        entities: [
-          makeEntity({ name: 'NoStates' }),
-        ],
+        entities: [makeEntity({ name: 'NoStates' })],
       });
 
       const result = projection.generate(ir, { surface: 'mermaid.state' });
@@ -252,20 +260,26 @@ describe('MermaidProjection', () => {
           makeEntity({
             name: 'Doc',
             properties: [
-              { name: 'status', type: { name: 'string', nullable: false }, modifiers: [], defaultValue: { kind: 'string', value: 'open' } },
+              {
+                name: 'status',
+                type: { name: 'string', nullable: false },
+                modifiers: [],
+                defaultValue: { kind: 'string', value: 'open' },
+              },
             ],
-            transitions: [
-              { property: 'status', from: 'open', to: ['closed'] },
-            ],
+            transitions: [{ property: 'status', from: 'open', to: ['closed'] }],
           }),
           makeEntity({
             name: 'Ticket',
             properties: [
-              { name: 'state', type: { name: 'string', nullable: false }, modifiers: [], defaultValue: { kind: 'string', value: 'new' } },
+              {
+                name: 'state',
+                type: { name: 'string', nullable: false },
+                modifiers: [],
+                defaultValue: { kind: 'string', value: 'new' },
+              },
             ],
-            transitions: [
-              { property: 'state', from: 'new', to: ['active'] },
-            ],
+            transitions: [{ property: 'state', from: 'new', to: ['active'] }],
           }),
         ],
       });
@@ -281,9 +295,7 @@ describe('MermaidProjection', () => {
 
     it('warns when filtered entity has no transitions', () => {
       const ir = makeIR({
-        entities: [
-          makeEntity({ name: 'Plain' }),
-        ],
+        entities: [makeEntity({ name: 'Plain' })],
       });
 
       const result = projection.generate(ir, {
@@ -322,12 +334,20 @@ describe('MermaidProjection', () => {
             {
               kind: 'binary',
               operator: '==',
-              left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'status' },
+              left: {
+                kind: 'member',
+                object: { kind: 'identifier', name: 'self' },
+                property: 'status',
+              },
               right: { kind: 'literal', value: { kind: 'string', value: 'draft' } },
             },
           ],
           actions: [
-            { kind: 'mutate', target: 'status', expression: { kind: 'literal', value: { kind: 'string', value: 'review' } } },
+            {
+              kind: 'mutate',
+              target: 'status',
+              expression: { kind: 'literal', value: { kind: 'string', value: 'review' } },
+            },
           ],
           emits: ['DocumentSubmitted'],
         },
@@ -337,9 +357,7 @@ describe('MermaidProjection', () => {
         {
           name: 'DocumentSubmitted',
           channel: 'documents.submitted',
-          payload: [
-            { name: 'id', type: { name: 'string', nullable: false }, required: true },
-          ],
+          payload: [{ name: 'id', type: { name: 'string', nullable: false }, required: true }],
         },
       ];
 
@@ -427,18 +445,24 @@ describe('MermaidProjection', () => {
             name: 'Order',
             properties: [
               { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-              { name: 'status', type: { name: 'string', nullable: false }, modifiers: [], defaultValue: { kind: 'string', value: 'pending' } },
+              {
+                name: 'status',
+                type: { name: 'string', nullable: false },
+                modifiers: [],
+                defaultValue: { kind: 'string', value: 'pending' },
+              },
             ],
-            relationships: [
-              { name: 'items', kind: 'hasMany', target: 'OrderItem' },
-            ],
+            relationships: [{ name: 'items', kind: 'hasMany', target: 'OrderItem' }],
             transitions: [
               { property: 'status', from: 'pending', to: ['confirmed'] },
               { property: 'status', from: 'confirmed', to: ['shipped'] },
             ],
             commands: ['confirm'],
           }),
-          makeEntity({ name: 'OrderItem', properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: [] }] }),
+          makeEntity({
+            name: 'OrderItem',
+            properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: [] }],
+          }),
         ],
         commands: [
           {
@@ -447,7 +471,11 @@ describe('MermaidProjection', () => {
             parameters: [],
             guards: [],
             actions: [
-              { kind: 'mutate', target: 'status', expression: { kind: 'literal', value: { kind: 'string', value: 'confirmed' } } },
+              {
+                kind: 'mutate',
+                target: 'status',
+                expression: { kind: 'literal', value: { kind: 'string', value: 'confirmed' } },
+              },
             ],
             emits: [],
           },
@@ -457,7 +485,7 @@ describe('MermaidProjection', () => {
       const result = projection.generate(ir, { surface: 'mermaid.all' });
 
       // Should have ER diagram + state diagram for Order + sequence diagram for confirm
-      const ids = result.artifacts.map(a => a.id);
+      const ids = result.artifacts.map((a) => a.id);
       expect(ids).toContain('mermaid.er');
       expect(ids).toContain('mermaid.state.Order');
       expect(ids).toContain('mermaid.sequence.Order.confirm');
@@ -469,7 +497,12 @@ describe('MermaidProjection', () => {
   describe('artifact path hints', () => {
     it('uses .mmd extension for ER diagrams', () => {
       const ir = makeIR({
-        entities: [makeEntity({ name: 'X', properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: [] }] })],
+        entities: [
+          makeEntity({
+            name: 'X',
+            properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: [] }],
+          }),
+        ],
       });
 
       const result = projection.generate(ir, { surface: 'mermaid.er' });
@@ -481,7 +514,14 @@ describe('MermaidProjection', () => {
         entities: [
           makeEntity({
             name: 'Ticket',
-            properties: [{ name: 'status', type: { name: 'string', nullable: false }, modifiers: [], defaultValue: { kind: 'string', value: 'open' } }],
+            properties: [
+              {
+                name: 'status',
+                type: { name: 'string', nullable: false },
+                modifiers: [],
+                defaultValue: { kind: 'string', value: 'open' },
+              },
+            ],
             transitions: [{ property: 'status', from: 'open', to: ['closed'] }],
           }),
         ],

@@ -1,5 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Download, ZoomIn, ZoomOut, Maximize2, X, GitBranch, Shield, Zap, Database, Box } from 'lucide-react';
+import {
+  Download,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  X,
+  GitBranch,
+  Shield,
+  Zap,
+  Database,
+  Box,
+} from 'lucide-react';
 import { compileToIR } from '../manifest/ir-compiler';
 import type { IR, IREntity, IRCommand, IRPolicy, IREvent, IRExpression } from '../manifest/ir';
 
@@ -42,18 +53,18 @@ interface InspectorData {
 // ─── Color palette ──────────────────────────────────────────────────────────
 
 const COLORS = {
-  entity: '#38bdf8',      // sky-400
-  event: '#a78bfa',       // violet-400
-  command: '#fb923c',     // orange-400
+  entity: '#38bdf8', // sky-400
+  event: '#a78bfa', // violet-400
+  command: '#fb923c', // orange-400
   relationship: '#6ee7b7', // emerald-300
-  computedDep: '#fbbf24',  // amber-400
-  policy: '#f472b6',       // pink-400
+  computedDep: '#fbbf24', // amber-400
+  policy: '#f472b6', // pink-400
   eventEdge: '#a78bfa',
   commandEdge: '#fb923c',
-  bg: '#030712',           // gray-950
-  gridLine: '#111827',     // gray-900
-  text: '#e2e8f0',         // slate-200
-  textMuted: '#94a3b8',    // slate-400
+  bg: '#030712', // gray-950
+  gridLine: '#111827', // gray-900
+  text: '#e2e8f0', // slate-200
+  textMuted: '#94a3b8', // slate-400
 };
 
 // ─── Force simulation helpers ───────────────────────────────────────────────
@@ -63,7 +74,7 @@ function forceSimulation(
   edges: GraphEdge[],
   width: number,
   height: number,
-  iterations: number = 300
+  iterations: number = 300,
 ): void {
   const centerX = width / 2;
   const centerY = height / 2;
@@ -78,18 +89,19 @@ function forceSimulation(
     n.vy = 0;
   });
 
-  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   const alpha0 = 1;
   const alphaDecay = 1 - Math.pow(0.001, 1 / iterations);
   let alpha = alpha0;
 
   for (let iter = 0; iter < iterations; iter++) {
-    alpha *= (1 - alphaDecay);
+    alpha *= 1 - alphaDecay;
 
     // Repulsion (all pairs)
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
-        const a = nodes[i], b = nodes[j];
+        const a = nodes[i],
+          b = nodes[j];
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -150,20 +162,27 @@ function expressionToString(expr: IRExpression): string {
       if (v.kind === 'null') return 'null';
       return String((v as { value: unknown }).value ?? '');
     }
-    case 'identifier': return expr.name;
-    case 'member': return `${expressionToString(expr.object)}.${expr.property}`;
-    case 'binary': return `${expressionToString(expr.left)} ${expr.operator} ${expressionToString(expr.right)}`;
-    case 'unary': return `${expr.operator}${expressionToString(expr.operand)}`;
-    case 'call': return `${expressionToString(expr.callee)}(${expr.args.map(expressionToString).join(', ')})`;
-    case 'conditional': return `${expressionToString(expr.condition)} ? ${expressionToString(expr.consequent)} : ${expressionToString(expr.alternate)}`;
-    default: return '...';
+    case 'identifier':
+      return expr.name;
+    case 'member':
+      return `${expressionToString(expr.object)}.${expr.property}`;
+    case 'binary':
+      return `${expressionToString(expr.left)} ${expr.operator} ${expressionToString(expr.right)}`;
+    case 'unary':
+      return `${expr.operator}${expressionToString(expr.operand)}`;
+    case 'call':
+      return `${expressionToString(expr.callee)}(${expr.args.map(expressionToString).join(', ')})`;
+    case 'conditional':
+      return `${expressionToString(expr.condition)} ? ${expressionToString(expr.consequent)} : ${expressionToString(expr.alternate)}`;
+    default:
+      return '...';
   }
 }
 
 function extractGraph(ir: IR): { nodes: GraphNode[]; edges: GraphEdge[] } {
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];
-  const entityNames = new Set(ir.entities.map(e => e.name));
+  const entityNames = new Set(ir.entities.map((e) => e.name));
 
   // Entity nodes
   for (const entity of ir.entities) {
@@ -173,7 +192,10 @@ function extractGraph(ir: IR): { nodes: GraphNode[]; edges: GraphEdge[] } {
       id: entity.name,
       label: entity.name,
       kind: 'entity',
-      x: 0, y: 0, vx: 0, vy: 0,
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
       radius,
       color: COLORS.entity,
       entity,
@@ -186,7 +208,10 @@ function extractGraph(ir: IR): { nodes: GraphNode[]; edges: GraphEdge[] } {
       id: `event:${event.name}`,
       label: event.name,
       kind: 'event',
-      x: 0, y: 0, vx: 0, vy: 0,
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
       radius: 22,
       color: COLORS.event,
       event,
@@ -223,9 +248,9 @@ function extractGraph(ir: IR): { nodes: GraphNode[]; edges: GraphEdge[] } {
     // Command emits → events
     for (const emitName of cmd.emits) {
       const eventNodeId = `event:${emitName}`;
-      if (nodes.some(n => n.id === eventNodeId)) {
+      if (nodes.some((n) => n.id === eventNodeId)) {
         const sourceEntity = cmd.entity || cmd.name;
-        if (nodes.some(n => n.id === sourceEntity)) {
+        if (nodes.some((n) => n.id === sourceEntity)) {
           edges.push({
             source: sourceEntity,
             target: eventNodeId,
@@ -244,7 +269,7 @@ function extractGraph(ir: IR): { nodes: GraphNode[]; edges: GraphEdge[] } {
     for (const comp of entity.computedProperties) {
       for (const dep of comp.dependencies) {
         // Check if dep references another entity via relationship
-        const rel = entity.relationships.find(r => r.name === dep);
+        const rel = entity.relationships.find((r) => r.name === dep);
         if (rel && entityNames.has(rel.target)) {
           edges.push({
             source: entity.name,
@@ -266,10 +291,12 @@ function extractGraph(ir: IR): { nodes: GraphNode[]; edges: GraphEdge[] } {
 
 function drawArrowhead(
   ctx: CanvasRenderingContext2D,
-  fromX: number, fromY: number,
-  toX: number, toY: number,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
   targetRadius: number,
-  color: string
+  color: string,
 ): void {
   const angle = Math.atan2(toY - fromY, toX - fromX);
   const headLen = 10;
@@ -280,11 +307,11 @@ function drawArrowhead(
   ctx.moveTo(endX, endY);
   ctx.lineTo(
     endX - headLen * Math.cos(angle - Math.PI / 6),
-    endY - headLen * Math.sin(angle - Math.PI / 6)
+    endY - headLen * Math.sin(angle - Math.PI / 6),
   );
   ctx.lineTo(
     endX - headLen * Math.cos(angle + Math.PI / 6),
-    endY - headLen * Math.sin(angle + Math.PI / 6)
+    endY - headLen * Math.sin(angle + Math.PI / 6),
   );
   ctx.closePath();
   ctx.fillStyle = color;
@@ -301,7 +328,7 @@ function drawGraph(
   zoom: number,
   hoveredNode: string | null,
   selectedNode: string | null,
-  dpr: number
+  dpr: number,
 ): void {
   ctx.save();
   ctx.scale(dpr, dpr);
@@ -319,8 +346,8 @@ function drawGraph(
   ctx.lineWidth = 0.5 / zoom;
   const startX = Math.floor(-pan.x / zoom / gridSize) * gridSize;
   const startY = Math.floor(-pan.y / zoom / gridSize) * gridSize;
-  const endX = startX + (width / zoom) + gridSize * 2;
-  const endY = startY + (height / zoom) + gridSize * 2;
+  const endX = startX + width / zoom + gridSize * 2;
+  const endY = startY + height / zoom + gridSize * 2;
   for (let x = startX; x < endX; x += gridSize) {
     ctx.beginPath();
     ctx.moveTo(x, startY);
@@ -334,7 +361,7 @@ function drawGraph(
     ctx.stroke();
   }
 
-  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
   // Edges
   for (const edge of edges) {
@@ -372,7 +399,15 @@ function drawGraph(
     ctx.setLineDash([]);
 
     // Arrowhead
-    drawArrowhead(ctx, source.x, source.y, target.x, target.y, target.radius + 3, edge.color + 'cc');
+    drawArrowhead(
+      ctx,
+      source.x,
+      source.y,
+      target.x,
+      target.y,
+      target.radius + 3,
+      edge.color + 'cc',
+    );
 
     // Edge label
     const mx = (source.x + target.x) / 2;
@@ -437,7 +472,10 @@ function drawGraph(
 
 function exportToSVG(nodes: GraphNode[], edges: GraphEdge[]): string {
   const padding = 40;
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   for (const n of nodes) {
     minX = Math.min(minX, n.x - n.radius);
     minY = Math.min(minY, n.y - n.radius);
@@ -449,7 +487,7 @@ function exportToSVG(nodes: GraphNode[], edges: GraphEdge[]): string {
   const ox = -minX + padding;
   const oy = -minY + padding;
 
-  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${vw}" height="${vh}" viewBox="0 0 ${vw} ${vh}">`;
   svg += `<rect width="${vw}" height="${vh}" fill="${COLORS.bg}"/>`;
   svg += `<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="${COLORS.textMuted}"/></marker></defs>`;
@@ -459,16 +497,21 @@ function exportToSVG(nodes: GraphNode[], edges: GraphEdge[]): string {
     const s = nodeMap.get(edge.source);
     const t = nodeMap.get(edge.target);
     if (!s || !t || edge.source === edge.target) continue;
-    const sx = s.x + ox, sy = s.y + oy, tx = t.x + ox, ty = t.y + oy;
+    const sx = s.x + ox,
+      sy = s.y + oy,
+      tx = t.x + ox,
+      ty = t.y + oy;
     const dashAttr = edge.dashed ? ` stroke-dasharray="5,3"` : '';
     svg += `<line x1="${sx}" y1="${sy}" x2="${tx}" y2="${ty}" stroke="${edge.color}88" stroke-width="1.5"${dashAttr} marker-end="url(#arrowhead)"/>`;
-    const mx = (sx + tx) / 2, my = (sy + ty) / 2;
+    const mx = (sx + tx) / 2,
+      my = (sy + ty) / 2;
     svg += `<text x="${mx}" y="${my - 6}" text-anchor="middle" fill="${edge.color}cc" font-size="9" font-family="monospace">${escapeXml(edge.label)}</text>`;
   }
 
   // Nodes
   for (const node of nodes) {
-    const nx = node.x + ox, ny = node.y + oy;
+    const nx = node.x + ox,
+      ny = node.y + oy;
     svg += `<circle cx="${nx}" cy="${ny}" r="${node.radius}" fill="${COLORS.bg}" stroke="${node.color}" stroke-width="1.5"/>`;
     svg += `<text x="${nx}" y="${ny + 4}" text-anchor="middle" fill="${COLORS.text}" font-size="11" font-weight="bold" font-family="system-ui, sans-serif">${escapeXml(node.label)}</text>`;
     svg += `<text x="${nx}" y="${ny + 16}" text-anchor="middle" fill="${COLORS.textMuted}" font-size="8" font-family="monospace">${node.kind}</text>`;
@@ -479,7 +522,11 @@ function exportToSVG(nodes: GraphNode[], edges: GraphEdge[]): string {
 }
 
 function escapeXml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // ─── Inspector panel ────────────────────────────────────────────────────────
@@ -489,21 +536,32 @@ function Inspector({ data, ir, onClose }: { data: InspectorData; ir: IR; onClose
   const event = data.event;
 
   // Find related policies for entity
-  const relatedPolicies = ir.policies.filter(p => p.entity === data.nodeId || (!p.entity && !p.module));
+  const relatedPolicies = ir.policies.filter(
+    (p) => p.entity === data.nodeId || (!p.entity && !p.module),
+  );
   // Find related commands for entity
-  const relatedCommands = ir.commands.filter(c => c.entity === data.nodeId);
+  const relatedCommands = ir.commands.filter((c) => c.entity === data.nodeId);
 
   return (
-    <div className="absolute right-0 top-0 bottom-0 w-80 bg-gray-900 border-l border-gray-700 overflow-y-auto z-10" data-testid="graph-inspector">
+    <div
+      className="absolute right-0 top-0 bottom-0 w-80 bg-gray-900 border-l border-gray-700 overflow-y-auto z-10"
+      data-testid="graph-inspector"
+    >
       <div className="flex items-center justify-between p-3 border-b border-gray-800">
         <div className="flex items-center gap-2">
           {data.kind === 'entity' && <Box size={14} className="text-sky-400" />}
           {data.kind === 'event' && <Zap size={14} className="text-violet-400" />}
           {data.kind === 'command' && <GitBranch size={14} className="text-orange-400" />}
-          <span className="font-semibold text-white text-sm">{data.nodeId.replace('event:', '')}</span>
-          <span className="text-xs text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">{data.kind}</span>
+          <span className="font-semibold text-white text-sm">
+            {data.nodeId.replace('event:', '')}
+          </span>
+          <span className="text-xs text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">
+            {data.kind}
+          </span>
         </div>
-        <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={14} /></button>
+        <button onClick={onClose} className="text-gray-400 hover:text-white">
+          <X size={14} />
+        </button>
       </div>
 
       {entity && (
@@ -514,13 +572,21 @@ function Inspector({ data, ir, onClose }: { data: InspectorData; ir: IR; onClose
               <Database size={12} /> Properties ({entity.properties.length})
             </h4>
             <div className="space-y-1">
-              {entity.properties.map(p => (
-                <div key={p.name} className="flex items-center justify-between bg-gray-800/50 px-2 py-1 rounded">
+              {entity.properties.map((p) => (
+                <div
+                  key={p.name}
+                  className="flex items-center justify-between bg-gray-800/50 px-2 py-1 rounded"
+                >
                   <span className="text-gray-300">{p.name}</span>
                   <div className="flex items-center gap-1">
-                    <span className="text-sky-400 text-xs">{p.type.name}{p.type.nullable ? '?' : ''}</span>
-                    {p.modifiers.map(m => (
-                      <span key={m} className="text-[10px] bg-gray-700 text-gray-400 px-1 rounded">{m}</span>
+                    <span className="text-sky-400 text-xs">
+                      {p.type.name}
+                      {p.type.nullable ? '?' : ''}
+                    </span>
+                    {p.modifiers.map((m) => (
+                      <span key={m} className="text-[10px] bg-gray-700 text-gray-400 px-1 rounded">
+                        {m}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -532,10 +598,11 @@ function Inspector({ data, ir, onClose }: { data: InspectorData; ir: IR; onClose
           {entity.computedProperties.length > 0 && (
             <section>
               <h4 className="text-xs uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-1.5">
-                <Zap size={12} className="text-amber-400" /> Computed ({entity.computedProperties.length})
+                <Zap size={12} className="text-amber-400" /> Computed (
+                {entity.computedProperties.length})
               </h4>
               <div className="space-y-1">
-                {entity.computedProperties.map(cp => (
+                {entity.computedProperties.map((cp) => (
                   <div key={cp.name} className="bg-gray-800/50 px-2 py-1.5 rounded">
                     <div className="flex items-center justify-between">
                       <span className="text-amber-300">{cp.name}</span>
@@ -559,14 +626,20 @@ function Inspector({ data, ir, onClose }: { data: InspectorData; ir: IR; onClose
           {entity.relationships.length > 0 && (
             <section>
               <h4 className="text-xs uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-1.5">
-                <GitBranch size={12} className="text-emerald-400" /> Relationships ({entity.relationships.length})
+                <GitBranch size={12} className="text-emerald-400" /> Relationships (
+                {entity.relationships.length})
               </h4>
               <div className="space-y-1">
-                {entity.relationships.map(r => (
-                  <div key={r.name} className="flex items-center justify-between bg-gray-800/50 px-2 py-1 rounded">
+                {entity.relationships.map((r) => (
+                  <div
+                    key={r.name}
+                    className="flex items-center justify-between bg-gray-800/50 px-2 py-1 rounded"
+                  >
                     <span className="text-gray-300">{r.name}</span>
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] bg-emerald-900/50 text-emerald-400 px-1 rounded">{r.kind}</span>
+                      <span className="text-[10px] bg-emerald-900/50 text-emerald-400 px-1 rounded">
+                        {r.kind}
+                      </span>
                       <span className="text-emerald-300 text-xs">{r.target}</span>
                     </div>
                   </div>
@@ -579,10 +652,11 @@ function Inspector({ data, ir, onClose }: { data: InspectorData; ir: IR; onClose
           {relatedCommands.length > 0 && (
             <section>
               <h4 className="text-xs uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-1.5">
-                <GitBranch size={12} className="text-orange-400" /> Commands ({relatedCommands.length})
+                <GitBranch size={12} className="text-orange-400" /> Commands (
+                {relatedCommands.length})
               </h4>
               <div className="space-y-1">
-                {relatedCommands.map(c => (
+                {relatedCommands.map((c) => (
                   <div key={c.name} className="bg-gray-800/50 px-2 py-1.5 rounded">
                     <div className="flex items-center justify-between">
                       <span className="text-orange-300">{c.name}</span>
@@ -590,7 +664,7 @@ function Inspector({ data, ir, onClose }: { data: InspectorData; ir: IR; onClose
                     </div>
                     {c.parameters.length > 0 && (
                       <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
-                        ({c.parameters.map(p => `${p.name}: ${p.type.name}`).join(', ')})
+                        ({c.parameters.map((p) => `${p.name}: ${p.type.name}`).join(', ')})
                       </div>
                     )}
                     {c.guards.length > 0 && (
@@ -613,14 +687,17 @@ function Inspector({ data, ir, onClose }: { data: InspectorData; ir: IR; onClose
           {(relatedPolicies.length > 0 || entity.policies.length > 0) && (
             <section>
               <h4 className="text-xs uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-1.5">
-                <Shield size={12} className="text-pink-400" /> Policies ({relatedPolicies.length || entity.policies.length})
+                <Shield size={12} className="text-pink-400" /> Policies (
+                {relatedPolicies.length || entity.policies.length})
               </h4>
               <div className="space-y-1">
-                {relatedPolicies.map(p => (
+                {relatedPolicies.map((p) => (
                   <div key={p.name} className="bg-gray-800/50 px-2 py-1.5 rounded">
                     <div className="flex items-center justify-between">
                       <span className="text-pink-300">{p.name}</span>
-                      <span className="text-[10px] bg-pink-900/50 text-pink-400 px-1 rounded">{p.action}</span>
+                      <span className="text-[10px] bg-pink-900/50 text-pink-400 px-1 rounded">
+                        {p.action}
+                      </span>
                     </div>
                     <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
                       {expressionToString(p.expression)}
@@ -638,15 +715,21 @@ function Inspector({ data, ir, onClose }: { data: InspectorData; ir: IR; onClose
                 Constraints ({entity.constraints.length})
               </h4>
               <div className="space-y-1">
-                {entity.constraints.map(c => (
+                {entity.constraints.map((c) => (
                   <div key={c.name} className="bg-gray-800/50 px-2 py-1.5 rounded">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-300">{c.name}</span>
-                      <span className={`text-[10px] px-1 rounded ${
-                        c.severity === 'block' ? 'bg-rose-900/50 text-rose-400' :
-                        c.severity === 'warn' ? 'bg-amber-900/50 text-amber-400' :
-                        'bg-emerald-900/50 text-emerald-400'
-                      }`}>{c.severity || 'block'}</span>
+                      <span
+                        className={`text-[10px] px-1 rounded ${
+                          c.severity === 'block'
+                            ? 'bg-rose-900/50 text-rose-400'
+                            : c.severity === 'warn'
+                              ? 'bg-amber-900/50 text-amber-400'
+                              : 'bg-emerald-900/50 text-emerald-400'
+                        }`}
+                      >
+                        {c.severity || 'block'}
+                      </span>
                     </div>
                     <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
                       {expressionToString(c.expression)}
@@ -667,10 +750,15 @@ function Inspector({ data, ir, onClose }: { data: InspectorData; ir: IR; onClose
           </div>
           {Array.isArray(event.payload) && (
             <section>
-              <h4 className="text-xs uppercase tracking-wider text-gray-500 mb-2">Payload Fields</h4>
+              <h4 className="text-xs uppercase tracking-wider text-gray-500 mb-2">
+                Payload Fields
+              </h4>
               <div className="space-y-1">
-                {event.payload.map(f => (
-                  <div key={f.name} className="flex items-center justify-between bg-gray-800/50 px-2 py-1 rounded">
+                {event.payload.map((f) => (
+                  <div
+                    key={f.name}
+                    className="flex items-center justify-between bg-gray-800/50 px-2 py-1 rounded"
+                  >
                     <span className="text-gray-300">{f.name}</span>
                     <span className="text-sky-400 text-xs">{f.type.name}</span>
                   </div>
@@ -698,7 +786,7 @@ function Legend() {
 
   return (
     <div className="absolute bottom-3 left-3 bg-gray-900/90 border border-gray-700 rounded-lg px-3 py-2 flex items-center gap-3 text-[10px] text-gray-400 z-10">
-      {items.map(item => (
+      {items.map((item) => (
         <div key={item.label} className="flex items-center gap-1.5">
           {item.shape === 'circle' && (
             <div className="w-2.5 h-2.5 rounded-full border" style={{ borderColor: item.color }} />
@@ -722,7 +810,10 @@ export function IRGraphPanel({ source, disabled }: { source: string; disabled: b
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [ir, setIr] = useState<IR | null>(null);
-  const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; edges: GraphEdge[] }>({ nodes: [], edges: [] });
+  const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; edges: GraphEdge[] }>({
+    nodes: [],
+    edges: [],
+  });
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
@@ -755,7 +846,9 @@ export function IRGraphPanel({ source, disabled }: { source: string; disabled: b
         // Compilation error - ignore silently
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [source, disabled]);
 
   // Build graph from IR
@@ -785,7 +878,7 @@ export function IRGraphPanel({ source, disabled }: { source: string; disabled: b
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const obs = new ResizeObserver(entries => {
+    const obs = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setSize({ width: entry.contentRect.width, height: entry.contentRect.height });
       }
@@ -805,102 +898,132 @@ export function IRGraphPanel({ source, disabled }: { source: string; disabled: b
     canvas.height = size.height * dpr;
     canvas.style.width = `${size.width}px`;
     canvas.style.height = `${size.height}px`;
-    drawGraph(ctx, graphData.nodes, graphData.edges, size.width, size.height, pan, zoom, hoveredNode, selectedNode, dpr);
+    drawGraph(
+      ctx,
+      graphData.nodes,
+      graphData.edges,
+      size.width,
+      size.height,
+      pan,
+      zoom,
+      hoveredNode,
+      selectedNode,
+      dpr,
+    );
   }, [graphData, pan, zoom, hoveredNode, selectedNode, size]);
 
   // Hit test
-  const hitTest = useCallback((clientX: number, clientY: number): GraphNode | null => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    const mx = (clientX - rect.left - pan.x) / zoom;
-    const my = (clientY - rect.top - pan.y) / zoom;
-    for (let i = graphData.nodes.length - 1; i >= 0; i--) {
-      const n = graphData.nodes[i];
-      const dx = mx - n.x, dy = my - n.y;
-      if (dx * dx + dy * dy <= n.radius * n.radius) return n;
-    }
-    return null;
-  }, [graphData.nodes, pan, zoom]);
+  const hitTest = useCallback(
+    (clientX: number, clientY: number): GraphNode | null => {
+      const canvas = canvasRef.current;
+      if (!canvas) return null;
+      const rect = canvas.getBoundingClientRect();
+      const mx = (clientX - rect.left - pan.x) / zoom;
+      const my = (clientY - rect.top - pan.y) / zoom;
+      for (let i = graphData.nodes.length - 1; i >= 0; i--) {
+        const n = graphData.nodes[i];
+        const dx = mx - n.x,
+          dy = my - n.y;
+        if (dx * dx + dy * dy <= n.radius * n.radius) return n;
+      }
+      return null;
+    },
+    [graphData.nodes, pan, zoom],
+  );
 
   // Mouse events
-  const onMouseDown = useCallback((e: React.MouseEvent) => {
-    const hit = hitTest(e.clientX, e.clientY);
-    if (hit) {
-      setDragNode(hit.id);
-      setDragStart({ x: e.clientX, y: e.clientY });
-    } else {
-      setDragging(true);
-      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-    }
-  }, [hitTest, pan]);
-
-  const onMouseMove = useCallback((e: React.MouseEvent) => {
-    if (dragNode) {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const node = graphData.nodes.find(n => n.id === dragNode);
-      if (node) {
-        node.x = (e.clientX - rect.left - pan.x) / zoom;
-        node.y = (e.clientY - rect.top - pan.y) / zoom;
-        // Force re-render
-        setGraphData({ ...graphData });
+  const onMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      const hit = hitTest(e.clientX, e.clientY);
+      if (hit) {
+        setDragNode(hit.id);
+        setDragStart({ x: e.clientX, y: e.clientY });
+      } else {
+        setDragging(true);
+        setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
       }
-      return;
-    }
-    if (dragging) {
-      setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
-      return;
-    }
-    const hit = hitTest(e.clientX, e.clientY);
-    setHoveredNode(hit?.id || null);
-  }, [dragging, dragStart, hitTest, dragNode, graphData, pan, zoom]);
+    },
+    [hitTest, pan],
+  );
 
-  const onMouseUp = useCallback((e: React.MouseEvent) => {
-    if (dragNode) {
-      // If we barely moved, treat it as a click
-      const dx = e.clientX - dragStart.x;
-      const dy = e.clientY - dragStart.y;
-      if (Math.abs(dx) < 3 && Math.abs(dy) < 3) {
-        const node = graphData.nodes.find(n => n.id === dragNode);
+  const onMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (dragNode) {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        const node = graphData.nodes.find((n) => n.id === dragNode);
         if (node) {
-          setSelectedNode(node.id);
-          setInspectorData({
-            nodeId: node.id,
-            kind: node.kind,
-            entity: node.entity,
-            event: node.event,
-            command: node.command,
-          });
+          node.x = (e.clientX - rect.left - pan.x) / zoom;
+          node.y = (e.clientY - rect.top - pan.y) / zoom;
+          // Force re-render
+          setGraphData({ ...graphData });
         }
+        return;
       }
-      setDragNode(null);
-      return;
-    }
-    setDragging(false);
-  }, [dragNode, dragStart, graphData.nodes]);
+      if (dragging) {
+        setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+        return;
+      }
+      const hit = hitTest(e.clientX, e.clientY);
+      setHoveredNode(hit?.id || null);
+    },
+    [dragging, dragStart, hitTest, dragNode, graphData, pan, zoom],
+  );
 
-  const onWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    const factor = e.deltaY > 0 ? 0.9 : 1.1;
-    const newZoom = Math.max(0.1, Math.min(5, zoom * factor));
-    // Zoom toward cursor
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (rect) {
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      const newPanX = mx - (mx - pan.x) * (newZoom / zoom);
-      const newPanY = my - (my - pan.y) * (newZoom / zoom);
-      setPan({ x: newPanX, y: newPanY });
-    }
-    setZoom(newZoom);
-  }, [zoom, pan]);
+  const onMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      if (dragNode) {
+        // If we barely moved, treat it as a click
+        const dx = e.clientX - dragStart.x;
+        const dy = e.clientY - dragStart.y;
+        if (Math.abs(dx) < 3 && Math.abs(dy) < 3) {
+          const node = graphData.nodes.find((n) => n.id === dragNode);
+          if (node) {
+            setSelectedNode(node.id);
+            setInspectorData({
+              nodeId: node.id,
+              kind: node.kind,
+              entity: node.entity,
+              event: node.event,
+              command: node.command,
+            });
+          }
+        }
+        setDragNode(null);
+        return;
+      }
+      setDragging(false);
+    },
+    [dragNode, dragStart, graphData.nodes],
+  );
+
+  const onWheel = useCallback(
+    (e: React.WheelEvent) => {
+      e.preventDefault();
+      const factor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newZoom = Math.max(0.1, Math.min(5, zoom * factor));
+      // Zoom toward cursor
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (rect) {
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const newPanX = mx - (mx - pan.x) * (newZoom / zoom);
+        const newPanY = my - (my - pan.y) * (newZoom / zoom);
+        setPan({ x: newPanX, y: newPanY });
+      }
+      setZoom(newZoom);
+    },
+    [zoom, pan],
+  );
 
   // Fit to view
   const fitToView = useCallback(() => {
     if (graphData.nodes.length === 0) return;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
     for (const n of graphData.nodes) {
       minX = Math.min(minX, n.x - n.radius);
       minY = Math.min(minY, n.y - n.radius);
@@ -937,7 +1060,7 @@ export function IRGraphPanel({ source, disabled }: { source: string; disabled: b
   const exportPNG = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || graphData.nodes.length === 0) return;
-    canvas.toBlob(blob => {
+    canvas.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -968,13 +1091,25 @@ export function IRGraphPanel({ source, disabled }: { source: string; disabled: b
     <div className="h-full flex flex-col relative" data-testid="ir-graph-panel">
       {/* Toolbar */}
       <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 border-b border-gray-800 bg-gray-900/50">
-        <button onClick={() => setZoom(z => Math.min(5, z * 1.2))} className="p-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded" title="Zoom in">
+        <button
+          onClick={() => setZoom((z) => Math.min(5, z * 1.2))}
+          className="p-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
+          title="Zoom in"
+        >
           <ZoomIn size={14} />
         </button>
-        <button onClick={() => setZoom(z => Math.max(0.1, z * 0.8))} className="p-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded" title="Zoom out">
+        <button
+          onClick={() => setZoom((z) => Math.max(0.1, z * 0.8))}
+          className="p-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
+          title="Zoom out"
+        >
           <ZoomOut size={14} />
         </button>
-        <button onClick={fitToView} className="p-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded" title="Fit to view">
+        <button
+          onClick={fitToView}
+          className="p-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded"
+          title="Fit to view"
+        >
           <Maximize2 size={14} />
         </button>
         <div className="text-[10px] text-gray-600 mx-1">{Math.round(zoom * 100)}%</div>
@@ -982,10 +1117,20 @@ export function IRGraphPanel({ source, disabled }: { source: string; disabled: b
         <span className="text-[10px] text-gray-600 mr-2">
           {graphData.nodes.length} nodes / {graphData.edges.length} edges
         </span>
-        <button onClick={exportSVG} className="flex items-center gap-1 px-2 py-0.5 text-[10px] text-gray-400 hover:text-white hover:bg-gray-800 rounded" title="Export SVG" data-testid="export-svg">
+        <button
+          onClick={exportSVG}
+          className="flex items-center gap-1 px-2 py-0.5 text-[10px] text-gray-400 hover:text-white hover:bg-gray-800 rounded"
+          title="Export SVG"
+          data-testid="export-svg"
+        >
           <Download size={10} /> SVG
         </button>
-        <button onClick={exportPNG} className="flex items-center gap-1 px-2 py-0.5 text-[10px] text-gray-400 hover:text-white hover:bg-gray-800 rounded" title="Export PNG" data-testid="export-png">
+        <button
+          onClick={exportPNG}
+          className="flex items-center gap-1 px-2 py-0.5 text-[10px] text-gray-400 hover:text-white hover:bg-gray-800 rounded"
+          title="Export PNG"
+          data-testid="export-png"
+        >
           <Download size={10} /> PNG
         </button>
       </div>
@@ -999,13 +1144,24 @@ export function IRGraphPanel({ source, disabled }: { source: string; disabled: b
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
           onMouseUp={onMouseUp}
-          onMouseLeave={() => { setDragging(false); setDragNode(null); setHoveredNode(null); }}
+          onMouseLeave={() => {
+            setDragging(false);
+            setDragNode(null);
+            setHoveredNode(null);
+          }}
           onWheel={onWheel}
           data-testid="graph-canvas"
         />
         <Legend />
         {inspectorData && ir && (
-          <Inspector data={inspectorData} ir={ir} onClose={() => { setInspectorData(null); setSelectedNode(null); }} />
+          <Inspector
+            data={inspectorData}
+            ir={ir}
+            onClose={() => {
+              setInspectorData(null);
+              setSelectedNode(null);
+            }}
+          />
         )}
       </div>
     </div>

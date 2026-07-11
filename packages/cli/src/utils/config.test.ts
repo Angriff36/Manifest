@@ -47,7 +47,7 @@ describe('Config Loader', () => {
       await fs.writeFile(
         path.join(tempDir, 'manifest.config.yaml'),
         `src: src/**/*.manifest
-output: dist/ir/`
+output: dist/ir/`,
       );
 
       const loaded = await loadConfig(tempDir);
@@ -58,10 +58,7 @@ output: dist/ir/`
       const config: ManifestConfig = {
         src: 'custom/*.manifest',
       };
-      await fs.writeFile(
-        path.join(tempDir, 'manifest.config.yml'),
-        `src: custom/*.manifest`
-      );
+      await fs.writeFile(path.join(tempDir, 'manifest.config.yml'), `src: custom/*.manifest`);
 
       const loaded = await loadConfig(tempDir);
       expect(loaded).toEqual(config);
@@ -80,7 +77,7 @@ output: dist/ir/`
     output: generated/
     options:
       authProvider: clerk
-      includeTenantFilter: true`
+      includeTenantFilter: true`,
       );
 
       const loaded = await loadConfig(tempDir);
@@ -102,10 +99,7 @@ output: dist/ir/`
     });
 
     it('should merge user config with defaults', async () => {
-      await fs.writeFile(
-        path.join(tempDir, 'manifest.config.yaml'),
-        `src: custom/**/*.manifest`
-      );
+      await fs.writeFile(path.join(tempDir, 'manifest.config.yaml'), `src: custom/**/*.manifest`);
 
       const config = await getConfig(tempDir);
       expect(config.src).toBe('custom/**/*.manifest');
@@ -203,7 +197,7 @@ output: dist/ir/`
       await fs.writeFile(
         path.join(tempDir, 'manifest.config.yaml'),
         `src: yaml/*.manifest
-output: yaml-ir/`
+output: yaml-ir/`,
       );
 
       const { build, runtime } = await loadAllConfigs(tempDir);
@@ -220,7 +214,7 @@ output: yaml-ir/`
   stores: {
     User: { implementation: class MockStore {} }
   }
-}`
+}`,
       );
 
       const { runtime } = await loadAllConfigs(tempDir);
@@ -234,7 +228,7 @@ output: yaml-ir/`
       await fs.writeFile(
         path.join(tempDir, 'manifest.config.yaml'),
         `src: yaml/*.manifest
-output: yaml-ir/`
+output: yaml-ir/`,
       );
 
       await fs.writeFile(
@@ -244,7 +238,7 @@ output: yaml-ir/`
     output: 'ts-ir/'
   },
   stores: {}
-}`
+}`,
       );
 
       const { build } = await loadAllConfigs(tempDir);
@@ -261,7 +255,7 @@ output: yaml-ir/`
   resolveUser: async (auth) => {
     return { id: auth.userId || 'test-user' };
   }
-}`
+}`,
       );
 
       const runtime = await getRuntimeConfig(tempDir);
@@ -292,7 +286,7 @@ output: yaml-ir/`
     options:
       authProvider: nextauth
       includeTenantFilter: false
-      tenantIdProperty: orgId`
+      tenantIdProperty: orgId`,
       );
 
       const options = await getNextJsOptions(tempDir);
@@ -317,7 +311,7 @@ output: yaml-ir/`
         `output: custom-ir/
 projections:
   nextjs:
-    output: custom-generated/`
+    output: custom-generated/`,
       );
 
       const paths = await getOutputPaths(tempDir);
@@ -345,7 +339,7 @@ projections:
       }
     }
   }
-}`
+}`,
       );
 
       const runtime = await getRuntimeConfig(tempDir);
@@ -364,7 +358,7 @@ projections:
   stores: {
     Test: { implementation: {} }
   }
-}`
+}`,
       );
 
       const runtime = await getRuntimeConfig(tempDir);
@@ -378,7 +372,7 @@ projections:
   stores: {
     Test: { implementation: {} }
   }
-}`
+}`,
       );
 
       const runtime = await getRuntimeConfig(tempDir);
@@ -391,7 +385,7 @@ projections:
       await fs.writeFile(
         path.join(tempDir, 'manifest.config.yaml'),
         `src: yaml/*.manifest
-output: yaml/`
+output: yaml/`,
       );
 
       await fs.writeFile(
@@ -401,7 +395,7 @@ output: yaml/`
     src: 'ts/*.manifest',
     output: 'ts/'
   }
-}`
+}`,
       );
 
       const { build } = await loadAllConfigs(tempDir);
@@ -411,10 +405,7 @@ output: yaml/`
     });
 
     it('should still load runtime config from TS even when using YAML for build', async () => {
-      await fs.writeFile(
-        path.join(tempDir, 'manifest.config.yaml'),
-        `src: yaml/*.manifest`
-      );
+      await fs.writeFile(path.join(tempDir, 'manifest.config.yaml'), `src: yaml/*.manifest`);
 
       await fs.writeFile(
         path.join(tempDir, 'manifest.config.ts'),
@@ -422,7 +413,7 @@ output: yaml/`
   stores: {
     User: { implementation: {} }
   }
-}`
+}`,
       );
 
       const { build, runtime } = await loadAllConfigs(tempDir);
@@ -455,8 +446,8 @@ describe('Store Provider Factory (P2-B)', () => {
     it('should return undefined for unknown entity', () => {
       const config: ManifestRuntimeConfig = {
         stores: {
-          User: { implementation: {} }
-        }
+          User: { implementation: {} },
+        },
       };
       const storeProvider = createStoreProvider(config);
       expect(storeProvider('Unknown')).toBeUndefined();
@@ -469,13 +460,13 @@ describe('Store Provider Factory (P2-B)', () => {
         create: async (data: unknown) => data,
         update: async () => null,
         delete: async () => false,
-        clear: async () => {}
+        clear: async () => {},
       };
 
       const config: ManifestRuntimeConfig = {
         stores: {
-          User: { implementation: mockStore }
-        }
+          User: { implementation: mockStore },
+        },
       };
 
       const storeProvider = createStoreProvider(config);
@@ -486,18 +477,28 @@ describe('Store Provider Factory (P2-B)', () => {
 
     it('should instantiate store from class constructor', () => {
       class MockStore {
-        async getAll() { return []; }
-        async getById() { return null; }
-        async create(data: unknown) { return data; }
-        async update() { return null; }
-        async delete() { return false; }
+        async getAll() {
+          return [];
+        }
+        async getById() {
+          return null;
+        }
+        async create(data: unknown) {
+          return data;
+        }
+        async update() {
+          return null;
+        }
+        async delete() {
+          return false;
+        }
         async clear() {}
       }
 
       const config: ManifestRuntimeConfig = {
         stores: {
-          User: { implementation: MockStore }
-        }
+          User: { implementation: MockStore },
+        },
       };
 
       const storeProvider = createStoreProvider(config);
@@ -512,8 +513,10 @@ describe('Store Provider Factory (P2-B)', () => {
         getById: async () => null,
         create: async (data: unknown) => data,
         update: async () => null,
-        async delete() { return false; },
-        async clear() {}
+        async delete() {
+          return false;
+        },
+        async clear() {},
       };
 
       // A function that returns an object (not a constructor)
@@ -521,8 +524,8 @@ describe('Store Provider Factory (P2-B)', () => {
 
       const config: ManifestRuntimeConfig = {
         stores: {
-          User: { implementation: factoryFn }
-        }
+          User: { implementation: factoryFn },
+        },
       };
 
       const storeProvider = createStoreProvider(config);
@@ -538,13 +541,13 @@ describe('Store Provider Factory (P2-B)', () => {
         create: async (data: unknown) => data,
         update: async () => null,
         delete: async () => false,
-        clear: async () => {}
+        clear: async () => {},
       };
 
       const config: ManifestRuntimeConfig = {
         stores: {
-          User: { implementation: mockStore }
-        }
+          User: { implementation: mockStore },
+        },
       };
 
       const storeProvider = createStoreProvider(config);
@@ -560,14 +563,14 @@ describe('Store Provider Factory (P2-B)', () => {
 
       const config1: ManifestRuntimeConfig = {
         stores: {
-          User: { implementation: mockStore1 }
-        }
+          User: { implementation: mockStore1 },
+        },
       };
 
       const config2: ManifestRuntimeConfig = {
         stores: {
-          User: { implementation: mockStore2 }
-        }
+          User: { implementation: mockStore2 },
+        },
       };
 
       const storeProvider1 = createStoreProvider(config1);
@@ -594,8 +597,8 @@ describe('Store Provider Factory (P2-B)', () => {
       const config: ManifestRuntimeConfig = {
         stores: {
           User: { implementation: {} },
-          Order: { implementation: {} }
-        }
+          Order: { implementation: {} },
+        },
       };
 
       const info = getStoreBindingsInfo(config);
@@ -610,8 +613,8 @@ describe('Store Provider Factory (P2-B)', () => {
     it('should return prisma model info', () => {
       const config: ManifestRuntimeConfig = {
         stores: {
-          User: { implementation: {}, prismaModel: 'users' }
-        }
+          User: { implementation: {}, prismaModel: 'users' },
+        },
       };
 
       const info = getStoreBindingsInfo(config);
@@ -625,15 +628,15 @@ describe('Store Provider Factory (P2-B)', () => {
         stores: {
           Order: {
             implementation: {},
-            propertyMapping: { orderNumber: 'order_number' }
-          }
-        }
+            propertyMapping: { orderNumber: 'order_number' },
+          },
+        },
       };
 
       const info = getStoreBindingsInfo(config);
 
       expect(info.getPropertyMapping('Order')).toEqual({
-        orderNumber: 'order_number'
+        orderNumber: 'order_number',
       });
     });
   });
@@ -658,8 +661,8 @@ describe('User Resolver (P2-C)', () => {
       const config: ManifestRuntimeConfig = {
         resolveUser: async (auth) => ({
           id: auth.userId || 'default',
-          role: 'user'
-        })
+          role: 'user',
+        }),
       };
 
       const resolver = createUserResolver(config);
@@ -667,7 +670,7 @@ describe('User Resolver (P2-C)', () => {
 
       expect(result).toEqual({
         id: 'user-123',
-        role: 'user'
+        role: 'user',
       });
     });
 
@@ -675,7 +678,7 @@ describe('User Resolver (P2-C)', () => {
       const config: ManifestRuntimeConfig = {
         resolveUser: async () => {
           throw new Error('Database error');
-        }
+        },
       };
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -684,10 +687,7 @@ describe('User Resolver (P2-C)', () => {
       const result = await resolver({ userId: 'test' });
 
       expect(result).toBeNull();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Failed to resolve user:',
-        'Database error'
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to resolve user:', 'Database error');
 
       consoleSpy.mockRestore();
     });
@@ -697,21 +697,21 @@ describe('User Resolver (P2-C)', () => {
         resolveUser: async (auth) => ({
           id: auth.userId || 'unknown',
           role: (auth.claims?.role as string) || 'guest',
-          tenantId: auth.tenantId as string
-        })
+          tenantId: auth.tenantId as string,
+        }),
       };
 
       const resolver = createUserResolver(config);
       const result = await resolver({
         userId: 'user-456',
         claims: { role: 'admin' },
-        tenantId: 'tenant-1'
+        tenantId: 'tenant-1',
       });
 
       expect(result).toEqual({
         id: 'user-456',
         role: 'admin',
-        tenantId: 'tenant-1'
+        tenantId: 'tenant-1',
       });
     });
   });
@@ -728,7 +728,7 @@ describe('User Resolver (P2-C)', () => {
 
     it('should return true when resolveUser is defined', () => {
       const config: ManifestRuntimeConfig = {
-        resolveUser: async () => ({ id: 'test' })
+        resolveUser: async () => ({ id: 'test' }),
       };
       expect(hasUserResolver(config)).toBe(true);
     });

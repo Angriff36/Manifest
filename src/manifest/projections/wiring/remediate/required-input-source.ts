@@ -107,14 +107,7 @@ export function resolveRequiredInputSource(
   }
 
   const scopes = enclosingCallableChain(call);
-  const candidates = collectCandidates(
-    sf,
-    content,
-    call,
-    scopes,
-    param,
-    capabilityId,
-  );
+  const candidates = collectCandidates(sf, content, call, scopes, param, capabilityId);
 
   if (candidates.length === 0) {
     return {
@@ -127,8 +120,8 @@ export function resolveRequiredInputSource(
   // Rank then keep only best rank; equal-confidence multiples → ambiguous.
   candidates.sort((a, b) => a.rank - b.rank || a.expression.localeCompare(b.expression));
   const bestRank = candidates[0]!.rank;
-  const top = candidates.filter(c => c.rank === bestRank);
-  const compatible = top.filter(c => isTypeCompatible(c, param));
+  const top = candidates.filter((c) => c.rank === bestRank);
+  const compatible = top.filter((c) => isTypeCompatible(c, param));
 
   if (compatible.length === 0) {
     return {
@@ -139,7 +132,7 @@ export function resolveRequiredInputSource(
   }
 
   if (compatible.length > 1) {
-    const uniqueExprs = [...new Set(compatible.map(c => c.expression))];
+    const uniqueExprs = [...new Set(compatible.map((c) => c.expression))];
     if (uniqueExprs.length > 1) {
       return {
         status: 'ambiguous',
@@ -198,7 +191,7 @@ export function missingRequiredClientParams(
     }
   }
   return cap.parameters.filter(
-    p => p.ownership === 'client' && p.required && !present.has(p.name),
+    (p) => p.ownership === 'client' && p.required && !present.has(p.name),
   );
 }
 
@@ -222,20 +215,15 @@ function proveGuardForChosenSource(options: {
   if (!needsGuard) return undefined;
 
   // Re-collect qualifying sibling hits for this expression only.
-  const hits = collectSiblingParamBindings(
-    sf,
-    call,
-    scopes,
-    param.name,
-    [],
-    capabilityId,
-  ).filter(h => h.expression === chosen.expression);
+  const hits = collectSiblingParamBindings(sf, call, scopes, param.name, [], capabilityId).filter(
+    (h) => h.expression === chosen.expression,
+  );
 
   return proveSiblingFalsyGuard({
     sf,
     targetCall: call,
     sourceExpression: chosen.expression,
-    qualifyingSiblingCalls: hits.map(h => h.call),
+    qualifyingSiblingCalls: hits.map((h) => h.call),
     required: true,
   });
 }
@@ -258,9 +246,7 @@ function findCapabilityCall(
   return found;
 }
 
-function findPayloadObject(
-  call: ts.CallExpression,
-): ts.ObjectLiteralExpression | undefined {
+function findPayloadObject(call: ts.CallExpression): ts.ObjectLiteralExpression | undefined {
   for (const arg of call.arguments) {
     if (!ts.isObjectLiteralExpression(arg)) continue;
     for (const prop of arg.properties) {

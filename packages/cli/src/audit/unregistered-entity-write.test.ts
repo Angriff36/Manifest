@@ -16,7 +16,7 @@ async function writeEntities(root: string, names: string[]) {
       irHash: 'x',
       compilerVersion: 'y',
       entities: names.map((n) => ({ name: n })),
-    })
+    }),
   );
   return reg;
 }
@@ -31,14 +31,11 @@ describe('unregisteredEntityWriteDetector', () => {
   it('accepts a flat-array entities registry (downstream consumer shape)', async () => {
     const root = await tempDir();
     const reg = path.join(root, 'entities.json');
-    await fs.writeFile(
-      reg,
-      JSON.stringify([{ name: 'User' }, { name: 'Order' }])
-    );
+    await fs.writeFile(reg, JSON.stringify([{ name: 'User' }, { name: 'Order' }]));
     await writeFile(
       root,
       'app/api/x/route.ts',
-      `export async function POST(){ return prisma.user.create({ data: {} }); }`
+      `export async function POST(){ return prisma.user.create({ data: {} }); }`,
     );
     const findings = await unregisteredEntityWriteDetector.run({
       root,
@@ -54,7 +51,7 @@ describe('unregisteredEntityWriteDetector', () => {
     await writeFile(
       root,
       'app/api/audit/route.ts',
-      `export async function POST(){ return prisma.auditLog.create({ data: {} }); }`
+      `export async function POST(){ return prisma.auditLog.create({ data: {} }); }`,
     );
     const findings = await unregisteredEntityWriteDetector.run({
       root,
@@ -71,7 +68,7 @@ describe('unregisteredEntityWriteDetector', () => {
     await writeFile(
       root,
       'app/api/users/route.ts',
-      `export async function POST(){ return prisma.user.create({ data: {} }); }`
+      `export async function POST(){ return prisma.user.create({ data: {} }); }`,
     );
     const findings = await unregisteredEntityWriteDetector.run({
       root,
@@ -93,7 +90,7 @@ describe('unregisteredEntityWriteDetector', () => {
         prisma.foo.createMany({});
         prisma.foo.updateMany({});
         prisma.foo.deleteMany({});
-      `
+      `,
     );
     const findings = await unregisteredEntityWriteDetector.run({
       root,
@@ -107,7 +104,7 @@ describe('unregisteredEntityWriteDetector', () => {
     await writeFile(
       root,
       'app/api/x/route.ts',
-      `export async function POST(){ return prisma.x.create({}); }`
+      `export async function POST(){ return prisma.x.create({}); }`,
     );
     const findings = await unregisteredEntityWriteDetector.run({ root });
     expect(findings).toEqual([]);

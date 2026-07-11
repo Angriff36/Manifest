@@ -97,7 +97,10 @@ export interface LoadedPluginRegistries {
   /** Builtins map from all loaded plugins. */
   builtins: Map<string, (...args: unknown[]) => unknown>;
   /** Audit sink factories by id. */
-  auditSinkFactories: Map<string, (options?: Record<string, unknown>) => AuditSink | Promise<AuditSink>>;
+  auditSinkFactories: Map<
+    string,
+    (options?: Record<string, unknown>) => AuditSink | Promise<AuditSink>
+  >;
   /** CLI command registrations from all loaded plugins. */
   cliCommands: Array<{ pluginName: string; command: CliCommandPlugin }>;
   /** All loaded plugins (for inspection). */
@@ -155,7 +158,11 @@ function satisfiesSemVerRange(version: string, range: string): boolean {
   });
 }
 
-interface SemVerParts { major: number; minor: number; patch: number }
+interface SemVerParts {
+  major: number;
+  minor: number;
+  patch: number;
+}
 
 function parseVersion(v: string): SemVerParts | null {
   const m = v.trim().match(/^(\d+)\.(\d+)\.(\d+)/);
@@ -173,26 +180,39 @@ function compareVersion(a: SemVerParts, b: SemVerParts): number {
 // Plugin Shape Validation
 // ---------------------------------------------------------------------------
 
-function validatePluginShape(raw: unknown, moduleName: string): { plugin: ManifestPlugin; errors: string[] } {
+function validatePluginShape(
+  raw: unknown,
+  moduleName: string,
+): { plugin: ManifestPlugin; errors: string[] } {
   const errors: string[] = [];
 
   if (!raw || typeof raw !== 'object') {
-    return { plugin: raw as ManifestPlugin, errors: [`Plugin "${moduleName}" did not export an object`] };
+    return {
+      plugin: raw as ManifestPlugin,
+      errors: [`Plugin "${moduleName}" did not export an object`],
+    };
   }
 
   const obj = raw as Record<string, unknown>;
 
   // Support both default export and named `plugin` export
-  const candidate = (obj.default && typeof obj.default === 'object' ? obj.default : obj) as Record<string, unknown>;
+  const candidate = (obj.default && typeof obj.default === 'object' ? obj.default : obj) as Record<
+    string,
+    unknown
+  >;
 
   if (!candidate.manifest || typeof candidate.manifest !== 'object') {
     errors.push(`Plugin "${moduleName}" is missing required "manifest" property`);
   } else {
     const m = candidate.manifest as Record<string, unknown>;
-    if (!m.name || typeof m.name !== 'string') errors.push(`Plugin "${moduleName}" manifest.name is missing or not a string`);
-    if (!m.version || typeof m.version !== 'string') errors.push(`Plugin "${moduleName}" manifest.version is missing or not a string`);
+    if (!m.name || typeof m.name !== 'string')
+      errors.push(`Plugin "${moduleName}" manifest.name is missing or not a string`);
+    if (!m.version || typeof m.version !== 'string')
+      errors.push(`Plugin "${moduleName}" manifest.version is missing or not a string`);
     if (m.pluginApiVersion !== PLUGIN_API_VERSION) {
-      errors.push(`Plugin "${moduleName}" manifest.pluginApiVersion is "${m.pluginApiVersion}" but current API version is "${PLUGIN_API_VERSION}"`);
+      errors.push(
+        `Plugin "${moduleName}" manifest.pluginApiVersion is "${m.pluginApiVersion}" but current API version is "${PLUGIN_API_VERSION}"`,
+      );
     }
   }
 
@@ -205,7 +225,11 @@ function validatePluginShape(raw: unknown, moduleName: string): { plugin: Manife
 
 async function resolvePluginModule(moduleSpecifier: string, cwd: string): Promise<string> {
   // Absolute path or relative path starting with ./
-  if (isAbsolute(moduleSpecifier) || moduleSpecifier.startsWith('./') || moduleSpecifier.startsWith('../')) {
+  if (
+    isAbsolute(moduleSpecifier) ||
+    moduleSpecifier.startsWith('./') ||
+    moduleSpecifier.startsWith('../')
+  ) {
     return pathToFileURL(resolve(cwd, moduleSpecifier)).href;
   }
 
@@ -224,7 +248,7 @@ async function resolvePluginModule(moduleSpecifier: string, cwd: string): Promis
 // ---------------------------------------------------------------------------
 
 function buildCompositeStoreProvider(
-  adapters: Array<{ plugin: StoreAdapterPlugin; options?: Record<string, unknown> }>
+  adapters: Array<{ plugin: StoreAdapterPlugin; options?: Record<string, unknown> }>,
 ): CompositeStoreProvider {
   const schemeMap = new Map<string, StoreAdapterPlugin>();
   const optionsMap = new Map<string, Record<string, unknown> | undefined>();
@@ -256,9 +280,15 @@ function buildCompositeStoreProvider(
 }
 
 function buildCompositeAuditSinks(
-  sinkPlugins: Array<{ plugin: AuditSinkPlugin; options?: Record<string, unknown> }>
-): { factories: Map<string, (options?: Record<string, unknown>) => AuditSink | Promise<AuditSink>>; sinkIds: string[] } {
-  const factories = new Map<string, (options?: Record<string, unknown>) => AuditSink | Promise<AuditSink>>();
+  sinkPlugins: Array<{ plugin: AuditSinkPlugin; options?: Record<string, unknown> }>,
+): {
+  factories: Map<string, (options?: Record<string, unknown>) => AuditSink | Promise<AuditSink>>;
+  sinkIds: string[];
+} {
+  const factories = new Map<
+    string,
+    (options?: Record<string, unknown>) => AuditSink | Promise<AuditSink>
+  >();
   const sinkIds: string[] = [];
 
   for (const entry of sinkPlugins) {
@@ -288,16 +318,25 @@ export async function loadPlugins(
   const cwd = opts.cwd ?? process.cwd();
   const diagnostics: PluginDiagnostic[] = [];
   const loadedPlugins: ManifestPlugin[] = [];
-  const storeAdapters: Array<{ plugin: StoreAdapterPlugin; options?: Record<string, unknown> }> = [];
-  const auditSinkPlugins: Array<{ plugin: AuditSinkPlugin; options?: Record<string, unknown> }> = [];
+  const storeAdapters: Array<{ plugin: StoreAdapterPlugin; options?: Record<string, unknown> }> =
+    [];
+  const auditSinkPlugins: Array<{ plugin: AuditSinkPlugin; options?: Record<string, unknown> }> =
+    [];
   const builtinMap = new Map<string, (...args: unknown[]) => unknown>();
   const cliCommands: Array<{ pluginName: string; command: CliCommandPlugin }> = [];
-  const auditSinkFactories = new Map<string, (options?: Record<string, unknown>) => AuditSink | Promise<AuditSink>>();
+  const auditSinkFactories = new Map<
+    string,
+    (options?: Record<string, unknown>) => AuditSink | Promise<AuditSink>
+  >();
 
   for (const decl of declarations) {
     // Skip disabled plugins
     if (decl.enabled === false) {
-      diagnostics.push({ severity: 'info', pluginName: decl.module, message: `Plugin "${decl.module}" is disabled, skipping` });
+      diagnostics.push({
+        severity: 'info',
+        pluginName: decl.module,
+        message: `Plugin "${decl.module}" is disabled, skipping`,
+      });
       continue;
     }
 
@@ -318,7 +357,11 @@ export async function loadPlugins(
       }
 
       // 4. Check Manifest version compatibility
-      const manifestMeta = plugin.manifest as { name: string; version: string; manifestVersion: string };
+      const manifestMeta = plugin.manifest as {
+        name: string;
+        version: string;
+        manifestVersion: string;
+      };
       if (!satisfiesSemVerRange(opts.manifestVersion, manifestMeta.manifestVersion)) {
         diagnostics.push({
           severity: 'warning',

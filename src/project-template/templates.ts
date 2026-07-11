@@ -25,51 +25,59 @@ export default defineConfig({
 }
 
 export function generateTsConfig(): string {
-  return JSON.stringify({
-    compilerOptions: {
-      target: "ES2020",
-      useDefineForClassFields: true,
-      lib: ["ES2020", "DOM", "DOM.Iterable"],
-      module: "ESNext",
-      skipLibCheck: true,
-      moduleResolution: "bundler",
-      allowImportingTsExtensions: true,
-      resolveJsonModule: true,
-      isolatedModules: true,
-      noEmit: true,
-      jsx: "react-jsx",
-      strict: true,
-      noUnusedLocals: false,
-      noUnusedParameters: false,
-      noFallthroughCasesInSwitch: true
+  return JSON.stringify(
+    {
+      compilerOptions: {
+        target: 'ES2020',
+        useDefineForClassFields: true,
+        lib: ['ES2020', 'DOM', 'DOM.Iterable'],
+        module: 'ESNext',
+        skipLibCheck: true,
+        moduleResolution: 'bundler',
+        allowImportingTsExtensions: true,
+        resolveJsonModule: true,
+        isolatedModules: true,
+        noEmit: true,
+        jsx: 'react-jsx',
+        strict: true,
+        noUnusedLocals: false,
+        noUnusedParameters: false,
+        noFallthroughCasesInSwitch: true,
+      },
+      include: ['src'],
     },
-    include: ["src"]
-  }, null, 2);
+    null,
+    2,
+  );
 }
 
 export function generatePackageJson(projectName: string): string {
-  return JSON.stringify({
-    name: projectName,
-    private: true,
-    version: "0.0.0",
-    type: "module",
-    scripts: {
-      dev: "vite",
-      build: "tsc && vite build",
-      preview: "vite preview"
+  return JSON.stringify(
+    {
+      name: projectName,
+      private: true,
+      version: '0.0.0',
+      type: 'module',
+      scripts: {
+        dev: 'vite',
+        build: 'tsc && vite build',
+        preview: 'vite preview',
+      },
+      dependencies: {
+        react: '^18.3.1',
+        'react-dom': '^18.3.1',
+      },
+      devDependencies: {
+        '@types/react': '^18.3.5',
+        '@types/react-dom': '^18.3.0',
+        '@vitejs/plugin-react': '^4.3.1',
+        typescript: '^5.5.3',
+        vite: '^5.4.2',
+      },
     },
-    dependencies: {
-      react: "^18.3.1",
-      "react-dom": "^18.3.1"
-    },
-    devDependencies: {
-      "@types/react": "^18.3.5",
-      "@types/react-dom": "^18.3.0",
-      "@vitejs/plugin-react": "^4.3.1",
-      typescript: "^5.5.3",
-      vite: "^5.4.2"
-    }
-  }, null, 2);
+    null,
+    2,
+  );
 }
 
 export function generateMainTsx(): string {

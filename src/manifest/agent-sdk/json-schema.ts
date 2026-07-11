@@ -87,7 +87,10 @@ export function irTypeToJsonSchema(type: IRType): JsonSchema {
   // Base schema before nullability wrapping
   const baseSchema: JsonSchema = {
     type: base,
-    'x-manifest-type': type.name !== 'String' && type.name !== 'Number' && type.name !== 'Boolean' ? type.name : undefined,
+    'x-manifest-type':
+      type.name !== 'String' && type.name !== 'Number' && type.name !== 'Boolean'
+        ? type.name
+        : undefined,
   };
 
   // Null away the `x-manifest-type` key if not set (cleaner objects)
@@ -146,7 +149,7 @@ export function irValueToJson(v: IRValue): unknown {
       return v.elements.map(irValueToJson);
     case 'object':
       return Object.fromEntries(
-        Object.entries(v.properties).map(([k, val]) => [k, irValueToJson(val)])
+        Object.entries(v.properties).map(([k, val]) => [k, irValueToJson(val)]),
       );
   }
 }

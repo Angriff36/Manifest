@@ -26,6 +26,7 @@ This document defines automated guardrails and development protocols that protec
 **Invariant**: The command execution order is semantically fixed and must not be reordered.
 
 **Required Order** (from `docs/spec/semantics.md`):
+
 1. Build evaluation context (`self/this`, params, runtime context)
 2. Evaluate applicable **policies** (action: `execute` or `all`)
 3. Evaluate command-level **constraints** (vNext)
@@ -35,6 +36,7 @@ This document defines automated guardrails and development protocols that protec
 7. Return CommandResult
 
 **Protection Mechanisms**:
+
 - Runtime implementation at `src/manifest/runtime-engine.ts:806-924` follows this order strictly
 - Tests verify that policy denial prevents guard evaluation
 - Tests verify that guard failure prevents action execution
@@ -42,6 +44,7 @@ This document defines automated guardrails and development protocols that protec
 - Generated code in templates must preserve this order
 
 **Violation Examples** (PROHIBITED):
+
 - Adding "fallback" behavior when guards fail
 - Skipping policy checks for "convenience"
 - Executing actions before all guards pass
@@ -53,6 +56,7 @@ This document defines automated guardrails and development protocols that protec
 **Invariant**: The IR schema (`docs/spec/ir/ir-v1.schema.json`) is the single source of truth for valid IR structure.
 
 **Protection Mechanisms**:
+
 - CI validates all conformance IR files against schema (`.github/workflows/ci.yml:35-57`)
 - Schema validator tool at `tools/manifest-ir-schema-validator/`
 - Breaking schema changes require:
@@ -62,6 +66,7 @@ This document defines automated guardrails and development protocols that protec
   4. Template updates
 
 **Violation Examples** (PROHIBITED):
+
 - Hand-editing IR output in tests
 - Adding ad-hoc IR properties not in schema
 - Using `additionalProperties: false` violations to "make things work"
@@ -73,6 +78,7 @@ This document defines automated guardrails and development protocols that protec
 **Invariant**: Expression evaluation must provide spec-guaranteed bindings.
 
 **Required Bindings** (from `docs/spec/builtins.md`):
+
 - `self`: Current entity instance or `null`
 - `this`: Alias of `self`
 - `user`: Current user object or `null`
@@ -81,11 +87,13 @@ This document defines automated guardrails and development protocols that protec
 - `uuid()`: Globally unique identifier
 
 **Protection Mechanisms**:
+
 - Runtime builds context in `buildEvalContext()` at runtime-engine.ts:926-946
 - Tests verify missing bindings cause correct failures (not silent defaults)
 - No implicit fallbacks for missing user/context
 
 **Violation Examples** (PROHIBITED):
+
 - Auto-injecting default `user` object to "make demos work"
 - Providing fallback `context` when none was passed
 - Making `user` optional when guard requires it
@@ -95,6 +103,7 @@ This document defines automated guardrails and development protocols that protec
 **Invariant**: Expressions evaluate according to operator semantics in `docs/spec/semantics.md`.
 
 **Protected Operator Semantics**:
+
 - `==` and `is`: Loose equality (`undefined == null` is `true`)
 - `!=`: Loose inequality
 - `and`/`or`: Boolean truthiness evaluation
@@ -102,11 +111,13 @@ This document defines automated guardrails and development protocols that protec
 - `contains`: Array or string contains (reversed operands)
 
 **Protection Mechanisms**:
+
 - Binary operator implementation at runtime-engine.ts:1355-1388
 - Conformance tests for each operator
 - No operator overloading or implicit coercion beyond spec
 
 **Violation Examples** (PROHIBITED):
+
 - Changing `==` to strict equality for "safety"
 - Making `in` work on objects (not in spec)
 - Adding short-circuit evaluation beyond `and`/`or`
@@ -116,18 +127,21 @@ This document defines automated guardrails and development protocols that protec
 **Invariant**: Relationship traversal follows the semantic contract defined in `docs/spec/semantics.md:38-60`.
 
 **Required Behavior**:
+
 - `hasMany`: Returns array (may be empty)
 - `hasOne`/`belongsTo`/`ref`: Returns instance or `null`
 - Resolution synchronous within store context
 - Uses foreign keys or inverse relationships
 
 **Protection Mechanisms**:
+
 - Relationship index at runtime-engine.ts:283-384
 - Resolution logic at runtime-engine.ts:402-510
 - Memoization cache (cleared per command)
 - Tests for circular reference handling
 
 **Violation Examples** (PROHIBITED):
+
 - Making relationships async/awaitable
 - Returning `undefined` instead of `null` for empty relationships
 - Auto-creating related instances on access
@@ -137,16 +151,19 @@ This document defines automated guardrails and development protocols that protec
 **Invariant**: Determinism is required for conformance testing and reproducibility.
 
 **Configurable Non-Determinism** (via `RuntimeOptions`):
+
 - `generateId`: ID generation function
 - `now`: Time source function
 
 **Protection Mechanisms**:
+
 - Conformance tests inject deterministic sources (conformance.test.ts:18-24)
 - Tests verify timestamp matching in emitted events
 - No hardcoded `Date.now()` or `crypto.randomUUID()` in runtime
 - Runtime uses `this.options.generateId` and `this.options.now`
 
 **Violation Examples** (PROHIBITED):
+
 - Using `Date.now()` directly in runtime (use `this.getNow()`)
 - Using `crypto.randomUUID()` directly (use `this.options.generateId()`)
 - Hardcoded timestamps in test expectations
@@ -157,32 +174,37 @@ This document defines automated guardrails and development protocols that protec
 **Invariant**: The runtime must not hardcode knowledge of specific store implementations.
 
 **Protection Mechanisms**:
+
 - Store interface at runtime-engine.ts:156-163
 - Store initialization via `storeProvider` option
 - No direct dependency on postgres/supabase packages in browser runtime
 - Server-side stores isolated to `stores.node.ts`
 
 **Violation Examples** (PROHIBITED):
+
 - Importing `pg` or `@supabase/supabase-js` in runtime-engine.ts
 - Hardcoding SQL queries for "optimization"
 - Assuming localStorage is always available
 
 ### 6. Effect Boundary Contracts
 
-**Invariant** *(updated 2026-07-06, Wave-2 Item 3)*: Adapter actions are **fail-closed**, not no-ops.
+**Invariant** _(updated 2026-07-06, Wave-2 Item 3)_: Adapter actions are **fail-closed**, not no-ops.
 
 **Required Behavior** (from `docs/spec/adapters.md` § "Action Adapters"):
+
 - `persist`: flushes the command's working-copy buffer to the store (`flushCommandBuffer`); needs no adapter. Joins the command transaction under a `TransactionProvider`.
 - `publish`: requires `RuntimeOptions.outboxStore` — fails closed `MISSING_OUTBOX_STORE` when absent; durable via the post-success `enqueueOutbox` pass.
 - `effect`: requires `RuntimeOptions.effectHandler` — fails closed `MISSING_EFFECT_HANDLER` when absent.
 - All three throw `ManifestEffectBoundaryError` in deterministic mode. Adapters must be deterministic for conformance tests.
 
 **Protection Mechanisms**:
+
 - Action execution at runtime-engine.ts:1194-1246
 - Default return of `value` for all adapter actions
 - No inline HTTP, database, or file system calls in runtime
 
 **Violation Examples** (PROHIBITED):
+
 - Adding `fetch()` calls inline in `effect` action handler
 - Hardcoding `fs.writeFile()` in `persist` action
 - Emitting to external event buses directly in runtime
@@ -200,12 +222,14 @@ This document defines automated guardrails and development protocols that protec
 **Implementation**: `eslint-rules/no-hardcoded-versions.js`
 
 **Enforcement**: Warns on semver patterns (X.Y.Z) unless:
+
 - File imports from `./version` or `../version`
 - File is in `**/conformance/expected/**`
 - File is in `**/fixtures/**`
 - File is a test file (`**/*.test.ts`)
 
 **Allowed Exception Pattern**:
+
 ```javascript
 '**/conformance/expected/**',  // Generated IR with version
 '**/fixtures/**',             // Test fixtures
@@ -222,6 +246,7 @@ This document defines automated guardrails and development protocols that protec
 **Purpose**: Prevent runtime modification of IR structure.
 
 **Proposed Implementation**:
+
 ```javascript
 // eslint-rules/no-ir-mutation.js
 export default {
@@ -253,6 +278,7 @@ export default {
 **Purpose**: Detect attempts to bypass guard evaluation order.
 
 **Proposed Implementation**:
+
 ```javascript
 // eslint-rules/guard-order.js
 export default {
@@ -281,6 +307,7 @@ export default {
 **Purpose**: Prevent effectful operations in runtime core.
 
 **Proposed Implementation**:
+
 ```javascript
 // eslint-rules/no-inline-effects.js
 const FORBIDDEN_CALLS = [
@@ -314,6 +341,7 @@ export default {
 **Purpose**: Prevent implicit user/context injection.
 
 **Proposed Implementation**:
+
 ```javascript
 // eslint-rules/no-default-context.js
 export default {
@@ -352,6 +380,7 @@ export default {
 **File**: `.github/workflows/ci.yml`
 
 **Current Checks**:
+
 1. TypeScript type check (`npm run typecheck`)
 2. ESLint validation (`npm run lint`)
 3. Full test suite (427+ tests)
@@ -364,6 +393,7 @@ export default {
 **Purpose**: Detect schema changes that break conformance tests.
 
 **Implementation**:
+
 ```yaml
 # .github/workflows/ci.yml
 check-schema-break:
@@ -394,6 +424,7 @@ check-schema-break:
 **Purpose**: Verify runtime preserves command execution phases.
 
 **Implementation**: Add dedicated unit test
+
 ```typescript
 // src/manifest/runtime-engine/execution-order.test.ts
 describe('Command Execution Order', () => {
@@ -420,6 +451,7 @@ describe('Command Execution Order', () => {
 **Purpose**: Ensure spec and implementation are synchronized.
 
 **Implementation**:
+
 ```yaml
 # .github/workflows/spec-sync.yml
 spec-sync-check:
@@ -443,6 +475,7 @@ spec-sync-check:
 ### Husky Setup
 
 **Installation**:
+
 ```bash
 npm install -D husky
 npx husky init
@@ -541,12 +574,14 @@ When modifying `docs/spec/` files, the following tests are REQUIRED:
    - `.results.json` for runtime behavior
 
 **Determinism Requirements**:
+
 - Use deterministic time source in tests
 - Use deterministic ID generation
 - No random values in expected outputs
 - Timestamps must match injected time source
 
 **File Integrity**:
+
 - UTF-8 without BOM for all JSON
 - Stable JSON (no reordering for comparison)
 - `// @ts-check` for type safety
@@ -556,6 +591,7 @@ When modifying `docs/spec/` files, the following tests are REQUIRED:
 **Current Baseline**: 448 tests (as of version 0.3.8)
 
 **Test Count Must Never Decrease**:
+
 - Removing tests requires explicit justification
 - Test count decrease in PR is an automatic fail
 - Exceptions: Duplicate test removal, test consolidation
@@ -589,14 +625,17 @@ Any change to implementation requires:
 **Requirement**: All nonconformance must be documented in `docs/spec/semantics.md` under "Nonconformance" section.
 
 **Format**:
+
 ```markdown
 ### Nonconformance
+
 - ~~Description of issue~~
 - **RESOLVED (YYYY-MM-DD)**: How it was fixed
 - **OPEN**: Issue tracking, workaround
 ```
 
 **No Undocumented Nonconformance**:
+
 - Every behavioral deviation from spec must be documented
 - "Temporary" workarounds must have tracking issue
 - Resolved nonconformance must have resolution date
@@ -616,6 +655,7 @@ These areas require extra scrutiny and verification:
 **Risk Level**: CRITICAL
 
 **Protocol**:
+
 1. Create feature branch from main
 2. Draft spec change first
 3. Discuss with team if possible
@@ -626,6 +666,7 @@ These areas require extra scrutiny and verification:
 8. Create PR with test results
 
 **Verification**:
+
 - `npm test` passes (448/448)
 - `npm run conformance:regen` produces valid output
 - CI workflow validates schema
@@ -638,12 +679,14 @@ These areas require extra scrutiny and verification:
 **Risk Level**: CRITICAL
 
 **Protocol**:
+
 1. Fixtures describe required behavior, not observed behavior
 2. Never edit `.ir.json` files by hand
 3. Use `npm run conformance:regen` after source changes
 4. Verify test actually tests the intended behavior
 
 **Verification**:
+
 - Fixture compiles without errors
 - Expected output matches spec semantics
 - Test fails when implementation is wrong
@@ -655,12 +698,14 @@ These areas require extra scrutiny and verification:
 **Risk Level**: HIGH
 
 **Protocol**:
+
 1. Changes to execution order require spec update first
 2. New builtin functions require spec update
 3. Adapter hooks must remain no-ops by default
 4. Maintain determinism boundaries
 
 **Verification**:
+
 - All existing tests still pass
 - New tests for changed behavior
 - Manual verification via Runtime UI
@@ -672,12 +717,14 @@ These areas require extra scrutiny and verification:
 **Risk Level**: HIGH
 
 **Protocol**:
+
 1. IR shape changes require schema update
 2. Compiler normalization must preserve semantics
 3. No special cases for "convenience"
 4. Generated IR validates against schema
 
 **Verification**:
+
 - Conformance tests pass
 - IR schema validation passes
 - No test-only compiler paths
@@ -689,26 +736,28 @@ These areas require extra scrutiny and verification:
 **Risk Level**: MEDIUM
 
 **Protocol**:
+
 1. Templates must track real implementation
 2. No "optimizations" that change semantics
 3. Guard/order preservation in generated code
 4. Update templates when implementation changes
 
 **Verification**:
+
 - Generated code has same execution order
 - Smoke tests pass
 - No template drift warnings
 
 ### Change Classification Matrix
 
-| Change Type | Risk Level | Required Actions |
-|-------------|-------------|-------------------|
-| Spec clarification (no behavior change) | LOW | Docs update only |
-| Bug fix (implementation matches spec) | MEDIUM | Add test, fix code |
-| Spec addition (new feature) | HIGH | Spec first, then tests, then implementation |
-| Spec change (breaking) | CRITICAL | Major version bump, full conformance regen, migration guide |
-| Template update only | LOW-MEDIUM | Verify alignment with implementation |
-| Test addition (no spec change) | LOW | Add test, verify it fails on broken impl |
+| Change Type                             | Risk Level | Required Actions                                            |
+| --------------------------------------- | ---------- | ----------------------------------------------------------- |
+| Spec clarification (no behavior change) | LOW        | Docs update only                                            |
+| Bug fix (implementation matches spec)   | MEDIUM     | Add test, fix code                                          |
+| Spec addition (new feature)             | HIGH       | Spec first, then tests, then implementation                 |
+| Spec change (breaking)                  | CRITICAL   | Major version bump, full conformance regen, migration guide |
+| Template update only                    | LOW-MEDIUM | Verify alignment with implementation                        |
+| Test addition (no spec change)          | LOW        | Add test, verify it fails on broken impl                    |
 
 ### Pre-Change Checklist
 
@@ -847,6 +896,7 @@ These guardrails protect the following core principles:
 **Any violation of these guardrails is a regression, not a UX improvement.**
 
 For questions or clarifications, refer to:
+
 - `CLAUDE.md` - Project overview and development workflow
 - `AGENTS.md` - Agent protocols and non-negotiables
 - `docs/spec/` - Language specification documents

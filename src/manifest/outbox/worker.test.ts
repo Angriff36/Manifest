@@ -34,7 +34,7 @@ describe('drainOutboxOnce', () => {
 
     expect(result).toEqual({ claimed: 3, delivered: 3, failed: 0 });
     expect(deliver).toHaveBeenCalledTimes(3);
-    expect(store.list().map(e => e.status)).toEqual(['delivered', 'delivered', 'delivered']);
+    expect(store.list().map((e) => e.status)).toEqual(['delivered', 'delivered', 'delivered']);
   });
 
   it('returns zeros and does not call deliver when nothing is pending', async () => {
@@ -57,7 +57,7 @@ describe('drainOutboxOnce', () => {
     const result = await drainOutboxOnce(store, deliver);
 
     expect(result).toEqual({ claimed: 3, delivered: 2, failed: 1 });
-    const byId = Object.fromEntries(store.list().map(e => [e.entryId, e]));
+    const byId = Object.fromEntries(store.list().map((e) => [e.entryId, e]));
     expect(byId.ok1.status).toBe('delivered');
     expect(byId.ok2.status).toBe('delivered');
     expect(byId.bad.status).toBe('failed');
@@ -66,7 +66,13 @@ describe('drainOutboxOnce', () => {
 
   it('honors batchSize — claims at most batchSize entries per pass', async () => {
     const store = new MemoryOutboxStore();
-    await store.enqueue([entry('a', 1), entry('b', 2), entry('c', 3), entry('d', 4), entry('e', 5)]);
+    await store.enqueue([
+      entry('a', 1),
+      entry('b', 2),
+      entry('c', 3),
+      entry('d', 4),
+      entry('e', 5),
+    ]);
 
     const deliver = vi.fn(async () => {});
     const first = await drainOutboxOnce(store, deliver, { batchSize: 2 });
@@ -79,7 +85,7 @@ describe('drainOutboxOnce', () => {
     expect(third.claimed).toBe(1);
 
     expect(deliver).toHaveBeenCalledTimes(5);
-    expect(store.list().every(e => e.status === 'delivered')).toBe(true);
+    expect(store.list().every((e) => e.status === 'delivered')).toBe(true);
   });
 });
 
@@ -90,14 +96,14 @@ describe('runOutboxWorker', () => {
 
     const delivered: string[] = [];
     let handle: OutboxWorkerHandle;
-    const allDelivered = new Promise<void>(resolve => {
+    const allDelivered = new Promise<void>((resolve) => {
       handle = runOutboxWorker(
         store,
-        async e => {
+        async (e) => {
           delivered.push(e.entryId);
           if (delivered.length === 3) resolve();
         },
-        { batchSize: 10, setTimeoutFn: neverFire }
+        { batchSize: 10, setTimeoutFn: neverFire },
       );
     });
 
@@ -105,7 +111,7 @@ describe('runOutboxWorker', () => {
     await handle!.stop();
 
     expect([...delivered].sort()).toEqual(['a', 'b', 'c']);
-    expect(store.list().every(e => e.status === 'delivered')).toBe(true);
+    expect(store.list().every((e) => e.status === 'delivered')).toBe(true);
   });
 
   it('stops promptly when the provided AbortSignal fires', async () => {
@@ -144,14 +150,14 @@ describe('runOutboxWorker', () => {
     const errors: unknown[] = [];
     const delivered: string[] = [];
     let handle: OutboxWorkerHandle;
-    const done = new Promise<void>(resolve => {
+    const done = new Promise<void>((resolve) => {
       handle = runOutboxWorker(
         store,
-        async e => {
+        async (e) => {
           delivered.push(e.entryId);
           resolve();
         },
-        { setTimeoutFn, onError: err => errors.push(err) }
+        { setTimeoutFn, onError: (err) => errors.push(err) },
       );
     });
 

@@ -8,11 +8,7 @@
  * correctly consumes declared capabilities.
  */
 
-import type {
-  WiringConsumersRegistry,
-  WiringContract,
-  WiringConsumerEntry,
-} from '../types.js';
+import type { WiringConsumersRegistry, WiringContract, WiringConsumerEntry } from '../types.js';
 import { parseConsumersRegistry } from '../coverage.js';
 import { ConsumerTracer } from './consumer-tracer.js';
 import { analyzeContractMismatches } from './mismatch-analyzer.js';
@@ -45,17 +41,15 @@ export async function inspectWiringConsumers(
 
   // Apply include filters early so large monorepos stay tractable.
   if (options.include && options.include.length > 0) {
-    const includes = options.include.map(p => p.toLowerCase());
+    const includes = options.include.map((p) => p.toLowerCase());
     fileContents = new Map(
       [...fileContents.entries()].filter(([file]) =>
-        includes.some(p => file.toLowerCase().includes(p)),
+        includes.some((p) => file.toLowerCase().includes(p)),
       ),
     );
   }
 
-  const overrides = options.overrides
-    ? normalizeOverrides(options.overrides)
-    : undefined;
+  const overrides = options.overrides ? normalizeOverrides(options.overrides) : undefined;
 
   return inspectWiringConsumersSync({
     contract: options.contract,
@@ -73,7 +67,7 @@ export function inspectWiringConsumersSync(args: {
 }): WiringInspectReport {
   const { contract, fileContents, config } = args;
   const overrides = args.overrides ?? config.overrides;
-  const capabilityIds = new Set(contract.capabilities.map(c => c.capabilityId));
+  const capabilityIds = new Set(contract.capabilities.map((c) => c.capabilityId));
   const overrideById = new Map<string, WiringConsumerEntry>();
   if (overrides) {
     for (const c of overrides.consumers) overrideById.set(c.capabilityId, c);
@@ -85,7 +79,7 @@ export function inspectWiringConsumersSync(args: {
 
   const mismatches = analyzeContractMismatches(contract, [
     ...trace.invocations,
-    ...trace.staleReferences.map(s => ({
+    ...trace.staleReferences.map((s) => ({
       entity: s.entity,
       command: s.command,
       intent: s.capabilityId,
@@ -105,9 +99,7 @@ export function inspectWiringConsumersSync(args: {
   for (const cap of contract.capabilities) {
     const evidence = trace.proven.get(cap.capabilityId) ?? [];
     const override = overrideById.get(cap.capabilityId);
-    const capMismatches = mismatches.filter(
-      m => m.capabilityId === cap.capabilityId && m.defect,
-    );
+    const capMismatches = mismatches.filter((m) => m.capabilityId === cap.capabilityId && m.defect);
 
     if (override) {
       overridesApplied.push({
@@ -196,31 +188,27 @@ export function inspectWiringConsumersSync(args: {
   }
 
   findings.sort(
-    (a, b) =>
-      a.capabilityId.localeCompare(b.capabilityId) ||
-      a.status.localeCompare(b.status),
+    (a, b) => a.capabilityId.localeCompare(b.capabilityId) || a.status.localeCompare(b.status),
   );
 
-  const unresolved = trace.ambiguous.map(a => ({
+  const unresolved = trace.ambiguous.map((a) => ({
     message: `Ambiguous/unresolved reference '${a.consumerSymbol ?? a.capabilityId}'`,
     source: a.source,
   }));
 
   const summary = {
     totalCapabilities: contract.capabilities.length,
-    consumed: findings.filter(f => f.status === 'consumed').length,
-    unwired: findings.filter(f => f.status === 'unwired').length,
-    backendOnly: findings.filter(f => f.status === 'backend-only').length,
-    deferred: findings.filter(f => f.status === 'deferred').length,
-    staleConsumers: findings.filter(f => f.status === 'stale-consumer').length,
-    ambiguous: findings.filter(f => f.status === 'ambiguous').length + unresolved.length,
+    consumed: findings.filter((f) => f.status === 'consumed').length,
+    unwired: findings.filter((f) => f.status === 'unwired').length,
+    backendOnly: findings.filter((f) => f.status === 'backend-only').length,
+    deferred: findings.filter((f) => f.status === 'deferred').length,
+    staleConsumers: findings.filter((f) => f.status === 'stale-consumer').length,
+    ambiguous: findings.filter((f) => f.status === 'ambiguous').length + unresolved.length,
     mismatches: mismatches.length,
-    mismatchDefects: mismatches.filter(m => m.defect).length,
+    mismatchDefects: mismatches.filter((m) => m.defect).length,
   };
 
-  const failOn = new Set(
-    config.failOn ?? ['stale-consumer', 'contract-mismatch'],
-  );
+  const failOn = new Set(config.failOn ?? ['stale-consumer', 'contract-mismatch']);
   if (config.strictCoverage) failOn.add('unwired');
 
   let ok = true;
@@ -240,9 +228,7 @@ export function inspectWiringConsumersSync(args: {
   };
 }
 
-function normalizeOverrides(
-  raw: WiringConsumersRegistry | unknown,
-): WiringConsumersRegistry {
+function normalizeOverrides(raw: WiringConsumersRegistry | unknown): WiringConsumersRegistry {
   if (
     raw &&
     typeof raw === 'object' &&
@@ -270,14 +256,14 @@ export function formatInspectReportText(report: WiringInspectReport): string {
     'DUPLICATE_PARALLEL_MODEL',
   ];
   for (const bucket of buckets) {
-    const items = report.findings.filter(f => f.productReality === bucket);
+    const items = report.findings.filter((f) => f.productReality === bucket);
     if (items.length === 0) continue;
     lines.push(`${bucket} (${items.length})`);
     for (const f of items.slice(0, 40)) {
       const mark = f.defect ? '✗' : '·';
       lines.push(`  ${mark} [${f.status}] ${f.capabilityId}`);
       if (f.evidence[0]) {
-        const t = f.evidence[0].trace.map(h => h.label).join(' → ');
+        const t = f.evidence[0].trace.map((h) => h.label).join(' → ');
         lines.push(`      ${t}`);
       }
     }
@@ -285,9 +271,9 @@ export function formatInspectReportText(report: WiringInspectReport): string {
     lines.push('');
   }
 
-  if (report.mismatches.filter(m => m.defect).length > 0) {
+  if (report.mismatches.filter((m) => m.defect).length > 0) {
     lines.push('CONTRACT MISMATCHES');
-    for (const m of report.mismatches.filter(x => x.defect)) {
+    for (const m of report.mismatches.filter((x) => x.defect)) {
       lines.push(`  ✗ [${m.kind}] ${m.message}`);
       lines.push(`      ${m.source.file}${m.source.line ? `:${m.source.line}` : ''}`);
     }

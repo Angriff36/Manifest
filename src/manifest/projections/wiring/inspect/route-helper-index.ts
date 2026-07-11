@@ -58,7 +58,7 @@ export class RouteHelperIndex {
 
 export function templatePathToRegex(path: string): RegExp {
   const normalized = path.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/$/, '');
-  const parts = normalized.split(':param').map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const parts = normalized.split(':param').map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   return new RegExp(`^${parts.join('[^/]+')}$`);
 }
 

@@ -8,7 +8,7 @@ describe('completion', () => {
     const { tokens, program, ir } = await compileDocument(source);
     const items = getCompletions(tokens, program, ir, { line: 0, character: 0 });
 
-    const labels = items.map(i => i.label);
+    const labels = items.map((i) => i.label);
     expect(labels).toContain('entity');
     expect(labels).toContain('enum');
     expect(labels).toContain('command');
@@ -24,7 +24,7 @@ describe('completion', () => {
     // Position inside entity body (line 1 0-based, col 2)
     const items = getCompletions(tokens, program, ir, { line: 1, character: 2 });
 
-    const labels = items.map(i => i.label);
+    const labels = items.map((i) => i.label);
     expect(labels).toContain('property');
     expect(labels).toContain('command');
     expect(labels).toContain('constraint');

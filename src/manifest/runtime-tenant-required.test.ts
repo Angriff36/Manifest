@@ -19,9 +19,9 @@ function buildIR(): IR {
       schemaVersion: '1.0',
       compiledAt: new Date().toISOString(),
     },
-  modules: [],
-  values: [],
-  entities: [
+    modules: [],
+    values: [],
+    entities: [
       {
         name: 'Foo',
         properties: [],
@@ -62,11 +62,7 @@ describe('requireTenantContext fail-closed', () => {
 
   it('allows execution when tenantId present and option set', async () => {
     const ir = buildIR();
-    const rt = new RuntimeEngine(
-      ir,
-      { tenantId: 't_1' },
-      { requireTenantContext: true }
-    );
+    const rt = new RuntimeEngine(ir, { tenantId: 't_1' }, { requireTenantContext: true });
     const result = await rt.runCommand('bar', {}, { entityName: 'Foo' });
     expect(result.success).toBe(true);
   });

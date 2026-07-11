@@ -26,7 +26,9 @@ function cronSchedules(ir: IR): IRSchedule[] {
 
 /** True when any entity declares an approval with a timeout (⇒ approvals can expire). */
 function hasExpiringApprovals(ir: IR): boolean {
-  return (ir.entities ?? []).some((e) => (e.approvals ?? []).some((a) => typeof a.timeout === 'number'));
+  return (ir.entities ?? []).some((e) =>
+    (e.approvals ?? []).some((a) => typeof a.timeout === 'number'),
+  );
 }
 
 /** True when any command is declared `async` (⇒ its jobs need draining). */
@@ -190,7 +192,8 @@ export function generateScheduleCronRoutes(
     diagnostics.push({
       severity: 'info',
       code: 'NEXTJS_NO_SCHEDULE_ARTIFACTS',
-      message: 'No cron schedules, expiring approvals, or async commands in IR; skipping nextjs.schedule surface.',
+      message:
+        'No cron schedules, expiring approvals, or async commands in IR; skipping nextjs.schedule surface.',
     });
     return { artifacts, diagnostics };
   }

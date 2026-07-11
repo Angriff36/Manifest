@@ -38,7 +38,7 @@ async function getManifestFiles(source: string, options: CompileOptions): Promis
     // Use glob pattern from options or default
     const pattern = options.glob || '**/*.manifest';
     const files = await glob(pattern, { cwd: process.cwd() });
-    return files.map(f => path.resolve(process.cwd(), f));
+    return files.map((f) => path.resolve(process.cwd(), f));
   }
 
   const resolved = path.resolve(process.cwd(), source);
@@ -55,10 +55,15 @@ async function getManifestFiles(source: string, options: CompileOptions): Promis
   // Directory: glob inside the resolved directory (not project cwd)
   const pattern = options.glob || '**/*.manifest';
   const files = await glob(pattern, { cwd: resolved });
-  return files.map(f => path.resolve(resolved, f));
+  return files.map((f) => path.resolve(resolved, f));
 }
 
-interface CompileDiagnostic { severity?: string; message?: string; line?: number; column?: number; }
+interface CompileDiagnostic {
+  severity?: string;
+  message?: string;
+  line?: number;
+  column?: number;
+}
 
 interface CompiledFile {
   filePath: string;
@@ -96,7 +101,7 @@ async function resolveOutputPath(filePath: string, options: CompileOptions): Pro
 async function compileFileToIR(
   filePath: string,
   options: CompileOptions,
-  spinner: Ora
+  spinner: Ora,
 ): Promise<CompiledFile> {
   const { compileToIR } = await loadCompiler();
 
@@ -142,7 +147,11 @@ async function stabilizeProvenance(ir: IR, outputPath: string): Promise<void> {
   }
 }
 
-async function writeCompiledFile(compiled: CompiledFile, options: CompileOptions, spinner: Ora): Promise<void> {
+async function writeCompiledFile(
+  compiled: CompiledFile,
+  options: CompileOptions,
+  spinner: Ora,
+): Promise<void> {
   await fs.mkdir(path.dirname(compiled.outputPath), { recursive: true });
 
   await stabilizeProvenance(compiled.ir as IR, compiled.outputPath);
@@ -153,7 +162,9 @@ async function writeCompiledFile(compiled: CompiledFile, options: CompileOptions
 
   await fs.writeFile(compiled.outputPath, jsonContent, 'utf-8');
 
-  spinner.succeed(`Compiled ${path.relative(process.cwd(), compiled.filePath)} → ${path.relative(process.cwd(), compiled.outputPath)}`);
+  spinner.succeed(
+    `Compiled ${path.relative(process.cwd(), compiled.filePath)} → ${path.relative(process.cwd(), compiled.outputPath)}`,
+  );
 }
 
 function printDiagnostics(diagnostics: CompileDiagnostic[]): void {
@@ -162,7 +173,8 @@ function printDiagnostics(diagnostics: CompileDiagnostic[]): void {
   console.log('');
   console.log(chalk.bold('Diagnostics:'));
   diagnostics.forEach((d: CompileDiagnostic) => {
-    const location = d.line !== undefined ? ` [${d.line}${d.column !== undefined ? `:${d.column}` : ''}]` : '';
+    const location =
+      d.line !== undefined ? ` [${d.line}${d.column !== undefined ? `:${d.column}` : ''}]` : '';
     if (d.severity === 'error') {
       console.error(chalk.red(`  ✖${location} ${d.message}`));
     } else if (d.severity === 'warning') {
@@ -223,7 +235,7 @@ async function findRootFiles(allFiles: string[]): Promise<string[]> {
     useRegex.lastIndex = 0; // reset for next file
   }
 
-  const roots = allFiles.filter(f => !usedPaths.has(f));
+  const roots = allFiles.filter((f) => !usedPaths.has(f));
   return roots.length > 0 ? roots : allFiles;
 }
 
@@ -247,7 +259,7 @@ async function compileMerged(source: string | undefined, options: CompileOptions
     let entries: string[];
     if (options.entry) {
       const entryList = Array.isArray(options.entry) ? options.entry : [options.entry];
-      entries = entryList.map(e => path.resolve(process.cwd(), e));
+      entries = entryList.map((e) => path.resolve(process.cwd(), e));
     } else {
       // Auto-detect: root files are those not referenced by any other file
       spinner.text = 'Detecting entry files...';
@@ -284,7 +296,12 @@ async function compileMerged(source: string | undefined, options: CompileOptions
 
     // Write merged output
     const outputPath = options.output
-      ? path.resolve(process.cwd(), options.output.endsWith('.json') ? options.output : path.join(options.output, 'merged.ir.json'))
+      ? path.resolve(
+          process.cwd(),
+          options.output.endsWith('.json')
+            ? options.output
+            : path.join(options.output, 'merged.ir.json'),
+        )
       : path.resolve(process.cwd(), 'merged.ir.json');
 
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
@@ -294,13 +311,17 @@ async function compileMerged(source: string | undefined, options: CompileOptions
       : JSON.stringify(result.ir);
     await fs.writeFile(outputPath, jsonContent, 'utf-8');
 
-    mergeSpinner.succeed(`Merged ${result.sources.length} file(s) → ${path.relative(process.cwd(), outputPath)}`);
+    mergeSpinner.succeed(
+      `Merged ${result.sources.length} file(s) → ${path.relative(process.cwd(), outputPath)}`,
+    );
 
     if (warnings.length > 0) {
       console.log(chalk.yellow(`  ${warnings.length} warning(s)`));
     }
   } catch (error: unknown) {
-    spinner.fail(`Merge compilation failed: ${error instanceof Error ? error.message : String(error)}`);
+    spinner.fail(
+      `Merge compilation failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exit(1);
   }
 }
@@ -332,7 +353,10 @@ export async function compileAllFromConfig(
 /**
  * Compile command handler
  */
-export async function compileCommand(source: string | undefined, options: CompileOptions = {}): Promise<void> {
+export async function compileCommand(
+  source: string | undefined,
+  options: CompileOptions = {},
+): Promise<void> {
   // Dispatch to merge mode if --merge flag is set
   if (options.merge) {
     return compileMerged(source, options);
@@ -379,20 +403,25 @@ export async function compileCommand(source: string | undefined, options: Compil
       }
     }
 
-    const allDiagnostics: CompileDiagnostic[] = compiledFiles.flatMap(file => file.diagnostics);
-    const compileErrors = allDiagnostics.filter(d => d.severity === 'error');
+    const allDiagnostics: CompileDiagnostic[] = compiledFiles.flatMap((file) => file.diagnostics);
+    const compileErrors = allDiagnostics.filter((d) => d.severity === 'error');
 
     const { validateCommandIntentRegistry } = await loadCompiler();
-    const registryDiagnostics = validateCommandIntentRegistry(compiledFiles.flatMap(file => {
-      const ir = file.ir as { commands?: Array<{ entity?: string; name: string }> } | null;
-      return (ir?.commands || []).map(command => ({
-        entity: command.entity,
-        command: command.name,
-        sourcePath: file.filePath,
-      }));
-    })) as CompileDiagnostic[];
+    const registryDiagnostics = validateCommandIntentRegistry(
+      compiledFiles.flatMap((file) => {
+        const ir = file.ir as { commands?: Array<{ entity?: string; name: string }> } | null;
+        return (ir?.commands || []).map((command) => ({
+          entity: command.entity,
+          command: command.name,
+          sourcePath: file.filePath,
+        }));
+      }),
+    ) as CompileDiagnostic[];
 
-    const allErrors = [...compileErrors, ...registryDiagnostics.filter(d => d.severity === 'error')];
+    const allErrors = [
+      ...compileErrors,
+      ...registryDiagnostics.filter((d) => d.severity === 'error'),
+    ];
     if (options.diagnostics || allErrors.length > 0) {
       printDiagnostics([...allDiagnostics, ...registryDiagnostics]);
     }

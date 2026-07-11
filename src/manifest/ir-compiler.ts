@@ -88,7 +88,7 @@ async function computeContentHash(source: string): Promise<string> {
   const data = encoder.encode(source);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**
@@ -138,7 +138,7 @@ export async function computeIRHash(ir: IR): Promise<string> {
   const data = encoder.encode(json);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 export interface CommandIntentRegistryEntry {
@@ -205,9 +205,10 @@ function commandDisplay(entry: CommandIntentRegistryEntry): string {
 
 function sourceDisplay(entry: CommandIntentRegistryEntry): string | undefined {
   if (!entry.sourcePath) return undefined;
-  const position = entry.line !== undefined
-    ? `:${entry.line}${entry.column !== undefined ? `:${entry.column}` : ''}`
-    : '';
+  const position =
+    entry.line !== undefined
+      ? `:${entry.line}${entry.column !== undefined ? `:${entry.column}` : ''}`
+      : '';
   return `${entry.sourcePath}${position}`;
 }
 
@@ -220,7 +221,9 @@ function duplicateCommandIntentDiagnostic(
   const locations = [
     duplicateSource ? `duplicate source: ${duplicateSource}` : undefined,
     existingSource ? `existing source: ${existingSource}` : undefined,
-  ].filter(Boolean).join('; ');
+  ]
+    .filter(Boolean)
+    .join('; ');
 
   return {
     severity: 'error',
@@ -230,7 +233,9 @@ function duplicateCommandIntentDiagnostic(
   };
 }
 
-export function validateCommandIntentRegistry(entries: CommandIntentRegistryEntry[]): IRDiagnostic[] {
+export function validateCommandIntentRegistry(
+  entries: CommandIntentRegistryEntry[],
+): IRDiagnostic[] {
   const diagnostics: IRDiagnostic[] = [];
   const exact = new Map<string, CommandIntentRegistryEntry>();
   const canonical = new Map<string, CommandIntentRegistryEntry>();
@@ -257,34 +262,45 @@ export function validateCommandIntentRegistry(entries: CommandIntentRegistryEntr
   return diagnostics;
 }
 
-function collectCommandIntentEntries(program: ManifestProgram, sourcePath?: string): CommandIntentRegistryEntry[] {
+function collectCommandIntentEntries(
+  program: ManifestProgram,
+  sourcePath?: string,
+): CommandIntentRegistryEntry[] {
   return [
-    ...program.commands.map(command => ({
+    ...program.commands.map((command) => ({
       command: command.name,
       sourcePath,
       line: command.position?.line,
       column: command.position?.column,
     })),
-    ...program.modules.flatMap(module => module.commands.map(command => ({
-      command: command.name,
-      sourcePath,
-      line: command.position?.line,
-      column: command.position?.column,
-    }))),
-    ...program.entities.flatMap(entity => entity.commands.map(command => ({
-      entity: entity.name,
-      command: command.name,
-      sourcePath,
-      line: command.position?.line,
-      column: command.position?.column,
-    }))),
-    ...program.modules.flatMap(module => module.entities.flatMap(entity => entity.commands.map(command => ({
-      entity: entity.name,
-      command: command.name,
-      sourcePath,
-      line: command.position?.line,
-      column: command.position?.column,
-    })))),
+    ...program.modules.flatMap((module) =>
+      module.commands.map((command) => ({
+        command: command.name,
+        sourcePath,
+        line: command.position?.line,
+        column: command.position?.column,
+      })),
+    ),
+    ...program.entities.flatMap((entity) =>
+      entity.commands.map((command) => ({
+        entity: entity.name,
+        command: command.name,
+        sourcePath,
+        line: command.position?.line,
+        column: command.position?.column,
+      })),
+    ),
+    ...program.modules.flatMap((module) =>
+      module.entities.flatMap((entity) =>
+        entity.commands.map((command) => ({
+          entity: entity.name,
+          command: command.name,
+          sourcePath,
+          line: command.position?.line,
+          column: command.position?.column,
+        })),
+      ),
+    ),
   ];
 }
 
@@ -314,7 +330,15 @@ export class IRCompiler {
     this.diagnostics.push({ severity, message, line, column });
   }
 
-  async compileToIR(source: string, options?: { useCache?: boolean; sourcePath?: string; compositionContext?: EntityIndex; skipReactionCompleteness?: boolean }): Promise<CompileToIRResult> {
+  async compileToIR(
+    source: string,
+    options?: {
+      useCache?: boolean;
+      sourcePath?: string;
+      compositionContext?: EntityIndex;
+      skipReactionCompleteness?: boolean;
+    },
+  ): Promise<CompileToIRResult> {
     this.diagnostics = [];
 
     // vNext: Check cache before compilation.
@@ -343,14 +367,20 @@ export class IRCompiler {
       });
     }
 
-    if (errors.some(e => e.severity === 'error')) {
+    if (errors.some((e) => e.severity === 'error')) {
       return { ir: null, diagnostics: this.diagnostics };
     }
 
-    const ir = await this.transformProgram(program, source, options?.sourcePath, options?.compositionContext, options?.skipReactionCompleteness);
+    const ir = await this.transformProgram(
+      program,
+      source,
+      options?.sourcePath,
+      options?.compositionContext,
+      options?.skipReactionCompleteness,
+    );
 
     // Check for semantic errors emitted during transformation (e.g., duplicate constraint codes)
-    if (this.diagnostics.some(d => d.severity === 'error')) {
+    if (this.diagnostics.some((d) => d.severity === 'error')) {
       return { ir: null, diagnostics: this.diagnostics };
     }
 
@@ -363,13 +393,23 @@ export class IRCompiler {
     return { ir, diagnostics: this.diagnostics };
   }
 
-  private async transformProgram(program: ManifestProgram, source: string, sourcePath?: string, compositionContext?: EntityIndex, skipReactionCompleteness?: boolean): Promise<IR> {
+  private async transformProgram(
+    program: ManifestProgram,
+    source: string,
+    sourcePath?: string,
+    compositionContext?: EntityIndex,
+    skipReactionCompleteness?: boolean,
+  ): Promise<IR> {
     // Expand entity composition (extends, mixin, policies). The optional
     // compositionContext lets cross-file `extends`/`mixin` bases resolve in
     // multi-file builds.
-    expandEntityComposition(program, (severity, message) => {
-      this.emitDiagnostic(severity, message);
-    }, compositionContext);
+    expandEntityComposition(
+      program,
+      (severity, message) => {
+        this.emitDiagnostic(severity, message);
+      },
+      compositionContext,
+    );
 
     // House style: syntax that parses must either lower into IR or be diagnosed,
     // never silently dropped. The following top-level constructs have full parser
@@ -381,16 +421,28 @@ export class IRCompiler {
     // diagnostics. `use` is intentionally excluded — it has partial (path)
     // handling and belongs to multi-file resolution.
     for (const flow of program.flows) {
-      this.emitDiagnostic('warning', `Flow '${flow.name}' is parsed but not yet lowered to IR; it has no effect at runtime.`);
+      this.emitDiagnostic(
+        'warning',
+        `Flow '${flow.name}' is parsed but not yet lowered to IR; it has no effect at runtime.`,
+      );
     }
     for (const effect of program.effects) {
-      this.emitDiagnostic('warning', `Effect '${effect.name}' is parsed but not yet lowered to IR; it has no effect at runtime.`);
+      this.emitDiagnostic(
+        'warning',
+        `Effect '${effect.name}' is parsed but not yet lowered to IR; it has no effect at runtime.`,
+      );
     }
     for (const exposure of program.exposures) {
-      this.emitDiagnostic('warning', `Expose of entity '${exposure.entity}' is parsed but not yet lowered to IR; it has no effect at runtime.`);
+      this.emitDiagnostic(
+        'warning',
+        `Expose of entity '${exposure.entity}' is parsed but not yet lowered to IR; it has no effect at runtime.`,
+      );
     }
     for (const composition of program.compositions) {
-      this.emitDiagnostic('warning', `Composition '${composition.name}' is parsed but not yet lowered to IR; it has no effect at runtime.`);
+      this.emitDiagnostic(
+        'warning',
+        `Composition '${composition.name}' is parsed but not yet lowered to IR; it has no effect at runtime.`,
+      );
     }
 
     // House style: computed properties are NOT materialized into the guard/
@@ -406,77 +458,80 @@ export class IRCompiler {
       }
     }
 
-    const modules: IRModule[] = program.modules.map(m => this.transformModule(m));
-    const values: IRValueObject[] = program.values.map(v => this.transformValueObject(v));
+    const modules: IRModule[] = program.modules.map((m) => this.transformModule(m));
+    const values: IRValueObject[] = program.values.map((v) => this.transformValueObject(v));
     const entities: IREntity[] = [
-      ...program.entities.map(e => this.transformEntity(e)),
-      ...program.modules.flatMap(m => m.entities.map(e => this.transformEntity(e, m.name))),
+      ...program.entities.map((e) => this.transformEntity(e)),
+      ...program.modules.flatMap((m) => m.entities.map((e) => this.transformEntity(e, m.name))),
     ];
 
     const enums: IREnum[] = [
-      ...program.enums.map(e => this.transformEnum(e)),
-      ...program.modules.flatMap(m => m.enums.map(e => this.transformEnum(e, m.name))),
+      ...program.enums.map((e) => this.transformEnum(e)),
+      ...program.modules.flatMap((m) => m.enums.map((e) => this.transformEnum(e, m.name))),
     ];
 
     // Collect entity-scoped stores (defined as "store in <target>" inside entity)
     // Target can be a built-in name or a custom adapter scheme registered via plugin API.
     const entityScopedStores: IRStore[] = [
-      ...program.entities.filter(e => e.store).map(e => ({
-        entity: e.name,
-        target: e.store === 'filesystem' ? 'localStorage' as const : e.store!,
-        config: {},
-      })),
-      ...program.modules.flatMap(m =>
-        m.entities.filter(e => e.store).map(e => ({
+      ...program.entities
+        .filter((e) => e.store)
+        .map((e) => ({
           entity: e.name,
-          target: e.store === 'filesystem' ? 'localStorage' as const : e.store!,
+          target: e.store === 'filesystem' ? ('localStorage' as const) : e.store!,
           config: {},
-        }))
+        })),
+      ...program.modules.flatMap((m) =>
+        m.entities
+          .filter((e) => e.store)
+          .map((e) => ({
+            entity: e.name,
+            target: e.store === 'filesystem' ? ('localStorage' as const) : e.store!,
+            config: {},
+          })),
       ),
     ];
 
     const stores: IRStore[] = [
-      ...program.stores.map(s => this.transformStore(s)),
-      ...program.modules.flatMap(m => m.stores.map(s => this.transformStore(s))),
+      ...program.stores.map((s) => this.transformStore(s)),
+      ...program.modules.flatMap((m) => m.stores.map((s) => this.transformStore(s))),
       ...entityScopedStores,
     ];
     const events: IREvent[] = [
-      ...program.events.map(e => this.transformEvent(e)),
-      ...program.modules.flatMap(m => m.events.map(e => this.transformEvent(e))),
+      ...program.events.map((e) => this.transformEvent(e)),
+      ...program.modules.flatMap((m) => m.events.map((e) => this.transformEvent(e))),
     ];
 
     // Populate lookup tables consulted by transformCommand's action validation
     // (EMIT_ACTION_UNKNOWN_EVENT, COMPUTE_USED_AS_MUTATE). Built here so they are
     // ready before any command is transformed below.
-    this.declaredEventNames = new Set(events.map(e => e.name));
+    this.declaredEventNames = new Set(events.map((e) => e.name));
     this.entityPropertyNames = new Map();
-    const allEntities = [
-      ...program.entities,
-      ...program.modules.flatMap(m => m.entities),
-    ];
+    const allEntities = [...program.entities, ...program.modules.flatMap((m) => m.entities)];
     for (const e of allEntities) {
-      this.entityPropertyNames.set(e.name, new Set(e.properties.map(p => p.name)));
+      this.entityPropertyNames.set(e.name, new Set(e.properties.map((p) => p.name)));
     }
 
     const commands: IRCommand[] = [
-      ...program.commands.map(c => this.transformCommand(c)),
-      ...program.modules.flatMap(m => m.commands.map(c => this.transformCommand(c, m.name))),
-      ...program.entities.flatMap(e => {
+      ...program.commands.map((c) => this.transformCommand(c)),
+      ...program.modules.flatMap((m) => m.commands.map((c) => this.transformCommand(c, m.name))),
+      ...program.entities.flatMap((e) => {
         // Get default policies from entity for expansion
-        const defaultPolicies = e.policies.filter(p => p.isDefault).map(p => p.name);
-        return e.commands.map(c => this.transformCommand(c, undefined, e.name, defaultPolicies));
+        const defaultPolicies = e.policies.filter((p) => p.isDefault).map((p) => p.name);
+        return e.commands.map((c) => this.transformCommand(c, undefined, e.name, defaultPolicies));
       }),
-      ...program.modules.flatMap(m => m.entities.flatMap(e => {
-        // Get default policies from entity for expansion
-        const defaultPolicies = e.policies.filter(p => p.isDefault).map(p => p.name);
-        return e.commands.map(c => this.transformCommand(c, m.name, e.name, defaultPolicies));
-      })),
+      ...program.modules.flatMap((m) =>
+        m.entities.flatMap((e) => {
+          // Get default policies from entity for expansion
+          const defaultPolicies = e.policies.filter((p) => p.isDefault).map((p) => p.name);
+          return e.commands.map((c) => this.transformCommand(c, m.name, e.name, defaultPolicies));
+        }),
+      ),
     ];
 
     // Synthesize completion/failure events for async commands.
     // Synthesized events are appended after user-declared events, sorted
     // among themselves by name for deterministic output.
-    const userEventNames = new Set(events.map(e => e.name));
+    const userEventNames = new Set(events.map((e) => e.name));
     const synthesizedEvents: IREvent[] = [];
     for (const cmd of commands) {
       if (cmd.async && cmd.completionEvent && cmd.failureEvent) {
@@ -521,45 +576,59 @@ export class IRCompiler {
     synthesizedEvents.sort((a, b) => a.name.localeCompare(b.name));
     events.push(...synthesizedEvents);
 
-    this.diagnostics.push(...validateCommandIntentRegistry(
-      collectCommandIntentEntries(program, sourcePath),
-    ));
+    this.diagnostics.push(
+      ...validateCommandIntentRegistry(collectCommandIntentEntries(program, sourcePath)),
+    );
 
     const policies: IRPolicy[] = [
-      ...program.policies.map(p => this.transformPolicy(p)),
-      ...program.modules.flatMap(m => m.policies.map(p => this.transformPolicy(p, m.name))),
+      ...program.policies.map((p) => this.transformPolicy(p)),
+      ...program.modules.flatMap((m) => m.policies.map((p) => this.transformPolicy(p, m.name))),
       // Extract entity-scoped policies with entity name
-      ...program.entities.flatMap(e => e.policies.map(p => this.transformPolicy(p, undefined, e.name))),
-      ...program.modules.flatMap(m => m.entities.flatMap(e => e.policies.map(p => this.transformPolicy(p, m.name, e.name)))),
+      ...program.entities.flatMap((e) =>
+        e.policies.map((p) => this.transformPolicy(p, undefined, e.name)),
+      ),
+      ...program.modules.flatMap((m) =>
+        m.entities.flatMap((e) => e.policies.map((p) => this.transformPolicy(p, m.name, e.name))),
+      ),
     ];
 
     const reactions: IRReactionRule[] = [
-      ...(program.reactions || []).map(r => this.transformReaction(r)),
-      ...program.modules.flatMap(m => (m.reactions || []).map(r => this.transformReaction(r, m.name))),
-      ...program.entities.flatMap(e => (e.reactions || []).map(r => this.transformReaction(r, undefined, e.name))),
-      ...program.modules.flatMap(m => m.entities.flatMap(e => (e.reactions || []).map(r => this.transformReaction(r, m.name, e.name)))),
+      ...(program.reactions || []).map((r) => this.transformReaction(r)),
+      ...program.modules.flatMap((m) =>
+        (m.reactions || []).map((r) => this.transformReaction(r, m.name)),
+      ),
+      ...program.entities.flatMap((e) =>
+        (e.reactions || []).map((r) => this.transformReaction(r, undefined, e.name)),
+      ),
+      ...program.modules.flatMap((m) =>
+        m.entities.flatMap((e) =>
+          (e.reactions || []).map((r) => this.transformReaction(r, m.name, e.name)),
+        ),
+      ),
     ];
 
     const sagas: IRSaga[] = [
-      ...(program.sagas || []).map(s => this.transformSaga(s)),
-      ...program.modules.flatMap(m => (m.sagas || []).map(s => this.transformSaga(s, m.name))),
+      ...(program.sagas || []).map((s) => this.transformSaga(s)),
+      ...program.modules.flatMap((m) => (m.sagas || []).map((s) => this.transformSaga(s, m.name))),
     ];
 
     // Collect and resolve role hierarchy
     const rawRoles: IRRole[] = [
-      ...program.roles.map(r => this.transformRole(r)),
-      ...program.modules.flatMap(m => m.roles.map(r => this.transformRole(r, m.name))),
+      ...program.roles.map((r) => this.transformRole(r)),
+      ...program.modules.flatMap((m) => m.roles.map((r) => this.transformRole(r, m.name))),
     ];
     const roles = this.resolveRoleGraph(rawRoles);
 
     const webhooks: IRWebhook[] = [
-      ...(program.webhooks || []).map(w => this.transformWebhook(w)),
-      ...program.modules.flatMap(m => (m.webhooks || []).map(w => this.transformWebhook(w, m.name))),
+      ...(program.webhooks || []).map((w) => this.transformWebhook(w)),
+      ...program.modules.flatMap((m) =>
+        (m.webhooks || []).map((w) => this.transformWebhook(w, m.name)),
+      ),
     ];
 
     const schedules: IRSchedule[] = [
-      ...(program.schedules || []).map(s => this.transformSchedule(s)),
-      ...program.modules.flatMap(m => (m.schedules || []).map(s => this.transformSchedule(s))),
+      ...(program.schedules || []).map((s) => this.transformSchedule(s)),
+      ...program.modules.flatMap((m) => (m.schedules || []).map((s) => this.transformSchedule(s))),
     ];
 
     // Create provenance once (single timestamp) then compute hash and stamp irHash.
@@ -579,10 +648,17 @@ export class IRCompiler {
     this.checkEventDeclarations(events);
 
     // Product completeness: unwired FK params, one-sided relationships, orphan entities.
-    checkDomainCompleteness(entities, commands, stores, (severity, message) => {
-      if (severity === 'info') return;
-      this.emitDiagnostic(severity, message);
-    }, reactions, tenant);
+    checkDomainCompleteness(
+      entities,
+      commands,
+      stores,
+      (severity, message) => {
+        if (severity === 'info') return;
+        this.emitDiagnostic(severity, message);
+      },
+      reactions,
+      tenant,
+    );
 
     // Reaction completeness is a WHOLE-PROGRAM check: a reaction may listen for
     // an event emitted by a command in another file (the recommended pattern is
@@ -591,10 +667,16 @@ export class IRCompiler {
     // multi-compiler sets skipReactionCompleteness and re-runs this on the merged
     // IR instead. Single-file compiles (no flag) still run it here.
     if (!skipReactionCompleteness) {
-      checkReactionCompleteness(entities, commands, reactions, (severity, message) => {
-        if (severity === 'info') return;
-        this.emitDiagnostic(severity, message);
-      }, events);
+      checkReactionCompleteness(
+        entities,
+        commands,
+        reactions,
+        (severity, message) => {
+          if (severity === 'info') return;
+          this.emitDiagnostic(severity, message);
+        },
+        events,
+      );
     }
 
     const provenance = await createProvenance(source);
@@ -625,33 +707,50 @@ export class IRCompiler {
     };
   }
 
-  private transformModule(m: { name: string; entities: EntityNode[]; enums: EnumNode[]; commands: CommandNode[]; stores: StoreNode[]; events: OutboxEventNode[]; policies: PolicyNode[]; reactions?: ReactionNode[]; sagas?: SagaNode[]; roles?: RoleNode[]; schedules?: ScheduleNode[]; webhooks?: WebhookNode[] }): IRModule {
+  private transformModule(m: {
+    name: string;
+    entities: EntityNode[];
+    enums: EnumNode[];
+    commands: CommandNode[];
+    stores: StoreNode[];
+    events: OutboxEventNode[];
+    policies: PolicyNode[];
+    reactions?: ReactionNode[];
+    sagas?: SagaNode[];
+    roles?: RoleNode[];
+    schedules?: ScheduleNode[];
+    webhooks?: WebhookNode[];
+  }): IRModule {
     return {
       name: m.name,
-      entities: m.entities.map(e => e.name),
-      enums: m.enums.map(e => e.name),
+      entities: m.entities.map((e) => e.name),
+      enums: m.enums.map((e) => e.name),
       commands: [
-        ...m.commands.map(c => c.name),
-        ...m.entities.flatMap(e => e.commands.map(c => c.name)),
+        ...m.commands.map((c) => c.name),
+        ...m.entities.flatMap((e) => e.commands.map((c) => c.name)),
       ],
-      stores: m.stores.map(s => s.entity),
-      events: m.events.map(e => e.name), // Entity-scoped events emit parser warning
+      stores: m.stores.map((s) => s.entity),
+      events: m.events.map((e) => e.name), // Entity-scoped events emit parser warning
       policies: [
-        ...m.policies.map(p => p.name),
-        ...m.entities.flatMap(e => e.policies.map(p => p.name)),
+        ...m.policies.map((p) => p.name),
+        ...m.entities.flatMap((e) => e.policies.map((p) => p.name)),
       ],
-      ...((m.reactions && m.reactions.length > 0) ? { reactions: m.reactions.map(r => `${r.event}→${r.targetEntity}.${r.targetCommand}`) } : {}),
-      ...((m.sagas && m.sagas.length > 0) ? { sagas: m.sagas.map(s => s.name) } : {}),
-      ...((m.roles && m.roles.length > 0) ? { roles: m.roles.map(r => r.name) } : {}),
-      ...((m.schedules && m.schedules.length > 0) ? { schedules: m.schedules.map(s => s.name) } : {}),
-      ...((m.webhooks && m.webhooks.length > 0) ? { webhooks: m.webhooks.map(w => w.name) } : {}),
+      ...(m.reactions && m.reactions.length > 0
+        ? { reactions: m.reactions.map((r) => `${r.event}→${r.targetEntity}.${r.targetCommand}`) }
+        : {}),
+      ...(m.sagas && m.sagas.length > 0 ? { sagas: m.sagas.map((s) => s.name) } : {}),
+      ...(m.roles && m.roles.length > 0 ? { roles: m.roles.map((r) => r.name) } : {}),
+      ...(m.schedules && m.schedules.length > 0
+        ? { schedules: m.schedules.map((s) => s.name) }
+        : {}),
+      ...(m.webhooks && m.webhooks.length > 0 ? { webhooks: m.webhooks.map((w) => w.name) } : {}),
     };
   }
 
   private transformValueObject(v: ValueObjectNode): IRValueObject {
     return {
       name: v.name,
-      properties: v.properties.map(p => this.transformProperty(p)),
+      properties: v.properties.map((p) => this.transformProperty(p)),
     };
   }
 
@@ -664,30 +763,41 @@ export class IRCompiler {
   }
 
   private transformEntity(e: EntityNode, moduleName?: string): IREntity {
-    const constraints = e.constraints.map(c => this.transformConstraint(c));
+    const constraints = e.constraints.map((c) => this.transformConstraint(c));
     this.validateConstraintCodeUniqueness(constraints, e.constraints, `entity '${e.name}'`);
 
     // Separate default policies from regular policies
-    const defaultPolicies = e.policies.filter(p => p.isDefault).map(p => p.name);
-    const regularPolicies = e.policies.filter(p => !p.isDefault).map(p => p.name);
+    const defaultPolicies = e.policies.filter((p) => p.isDefault).map((p) => p.name);
+    const regularPolicies = e.policies.filter((p) => !p.isDefault).map((p) => p.name);
 
-    const properties = e.properties.map(p => this.transformProperty(p));
+    const properties = e.properties.map((p) => this.transformProperty(p));
 
     // Validate searchable modifier: only valid on string properties
     for (const p of e.properties) {
       if (p.modifiers.includes('searchable') && p.dataType.name !== 'string') {
-        this.emitDiagnostic('error', `Property '${p.name}' on entity '${e.name}': 'searchable' modifier is only valid on string properties (got '${p.dataType.name}').`);
+        this.emitDiagnostic(
+          'error',
+          `Property '${p.name}' on entity '${e.name}': 'searchable' modifier is only valid on string properties (got '${p.dataType.name}').`,
+        );
       }
     }
 
     if (e.timestamps) {
-      const hasCreatedAt = properties.some(p => p.name === 'createdAt');
-      const hasUpdatedAt = properties.some(p => p.name === 'updatedAt');
+      const hasCreatedAt = properties.some((p) => p.name === 'createdAt');
+      const hasUpdatedAt = properties.some((p) => p.name === 'updatedAt');
       if (!hasCreatedAt) {
-        properties.push({ name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['readonly'] });
+        properties.push({
+          name: 'createdAt',
+          type: { name: 'datetime', nullable: false },
+          modifiers: ['readonly'],
+        });
       }
       if (!hasUpdatedAt) {
-        properties.push({ name: 'updatedAt', type: { name: 'datetime', nullable: false }, modifiers: ['readonly'] });
+        properties.push({
+          name: 'updatedAt',
+          type: { name: 'datetime', nullable: false },
+          modifiers: ['readonly'],
+        });
       }
     }
 
@@ -695,9 +805,9 @@ export class IRCompiler {
       name: e.name,
       module: moduleName,
       properties,
-      computedProperties: e.computedProperties.map(cp => this.transformComputedProperty(cp)),
-      relationships: e.relationships.map(r => this.transformRelationship(r, e.name)),
-      commands: [...(e.inheritedCommandNames || []), ...e.commands.map(c => c.name)],
+      computedProperties: e.computedProperties.map((cp) => this.transformComputedProperty(cp)),
+      relationships: e.relationships.map((r) => this.transformRelationship(r, e.name)),
+      commands: [...(e.inheritedCommandNames || []), ...e.commands.map((c) => c.name)],
       constraints,
       policies: regularPolicies,
       ...(e.parent ? { parent: e.parent } : {}),
@@ -710,8 +820,12 @@ export class IRCompiler {
       ...(e.timestamps ? { timestamps: true } : {}),
       ...(e.realtime ? { realtime: true } : {}),
       ...(e.external ? { external: true } : {}),
-      ...(e.transitions.length > 0 ? { transitions: e.transitions.map(t => this.transformTransition(t)) } : {}),
-      ...(e.approvals.length > 0 ? { approvals: e.approvals.map(a => this.transformApproval(a, e)) } : {}),
+      ...(e.transitions.length > 0
+        ? { transitions: e.transitions.map((t) => this.transformTransition(t)) }
+        : {}),
+      ...(e.approvals.length > 0
+        ? { approvals: e.approvals.map((a) => this.transformApproval(a, e)) }
+        : {}),
     };
   }
 
@@ -725,7 +839,7 @@ export class IRCompiler {
 
   private transformApproval(a: ApprovalNode, entity: EntityNode): IRApproval {
     // Validate: command must reference an existing command on this entity
-    const commandNames = entity.commands.map(c => c.name);
+    const commandNames = entity.commands.map((c) => c.name);
     if (!commandNames.includes(a.command)) {
       this.emitDiagnostic(
         'error',
@@ -762,7 +876,7 @@ export class IRCompiler {
     const node: IRApproval = {
       name: a.name,
       command: a.command,
-      stages: a.stages.map(s => this.transformApprovalStage(s)),
+      stages: a.stages.map((s) => this.transformApprovalStage(s)),
       emits: a.emits,
     };
     if (a.timeout !== undefined) node.timeout = a.timeout;
@@ -797,7 +911,7 @@ export class IRCompiler {
     return {
       name: e.name,
       module: moduleName,
-      values: e.values.map(v => ({
+      values: e.values.map((v) => ({
         name: v.name,
         ...(v.label ? { label: v.label } : {}),
         ...(v.ordinal !== undefined ? { ordinal: v.ordinal } : {}),
@@ -816,21 +930,29 @@ export class IRCompiler {
       modifiers: p.modifiers as PropertyModifier[],
     };
     if (prop.defaultValue && !this.isDefaultCompatible(prop.type, prop.defaultValue.kind)) {
-      this.emitDiagnostic('error', `Property default for '${p.name}' is incompatible with declared type '${prop.type.name}'.`);
+      this.emitDiagnostic(
+        'error',
+        `Property default for '${p.name}' is incompatible with declared type '${prop.type.name}'.`,
+      );
     }
     // A default like `= now()` is a call expression — transformExprToValue can't
     // represent it as a static IRValue, so it would otherwise be silently dropped
     // (the original `createdAt must not be null` bug). Lower recognized current-time
     // calls to `autoNow`; surface anything else instead of dropping it on the floor.
     if (p.defaultValue && prop.defaultValue === undefined) {
-      const call = p.defaultValue as { type?: string; callee?: { type?: string; name?: string }; arguments?: unknown[] };
-      const fn = call.type === 'Call' && call.callee?.type === 'Identifier' ? call.callee.name : undefined;
+      const call = p.defaultValue as {
+        type?: string;
+        callee?: { type?: string; name?: string };
+        arguments?: unknown[];
+      };
+      const fn =
+        call.type === 'Call' && call.callee?.type === 'Identifier' ? call.callee.name : undefined;
       if (fn && IRCompiler.AUTO_NOW_FNS.has(fn) && (call.arguments?.length ?? 0) === 0) {
         prop.autoNow = true;
       } else {
         this.emitDiagnostic(
           'warning',
-          `Property '${p.name}': default expression is not a supported default and has no effect at runtime. Supported call defaults: ${[...IRCompiler.AUTO_NOW_FNS].map(f => `${f}()`).join(', ')}. Use a literal default or set the value in the command.`,
+          `Property '${p.name}': default expression is not a supported default and has no effect at runtime. Supported call defaults: ${[...IRCompiler.AUTO_NOW_FNS].map((f) => `${f}()`).join(', ')}. Use a literal default or set the value in the command.`,
         );
       }
     }
@@ -844,9 +966,21 @@ export class IRCompiler {
   private isDefaultCompatible(type: IRType, kind: IRValue['kind']): boolean {
     if (kind === 'null') return type.nullable;
     if (type.name === 'array' || type.name === 'list') return kind === 'array';
-    if (type.name === 'map' || type.name === 'json' || type.name === 'any' || type.name === 'object') return kind === 'object' || kind === 'array';
-    if (['date', 'datetime', 'timestamp'].includes(type.name)) return kind === 'number' || kind === 'string';
-    if (['number', 'money', 'decimal', 'int', 'integer', 'bigint', 'float', 'duration'].includes(type.name)) return kind === 'number';
+    if (
+      type.name === 'map' ||
+      type.name === 'json' ||
+      type.name === 'any' ||
+      type.name === 'object'
+    )
+      return kind === 'object' || kind === 'array';
+    if (['date', 'datetime', 'timestamp'].includes(type.name))
+      return kind === 'number' || kind === 'string';
+    if (
+      ['number', 'money', 'decimal', 'int', 'integer', 'bigint', 'float', 'duration'].includes(
+        type.name,
+      )
+    )
+      return kind === 'number';
     if (['boolean', 'bool'].includes(type.name)) return kind === 'boolean';
     return kind === 'string';
   }
@@ -865,9 +999,12 @@ export class IRCompiler {
     if (!known.includes(declared.type)) {
       this.emitDiagnostic(
         'error',
-        `Property '${p.name}': Unknown masking strategy '${declared.type}'. Known strategies: ${known.join(', ')}.`
+        `Property '${p.name}': Unknown masking strategy '${declared.type}'. Known strategies: ${known.join(', ')}.`,
       );
-      return { type: 'redact', ...(p.unmaskWhen ? { unmaskWhen: this.transformExpression(p.unmaskWhen) } : {}) };
+      return {
+        type: 'redact',
+        ...(p.unmaskWhen ? { unmaskWhen: this.transformExpression(p.unmaskWhen) } : {}),
+      };
     }
     const type = declared.type as MaskStrategyType;
     const params = declared.params ?? [];
@@ -876,18 +1013,18 @@ export class IRCompiler {
       if (arity === 0) {
         this.emitDiagnostic(
           'error',
-          `Property '${p.name}': masking strategy '${type}' takes no parameters (got ${params.length}).`
+          `Property '${p.name}': masking strategy '${type}' takes no parameters (got ${params.length}).`,
         );
       } else {
         this.emitDiagnostic(
           'error',
-          `Property '${p.name}': masking strategy '${type}' requires exactly ${arity} parameters (got ${params.length}).`
+          `Property '${p.name}': masking strategy '${type}' requires exactly ${arity} parameters (got ${params.length}).`,
         );
       }
-    } else if (params.some(n => !Number.isInteger(n) || n < 0)) {
+    } else if (params.some((n) => !Number.isInteger(n) || n < 0)) {
       this.emitDiagnostic(
         'error',
-        `Property '${p.name}': masking strategy '${type}' parameters must be non-negative integers (got ${params.join(', ')}).`
+        `Property '${p.name}': masking strategy '${type}' parameters must be non-negative integers (got ${params.join(', ')}).`,
       );
     }
     return {
@@ -965,7 +1102,7 @@ export class IRCompiler {
       messageTemplate: c.messageTemplate,
       detailsMapping: c.detailsMapping
         ? Object.fromEntries(
-            Object.entries(c.detailsMapping).map(([k, v]) => [k, this.transformExpression(v)])
+            Object.entries(c.detailsMapping).map(([k, v]) => [k, this.transformExpression(v)]),
           )
         : undefined,
       overrideable: c.overrideable,
@@ -1026,7 +1163,7 @@ export class IRCompiler {
       return {
         name: e.name,
         channel: e.channel,
-        payload: (e.payload.fields as ParameterNode[]).map(f => ({
+        payload: (e.payload.fields as ParameterNode[]).map((f) => ({
           name: f.name,
           type: this.transformType(f.dataType),
           required: f.required,
@@ -1040,8 +1177,12 @@ export class IRCompiler {
     };
   }
 
-  private transformReaction(r: ReactionNode, moduleName?: string, entityName?: string): IRReactionRule {
-    const params: IRReactionParam[] | undefined = r.params?.map(p => ({
+  private transformReaction(
+    r: ReactionNode,
+    moduleName?: string,
+    entityName?: string,
+  ): IRReactionRule {
+    const params: IRReactionParam[] | undefined = r.params?.map((p) => ({
       name: p.name,
       expression: this.transformExpression(p.expression),
     }));
@@ -1050,12 +1191,14 @@ export class IRCompiler {
       targetEntity: r.targetEntity,
       targetCommand: r.targetCommand,
       ...(r.resolve ? { resolve: this.transformExpression(r.resolve) } : {}),
-      ...(r.fanOut ? {
-        fanOut: {
-          matchField: r.fanOut.matchField,
-          matchSource: this.transformExpression(r.fanOut.matchSource),
-        },
-      } : {}),
+      ...(r.fanOut
+        ? {
+            fanOut: {
+              matchField: r.fanOut.matchField,
+              matchSource: this.transformExpression(r.fanOut.matchSource),
+            },
+          }
+        : {}),
       ...(params && params.length > 0 ? { params } : {}),
       ...(moduleName ? { module: moduleName } : {}),
       ...(entityName ? { entity: entityName } : {}),
@@ -1063,12 +1206,15 @@ export class IRCompiler {
   }
 
   private transformSaga(s: SagaNode, moduleName?: string): IRSaga {
-    const steps: IRSagaStep[] = s.steps.map(step => ({
+    const steps: IRSagaStep[] = s.steps.map((step) => ({
       name: step.name,
       commandEntity: step.commandEntity,
       command: step.command,
       ...(step.compensate
-        ? { compensateEntity: step.compensateEntity ?? step.commandEntity, compensate: step.compensate }
+        ? {
+            compensateEntity: step.compensateEntity ?? step.commandEntity,
+            compensate: step.compensate,
+          }
         : {}),
     }));
     return {
@@ -1081,7 +1227,7 @@ export class IRCompiler {
   }
 
   private transformWebhook(w: WebhookNode, moduleName?: string): IRWebhook {
-    const transform: IRWebhookParam[] | undefined = w.transform?.map(p => ({
+    const transform: IRWebhookParam[] | undefined = w.transform?.map((p) => ({
       name: p.name,
       expression: this.transformExpression(p.expression),
     }));
@@ -1108,9 +1254,14 @@ export class IRCompiler {
     };
   }
 
-  private transformCommand(c: CommandNode, moduleName?: string, entityName?: string, entityDefaultPolicies?: string[]): IRCommand {
+  private transformCommand(
+    c: CommandNode,
+    moduleName?: string,
+    entityName?: string,
+    entityDefaultPolicies?: string[],
+  ): IRCommand {
     this.validateCommandActions(c, entityName);
-    const constraints = (c.constraints || []).map(con => this.transformConstraint(con));
+    const constraints = (c.constraints || []).map((con) => this.transformConstraint(con));
     if (c.constraints && c.constraints.length > 0) {
       const scope = entityName ? `command '${entityName}.${c.name}'` : `command '${c.name}'`;
       this.validateConstraintCodeUniqueness(constraints, c.constraints, scope);
@@ -1118,27 +1269,28 @@ export class IRCompiler {
 
     // Expand entity default policies into command policies
     // Per spec: commands without explicit policies inherit entity defaults
-    const commandPolicies = entityDefaultPolicies && entityDefaultPolicies.length > 0
-      ? [...entityDefaultPolicies]
-      : undefined;
+    const commandPolicies =
+      entityDefaultPolicies && entityDefaultPolicies.length > 0
+        ? [...entityDefaultPolicies]
+        : undefined;
 
     const cmd: IRCommand = {
       name: c.name,
       module: moduleName,
       entity: entityName,
-      parameters: c.parameters.map(p => this.transformParameter(p)),
-      guards: (c.guards || []).map(g => this.transformExpression(g)),
+      parameters: c.parameters.map((p) => this.transformParameter(p)),
+      guards: (c.guards || []).map((g) => this.transformExpression(g)),
       constraints,
       ...(commandPolicies ? { policies: commandPolicies } : {}),
       ...(c.retry ? { retry: this.transformRetry(c.retry) } : {}),
       ...(c.rateLimit ? { rateLimit: this.transformRateLimit(c.rateLimit) } : {}),
-      actions: c.actions.map(a => this.transformAction(a)),
+      actions: c.actions.map((a) => this.transformAction(a)),
       emits: c.emits || [],
       ...(c.emitPayloads && c.emitPayloads.length > 0
         ? {
-            emitPayloads: c.emitPayloads.map(ep => ({
+            emitPayloads: c.emitPayloads.map((ep) => ({
               eventName: ep.eventName,
-              fields: ep.payload.properties.map(p => ({
+              fields: ep.payload.properties.map((p) => ({
                 name: p.key,
                 expression: this.transformExpression(p.value),
               })),
@@ -1165,7 +1317,7 @@ export class IRCompiler {
    * `this.isRich`) references. (G8)
    */
   private checkComputedRefsInGuardsAndConstraints(entity: EntityNode, moduleName?: string): void {
-    const computedNames = new Set(entity.computedProperties.map(c => c.name));
+    const computedNames = new Set(entity.computedProperties.map((c) => c.name));
     if (computedNames.size === 0) return;
     const qualified = moduleName ? `${moduleName}.${entity.name}` : entity.name;
 
@@ -1208,7 +1360,7 @@ export class IRCompiler {
             e.elements.forEach(walk);
             break;
           case 'Object':
-            e.properties.forEach(p => walk(p.value));
+            e.properties.forEach((p) => walk(p.value));
             break;
           case 'Lambda':
             walk(e.body);
@@ -1271,7 +1423,14 @@ export class IRCompiler {
    * other non-null type fills with `null`, which a non-null store column rejects —
    * those are the only guaranteed-failure cases this check flags.
    */
-  private static readonly ZERO_FILLABLE_TYPES = new Set(['string', 'number', 'boolean', 'list', 'array', 'map']);
+  private static readonly ZERO_FILLABLE_TYPES = new Set([
+    'string',
+    'number',
+    'boolean',
+    'list',
+    'array',
+    'map',
+  ]);
 
   private checkRequiredFieldsSetOnCreate(
     entities: IREntity[],
@@ -1280,7 +1439,7 @@ export class IRCompiler {
   ): void {
     for (const entity of entities) {
       const createCmd = commands.find(
-        c => c.name === 'create' && c.entity === entity.name && c.module === entity.module,
+        (c) => c.name === 'create' && c.entity === entity.name && c.module === entity.module,
       );
       if (!createCmd) continue;
 
@@ -1343,7 +1502,10 @@ export class IRCompiler {
     const seen = new Set<string>();
     for (const e of events) {
       if (seen.has(e.name)) {
-        this.emitDiagnostic('warning', `Duplicate event name '${e.name}': declared more than once, so one declaration shadows the other in the event registry. Rename one.`);
+        this.emitDiagnostic(
+          'warning',
+          `Duplicate event name '${e.name}': declared more than once, so one declaration shadows the other in the event registry. Rename one.`,
+        );
       }
       seen.add(e.name);
     }
@@ -1425,12 +1587,12 @@ export class IRCompiler {
       return (a.target ?? '').localeCompare(b.target ?? '');
     };
     const allow: IRRolePermission[] = r.permissions
-      .filter(p => p.kind === 'allow')
-      .map(p => ({ action: p.action, ...(p.target ? { target: p.target } : {}) }))
+      .filter((p) => p.kind === 'allow')
+      .map((p) => ({ action: p.action, ...(p.target ? { target: p.target } : {}) }))
       .sort(sortPerm);
     const deny: IRRolePermission[] = r.permissions
-      .filter(p => p.kind === 'deny')
-      .map(p => ({ action: p.action, ...(p.target ? { target: p.target } : {}) }))
+      .filter((p) => p.kind === 'deny')
+      .map((p) => ({ action: p.action, ...(p.target ? { target: p.target } : {}) }))
       .sort(sortPerm);
     return {
       name: r.name,
@@ -1469,7 +1631,9 @@ export class IRCompiler {
     }
 
     // Cycle detection via DFS coloring
-    const WHITE = 0, GRAY = 1, BLACK = 2;
+    const WHITE = 0,
+      GRAY = 1,
+      BLACK = 2;
     const color = new Map<string, number>();
     for (const name of byName.keys()) color.set(name, WHITE);
 
@@ -1480,7 +1644,10 @@ export class IRCompiler {
       if (role?.parent) {
         const parentColor = color.get(role.parent);
         if (parentColor === GRAY) {
-          this.emitDiagnostic('error', `Role cycle detected: ${[...path, role.parent].join(' -> ')}`);
+          this.emitDiagnostic(
+            'error',
+            `Role cycle detected: ${[...path, role.parent].join(' -> ')}`,
+          );
           return true;
         }
         if (parentColor === WHITE && hasCycle(role.parent, path)) {
@@ -1513,7 +1680,9 @@ export class IRCompiler {
 
       // Union with this role's allows
       for (const a of role.allow) {
-        const exists = effective.some(e => e.action === a.action && (e.target ?? '') === (a.target ?? ''));
+        const exists = effective.some(
+          (e) => e.action === a.action && (e.target ?? '') === (a.target ?? ''),
+        );
         if (!exists) effective.push({ ...a });
       }
 
@@ -1533,8 +1702,8 @@ export class IRCompiler {
 
       // Apply deny: remove any permission matching a deny entry
       // 'all' action in deny removes all permissions for that target scope
-      effective = effective.filter(perm => {
-        return !allDenies.some(d => {
+      effective = effective.filter((perm) => {
+        return !allDenies.some((d) => {
           const actionMatch = d.action === 'all' || d.action === perm.action;
           const targetMatch = d.target === undefined || d.target === perm.target;
           return actionMatch && targetMatch;
@@ -1609,17 +1778,23 @@ export class IRCompiler {
         };
       }
       case 'Call': {
-        const call = expr as { callee: ExpressionNode; arguments: ExpressionNode[]; position?: { line?: number; column?: number } };
+        const call = expr as {
+          callee: ExpressionNode;
+          arguments: ExpressionNode[];
+          position?: { line?: number; column?: number };
+        };
         const irCall: IRExpression = {
           kind: 'call',
           callee: this.transformExpression(call.callee),
-          args: call.arguments.map(a => this.transformExpression(a)),
+          args: call.arguments.map((a) => this.transformExpression(a)),
         };
         // Compile-time regex validation for matches(value, pattern)
-        if (irCall.kind === 'call' &&
-            irCall.callee.kind === 'identifier' &&
-            irCall.callee.name === 'matches' &&
-            irCall.args.length >= 2) {
+        if (
+          irCall.kind === 'call' &&
+          irCall.callee.kind === 'identifier' &&
+          irCall.callee.name === 'matches' &&
+          irCall.args.length >= 2
+        ) {
           const patternArg = irCall.args[1];
           if (patternArg.kind === 'literal' && patternArg.value?.kind === 'string') {
             try {
@@ -1637,7 +1812,11 @@ export class IRCompiler {
         return irCall;
       }
       case 'Conditional': {
-        const cond = expr as { condition: ExpressionNode; consequent: ExpressionNode; alternate: ExpressionNode };
+        const cond = expr as {
+          condition: ExpressionNode;
+          consequent: ExpressionNode;
+          alternate: ExpressionNode;
+        };
         return {
           kind: 'conditional',
           condition: this.transformExpression(cond.condition),
@@ -1649,14 +1828,14 @@ export class IRCompiler {
         const arr = expr as { elements: ExpressionNode[] };
         return {
           kind: 'array',
-          elements: arr.elements.map(e => this.transformExpression(e)),
+          elements: arr.elements.map((e) => this.transformExpression(e)),
         };
       }
       case 'Object': {
         const obj = expr as { properties: { key: string; value: ExpressionNode }[] };
         return {
           kind: 'object',
-          properties: obj.properties.map(p => ({
+          properties: obj.properties.map((p) => ({
             key: p.key,
             value: this.transformExpression(p.value),
           })),
@@ -1671,12 +1850,15 @@ export class IRCompiler {
         };
       }
       case 'AggregateCount': {
-        const ac = expr as { entity: string; predicates: { field: string; value: ExpressionNode }[] };
+        const ac = expr as {
+          entity: string;
+          predicates: { field: string; value: ExpressionNode }[];
+        };
         return {
           kind: 'aggregate',
           op: 'count' as const,
           entity: ac.entity,
-          predicates: ac.predicates.map(p => ({
+          predicates: ac.predicates.map((p) => ({
             field: p.field,
             value: this.transformExpression(p.value),
           })),
@@ -1707,7 +1889,9 @@ export class IRCompiler {
     }
     if (expr.type === 'Array') {
       const arr = expr as { elements: ExpressionNode[] };
-      const elements = arr.elements.map(e => this.transformExprToValue(e)).filter((v): v is IRValue => v !== undefined);
+      const elements = arr.elements
+        .map((e) => this.transformExprToValue(e))
+        .filter((v): v is IRValue => v !== undefined);
       return { kind: 'array', elements };
     }
     if (expr.type === 'Object') {
@@ -1733,7 +1917,8 @@ export class IRCompiler {
     const maxAttempts = r.maxAttempts ?? 1;
     const backoff = r.backoff ?? 'fixed';
     const delayMs = r.delayMs ?? r.delay ?? 0;
-    const jitter = typeof r.jitter === 'boolean' ? r.jitter : r.jitter !== undefined ? true : undefined;
+    const jitter =
+      typeof r.jitter === 'boolean' ? r.jitter : r.jitter !== undefined ? true : undefined;
     const retryOn = r.retryOn ? [...new Set(r.retryOn)] : undefined;
 
     if (maxAttempts < 1) {
@@ -1768,7 +1953,10 @@ export class IRCompiler {
       this.emitDiagnostic('error', `RateLimit window must be >= 1ms`);
     }
     if (!['user', 'tenant', 'global'].includes(scope)) {
-      this.emitDiagnostic('error', `RateLimit scope must be 'user', 'tenant', or 'global', got '${scope}'`);
+      this.emitDiagnostic(
+        'error',
+        `RateLimit scope must be 'user', 'tenant', or 'global', got '${scope}'`,
+      );
     }
 
     return {
@@ -1785,7 +1973,10 @@ export class IRCompiler {
     try {
       return parseDurationToMs(windowMs);
     } catch (e) {
-      this.emitDiagnostic('error', `Invalid rateLimit window duration: ${e instanceof Error ? e.message : String(e)}`);
+      this.emitDiagnostic(
+        'error',
+        `Invalid rateLimit window duration: ${e instanceof Error ? e.message : String(e)}`,
+      );
       return 60000;
     }
   }
@@ -1793,7 +1984,10 @@ export class IRCompiler {
   private transformSchedule(s: ScheduleNode): IRSchedule {
     // Validate schedule type
     if (!['cron', 'interval', 'every'].includes(s.scheduleType)) {
-      this.emitDiagnostic('error', `Invalid schedule type '${s.scheduleType}', must be 'cron', 'interval', or 'every'`);
+      this.emitDiagnostic(
+        'error',
+        `Invalid schedule type '${s.scheduleType}', must be 'cron', 'interval', or 'every'`,
+      );
     }
 
     const trigger = this.transformTrigger(s);
@@ -1822,7 +2016,10 @@ export class IRCompiler {
         return { kind: 'cron', cron: '0 0 * * *' };
       }
       if (!isValidCronExpression(cronExpr)) {
-        this.emitDiagnostic('error', `Invalid cron expression '${cronExpr}' in schedule '${s.name}' (expected 5 fields: minute hour day month dayOfWeek)`);
+        this.emitDiagnostic(
+          'error',
+          `Invalid cron expression '${cronExpr}' in schedule '${s.name}' (expected 5 fields: minute hour day month dayOfWeek)`,
+        );
       }
       return { kind: 'cron', cron: cronExpr };
     }
@@ -1833,10 +2030,15 @@ export class IRCompiler {
           ? parseDurationToMs(s.intervalDuration)
           : s.value !== undefined
             ? parseDurationToMs(s.value, s.unit)
-            : (() => { throw new Error('missing duration'); })();
+            : (() => {
+                throw new Error('missing duration');
+              })();
         return { kind: s.scheduleType as 'interval' | 'every', durationMs };
       } catch (e) {
-        this.emitDiagnostic('error', `Invalid ${s.scheduleType} duration in schedule '${s.name}': ${e instanceof Error ? e.message : String(e)}`);
+        this.emitDiagnostic(
+          'error',
+          `Invalid ${s.scheduleType} duration in schedule '${s.name}': ${e instanceof Error ? e.message : String(e)}`,
+        );
         return { kind: s.scheduleType as 'interval' | 'every', durationMs: 60000 };
       }
     }
@@ -1845,7 +2047,10 @@ export class IRCompiler {
   }
 }
 
-export async function compileToIR(source: string, options?: { useCache?: boolean; sourcePath?: string }): Promise<CompileToIRResult> {
+export async function compileToIR(
+  source: string,
+  options?: { useCache?: boolean; sourcePath?: string },
+): Promise<CompileToIRResult> {
   const compiler = new IRCompiler();
   return compiler.compileToIR(source, options);
 }

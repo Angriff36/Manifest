@@ -6,10 +6,7 @@
  */
 
 import type { WiringContract } from '../types.js';
-import {
-  inspectWiringConsumersSync,
-  type InspectWiringOptions,
-} from '../inspect/inspector.js';
+import { inspectWiringConsumersSync, type InspectWiringOptions } from '../inspect/inspector.js';
 import type { WiringInspectConfig, ContractMismatch } from '../inspect/types.js';
 import type { RepairPlan, RepairVerificationResult } from './types.js';
 import { verifyWiredControlSemantics } from './control-semantic-match.js';
@@ -31,18 +28,16 @@ export function verifyRepair(
     },
   });
 
-  const remaining = report.mismatches.filter(m => mismatchMatchesPlan(m, plan));
-  const finding = report.findings.find(f => f.capabilityId === plan.capabilityId);
-  const requireConsumed = plan.postconditions.some(p => p.requireConsumed);
+  const remaining = report.mismatches.filter((m) => mismatchMatchesPlan(m, plan));
+  const finding = report.findings.find((f) => f.capabilityId === plan.capabilityId);
+  const requireConsumed = plan.postconditions.some((p) => p.requireConsumed);
   const capabilityConsumed = finding?.status === 'consumed';
 
-  const kindsRequired = new Set(
-    plan.postconditions.flatMap(p => p.resolvedMismatchKinds),
-  );
+  const kindsRequired = new Set(plan.postconditions.flatMap((p) => p.resolvedMismatchKinds));
   const findingResolved =
     remaining.length === 0 &&
     (kindsRequired.size === 0 ||
-      !report.mismatches.some(m => {
+      !report.mismatches.some((m) => {
         if (m.capabilityId !== plan.capabilityId) return false;
         if (!kindsRequired.has(m.kind)) return false;
         if (plan.repairKind === 'expand-partial-to-full-body') {
@@ -60,10 +55,8 @@ export function verifyRepair(
         return true;
       }));
 
-  const baselineKeys = new Set(
-    (baselineMismatches ?? []).map(mismatchKey),
-  );
-  const newDefects = report.mismatches.filter(m => {
+  const baselineKeys = new Set((baselineMismatches ?? []).map(mismatchKey));
+  const newDefects = report.mismatches.filter((m) => {
     if (m.capabilityId !== plan.capabilityId || !m.defect) return false;
     if (mismatchMatchesPlan(m, plan)) return false;
     // Pre-existing defects for other parameters/kinds are not "new".
@@ -90,9 +83,7 @@ export function verifyRepair(
       : !semantic.ok
         ? `Repair incomplete: ${plan.findingId} — ${semantic.reason}`
         : `Repair incomplete: ${plan.findingId} — remaining ${remaining.length} mismatch(es)` +
-          (newDefects.length
-            ? `; introduced ${newDefects.length} new defect(s)`
-            : '') +
+          (newDefects.length ? `; introduced ${newDefects.length} new defect(s)` : '') +
           (requireConsumed && !capabilityConsumed ? '; capability not consumed' : ''),
   };
 }
@@ -105,11 +96,11 @@ function verifyWireExistingControlSemantics(
   if (plan.repairKind !== 'wire-existing-control') {
     return { ok: true, reason: '' };
   }
-  const cap = contract.capabilities.find(c => c.capabilityId === plan.capabilityId);
+  const cap = contract.capabilities.find((c) => c.capabilityId === plan.capabilityId);
   if (!cap) {
     return { ok: false, reason: `Unknown capability ${plan.capabilityId}` };
   }
-  const wireEdit = plan.edits.find(e => e.operation.type === 'wire-control-to-binding');
+  const wireEdit = plan.edits.find((e) => e.operation.type === 'wire-control-to-binding');
   if (!wireEdit || wireEdit.operation.type !== 'wire-control-to-binding') {
     return { ok: false, reason: 'wire-existing-control plan missing wire edit' };
   }
@@ -162,9 +153,7 @@ function mismatchMatchesPlan(m: ContractMismatch, plan: RepairPlan): boolean {
 }
 
 function mismatchInPlanFiles(m: ContractMismatch, plan: RepairPlan): boolean {
-  const files = new Set(
-    [...plan.sourceFiles, ...plan.edits.map(e => e.file)].map(normalizePath),
-  );
+  const files = new Set([...plan.sourceFiles, ...plan.edits.map((e) => e.file)].map(normalizePath));
   return files.has(normalizePath(m.source.file));
 }
 

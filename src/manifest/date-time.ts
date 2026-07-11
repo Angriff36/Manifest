@@ -14,7 +14,9 @@ export function isValidDateString(value: unknown): boolean {
   const m = DATE_RE.exec(value);
   if (!m) return false;
   const [, ys, ms, ds] = m;
-  const year = Number(ys), month = Number(ms), day = Number(ds);
+  const year = Number(ys),
+    month = Number(ms),
+    day = Number(ds);
   if (month < 1 || month > 12 || day < 1) return false;
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   return day <= daysInMonth;
@@ -25,7 +27,9 @@ export function isValidTimeString(value: unknown): boolean {
   const m = TIME_RE.exec(value);
   if (!m) return false;
   const [, hs, mins, ss] = m;
-  const h = Number(hs), min = Number(mins), s = Number(ss);
+  const h = Number(hs),
+    min = Number(mins),
+    s = Number(ss);
   return h <= 23 && min <= 59 && s <= 59;
 }
 

@@ -22,13 +22,13 @@ if (!ir) throw new Error('Compilation failed');
 
 const runtime = new RuntimeEngine(ir, {
   user: { id: 'user-1', role: 'admin' },
-  context: { requestId: 'req-1' }
+  context: { requestId: 'req-1' },
 });
 
 const result = await runtime.runCommand(
   'approve',
   { reason: 'validated' },
-  { entityName: 'Invoice', instanceId: 'inv-1' }
+  { entityName: 'Invoice', instanceId: 'inv-1' },
 );
 
 if (!result.success) {

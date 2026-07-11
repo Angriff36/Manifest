@@ -8,20 +8,21 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { sessionStore } from '../state/session-store.js';
-import type { IR, IREntity, IRCommand, IRPolicy, IRType, IRExpression, IRValue } from '@angriff36/manifest/ir';
+import type {
+  IR,
+  IREntity,
+  IRCommand,
+  IRPolicy,
+  IRType,
+  IRExpression,
+  IRValue,
+} from '@angriff36/manifest/ir';
 
 export const explainInputSchema = {
-  contentHash: z
-    .string()
-    .describe('SHA-256 content hash from a prior compile call'),
-  target: z
-    .enum(['entity', 'command', 'policy'])
-    .describe('Type of IR element to explain'),
+  contentHash: z.string().describe('SHA-256 content hash from a prior compile call'),
+  target: z.enum(['entity', 'command', 'policy']).describe('Type of IR element to explain'),
   name: z.string().describe('Name of the entity, command, or policy'),
-  entityName: z
-    .string()
-    .optional()
-    .describe('Entity context (required when target is command)'),
+  entityName: z.string().optional().describe('Entity context (required when target is command)'),
 };
 
 function formatValue(v: IRValue): string {
@@ -36,7 +37,9 @@ function formatValue(v: IRValue): string {
     case 'array':
       return `[${v.elements.map(formatValue).join(', ')}]`;
     case 'object':
-      return `{${Object.entries(v.properties).map(([k, val]) => `"${k}": ${formatValue(val)}`).join(', ')}}`;
+      return `{${Object.entries(v.properties)
+        .map(([k, val]) => `"${k}": ${formatValue(val)}`)
+        .join(', ')}}`;
   }
 }
 
@@ -84,8 +87,7 @@ function formatEntityExplanation(entity: IREntity, ir: IR): string {
   lines.push(`Entity: ${entity.name}`);
   if (entity.module) lines.push(`Module: ${entity.module}`);
   if (entity.key) lines.push(`Primary Key: [${entity.key.join(', ')}]`);
-  if (entity.versionProperty)
-    lines.push(`Concurrency: versioned via ${entity.versionProperty}`);
+  if (entity.versionProperty) lines.push(`Concurrency: versioned via ${entity.versionProperty}`);
 
   lines.push('');
   lines.push('Properties:');
@@ -116,9 +118,7 @@ function formatEntityExplanation(entity: IREntity, ir: IR): string {
     lines.push('');
     lines.push('Commands:');
     for (const cmdName of entity.commands) {
-      const cmd = ir.commands.find(
-        (c) => c.name === cmdName && c.entity === entity.name,
-      );
+      const cmd = ir.commands.find((c) => c.name === cmdName && c.entity === entity.name);
       const params = cmd
         ? cmd.parameters.map((p) => `${p.name}: ${formatType(p.type)}`).join(', ')
         : '';
@@ -130,9 +130,7 @@ function formatEntityExplanation(entity: IREntity, ir: IR): string {
     lines.push('');
     lines.push('Constraints:');
     for (const c of entity.constraints) {
-      lines.push(
-        `  - ${c.name ?? c.code} (${c.severity ?? 'block'}): ${c.message ?? c.code}`,
-      );
+      lines.push(`  - ${c.name ?? c.code} (${c.severity ?? 'block'}): ${c.message ?? c.code}`);
     }
   }
 
@@ -149,7 +147,9 @@ function formatCommandExplanation(command: IRCommand): string {
   lines.push('');
   lines.push('Parameters:');
   for (const p of command.parameters) {
-    lines.push(`  - ${p.name}: ${formatType(p.type)}${p.defaultValue !== undefined ? ` (default: ${JSON.stringify(p.defaultValue)})` : ''}`);
+    lines.push(
+      `  - ${p.name}: ${formatType(p.type)}${p.defaultValue !== undefined ? ` (default: ${JSON.stringify(p.defaultValue)})` : ''}`,
+    );
   }
 
   if (command.guards.length > 0) {

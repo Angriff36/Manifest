@@ -1,6 +1,6 @@
 ---
-title: "Expression built-ins: strings, numbers, dates, and aggregates"
-sidebarTitle: "Expression built-ins"
+title: 'Expression built-ins: strings, numbers, dates, and aggregates'
+sidebarTitle: 'Expression built-ins'
 description: "Manifest's deterministic, side-effect-free expression library — string and numeric helpers, UTC date components, and collection aggregates with mapper and predicate lambdas."
 ---
 
@@ -76,7 +76,10 @@ Without a lambda, `sum` and `avg` operate on the raw numeric elements and `count
 Because aggregating over a `hasMany` relationship requires resolving related instances asynchronously, the lambda-bearing branches return promises that the evaluator awaits. The element mapper is invoked once per element and its result awaited, keeping evaluation deterministic for a fixed runtime context.
 
 <Note>
-Two distinct count helpers exist: `count(array)` (a plain length used above in `count(split(input, ","))`) and `count_of(collection, predicate?)` (the aggregate). Likewise `min`/`max` are variadic over scalar arguments, which is different from `min_of`/`max_of`, which reduce a collection. Using an aggregate on a non-array yields the safe fallbacks listed above rather than an error.
+  Two distinct count helpers exist: `count(array)` (a plain length used above in `count(split(input,
+  ","))`) and `count_of(collection, predicate?)` (the aggregate). Likewise `min`/`max` are variadic
+  over scalar arguments, which is different from `min_of`/`max_of`, which reduce a collection. Using
+  an aggregate on a non-array yields the safe fallbacks listed above rather than an error.
 </Note>
 
 ## Standard library
@@ -114,12 +117,12 @@ guard flag("max-order-limit") == false or self.total < flag("max-order-limit")
 
 Additional built-in functions available in the standard library:
 
-| Function | Signature | Description |
-|----------|-----------|-------------|
+| Function  | Signature                   | Description                              |
+| --------- | --------------------------- | ---------------------------------------- |
 | `between` | `between(value, low, high)` | Returns `true` if `low <= value <= high` |
-| `matches` | `matches(text, pattern)` | Tests `text` against a regex `pattern` |
-| `search` | `search(text, query)` | Full-text search match |
-| `flag` | `flag(name)` | Resolve a feature flag value |
+| `matches` | `matches(text, pattern)`    | Tests `text` against a regex `pattern`   |
+| `search`  | `search(text, query)`       | Full-text search match                   |
+| `flag`    | `flag(name)`                | Resolve a feature flag value             |
 
 ## Custom expression functions
 
@@ -128,12 +131,12 @@ You can register custom expression functions via the plugin API. Custom function
 ### Registering a custom function
 
 ```typescript
-import { RuntimeEngine, registerBuiltin } from "@angriff36/manifest";
+import { RuntimeEngine, registerBuiltin } from '@angriff36/manifest';
 
 // Register a custom function before creating the runtime
-registerBuiltin("discount", (price: number, tier: string) => {
-  if (tier === "premium") return price * 0.8;
-  if (tier === "standard") return price * 0.9;
+registerBuiltin('discount', (price: number, tier: string) => {
+  if (tier === 'premium') return price * 0.8;
+  if (tier === 'standard') return price * 0.9;
   return price;
 });
 ```
@@ -152,7 +155,10 @@ entity Order {
 ### Constraints on custom functions
 
 <Warning>
-Custom functions are not deterministic by default — they can reference external state, make network calls, or produce different results for the same inputs. If you use custom functions in guards or constraints, you are responsible for ensuring they produce consistent results within a single `runCommand` invocation. Violating this breaks the Manifest determinism guarantee.
+  Custom functions are not deterministic by default — they can reference external state, make
+  network calls, or produce different results for the same inputs. If you use custom functions in
+  guards or constraints, you are responsible for ensuring they produce consistent results within a
+  single `runCommand` invocation. Violating this breaks the Manifest determinism guarantee.
 </Warning>
 
 For this reason, custom functions used in expressions should be pure functions with no side effects. If external data is needed, inject it through the runtime context (`user`, `context.*`) rather than calling out from inside a custom function.

@@ -77,13 +77,9 @@ export async function handleWebhookRequest(
   if (pathMatches.length === 0) {
     return notFound(`No webhook registered for path '${request.path}'`);
   }
-  const webhook = pathMatches.find(
-    (w) => (w.method ?? 'POST').toUpperCase() === requestMethod,
-  );
+  const webhook = pathMatches.find((w) => (w.method ?? 'POST').toUpperCase() === requestMethod);
   if (!webhook) {
-    const allowed = pathMatches
-      .map((w) => (w.method ?? 'POST').toUpperCase())
-      .join(', ');
+    const allowed = pathMatches.map((w) => (w.method ?? 'POST').toUpperCase()).join(', ');
     return {
       status: 405,
       body: {

@@ -3,22 +3,57 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { IR, IREntity, IRStore, IRProperty, IRCommand, IRPolicy, IRReactionRule } from '../../ir';
+import type {
+  IR,
+  IREntity,
+  IRStore,
+  IRProperty,
+  IRCommand,
+  IRPolicy,
+  IRReactionRule,
+} from '../../ir';
 import { ConvexProjection } from './generator.js';
 
 function emptyIR(): IR {
   return {
     version: '1.0',
-    provenance: { contentHash: 'h', compilerVersion: 'test', schemaVersion: '1.0', compiledAt: '2025-01-01T00:00:00.000Z' },
-    modules: [], values: [], entities: [], enums: [], stores: [], events: [], commands: [], policies: [],
+    provenance: {
+      contentHash: 'h',
+      compilerVersion: 'test',
+      schemaVersion: '1.0',
+      compiledAt: '2025-01-01T00:00:00.000Z',
+    },
+    modules: [],
+    values: [],
+    entities: [],
+    enums: [],
+    stores: [],
+    events: [],
+    commands: [],
+    policies: [],
   };
 }
-function durable(name: string): IRStore { return { entity: name, target: 'durable', config: {} }; }
-function prop(name: string, typeName: string, modifiers: IRProperty['modifiers'] = [], nullable = false): IRProperty {
+function durable(name: string): IRStore {
+  return { entity: name, target: 'durable', config: {} };
+}
+function prop(
+  name: string,
+  typeName: string,
+  modifiers: IRProperty['modifiers'] = [],
+  nullable = false,
+): IRProperty {
   return { name, type: { name: typeName, nullable }, modifiers };
 }
 function entity(name: string, props: IRProperty[], rels: IREntity['relationships'] = []): IREntity {
-  return { name, properties: props, computedProperties: [], relationships: rels, commands: [], constraints: [], policies: [] };
+  return {
+    name,
+    properties: props,
+    computedProperties: [],
+    relationships: rels,
+    commands: [],
+    constraints: [],
+    policies: [],
+  };
 }
 const queries = (ir: IR) => new ConvexProjection().generate(ir, { surface: 'convex.queries' });
 const mutations = (ir: IR) => new ConvexProjection().generate(ir, { surface: 'convex.mutations' });
@@ -36,7 +71,18 @@ describe('convex.queries', () => {
   it('emits list/get and index-based listBy with typed FK args', () => {
     const ir = emptyIR();
     ir.entities = [
-      entity('Order', [prop('sku', 'string', ['required', 'indexed'])], [{ name: 'customer', kind: 'belongsTo', target: 'Customer', foreignKey: { fields: ['customerId'] } }]),
+      entity(
+        'Order',
+        [prop('sku', 'string', ['required', 'indexed'])],
+        [
+          {
+            name: 'customer',
+            kind: 'belongsTo',
+            target: 'Customer',
+            foreignKey: { fields: ['customerId'] },
+          },
+        ],
+      ),
       entity('Customer', [prop('name', 'string', ['required'])]),
     ];
     ir.stores = [durable('Order'), durable('Customer')];
@@ -56,8 +102,18 @@ describe('convex.queries', () => {
     // a `by_eventId` index shipped with no matching listEventProfitabilityByEventId.
     const ir = emptyIR();
     ir.entities = [
-      entity('EventProfitability', [prop('amount', 'money', ['required'])],
-        [{ name: 'event', kind: 'belongsTo', target: 'CateringEvent', foreignKey: { fields: ['eventId'] } }]),
+      entity(
+        'EventProfitability',
+        [prop('amount', 'money', ['required'])],
+        [
+          {
+            name: 'event',
+            kind: 'belongsTo',
+            target: 'CateringEvent',
+            foreignKey: { fields: ['eventId'] },
+          },
+        ],
+      ),
       entity('CateringEvent', [prop('name', 'string', ['required'])]),
     ];
     ir.stores = [durable('EventProfitability'), durable('CateringEvent')];
@@ -88,24 +144,43 @@ describe('convex.queries', () => {
 
   it('every single-column schema index has a matching listBy query (no surface drift)', () => {
     const ir = emptyIR();
-    ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
+    ir.tenant = {
+      property: 'tenantId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
     ir.entities = [
-      entity('EventProfitability', [prop('tenantId', 'string', ['required']), prop('period', 'string', ['indexed'])],
-        [{ name: 'event', kind: 'belongsTo', target: 'CateringEvent', foreignKey: { fields: ['eventId'] } }]),
+      entity(
+        'EventProfitability',
+        [prop('tenantId', 'string', ['required']), prop('period', 'string', ['indexed'])],
+        [
+          {
+            name: 'event',
+            kind: 'belongsTo',
+            target: 'CateringEvent',
+            foreignKey: { fields: ['eventId'] },
+          },
+        ],
+      ),
       entity('CateringEvent', [prop('name', 'string', ['required'])]),
     ];
     ir.stores = [durable('EventProfitability'), durable('CateringEvent')];
     const proj = new ConvexProjection();
     const options = { referenceMode: 'stringId' as const };
     const code = proj.generate(ir, { surface: 'convex.queries', options }).artifacts[0].code;
-    expect(code).toContain('listEventProfitabilityByPeriod');   // indexed modifier
+    expect(code).toContain('listEventProfitabilityByPeriod'); // indexed modifier
     expect(code).toContain('listEventProfitabilityByTenantId'); // tenant column
-    expect(code).toContain('listEventProfitabilityByEventId');  // reference FK (the bug)
+    expect(code).toContain('listEventProfitabilityByEventId'); // reference FK (the bug)
   });
 
   it('emits a composite read for a multi-field option index (schema/query parity)', () => {
     const ir = emptyIR();
-    ir.entities = [entity('Order', [prop('tenantId', 'string', ['required']), prop('createdAt', 'datetime', ['required'])])];
+    ir.entities = [
+      entity('Order', [
+        prop('tenantId', 'string', ['required']),
+        prop('createdAt', 'datetime', ['required']),
+      ]),
+    ];
     ir.stores = [durable('Order')];
     const proj = new ConvexProjection();
     const options = { indexes: { Order: [['tenantId', 'createdAt']] } };
@@ -132,8 +207,14 @@ describe('convex.queries', () => {
 describe('convex.queries — tenant + soft-delete read filtering', () => {
   it('scopes list/get to the auth tenant and excludes soft-deleted rows (field-aware, default on)', () => {
     const ir = emptyIR();
-    ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
-    ir.entities = [entity('Invoice', [prop('tenantId', 'string', ['required']), prop('deletedAt', 'datetime')])];
+    ir.tenant = {
+      property: 'tenantId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
+    ir.entities = [
+      entity('Invoice', [prop('tenantId', 'string', ['required']), prop('deletedAt', 'datetime')]),
+    ];
     ir.stores = [durable('Invoice')];
     const code = queries(ir).artifacts[0].code;
     // list is tenant-scoped from auth (NOT a client arg) + drops soft-deleted
@@ -158,8 +239,14 @@ describe('convex.queries — tenant + soft-delete read filtering', () => {
 
   it('respects opt-out: includeTenantFilter/includeSoftDeleteFilter = false', () => {
     const ir = emptyIR();
-    ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
-    ir.entities = [entity('Invoice', [prop('tenantId', 'string', ['required']), prop('deletedAt', 'datetime')])];
+    ir.tenant = {
+      property: 'tenantId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
+    ir.entities = [
+      entity('Invoice', [prop('tenantId', 'string', ['required']), prop('deletedAt', 'datetime')]),
+    ];
     ir.stores = [durable('Invoice')];
     const code = new ConvexProjection().generate(ir, {
       surface: 'convex.queries',
@@ -173,16 +260,55 @@ describe('convex.queries — tenant + soft-delete read filtering', () => {
 describe('convex.mutations — governance', () => {
   function govIR(): IR {
     const ir = emptyIR();
-    ir.roles = [{ name: 'Admin', allow: [], deny: [], effectivePermissions: [{ action: 'manageAccess' }, { action: 'all' }] }];
-    ir.policies = [{ name: 'canManage', action: 'execute', expression: { kind: 'call', callee: { kind: 'identifier', name: 'roleAllows' }, args: [{ kind: 'member', object: { kind: 'identifier', name: 'user' }, property: 'role' }, { kind: 'literal', value: { kind: 'string', value: 'manageAccess' } }] } }] as IRPolicy[];
+    ir.roles = [
+      {
+        name: 'Admin',
+        allow: [],
+        deny: [],
+        effectivePermissions: [{ action: 'manageAccess' }, { action: 'all' }],
+      },
+    ];
+    ir.policies = [
+      {
+        name: 'canManage',
+        action: 'execute',
+        expression: {
+          kind: 'call',
+          callee: { kind: 'identifier', name: 'roleAllows' },
+          args: [
+            { kind: 'member', object: { kind: 'identifier', name: 'user' }, property: 'role' },
+            { kind: 'literal', value: { kind: 'string', value: 'manageAccess' } },
+          ],
+        },
+      },
+    ] as IRPolicy[];
     ir.entities = [entity('Task', [prop('status', 'string', ['required'])])];
     ir.stores = [durable('Task')];
     const close: IRCommand = {
-      name: 'close', entity: 'Task', parameters: [],
+      name: 'close',
+      entity: 'Task',
+      parameters: [],
       policies: ['canManage'],
-      guards: [{ kind: 'binary', operator: '==', left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'status' }, right: { kind: 'literal', value: { kind: 'string', value: 'open' } } }],
+      guards: [
+        {
+          kind: 'binary',
+          operator: '==',
+          left: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'self' },
+            property: 'status',
+          },
+          right: { kind: 'literal', value: { kind: 'string', value: 'open' } },
+        },
+      ],
       constraints: [],
-      actions: [{ kind: 'mutate', target: 'status', expression: { kind: 'literal', value: { kind: 'string', value: 'closed' } } }],
+      actions: [
+        {
+          kind: 'mutate',
+          target: 'status',
+          expression: { kind: 'literal', value: { kind: 'string', value: 'closed' } },
+        },
+      ],
       emits: [],
     };
     ir.commands = [close];
@@ -211,7 +337,10 @@ describe('convex.mutations — governance', () => {
 
   it('policyMode skip omits policy checks but keeps guards', () => {
     const ir = govIR();
-    const res = new ConvexProjection().generate(ir, { surface: 'convex.mutations', options: { policyMode: 'skip' } });
+    const res = new ConvexProjection().generate(ir, {
+      surface: 'convex.mutations',
+      options: { policyMode: 'skip' },
+    });
     const code = res.artifacts[0].code;
     expect(code).not.toContain('checkRole('); // policy/auth omitted
     expect(code).not.toContain('ROLE_PERMISSIONS'); // helper not emitted (unused)
@@ -222,9 +351,15 @@ describe('convex.mutations — governance', () => {
   it('fails CLOSED on an unresolvable guard (throws + diagnostic, never passes)', () => {
     const ir = govIR();
     // a lambda guard the resolver cannot map
-    ir.commands[0].guards = [{ kind: 'lambda', params: ['x'], body: { kind: 'literal', value: { kind: 'boolean', value: true } } }];
+    ir.commands[0].guards = [
+      {
+        kind: 'lambda',
+        params: ['x'],
+        body: { kind: 'literal', value: { kind: 'boolean', value: true } },
+      },
+    ];
     const res = mutations(ir);
-    expect(res.diagnostics.some(d => d.code === 'CONVEX_UNRESOLVED_GUARD')).toBe(true);
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_UNRESOLVED_GUARD')).toBe(true);
     expect(res.artifacts[0].code).toContain('unresolved — denied'); // denying throw, not a pass
   });
 });
@@ -234,14 +369,30 @@ describe('convex.mutations — create (param-style) & reactions', () => {
     const ir = emptyIR();
     ir.entities = [entity('Recipe', [prop('yieldQuantity', 'int', ['required'])])];
     ir.stores = [durable('Recipe')];
-    ir.commands = [{
-      name: 'create', entity: 'Recipe',
-      parameters: [{ name: 'yieldQty', type: { name: 'int', nullable: false }, required: true }],
-      guards: [{ kind: 'binary', operator: '>', left: { kind: 'identifier', name: 'yieldQty' }, right: { kind: 'literal', value: { kind: 'number', value: 0 } } }],
-      constraints: [],
-      actions: [{ kind: 'mutate', target: 'yieldQuantity', expression: { kind: 'identifier', name: 'yieldQty' } }],
-      emits: [],
-    }];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Recipe',
+        parameters: [{ name: 'yieldQty', type: { name: 'int', nullable: false }, required: true }],
+        guards: [
+          {
+            kind: 'binary',
+            operator: '>',
+            left: { kind: 'identifier', name: 'yieldQty' },
+            right: { kind: 'literal', value: { kind: 'number', value: 0 } },
+          },
+        ],
+        constraints: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'yieldQuantity',
+            expression: { kind: 'identifier', name: 'yieldQty' },
+          },
+        ],
+        emits: [],
+      },
+    ];
     const code = mutations(ir).artifacts[0].code;
     expect(code).toContain('export const Recipe_create = mutation({');
     expect(code).toContain('yieldQty: v.number()'); // arg is the PARAM (numeric → v.number())
@@ -251,53 +402,119 @@ describe('convex.mutations — create (param-style) & reactions', () => {
 
   it('exposes required non-param fields as args and fills defaults (insert completeness)', () => {
     const ir = emptyIR();
-    ir.entities = [entity('Event', [
-      prop('tenantId', 'string', ['required']),      // required, no default, not a param → required arg
-      { name: 'status', type: { name: 'string', nullable: false }, modifiers: ['required'], defaultValue: { kind: 'string', value: 'draft' } }, // default → optional arg + ?? default
-    ])];
+    ir.entities = [
+      entity('Event', [
+        prop('tenantId', 'string', ['required']), // required, no default, not a param → required arg
+        {
+          name: 'status',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
+          defaultValue: { kind: 'string', value: 'draft' },
+        }, // default → optional arg + ?? default
+      ]),
+    ];
     ir.stores = [durable('Event')];
-    ir.commands = [{ name: 'create', entity: 'Event', parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }], guards: [], constraints: [], actions: [], emits: [] }];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Event',
+        parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: [],
+      },
+    ];
     const code = mutations(ir).artifacts[0].code;
-    expect(code).toContain('tenantId: v.string()');          // required field exposed as required arg
+    expect(code).toContain('tenantId: v.string()'); // required field exposed as required arg
     expect(code).toContain('status: v.optional(v.string())'); // defaulted field is optional arg
-    expect(code).toContain('title: v.string()');              // required command param exposed
+    expect(code).toContain('title: v.string()'); // required command param exposed
     expect(code).toContain('status: args.status ?? "draft"'); // default guaranteed into doc
     expect(code).toContain('tenantId: args.tenantId');
   });
 
   it('renders numeric defaults as plain numbers (int/money/array<int> all v.number())', () => {
     const ir = emptyIR();
-    ir.entities = [entity('Event', [
-      { name: 'guestCount', type: { name: 'int', nullable: false }, modifiers: ['required'], defaultValue: { kind: 'number', value: 1 } },
-      { name: 'deposit', type: { name: 'money', nullable: false }, modifiers: ['required'], defaultValue: { kind: 'number', value: 0 } },
-      { name: 'seatCounts', type: { name: 'array', nullable: false, generic: { name: 'int', nullable: false } }, modifiers: ['required'], defaultValue: { kind: 'array', elements: [{ kind: 'number', value: 2 }, { kind: 'number', value: 4 }] } },
-    ])];
+    ir.entities = [
+      entity('Event', [
+        {
+          name: 'guestCount',
+          type: { name: 'int', nullable: false },
+          modifiers: ['required'],
+          defaultValue: { kind: 'number', value: 1 },
+        },
+        {
+          name: 'deposit',
+          type: { name: 'money', nullable: false },
+          modifiers: ['required'],
+          defaultValue: { kind: 'number', value: 0 },
+        },
+        {
+          name: 'seatCounts',
+          type: { name: 'array', nullable: false, generic: { name: 'int', nullable: false } },
+          modifiers: ['required'],
+          defaultValue: {
+            kind: 'array',
+            elements: [
+              { kind: 'number', value: 2 },
+              { kind: 'number', value: 4 },
+            ],
+          },
+        },
+      ]),
+    ];
     ir.stores = [durable('Event')];
-    ir.commands = [{ name: 'create', entity: 'Event', parameters: [], guards: [], constraints: [], actions: [], emits: [] }];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Event',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: [],
+      },
+    ];
     const code = mutations(ir).artifacts[0].code;
-    expect(code).toContain('guestCount: args.guestCount ?? 1');     // int → plain number (no bigint literal)
-    expect(code).toContain('deposit: args.deposit ?? 0');           // money → plain number (no string transport)
+    expect(code).toContain('guestCount: args.guestCount ?? 1'); // int → plain number (no bigint literal)
+    expect(code).toContain('deposit: args.deposit ?? 0'); // money → plain number (no string transport)
     expect(code).toContain('seatCounts: args.seatCounts ?? [2, 4]'); // array<int> stays plain numbers
   });
 
   it('lowers a `= null` clear to `undefined` for a non-nullable field; keeps null when nullable', () => {
     const ir = emptyIR();
-    ir.entities = [entity('Ticket', [
-      prop('deletedAt', 'datetime'),            // optional, NOT nullable → clear becomes unset
-      prop('archivedAt', 'datetime', [], true), // nullable → a real null is valid, keep it
-    ])];
+    ir.entities = [
+      entity('Ticket', [
+        prop('deletedAt', 'datetime'), // optional, NOT nullable → clear becomes unset
+        prop('archivedAt', 'datetime', [], true), // nullable → a real null is valid, keep it
+      ]),
+    ];
     ir.stores = [durable('Ticket')];
-    ir.commands = [{
-      name: 'restore', entity: 'Ticket', parameters: [], guards: [], constraints: [],
-      actions: [
-        { kind: 'mutate', target: 'deletedAt', expression: { kind: 'literal', value: { kind: 'null' } } },
-        { kind: 'mutate', target: 'archivedAt', expression: { kind: 'literal', value: { kind: 'null' } } },
-      ],
-      emits: [],
-    }];
+    ir.commands = [
+      {
+        name: 'restore',
+        entity: 'Ticket',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'deletedAt',
+            expression: { kind: 'literal', value: { kind: 'null' } },
+          },
+          {
+            kind: 'mutate',
+            target: 'archivedAt',
+            expression: { kind: 'literal', value: { kind: 'null' } },
+          },
+        ],
+        emits: [],
+      },
+    ];
     const code = mutations(ir).artifacts[0].code;
     expect(code).toContain('deletedAt: undefined'); // non-nullable clear → unset (Convex rejects null here)
-    expect(code).toContain('archivedAt: null');     // nullable field keeps a real null
+    expect(code).toContain('archivedAt: null'); // nullable field keeps a real null
   });
 
   it('binds reaction payload to the runtime contract (result + _subject)', () => {
@@ -309,25 +526,66 @@ describe('convex.mutations — create (param-style) & reactions', () => {
     ir.stores = [durable('Event'), durable('Board')];
     // Reaction reads payload.result.id — the reference-runtime binding the
     // projection previously omitted, crashing on `undefined.id` at runtime.
-    ir.reactions = [{
-      event: 'EventCreated', targetEntity: 'Board', targetCommand: 'create',
-      resolve: { kind: 'literal', value: { kind: 'null' } },
-      params: [{ name: 'sourceId', expression: { kind: 'member', object: { kind: 'member', object: { kind: 'identifier', name: 'payload' }, property: 'result' }, property: 'id' } }],
-    }] as IRReactionRule[];
-    ir.commands = [{ name: 'create', entity: 'Event', parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }], guards: [], constraints: [], actions: [], emits: ['EventCreated'] }];
+    ir.reactions = [
+      {
+        event: 'EventCreated',
+        targetEntity: 'Board',
+        targetCommand: 'create',
+        resolve: { kind: 'literal', value: { kind: 'null' } },
+        params: [
+          {
+            name: 'sourceId',
+            expression: {
+              kind: 'member',
+              object: {
+                kind: 'member',
+                object: { kind: 'identifier', name: 'payload' },
+                property: 'result',
+              },
+              property: 'id',
+            },
+          },
+        ],
+      },
+    ] as IRReactionRule[];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Event',
+        parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: ['EventCreated'],
+      },
+    ];
     const code = mutations(ir).artifacts[0].code;
-    expect(code).toContain('result: { _id, id: _id, ...doc }');                       // result.id aliases Convex _id
+    expect(code).toContain('result: { _id, id: _id, ...doc }'); // result.id aliases Convex _id
     expect(code).toContain('_subject: { entity: "Event", command: "create", id: _id }'); // canonical subject metadata
-    expect(code).toContain('sourceId: payload.result.id');                            // reaction reads through it, no crash
+    expect(code).toContain('sourceId: payload.result.id'); // reaction reads through it, no crash
   });
 
   it('maps array-typed command params to v.array(...), not v.any()', () => {
     const ir = emptyIR();
     ir.entities = [entity('Event', [prop('title', 'string', ['required'])])];
     ir.stores = [durable('Event')];
-    ir.commands = [{ name: 'create', entity: 'Event', parameters: [
-      { name: 'tags', type: { name: 'array', nullable: false, generic: { name: 'string', nullable: false } }, required: false },
-    ], guards: [], constraints: [], actions: [], emits: [] }];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Event',
+        parameters: [
+          {
+            name: 'tags',
+            type: { name: 'array', nullable: false, generic: { name: 'string', nullable: false } },
+            required: false,
+          },
+        ],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: [],
+      },
+    ];
     const code = mutations(ir).artifacts[0].code;
     expect(code).toContain('tags: v.optional(v.array(v.string()))'); // array param keeps its element type
     expect(code).not.toContain('v.any()');
@@ -335,29 +593,94 @@ describe('convex.mutations — create (param-style) & reactions', () => {
 
   it('threads source tenantId into tenant-scoped reaction creates', () => {
     const ir = emptyIR();
-    ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
+    ir.tenant = {
+      property: 'tenantId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
     ir.entities = [
-      entity('Event', [prop('tenantId', 'string', ['required']), prop('title', 'string', ['required'])]),
-      entity('Board', [prop('tenantId', 'string', ['required']), prop('name', 'string', ['required'])]),
+      entity('Event', [
+        prop('tenantId', 'string', ['required']),
+        prop('title', 'string', ['required']),
+      ]),
+      entity('Board', [
+        prop('tenantId', 'string', ['required']),
+        prop('name', 'string', ['required']),
+      ]),
     ];
     ir.stores = [durable('Event'), durable('Board')];
-    ir.reactions = [{ event: 'EventCreated', targetEntity: 'Board', targetCommand: 'create', resolve: { kind: 'literal', value: { kind: 'null' } }, params: [{ name: 'name', expression: { kind: 'member', object: { kind: 'identifier', name: 'payload' }, property: 'title' } }] }] as IRReactionRule[];
-    ir.commands = [{ name: 'create', entity: 'Event', parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }], guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'title', expression: { kind: 'identifier', name: 'title' } }], emits: ['EventCreated'] }];
+    ir.reactions = [
+      {
+        event: 'EventCreated',
+        targetEntity: 'Board',
+        targetCommand: 'create',
+        resolve: { kind: 'literal', value: { kind: 'null' } },
+        params: [
+          {
+            name: 'name',
+            expression: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'payload' },
+              property: 'title',
+            },
+          },
+        ],
+      },
+    ] as IRReactionRule[];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Event',
+        parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }],
+        guards: [],
+        constraints: [],
+        actions: [
+          { kind: 'mutate', target: 'title', expression: { kind: 'identifier', name: 'title' } },
+        ],
+        emits: ['EventCreated'],
+      },
+    ];
     const code = mutations(ir).artifacts[0].code;
     // tenantId auto-threaded from the source event into the Board insert
-    expect(code).toContain('await ctx.db.insert("boards", { tenantId: payload.tenantId, name: payload.title } as any)');
+    expect(code).toContain(
+      'await ctx.db.insert("boards", { tenantId: payload.tenantId, name: payload.title } as any)',
+    );
   });
 
   it('does not inject tenantId when the reaction target is not tenant-scoped', () => {
     const ir = emptyIR();
-    ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
+    ir.tenant = {
+      property: 'tenantId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
     ir.entities = [
       entity('Event', [prop('tenantId', 'string', ['required'])]),
       entity('Log', [prop('msg', 'string', ['required'])]), // no tenantId
     ];
     ir.stores = [durable('Event'), durable('Log')];
-    ir.reactions = [{ event: 'EventCreated', targetEntity: 'Log', targetCommand: 'create', resolve: { kind: 'literal', value: { kind: 'null' } }, params: [{ name: 'msg', expression: { kind: 'literal', value: { kind: 'string', value: 'hi' } } }] }] as IRReactionRule[];
-    ir.commands = [{ name: 'create', entity: 'Event', parameters: [], guards: [], constraints: [], actions: [], emits: ['EventCreated'] }];
+    ir.reactions = [
+      {
+        event: 'EventCreated',
+        targetEntity: 'Log',
+        targetCommand: 'create',
+        resolve: { kind: 'literal', value: { kind: 'null' } },
+        params: [
+          { name: 'msg', expression: { kind: 'literal', value: { kind: 'string', value: 'hi' } } },
+        ],
+      },
+    ] as IRReactionRule[];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Event',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: ['EventCreated'],
+      },
+    ];
     const code = mutations(ir).artifacts[0].code;
     expect(code).toContain('await ctx.db.insert("logs", { msg: "hi" } as any)');
     expect(code).not.toContain('tenantId: payload.tenantId');
@@ -365,10 +688,42 @@ describe('convex.mutations — create (param-style) & reactions', () => {
 
   it('completes non-create reactions (no TODO stubs) and emits event rows', () => {
     const ir = emptyIR();
-    ir.entities = [entity('Event', [prop('title', 'string', ['required'])]), entity('Board', [prop('name', 'string', ['required'])])];
+    ir.entities = [
+      entity('Event', [prop('title', 'string', ['required'])]),
+      entity('Board', [prop('name', 'string', ['required'])]),
+    ];
     ir.stores = [durable('Event'), durable('Board')];
-    ir.reactions = [{ event: 'EventCreated', targetEntity: 'Board', targetCommand: 'create', resolve: { kind: 'literal', value: { kind: 'null' } }, params: [{ name: 'name', expression: { kind: 'member', object: { kind: 'identifier', name: 'payload' }, property: 'title' } }] }] as IRReactionRule[];
-    ir.commands = [{ name: 'create', entity: 'Event', parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }], guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'title', expression: { kind: 'identifier', name: 'title' } }], emits: ['EventCreated'] }];
+    ir.reactions = [
+      {
+        event: 'EventCreated',
+        targetEntity: 'Board',
+        targetCommand: 'create',
+        resolve: { kind: 'literal', value: { kind: 'null' } },
+        params: [
+          {
+            name: 'name',
+            expression: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'payload' },
+              property: 'title',
+            },
+          },
+        ],
+      },
+    ] as IRReactionRule[];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Event',
+        parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }],
+        guards: [],
+        constraints: [],
+        actions: [
+          { kind: 'mutate', target: 'title', expression: { kind: 'identifier', name: 'title' } },
+        ],
+        emits: ['EventCreated'],
+      },
+    ];
     const code = mutations(ir).artifacts[0].code;
     expect(code).toContain('await ctx.db.insert("manifestEvents", {'); // event row (namespaced system table)
     expect(code).toContain('await ctx.db.insert("boards", { name: payload.title } as any)'); // reaction create with resolved param
@@ -379,16 +734,47 @@ describe('convex.mutations — create (param-style) & reactions', () => {
 describe('convex.mutations — G7 emit payloads (`emit Event { field: expr }`)', () => {
   it('populates the event-row payload with declared fields (create)', () => {
     const ir = emptyIR();
-    ir.entities = [entity('Payment', [prop('invoiceId', 'string', ['required']), prop('amount', 'money', ['required'])])];
+    ir.entities = [
+      entity('Payment', [
+        prop('invoiceId', 'string', ['required']),
+        prop('amount', 'money', ['required']),
+      ]),
+    ];
     ir.stores = [durable('Payment')];
-    ir.commands = [{
-      name: 'create', entity: 'Payment', parameters: [], guards: [], constraints: [], actions: [],
-      emits: ['PaymentProcessed'],
-      emitPayloads: [{ eventName: 'PaymentProcessed', fields: [
-        { name: 'invoiceId', expression: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'invoiceId' } },
-        { name: 'amount', expression: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'amount' } },
-      ] }],
-    }];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Payment',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: ['PaymentProcessed'],
+        emitPayloads: [
+          {
+            eventName: 'PaymentProcessed',
+            fields: [
+              {
+                name: 'invoiceId',
+                expression: {
+                  kind: 'member',
+                  object: { kind: 'identifier', name: 'self' },
+                  property: 'invoiceId',
+                },
+              },
+              {
+                name: 'amount',
+                expression: {
+                  kind: 'member',
+                  object: { kind: 'identifier', name: 'self' },
+                  property: 'amount',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ];
     const code = mutations(ir).artifacts[0].code;
     // event row now carries the declared payload (was `payload: {}` before G7)
     expect(code).toContain('payload: { invoiceId: doc.invoiceId, amount: doc.amount }');
@@ -402,18 +788,59 @@ describe('convex.mutations — G7 emit payloads (`emit Event { field: expr }`)',
     ];
     ir.stores = [durable('Line'), durable('Summary')];
     // `total` is NOT an entity field — it only exists because the command declares it.
-    ir.reactions = [{
-      event: 'LineCreated', targetEntity: 'Summary', targetCommand: 'create',
-      resolve: { kind: 'literal', value: { kind: 'null' } },
-      params: [{ name: 'amount', expression: { kind: 'member', object: { kind: 'identifier', name: 'payload' }, property: 'total' } }],
-    }] as IRReactionRule[];
-    ir.commands = [{
-      name: 'create', entity: 'Line', parameters: [], guards: [], constraints: [], actions: [],
-      emits: ['LineCreated'],
-      emitPayloads: [{ eventName: 'LineCreated', fields: [
-        { name: 'total', expression: { kind: 'binary', operator: '*', left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'qty' }, right: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'price' } } },
-      ] }],
-    }];
+    ir.reactions = [
+      {
+        event: 'LineCreated',
+        targetEntity: 'Summary',
+        targetCommand: 'create',
+        resolve: { kind: 'literal', value: { kind: 'null' } },
+        params: [
+          {
+            name: 'amount',
+            expression: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'payload' },
+              property: 'total',
+            },
+          },
+        ],
+      },
+    ] as IRReactionRule[];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Line',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: ['LineCreated'],
+        emitPayloads: [
+          {
+            eventName: 'LineCreated',
+            fields: [
+              {
+                name: 'total',
+                expression: {
+                  kind: 'binary',
+                  operator: '*',
+                  left: {
+                    kind: 'member',
+                    object: { kind: 'identifier', name: 'self' },
+                    property: 'qty',
+                  },
+                  right: {
+                    kind: 'member',
+                    object: { kind: 'identifier', name: 'self' },
+                    property: 'price',
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ];
     const code = mutations(ir).artifacts[0].code;
     // declared computed field lands in the shared reaction payload...
     expect(code).toContain('total: (doc.qty * doc.price)');
@@ -425,16 +852,47 @@ describe('convex.mutations — G7 emit payloads (`emit Event { field: expr }`)',
     const ir = emptyIR();
     ir.entities = [entity('Counter', [prop('count', 'int', ['required'])])];
     ir.stores = [durable('Counter')];
-    ir.commands = [{
-      name: 'increment', entity: 'Counter',
-      parameters: [{ name: 'by', type: { name: 'int', nullable: false }, required: true }],
-      guards: [], constraints: [],
-      actions: [{ kind: 'mutate', target: 'count', expression: { kind: 'binary', operator: '+', left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'count' }, right: { kind: 'identifier', name: 'by' } } }],
-      emits: ['Counted'],
-      emitPayloads: [{ eventName: 'Counted', fields: [
-        { name: 'newCount', expression: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'count' } },
-      ] }],
-    }];
+    ir.commands = [
+      {
+        name: 'increment',
+        entity: 'Counter',
+        parameters: [{ name: 'by', type: { name: 'int', nullable: false }, required: true }],
+        guards: [],
+        constraints: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'count',
+            expression: {
+              kind: 'binary',
+              operator: '+',
+              left: {
+                kind: 'member',
+                object: { kind: 'identifier', name: 'self' },
+                property: 'count',
+              },
+              right: { kind: 'identifier', name: 'by' },
+            },
+          },
+        ],
+        emits: ['Counted'],
+        emitPayloads: [
+          {
+            eventName: 'Counted',
+            fields: [
+              {
+                name: 'newCount',
+                expression: {
+                  kind: 'member',
+                  object: { kind: 'identifier', name: 'self' },
+                  property: 'count',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ];
     const code = mutations(ir).artifacts[0].code;
     // __after holds the post-patch instance; G7 reads it (not the pre-patch doc)
     expect(code).toContain('const __after: Record<string, any> = { ...doc, ...updates };');
@@ -445,15 +903,22 @@ describe('convex.mutations — G7 emit payloads (`emit Event { field: expr }`)',
     const ir = emptyIR();
     ir.entities = [entity('Task', [prop('title', 'string', ['required'])])];
     ir.stores = [durable('Task')];
-    ir.commands = [{
-      name: 'create', entity: 'Task',
-      parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }],
-      guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'title', expression: { kind: 'identifier', name: 'title' } }],
-      emits: ['TaskCreated'],
-    }];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Task',
+        parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }],
+        guards: [],
+        constraints: [],
+        actions: [
+          { kind: 'mutate', target: 'title', expression: { kind: 'identifier', name: 'title' } },
+        ],
+        emits: ['TaskCreated'],
+      },
+    ];
     const code = mutations(ir).artifacts[0].code;
-    expect(code).toContain('payload: {}');   // empty payload, as before G7
-    expect(code).not.toContain('__after');   // no post-action var introduced
+    expect(code).toContain('payload: {}'); // empty payload, as before G7
+    expect(code).not.toContain('__after'); // no post-action var introduced
   });
 });
 
@@ -462,18 +927,67 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
     const ir = emptyIR();
     ir.entities = [
       entity('Parent', [prop('status', 'string', ['required'])]),
-      entity('Child', [prop('parentId', 'string', ['required']), prop('status', 'string', ['required'])],
-        [{ name: 'parent', kind: 'belongsTo', target: 'Parent', foreignKey: { fields: ['parentId'] } }]),
+      entity(
+        'Child',
+        [prop('parentId', 'string', ['required']), prop('status', 'string', ['required'])],
+        [
+          {
+            name: 'parent',
+            kind: 'belongsTo',
+            target: 'Parent',
+            foreignKey: { fields: ['parentId'] },
+          },
+        ],
+      ),
     ];
     ir.stores = [durable('Parent'), durable('Child')];
     ir.commands = [
-      { name: 'deactivate', entity: 'Parent', parameters: [], guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'status', expression: { kind: 'literal', value: { kind: 'string', value: 'inactive' } } }], emits: ['ParentDeactivated'] },
-      { name: 'deactivate', entity: 'Child', parameters: [], guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'status', expression: { kind: 'literal', value: { kind: 'string', value: 'inactive' } } }], emits: [] },
+      {
+        name: 'deactivate',
+        entity: 'Parent',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'status',
+            expression: { kind: 'literal', value: { kind: 'string', value: 'inactive' } },
+          },
+        ],
+        emits: ['ParentDeactivated'],
+      },
+      {
+        name: 'deactivate',
+        entity: 'Child',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'status',
+            expression: { kind: 'literal', value: { kind: 'string', value: 'inactive' } },
+          },
+        ],
+        emits: [],
+      },
     ];
-    ir.reactions = [{
-      event: 'ParentDeactivated', targetEntity: 'Child', targetCommand: 'deactivate',
-      fanOut: { matchField: 'parentId', matchSource: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'id' } },
-    }] as IRReactionRule[];
+    ir.reactions = [
+      {
+        event: 'ParentDeactivated',
+        targetEntity: 'Child',
+        targetCommand: 'deactivate',
+        fanOut: {
+          matchField: 'parentId',
+          matchSource: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'self' },
+            property: 'id',
+          },
+        },
+      },
+    ] as IRReactionRule[];
     const code = mutations(ir).artifacts[0].code;
     // the sibling-mutation dispatch import is emitted only when runMutation is used
     expect(code).toContain('import { api } from "./_generated/api";');
@@ -481,7 +995,9 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
     expect(code).toContain('withIndex("by_parentId", (q) => q.eq("parentId", payload.id))');
     // per-match governed dispatch (target's own mutation, with its docId)
     expect(code).toContain('for (const __row of fanRows0) {');
-    expect(code).toContain('ctx.runMutation(api.mutations.Child_deactivate, { docId: (__row as any)._id }');
+    expect(code).toContain(
+      'ctx.runMutation(api.mutations.Child_deactivate, { docId: (__row as any)._id }',
+    );
     // a fan-out reaction must NOT render the single-target resolve/patch path
     expect(code).not.toContain('reactionTarget0');
   });
@@ -494,17 +1010,42 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
     ];
     ir.stores = [durable('Parent'), durable('Child')];
     ir.commands = [
-      { name: 'deactivate', entity: 'Parent', parameters: [], guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'status', expression: { kind: 'literal', value: { kind: 'string', value: 'inactive' } } }], emits: ['ParentDeactivated'] },
+      {
+        name: 'deactivate',
+        entity: 'Parent',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'status',
+            expression: { kind: 'literal', value: { kind: 'string', value: 'inactive' } },
+          },
+        ],
+        emits: ['ParentDeactivated'],
+      },
     ];
-    ir.reactions = [{
-      event: 'ParentDeactivated', targetEntity: 'Child', targetCommand: 'deactivate',
-      fanOut: { matchField: 'owner', matchSource: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'id' } },
-    }] as IRReactionRule[];
+    ir.reactions = [
+      {
+        event: 'ParentDeactivated',
+        targetEntity: 'Child',
+        targetCommand: 'deactivate',
+        fanOut: {
+          matchField: 'owner',
+          matchSource: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'self' },
+            property: 'id',
+          },
+        },
+      },
+    ] as IRReactionRule[];
     const res = mutations(ir);
     const code = res.artifacts[0].code;
     expect(code).toContain('.filter((q) => q.eq(q.field("owner"), payload.id))');
     expect(code).not.toContain('withIndex("by_owner"');
-    expect(res.diagnostics.some(d => d.code === 'CONVEX_FANOUT_UNINDEXED')).toBe(true);
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_FANOUT_UNINDEXED')).toBe(true);
   });
 });
 
@@ -513,27 +1054,73 @@ describe('convex.mutations — aggregate count reactions (`count(E where fk == v
     const ir = emptyIR();
     ir.entities = [
       entity('Station', [prop('currentTaskCount', 'number')]),
-      entity('PrepTask', [prop('stationId', 'string', ['required']), prop('status', 'string', ['required'])],
-        [{ name: 'station', kind: 'belongsTo', target: 'Station', foreignKey: { fields: ['stationId'] } }]),
+      entity(
+        'PrepTask',
+        [prop('stationId', 'string', ['required']), prop('status', 'string', ['required'])],
+        [
+          {
+            name: 'station',
+            kind: 'belongsTo',
+            target: 'Station',
+            foreignKey: { fields: ['stationId'] },
+          },
+        ],
+      ),
     ];
     ir.stores = [durable('Station'), durable('PrepTask')];
     ir.commands = [
-      { name: 'claim', entity: 'PrepTask', parameters: [], guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'status', expression: { kind: 'literal', value: { kind: 'string', value: 'in_progress' } } }], emits: ['PrepTaskClaimed'] },
+      {
+        name: 'claim',
+        entity: 'PrepTask',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'status',
+            expression: { kind: 'literal', value: { kind: 'string', value: 'in_progress' } },
+          },
+        ],
+        emits: ['PrepTaskClaimed'],
+      },
     ];
-    ir.reactions = [{
-      event: 'PrepTaskClaimed', targetEntity: 'Station', targetCommand: 'syncTaskCount',
-      resolve: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'stationId' },
-      params: [{
-        name: 'currentTaskCount',
-        expression: {
-          kind: 'aggregate', op: 'count', entity: 'PrepTask',
-          predicates: [
-            { field: 'stationId', value: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'stationId' } },
-            { field: 'status', value: { kind: 'literal', value: { kind: 'string', value: 'in_progress' } } },
-          ],
+    ir.reactions = [
+      {
+        event: 'PrepTaskClaimed',
+        targetEntity: 'Station',
+        targetCommand: 'syncTaskCount',
+        resolve: {
+          kind: 'member',
+          object: { kind: 'identifier', name: 'self' },
+          property: 'stationId',
         },
-      }],
-    }] as IRReactionRule[];
+        params: [
+          {
+            name: 'currentTaskCount',
+            expression: {
+              kind: 'aggregate',
+              op: 'count',
+              entity: 'PrepTask',
+              predicates: [
+                {
+                  field: 'stationId',
+                  value: {
+                    kind: 'member',
+                    object: { kind: 'identifier', name: 'self' },
+                    property: 'stationId',
+                  },
+                },
+                {
+                  field: 'status',
+                  value: { kind: 'literal', value: { kind: 'string', value: 'in_progress' } },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ] as IRReactionRule[];
     const code = mutations(ir).artifacts[0].code;
     // FK predicate (stationId) drives the index; self.stationId → doc.stationId (single-target scope)
     expect(code).toContain('withIndex("by_stationId", (q) => q.eq("stationId", doc.stationId))');
@@ -542,29 +1129,72 @@ describe('convex.mutations — aggregate count reactions (`count(E where fk == v
     expect(code).toContain('.length;');
     // the count variable is bound to the reaction param and patched onto the parent
     expect(code).toContain('currentTaskCount: __count0');
-    expect(code).toContain('ctx.db.patch(reactionTarget0 as any, { currentTaskCount: __count0 } as any)');
+    expect(code).toContain(
+      'ctx.db.patch(reactionTarget0 as any, { currentTaskCount: __count0 } as any)',
+    );
   });
 
   it('renders a single-predicate indexed count (schedule-shift-count shape)', () => {
     const ir = emptyIR();
     ir.entities = [
       entity('Schedule', [prop('shiftCount', 'number')]),
-      entity('ScheduleShift', [prop('scheduleId', 'string', ['required'])],
-        [{ name: 'schedule', kind: 'belongsTo', target: 'Schedule', foreignKey: { fields: ['scheduleId'] } }]),
+      entity(
+        'ScheduleShift',
+        [prop('scheduleId', 'string', ['required'])],
+        [
+          {
+            name: 'schedule',
+            kind: 'belongsTo',
+            target: 'Schedule',
+            foreignKey: { fields: ['scheduleId'] },
+          },
+        ],
+      ),
     ];
     ir.stores = [durable('Schedule'), durable('ScheduleShift')];
     ir.commands = [
-      { name: 'assign', entity: 'ScheduleShift', parameters: [], guards: [], constraints: [], actions: [], emits: ['ScheduleShiftCreated'] },
+      {
+        name: 'assign',
+        entity: 'ScheduleShift',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: ['ScheduleShiftCreated'],
+      },
     ];
-    ir.reactions = [{
-      event: 'ScheduleShiftCreated', targetEntity: 'Schedule', targetCommand: 'syncShiftCount',
-      resolve: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'scheduleId' },
-      params: [{
-        name: 'shiftCount',
-        expression: { kind: 'aggregate', op: 'count', entity: 'ScheduleShift',
-          predicates: [{ field: 'scheduleId', value: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'scheduleId' } }] },
-      }],
-    }] as IRReactionRule[];
+    ir.reactions = [
+      {
+        event: 'ScheduleShiftCreated',
+        targetEntity: 'Schedule',
+        targetCommand: 'syncShiftCount',
+        resolve: {
+          kind: 'member',
+          object: { kind: 'identifier', name: 'self' },
+          property: 'scheduleId',
+        },
+        params: [
+          {
+            name: 'shiftCount',
+            expression: {
+              kind: 'aggregate',
+              op: 'count',
+              entity: 'ScheduleShift',
+              predicates: [
+                {
+                  field: 'scheduleId',
+                  value: {
+                    kind: 'member',
+                    object: { kind: 'identifier', name: 'self' },
+                    property: 'scheduleId',
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ] as IRReactionRule[];
     const code = mutations(ir).artifacts[0].code;
     expect(code).toContain('withIndex("by_scheduleId", (q) => q.eq("scheduleId", doc.scheduleId))');
     // single predicate → no extra filter chain, just .length
@@ -580,22 +1210,53 @@ describe('convex.mutations — aggregate count reactions (`count(E where fk == v
     ];
     ir.stores = [durable('Owner'), durable('Thing')];
     ir.commands = [
-      { name: 'ping', entity: 'Thing', parameters: [], guards: [], constraints: [], actions: [], emits: ['ThingPinged'] },
+      {
+        name: 'ping',
+        entity: 'Thing',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: ['ThingPinged'],
+      },
     ];
-    ir.reactions = [{
-      event: 'ThingPinged', targetEntity: 'Owner', targetCommand: 'syncTally',
-      resolve: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'bucket' },
-      params: [{
-        name: 'tally',
-        expression: { kind: 'aggregate', op: 'count', entity: 'Thing',
-          predicates: [{ field: 'bucket', value: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'bucket' } }] },
-      }],
-    }] as IRReactionRule[];
+    ir.reactions = [
+      {
+        event: 'ThingPinged',
+        targetEntity: 'Owner',
+        targetCommand: 'syncTally',
+        resolve: {
+          kind: 'member',
+          object: { kind: 'identifier', name: 'self' },
+          property: 'bucket',
+        },
+        params: [
+          {
+            name: 'tally',
+            expression: {
+              kind: 'aggregate',
+              op: 'count',
+              entity: 'Thing',
+              predicates: [
+                {
+                  field: 'bucket',
+                  value: {
+                    kind: 'member',
+                    object: { kind: 'identifier', name: 'self' },
+                    property: 'bucket',
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ] as IRReactionRule[];
     const res = mutations(ir);
     const code = res.artifacts[0].code;
     // no index → plain query (no withIndex), predicate applied as a JS filter
     expect(code).not.toContain('withIndex(');
     expect(code).toContain('.filter((d) => (d as any).bucket === doc.bucket)');
-    expect(res.diagnostics.some(d => d.code === 'CONVEX_AGGREGATE_UNINDEXED')).toBe(true);
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_AGGREGATE_UNINDEXED')).toBe(true);
   });
 });

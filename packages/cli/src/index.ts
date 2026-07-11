@@ -75,7 +75,11 @@ import {
   versionsRollbackCommand,
   versionsVerifyCommand,
 } from './commands/versions.js';
-import { getConfig, resolveNextJsProjectionOptions, resolveProjectionOptions } from './utils/config.js';
+import {
+  getConfig,
+  resolveNextJsProjectionOptions,
+  resolveProjectionOptions,
+} from './utils/config.js';
 import { registerPluginCliCommands } from '@angriff36/manifest/plugin-loader';
 import type { CliProgramLike } from '@angriff36/manifest/plugin-api';
 import { loadDeclaredPlugins, reportPluginDiagnostics } from './utils/plugins.js';
@@ -133,7 +137,10 @@ program
   .description('Initialize Manifest configuration (interactive) or generate CI workflows')
   .option('-f, --force', 'Overwrite existing config or workflow file')
   .option('--ci <provider>', 'Generate CI workflow for provider (github)')
-  .option('--node-versions <versions>', 'Comma-separated Node.js versions for CI matrix (default: 18,20,22)')
+  .option(
+    '--node-versions <versions>',
+    'Comma-separated Node.js versions for CI matrix (default: 18,20,22)',
+  )
   .action(async (options: { force?: boolean; ci?: string; nodeVersions?: string }) => {
     if (options.ci) {
       await initCiCommand(options.ci, {
@@ -159,7 +166,10 @@ program
   .option('-d, --diagnostics', 'Include diagnostics in output', false)
   .option('--pretty', 'Pretty-print JSON output', true)
   .option('--merge', 'Merge multiple files into single IR (resolves use declarations)', false)
-  .option('--all', 'Compile every source in manifest.config.yaml into one merged IR (config-driven; resolves use/mixin; ignores [source]/-o)')
+  .option(
+    '--all',
+    'Compile every source in manifest.config.yaml into one merged IR (config-driven; resolves use/mixin; ignores [source]/-o)',
+  )
   .option('--entry <files...>', 'Entry file(s) for merge compilation (auto-detected if omitted)')
   .action(async (source, options = {}) => {
     // --all: merged, config-driven compile — the partner to `generate --all`.
@@ -182,16 +192,29 @@ program
 program
   .command('generate')
   .description('Generate code from IR using a projection')
-  .argument('[ir]', 'IR file or directory. With --all, an optional explicit IR file overrides the config output as the source (e.g. a merged IR).')
-  .option('-p, --projection <name>', 'Projection name — any registered projection (nextjs, prisma, zod, kysely, ...)', 'nextjs')
+  .argument(
+    '[ir]',
+    'IR file or directory. With --all, an optional explicit IR file overrides the config output as the source (e.g. a merged IR).',
+  )
+  .option(
+    '-p, --projection <name>',
+    'Projection name — any registered projection (nextjs, prisma, zod, kysely, ...)',
+    'nextjs',
+  )
   .option('-s, --surface <name>', 'Projection surface (route, command, types, client, all)', 'all')
   .option('-o, --output <path>', 'Output directory')
-  .option('--all', 'Generate every projection declared in manifest.config.yaml (ignores -p/-o/<ir>)')
+  .option(
+    '--all',
+    'Generate every projection declared in manifest.config.yaml (ignores -p/-o/<ir>)',
+  )
   .option('--auth <provider>', 'Auth provider or import path')
   .option('--database <path>', 'Database import path')
   .option('--runtime <path>', 'Runtime import path')
   .option('--response <path>', 'Response helpers import path')
-  .option('--check', 'Compare generated code to committed files and exit non-zero on drift (writes nothing)')
+  .option(
+    '--check',
+    'Compare generated code to committed files and exit non-zero on drift (writes nothing)',
+  )
   .action(async (ir, options = {}) => {
     // --all: drive every configured projection from manifest.config.yaml.
     // An optional explicit <ir> overrides the config `output` as the IR source —
@@ -203,7 +226,7 @@ program
     }
 
     if (!ir) {
-      console.error('error: missing required argument \'ir\' (or pass --all to use config)');
+      console.error("error: missing required argument 'ir' (or pass --all to use config)");
       process.exit(1);
     }
 
@@ -235,9 +258,16 @@ program
   .command('build')
   .description('Compile and generate in one step')
   .argument('[source]', 'Source .manifest file or glob pattern')
-  .option('-p, --projection <name>', 'Projection name — any registered projection (nextjs, prisma, zod, kysely, ...)', 'nextjs')
+  .option(
+    '-p, --projection <name>',
+    'Projection name — any registered projection (nextjs, prisma, zod, kysely, ...)',
+    'nextjs',
+  )
   .option('-s, --surface <name>', 'Projection surface (route, command, types, client, all)', 'all')
-  .option('--all', 'Compile every source + generate every projection from manifest.config.yaml (config-driven; ignores -p/-s/--ir-output/--code-output/-g/source)')
+  .option(
+    '--all',
+    'Compile every source + generate every projection from manifest.config.yaml (config-driven; ignores -p/-s/--ir-output/--code-output/-g/source)',
+  )
   .option('--ir-output <path>', 'IR output directory')
   .option('--code-output <path>', 'Generated code output directory')
   .option('-g, --glob <pattern>', 'Glob pattern for multiple files')
@@ -269,7 +299,7 @@ program
       if (conflicting.length > 0) {
         console.error(
           `error: --all is config-driven and ignores ${conflicting.join(', ')}; ` +
-          'remove them or drop --all.'
+            'remove them or drop --all.',
         );
         process.exit(1);
       }
@@ -284,12 +314,9 @@ program
 
     const finalOptions = {
       ...options,
-      irOutput:
-        options.irOutput || config?.output || 'ir/',
+      irOutput: options.irOutput || config?.output || 'ir/',
       codeOutput:
-        options.codeOutput ||
-        config?.projections?.[options.projection]?.output ||
-        'generated/',
+        options.codeOutput || config?.projections?.[options.projection]?.output || 'generated/',
       projectionOptionsFromConfig,
     };
 
@@ -470,7 +497,9 @@ program
  */
 program
   .command('generate-from-prompt')
-  .description('Generate .manifest source from a natural-language prompt via an LLM (requires ANTHROPIC_API_KEY)')
+  .description(
+    'Generate .manifest source from a natural-language prompt via an LLM (requires ANTHROPIC_API_KEY)',
+  )
   .argument('<prompt>', 'Natural-language description of the system to generate')
   .option('--model <model>', 'Claude model to use')
   .option('-o, --output <path>', 'Write generated .manifest to this file (default: stdout)')
@@ -501,7 +530,11 @@ program
   .command('watch')
   .description('Watch .manifest files and rebuild on change')
   .argument('[source]', 'Source .manifest file, directory, or glob pattern')
-  .option('-p, --projection <name>', 'Projection name — any registered projection (nextjs, prisma, zod, kysely, ...)', 'nextjs')
+  .option(
+    '-p, --projection <name>',
+    'Projection name — any registered projection (nextjs, prisma, zod, kysely, ...)',
+    'nextjs',
+  )
   .option('-s, --surface <name>', 'Projection surface (route, command, types, client, all)', 'all')
   .option('--all', 'Rebuild every projection declared in manifest.config.yaml (ignores -p)')
   .option('--ir-output <path>', 'IR output directory')
@@ -520,8 +553,7 @@ program
 
     const finalOptions = {
       ...options,
-      irOutput:
-        options.irOutput || config?.output || 'ir/',
+      irOutput: options.irOutput || config?.output || 'ir/',
       codeOutput:
         options.codeOutput ||
         config?.projections?.nextjs?.output ||
@@ -621,7 +653,11 @@ program
   .description('Generate conformance test fixtures via LLM analysis of existing fixtures')
   .argument('[source]', 'Source .manifest file, directory, or glob to analyze')
   .option('--feature <description>', 'Feature description to focus generation on')
-  .option('--category <type>', 'Test category: edge-cases, boundary, adversarial, coverage', 'edge-cases')
+  .option(
+    '--category <type>',
+    'Test category: edge-cases, boundary, adversarial, coverage',
+    'edge-cases',
+  )
   .option('--count <n>', 'Number of fixtures to generate', (v) => parseInt(v, 10), 3)
   .option('--output <path>', 'Output directory for fixtures (default: conformance fixtures dir)')
   .option('--api-key <key>', 'Anthropic API key (default: ANTHROPIC_API_KEY env var)')
@@ -856,9 +892,7 @@ program
  * compiled IR JSON or a manifest source file. Validates against the schemas
  * in docs/spec/registry/. See docs/spec/registry/README.md.
  */
-const emitProgram = program
-  .command('emit')
-  .description('Emit IR-derived artifacts');
+const emitProgram = program.command('emit').description('Emit IR-derived artifacts');
 
 /**
  * manifest audit-bypasses
@@ -881,14 +915,19 @@ const emitProgram = program
 program
   .command('audit-governance')
   .alias('audit-constitution')
-  .description('Run the full governance audit suite (umbrella). `audit-constitution` is a deprecated alias.')
+  .description(
+    'Run the full governance audit suite (umbrella). `audit-constitution` is a deprecated alias.',
+  )
   .option('-r, --root <path>', 'Root directory to audit', '.')
   .option('--only <list>', 'Comma-separated detector names to run (default: all)')
   .option('--commands-registry <path>', 'Path to commands.json (enables missing-tests detector)')
   .option('--bypass-registry <path>', 'Path to bypasses.json (enables bypass-violations detector)')
   .option('--strict', 'Exit non-zero on any error finding', false)
   .option('-f, --format <format>', 'Output format (text, json)', 'text')
-  .option('--write-receiver <name>', 'ORM client identifier direct-write detectors match on (default: prisma)')
+  .option(
+    '--write-receiver <name>',
+    'ORM client identifier direct-write detectors match on (default: prisma)',
+  )
   .action(async (options = {}, cmd) => {
     // Surface a deprecation hint when callers invoke the legacy alias.
     const invokedAs = cmd?.args?.[0] ?? cmd?.name?.();
@@ -897,8 +936,8 @@ program
       console.warn(
         chalk.yellow(
           '[deprecation] `manifest audit-constitution` is renamed to `manifest audit-governance`. ' +
-          'The alias still works but will be removed in a future release.'
-        )
+            'The alias still works but will be removed in a future release.',
+        ),
       );
     }
     const result = await auditGovernanceCommand(options);
@@ -922,9 +961,7 @@ program
  */
 program
   .command('enforce-surface')
-  .description(
-    'Enforce that application code only writes through registered Manifest commands'
-  )
+  .description('Enforce that application code only writes through registered Manifest commands')
   .requiredOption('--root <path>', 'Repository or application root to scan')
   .requiredOption('--commands-registry <path>', 'Path to commands.json emitted from Manifest IR')
   .option('--entities-registry <path>', 'Path to entities.json emitted from Manifest IR')
@@ -933,7 +970,10 @@ program
   .option('--strict', 'Exit non-zero on any error finding', false)
   .option('--include <glob...>', 'Additional include globs')
   .option('--exclude <glob...>', 'Exclude globs (generated files, build output, fixtures, etc.)')
-  .option('--write-receiver <name>', 'ORM client identifier direct-write detectors match on (default: prisma)')
+  .option(
+    '--write-receiver <name>',
+    'ORM client identifier direct-write detectors match on (default: prisma)',
+  )
   .action(async (options = {}) => {
     await enforceSurfaceCommand({
       root: options.root,
@@ -984,8 +1024,8 @@ program
       if (result.overall.percentage < options.minCoverage) {
         console.error(
           chalk.red(
-            `Coverage ${result.overall.percentage}% is below threshold ${options.minCoverage}%`
-          )
+            `Coverage ${result.overall.percentage}% is below threshold ${options.minCoverage}%`,
+          ),
         );
         process.exitCode = 1;
       }
@@ -1018,25 +1058,45 @@ program
  */
 program
   .command('wiring-inspect')
-  .description('Inspect application source for Manifest capability consumers and contract mismatches')
+  .description(
+    'Inspect application source for Manifest capability consumers and contract mismatches',
+  )
   .requiredOption('--contract <path>', 'Path to manifest-wiring-contract.json')
-  .option('--root <path>', 'Application source root (repeatable)', (val: string, prev: string[]) => {
-    prev.push(val);
-    return prev;
-  }, [] as string[])
+  .option(
+    '--root <path>',
+    'Application source root (repeatable)',
+    (val: string, prev: string[]) => {
+      prev.push(val);
+      return prev;
+    },
+    [] as string[],
+  )
   .option('--config <path>', 'Optional wiring-inspect config JSON')
   .option('--overrides <path>', 'Optional explicit consumers registry (overrides only)')
-  .option('--include <pattern>', 'Include path substring (repeatable)', (val: string, prev: string[]) => {
-    prev.push(val);
-    return prev;
-  }, [] as string[])
-  .option('--exclude <pattern>', 'Exclude path substring (repeatable)', (val: string, prev: string[]) => {
-    prev.push(val);
-    return prev;
-  }, [] as string[])
+  .option(
+    '--include <pattern>',
+    'Include path substring (repeatable)',
+    (val: string, prev: string[]) => {
+      prev.push(val);
+      return prev;
+    },
+    [] as string[],
+  )
+  .option(
+    '--exclude <pattern>',
+    'Exclude path substring (repeatable)',
+    (val: string, prev: string[]) => {
+      prev.push(val);
+      return prev;
+    },
+    [] as string[],
+  )
   .option('-f, --format <format>', 'Output format (text, json)', 'text')
   .option('--strict-coverage', 'Treat unwired capabilities as defects', false)
-  .option('--fail-on <list>', 'Comma-separated defect classes: stale-consumer,contract-mismatch,unwired')
+  .option(
+    '--fail-on <list>',
+    'Comma-separated defect classes: stale-consumer,contract-mismatch,unwired',
+  )
   .option('--strict', 'Exit non-zero when the inspect gate fails', false)
   .action(async (options = {}) => {
     await wiringInspectCommand({
@@ -1061,29 +1121,38 @@ program
  */
 program
   .command('wiring-remediate')
-  .description(
-    'Plan or apply deterministic Manifest wiring repairs against application source',
-  )
+  .description('Plan or apply deterministic Manifest wiring repairs against application source')
   .requiredOption('--contract <path>', 'Path to manifest-wiring-contract.json')
-  .option('--root <path>', 'Application source root (repeatable)', (val: string, prev: string[]) => {
-    prev.push(val);
-    return prev;
-  }, [] as string[])
+  .option(
+    '--root <path>',
+    'Application source root (repeatable)',
+    (val: string, prev: string[]) => {
+      prev.push(val);
+      return prev;
+    },
+    [] as string[],
+  )
   .option('--config <path>', 'Optional wiring-inspect config JSON')
   .option('--overrides <path>', 'Optional explicit consumers registry (overrides only)')
-  .option('--include <pattern>', 'Include path substring (repeatable)', (val: string, prev: string[]) => {
-    prev.push(val);
-    return prev;
-  }, [] as string[])
-  .option('--exclude <pattern>', 'Exclude path substring (repeatable)', (val: string, prev: string[]) => {
-    prev.push(val);
-    return prev;
-  }, [] as string[])
   .option(
-    '--mode <mode>',
-    'plan | dry-run | apply | one-defect (default: plan)',
-    'plan',
+    '--include <pattern>',
+    'Include path substring (repeatable)',
+    (val: string, prev: string[]) => {
+      prev.push(val);
+      return prev;
+    },
+    [] as string[],
   )
+  .option(
+    '--exclude <pattern>',
+    'Exclude path substring (repeatable)',
+    (val: string, prev: string[]) => {
+      prev.push(val);
+      return prev;
+    },
+    [] as string[],
+  )
+  .option('--mode <mode>', 'plan | dry-run | apply | one-defect (default: plan)', 'plan')
   .option('--capability <id>', 'Limit to Entity.command capability id')
   .option('--finding <id>', 'Limit to a specific finding id')
   .option('--auto-fixable-only', 'Apply only auto-fixable decisions', false)
@@ -1121,8 +1190,15 @@ program
   .option('-o, --output <path>', 'Output directory for generated scripts', 'load-tests')
   .option('-f, --format <format>', 'Script format: k6 | artillery (default: k6)', 'k6')
   .option('--base-url <url>', 'Base URL for the API under test', 'http://localhost:3000')
-  .option('--ramp-up <stages>', 'Ramp-up profile: "duration:target,duration:target" (e.g. "10s:5,30s:20,1m:50")', '10s:5,30s:20,1m:50')
-  .option('--slo <thresholds>', 'SLO thresholds: "metric:op:value" (e.g. "p95:<:500ms,error_rate:<=:0.01")')
+  .option(
+    '--ramp-up <stages>',
+    'Ramp-up profile: "duration:target,duration:target" (e.g. "10s:5,30s:20,1m:50")',
+    '10s:5,30s:20,1m:50',
+  )
+  .option(
+    '--slo <thresholds>',
+    'SLO thresholds: "metric:op:value" (e.g. "p95:<:500ms,error_rate:<=:0.01")',
+  )
   .option('--command <name...>', 'Only generate for the named command(s)')
   .option('--entity <name...>', 'Only include the named entity/entities')
   .option('--profile', 'Emit per-request profiling timestamps for profiler correlation', false)
@@ -1384,7 +1460,10 @@ program
   .option('--skip-runtime-smoke', 'Skip the in-memory RuntimeEngine smoke', false)
   .option('--skip-package-shape', 'Skip the package-shape check', false)
   .option('--skip-tarball', 'Skip the `npm pack --dry-run` sub-step in package-shape', false)
-  .option('--package-root <path>', 'Override the @angriff36/manifest package root for the package-shape check')
+  .option(
+    '--package-root <path>',
+    'Override the @angriff36/manifest package root for the package-shape check',
+  )
   .action(async (options = {}) => {
     const result = await integrationCheckCommand({
       root: options.root,
@@ -1429,7 +1508,9 @@ configProgram
 configProgram
   .command('inspect')
   .alias('print-effective')
-  .description('Print the effective config (defaults + user overrides). Stable, key-sorted; safe for CI snapshots.')
+  .description(
+    'Print the effective config (defaults + user overrides). Stable, key-sorted; safe for CI snapshots.',
+  )
   .option('--json', 'JSON output (default: yes)', true)
   .action(async (options = {}) => {
     await configInspectCommand({ json: options.json !== false });
@@ -1537,7 +1618,11 @@ versionsProgram
   .option('--json', 'JSON output', false)
   .option('--all', 'Verify all saved versions', false)
   .action(async (version, options = {}) => {
-    await versionsVerifyCommand(version, { store: options.store, json: options.json, all: options.all });
+    await versionsVerifyCommand(version, {
+      store: options.store,
+      json: options.json,
+      all: options.all,
+    });
   });
 
 /**
@@ -1545,9 +1630,7 @@ versionsProgram
  *
  * List and inspect loaded plugins from manifest.config.yaml.
  */
-const pluginsProgram = program
-  .command('plugins')
-  .description('List and inspect Manifest plugins');
+const pluginsProgram = program.command('plugins').description('List and inspect Manifest plugins');
 
 pluginsProgram
   .command('list')
@@ -1559,7 +1642,13 @@ pluginsProgram
 
     if (pluginDecls.length === 0) {
       if (options.json) {
-        console.log(JSON.stringify({ plugins: [], message: 'No plugins declared in manifest.config' }, null, 2));
+        console.log(
+          JSON.stringify(
+            { plugins: [], message: 'No plugins declared in manifest.config' },
+            null,
+            2,
+          ),
+        );
       } else {
         console.log(chalk.gray('No plugins declared in manifest.config'));
       }
@@ -1651,10 +1740,7 @@ async function activateDeclaredPlugins(): Promise<void> {
     if (process.argv[2] !== 'plugins') {
       reportPluginDiagnostics(registries);
     }
-    registerPluginCliCommands(
-      registries.cliCommands,
-      program as unknown as CliProgramLike,
-    );
+    registerPluginCliCommands(registries.cliCommands, program as unknown as CliProgramLike);
   } catch (err) {
     // Plugin activation must never brick the CLI.
     console.error(

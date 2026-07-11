@@ -178,7 +178,16 @@ export interface IRProperty {
   maskStrategy?: IRMaskStrategy;
 }
 
-export type PropertyModifier = 'required' | 'unique' | 'indexed' | 'private' | 'readonly' | 'optional' | 'searchable' | 'encrypted' | 'masked';
+export type PropertyModifier =
+  | 'required'
+  | 'unique'
+  | 'indexed'
+  | 'private'
+  | 'readonly'
+  | 'optional'
+  | 'searchable'
+  | 'encrypted'
+  | 'masked';
 
 export type MaskStrategyType = 'redact' | 'partial' | 'email' | 'phone' | 'last4';
 
@@ -304,7 +313,8 @@ export interface IRSchedule {
 }
 
 /** Built-in store target names. */
-export type BuiltinStoreTarget = 'memory' | 'localStorage' | 'postgres' | 'supabase' | 'durable' | 'mongodb';
+export type BuiltinStoreTarget =
+  'memory' | 'localStorage' | 'postgres' | 'supabase' | 'durable' | 'mongodb';
 
 export interface IRStore {
   entity: string;
@@ -489,8 +499,7 @@ export interface IRPolicy {
  * capability-style permission token, opaque to the engine and matched exactly.
  */
 export type IRRolePermissionAction =
-  | 'read' | 'write' | 'delete' | 'execute' | 'all'
-  | (string & {});
+  'read' | 'write' | 'delete' | 'execute' | 'all' | (string & {});
 
 export interface IRRolePermission {
   action: IRRolePermissionAction;
@@ -530,11 +539,21 @@ export type IRExpression =
   | { kind: 'binary'; operator: string; left: IRExpression; right: IRExpression }
   | { kind: 'unary'; operator: string; operand: IRExpression }
   | { kind: 'call'; callee: IRExpression; args: IRExpression[] }
-  | { kind: 'conditional'; condition: IRExpression; consequent: IRExpression; alternate: IRExpression }
+  | {
+      kind: 'conditional';
+      condition: IRExpression;
+      consequent: IRExpression;
+      alternate: IRExpression;
+    }
   | { kind: 'array'; elements: IRExpression[] }
   | { kind: 'object'; properties: { key: string; value: IRExpression }[] }
   | { kind: 'lambda'; params: string[]; body: IRExpression }
-  | { kind: 'aggregate'; op: 'count'; entity: string; predicates: { field: string; value: IRExpression }[] };
+  | {
+      kind: 'aggregate';
+      op: 'count';
+      entity: string;
+      predicates: { field: string; value: IRExpression }[];
+    };
 
 export interface IRDiagnostic {
   severity: 'error' | 'warning' | 'info';
@@ -632,7 +651,11 @@ export interface JobQueue {
    */
   enqueue(job: JobRecord, tx?: unknown): Promise<void>;
   drainPending(): Promise<JobRecord[]>;
-  updateStatus(jobId: string, status: JobRecord['status'], detail?: { result?: unknown; error?: string }): Promise<void>;
+  updateStatus(
+    jobId: string,
+    status: JobRecord['status'],
+    detail?: { result?: unknown; error?: string },
+  ): Promise<void>;
 }
 
 export interface CompileToIRResult {

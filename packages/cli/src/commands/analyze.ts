@@ -275,7 +275,11 @@ function generateArtifacts(ir: IR, projection: ProjectionTarget): GeneratedArtif
 
   // Determine which entity-scoped surfaces this projection supports
   const entitySurfaces = projection.surfaces.filter(
-    (s) => s.startsWith('nextjs.') || s.endsWith('.entity') || s.endsWith('.route') || s.endsWith('.detail')
+    (s) =>
+      s.startsWith('nextjs.') ||
+      s.endsWith('.entity') ||
+      s.endsWith('.route') ||
+      s.endsWith('.detail'),
   );
 
   // Generate per-entity artifacts
@@ -297,7 +301,7 @@ function generateArtifacts(ir: IR, projection: ProjectionTarget): GeneratedArtif
 
   // Generate global artifacts (types, client, dispatcher, etc.)
   const globalSurfaces = projection.surfaces.filter(
-    (s) => !entitySurfaces.includes(s) && !s.endsWith('.command')
+    (s) => !entitySurfaces.includes(s) && !s.endsWith('.command'),
   );
 
   for (const surface of globalSurfaces) {
@@ -318,7 +322,7 @@ function generateArtifacts(ir: IR, projection: ProjectionTarget): GeneratedArtif
 function buildEntityReports(
   ir: IR,
   artifacts: GeneratedArtifacts,
-  threshold: number
+  threshold: number,
 ): EntityReport[] {
   return ir.entities.map((entity: IREntity) => {
     const entityArtifacts = artifacts.byEntity.get(entity.name) || [];
@@ -326,7 +330,7 @@ function buildEntityReports(
 
     // Also look in global artifacts for entity-specific pieces
     const globalForEntity = artifacts.global.filter(
-      (a) => extractEntityFromArtifact(a) === entity.name
+      (a) => extractEntityFromArtifact(a) === entity.name,
     );
     const measuredGlobal = globalForEntity.map((a) => measureArtifact(a, threshold));
     const allMeasured = [...measured, ...measuredGlobal];
@@ -351,7 +355,7 @@ function buildEntityReports(
 function buildCommandReports(
   ir: IR,
   artifacts: GeneratedArtifacts,
-  threshold: number
+  threshold: number,
 ): CommandReport[] {
   const reports: CommandReport[] = [];
 
@@ -362,7 +366,7 @@ function buildCommandReports(
 
     // Look for command-specific artifacts
     const commandArtifacts = artifacts.all.filter(
-      (a) => extractCommandFromArtifact(a) === commandName
+      (a) => extractCommandFromArtifact(a) === commandName,
     );
     const measured = commandArtifacts.map((a) => measureArtifact(a, threshold));
 
@@ -390,7 +394,7 @@ function buildCommandReports(
 function buildStoreReports(
   ir: IR,
   artifacts: GeneratedArtifacts,
-  threshold: number
+  threshold: number,
 ): StoreReport[] {
   return ir.stores.map((store: IRStore) => {
     const entityName = store.entity;
@@ -454,7 +458,7 @@ function formatTextReport(report: AnalyzeReport): string {
       const flag = entity.flagged ? chalk.yellow('  YES') : '   -';
       const name = entity.name.padEnd(24);
       lines.push(
-        `  ${name} ${formatBytes(entity.totalRawSize).padStart(10)} ${formatBytes(entity.totalMinifiedSize).padStart(10)} ${String(entity.commandCount).padStart(6)} ${String(entity.propertyCount).padStart(6)}${flag}`
+        `  ${name} ${formatBytes(entity.totalRawSize).padStart(10)} ${formatBytes(entity.totalMinifiedSize).padStart(10)} ${String(entity.commandCount).padStart(6)} ${String(entity.propertyCount).padStart(6)}${flag}`,
       );
     }
     lines.push('');
@@ -470,7 +474,7 @@ function formatTextReport(report: AnalyzeReport): string {
       const flag = store.flagged ? chalk.yellow('  YES') : '   -';
       const entity = store.entity.padEnd(24);
       lines.push(
-        `  ${entity} ${store.target.padStart(16)} ${formatBytes(store.totalRawSize).padStart(10)} ${formatBytes(store.totalMinifiedSize).padStart(10)}${flag}`
+        `  ${entity} ${store.target.padStart(16)} ${formatBytes(store.totalRawSize).padStart(10)} ${formatBytes(store.totalMinifiedSize).padStart(10)}${flag}`,
       );
     }
     lines.push('');
@@ -481,7 +485,7 @@ function formatTextReport(report: AnalyzeReport): string {
     lines.push(chalk.bold('Flags (large generated output):'));
     for (const flag of report.flags) {
       lines.push(
-        `  ${chalk.yellow('!')} ${flag.type}: ${flag.name} — ${formatBytes(flag.rawSize)} (threshold: ${formatBytes(flag.threshold)})`
+        `  ${chalk.yellow('!')} ${flag.type}: ${flag.name} — ${formatBytes(flag.rawSize)} (threshold: ${formatBytes(flag.threshold)})`,
       );
     }
     lines.push('');
@@ -507,10 +511,10 @@ export async function analyzeCommand(options: AnalyzeOptions = {}): Promise<Anal
 
     const projection = getProjection(projectionName);
     if (!projection) {
-      const available = listProjections().map((p) => p.name).join(', ');
-      throw new Error(
-        `Unknown projection "${projectionName}". Available: ${available}`
-      );
+      const available = listProjections()
+        .map((p) => p.name)
+        .join(', ');
+      throw new Error(`Unknown projection "${projectionName}". Available: ${available}`);
     }
 
     const artifacts = generateArtifacts(ir, projection);
@@ -559,14 +563,21 @@ export async function analyzeCommand(options: AnalyzeOptions = {}): Promise<Anal
     }
     for (const store of storeReports) {
       if (store.flagged) {
-        flags.push({ type: 'store', name: `${store.entity} (${store.target})`, rawSize: store.totalRawSize, threshold });
+        flags.push({
+          type: 'store',
+          name: `${store.entity} (${store.target})`,
+          rawSize: store.totalRawSize,
+          threshold,
+        });
       }
     }
 
-    const totalRawSize = entityReports.reduce((s, e) => s + e.totalRawSize, 0)
-      + globalMeasured.reduce((s, a) => s + a.rawSize, 0);
-    const totalMinifiedSize = entityReports.reduce((s, e) => s + e.totalMinifiedSize, 0)
-      + globalMeasured.reduce((s, a) => s + a.minifiedSize, 0);
+    const totalRawSize =
+      entityReports.reduce((s, e) => s + e.totalRawSize, 0) +
+      globalMeasured.reduce((s, a) => s + a.rawSize, 0);
+    const totalMinifiedSize =
+      entityReports.reduce((s, e) => s + e.totalMinifiedSize, 0) +
+      globalMeasured.reduce((s, a) => s + a.minifiedSize, 0);
 
     const report: AnalyzeReport = {
       projection: projectionName,
@@ -585,7 +596,7 @@ export async function analyzeCommand(options: AnalyzeOptions = {}): Promise<Anal
     };
 
     spinner.succeed(
-      `Analyzed ${report.entityCount} entities, ${report.commandCount} commands, ${report.storeCount} stores → ${formatBytes(report.totalRawSize)} total`
+      `Analyzed ${report.entityCount} entities, ${report.commandCount} commands, ${report.storeCount} stores → ${formatBytes(report.totalRawSize)} total`,
     );
 
     if (options.json) {
@@ -596,9 +607,7 @@ export async function analyzeCommand(options: AnalyzeOptions = {}): Promise<Anal
 
     return report;
   } catch (error: unknown) {
-    spinner.fail(
-      `Analysis failed: ${error instanceof Error ? error.message : String(error)}`
-    );
+    spinner.fail(`Analysis failed: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   }
 }

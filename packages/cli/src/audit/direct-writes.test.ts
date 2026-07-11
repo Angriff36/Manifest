@@ -21,7 +21,7 @@ describe('directWritesDetector — configurable write receiver', () => {
     await writeFile(
       root,
       'app/api/x/route.ts',
-      `export async function POST(){ return prisma.user.create({ data: {} }); }`
+      `export async function POST(){ return prisma.user.create({ data: {} }); }`,
     );
     const findings = await directWritesDetector.run({ root });
     expect(findings).toHaveLength(1);
@@ -33,7 +33,7 @@ describe('directWritesDetector — configurable write receiver', () => {
     await writeFile(
       root,
       'app/api/x/route.ts',
-      `export async function POST(){ return database.user.create({ data: {} }); }`
+      `export async function POST(){ return database.user.create({ data: {} }); }`,
     );
     const findings = await directWritesDetector.run({ root });
     // `database` is not the default receiver `prisma`, so nothing is flagged.
@@ -45,7 +45,7 @@ describe('directWritesDetector — configurable write receiver', () => {
     await writeFile(
       root,
       'app/api/x/route.ts',
-      `export async function POST(){ return database.user.create({ data: {} }); }`
+      `export async function POST(){ return database.user.create({ data: {} }); }`,
     );
     const findings = await directWritesDetector.run({ root, writeReceiver: 'database' });
     expect(findings).toHaveLength(1);
@@ -59,7 +59,7 @@ describe('directWritesDetector — configurable write receiver', () => {
     await writeFile(
       root,
       'app/api/x/route.ts',
-      `export async function POST(){ return prisma.user.create({ data: {} }); }`
+      `export async function POST(){ return prisma.user.create({ data: {} }); }`,
     );
     const findings = await directWritesDetector.run({ root, writeReceiver: 'database' });
     expect(findings).toEqual([]);
@@ -74,7 +74,7 @@ describe('unregisteredEntityWriteDetector — configurable write receiver', () =
     await writeFile(
       root,
       'app/api/audit/route.ts',
-      `export async function POST(){ return database.auditLog.create({ data: {} }); }`
+      `export async function POST(){ return database.auditLog.create({ data: {} }); }`,
     );
     const findings = await unregisteredEntityWriteDetector.run({
       root,
@@ -93,7 +93,7 @@ describe('unregisteredEntityWriteDetector — configurable write receiver', () =
     await writeFile(
       root,
       'app/api/audit/route.ts',
-      `export async function POST(){ return database.auditLog.create({ data: {} }); }`
+      `export async function POST(){ return database.auditLog.create({ data: {} }); }`,
     );
     const findings = await unregisteredEntityWriteDetector.run({
       root,

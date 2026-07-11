@@ -68,7 +68,7 @@ async function createTableFromSchema(
   pool: Pool,
   sqlPath: string,
   baseName: string,
-  uniqueName: string
+  uniqueName: string,
 ): Promise<void> {
   const raw = readFileSync(sqlPath, 'utf8');
   const noComments = raw
@@ -146,25 +146,25 @@ describeLive('PostgresTransactionProvider + tx-aware adapters (live database)', 
       pool,
       resolve(schemaDir, 'outbox/stores/postgres.sql'),
       'manifest_outbox_entries',
-      T.outbox
+      T.outbox,
     );
     await createTableFromSchema(
       pool,
       resolve(schemaDir, 'idempotency/stores/postgres.sql'),
       'manifest_idempotency_keys',
-      T.idem
+      T.idem,
     );
     await createTableFromSchema(
       pool,
       resolve(schemaDir, 'jobs/stores/postgres.sql'),
       'manifest_jobs',
-      T.jobs
+      T.jobs,
     );
     await createTableFromSchema(
       pool,
       resolve(schemaDir, 'approval/stores/postgres.sql'),
       'manifest_approval_requests',
-      T.approval
+      T.approval,
     );
     await pool.query(`DROP TABLE IF EXISTS ${T.raw} CASCADE`);
     await pool.query(`CREATE TABLE ${T.raw} (id TEXT PRIMARY KEY)`);
@@ -212,7 +212,7 @@ describeLive('PostgresTransactionProvider + tx-aware adapters (live database)', 
       provider.withTransaction(async (tx) => {
         await tx.query(`INSERT INTO ${T.raw} (id) VALUES ($1)`, ['rolled-back']);
         throw boom;
-      })
+      }),
     ).rejects.toBe(boom);
 
     const { rows } = await pool.query(`SELECT id FROM ${T.raw} WHERE id = $1`, ['rolled-back']);

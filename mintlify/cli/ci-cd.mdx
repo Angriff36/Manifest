@@ -1,7 +1,7 @@
 ---
-title: "CI/CD: GitHub Actions and breaking change detection"
-description: "Generate GitHub Actions workflows, detect breaking changes between IR versions, and integrate Manifest validation into your CI pipeline."
-sidebarTitle: "CI/CD"
+title: 'CI/CD: GitHub Actions and breaking change detection'
+description: 'Generate GitHub Actions workflows, detect breaking changes between IR versions, and integrate Manifest validation into your CI pipeline.'
+sidebarTitle: 'CI/CD'
 ---
 
 Manifest provides CI/CD tooling for automated validation, breaking change detection, and regression testing in continuous integration pipelines. Use the workflow generator to bootstrap a GitHub Actions pipeline, and the breaking change detector to gate pull requests on incompatible IR changes.
@@ -17,22 +17,24 @@ manifest init --ci github
 This creates `.github/workflows/manifest-ci.yml` with two jobs:
 
 **PR validation** (runs on every pull request):
+
 - `manifest validate` — validates IR JSON against the IR schema
 - `manifest scan` — scans the codebase for governance violations
 - `npm test` — runs the full test suite
 
 **Conformance regen** (runs on pushes to `main`):
+
 - Auto-regenerates conformance fixtures
 - Commits updated fixtures if they have changed
 - Uses `[skip ci]` in the commit message to avoid infinite workflow loops
 
 ### Options
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--ci <provider>` | (required) | CI provider to generate for. Currently supports `github`. |
-| `--node-versions <versions>` | `18,20,22` | Comma-separated Node.js versions for matrix builds |
-| `--force` | `false` | Overwrite existing workflow file |
+| Flag                         | Default    | Description                                               |
+| ---------------------------- | ---------- | --------------------------------------------------------- |
+| `--ci <provider>`            | (required) | CI provider to generate for. Currently supports `github`. |
+| `--node-versions <versions>` | `18,20,22` | Comma-separated Node.js versions for matrix builds        |
+| `--force`                    | `false`    | Overwrite existing workflow file                          |
 
 ```bash
 # Customize Node.js versions for the matrix build
@@ -43,7 +45,9 @@ manifest init --ci github --force
 ```
 
 <Note>
-The command is invoked as `manifest init --ci github` — it is a flag on the existing `init` command, not a separate subcommand. It does not run the interactive setup; it only generates the workflow file.
+  The command is invoked as `manifest init --ci github` — it is a flag on the existing `init`
+  command, not a separate subcommand. It does not run the interactive setup; it only generates the
+  workflow file.
 </Note>
 
 ### Generated workflow structure
@@ -81,7 +85,7 @@ jobs:
       - run: npm run conformance:regen
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: regen conformance fixtures [skip ci]"
+          commit_message: 'chore: regen conformance fixtures [skip ci]'
 ```
 
 ## Generated-code drift gate
@@ -96,16 +100,16 @@ manifest generate ir/ --output generated/ --check
 Add it as a PR step alongside `validate` and `scan`:
 
 ```yaml
-  codegen-drift:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm ci
-      - name: Assert generated code is up to date
-        run: npx manifest generate ir/ --output generated/ --check
+codegen-drift:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+    - run: npm ci
+    - name: Assert generated code is up to date
+      run: npx manifest generate ir/ --output generated/ --check
 ```
 
 When the job fails, the fix is to run `manifest generate` (without `--check`) locally and commit the result. Pair this with `manifest compile`'s idempotent output (unchanged source re-compiles byte-identically) so a clean `compile` + `generate --check` chain proves the whole `.manifest → IR → code` pipeline is committed and current.
@@ -122,35 +126,35 @@ The detector is a pure function (`classifyBreakingChanges`) that compares two IR
 
 ### Classification rules
 
-| Element | Change | Severity |
-|---------|--------|----------|
-| Entity added | `entity-added` | compatible |
-| Entity removed | `entity-removed` | **breaking** |
-| Property added (optional/default) | `property-added` | compatible |
-| Property added (no details) | `property-added` | **breaking** (conservative) |
-| Property removed | `property-removed` | **breaking** |
-| Property type changed | `property-type-changed` | **breaking** |
-| Property made optional | `property-made-optional` | compatible |
-| Property made required | `property-made-required` | **breaking** |
-| Computed expression changed | `computed-expression-changed` | deprecated |
-| Computed property removed | `computed-removed` | **breaking** |
-| Relationship removed | `relationship-removed` | **breaking** |
-| Relationship kind changed | `relationship-kind-changed` | **breaking** |
-| Constraint removed | `constraint-removed` | deprecated |
-| Constraint severity raised | `constraint-severity-raised` | compatible |
-| Command removed | `command-removed` | **breaking** |
-| Command parameter added | `command-param-added` | **breaking** |
-| Command parameter removed | `command-param-removed` | **breaking** |
-| Command guards changed | `command-guards-changed` | deprecated |
-| Command returns changed | `command-returns-changed` | **breaking** |
-| Policy removed | `policy-removed` | **breaking** |
-| Policy expression changed | `policy-expression-changed` | deprecated |
-| Store removed | `store-removed` | **breaking** |
-| Store target changed | `store-target-changed` | **breaking** |
-| Event removed | `event-removed` | **breaking** |
-| Event channel changed | `event-channel-changed` | **breaking** |
-| Module added | `module-added` | compatible |
-| Module removed | `module-removed` | **breaking** |
+| Element                           | Change                        | Severity                    |
+| --------------------------------- | ----------------------------- | --------------------------- |
+| Entity added                      | `entity-added`                | compatible                  |
+| Entity removed                    | `entity-removed`              | **breaking**                |
+| Property added (optional/default) | `property-added`              | compatible                  |
+| Property added (no details)       | `property-added`              | **breaking** (conservative) |
+| Property removed                  | `property-removed`            | **breaking**                |
+| Property type changed             | `property-type-changed`       | **breaking**                |
+| Property made optional            | `property-made-optional`      | compatible                  |
+| Property made required            | `property-made-required`      | **breaking**                |
+| Computed expression changed       | `computed-expression-changed` | deprecated                  |
+| Computed property removed         | `computed-removed`            | **breaking**                |
+| Relationship removed              | `relationship-removed`        | **breaking**                |
+| Relationship kind changed         | `relationship-kind-changed`   | **breaking**                |
+| Constraint removed                | `constraint-removed`          | deprecated                  |
+| Constraint severity raised        | `constraint-severity-raised`  | compatible                  |
+| Command removed                   | `command-removed`             | **breaking**                |
+| Command parameter added           | `command-param-added`         | **breaking**                |
+| Command parameter removed         | `command-param-removed`       | **breaking**                |
+| Command guards changed            | `command-guards-changed`      | deprecated                  |
+| Command returns changed           | `command-returns-changed`     | **breaking**                |
+| Policy removed                    | `policy-removed`              | **breaking**                |
+| Policy expression changed         | `policy-expression-changed`   | deprecated                  |
+| Store removed                     | `store-removed`               | **breaking**                |
+| Store target changed              | `store-target-changed`        | **breaking**                |
+| Event removed                     | `event-removed`               | **breaking**                |
+| Event channel changed             | `event-channel-changed`       | **breaking**                |
+| Module added                      | `module-added`                | compatible                  |
+| Module removed                    | `module-removed`              | **breaking**                |
 
 The conservative default for `property-added` (no details) is `breaking` because adding a required property without a default value breaks existing consumers. Properties added as optional or with defaults are classified as `compatible`.
 
@@ -207,12 +211,12 @@ Acknowledged breaking changes are filtered from the report. Only unacknowledged 
 
 ### Options
 
-| Flag | Description |
-|------|-------------|
-| `--json` | Output structured JSON instead of human-readable text |
-| `--ack <path>` | Path to acknowledgments file for filtering |
-| `--ci` | Exit non-zero on unacknowledged breaking changes |
-| `-o, --output <path>` | Write output to a file instead of stdout |
+| Flag                  | Description                                           |
+| --------------------- | ----------------------------------------------------- |
+| `--json`              | Output structured JSON instead of human-readable text |
+| `--ack <path>`        | Path to acknowledgments file for filtering            |
+| `--ci`                | Exit non-zero on unacknowledged breaking changes      |
+| `-o, --output <path>` | Write output to a file instead of stdout              |
 
 ## Complete PR pipeline example
 

@@ -14,7 +14,7 @@ describe('compiler-bridge', () => {
     expect(result.program.entities[0].name).toBe('Order');
     expect(result.parseErrors).toHaveLength(0);
     expect(result.ir).not.toBeNull();
-    expect(result.irDiagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(result.irDiagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
   it('returns parse errors for invalid source', async () => {
@@ -35,13 +35,13 @@ describe('compiler-bridge', () => {
     const source = `entity Foo {}`;
     const result = await compileDocument(source);
 
-    const entityToken = result.tokens.find(t => t.value === 'entity');
+    const entityToken = result.tokens.find((t) => t.value === 'entity');
     expect(entityToken).toBeDefined();
     expect(entityToken!.position.line).toBe(1);
     // Lexer records END position: "entity" is 6 chars, starts at col 1, end = col 7
     expect(entityToken!.position.column).toBe(7);
 
-    const fooToken = result.tokens.find(t => t.value === 'Foo');
+    const fooToken = result.tokens.find((t) => t.value === 'Foo');
     expect(fooToken).toBeDefined();
     expect(fooToken!.position.line).toBe(1);
     // "Foo" starts at col 8, end = col 11

@@ -1,5 +1,5 @@
 ---
-title: "Architecture"
+title: 'Architecture'
 description: "A source-driven tour of Manifest's compiler, IR, runtime, adapters, and projection pipeline."
 ---
 
@@ -13,7 +13,6 @@ description: "A source-driven tour of Manifest's compiler, IR, runtime, adapters
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 Manifest is organized around one central contract: the IR defined in `src/manifest/ir.ts`. Everything else either produces that contract, consumes it, or validates drift around it.
 

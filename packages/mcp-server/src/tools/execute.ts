@@ -11,21 +11,14 @@ import { sessionStore } from '../state/session-store.js';
 import type { RuntimeContext } from '@angriff36/manifest';
 
 export const executeInputSchema = {
-  contentHash: z
-    .string()
-    .describe('SHA-256 content hash from a prior compile call'),
+  contentHash: z.string().describe('SHA-256 content hash from a prior compile call'),
   commandName: z.string().describe('Name of the command to execute'),
-  input: z
-    .record(z.unknown())
-    .describe('Command input parameters as key-value pairs'),
+  input: z.record(z.unknown()).describe('Command input parameters as key-value pairs'),
   entityName: z
     .string()
     .optional()
     .describe('Entity context (required for entity-scoped commands)'),
-  instanceId: z
-    .string()
-    .optional()
-    .describe('Target entity instance ID'),
+  instanceId: z.string().optional().describe('Target entity instance ID'),
   context: z
     .object({
       tenantId: z.string().optional(),

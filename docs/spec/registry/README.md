@@ -29,6 +29,7 @@ compiler's major version (per `docs/spec/semantics.md` change protocol).
 ## Authority
 
 Authority for what these registries mean lives in:
+
 - `docs/spec/semantics.md` § "Governance Primitive Surface"
 - `docs/spec/adapters.md` (canonical dispatcher, audit sink, outbox store)
 

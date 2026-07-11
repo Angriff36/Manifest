@@ -1,4 +1,5 @@
 ## PR Checklist
+
 - [ ] Changes comply with AGENTS.md normative preamble
 - [ ] Changes comply with house-style.md (no semantic weakening, no implicit guards, no permissive defaults)
 - [ ] No behavior change makes an invalid Manifest program succeed

@@ -15,6 +15,7 @@
 ## File Structure
 
 **Created:**
+
 - `packages/cli/src/audit/registry-loader.ts` — shared `loadCommandSet` / `loadEntitySet` (extracted to avoid cross-detector coupling)
 - `packages/cli/src/audit/registry-loader.test.ts`
 - `packages/cli/src/audit/runtime-calls.ts` — shared `extractRunCommandCalls` AST helper
@@ -30,11 +31,13 @@
 - `packages/cli/src/commands/enforce-surface.sample-app.test.ts` — fixture-based integration test against `fixtures/sample-app/`
 
 **Modified:**
+
 - `packages/cli/src/audit/types.ts` — extend `AuditFinding` with optional `line`, `column`, `entity`, `command`, `suggestion` fields (backward compatible)
 - `packages/cli/src/index.ts:334–366` (after `audit-governance` block) — register `enforce-surface` command
 - `docs/tools/CLI_REFERENCE.md` — document new command, comparison to `audit-routes` / `audit-governance` / `runtime-check` / `integration-check`, recommended CI usage
 
 **Reused (no modification):**
+
 - `packages/cli/src/audit/direct-writes.ts`
 - `packages/cli/src/audit/event-fabrication.ts`
 - `packages/cli/src/audit/route-drift.ts`
@@ -46,17 +49,17 @@
 
 The orchestrator translates detector-internal codes to the spec's finding codes AND adjusts severity. Both are derived from the table below — **read the actual detector source to confirm exact internal codes before implementing the map**.
 
-| Detector | Internal code(s) (verify in source) | Spec code | Spec severity |
-|---|---|---|---|
-| `unregistered-command-call` | `UNREGISTERED_COMMAND_CALL` | `UNREGISTERED_COMMAND_CALL` | error |
-| `unregistered-command-call` | `DYNAMIC_COMMAND_UNVERIFIABLE` | `DYNAMIC_COMMAND_UNVERIFIABLE` | warning (error in `--strict`) |
-| `direct-writes` | `DIRECT_WRITE` | `DIRECT_WRITE_BYPASS` | error |
-| `existing-command-available` | `EXISTING_COMMAND_AVAILABLE` | `EXISTING_COMMAND_AVAILABLE` | error |
-| `route-drift` | `ROUTE_DRIFT` (confirm via `route-drift.ts`) | `ROUTE_SURFACE_DRIFT` | error |
-| `unregistered-entity-write` | `UNREGISTERED_ENTITY_WRITE` | `UNREGISTERED_ENTITY_WRITE` | error |
-| `event-fabrication` | `EVENT_FABRICATION_PUBLISH`, `EVENT_FABRICATION_CTOR`, `EVENT_FABRICATION_EMIT_LITERAL` (confirm in `event-fabrication.ts:43–55`) | `EVENT_FABRICATION` | error |
-| `bypass-violations` | `BYPASS_VIOLATION` (confirm in `bypass-violations.ts:80–84`) | `APPROVED_BYPASS_REQUIRED` | warning (error in `--strict`) |
-| `bypass-violations` | `STALE_BYPASS` / `BYPASS_VIOLATIONS_NO_REGISTRY` (any other internal codes) | passthrough with `BYPASS_*` prefix | warning |
+| Detector                     | Internal code(s) (verify in source)                                                                                               | Spec code                          | Spec severity                 |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ----------------------------- |
+| `unregistered-command-call`  | `UNREGISTERED_COMMAND_CALL`                                                                                                       | `UNREGISTERED_COMMAND_CALL`        | error                         |
+| `unregistered-command-call`  | `DYNAMIC_COMMAND_UNVERIFIABLE`                                                                                                    | `DYNAMIC_COMMAND_UNVERIFIABLE`     | warning (error in `--strict`) |
+| `direct-writes`              | `DIRECT_WRITE`                                                                                                                    | `DIRECT_WRITE_BYPASS`              | error                         |
+| `existing-command-available` | `EXISTING_COMMAND_AVAILABLE`                                                                                                      | `EXISTING_COMMAND_AVAILABLE`       | error                         |
+| `route-drift`                | `ROUTE_DRIFT` (confirm via `route-drift.ts`)                                                                                      | `ROUTE_SURFACE_DRIFT`              | error                         |
+| `unregistered-entity-write`  | `UNREGISTERED_ENTITY_WRITE`                                                                                                       | `UNREGISTERED_ENTITY_WRITE`        | error                         |
+| `event-fabrication`          | `EVENT_FABRICATION_PUBLISH`, `EVENT_FABRICATION_CTOR`, `EVENT_FABRICATION_EMIT_LITERAL` (confirm in `event-fabrication.ts:43–55`) | `EVENT_FABRICATION`                | error                         |
+| `bypass-violations`          | `BYPASS_VIOLATION` (confirm in `bypass-violations.ts:80–84`)                                                                      | `APPROVED_BYPASS_REQUIRED`         | warning (error in `--strict`) |
+| `bypass-violations`          | `STALE_BYPASS` / `BYPASS_VIOLATIONS_NO_REGISTRY` (any other internal codes)                                                       | passthrough with `BYPASS_*` prefix | warning                       |
 
 **Severity downgrade rule (mandatory):** When an internal `BYPASS_VIOLATION` is mapped to `APPROVED_BYPASS_REQUIRED`, downgrade severity `error → warning` UNLESS `--strict` is set; under `--strict`, keep it `error`. Same rule for `DYNAMIC_COMMAND_UNVERIFIABLE`. Other code mappings preserve severity.
 
@@ -78,8 +81,17 @@ JSON shape (see `output_contract.json` in spec):
   },
   "summary": { "errors": 0, "warnings": 0, "byCode": {} },
   "findings": [
-    { "code": "...", "severity": "error", "file": "...", "line": null, "column": null,
-      "entity": null, "command": null, "message": "...", "suggestion": "..." }
+    {
+      "code": "...",
+      "severity": "error",
+      "file": "...",
+      "line": null,
+      "column": null,
+      "entity": null,
+      "command": null,
+      "message": "...",
+      "suggestion": "..."
+    }
   ]
 }
 ```
@@ -91,6 +103,7 @@ Text: summary counts by finding type, then one line per finding `<severity> <cod
 ## Task 1: Extend `AuditFinding` + `DetectorContext` shapes
 
 **Files:**
+
 - Modify: `packages/cli/src/audit/types.ts`
 
 Make all new fields optional so existing detectors keep compiling unchanged. Also add `entitiesRegistry` to `DetectorContext` so the new `unregistered-entity-write` detector can be wired in Task 5 without a second backward-compat edit.
@@ -142,6 +155,7 @@ git commit -m "[refactor] extend AuditFinding and DetectorContext with optional 
 ## Task 2: `unregistered-command-call` detector — registry loader
 
 **Files:**
+
 - Create: `packages/cli/src/audit/unregistered-command-call.ts`
 - Create: `packages/cli/src/audit/unregistered-command-call.test.ts`
 
@@ -165,15 +179,33 @@ describe('loadCommandSet', () => {
   it('returns a Set of "entity.command" identities', async () => {
     const dir = await tempDir();
     const reg = path.join(dir, 'commands.json');
-    await fs.writeFile(reg, JSON.stringify({
-      irHash: 'x', compilerVersion: 'y',
-      commands: [
-        { entity: 'User', command: 'create', commandId: 'User.create',
-          policies: [], guardCount: 0, emits: [], effects: [] },
-        { entity: 'Order', command: 'place', commandId: 'Order.place',
-          policies: [], guardCount: 0, emits: [], effects: [] },
-      ],
-    }));
+    await fs.writeFile(
+      reg,
+      JSON.stringify({
+        irHash: 'x',
+        compilerVersion: 'y',
+        commands: [
+          {
+            entity: 'User',
+            command: 'create',
+            commandId: 'User.create',
+            policies: [],
+            guardCount: 0,
+            emits: [],
+            effects: [],
+          },
+          {
+            entity: 'Order',
+            command: 'place',
+            commandId: 'Order.place',
+            policies: [],
+            guardCount: 0,
+            emits: [],
+            effects: [],
+          },
+        ],
+      }),
+    );
     const set = await loadCommandSet(reg);
     expect(set.has('User.create')).toBe(true);
     expect(set.has('Order.place')).toBe(true);
@@ -181,8 +213,7 @@ describe('loadCommandSet', () => {
   });
 
   it('throws a clear error when file missing', async () => {
-    await expect(loadCommandSet('/nope/missing.json'))
-      .rejects.toThrow(/commands registry/i);
+    await expect(loadCommandSet('/nope/missing.json')).rejects.toThrow(/commands registry/i);
   });
 });
 ```
@@ -198,15 +229,23 @@ Expected: FAIL (module not found).
 // unregistered-command-call.ts
 import fs from 'node:fs/promises';
 
-interface CommandRegistryEntry { entity: string; command: string; commandId?: string }
-interface CommandRegistry { commands: CommandRegistryEntry[] }
+interface CommandRegistryEntry {
+  entity: string;
+  command: string;
+  commandId?: string;
+}
+interface CommandRegistry {
+  commands: CommandRegistryEntry[];
+}
 
 export async function loadCommandSet(registryPath: string): Promise<Set<string>> {
   let raw: string;
   try {
     raw = await fs.readFile(registryPath, 'utf-8');
   } catch (err) {
-    throw new Error(`Failed to read commands registry at ${registryPath}: ${(err as Error).message}`);
+    throw new Error(
+      `Failed to read commands registry at ${registryPath}: ${(err as Error).message}`,
+    );
   }
   const parsed = JSON.parse(raw) as CommandRegistry;
   const ids = new Set<string>();
@@ -236,6 +275,7 @@ git commit -m "[feat] add commands registry loader for enforce-surface detector"
 Now add the AST scan that finds `runtime.runCommand("entity.command", …)` invocations.
 
 **Files:**
+
 - Modify: `packages/cli/src/audit/unregistered-command-call.ts`
 - Modify: `packages/cli/src/audit/unregistered-command-call.test.ts`
 
@@ -306,12 +346,18 @@ export function extractRunCommandCalls(source: string, filename: string): RunCom
         // confirm shape: <something>.runtime.runCommand(...) OR runtime.runCommand(...)
         const isRuntime =
           (ts.isIdentifier(callee.expression) && callee.expression.text === 'runtime') ||
-          (ts.isPropertyAccessExpression(callee.expression) && callee.expression.name.text === 'runtime');
+          (ts.isPropertyAccessExpression(callee.expression) &&
+            callee.expression.name.text === 'runtime');
         if (isRuntime) {
           const arg0 = node.arguments[0];
           const { line, character } = sf.getLineAndCharacterOfPosition(node.getStart(sf));
           if (arg0 && ts.isStringLiteralLike(arg0)) {
-            out.push({ commandId: arg0.text, dynamic: false, line: line + 1, column: character + 1 });
+            out.push({
+              commandId: arg0.text,
+              dynamic: false,
+              line: line + 1,
+              column: character + 1,
+            });
           } else {
             out.push({ commandId: null, dynamic: true, line: line + 1, column: character + 1 });
           }
@@ -344,6 +390,7 @@ git commit -m "[feat] add AST extractor for runtime.runCommand calls"
 Wire the loader + AST scanner into a `Detector`. Add globs matching `direct-writes.ts:19–29`.
 
 **Files:**
+
 - Modify: `packages/cli/src/audit/unregistered-command-call.ts`
 - Modify: `packages/cli/src/audit/unregistered-command-call.test.ts`
 
@@ -357,15 +404,30 @@ describe('unregisteredCommandCallDetector', () => {
   it('flags calls to commands missing from registry', async () => {
     const root = await tempDir();
     const reg = path.join(root, 'commands.json');
-    await fs.writeFile(reg, JSON.stringify({
-      irHash: 'x', compilerVersion: 'y',
-      commands: [{ entity: 'User', command: 'create', commandId: 'User.create',
-        policies: [], guardCount: 0, emits: [], effects: [] }],
-    }));
+    await fs.writeFile(
+      reg,
+      JSON.stringify({
+        irHash: 'x',
+        compilerVersion: 'y',
+        commands: [
+          {
+            entity: 'User',
+            command: 'create',
+            commandId: 'User.create',
+            policies: [],
+            guardCount: 0,
+            emits: [],
+            effects: [],
+          },
+        ],
+      }),
+    );
     const routeDir = path.join(root, 'app', 'api', 'orders');
     await fs.mkdir(routeDir, { recursive: true });
-    await fs.writeFile(path.join(routeDir, 'route.ts'),
-      `export async function POST(){ return runtime.runCommand('Order.place', {}); }`);
+    await fs.writeFile(
+      path.join(routeDir, 'route.ts'),
+      `export async function POST(){ return runtime.runCommand('Order.place', {}); }`,
+    );
 
     const findings = await unregisteredCommandCallDetector.run({ root, commandsRegistry: reg });
     expect(findings).toHaveLength(1);
@@ -378,15 +440,30 @@ describe('unregisteredCommandCallDetector', () => {
   it('passes when command is registered', async () => {
     const root = await tempDir();
     const reg = path.join(root, 'commands.json');
-    await fs.writeFile(reg, JSON.stringify({
-      irHash: 'x', compilerVersion: 'y',
-      commands: [{ entity: 'User', command: 'create', commandId: 'User.create',
-        policies: [], guardCount: 0, emits: [], effects: [] }],
-    }));
+    await fs.writeFile(
+      reg,
+      JSON.stringify({
+        irHash: 'x',
+        compilerVersion: 'y',
+        commands: [
+          {
+            entity: 'User',
+            command: 'create',
+            commandId: 'User.create',
+            policies: [],
+            guardCount: 0,
+            emits: [],
+            effects: [],
+          },
+        ],
+      }),
+    );
     const routeDir = path.join(root, 'app', 'api', 'users');
     await fs.mkdir(routeDir, { recursive: true });
-    await fs.writeFile(path.join(routeDir, 'route.ts'),
-      `export async function POST(){ return runtime.runCommand('User.create', {}); }`);
+    await fs.writeFile(
+      path.join(routeDir, 'route.ts'),
+      `export async function POST(){ return runtime.runCommand('User.create', {}); }`,
+    );
 
     const findings = await unregisteredCommandCallDetector.run({ root, commandsRegistry: reg });
     expect(findings).toEqual([]);
@@ -398,8 +475,10 @@ describe('unregisteredCommandCallDetector', () => {
     await fs.writeFile(reg, JSON.stringify({ irHash: 'x', compilerVersion: 'y', commands: [] }));
     const routeDir = path.join(root, 'app', 'api', 'x');
     await fs.mkdir(routeDir, { recursive: true });
-    await fs.writeFile(path.join(routeDir, 'route.ts'),
-      `export async function POST(){ const n = 'X.y'; return runtime.runCommand(n, {}); }`);
+    await fs.writeFile(
+      path.join(routeDir, 'route.ts'),
+      `export async function POST(){ const n = 'X.y'; return runtime.runCommand(n, {}); }`,
+    );
 
     const findings = await unregisteredCommandCallDetector.run({ root, commandsRegistry: reg });
     expect(findings).toHaveLength(1);
@@ -441,8 +520,13 @@ const SCAN_GLOBS = [
 ];
 
 const EXCLUDE_GLOBS = [
-  '**/node_modules/**', '**/dist/**', '**/.next/**', '**/build/**',
-  '**/*.test.ts', '**/*.spec.ts', '**/__tests__/**',
+  '**/node_modules/**',
+  '**/dist/**',
+  '**/.next/**',
+  '**/build/**',
+  '**/*.test.ts',
+  '**/*.spec.ts',
+  '**/__tests__/**',
 ];
 
 function splitCommandId(id: string): { entity: string | undefined; command: string | undefined } {
@@ -477,7 +561,8 @@ export const unregisteredCommandCallDetector: Detector = {
               detector: 'unregistered-command-call',
               line: call.line,
               column: call.column,
-              suggestion: 'Use a string literal command id, or expose a typed wrapper resolvable to a registered entity.command',
+              suggestion:
+                'Use a string literal command id, or expose a typed wrapper resolvable to a registered entity.command',
             });
             continue;
           }
@@ -523,6 +608,7 @@ git commit -m "[feat] add unregistered-command-call detector with registry looku
 Detect direct ORM writes against models that are NOT in the entities registry — meaning the model looks governed (used in a write path) but Manifest has no entity for it, so registry coverage is incomplete.
 
 **Files:**
+
 - Create: `packages/cli/src/audit/unregistered-entity-write.ts`
 - Create: `packages/cli/src/audit/unregistered-entity-write.test.ts`
 
@@ -537,36 +623,56 @@ import path from 'node:path';
 import os from 'node:os';
 import { unregisteredEntityWriteDetector } from './unregistered-entity-write.js';
 
-async function tempDir() { return await fs.mkdtemp(path.join(os.tmpdir(), 'uew-')); }
+async function tempDir() {
+  return await fs.mkdtemp(path.join(os.tmpdir(), 'uew-'));
+}
 
 describe('unregisteredEntityWriteDetector', () => {
   it('flags prisma.model.create when model has no entity in registry', async () => {
     const root = await tempDir();
     const entReg = path.join(root, 'entities.json');
-    await fs.writeFile(entReg, JSON.stringify({
-      irHash: 'x', compilerVersion: 'y',
-      entities: [{ name: 'User', commands: ['create'] }],
-    }));
+    await fs.writeFile(
+      entReg,
+      JSON.stringify({
+        irHash: 'x',
+        compilerVersion: 'y',
+        entities: [{ name: 'User', commands: ['create'] }],
+      }),
+    );
     const dir = path.join(root, 'app', 'api', 'audit');
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, 'route.ts'),
-      `export async function POST(){ return prisma.auditLog.create({ data: {} }); }`);
-    const findings = await unregisteredEntityWriteDetector.run({ root, entitiesRegistry: entReg } as any);
-    expect(findings.find(f => f.code === 'UNREGISTERED_ENTITY_WRITE')).toBeDefined();
+    await fs.writeFile(
+      path.join(dir, 'route.ts'),
+      `export async function POST(){ return prisma.auditLog.create({ data: {} }); }`,
+    );
+    const findings = await unregisteredEntityWriteDetector.run({
+      root,
+      entitiesRegistry: entReg,
+    } as any);
+    expect(findings.find((f) => f.code === 'UNREGISTERED_ENTITY_WRITE')).toBeDefined();
   });
 
   it('does not flag writes against a registered entity', async () => {
     const root = await tempDir();
     const entReg = path.join(root, 'entities.json');
-    await fs.writeFile(entReg, JSON.stringify({
-      irHash: 'x', compilerVersion: 'y',
-      entities: [{ name: 'User', commands: ['create'] }],
-    }));
+    await fs.writeFile(
+      entReg,
+      JSON.stringify({
+        irHash: 'x',
+        compilerVersion: 'y',
+        entities: [{ name: 'User', commands: ['create'] }],
+      }),
+    );
     const dir = path.join(root, 'app', 'api', 'users');
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, 'route.ts'),
-      `export async function POST(){ return prisma.user.create({ data: {} }); }`);
-    const findings = await unregisteredEntityWriteDetector.run({ root, entitiesRegistry: entReg } as any);
+    await fs.writeFile(
+      path.join(dir, 'route.ts'),
+      `export async function POST(){ return prisma.user.create({ data: {} }); }`,
+    );
+    const findings = await unregisteredEntityWriteDetector.run({
+      root,
+      entitiesRegistry: entReg,
+    } as any);
     expect(findings).toEqual([]);
   });
 });
@@ -582,15 +688,23 @@ import { glob } from 'glob';
 import type { AuditFinding, Detector, DetectorContext } from './types.js';
 
 const ROUTE_GLOBS = [
-  'app/api/**/route.ts', 'src/app/api/**/route.ts', 'apps/*/app/api/**/route.ts',
-  'app/actions/**/*.ts', 'src/app/actions/**/*.ts', 'apps/*/app/actions/**/*.ts',
-  'jobs/**/*.ts', 'src/jobs/**/*.ts', 'apps/*/jobs/**/*.ts',
+  'app/api/**/route.ts',
+  'src/app/api/**/route.ts',
+  'apps/*/app/api/**/route.ts',
+  'app/actions/**/*.ts',
+  'src/app/actions/**/*.ts',
+  'apps/*/app/actions/**/*.ts',
+  'jobs/**/*.ts',
+  'src/jobs/**/*.ts',
+  'apps/*/jobs/**/*.ts',
 ];
 
 const WRITE_RE =
   /\bprisma\s*\.\s*(\w+)\s*\.\s*(create|update|delete|upsert|createMany|updateMany|deleteMany)\s*\(/g;
 
-interface EntitiesRegistry { entities: Array<{ name: string }> }
+interface EntitiesRegistry {
+  entities: Array<{ name: string }>;
+}
 
 async function loadEntityNames(p: string): Promise<Set<string>> {
   const raw = await fs.readFile(p, 'utf-8');
@@ -658,6 +772,7 @@ git commit -m "[feat] add unregistered-entity-write detector"
 This is the fuzziest detector. It flags **app helper functions or routes named like a registered command** that don't dispatch through `runtime.runCommand`. The heuristic is intentionally conservative — false positives are worse than false negatives for an agent guard.
 
 **Heuristic:**
+
 - Scan the same globs as direct-writes
 - For each file: AST-walk top-level function declarations + exported arrow functions + default exports
 - Normalize names (camelCase split): `createUser` → tokens `['create','user']`
@@ -665,6 +780,7 @@ This is the fuzziest detector. It flags **app helper functions or routes named l
 - If a function's tokens are a multiset match (any order, same elements) AND that file/function does NOT contain a `runtime.runCommand('<entity>.<command>', …)` call → flag
 
 **Files:**
+
 - Create: `packages/cli/src/audit/existing-command-available.ts`
 - Create: `packages/cli/src/audit/existing-command-available.test.ts`
 
@@ -675,22 +791,34 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { existingCommandAvailableDetector, tokenize, multisetMatch } from './existing-command-available.js';
+import {
+  existingCommandAvailableDetector,
+  tokenize,
+  multisetMatch,
+} from './existing-command-available.js';
 
-async function tempDir() { return await fs.mkdtemp(path.join(os.tmpdir(), 'eca-')); }
+async function tempDir() {
+  return await fs.mkdtemp(path.join(os.tmpdir(), 'eca-'));
+}
 
 describe('tokenize', () => {
-  it('splits camelCase', () => { expect(tokenize('createUser')).toEqual(['create','user']); });
-  it('splits PascalCase', () => { expect(tokenize('CreateUser')).toEqual(['create','user']); });
-  it('splits snake_case', () => { expect(tokenize('create_user')).toEqual(['create','user']); });
+  it('splits camelCase', () => {
+    expect(tokenize('createUser')).toEqual(['create', 'user']);
+  });
+  it('splits PascalCase', () => {
+    expect(tokenize('CreateUser')).toEqual(['create', 'user']);
+  });
+  it('splits snake_case', () => {
+    expect(tokenize('create_user')).toEqual(['create', 'user']);
+  });
 });
 
 describe('multisetMatch', () => {
   it('matches in any order', () => {
-    expect(multisetMatch(['create','user'], ['user','create'])).toBe(true);
+    expect(multisetMatch(['create', 'user'], ['user', 'create'])).toBe(true);
   });
   it('rejects on extra token', () => {
-    expect(multisetMatch(['create','user'], ['create','user','admin'])).toBe(false);
+    expect(multisetMatch(['create', 'user'], ['create', 'user', 'admin'])).toBe(false);
   });
 });
 
@@ -698,31 +826,61 @@ describe('existingCommandAvailableDetector', () => {
   it('flags a helper named like a registered command that does not dispatch through runtime', async () => {
     const root = await tempDir();
     const reg = path.join(root, 'commands.json');
-    await fs.writeFile(reg, JSON.stringify({
-      irHash: 'x', compilerVersion: 'y',
-      commands: [{ entity: 'User', command: 'create', commandId: 'User.create',
-        policies: [], guardCount: 0, emits: [], effects: [] }],
-    }));
+    await fs.writeFile(
+      reg,
+      JSON.stringify({
+        irHash: 'x',
+        compilerVersion: 'y',
+        commands: [
+          {
+            entity: 'User',
+            command: 'create',
+            commandId: 'User.create',
+            policies: [],
+            guardCount: 0,
+            emits: [],
+            effects: [],
+          },
+        ],
+      }),
+    );
     const dir = path.join(root, 'app', 'api', 'helpers');
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, 'route.ts'),
-      `export async function createUser(input){ return await db.user.insert(input); }`);
+    await fs.writeFile(
+      path.join(dir, 'route.ts'),
+      `export async function createUser(input){ return await db.user.insert(input); }`,
+    );
     const findings = await existingCommandAvailableDetector.run({ root, commandsRegistry: reg });
-    expect(findings.find(f => f.code === 'EXISTING_COMMAND_AVAILABLE')).toBeDefined();
+    expect(findings.find((f) => f.code === 'EXISTING_COMMAND_AVAILABLE')).toBeDefined();
   });
 
   it('does NOT flag a helper that dispatches through runtime.runCommand for the same command', async () => {
     const root = await tempDir();
     const reg = path.join(root, 'commands.json');
-    await fs.writeFile(reg, JSON.stringify({
-      irHash: 'x', compilerVersion: 'y',
-      commands: [{ entity: 'User', command: 'create', commandId: 'User.create',
-        policies: [], guardCount: 0, emits: [], effects: [] }],
-    }));
+    await fs.writeFile(
+      reg,
+      JSON.stringify({
+        irHash: 'x',
+        compilerVersion: 'y',
+        commands: [
+          {
+            entity: 'User',
+            command: 'create',
+            commandId: 'User.create',
+            policies: [],
+            guardCount: 0,
+            emits: [],
+            effects: [],
+          },
+        ],
+      }),
+    );
     const dir = path.join(root, 'app', 'api', 'users');
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, 'route.ts'),
-      `export async function createUser(input){ return await runtime.runCommand('User.create', input); }`);
+    await fs.writeFile(
+      path.join(dir, 'route.ts'),
+      `export async function createUser(input){ return await runtime.runCommand('User.create', input); }`,
+    );
     const findings = await existingCommandAvailableDetector.run({ root, commandsRegistry: reg });
     expect(findings).toEqual([]);
   });
@@ -743,13 +901,22 @@ import type { AuditFinding, Detector, DetectorContext } from './types.js';
 import { loadCommandSet, extractRunCommandCalls } from './unregistered-command-call.js';
 
 const SCAN_GLOBS = [
-  'app/**/*.{ts,tsx}', 'src/app/**/*.{ts,tsx}', 'apps/*/app/**/*.{ts,tsx}',
-  'pages/api/**/*.{ts,tsx}', 'src/pages/api/**/*.{ts,tsx}',
-  'jobs/**/*.{ts,tsx}', 'src/jobs/**/*.{ts,tsx}',
+  'app/**/*.{ts,tsx}',
+  'src/app/**/*.{ts,tsx}',
+  'apps/*/app/**/*.{ts,tsx}',
+  'pages/api/**/*.{ts,tsx}',
+  'src/pages/api/**/*.{ts,tsx}',
+  'jobs/**/*.{ts,tsx}',
+  'src/jobs/**/*.{ts,tsx}',
 ];
 const EXCLUDE_GLOBS = [
-  '**/node_modules/**','**/dist/**','**/.next/**','**/build/**',
-  '**/*.test.ts','**/*.spec.ts','**/__tests__/**',
+  '**/node_modules/**',
+  '**/dist/**',
+  '**/.next/**',
+  '**/build/**',
+  '**/*.test.ts',
+  '**/*.spec.ts',
+  '**/__tests__/**',
 ];
 
 export function tokenize(name: string): string[] {
@@ -771,10 +938,13 @@ export function multisetMatch(a: string[], b: string[]): boolean {
     if (!c) return false;
     counts.set(t, c - 1);
   }
-  return [...counts.values()].every(v => v === 0);
+  return [...counts.values()].every((v) => v === 0);
 }
 
-function collectFunctionNames(source: string, filename: string): Array<{ name: string; line: number }> {
+function collectFunctionNames(
+  source: string,
+  filename: string,
+): Array<{ name: string; line: number }> {
   const sf = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
   const out: Array<{ name: string; line: number }> = [];
   function visit(node: ts.Node) {
@@ -784,8 +954,11 @@ function collectFunctionNames(source: string, filename: string): Array<{ name: s
     }
     if (ts.isVariableStatement(node)) {
       for (const decl of node.declarationList.declarations) {
-        if (ts.isIdentifier(decl.name) && decl.initializer &&
-            (ts.isArrowFunction(decl.initializer) || ts.isFunctionExpression(decl.initializer))) {
+        if (
+          ts.isIdentifier(decl.name) &&
+          decl.initializer &&
+          (ts.isArrowFunction(decl.initializer) || ts.isFunctionExpression(decl.initializer))
+        ) {
           const { line } = sf.getLineAndCharacterOfPosition(decl.getStart(sf));
           out.push({ name: decl.name.text, line: line + 1 });
         }
@@ -807,7 +980,10 @@ export const existingCommandAvailableDetector: Detector = {
     for (const id of known) {
       const dot = id.indexOf('.');
       if (dot < 1) continue;
-      tokenized.push({ id, tokens: [...tokenize(id.slice(0, dot)), ...tokenize(id.slice(dot + 1))] });
+      tokenized.push({
+        id,
+        tokens: [...tokenize(id.slice(0, dot)), ...tokenize(id.slice(dot + 1))],
+      });
     }
     const findings: AuditFinding[] = [];
     const seen = new Set<string>();
@@ -820,7 +996,9 @@ export const existingCommandAvailableDetector: Detector = {
         const fns = collectFunctionNames(src, file);
         if (fns.length === 0) continue;
         const calls = extractRunCommandCalls(src, file);
-        const dispatchedIds = new Set(calls.filter(c => !c.dynamic && c.commandId).map(c => c.commandId!));
+        const dispatchedIds = new Set(
+          calls.filter((c) => !c.dynamic && c.commandId).map((c) => c.commandId!),
+        );
         for (const fn of fns) {
           const fnTokens = tokenize(fn.name);
           if (fnTokens.length < 2) continue;
@@ -834,7 +1012,8 @@ export const existingCommandAvailableDetector: Detector = {
                 file: path.relative(ctx.root, file).replace(/\\/g, '/'),
                 detector: 'existing-command-available',
                 line: fn.line,
-                entity, command,
+                entity,
+                command,
                 suggestion: `Replace this implementation with a call to runtime.runCommand('${cmd.id}', payload)`,
               });
               break;
@@ -865,6 +1044,7 @@ git commit -m "[feat] add existing-command-available detector (name-heuristic fo
 ## Task 7: `enforce-surface` orchestrator command
 
 **Files:**
+
 - Create: `packages/cli/src/commands/enforce-surface.ts`
 - Create: `packages/cli/src/commands/enforce-surface.test.ts`
 
@@ -878,27 +1058,54 @@ import path from 'node:path';
 import os from 'node:os';
 import { enforceSurfaceCommand } from './enforce-surface.js';
 
-async function tempDir() { return await fs.mkdtemp(path.join(os.tmpdir(), 'es-')); }
+async function tempDir() {
+  return await fs.mkdtemp(path.join(os.tmpdir(), 'es-'));
+}
 
 let exitCodeBefore: number | undefined;
-beforeEach(() => { exitCodeBefore = process.exitCode; process.exitCode = 0; });
-afterEach(() => { process.exitCode = exitCodeBefore; });
+beforeEach(() => {
+  exitCodeBefore = process.exitCode;
+  process.exitCode = 0;
+});
+afterEach(() => {
+  process.exitCode = exitCodeBefore;
+});
 
 describe('enforceSurfaceCommand', () => {
   it('emits ok:true and exits 0 when surface aligns with registry', async () => {
     const root = await tempDir();
     const reg = path.join(root, 'commands.json');
-    await fs.writeFile(reg, JSON.stringify({
-      irHash: 'x', compilerVersion: 'y',
-      commands: [{ entity: 'User', command: 'create', commandId: 'User.create',
-        policies: [], guardCount: 0, emits: [], effects: [] }],
-    }));
+    await fs.writeFile(
+      reg,
+      JSON.stringify({
+        irHash: 'x',
+        compilerVersion: 'y',
+        commands: [
+          {
+            entity: 'User',
+            command: 'create',
+            commandId: 'User.create',
+            policies: [],
+            guardCount: 0,
+            emits: [],
+            effects: [],
+          },
+        ],
+      }),
+    );
     const dir = path.join(root, 'app', 'api', 'users');
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, 'route.ts'),
-      `export async function POST(){ return await runtime.runCommand('User.create', {}); }`);
+    await fs.writeFile(
+      path.join(dir, 'route.ts'),
+      `export async function POST(){ return await runtime.runCommand('User.create', {}); }`,
+    );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const res = await enforceSurfaceCommand({ root, commandsRegistry: reg, format: 'json', strict: true });
+    const res = await enforceSurfaceCommand({
+      root,
+      commandsRegistry: reg,
+      format: 'json',
+      strict: true,
+    });
     spy.mockRestore();
     expect(res.ok).toBe(true);
     expect(res.summary.errors).toBe(0);
@@ -911,13 +1118,20 @@ describe('enforceSurfaceCommand', () => {
     await fs.writeFile(reg, JSON.stringify({ irHash: 'x', compilerVersion: 'y', commands: [] }));
     const dir = path.join(root, 'app', 'api', 'x');
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, 'route.ts'),
-      `export async function POST(){ return await runtime.runCommand('Foo.bar', {}); }`);
+    await fs.writeFile(
+      path.join(dir, 'route.ts'),
+      `export async function POST(){ return await runtime.runCommand('Foo.bar', {}); }`,
+    );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const res = await enforceSurfaceCommand({ root, commandsRegistry: reg, format: 'json', strict: true });
+    const res = await enforceSurfaceCommand({
+      root,
+      commandsRegistry: reg,
+      format: 'json',
+      strict: true,
+    });
     spy.mockRestore();
     expect(res.ok).toBe(false);
-    expect(res.findings.some(f => f.code === 'UNREGISTERED_COMMAND_CALL')).toBe(true);
+    expect(res.findings.some((f) => f.code === 'UNREGISTERED_COMMAND_CALL')).toBe(true);
     expect(process.exitCode).toBe(1);
   });
 
@@ -927,8 +1141,10 @@ describe('enforceSurfaceCommand', () => {
     await fs.writeFile(reg, JSON.stringify({ irHash: 'x', compilerVersion: 'y', commands: [] }));
     const dir = path.join(root, 'app', 'api', 'x');
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, 'route.ts'),
-      `export async function POST(){ return await runtime.runCommand('Foo.bar', {}); }`);
+    await fs.writeFile(
+      path.join(dir, 'route.ts'),
+      `export async function POST(){ return await runtime.runCommand('Foo.bar', {}); }`,
+    );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     await enforceSurfaceCommand({ root, commandsRegistry: reg, format: 'json' });
     spy.mockRestore();
@@ -941,12 +1157,19 @@ describe('enforceSurfaceCommand', () => {
     await fs.writeFile(reg, JSON.stringify({ irHash: 'x', compilerVersion: 'y', commands: [] }));
     const dir = path.join(root, 'app', 'api', 'audit');
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, 'route.ts'),
-      `export async function POST(){ return prisma.user.create({ data: {} }); }`);
+    await fs.writeFile(
+      path.join(dir, 'route.ts'),
+      `export async function POST(){ return prisma.user.create({ data: {} }); }`,
+    );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const res = await enforceSurfaceCommand({ root, commandsRegistry: reg, format: 'json', strict: true });
+    const res = await enforceSurfaceCommand({
+      root,
+      commandsRegistry: reg,
+      format: 'json',
+      strict: true,
+    });
     spy.mockRestore();
-    expect(res.findings.some(f => f.code === 'DIRECT_WRITE_BYPASS')).toBe(true);
+    expect(res.findings.some((f) => f.code === 'DIRECT_WRITE_BYPASS')).toBe(true);
   });
 
   it('produces JSON shape matching spec contract', async () => {
@@ -954,7 +1177,9 @@ describe('enforceSurfaceCommand', () => {
     const reg = path.join(root, 'commands.json');
     await fs.writeFile(reg, JSON.stringify({ irHash: 'x', compilerVersion: 'y', commands: [] }));
     let captured = '';
-    const spy = vi.spyOn(console, 'log').mockImplementation((s) => { captured = String(s); });
+    const spy = vi.spyOn(console, 'log').mockImplementation((s) => {
+      captured = String(s);
+    });
     await enforceSurfaceCommand({ root, commandsRegistry: reg, format: 'json' });
     spy.mockRestore();
     const j = JSON.parse(captured);
@@ -1077,7 +1302,7 @@ function defaultSuggestion(code: string): string {
 }
 
 export async function enforceSurfaceCommand(
-  options: EnforceSurfaceOptions = {}
+  options: EnforceSurfaceOptions = {},
 ): Promise<EnforceSurfaceResult> {
   const root = path.resolve(process.cwd(), options.root ?? '.');
   const ctx: DetectorContext = {
@@ -1181,6 +1406,7 @@ git commit -m "[feat] add enforce-surface orchestrator command composing all sur
 ## Task 8: Register `enforce-surface` in CLI entry
 
 **Files:**
+
 - Modify: `packages/cli/src/index.ts` (after the `audit-governance` registration block at lines 334–366)
 
 - [ ] **Step 1: Add registration**
@@ -1216,9 +1442,11 @@ program
 - [ ] **Step 2: Build & smoke-test from CLI**
 
 Run from repo root:
+
 ```bash
 cd packages/cli && pnpm build && node dist/index.js enforce-surface --help
 ```
+
 Expected: help text lists all options and description.
 
 - [ ] **Step 3: Commit**
@@ -1233,6 +1461,7 @@ git commit -m "[feat] register enforce-surface in CLI"
 ## Task 9: Sample-app integration test
 
 **Files:**
+
 - Create: `packages/cli/src/commands/enforce-surface.sample-app.test.ts`
 - Add fixtures under `fixtures/sample-app/app/api/...` IF not already present (use the existing fixture's `manifest-registry/commands.json` as source of truth)
 
@@ -1267,7 +1496,7 @@ describe('enforce-surface against fixtures/sample-app', () => {
     expect(Array.isArray(res.findings)).toBe(true);
     for (const f of res.findings) {
       expect(typeof f.code).toBe('string');
-      expect(['error','warning']).toContain(f.severity);
+      expect(['error', 'warning']).toContain(f.severity);
     }
   });
 });
@@ -1289,11 +1518,13 @@ git commit -m "[test] add sample-app integration test for enforce-surface"
 ## Task 10: CLI reference docs
 
 **Files:**
+
 - Modify: `docs/tools/CLI_REFERENCE.md`
 
 - [ ] **Step 1: Append `enforce-surface` section**
 
 Add documentation covering:
+
 - Command synopsis (mirror `newguard.json.example_invocation`)
 - Every flag from spec `options`
 - All 7+ finding codes and severities (from `CODE_MAP` + native codes)
@@ -1326,16 +1557,19 @@ Expected: PASS (existing 78+ new tests).
 - [ ] **Step 2: Run repo-wide tests + lint + typecheck**
 
 Run from repo root:
+
 ```bash
 pnpm test
 pnpm run typecheck
 pnpm run lint
 ```
+
 Expected: all PASS. Memory note: `feedback-lint-debt-out-of-scope` records ~237 pre-existing lint errors in `tools/`, `.opencode/`, `generated/`, `packages/cli/dist/` — those are out of scope. New code must not add new lint errors.
 
 - [ ] **Step 3: Manual smoke against sample-app**
 
 Run:
+
 ```bash
 node packages/cli/dist/index.js enforce-surface \
   --root fixtures/sample-app \
@@ -1344,11 +1578,13 @@ node packages/cli/dist/index.js enforce-surface \
   --bypass-registry fixtures/sample-app/bypasses.json \
   --format json --strict
 ```
+
 Expected: deterministic JSON output, exit code 0 or 1 depending on fixture state.
 
 - [ ] **Step 4: Final report per `newguard.json.final_report`**
 
 Write a summary that includes:
+
 1. Every file changed (list)
 2. New CLI command syntax (`manifest enforce-surface ...`)
 3. Example text output

@@ -39,7 +39,7 @@ function TreeFolder({
   files,
   selectedFile,
   onSelectFile,
-  depth
+  depth,
 }: {
   name: string;
   children: TreeStructure;
@@ -57,7 +57,11 @@ function TreeFolder({
         className="flex items-center gap-2 w-full px-2 py-1 hover:bg-gray-800 rounded text-sm text-gray-300"
         style={{ paddingLeft: depth * 12 + 8 }}
       >
-        {open ? <ChevronDown size={14} className="text-gray-500" /> : <ChevronRight size={14} className="text-gray-500" />}
+        {open ? (
+          <ChevronDown size={14} className="text-gray-500" />
+        ) : (
+          <ChevronRight size={14} className="text-gray-500" />
+        )}
         <Folder size={14} className="text-amber-400" />
         <span>{name}</span>
       </button>
@@ -101,7 +105,7 @@ function TreeFile({
   content,
   selected,
   onSelect,
-  depth
+  depth,
 }: {
   name: string;
   path: string;
@@ -131,7 +135,9 @@ function TreeFile({
     <button
       onClick={() => onSelect(path)}
       className={`flex items-center gap-2 w-full px-2 py-1 rounded text-sm group ${
-        selected ? 'bg-sky-500/20 text-sky-300' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-300'
+        selected
+          ? 'bg-sky-500/20 text-sky-300'
+          : 'text-gray-400 hover:bg-gray-800 hover:text-gray-300'
       }`}
       style={{ paddingLeft: depth * 12 + 8 }}
     >

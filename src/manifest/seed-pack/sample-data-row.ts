@@ -12,7 +12,7 @@ export function buildSampleDataRowId(
   packId: string,
   version: string,
   entity: string,
-  seedKey: string
+  seedKey: string,
 ): string {
   return `${tenantId}:${packId}:${version}:${entity}:${seedKey}`;
 }
@@ -31,7 +31,7 @@ export function toSampleDataRowRecord(input: {
       input.packId,
       input.version,
       input.entity,
-      input.seedKey
+      input.seedKey,
     ),
     tenantId: input.tenantId,
     packId: input.packId,
@@ -46,7 +46,7 @@ export function matchesPackRun(
   row: SampleDataRowRecord,
   tenantId: string,
   packId?: string,
-  version?: string
+  version?: string,
 ): boolean {
   if (row.tenantId !== tenantId) return false;
   if (packId != null && row.packId !== packId) return false;

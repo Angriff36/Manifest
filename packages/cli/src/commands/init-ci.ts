@@ -111,17 +111,14 @@ jobs:
 /**
  * Init CI command handler
  */
-export async function initCiCommand(
-  provider: string,
-  options: InitCiOptions = {}
-): Promise<void> {
+export async function initCiCommand(provider: string, options: InitCiOptions = {}): Promise<void> {
   const supportedProviders = ['github'];
 
   if (!supportedProviders.includes(provider)) {
     console.error(
       chalk.red(
-        `Unsupported CI provider: "${provider}". Supported: ${supportedProviders.join(', ')}`
-      )
+        `Unsupported CI provider: "${provider}". Supported: ${supportedProviders.join(', ')}`,
+      ),
     );
     process.exitCode = 1;
     return;

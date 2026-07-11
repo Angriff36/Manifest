@@ -24,7 +24,7 @@ const { ir, diagnostics } = await compileToIR(`
   }
 `);
 
-if (diagnostics.some(d => d.severity === 'error')) {
+if (diagnostics.some((d) => d.severity === 'error')) {
   console.error('Errors:', diagnostics);
   process.exit(1);
 }
@@ -33,14 +33,16 @@ console.log('IR:', ir);
 ```
 
 **Parameters:**
+
 - `source`: Manifest source code
 - `options.useCache` (optional): Enable in-memory IR compilation cache
 
 **Returns:**
+
 ```typescript
 interface CompileToIRResult {
-  ir: IR | null;                        // Compiled IR if successful
-  diagnostics: IRDiagnostic[];          // Compilation errors/warnings
+  ir: IR | null; // Compiled IR if successful
+  diagnostics: IRDiagnostic[]; // Compilation errors/warnings
 }
 ```
 
@@ -61,6 +63,7 @@ constructor(
 ```
 
 **Parameters:**
+
 - `ir`: Compiled IR from `compileToIR()`
 - `context.actorId`: Acting user identifier (prefer over legacy `userId` keys)
 - `context.tenantId`: Tenant identifier for multi-tenancy
@@ -74,9 +77,13 @@ constructor(
 Executes a command. Entity-scoped commands require `options.entityName` (and usually `options.instanceId`).
 
 ```typescript
-const result = await runtime.runCommand('create', {
-  title: 'Learn Manifest'
-}, { entityName: 'Todo' });
+const result = await runtime.runCommand(
+  'create',
+  {
+    title: 'Learn Manifest',
+  },
+  { entityName: 'Todo' },
+);
 
 if (result.success) {
   console.log('Created:', result.result);
@@ -93,33 +100,36 @@ if (result.success) {
 ```
 
 **Returns:**
+
 ```typescript
 interface CommandResult {
-  success: boolean;                     // True if command succeeded
-  result?: unknown;                     // Command result value
-  error?: string;                       // Error message (if failed)
-  guardFailure?: GuardFailure;          // Guard failure details (if guard failed)
-  policyDenial?: PolicyDenial;          // Policy denial details (if policy denied)
-  constraintOutcomes?: ConstraintOutcome[];  // Constraint evaluation results
-  emittedEvents: EmittedEvent[];        // Events emitted during execution
+  success: boolean; // True if command succeeded
+  result?: unknown; // Command result value
+  error?: string; // Error message (if failed)
+  guardFailure?: GuardFailure; // Guard failure details (if guard failed)
+  policyDenial?: PolicyDenial; // Policy denial details (if policy denied)
+  constraintOutcomes?: ConstraintOutcome[]; // Constraint evaluation results
+  emittedEvents: EmittedEvent[]; // Events emitted during execution
 }
 
 interface GuardFailure {
-  index: number;                        // 1-based guard index
-  expression: IRExpression;             // Guard expression AST
-  formatted: string;                    // Human-readable expression
-  resolved?: Array<{                    // Resolved values for debugging
+  index: number; // 1-based guard index
+  expression: IRExpression; // Guard expression AST
+  formatted: string; // Human-readable expression
+  resolved?: Array<{
+    // Resolved values for debugging
     expression: string;
     value: unknown;
   }>;
 }
 
 interface PolicyDenial {
-  policyName: string;                   // Name of denying policy
-  expression: IRExpression;             // Policy expression AST
-  formatted: string;                    // Human-readable expression
-  message?: string;                     // Optional policy message
-  resolved?: Array<{                    // Resolved values for debugging
+  policyName: string; // Name of denying policy
+  expression: IRExpression; // Policy expression AST
+  formatted: string; // Human-readable expression
+  message?: string; // Optional policy message
+  resolved?: Array<{
+    // Resolved values for debugging
     expression: string;
     value: unknown;
   }>;
@@ -155,7 +165,7 @@ Intermediate Representation - compiled Manifest program.
 ```typescript
 interface IR {
   version: '1.0';
-  provenance: IRProvenance;             // contentHash, irHash, compilerVersion, etc.
+  provenance: IRProvenance; // contentHash, irHash, compilerVersion, etc.
   tenant?: IRTenant;
   modules: IRModule[];
   values: IRValueObject[];
@@ -178,14 +188,14 @@ Entity definition from IR.
 
 ```typescript
 interface Entity {
-  name: string;                         // Entity name
-  properties: Property[];               // Entity properties
-  commands?: Command[];                 // Entity commands
-  policies?: Policy[];                  // Authorization policies
-  constraints?: Constraint[];           // Entity-level constraints
-  computed?: ComputedProperty[];        // Computed properties
-  relationships?: Relationship[];       // Entity relationships
-  metadata?: Record<string, unknown>;   // Custom metadata
+  name: string; // Entity name
+  properties: Property[]; // Entity properties
+  commands?: Command[]; // Entity commands
+  policies?: Policy[]; // Authorization policies
+  constraints?: Constraint[]; // Entity-level constraints
+  computed?: ComputedProperty[]; // Computed properties
+  relationships?: Relationship[]; // Entity relationships
+  metadata?: Record<string, unknown>; // Custom metadata
 }
 ```
 
@@ -195,15 +205,16 @@ Entity property definition.
 
 ```typescript
 interface Property {
-  name: string;                         // Property name
-  type: PropertyType;                   // Property type
-  optional?: boolean;                   // Is optional
-  default?: unknown;                    // Default value
-  constraints?: Constraint[];           // Property-level constraints
+  name: string; // Property name
+  type: PropertyType; // Property type
+  optional?: boolean; // Is optional
+  default?: unknown; // Default value
+  constraints?: Constraint[]; // Property-level constraints
 }
 ```
 
 **Property Types:**
+
 - `string`
 - `number`
 - `boolean`
@@ -219,13 +230,13 @@ Command definition.
 
 ```typescript
 interface Command {
-  name: string;                         // Command name
-  parameters?: Parameter[];             // Command parameters
-  guards?: Guard[];                     // Guard expressions
-  mutations?: Mutation[];               // State mutations
-  actions?: Action[];                   // Side effects
-  emits?: EventEmit[];                  // Event emissions
-  constraints?: Constraint[];           // Command-level constraints
+  name: string; // Command name
+  parameters?: Parameter[]; // Command parameters
+  guards?: Guard[]; // Guard expressions
+  mutations?: Mutation[]; // State mutations
+  actions?: Action[]; // Side effects
+  emits?: EventEmit[]; // Event emissions
+  constraints?: Constraint[]; // Command-level constraints
   metadata?: Record<string, unknown>;
 }
 ```
@@ -264,10 +275,10 @@ Validation constraint.
 
 ```typescript
 interface Constraint {
-  name: string;                         // Constraint name
-  expression: string;                   // Constraint expression
-  severity: 'ok' | 'warn' | 'block';    // Severity level
-  message?: string;                     // Error message
+  name: string; // Constraint name
+  expression: string; // Constraint expression
+  severity: 'ok' | 'warn' | 'block'; // Severity level
+  message?: string; // Error message
 }
 ```
 
@@ -277,8 +288,8 @@ Side effect action.
 
 ```typescript
 interface Action {
-  kind: 'persist' | 'publish' | 'effect';  // Action kind
-  expression: string;                   // Action expression
+  kind: 'persist' | 'publish' | 'effect'; // Action kind
+  expression: string; // Action expression
   options?: Record<string, unknown>;
 }
 ```
@@ -289,9 +300,9 @@ Event emission definition.
 
 ```typescript
 interface EventEmit {
-  name: string;                         // Event name
-  channel?: string;                     // Event channel (default: 'default')
-  payload: Record<string, string>;      // Payload mapping
+  name: string; // Event name
+  channel?: string; // Event channel (default: 'default')
+  payload: Record<string, string>; // Payload mapping
 }
 ```
 
@@ -301,11 +312,11 @@ Event emitted during command execution.
 
 ```typescript
 interface EmittedEvent {
-  name: string;                         // Event name
-  channel: string;                      // Event channel
-  payload: Record<string, unknown>;     // Event payload
-  timestamp: number;                    // Milliseconds since epoch
-  emitIndex: number;                    // Deterministic emission order index
+  name: string; // Event name
+  channel: string; // Event channel
+  payload: Record<string, unknown>; // Event payload
+  timestamp: number; // Milliseconds since epoch
+  emitIndex: number; // Deterministic emission order index
 }
 ```
 
@@ -356,6 +367,12 @@ const store = new PostgresStore({
 });
 ```
 
+Creating the adapter does not bind it to an entity. Return it from
+`RuntimeOptions.storeProvider`, or place it under the entity name in
+`manifest.config.ts` and configure `runtimeConfigImport`. `DATABASE_URL` alone
+is not runtime storage configuration. See the
+[complete example](../spec/config/manifest.config.md#complete-postgresql-runtime-companion-example).
+
 ---
 
 ## Projection Interface
@@ -402,6 +419,7 @@ Per `docs/spec/builtins.md`:
 ### Property Access
 
 Member access (`.`) is supported for accessing object properties:
+
 - `self.title` - Entity property
 - `user.id` - User property
 - `items.length` - Array length (works via JavaScript member access)

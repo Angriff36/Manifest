@@ -50,7 +50,7 @@ async function loadIR(irPath: string | undefined): Promise<IR> {
     const { glob } = await import('glob');
     const files = await glob('**/*.ir.json', {
       cwd: process.cwd(),
-      ignore: ['node_modules/**', 'dist/**', '.next/**']
+      ignore: ['node_modules/**', 'dist/**', '.next/**'],
     });
 
     if (files.length === 0) {
@@ -111,27 +111,43 @@ function printSummaryTable(summary: ProfileSummary): void {
   console.log(`  ${padRight('Total Commands', 25)} ${summary.totalCommands}`);
   console.log(`  ${padRight('Total Duration', 25)} ${formatDuration(summary.totalDuration)}`);
   console.log(`  ${padRight('Average Duration', 25)} ${formatDuration(summary.averageDuration)}`);
-  console.log(`  ${padRight('Slowest Command', 25)} ${chalk.yellow(`${summary.slowestCommand.entityName ? `${summary.slowestCommand.entityName}.` : ''}${summary.slowestCommand.commandName}`)}`);
-  console.log(`  ${padRight('Slowest Time', 25)} ${chalk.red(formatDuration(summary.slowestCommand.duration))}`);
-  console.log(`  ${padRight('Fastest Command', 25)} ${chalk.green(`${summary.fastestCommand.entityName ? `${summary.fastestCommand.entityName}.` : ''}${summary.fastestCommand.commandName}`)}`);
-  console.log(`  ${padRight('Fastest Time', 25)} ${chalk.green(formatDuration(summary.fastestCommand.duration))}`);
+  console.log(
+    `  ${padRight('Slowest Command', 25)} ${chalk.yellow(`${summary.slowestCommand.entityName ? `${summary.slowestCommand.entityName}.` : ''}${summary.slowestCommand.commandName}`)}`,
+  );
+  console.log(
+    `  ${padRight('Slowest Time', 25)} ${chalk.red(formatDuration(summary.slowestCommand.duration))}`,
+  );
+  console.log(
+    `  ${padRight('Fastest Command', 25)} ${chalk.green(`${summary.fastestCommand.entityName ? `${summary.fastestCommand.entityName}.` : ''}${summary.fastestCommand.commandName}`)}`,
+  );
+  console.log(
+    `  ${padRight('Fastest Time', 25)} ${chalk.green(formatDuration(summary.fastestCommand.duration))}`,
+  );
 
   // Phase breakdown table
   if (summary.phaseStats.size > 0) {
     console.log('');
     console.log(chalk.gray('Phase Breakdown'));
     const colWidths = [20, 12, 12, 12, 10];
-    console.log(`  ${padRight('Phase', colWidths[0])} ${padRight('Total', colWidths[1])} ${padRight('Avg', colWidths[2])} ${padRight('Max', colWidths[3])} ${padRight('%', colWidths[4])}`);
-    console.log(`  ${'-'.repeat(colWidths[0])} ${'-'.repeat(colWidths[1])} ${'-'.repeat(colWidths[2])} ${'-'.repeat(colWidths[3])} ${'-'.repeat(colWidths[4])}`);
+    console.log(
+      `  ${padRight('Phase', colWidths[0])} ${padRight('Total', colWidths[1])} ${padRight('Avg', colWidths[2])} ${padRight('Max', colWidths[3])} ${padRight('%', colWidths[4])}`,
+    );
+    console.log(
+      `  ${'-'.repeat(colWidths[0])} ${'-'.repeat(colWidths[1])} ${'-'.repeat(colWidths[2])} ${'-'.repeat(colWidths[3])} ${'-'.repeat(colWidths[4])}`,
+    );
 
     // Sort phases by total duration (slowest first)
-    const sortedPhases = Array.from(summary.phaseStats.entries() as IterableIterator<[ExecutionPhase, PhaseStats]>)
-      .sort(([, a], [, b]) => b.totalDuration - a.totalDuration);
+    const sortedPhases = Array.from(
+      summary.phaseStats.entries() as IterableIterator<[ExecutionPhase, PhaseStats]>,
+    ).sort(([, a], [, b]) => b.totalDuration - a.totalDuration);
 
     for (const [phase, stats] of sortedPhases) {
-      const phaseStr = phase.length > colWidths[0] - 2 ? phase.slice(0, colWidths[0] - 2) + '..' : phase;
+      const phaseStr =
+        phase.length > colWidths[0] - 2 ? phase.slice(0, colWidths[0] - 2) + '..' : phase;
       const colorFn = stats.totalDuration > 10 ? chalk.yellow : chalk.white;
-      console.log(`  ${colorFn(padRight(phaseStr, colWidths[0]))} ${padRight(formatDuration(stats.totalDuration), colWidths[1])} ${padRight(formatDuration(stats.averageDuration), colWidths[2])} ${padRight(formatDuration(stats.maxDuration), colWidths[3])} ${padRight(formatPercent(stats.percentOfTotal), colWidths[4])}`);
+      console.log(
+        `  ${colorFn(padRight(phaseStr, colWidths[0]))} ${padRight(formatDuration(stats.totalDuration), colWidths[1])} ${padRight(formatDuration(stats.averageDuration), colWidths[2])} ${padRight(formatDuration(stats.maxDuration), colWidths[3])} ${padRight(formatPercent(stats.percentOfTotal), colWidths[4])}`,
+      );
     }
   }
 
@@ -143,7 +159,9 @@ function printSummaryTable(summary: ProfileSummary): void {
     console.log(`  ${'-'.repeat(40)} ${'-'.repeat(15)}`);
 
     for (const cmd of summary.slowestCommands) {
-      console.log(`  ${padRight(`${cmd.entityName ? `${cmd.entityName}.` : ''}${cmd.commandName}`, 40)} ${chalk.yellow(formatDuration(cmd.duration))}`);
+      console.log(
+        `  ${padRight(`${cmd.entityName ? `${cmd.entityName}.` : ''}${cmd.commandName}`, 40)} ${chalk.yellow(formatDuration(cmd.duration))}`,
+      );
     }
   }
 }
@@ -151,10 +169,7 @@ function printSummaryTable(summary: ProfileSummary): void {
 /**
  * Export profiling data as JSON
  */
-async function exportProfileData(
-  profiles: CommandProfile[],
-  exportPath: string
-): Promise<void> {
+async function exportProfileData(profiles: CommandProfile[], exportPath: string): Promise<void> {
   const resolved = path.resolve(process.cwd(), exportPath);
   await fs.mkdir(path.dirname(resolved), { recursive: true });
   await fs.writeFile(resolved, JSON.stringify(profiles, null, 2), 'utf-8');
@@ -179,12 +194,16 @@ export async function profileCommand(options: ProfileOptions = {}): Promise<void
     spinner.start('Initializing runtime');
     const { RuntimeEngine } = await import('@angriff36/manifest/runtime-engine');
 
-    const runtime = new RuntimeEngine(ir, {}, {
-      profiling: {
-        enabled: true,
-        detailed: options.detailed ?? false,
+    const runtime = new RuntimeEngine(
+      ir,
+      {},
+      {
+        profiling: {
+          enabled: true,
+          detailed: options.detailed ?? false,
+        },
       },
-    });
+    );
 
     spinner.succeed('Runtime initialized');
 
@@ -196,7 +215,11 @@ export async function profileCommand(options: ProfileOptions = {}): Promise<void
       console.log(chalk.gray('Specify --command <name> to profile a specific command.'));
       console.log('');
       console.log(chalk.gray('Example:'));
-      console.log(chalk.white('  manifest profile --command create --entity User --input \'{"name": "Test"}\''));
+      console.log(
+        chalk.white(
+          '  manifest profile --command create --entity User --input \'{"name": "Test"}\'',
+        ),
+      );
       console.log('');
       return;
     }

@@ -1,7 +1,7 @@
 ---
-title: "Runtime middleware pipeline"
-description: "Compose cross-cutting concerns — logging, auth enrichment, short-circuiting — into the command execution lifecycle via deterministic, ordered middleware hooks."
-sidebarTitle: "Runtime Middleware"
+title: 'Runtime middleware pipeline'
+description: 'Compose cross-cutting concerns — logging, auth enrichment, short-circuiting — into the command execution lifecycle via deterministic, ordered middleware hooks.'
+sidebarTitle: 'Runtime Middleware'
 ---
 
 The runtime middleware pipeline inserts composable hooks into the command execution lifecycle. Middleware runs at four deterministic points: before policies, before guards, before actions, and after events. Each hook receives a `MiddlewareContext` and can either enrich the evaluation context, inspect intermediate state, or short-circuit execution with a custom result.
@@ -12,12 +12,12 @@ Middleware is optional and fully backward compatible. If you do not configure an
 
 Each middleware declares which lifecycle hooks it participates in via a `hooks` array. The runtime invokes the handler once per matching hook during command execution.
 
-| Hook | When it runs | Typical use |
-|------|-------------|-------------|
-| `before-policy` | After evaluation context is built, before policy checks | Inject identity, enrich `context.*` |
-| `before-guard` | After policies and constraints pass, before guards | Audit the incoming state, enforce domain invariants |
-| `before-action` | After guards pass, before actions execute | Validate action preconditions, request-scoped logging |
-| `after-emit` | After all events are emitted and reactions cascade | Event auditing, metric collection, post-hoc analysis |
+| Hook            | When it runs                                            | Typical use                                           |
+| --------------- | ------------------------------------------------------- | ----------------------------------------------------- |
+| `before-policy` | After evaluation context is built, before policy checks | Inject identity, enrich `context.*`                   |
+| `before-guard`  | After policies and constraints pass, before guards      | Audit the incoming state, enforce domain invariants   |
+| `before-action` | After guards pass, before actions execute               | Validate action preconditions, request-scoped logging |
+| `after-emit`    | After all events are emitted and reactions cascade      | Event auditing, metric collection, post-hoc analysis  |
 
 Hooks execute in a deterministic order that matches the command lifecycle documented in [Commands](/language/commands):
 
@@ -38,26 +38,26 @@ Hooks execute in a deterministic order that matches the command lifecycle docume
 
 Every middleware handler receives a `MiddlewareContext` with the following fields:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `command` | `string` | Name of the command being executed |
-| `entityName` | `string` | Entity the command belongs to |
-| `instanceId` | `string \| undefined` | Target instance ID, if provided |
-| `hook` | `MiddlewareHook` | Which lifecycle hook triggered this call |
-| `input` | `Record<string, unknown>` | Command parameters and runtime options |
-| `evalContext` | `Record<string, unknown>` | Current evaluation context (`self`, `user`, `context.*`) |
-| `runtimeContext` | `RuntimeContext` | The full runtime context object |
-| `emittedEvents` | `EmittedEvent[]` | Events emitted so far (populated only at `after-emit`) |
+| Field            | Type                      | Description                                              |
+| ---------------- | ------------------------- | -------------------------------------------------------- |
+| `command`        | `string`                  | Name of the command being executed                       |
+| `entityName`     | `string`                  | Entity the command belongs to                            |
+| `instanceId`     | `string \| undefined`     | Target instance ID, if provided                          |
+| `hook`           | `MiddlewareHook`          | Which lifecycle hook triggered this call                 |
+| `input`          | `Record<string, unknown>` | Command parameters and runtime options                   |
+| `evalContext`    | `Record<string, unknown>` | Current evaluation context (`self`, `user`, `context.*`) |
+| `runtimeContext` | `RuntimeContext`          | The full runtime context object                          |
+| `emittedEvents`  | `EmittedEvent[]`          | Events emitted so far (populated only at `after-emit`)   |
 
 ## The `MiddlewareResult` object
 
 A middleware handler returns a `MiddlewareResult` to control what happens next:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `shortCircuit` | `boolean` | If `true`, halt execution and return the provided `result` |
-| `result` | `CommandResult` | The result to return when short-circuiting |
-| `contextPatch` | `Record<string, unknown>` | Key-value pairs merged into the evaluation context |
+| Field          | Type                      | Description                                                |
+| -------------- | ------------------------- | ---------------------------------------------------------- |
+| `shortCircuit` | `boolean`                 | If `true`, halt execution and return the provided `result` |
+| `result`       | `CommandResult`           | The result to return when short-circuiting                 |
+| `contextPatch` | `Record<string, unknown>` | Key-value pairs merged into the evaluation context         |
 
 ### Context patching
 
@@ -129,7 +129,8 @@ const runtime = new RuntimeEngine(ir, {
 ```
 
 <Note>
-The ordering guarantee is strict: middleware at index 0 always runs before middleware at index 1 for the same hook. This makes the pipeline deterministic and testable.
+  The ordering guarantee is strict: middleware at index 0 always runs before middleware at index 1
+  for the same hook. This makes the pipeline deterministic and testable.
 </Note>
 
 ## Example: logging middleware
@@ -145,13 +146,15 @@ const timedLogging: Middleware = {
       return {};
     }
     const duration = Date.now() - (ctx.input.__startTime as number);
-    console.log(JSON.stringify({
-      entity: ctx.entityName,
-      command: ctx.command,
-      instanceId: ctx.instanceId,
-      durationMs: duration,
-      eventsEmitted: ctx.emittedEvents.length,
-    }));
+    console.log(
+      JSON.stringify({
+        entity: ctx.entityName,
+        command: ctx.command,
+        instanceId: ctx.instanceId,
+        durationMs: duration,
+        eventsEmitted: ctx.emittedEvents.length,
+      }),
+    );
     return {};
   },
 };
@@ -208,11 +211,7 @@ const archiveGuard: Middleware = {
 ## Type reference
 
 ```typescript
-type MiddlewareHook =
-  | 'before-policy'
-  | 'before-guard'
-  | 'before-action'
-  | 'after-emit';
+type MiddlewareHook = 'before-policy' | 'before-guard' | 'before-action' | 'after-emit';
 
 interface MiddlewareContext {
   command: string;

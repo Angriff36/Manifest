@@ -13,9 +13,9 @@ function buildIR(): IR {
       schemaVersion: '1.0',
       compiledAt: new Date().toISOString(),
     },
-  modules: [],
-  values: [],
-  entities: [
+    modules: [],
+    values: [],
+    entities: [
       {
         name: 'Foo',
         properties: [],
@@ -29,9 +29,7 @@ function buildIR(): IR {
     enums: [],
     stores: [],
     events: [],
-    commands: [
-      { name: 'bar', entity: 'Foo', parameters: [], guards: [], actions: [], emits: [] },
-    ],
+    commands: [{ name: 'bar', entity: 'Foo', parameters: [], guards: [], actions: [], emits: [] }],
     policies: [],
   };
 }

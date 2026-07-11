@@ -1,15 +1,17 @@
 ---
-title: "Manifest files: anatomy, syntax, and best practices"
-description: "The complete reference for .manifest source files — what a file contains, the declaration grammar, types, expressions, ordering rules, what is not allowed, and house-style best practices."
-sidebarTitle: "Manifest files (.manifest)"
+title: 'Manifest files: anatomy, syntax, and best practices'
+description: 'The complete reference for .manifest source files — what a file contains, the declaration grammar, types, expressions, ordering rules, what is not allowed, and house-style best practices.'
+sidebarTitle: 'Manifest files (.manifest)'
 ---
 
-A `.manifest` file is the human-authored source of a Manifest program. The compiler reads it through a lexer → parser → AST → IR-compiler pipeline and produces an **Intermediate Representation (IR)** — a JSON document that is the single source of truth for program semantics. Everything else (TypeScript, Prisma schemas, Convex functions, React Query hooks, and the other [projections](/projections/additional-projections)) is a *view* generated from that IR.
+A `.manifest` file is the human-authored source of a Manifest program. The compiler reads it through a lexer → parser → AST → IR-compiler pipeline and produces an **Intermediate Representation (IR)** — a JSON document that is the single source of truth for program semantics. Everything else (TypeScript, Prisma schemas, Convex functions, React Query hooks, and the other [projections](/projections/additional-projections)) is a _view_ generated from that IR.
 
 This page is the canonical reference for the file format itself: what you can put in a `.manifest` file, what you cannot, how the pieces are ordered, and the conventions that keep programs deterministic. For deep dives on individual constructs, follow the cross-links into the rest of the Language section.
 
 <Note>
-The grammar described here is the one the parser actually accepts (`src/manifest/lexer.ts`, `src/manifest/parser.ts`). When this page and your intuition disagree, the parser wins — and the conformance fixtures in `src/manifest/conformance/` are the executable proof.
+  The grammar described here is the one the parser actually accepts (`src/manifest/lexer.ts`,
+  `src/manifest/parser.ts`). When this page and your intuition disagree, the parser wins — and the
+  conformance fixtures in `src/manifest/conformance/` are the executable proof.
 </Note>
 
 ## Anatomy of a file
@@ -55,39 +57,39 @@ The only hard ordering rule at the top level is that **every `use` declaration m
 
 ### Identifiers
 
-Identifiers match `[A-Za-z_][A-Za-z0-9_]*`. Entity, enum, and module names are conventionally `PascalCase`; properties, commands, and policies are `camelCase`. [Reserved words](#reserved-words) cannot be used as declaration names, but they *are* allowed as member-access keys and object-literal keys (so `self.from` or `{ to: ... }` parse fine).
+Identifiers match `[A-Za-z_][A-Za-z0-9_]*`. Entity, enum, and module names are conventionally `PascalCase`; properties, commands, and policies are `camelCase`. [Reserved words](#reserved-words) cannot be used as declaration names, but they _are_ allowed as member-access keys and object-literal keys (so `self.from` or `{ to: ... }` parse fine).
 
 ### Literals
 
-| Kind | Examples |
-| --- | --- |
-| String | `"hello"`, `'hello'`, `` `hello` `` (all three quote styles; backticks are plain strings, not interpolated) |
-| Number | `42`, `3.14` |
-| Boolean | `true`, `false` |
-| Null | `null` |
+| Kind    | Examples                                                                                                    |
+| ------- | ----------------------------------------------------------------------------------------------------------- |
+| String  | `"hello"`, `'hello'`, `` `hello` `` (all three quote styles; backticks are plain strings, not interpolated) |
+| Number  | `42`, `3.14`                                                                                                |
+| Boolean | `true`, `false`                                                                                             |
+| Null    | `null`                                                                                                      |
 
 ## Top-level declarations
 
 Every construct the parser accepts at the top level:
 
-| Keyword | Purpose | Reference |
-| --- | --- | --- |
-| `use` | Import another `.manifest` file (must be first) | [Modules](/language/modules) |
-| `module` | Namespace grouping of declarations | [Modules](/language/modules) |
-| `entity` | A typed data structure with behavior | [Entities](/language/entities) |
-| `enum` | A named set of values | [Types](/language/types) |
-| `value` | A value object (properties only) | [Types](/language/types) |
-| `tenant` | Declare the tenant property (max one per program) | [Tenancy](/language/tenancy) |
-| `command` / `async command` | A standalone operation | [Commands](/language/commands) · [Async](/language/async-commands) |
-| `policy` | A standalone authorization rule | [Guards & policies](/language/guards-policies) |
-| `store` | Bind an entity to a persistence target | [Stores](/language/stores) |
-| `event` | Declare a publishable event | [Events](/language/events) |
-| `on` | A reaction that runs a command when an event fires | [Reactions](/language/reactions) |
-| `saga` | A multi-step workflow with compensation | [Workflows](/language/workflows) |
-| `role` | A role in the authorization hierarchy | [Roles](/language/roles) |
-| `webhook` | An inbound webhook bound to a command | [Events](/language/events) |
-| `schedule` | A cron/interval-triggered command | [Workflows](/language/workflows) |
-| `flow` / `effect` / `expose` / `compose` | Advanced composition and effect boundaries | [Advanced entities](/language/advanced-entities) |
+| Keyword                                  | Purpose                                            | Reference                                                          |
+| ---------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------ |
+| `use`                                    | Import another `.manifest` file (must be first)    | [Modules](/language/modules)                                       |
+| `module`                                 | Namespace grouping of declarations                 | [Modules](/language/modules)                                       |
+| `entity`                                 | A typed data structure with behavior               | [Entities](/language/entities)                                     |
+| `enum`                                   | A named set of values                              | [Types](/language/types)                                           |
+| `value`                                  | A value object (properties only)                   | [Types](/language/types)                                           |
+| `tenant`                                 | Declare the tenant property (max one per program)  | [Tenancy](/language/tenancy)                                       |
+| `command` / `async command`              | A standalone operation                             | [Commands](/language/commands) · [Async](/language/async-commands) |
+| `policy`                                 | A standalone authorization rule                    | [Guards & policies](/language/guards-policies)                     |
+| `store`                                  | Bind an entity to a persistence target             | [Stores](/language/stores)                                         |
+| `event`                                  | Declare a publishable event                        | [Events](/language/events)                                         |
+| `on`                                     | A reaction that runs a command when an event fires | [Reactions](/language/reactions)                                   |
+| `saga`                                   | A multi-step workflow with compensation            | [Workflows](/language/workflows)                                   |
+| `role`                                   | A role in the authorization hierarchy              | [Roles](/language/roles)                                           |
+| `webhook`                                | An inbound webhook bound to a command              | [Events](/language/events)                                         |
+| `schedule`                               | A cron/interval-triggered command                  | [Workflows](/language/workflows)                                   |
+| `flow` / `effect` / `expose` / `compose` | Advanced composition and effect boundaries         | [Advanced entities](/language/advanced-entities)                   |
 
 A `module` block accepts a subset of these: entities, enums, commands, policies, stores, events, reactions, sagas, roles, webhooks, and schedules.
 
@@ -133,7 +135,8 @@ entity PurchaseOrder extends Auditable mixin Timestamped {
 Sub-blocks an entity may contain: `property`, `computed`/`derived`, relationships (`hasMany`, `hasOne`, `belongsTo`, `ref`), `behavior`/`on`, `command`/`async command`, `constraint`, `policy` (and a `policies { … }` block / `default policy …`), `store … in …`, `versionProperty`/`versionAtProperty`, `key [...]` / `unique [...]`, `transition`, `approval`, the `timestamps` flag, and the bare `realtime` flag. See [Advanced entities](/language/advanced-entities) for `extends`, `mixin`, keys, and transitions.
 
 <Warning>
-Events declared *inside* an entity are dropped with a warning. Declare `event` at the top level or inside a `module`.
+  Events declared *inside* an entity are dropped with a warning. Declare `event` at the top level or
+  inside a `module`.
 </Warning>
 
 ### External entities
@@ -151,17 +154,19 @@ external entity ImportedUser {
 
 ## Types
 
-| Category | Type names |
-| --- | --- |
-| Primitives | `string`, `number`, `boolean`, `any`, `void` |
-| Collections | `list`, `map`, `array<T>`, and the `T[]` postfix sugar |
+| Category      | Type names                                             |
+| ------------- | ------------------------------------------------------ |
+| Primitives    | `string`, `number`, `boolean`, `any`, `void`           |
+| Collections   | `list`, `map`, `array<T>`, and the `T[]` postfix sugar |
 | Exact decimal | `decimal(precision, scale)`, `money(precision, scale)` |
-| Date/time | `date`, `time`, `datetime`, `duration` |
-| User-defined | enum names, `value` object names |
-| Nullable | any type followed by `?` (e.g. `string?`, `Money?`) |
+| Date/time     | `date`, `time`, `datetime`, `duration`                 |
+| User-defined  | enum names, `value` object names                       |
+| Nullable      | any type followed by `?` (e.g. `string?`, `Money?`)    |
 
 <Note>
-`date`, `time`, `datetime`, and `duration` are **not reserved words** — the parser accepts any token as a type name, so they work as types and the corresponding date/time [builtins](#built-in-functions) operate on them. See [Date/time types](/language/types).
+  `date`, `time`, `datetime`, and `duration` are **not reserved words** — the parser accepts any
+  token as a type name, so they work as types and the corresponding date/time
+  [builtins](#built-in-functions) operate on them. See [Date/time types](/language/types).
 </Note>
 
 ## Property modifiers
@@ -179,7 +184,8 @@ Reserved modifiers: `required`, `unique`, `indexed`, `private`, `readonly`, `opt
 The contextual `masked` modifier accepts a strategy — `masked(redact)`, `masked(partial)`, `masked(email)`, `masked(phone)`, or `masked(last4)` — and an optional trailing `unmask when <expr>` clause. The `unmask when` clause is a compile error without `masked`.
 
 <Warning>
-Omitting `required` does **not** imply optional. Use `optional` or a `?` on the type to mark a field nullable.
+  Omitting `required` does **not** imply optional. Use `optional` or a `?` on the type to mark a
+  field nullable.
 </Warning>
 
 ## Expressions
@@ -194,15 +200,16 @@ Symbolic: `+ - * / %`, `== != < > <= >=`, `&& || !`, the ternary `? :`, and memb
 
 Expressions may reference exactly four namespaces. These are spec-guaranteed bindings — guards must reference them rather than relying on inferred state.
 
-| Binding | Meaning |
-| --- | --- |
-| `self.` | The current entity instance (e.g. `self.status`) |
-| `this.` | Alias for the current instance |
-| `user.` | The calling principal (e.g. `user.role`, `user.id`) |
-| `context.` | Runtime context supplied at execution time |
+| Binding    | Meaning                                             |
+| ---------- | --------------------------------------------------- |
+| `self.`    | The current entity instance (e.g. `self.status`)    |
+| `this.`    | Alias for the current instance                      |
+| `user.`    | The calling principal (e.g. `user.role`, `user.id`) |
+| `context.` | Runtime context supplied at execution time          |
 
 <Note>
-Prefer `self.` over `this.` in new code. `self` is a reserved binding; `this` works only because it happens to be an ordinary identifier, so `self` is the spec-blessed form.
+  Prefer `self.` over `this.` in new code. `self` is a reserved binding; `this` works only because
+  it happens to be an ordinary identifier, so `self` is the spec-blessed form.
 </Note>
 
 ### Built-in functions
@@ -243,7 +250,9 @@ At runtime, a command executes in a **fixed order** that cannot be reconfigured:
 
 <Steps>
   <Step title="Policies">Authorization rules are evaluated first.</Step>
-  <Step title="Guards">Guards run in declaration order; execution halts on the first falsey guard.</Step>
+  <Step title="Guards">
+    Guards run in declaration order; execution halts on the first falsey guard.
+  </Step>
   <Step title="Constraints">Data validation runs with its severity (`ok`/`warn`/`block`).</Step>
   <Step title="Actions">Mutations and other effects apply.</Step>
   <Step title="Emits">Declared events publish.</Step>
@@ -301,7 +310,7 @@ The parser rejects these outright — they are common mistakes, not features:
 - **No entity generics.** `entity Paginated<T>` is invalid; type parameters exist only inside property types like `array<T>`.
 - **No `import` statements.** Cross-file composition is `use "./file.manifest"` only. There is no `import { X } from "…"`.
 - **No `policy` clause inside a command body.** Declare authorization at the entity level (`policy … execute: …`) or as a top-level `policy`.
-- **Reserved words as identifiers.** A keyword used as a declaration name produces *"Reserved word 'X' cannot be used as an identifier."*
+- **Reserved words as identifiers.** A keyword used as a declaration name produces _"Reserved word 'X' cannot be used as an identifier."_
 - **`value` blocks** may contain properties only — no commands, computed, or constraints.
 - **Events inside entities** are dropped with a warning.
 - **`unmask when` without `masked`** is a compile error.

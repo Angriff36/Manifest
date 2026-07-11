@@ -14,15 +14,8 @@
  */
 
 import chalk from 'chalk';
-import {
-  getActiveConfigPath,
-  loadAllConfigs,
-  type ManifestConfig,
-} from '../utils/config.js';
-import {
-  validateConfig,
-  formatDiagnostic,
-} from '../utils/config-validate.js';
+import { getActiveConfigPath, loadAllConfigs, type ManifestConfig } from '../utils/config.js';
+import { validateConfig, formatDiagnostic } from '../utils/config-validate.js';
 
 interface ConfigCommandOptions {
   json?: boolean;
@@ -81,8 +74,8 @@ export async function configValidateCommand(options: ConfigCommandOptions = {}):
           diagnostics: result.diagnostics,
         },
         null,
-        2
-      ) + '\n'
+        2,
+      ) + '\n',
     );
     if (!result.ok) process.exitCode = 1;
     return;
@@ -111,7 +104,7 @@ export async function configValidateCommand(options: ConfigCommandOptions = {}):
 // ============================================================================
 
 export async function configPrintDefaultsCommand(
-  options: ConfigCommandOptions = {}
+  options: ConfigCommandOptions = {},
 ): Promise<void> {
   const snapshot = await loadDefaultsSnapshot();
   if (options.json) {
@@ -135,7 +128,7 @@ export async function configPrintDefaultsCommand(
  */
 function mergeNextJsOptions(
   defaults: Record<string, unknown>,
-  user: Record<string, unknown> | undefined
+  user: Record<string, unknown> | undefined,
 ): Record<string, unknown> {
   if (!user) return { ...defaults };
   const out: Record<string, unknown> = { ...defaults };
@@ -144,12 +137,16 @@ function mergeNextJsOptions(
     // Nested objects (dispatcher, concreteCommandRoutes, tenantProvider)
     // are merged one level deep — every other key is a primitive.
     if (
-      v && typeof v === 'object' && !Array.isArray(v) &&
-      defaults[k] && typeof defaults[k] === 'object' && !Array.isArray(defaults[k])
+      v &&
+      typeof v === 'object' &&
+      !Array.isArray(v) &&
+      defaults[k] &&
+      typeof defaults[k] === 'object' &&
+      !Array.isArray(defaults[k])
     ) {
       out[k] = mergeNextJsOptions(
         defaults[k] as Record<string, unknown>,
-        v as Record<string, unknown>
+        v as Record<string, unknown>,
       );
     } else {
       out[k] = v;
@@ -184,12 +181,17 @@ export async function configInspectCommand(options: ConfigCommandOptions = {}): 
   const snapshot = await loadDefaultsSnapshot();
 
   const userNextJsOptions = build.projections?.nextjs?.options as
-    | Record<string, unknown>
-    | undefined;
-  const userRoutesOptions = (build.projections as Record<string, ManifestConfig['projections'] extends infer P
-    ? P extends Record<string, infer V> ? V : never : never>)?.routes?.options as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
+  const userRoutesOptions = (
+    build.projections as Record<
+      string,
+      ManifestConfig['projections'] extends infer P
+        ? P extends Record<string, infer V>
+          ? V
+          : never
+        : never
+    >
+  )?.routes?.options as Record<string, unknown> | undefined;
 
   // Nested defaults inlined under nextjs options so the merge picks them
   // up at the right level (the dispatcher block is a sibling of authProvider,
@@ -214,8 +216,9 @@ export async function configInspectCommand(options: ConfigCommandOptions = {}): 
         options: mergeNextJsOptions(nextjsDefaults, userNextJsOptions),
       },
       routes: {
-        output: (build.projections as Record<string, { output?: string }> | undefined)?.routes?.output
-          ?? 'generated/',
+        output:
+          (build.projections as Record<string, { output?: string }> | undefined)?.routes?.output ??
+          'generated/',
         options: mergeNextJsOptions(snapshot.routes as Record<string, unknown>, userRoutesOptions),
       },
     },

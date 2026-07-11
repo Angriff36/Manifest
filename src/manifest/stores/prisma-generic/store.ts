@@ -43,7 +43,8 @@ export class GenericPrismaStore implements Store<EntityInstance> {
           'Regenerate prisma-store.metadata from Manifest IR.',
       );
     }
-    const delegate = (prisma as Record<string, unknown>)[meta.accessor] as PrismaDelegate | undefined;
+    const delegate = (prisma as Record<string, unknown>)[meta.accessor] as
+      PrismaDelegate | undefined;
     if (!delegate || typeof delegate.findMany !== 'function') {
       throw new Error(
         `GenericPrismaStore: Prisma client has no delegate "${meta.accessor}" for entity "${entityName}".`,
@@ -55,10 +56,7 @@ export class GenericPrismaStore implements Store<EntityInstance> {
 
   private tenantField(): PrismaFieldMeta | undefined {
     return this.meta.fields.find(
-      f =>
-        f.irName === 'tenantId' ||
-        f.name === 'tenantId' ||
-        f.name === 'tenant_id',
+      (f) => f.irName === 'tenantId' || f.name === 'tenantId' || f.name === 'tenant_id',
     );
   }
 
@@ -70,10 +68,7 @@ export class GenericPrismaStore implements Store<EntityInstance> {
    */
   private deletedAtField(): PrismaFieldMeta | undefined {
     return this.meta.fields.find(
-      f =>
-        f.irName === 'deletedAt' ||
-        f.name === 'deletedAt' ||
-        f.name === 'deleted_at',
+      (f) => f.irName === 'deletedAt' || f.name === 'deletedAt' || f.name === 'deleted_at',
     );
   }
 
@@ -102,11 +97,7 @@ export class GenericPrismaStore implements Store<EntityInstance> {
     const now = new Date();
     for (const field of this.meta.fields) {
       if (field.isUpdatedAt) continue;
-      if (
-        field.irName === 'tenantId' ||
-        field.name === 'tenantId' ||
-        field.name === 'tenant_id'
-      ) {
+      if (field.irName === 'tenantId' || field.name === 'tenantId' || field.name === 'tenant_id') {
         if (this.meta.requiresTenantConnect) {
           out.tenant = { connect: { id: this.tenantId } };
         } else {
@@ -154,8 +145,7 @@ export class GenericPrismaStore implements Store<EntityInstance> {
     if (this.meta.pkFields.length > 1) {
       const key: Record<string, unknown> = {};
       for (const pf of this.meta.pkFields) {
-        key[pf] =
-          pf === 'tenantId' || pf === 'tenant_id' ? this.tenantId : id;
+        key[pf] = pf === 'tenantId' || pf === 'tenant_id' ? this.tenantId : id;
       }
       return { [this.meta.whereAccessor]: key };
     }
@@ -189,7 +179,7 @@ export class GenericPrismaStore implements Store<EntityInstance> {
       where: this.tenantFilter(),
       orderBy: { id: 'desc' },
     });
-    return rows.map(r => this.mapToManifestEntity(r));
+    return rows.map((r) => this.mapToManifestEntity(r));
   }
 
   async getById(id: string): Promise<EntityInstance | undefined> {
@@ -207,10 +197,10 @@ export class GenericPrismaStore implements Store<EntityInstance> {
       const where = this.whereUnique(id);
       if (this.meta.versionProperty) {
         const versionField = this.meta.fields.find(
-          f => f.irName === this.meta.versionProperty || f.name === this.meta.versionProperty,
+          (f) => f.irName === this.meta.versionProperty || f.name === this.meta.versionProperty,
         );
         const newVersion = versionField
-          ? (data[versionField.irName] ?? data[versionField.name]) as number | undefined
+          ? ((data[versionField.irName] ?? data[versionField.name]) as number | undefined)
           : undefined;
         if (versionField && newVersion !== undefined) {
           const fieldName = versionField.name;

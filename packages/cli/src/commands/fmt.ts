@@ -28,7 +28,9 @@ async function loadCompiler() {
  */
 export function formatManifestSource(source: string): string {
   const normalized = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const lines = normalized.split('\n').map((line) => line.replace(/\t/g, '  ').replace(/[ \t]+$/u, ''));
+  const lines = normalized
+    .split('\n')
+    .map((line) => line.replace(/\t/g, '  ').replace(/[ \t]+$/u, ''));
 
   while (lines.length > 0 && lines[lines.length - 1] === '') {
     lines.pop();
@@ -41,7 +43,10 @@ export function formatManifestSource(source: string): string {
   return `${lines.join('\n')}\n`;
 }
 
-async function getManifestFiles(source: string | undefined, options: FmtOptions): Promise<string[]> {
+async function getManifestFiles(
+  source: string | undefined,
+  options: FmtOptions,
+): Promise<string[]> {
   if (source) {
     const resolved = path.resolve(process.cwd(), source);
     const stat = await fs.stat(resolved).catch(() => null);
@@ -79,7 +84,10 @@ async function verifyParses(filePath: string, source: string): Promise<string[]>
     });
 }
 
-export async function fmtCommand(source: string | undefined, options: FmtOptions = {}): Promise<void> {
+export async function fmtCommand(
+  source: string | undefined,
+  options: FmtOptions = {},
+): Promise<void> {
   const check = options.check ?? false;
   const write = options.write ?? !check;
   const spinner = ora('Finding .manifest files').start();

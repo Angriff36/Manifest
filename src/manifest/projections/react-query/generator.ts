@@ -228,7 +228,7 @@ interface CodeResult {
 }
 
 function generateEnumType(e: IREnum): string {
-  const members = e.values.map(v => JSON.stringify(v.name)).join(' | ');
+  const members = e.values.map((v) => JSON.stringify(v.name)).join(' | ');
   return `export type ${e.name} = ${members};`;
 }
 
@@ -238,9 +238,7 @@ function generateEntityTypes(entity: IREntity, dateAsString = false): string {
   for (const prop of entity.properties) {
     const tsType = irTypeToTsType(prop.type, dateAsString);
     const isOptional =
-      prop.modifiers.includes('optional') ||
-      prop.defaultValue !== undefined ||
-      prop.type.nullable;
+      prop.modifiers.includes('optional') || prop.defaultValue !== undefined || prop.type.nullable;
     const optional = isOptional ? '?' : '';
     lines.push(`  ${prop.name}${optional}: ${tsType};`);
   }
@@ -280,15 +278,15 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
   const diagnostics: ProjectionDiagnostic[] = [];
 
   // Header
-  lines.push("// Auto-generated TanStack Query hooks from Manifest IR");
-  lines.push("// DO NOT EDIT - This file is generated from .manifest source");
-  lines.push("");
-  lines.push("import {");
-  lines.push("  useQuery,");
-  lines.push("  useMutation,");
-  lines.push("  useQueryClient,");
-  lines.push("  type UseQueryOptions,");
-  lines.push("  type UseMutationOptions,");
+  lines.push('// Auto-generated TanStack Query hooks from Manifest IR');
+  lines.push('// DO NOT EDIT - This file is generated from .manifest source');
+  lines.push('');
+  lines.push('import {');
+  lines.push('  useQuery,');
+  lines.push('  useMutation,');
+  lines.push('  useQueryClient,');
+  lines.push('  type UseQueryOptions,');
+  lines.push('  type UseMutationOptions,');
   lines.push("} from '@tanstack/react-query';");
   // Optional host-provided fetch adapter (auth/credentials). Aliased to apiFetch
   // so call sites are identical to the inline-helper path.
@@ -297,13 +295,13 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     const binding = importName === 'apiFetch' ? 'apiFetch' : `${importName} as apiFetch`;
     lines.push(`import { ${binding} } from '${importPath}';`);
   }
-  lines.push("");
+  lines.push('');
 
   // Types section — inline types so the hooks file is self-contained
-  lines.push("// ============================================================");
-  lines.push("// Entity types (from IR)");
-  lines.push("// ============================================================");
-  lines.push("");
+  lines.push('// ============================================================');
+  lines.push('// Entity types (from IR)');
+  lines.push('// ============================================================');
+  lines.push('');
 
   // Command response type. Default: ManifestCommandResponse — the real body the
   // Next.js dispatcher returns ({ data, events, diagnostics }; apiFetch throws on
@@ -313,91 +311,99 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     (c) => c.entity && ir.entities.some((e) => e.name === c.entity),
   );
   if (opts.commandEnvelope) {
-    lines.push("export interface CommandEnvelope<T> {");
-    lines.push("  success: boolean;");
-    lines.push("  result: T;");
-    lines.push("  events: unknown[];");
-    lines.push("}");
-    lines.push("");
+    lines.push('export interface CommandEnvelope<T> {');
+    lines.push('  success: boolean;');
+    lines.push('  result: T;');
+    lines.push('  events: unknown[];');
+    lines.push('}');
+    lines.push('');
   } else if (hasCommandHooks) {
-    lines.push("/** The command response body returned by the Manifest dispatcher. */");
-    lines.push("export interface ManifestCommandResponse<T = unknown> {");
-    lines.push("  data?: T;");
-    lines.push("  events?: unknown[];");
-    lines.push("  diagnostics?: Array<{ kind?: string; code?: string; message?: string; [key: string]: unknown }>;");
-    lines.push("  error?: string;");
-    lines.push("}");
-    lines.push("");
+    lines.push('/** The command response body returned by the Manifest dispatcher. */');
+    lines.push('export interface ManifestCommandResponse<T = unknown> {');
+    lines.push('  data?: T;');
+    lines.push('  events?: unknown[];');
+    lines.push(
+      '  diagnostics?: Array<{ kind?: string; code?: string; message?: string; [key: string]: unknown }>;',
+    );
+    lines.push('  error?: string;');
+    lines.push('}');
+    lines.push('');
   }
 
   for (const e of ir.enums ?? []) {
     lines.push(generateEnumType(e));
-    lines.push("");
+    lines.push('');
   }
 
   const dateAsString = opts.dateSerialization === 'iso-string';
 
   for (const entity of ir.entities) {
     lines.push(generateEntityTypes(entity, dateAsString));
-    lines.push("");
+    lines.push('');
   }
 
   // Command input types
   const commandInputTypes = ir.commands
-    .map(c => generateCommandInputType(c, dateAsString))
+    .map((c) => generateCommandInputType(c, dateAsString))
     .filter((t): t is string => t !== null);
 
   if (commandInputTypes.length > 0) {
-    lines.push("// ============================================================");
-    lines.push("// Command input types (from IR)");
-    lines.push("// ============================================================");
-    lines.push("");
+    lines.push('// ============================================================');
+    lines.push('// Command input types (from IR)');
+    lines.push('// ============================================================');
+    lines.push('');
     for (const typeStr of commandInputTypes) {
       lines.push(typeStr);
-      lines.push("");
+      lines.push('');
     }
   }
 
   // Query key factories
-  lines.push("// ============================================================");
-  lines.push("// Query key factories");
-  lines.push("// ============================================================");
-  lines.push("");
-  lines.push("export const queryKeys = {");
+  lines.push('// ============================================================');
+  lines.push('// Query key factories');
+  lines.push('// ============================================================');
+  lines.push('');
+  lines.push('export const queryKeys = {');
   for (const entity of ir.entities) {
     const camelName = toLowerCamelCase(entity.name);
     lines.push(`  ${camelName}: {`);
     lines.push(`    all: ['${camelName}'] as const,`);
     lines.push(`    lists: () => [...queryKeys.${camelName}.all, 'list'] as const,`);
-    lines.push(`    detail: (id: string) => [...queryKeys.${camelName}.all, 'detail', id] as const,`);
+    lines.push(
+      `    detail: (id: string) => [...queryKeys.${camelName}.all, 'detail', id] as const,`,
+    );
     lines.push(`  },`);
   }
-  lines.push("} as const;");
-  lines.push("");
+  lines.push('} as const;');
+  lines.push('');
 
   // API fetch helpers. When a fetchAdapter is configured, the import above
   // provides `apiFetch`; otherwise emit the inline default helper.
   if (!opts.fetchAdapter) {
-    lines.push("// ============================================================");
-    lines.push("// API fetch helpers");
-    lines.push("// ============================================================");
-    lines.push("");
-    lines.push("async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {");
-    lines.push("  const response = await fetch(url, init);");
-    lines.push("  if (!response.ok) {");
-    lines.push("    const body = await response.json().catch(() => ({} as { error?: string; message?: string }));");
-    lines.push("    throw new Error(body.error || body.message || `Request failed: ${response.status}`);");
-    lines.push("  }");
-    lines.push("  return response.json();");
-    lines.push("}");
-    lines.push("");
+    lines.push('// ============================================================');
+    lines.push('// API fetch helpers');
+    lines.push('// ============================================================');
+    lines.push('');
+    lines.push('async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {');
+    lines.push('  const response = await fetch(url, init);');
+    lines.push('  if (!response.ok) {');
+    lines.push(
+      '    const body = await response.json().catch(() => ({} as { error?: string; message?: string }));',
+    );
+    lines.push(
+      '    throw new Error(body.error || body.message || `Request failed: ${response.status}`);',
+    );
+    lines.push('  }');
+    lines.push('  return response.json();');
+    lines.push('}');
+    lines.push('');
   }
 
   // Entity query hooks
-  lines.push("// ============================================================");
-  lines.push("// Entity query hooks");
-  lines.push("// ============================================================");
-  lines.push("");
+  lines.push('// ============================================================');
+  lines.push('// Entity query hooks');
+  lines.push('// ============================================================');
+  lines.push('');
 
   for (const entity of ir.entities) {
     const name = entity.name;
@@ -424,7 +430,7 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     lines.push(`    ...options,`);
     lines.push(`  });`);
     lines.push(`}`);
-    lines.push("");
+    lines.push('');
 
     // Detail hook
     const detailType = fallbackKey
@@ -447,15 +453,15 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     lines.push(`    ...options,`);
     lines.push(`  });`);
     lines.push(`}`);
-    lines.push("");
+    lines.push('');
   }
 
   // Command mutation hooks
   if (ir.commands.length > 0) {
-    lines.push("// ============================================================");
-    lines.push("// Command mutation hooks");
-    lines.push("// ============================================================");
-    lines.push("");
+    lines.push('// ============================================================');
+    lines.push('// Command mutation hooks');
+    lines.push('// ============================================================');
+    lines.push('');
   }
 
   for (const command of ir.commands) {
@@ -469,7 +475,7 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
       continue;
     }
 
-    const entity = ir.entities.find(e => e.name === entityName);
+    const entity = ir.entities.find((e) => e.name === entityName);
     if (!entity) continue;
 
     const hookName = `use${entityName}${capitalize(command.name)}`;
@@ -485,9 +491,7 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
       : opts.contract.dispatcherInvocationPath(entityName, command.name);
 
     const hasParams = command.parameters.length > 0;
-    const inputTypeName = hasParams
-      ? `${entityName}${capitalize(command.name)}Input`
-      : 'void';
+    const inputTypeName = hasParams ? `${entityName}${capitalize(command.name)}Input` : 'void';
     const bareReturnType = command.returns
       ? irTypeToTsType(command.returns, opts.dateSerialization === 'iso-string')
       : 'unknown';
@@ -496,7 +500,9 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
       : `ManifestCommandResponse<${bareReturnType}>`;
 
     lines.push(`export function ${hookName}(`);
-    lines.push(`  options?: Omit<UseMutationOptions<${returnTypeName}, Error, ${inputTypeName}>, 'mutationFn'>,`);
+    lines.push(
+      `  options?: Omit<UseMutationOptions<${returnTypeName}, Error, ${inputTypeName}>, 'mutationFn'>,`,
+    );
     lines.push(`) {`);
     lines.push(`  const queryClient = useQueryClient();`);
     lines.push(`  return useMutation({`);
@@ -509,13 +515,15 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
 
     // Cache invalidation on success
     lines.push(`    onSuccess: (...args) => {`);
-    lines.push(`      void queryClient.invalidateQueries({ queryKey: queryKeys.${camelEntity}.all });`);
+    lines.push(
+      `      void queryClient.invalidateQueries({ queryKey: queryKeys.${camelEntity}.all });`,
+    );
     lines.push(`      options?.onSuccess?.(...args);`);
     lines.push(`    },`);
     lines.push(`    ...options,`);
     lines.push(`  });`);
     lines.push(`}`);
-    lines.push("");
+    lines.push('');
   }
 
   return { code: lines.join('\n'), diagnostics };
@@ -528,41 +536,41 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
 function generateProvider(opts: NormalizedOptions): CodeResult {
   const lines: string[] = [];
 
-  lines.push("// Auto-generated TanStack Query provider from Manifest IR");
-  lines.push("// DO NOT EDIT - This file is generated from .manifest source");
-  lines.push("");
+  lines.push('// Auto-generated TanStack Query provider from Manifest IR');
+  lines.push('// DO NOT EDIT - This file is generated from .manifest source');
+  lines.push('');
   lines.push("'use client';");
-  lines.push("");
+  lines.push('');
   lines.push("import { QueryClient, QueryClientProvider } from '@tanstack/react-query';");
   lines.push("import { useState, type ReactNode } from 'react';");
-  lines.push("");
-  lines.push("export function ManifestQueryProvider({ children }: { children: ReactNode }) {");
-  lines.push("  const [queryClient] = useState(");
-  lines.push("    () =>");
-  lines.push("      new QueryClient({");
-  lines.push("        defaultOptions: {");
-  lines.push("          queries: {");
+  lines.push('');
+  lines.push('export function ManifestQueryProvider({ children }: { children: ReactNode }) {');
+  lines.push('  const [queryClient] = useState(');
+  lines.push('    () =>');
+  lines.push('      new QueryClient({');
+  lines.push('        defaultOptions: {');
+  lines.push('          queries: {');
   lines.push(`            staleTime: ${opts.defaultStaleTime},`);
-  lines.push("            refetchOnWindowFocus: false,");
+  lines.push('            refetchOnWindowFocus: false,');
   if (opts.errorBoundaryIntegration) {
-    lines.push("            throwOnError: true,");
+    lines.push('            throwOnError: true,');
   }
-  lines.push("          },");
-  lines.push("          mutations: {");
+  lines.push('          },');
+  lines.push('          mutations: {');
   if (opts.errorBoundaryIntegration) {
-    lines.push("            throwOnError: true,");
+    lines.push('            throwOnError: true,');
   }
-  lines.push("          },");
-  lines.push("        },");
-  lines.push("      }),");
-  lines.push("  );");
-  lines.push("");
-  lines.push("  return (");
-  lines.push("    <QueryClientProvider client={queryClient}>");
-  lines.push("      {children}");
-  lines.push("    </QueryClientProvider>");
-  lines.push("  );");
-  lines.push("}");
+  lines.push('          },');
+  lines.push('        },');
+  lines.push('      }),');
+  lines.push('  );');
+  lines.push('');
+  lines.push('  return (');
+  lines.push('    <QueryClientProvider client={queryClient}>');
+  lines.push('      {children}');
+  lines.push('    </QueryClientProvider>');
+  lines.push('  );');
+  lines.push('}');
 
   return { code: lines.join('\n'), diagnostics: [] };
 }

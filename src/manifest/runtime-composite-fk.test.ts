@@ -18,7 +18,7 @@ async function compile(source: string): Promise<IR> {
   const compiler = new IRCompiler();
   const result = await compiler.compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compilation failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compilation failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
@@ -53,10 +53,14 @@ describe('composite foreign key runtime resolution', () => {
     const engine = new RuntimeEngine(ir);
     await engine.createInstance('Order', { orderId: 'o1', tenantId: 't1', status: 'open' });
     const line = (await engine.createInstance('Line', {
-      lineNo: '1', orderId: 'o1', tenantId: 't1',
+      lineNo: '1',
+      orderId: 'o1',
+      tenantId: 't1',
     }))!;
 
-    const resolved = (await engine.evaluateExpression(member('order'), { self: { ...line, _entity: 'Line' } })) as EntityInstance;
+    const resolved = (await engine.evaluateExpression(member('order'), {
+      self: { ...line, _entity: 'Line' },
+    })) as EntityInstance;
     expect(resolved).not.toBeNull();
     expect(resolved.tenantId).toBe('t1');
     expect(resolved.orderId).toBe('o1');
@@ -70,10 +74,14 @@ describe('composite foreign key runtime resolution', () => {
     await engine.createInstance('Order', { orderId: 'o1', tenantId: 't1', status: 'open' });
     await engine.createInstance('Order', { orderId: 'o1', tenantId: 't2', status: 'closed' });
     const line = (await engine.createInstance('Line', {
-      lineNo: '1', orderId: 'o1', tenantId: 't2',
+      lineNo: '1',
+      orderId: 'o1',
+      tenantId: 't2',
     }))!;
 
-    const resolved = (await engine.evaluateExpression(member('order'), { self: { ...line, _entity: 'Line' } })) as EntityInstance;
+    const resolved = (await engine.evaluateExpression(member('order'), {
+      self: { ...line, _entity: 'Line' },
+    })) as EntityInstance;
     expect(resolved.tenantId).toBe('t2');
     expect(resolved.status).toBe('closed');
   });
@@ -82,26 +90,34 @@ describe('composite foreign key runtime resolution', () => {
     const ir = await compile(COMPOSITE_SOURCE);
     const engine = new RuntimeEngine(ir);
     const order = (await engine.createInstance('Order', {
-      orderId: 'o1', tenantId: 't1', status: 'open',
+      orderId: 'o1',
+      tenantId: 't1',
+      status: 'open',
     }))!;
     await engine.createInstance('Line', { lineNo: '1', orderId: 'o1', tenantId: 't1' });
     await engine.createInstance('Line', { lineNo: '2', orderId: 'o1', tenantId: 't1' });
     // A line in another tenant that shares orderId must NOT match.
     await engine.createInstance('Line', { lineNo: '9', orderId: 'o1', tenantId: 't2' });
 
-    const lines = (await engine.evaluateExpression(member('lines'), { self: { ...order, _entity: 'Order' } })) as EntityInstance[];
+    const lines = (await engine.evaluateExpression(member('lines'), {
+      self: { ...order, _entity: 'Order' },
+    })) as EntityInstance[];
     expect(Array.isArray(lines)).toBe(true);
-    expect(lines.map(l => l.lineNo).sort()).toEqual(['1', '2']);
+    expect(lines.map((l) => l.lineNo).sort()).toEqual(['1', '2']);
   });
 
   it('returns null for a composite belongsTo when the target is absent', async () => {
     const ir = await compile(COMPOSITE_SOURCE);
     const engine = new RuntimeEngine(ir);
     const line = (await engine.createInstance('Line', {
-      lineNo: '1', orderId: 'missing', tenantId: 't1',
+      lineNo: '1',
+      orderId: 'missing',
+      tenantId: 't1',
     }))!;
 
-    await expect(engine.evaluateExpression(member('order'), { self: { ...line, _entity: 'Line' } })).resolves.toBeNull();
+    await expect(
+      engine.evaluateExpression(member('order'), { self: { ...line, _entity: 'Line' } }),
+    ).resolves.toBeNull();
   });
 
   it('still resolves a single-column belongsTo without throwing (returns null when absent)', async () => {

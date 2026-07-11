@@ -19,7 +19,9 @@ event OrderCompleted: "order.completed" { orderId: string }
 on NeverEmitted run Order.complete
   resolve payload._subject.id`);
 
-    expect(diagnostics.some(d => d.severity === 'error' && /no command emits/.test(d.message))).toBe(true);
+    expect(
+      diagnostics.some((d) => d.severity === 'error' && /no command emits/.test(d.message)),
+    ).toBe(true);
     expect(ir).toBeNull();
   });
 
@@ -37,7 +39,9 @@ on OrderCompleted run Order.complete
   resolve payload._subject.id
   params { ghost: payload.missingField }`);
 
-    expect(diagnostics.some(d => d.severity === 'error' && /payload\.missingField/.test(d.message))).toBe(true);
+    expect(
+      diagnostics.some((d) => d.severity === 'error' && /payload\.missingField/.test(d.message)),
+    ).toBe(true);
     expect(ir).toBeNull();
   });
 
@@ -57,7 +61,7 @@ on OrderRecorded run Order.record
   resolve payload._subject.id
   params { amount: payload.amount }`);
 
-    expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(ir).not.toBeNull();
   });
 
@@ -81,7 +85,7 @@ on ExternalCalendarUpdated run Event.recordExternalCalendarUpdate
   resolve payload.eventId
   params { eventId: payload.eventId }`);
 
-    expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(ir).not.toBeNull();
   });
 });

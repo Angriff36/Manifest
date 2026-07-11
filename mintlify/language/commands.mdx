@@ -1,7 +1,7 @@
 ---
-title: "Commands: business operations and mutations"
-description: "Declare named operations on entities that enforce guards and policies, execute ordered actions, emit events, and return a structured CommandResult."
-sidebarTitle: "Commands"
+title: 'Commands: business operations and mutations'
+description: 'Declare named operations on entities that enforce guards and policies, execute ordered actions, emit events, and return a structured CommandResult.'
+sidebarTitle: 'Commands'
 ---
 
 A command is a named operation bound to an entity. When you call `runCommand`, the runtime executes the command in a strict, deterministic order: rate-limit → policies → constraints → guards → actions → emits → return. Nothing in that order can be rearranged or skipped.
@@ -35,28 +35,37 @@ The runtime executes every command in exactly this order:
 
 <Steps>
   <Step title="Process parameters">
-    Apply each declared parameter's `defaultValue` to any omitted argument, then fail closed with a `parameterFailure` (`MISSING_REQUIRED_PARAMETER`) when a `required` parameter with no default is absent. An explicit `undefined` is treated as absent; `null` counts as supplied.
+    Apply each declared parameter's `defaultValue` to any omitted argument, then fail closed with a
+    `parameterFailure` (`MISSING_REQUIRED_PARAMETER`) when a `required` parameter with no default is
+    absent. An explicit `undefined` is treated as absent; `null` counts as supplied.
   </Step>
   <Step title="Build evaluation context">
-    Bind `self` and `this` to the current entity instance, inject command parameters (with defaults already applied), and attach the runtime context (`user`, `context.*`).
+    Bind `self` and `this` to the current entity instance, inject command parameters (with defaults
+    already applied), and attach the runtime context (`user`, `context.*`).
   </Step>
   <Step title="Check rate limit">
-    If the command declares a `rateLimit`, check whether the caller has exceeded the configured window. If the limit is exceeded, execution stops immediately with a `rateLimitDenial` result.
+    If the command declares a `rateLimit`, check whether the caller has exceeded the configured
+    window. If the limit is exceeded, execution stops immediately with a `rateLimitDenial` result.
   </Step>
   <Step title="Evaluate policies">
-    Check every applicable policy (entity-level defaults first, then command-level). If any policy denies, execution stops immediately with a `policyDenial` result.
+    Check every applicable policy (entity-level defaults first, then command-level). If any policy
+    denies, execution stops immediately with a `policyDenial` result.
   </Step>
   <Step title="Evaluate command constraints">
-    Evaluate any `block` constraints declared inside the command. If any fail without an authorized override, execution stops with `constraintOutcomes` in the result.
+    Evaluate any `block` constraints declared inside the command. If any fail without an authorized
+    override, execution stops with `constraintOutcomes` in the result.
   </Step>
   <Step title="Evaluate guards">
-    Evaluate each guard expression in declaration order. Execution halts on the first falsey result and returns a `guardFailure` with the failing guard's index and expression.
+    Evaluate each guard expression in declaration order. Execution halts on the first falsey result
+    and returns a `guardFailure` with the failing guard's index and expression.
   </Step>
   <Step title="Execute actions">
-    Run each action (`mutate`, `emit`, `compute`, `publish`, `persist`, `effect`) in declaration order.
+    Run each action (`mutate`, `emit`, `compute`, `publish`, `persist`, `effect`) in declaration
+    order.
   </Step>
   <Step title="Emit declared events">
-    Emit the events listed in the `emits` declaration (if any) in order, attaching payload and metadata.
+    Emit the events listed in the `emits` declaration (if any) in order, attaching payload and
+    metadata.
   </Step>
   <Step title="Return CommandResult">
     Return the `CommandResult` with `success: true`, the last action result, and all emitted events.
@@ -180,7 +189,7 @@ interface CommandResult {
 
   // Present when a guard halted execution
   guardFailure?: {
-    index: number;            // 1-based
+    index: number; // 1-based
     expression: string;
     resolved: { expression: string; value: unknown }[];
   };
@@ -202,36 +211,34 @@ interface CommandResult {
 ## Calling `runCommand` from TypeScript
 
 ```typescript
-import { RuntimeEngine } from "@angriff36/manifest";
-import { ir } from "./compiled.ir.json";
+import { RuntimeEngine } from '@angriff36/manifest';
+import { ir } from './compiled.ir.json';
 
 const runtime = new RuntimeEngine(ir, {
-  user: { id: "user-123", role: "admin" },
+  user: { id: 'user-123', role: 'admin' },
 });
 
-const result = await runtime.runCommand("Order", "updateStatus", {
-  instanceId: "order-abc",
-  newStatus: "processing",
+const result = await runtime.runCommand('Order', 'updateStatus', {
+  instanceId: 'order-abc',
+  newStatus: 'processing',
 });
 
 if (!result.success) {
   if (result.policyDenial) {
-    console.error("Denied by policy:", result.policyDenial.policyName);
+    console.error('Denied by policy:', result.policyDenial.policyName);
   } else if (result.guardFailure) {
-    console.error(
-      `Guard ${result.guardFailure.index} failed:`,
-      result.guardFailure.expression
-    );
+    console.error(`Guard ${result.guardFailure.index} failed:`, result.guardFailure.expression);
   } else if (result.constraintOutcomes) {
-    const blocked = result.constraintOutcomes.filter(
-      (o) => o.severity === "block" && !o.passed
+    const blocked = result.constraintOutcomes.filter((o) => o.severity === 'block' && !o.passed);
+    console.error(
+      'Blocked by constraints:',
+      blocked.map((o) => o.code),
     );
-    console.error("Blocked by constraints:", blocked.map((o) => o.code));
   }
   process.exit(1);
 }
 
-console.log("Events:", result.emittedEvents);
+console.log('Events:', result.emittedEvents);
 ```
 
 ## Retry policies
@@ -254,33 +261,35 @@ entity Notification {
 
 ### Retry configuration
 
-| Field | Description |
-|-------|-------------|
-| `maxAttempts` | Maximum number of retry attempts |
-| `backoff` | Strategy: `fixed`, `exponential`, or `linear` |
-| `initialDelay` | First retry delay in milliseconds |
-| `maxDelay` | Cap on retry delay |
-| `jitter` | Add random jitter to prevent thundering herd (default: `false`) |
+| Field          | Description                                                     |
+| -------------- | --------------------------------------------------------------- |
+| `maxAttempts`  | Maximum number of retry attempts                                |
+| `backoff`      | Strategy: `fixed`, `exponential`, or `linear`                   |
+| `initialDelay` | First retry delay in milliseconds                               |
+| `maxDelay`     | Cap on retry delay                                              |
+| `jitter`       | Add random jitter to prevent thundering herd (default: `false`) |
 
 ### Backoff strategies
 
-| Strategy | Behavior |
-|----------|----------|
-| `fixed` | Constant delay between retries (e.g., 1000ms, 1000ms, 1000ms) |
-| `exponential` | Doubles each time (e.g., 1000ms, 2000ms, 4000ms) |
-| `linear` | Increases by initialDelay each time (e.g., 1000ms, 2000ms, 3000ms) |
+| Strategy      | Behavior                                                           |
+| ------------- | ------------------------------------------------------------------ |
+| `fixed`       | Constant delay between retries (e.g., 1000ms, 1000ms, 1000ms)      |
+| `exponential` | Doubles each time (e.g., 1000ms, 2000ms, 4000ms)                   |
+| `linear`      | Increases by initialDelay each time (e.g., 1000ms, 2000ms, 3000ms) |
 
 ### Retry events
 
 The runtime emits events for each retry attempt and when retries are exhausted:
 
-| Event | When emitted |
-|-------|-------------|
+| Event                     | When emitted                            |
+| ------------------------- | --------------------------------------- |
 | `{Command}RetryAttempted` | Each retry attempt, with attempt number |
 | `{Command}RetryExhausted` | All retries failed, with total attempts |
 
 <Note>
-Retry policies only apply to action execution failures. Guard failures, policy denials, and constraint blocks are never retried — they represent intentional business rule enforcement, not transient errors.
+  Retry policies only apply to action execution failures. Guard failures, policy denials, and
+  constraint blocks are never retried — they represent intentional business rule enforcement, not
+  transient errors.
 </Note>
 
 ## Rate limiting
@@ -304,12 +313,12 @@ entity ApiKey {
 
 ### Rate limit configuration
 
-| Field | Description |
-|-------|-------------|
-| `window` | Time window in milliseconds |
-| `maxRequests` | Maximum allowed requests within the window |
-| `scope` | `user.id`, `tenant.id`, or `global` |
-| `strategy` | `fixed` or `sliding` window (default: `fixed`) |
+| Field         | Description                                    |
+| ------------- | ---------------------------------------------- |
+| `window`      | Time window in milliseconds                    |
+| `maxRequests` | Maximum allowed requests within the window     |
+| `scope`       | `user.id`, `tenant.id`, or `global`            |
+| `strategy`    | `fixed` or `sliding` window (default: `fixed`) |
 
 When the rate limit is exceeded, the `CommandResult` includes:
 
@@ -326,9 +335,12 @@ When the rate limit is exceeded, the `CommandResult` includes:
 ```
 
 <Warning>
-Rate limiting is enforced by the runtime engine before command execution begins. It is not a network-level rate limiter — it operates within the Manifest runtime context. For HTTP-level rate limiting, configure your API gateway or middleware.
+  Rate limiting is enforced by the runtime engine before command execution begins. It is not a
+  network-level rate limiter — it operates within the Manifest runtime context. For HTTP-level rate
+  limiting, configure your API gateway or middleware.
 </Warning>
 
 <Note>
-The `instanceId` is passed inside the options object to `runCommand`, not as a command parameter. Command parameters are the named values declared in the command signature.
+  The `instanceId` is passed inside the options object to `runCommand`, not as a command parameter.
+  Command parameters are the named values declared in the command signature.
 </Note>

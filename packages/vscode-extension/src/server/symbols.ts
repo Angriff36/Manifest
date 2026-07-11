@@ -1,10 +1,12 @@
-import {
-  DocumentSymbol,
-  SymbolKind,
-  Range,
-  Position,
-} from 'vscode-languageserver/node';
-import type { ManifestProgram, EntityNode, CommandNode, PolicyNode, EnumNode, ModuleNode } from '@angriff36/manifest/compiler';
+import { DocumentSymbol, SymbolKind, Range, Position } from 'vscode-languageserver/node';
+import type {
+  ManifestProgram,
+  EntityNode,
+  CommandNode,
+  PolicyNode,
+  EnumNode,
+  ModuleNode,
+} from '@angriff36/manifest/compiler';
 
 function posRange(node: { position?: { line: number; column: number } }): Range {
   if (!node.position) return Range.create(0, 0, 0, 0);
@@ -73,14 +75,7 @@ function entitySymbol(entity: EntityNode): DocumentSymbol {
     );
   }
 
-  return DocumentSymbol.create(
-    entity.name,
-    'entity',
-    SymbolKind.Class,
-    range,
-    range,
-    children,
-  );
+  return DocumentSymbol.create(entity.name, 'entity', SymbolKind.Class, range, range, children);
 }
 
 function commandSymbol(cmd: CommandNode): DocumentSymbol {
@@ -106,13 +101,7 @@ function policySymbol(pol: PolicyNode): DocumentSymbol {
 
 function enumSymbol(en: EnumNode): DocumentSymbol {
   const children = en.values.map((v) =>
-    DocumentSymbol.create(
-      v.name,
-      '',
-      SymbolKind.EnumMember,
-      posRange(v),
-      posRange(v),
-    ),
+    DocumentSymbol.create(v.name, '', SymbolKind.EnumMember, posRange(v), posRange(v)),
   );
   return DocumentSymbol.create(
     en.name,
@@ -163,13 +152,7 @@ export function getDocumentSymbols(program: ManifestProgram): DocumentSymbol[] {
 
   for (const evt of program.events) {
     symbols.push(
-      DocumentSymbol.create(
-        evt.name,
-        evt.channel,
-        SymbolKind.Event,
-        posRange(evt),
-        posRange(evt),
-      ),
+      DocumentSymbol.create(evt.name, evt.channel, SymbolKind.Event, posRange(evt), posRange(evt)),
     );
   }
 

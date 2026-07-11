@@ -6,19 +6,12 @@
  */
 
 import type { WiringContract } from '../types.js';
-import {
-  inspectWiringConsumers,
-  inspectWiringConsumersSync,
-} from '../inspect/inspector.js';
+import { inspectWiringConsumers, inspectWiringConsumersSync } from '../inspect/inspector.js';
 import type { WiringInspectConfig, WiringInspectReport } from '../inspect/types.js';
 import { planWiringRepairs } from './planner.js';
 import { applyRepairPlan, applyRepairPlans } from './patch-engine.js';
 import { verifyRepair } from './verifier.js';
-import type {
-  RemediateReport,
-  RepairPlan,
-  AppliedRepairResult,
-} from './types.js';
+import type { RemediateReport, RepairPlan, AppliedRepairResult } from './types.js';
 import { WIRING_REMEDIATE_REPORT_SCHEMA } from './types.js';
 
 export type RemediateMode = 'plan' | 'dry-run' | 'apply' | 'one-defect';
@@ -64,7 +57,7 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
 
   let plans = bundle.plans;
   if (options.autoFixableOnly) {
-    plans = plans.filter(p => p.decision === 'auto-fixable');
+    plans = plans.filter((p) => p.decision === 'auto-fixable');
   }
 
   if (options.mode === 'plan') {
@@ -76,8 +69,8 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
       applied: [],
       changedFiles: [],
       unresolved: plans
-        .filter(p => !p.automaticApplicationAllowed)
-        .map(p => ({
+        .filter((p) => !p.automaticApplicationAllowed)
+        .map((p) => ({
           findingId: p.findingId,
           decision: p.decision,
           message: p.rationale,
@@ -89,9 +82,7 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
   // Prefer auto-fixable, then other automaticApplicationAllowed plans.
   // Within that, prefer repair kinds that reverse a proven wrong expression
   // over add-required-input (which often cites a symbol not in the payload file).
-  const selectable = sortRepairCandidates(
-    plans.filter(p => p.automaticApplicationAllowed),
-  );
+  const selectable = sortRepairCandidates(plans.filter((p) => p.automaticApplicationAllowed));
 
   if (options.mode === 'dry-run') {
     return {
@@ -99,17 +90,17 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
       mode: 'dry-run',
       ok: true,
       plans,
-      applied: selectable.map(p => ({
+      applied: selectable.map((p) => ({
         findingId: p.findingId,
         applied: false,
         skippedReason: 'dry-run',
-        filesChanged: p.edits.map(e => e.file),
+        filesChanged: p.edits.map((e) => e.file),
         editsApplied: 0,
       })),
-      changedFiles: [...new Set(selectable.flatMap(p => p.edits.map(e => e.file)))],
+      changedFiles: [...new Set(selectable.flatMap((p) => p.edits.map((e) => e.file)))],
       unresolved: plans
-        .filter(p => !p.automaticApplicationAllowed)
-        .map(p => ({
+        .filter((p) => !p.automaticApplicationAllowed)
+        .map((p) => ({
           findingId: p.findingId,
           decision: p.decision,
           message: p.rationale,
@@ -125,14 +116,15 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
   let attemptedPatches = 0;
   // Every non-executable wire-existing-control plan was rejected before patching.
   let preflightRejected = plans.filter(
-    p => p.repairKind === 'wire-existing-control' && !p.automaticApplicationAllowed,
+    (p) => p.repairKind === 'wire-existing-control' && !p.automaticApplicationAllowed,
   ).length;
 
   for (const plan of selectable) {
     // Belt-and-suspenders: never patch a wire-existing plan that cannot construct.
     if (plan.repairKind === 'wire-existing-control') {
-      const wireOp = plan.edits.find(e => e.operation.type === 'wire-control-to-binding')
-        ?.operation;
+      const wireOp = plan.edits.find(
+        (e) => e.operation.type === 'wire-control-to-binding',
+      )?.operation;
       if (
         wireOp &&
         wireOp.type === 'wire-control-to-binding' &&
@@ -156,9 +148,7 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
     if (!patch.ok) {
       const preflightish =
         plan.repairKind === 'wire-existing-control' &&
-        /preflight|construct|no source edit|Binding|import|export/i.test(
-          patch.skippedReason ?? '',
-        );
+        /preflight|construct|no source edit|Binding|import|export/i.test(patch.skippedReason ?? '');
       if (preflightish) {
         attemptedPatches--;
         preflightRejected++;
@@ -209,8 +199,7 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
         findingId: plan.findingId,
         applied: false,
         skippedReason:
-          verification.message ??
-          'verification failed — finding still present after patch',
+          verification.message ?? 'verification failed — finding still present after patch',
         filesChanged: [],
         editsApplied: 0,
         verification,
@@ -231,9 +220,11 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
 
     if (options.writeFile) {
       for (const file of patch.filesChanged) {
-        const content = current.get(file) ?? [...current.entries()].find(
-          ([k]) => k.replace(/\\/g, '/') === file.replace(/\\/g, '/'),
-        )?.[1];
+        const content =
+          current.get(file) ??
+          [...current.entries()].find(
+            ([k]) => k.replace(/\\/g, '/') === file.replace(/\\/g, '/'),
+          )?.[1];
         if (content !== undefined) {
           void options.writeFile(file, content);
         }
@@ -244,28 +235,26 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
     if (options.mode === 'one-defect') break;
   }
 
-  const allResolved = applied
-    .filter(a => a.applied)
-    .every(a => a.verification?.ok !== false);
+  const allResolved = applied.filter((a) => a.applied).every((a) => a.verification?.ok !== false);
 
   return {
     $schema: WIRING_REMEDIATE_REPORT_SCHEMA,
     mode: options.mode,
-    ok: allResolved && applied.some(a => a.applied),
+    ok: allResolved && applied.some((a) => a.applied),
     plans,
     applied,
     changedFiles: [...changedFiles],
     attemptedPatches,
     preflightRejected,
     unresolved: plans
-      .filter(p => !p.automaticApplicationAllowed)
-      .map(p => ({
+      .filter((p) => !p.automaticApplicationAllowed)
+      .map((p) => ({
         findingId: p.findingId,
         decision: p.decision,
         message: p.rationale,
       })),
     verification: {
-      inspectedAfter: applied.some(a => a.verification !== undefined),
+      inspectedAfter: applied.some((a) => a.verification !== undefined),
       allAppliedResolved: allResolved,
     },
   };
@@ -285,9 +274,7 @@ export async function remediateWiring(options: RemediateOptions): Promise<Remedi
 }
 
 export function selectNextAutoFixable(plans: RepairPlan[]): RepairPlan | undefined {
-  return sortRepairCandidates(
-    plans.filter(p => p.automaticApplicationAllowed),
-  )[0];
+  return sortRepairCandidates(plans.filter((p) => p.automaticApplicationAllowed))[0];
 }
 
 /** Deterministic priority for one-defect candidate selection. */
@@ -323,8 +310,7 @@ function sortRepairCandidates(plans: RepairPlan[]): RepairPlan[] {
   };
   const decisionRank = (d: string): number =>
     d === 'auto-fixable' ? 0 : d === 'repairable-with-existing-pattern' ? 1 : 2;
-  const confidenceRank = (c: string): number =>
-    c === 'high' ? 0 : c === 'medium' ? 1 : 2;
+  const confidenceRank = (c: string): number => (c === 'high' ? 0 : c === 'medium' ? 1 : 2);
 
   return [...plans].sort((a, b) => {
     const byDecision = decisionRank(a.decision) - decisionRank(b.decision);
@@ -340,7 +326,7 @@ function sortRepairCandidates(plans: RepairPlan[]): RepairPlan[] {
 export function formatRemediateReportText(report: RemediateReport): string {
   const lines: string[] = [];
   lines.push(`Wiring remediate (${report.mode}) — ${report.ok ? 'OK' : 'INCOMPLETE'}`);
-  const appliedCount = report.applied.filter(a => a.applied).length;
+  const appliedCount = report.applied.filter((a) => a.applied).length;
   lines.push(`Plans: ${report.plans.length} (applied ${appliedCount})`);
   lines.push(`Applied: ${appliedCount}`);
   lines.push(`Attempted patches: ${report.attemptedPatches ?? appliedCount}`);

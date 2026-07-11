@@ -32,11 +32,7 @@ import type {
   ProjectionTarget,
 } from '../interface';
 
-import {
-  normalizeOptions,
-  CONVEX_DEFAULT_NAMING,
-  type IndexEntry,
-} from './options.js';
+import { normalizeOptions, CONVEX_DEFAULT_NAMING, type IndexEntry } from './options.js';
 import { resolveConvexValidator } from './type-mapping.js';
 import { resolveTableName } from '../shared/naming.js';
 import { generateQueries, generateMutations } from './functions.js';
@@ -52,7 +48,14 @@ const SURFACE_MUTATIONS = 'convex.mutations' as const;
 const SURFACE_CRONS = 'convex.crons' as const;
 const SURFACE_HTTP = 'convex.http' as const;
 const SURFACE_SAGAS = 'convex.sagas' as const;
-const SURFACES = [SURFACE_SCHEMA, SURFACE_QUERIES, SURFACE_MUTATIONS, SURFACE_CRONS, SURFACE_HTTP, SURFACE_SAGAS] as const;
+const SURFACES = [
+  SURFACE_SCHEMA,
+  SURFACE_QUERIES,
+  SURFACE_MUTATIONS,
+  SURFACE_CRONS,
+  SURFACE_HTTP,
+  SURFACE_SAGAS,
+] as const;
 
 // ============================================================================
 // Store target classification (identical policy to the Prisma projection)
@@ -126,7 +129,7 @@ export function collectFkTargets(
 /** True when an entity owns a persistent (emittable) store and is not external. */
 export function isPersistentEntity(entity: IREntity, ir: IR): boolean {
   if ((entity as { external?: boolean }).external === true) return false;
-  const store = ir.stores.find(s => s.entity === entity.name);
+  const store = ir.stores.find((s) => s.entity === entity.name);
   return !!store && isPersistent(store.target);
 }
 
@@ -153,12 +156,12 @@ export function resolveEventsTableName(ir: IR, options: NormalizedOptions): stri
 
 /** Enum value names (handles both string and `{ name }` IR forms). */
 function enumValueNames(enumDef: IREnum): string[] {
-  return enumDef.values.map(v => (typeof v === 'string' ? v : v.name));
+  return enumDef.values.map((v) => (typeof v === 'string' ? v : v.name));
 }
 
 /** `v.union(v.literal("a"), v.literal("b"))`, or `v.literal("a")` for a single value. */
 function enumValidatorMembers(enumDef: IREnum): string[] {
-  return enumValueNames(enumDef).map(name => `v.literal(${JSON.stringify(name)})`);
+  return enumValueNames(enumDef).map((name) => `v.literal(${JSON.stringify(name)})`);
 }
 
 // ============================================================================
@@ -200,10 +203,10 @@ export function buildValidator(
   const effectiveTypeName = isArray ? prop.type.generic!.name : prop.type.name;
 
   const typeOverrides = options.typeMappings[entity.name];
-  const hasOverride = typeOverrides !== undefined
-    && Object.prototype.hasOwnProperty.call(typeOverrides, prop.name);
+  const hasOverride =
+    typeOverrides !== undefined && Object.prototype.hasOwnProperty.call(typeOverrides, prop.name);
 
-  const enumDef = ir.enums?.find(e => e.name === effectiveTypeName);
+  const enumDef = ir.enums?.find((e) => e.name === effectiveTypeName);
 
   let base: string | undefined;
   const nullable = prop.type.nullable === true;
@@ -285,7 +288,7 @@ function resolveReferenceField(
   const override = options.references[entity.name]?.[rel.name];
   if (override) return override;
   const fields = rel.foreignKey?.fields ?? [];
-  const nonTenant = fields.find(f => f !== tenantProp);
+  const nonTenant = fields.find((f) => f !== tenantProp);
   return nonTenant ?? `${rel.name}Id`;
 }
 
@@ -339,7 +342,13 @@ function emitTable(entity: IREntity, ir: IR, options: NormalizedOptions): TableE
   // the IR `id` — Convex's document `_id` is identity).
   for (const prop of entity.properties) {
     if (prop.name === 'id') continue;
-    const { line, diagnostics: d } = emitPropertyField(entity, prop, ir, options, fkTargets.get(prop.name));
+    const { line, diagnostics: d } = emitPropertyField(
+      entity,
+      prop,
+      ir,
+      options,
+      fkTargets.get(prop.name),
+    );
     diagnostics.push(...d);
     if (line) {
       fieldLines.push(line);
@@ -361,9 +370,10 @@ function emitTable(entity: IREntity, ir: IR, options: NormalizedOptions): TableE
     const fkField = resolveReferenceField(entity, rel, tenantProp, options);
     if (!emittedFieldNames.has(fkField)) {
       const targetTable = resolveConvexTableName(rel.target, options);
-      const ref = options.referenceMode === 'stringId'
-        ? 'v.string()'
-        : `v.id(${JSON.stringify(targetTable)})`;
+      const ref =
+        options.referenceMode === 'stringId'
+          ? 'v.string()'
+          : `v.id(${JSON.stringify(targetTable)})`;
       fieldLines.push(`${fkField}: v.optional(${ref})`);
       emittedFieldNames.add(fkField);
     }
@@ -397,10 +407,10 @@ function emitTable(entity: IREntity, ir: IR, options: NormalizedOptions): TableE
     });
   }
 
-  const fieldsBlock = fieldLines.map(l => `    ${l},`).join('\n');
+  const fieldsBlock = fieldLines.map((l) => `    ${l},`).join('\n');
   let block = `  ${tableName}: defineTable({\n${fieldsBlock}${fieldsBlock ? '\n' : ''}  })`;
   for (const idx of indexes) {
-    const cols = idx.fields.map(f => JSON.stringify(f)).join(', ');
+    const cols = idx.fields.map((f) => JSON.stringify(f)).join(', ');
     block += `\n    .index(${JSON.stringify(idx.name)}, [${cols}])`;
   }
   return { block, diagnostics };
@@ -420,32 +430,64 @@ export class ConvexProjection implements ProjectionTarget {
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     if (request.surface === SURFACE_QUERIES) {
       const { code, diagnostics } = generateQueries(ir, request.options);
-      return { artifacts: [{ id: SURFACE_QUERIES, pathHint: 'convex/queries.ts', contentType: 'typescript', code }], diagnostics };
+      return {
+        artifacts: [
+          { id: SURFACE_QUERIES, pathHint: 'convex/queries.ts', contentType: 'typescript', code },
+        ],
+        diagnostics,
+      };
     }
     if (request.surface === SURFACE_MUTATIONS) {
       const { code, diagnostics } = generateMutations(ir, request.options);
-      return { artifacts: [{ id: SURFACE_MUTATIONS, pathHint: 'convex/mutations.ts', contentType: 'typescript', code }], diagnostics };
+      return {
+        artifacts: [
+          {
+            id: SURFACE_MUTATIONS,
+            pathHint: 'convex/mutations.ts',
+            contentType: 'typescript',
+            code,
+          },
+        ],
+        diagnostics,
+      };
     }
     if (request.surface === SURFACE_CRONS) {
       const { code, diagnostics } = generateCrons(ir, request.options);
-      return { artifacts: [{ id: SURFACE_CRONS, pathHint: 'convex/crons.ts', contentType: 'typescript', code }], diagnostics };
+      return {
+        artifacts: [
+          { id: SURFACE_CRONS, pathHint: 'convex/crons.ts', contentType: 'typescript', code },
+        ],
+        diagnostics,
+      };
     }
     if (request.surface === SURFACE_HTTP) {
       const { code, diagnostics } = generateHttp(ir, request.options);
-      return { artifacts: [{ id: SURFACE_HTTP, pathHint: 'convex/http.ts', contentType: 'typescript', code }], diagnostics };
+      return {
+        artifacts: [
+          { id: SURFACE_HTTP, pathHint: 'convex/http.ts', contentType: 'typescript', code },
+        ],
+        diagnostics,
+      };
     }
     if (request.surface === SURFACE_SAGAS) {
       const { code, diagnostics } = generateSagas(ir, request.options);
-      return { artifacts: [{ id: SURFACE_SAGAS, pathHint: 'convex/sagas.ts', contentType: 'typescript', code }], diagnostics };
+      return {
+        artifacts: [
+          { id: SURFACE_SAGAS, pathHint: 'convex/sagas.ts', contentType: 'typescript', code },
+        ],
+        diagnostics,
+      };
     }
     if (request.surface !== SURFACE_SCHEMA) {
       return {
         artifacts: [],
-        diagnostics: [{
-          severity: 'info',
-          code: 'CONVEX_UNSUPPORTED_SURFACE',
-          message: `Convex projection does not support surface '${request.surface}'. Supported: ${SURFACES.join(', ')}.`,
-        }],
+        diagnostics: [
+          {
+            severity: 'info',
+            code: 'CONVEX_UNSUPPORTED_SURFACE',
+            message: `Convex projection does not support surface '${request.surface}'. Supported: ${SURFACES.join(', ')}.`,
+          },
+        ],
       };
     }
 
@@ -455,7 +497,7 @@ export class ConvexProjection implements ProjectionTarget {
 
     for (const entity of ir.entities) {
       if ((entity as { external?: boolean }).external === true) continue;
-      const store = ir.stores.find(s => s.entity === entity.name);
+      const store = ir.stores.find((s) => s.entity === entity.name);
       if (!store || !isPersistent(store.target)) continue;
 
       const { block, diagnostics: d } = emitTable(entity, ir, options);
@@ -476,30 +518,30 @@ export class ConvexProjection implements ProjectionTarget {
       }
       blocks.push(
         `  ${t}: defineTable({\n` +
-        `    type: v.string(),\n` +
-        `    entity: v.string(),\n` +
-        `    entityId: v.string(),\n` +
-        `    payload: v.any(),\n` +
-        `    createdAt: v.number(),\n` +
-        `  })\n` +
-        `    .index("by_type", ["type"])\n` +
-        `    .index("by_entity", ["entity"])\n` +
-        `    .index("by_entityId", ["entityId"])`,
+          `    type: v.string(),\n` +
+          `    entity: v.string(),\n` +
+          `    entityId: v.string(),\n` +
+          `    payload: v.any(),\n` +
+          `    createdAt: v.number(),\n` +
+          `  })\n` +
+          `    .index("by_type", ["type"])\n` +
+          `    .index("by_entity", ["entity"])\n` +
+          `    .index("by_entityId", ["entityId"])`,
       );
     }
 
     // Idempotency table — auto-emitted when any webhook declares idempotencyHeader.
     // The generated convex/http.ts references this same table name for dedup storage.
-    const hasIdempotencyWebhook = (ir.webhooks ?? []).some(w => !!w.idempotencyHeader);
+    const hasIdempotencyWebhook = (ir.webhooks ?? []).some((w) => !!w.idempotencyHeader);
     if (hasIdempotencyWebhook) {
       const idemTbl = options.idempotencyTable;
       blocks.push(
         `  ${idemTbl}: defineTable({\n` +
-        `    key: v.string(),\n` +
-        `    webhookName: v.string(),\n` +
-        `    seenAt: v.number(),\n` +
-        `  })\n` +
-        `    .index("by_key", ["key"])`,
+          `    key: v.string(),\n` +
+          `    webhookName: v.string(),\n` +
+          `    seenAt: v.number(),\n` +
+          `  })\n` +
+          `    .index("by_key", ["key"])`,
       );
     }
 

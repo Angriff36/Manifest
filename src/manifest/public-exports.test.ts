@@ -166,7 +166,10 @@ describe('Public export surface', () => {
     expect(typeof AgentSdkApi.findMatchingCommands).toBe('function');
     expect(typeof AgentSdkApi.irTypeToJsonSchema).toBe('function');
     expect(AgentSdkApi.mangleToolName('Order', 'placeOrder', 'snake')).toBe('order_placeOrder');
-    expect(AgentSdkApi.parseToolName('order_placeOrder')).toEqual({ entity: 'order', command: 'placeOrder' });
+    expect(AgentSdkApi.parseToolName('order_placeOrder')).toEqual({
+      entity: 'order',
+      command: 'placeOrder',
+    });
   });
 
   it('root re-exports the adapter contract types (compile-time check)', () => {
@@ -178,7 +181,9 @@ describe('Public export surface', () => {
     const _c: CommandOutcome = 'success';
     const _d: OutboxStore = {
       async enqueue() {},
-      async claim() { return []; },
+      async claim() {
+        return [];
+      },
       async markDelivered() {},
       async markFailed() {},
     };

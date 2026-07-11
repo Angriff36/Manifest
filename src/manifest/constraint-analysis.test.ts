@@ -80,7 +80,9 @@ describe('constraint-analysis', () => {
     });
 
     it('extracts min length from length(self.name) >= 1', () => {
-      const result = analyzeConstraintExpression(binary('>=', call('length', self('name')), lit(1)));
+      const result = analyzeConstraintExpression(
+        binary('>=', call('length', self('name')), lit(1)),
+      );
       expect(result.lengthConstraints).toHaveLength(1);
       expect(result.lengthConstraints[0]).toEqual({
         minLength: 1,
@@ -89,7 +91,9 @@ describe('constraint-analysis', () => {
     });
 
     it('extracts max length from length(self.bio) <= 500', () => {
-      const result = analyzeConstraintExpression(binary('<=', call('length', self('bio')), lit(500)));
+      const result = analyzeConstraintExpression(
+        binary('<=', call('length', self('bio')), lit(500)),
+      );
       expect(result.lengthConstraints).toHaveLength(1);
       expect(result.lengthConstraints[0]).toEqual({
         maxLength: 500,
@@ -134,7 +138,9 @@ describe('constraint-analysis', () => {
     });
 
     it('extracts pattern from matches(self.email, "^[^@]+@[^@]+$")', () => {
-      const result = analyzeConstraintExpression(call('matches', self('email'), lit('^[^@]+@[^@]+$')));
+      const result = analyzeConstraintExpression(
+        call('matches', self('email'), lit('^[^@]+@[^@]+$')),
+      );
       expect(result.patternConstraints).toHaveLength(1);
       expect(result.patternConstraints[0]).toEqual({
         pattern: '^[^@]+@[^@]+$',
@@ -154,7 +160,9 @@ describe('constraint-analysis', () => {
     });
 
     it('returns empty for between with non-literal args', () => {
-      const result = analyzeConstraintExpression(call('between', self('price'), self('minVal'), lit(100)));
+      const result = analyzeConstraintExpression(
+        call('between', self('price'), self('minVal'), lit(100)),
+      );
       expect(result.numericRanges).toHaveLength(0);
     });
   });
@@ -236,63 +244,82 @@ describe('constraint-analysis', () => {
     });
 
     it('uses custom column name', () => {
-      const sql = numericRangeToCheckConstraint({ min: 0, propertyPath: 'self.price' }, 'unit_price');
+      const sql = numericRangeToCheckConstraint(
+        { min: 0, propertyPath: 'self.price' },
+        'unit_price',
+      );
       expect(sql).toBe('unit_price >= 0');
     });
   });
 
   describe('lengthConstraintToCheckConstraint', () => {
     it('generates SQL for min + max length', () => {
-      const sql = lengthConstraintToCheckConstraint({ minLength: 1, maxLength: 255, propertyPath: 'self.name' });
+      const sql = lengthConstraintToCheckConstraint({
+        minLength: 1,
+        maxLength: 255,
+        propertyPath: 'self.name',
+      });
       expect(sql).toBe('length(name) >= 1 AND length(name) <= 255');
     });
   });
 
   describe('numericRangeToZodChain', () => {
     it('generates Zod chain for min + max', () => {
-      expect(numericRangeToZodChain({ min: 0, max: 1000, propertyPath: 'self.price' }))
-        .toBe('.min(0).max(1000)');
+      expect(numericRangeToZodChain({ min: 0, max: 1000, propertyPath: 'self.price' })).toBe(
+        '.min(0).max(1000)',
+      );
     });
 
     it('generates Zod chain for min only', () => {
-      expect(numericRangeToZodChain({ min: 18, propertyPath: 'self.age' }))
-        .toBe('.min(18)');
+      expect(numericRangeToZodChain({ min: 18, propertyPath: 'self.age' })).toBe('.min(18)');
     });
   });
 
   describe('lengthConstraintToZodChain', () => {
     it('generates Zod chain for min + max length', () => {
-      expect(lengthConstraintToZodChain({ minLength: 1, maxLength: 255, propertyPath: 'self.name' }))
-        .toBe('.min(1).max(255)');
+      expect(
+        lengthConstraintToZodChain({ minLength: 1, maxLength: 255, propertyPath: 'self.name' }),
+      ).toBe('.min(1).max(255)');
     });
   });
 
   describe('patternConstraintToCheckConstraint', () => {
     it('generates PostgreSQL regex CHECK for simple pattern', () => {
-      const sql = patternConstraintToCheckConstraint({ pattern: '^\\d{5}$', propertyPath: 'self.zipCode' });
+      const sql = patternConstraintToCheckConstraint({
+        pattern: '^\\d{5}$',
+        propertyPath: 'self.zipCode',
+      });
       expect(sql).toBe("zipCode ~ '^\\d{5}$'");
     });
 
     it('uses custom column name', () => {
-      const sql = patternConstraintToCheckConstraint({ pattern: '^[a-z]+$', propertyPath: 'self.code' }, 'product_code');
+      const sql = patternConstraintToCheckConstraint(
+        { pattern: '^[a-z]+$', propertyPath: 'self.code' },
+        'product_code',
+      );
       expect(sql).toBe("product_code ~ '^[a-z]+$'");
     });
 
     it('escapes single quotes in pattern', () => {
-      const sql = patternConstraintToCheckConstraint({ pattern: "^it's$", propertyPath: 'self.name' });
+      const sql = patternConstraintToCheckConstraint({
+        pattern: "^it's$",
+        propertyPath: 'self.name',
+      });
       expect(sql).toBe("name ~ '^it''s$'");
     });
   });
 
   describe('patternConstraintToZodChain', () => {
     it('generates Zod regex chain for simple pattern', () => {
-      expect(patternConstraintToZodChain({ pattern: '^\\d{5}$', propertyPath: 'self.zipCode' }))
-        .toBe('.regex(/^\\d{5}$/)');
+      expect(
+        patternConstraintToZodChain({ pattern: '^\\d{5}$', propertyPath: 'self.zipCode' }),
+      ).toBe('.regex(/^\\d{5}$/)');
     });
 
     it('escapes forward slashes in pattern', () => {
-      expect(patternConstraintToZodChain({ pattern: '^https://.*$', propertyPath: 'self.url' }))
-        .toBe('.regex(/^https:\\/\\/.*$/)');
+      expect(
+        patternConstraintToZodChain({ pattern: '^https://.*$', propertyPath: 'self.url' }),
+      ).toBe('.regex(/^https:\\/\\/.*$/)');
     });
   });
 });

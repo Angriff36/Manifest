@@ -19,10 +19,7 @@ type CompileToIR = (
   options?: { sourcePath?: string },
 ) => Promise<{ ir: IR | null; diagnostics: Array<{ severity: string; message: string }> }>;
 
-type RuntimeEngineConstructor = new (
-  ir: IR,
-  context?: REPLUserContext,
-) => RuntimeEngine;
+type RuntimeEngineConstructor = new (ir: IR, context?: REPLUserContext) => RuntimeEngine;
 
 // Import from the main Manifest package
 async function loadCompiler(): Promise<{ compileToIR: CompileToIR }> {
@@ -67,7 +64,7 @@ async function getManifestFiles(source: string): Promise<string[]> {
   if (!source) {
     const pattern = '**/*.manifest';
     const files = await glob(pattern, { cwd: process.cwd() });
-    return files.map(f => path.resolve(process.cwd(), f));
+    return files.map((f) => path.resolve(process.cwd(), f));
   }
 
   const resolved = path.resolve(process.cwd(), source);
@@ -83,7 +80,7 @@ async function getManifestFiles(source: string): Promise<string[]> {
 
   const pattern = '**/*.manifest';
   const files = await glob(pattern, { cwd: resolved });
-  return files.map(f => path.resolve(resolved, f));
+  return files.map((f) => path.resolve(resolved, f));
 }
 
 /**
@@ -148,8 +145,9 @@ function optionalDescription(obj: unknown): string | undefined {
  */
 function colorizeJSON(obj: unknown): string {
   const json = JSON.stringify(obj, null, 2);
-  return json
-    .replace(/(".*?"): ("(.*?)"|(\d+)|(true|false|null))/g, (match, key, value, num, bool) => {
+  return json.replace(
+    /(".*?"): ("(.*?)"|(\d+)|(true|false|null))/g,
+    (match, key, value, num, bool) => {
       const coloredKey = chalk.cyan(key);
       let coloredValue = value;
       if (num) coloredValue = chalk.green(num);
@@ -157,7 +155,8 @@ function colorizeJSON(obj: unknown): string {
       else if (bool === 'null') coloredValue = chalk.gray(bool);
       else coloredValue = chalk.white(value);
       return `${coloredKey}: ${coloredValue}`;
-    });
+    },
+  );
 }
 
 /**
@@ -203,17 +202,23 @@ const listCommand: REPLCommand = {
   handler: async (_args: string[], context: REPLContext) => {
     const entities = context.ir.entities || [];
     if (context.jsonMode) {
-      return JSON.stringify(entities.map((e: IREntity) => ({
-        name: e.name,
-        properties: e.properties.length,
-        commands: e.commands.length,
-      })), null, 2);
+      return JSON.stringify(
+        entities.map((e: IREntity) => ({
+          name: e.name,
+          properties: e.properties.length,
+          commands: e.commands.length,
+        })),
+        null,
+        2,
+      );
     }
 
     let output = '\n' + chalk.bold('Entities:') + '\n\n';
     for (const entity of entities) {
       output += `  ${chalk.cyan(entity.name)}`;
-      output += chalk.gray(` (${entity.properties.length} properties, ${entity.commands.length} commands)\n`);
+      output += chalk.gray(
+        ` (${entity.properties.length} properties, ${entity.commands.length} commands)\n`,
+      );
     }
     return output;
   },
@@ -271,7 +276,9 @@ const inspectCommand: REPLCommand = {
     if (entity.commands.length > 0) {
       output += '\n' + chalk.bold('Commands:') + '\n';
       for (const cmd of entity.commands) {
-        const command = context.ir.commands.find((c: IRCommand) => c.name === cmd && c.entity === entityName);
+        const command = context.ir.commands.find(
+          (c: IRCommand) => c.name === cmd && c.entity === entityName,
+        );
         if (command) {
           output += `  ${chalk.green(cmd)}${chalk.gray(' - ' + (optionalDescription(command) || 'No description'))}\n`;
         } else {
@@ -324,9 +331,11 @@ const showCommand: REPLCommand = {
     for (const inst of instances) {
       output += `  ${chalk.green(inst.id)}`;
       // Show a few key properties
-      const keys = Object.keys(inst).filter(k => k !== 'id' && !k.startsWith('_')).slice(0, 3);
+      const keys = Object.keys(inst)
+        .filter((k) => k !== 'id' && !k.startsWith('_'))
+        .slice(0, 3);
       if (keys.length > 0) {
-        const preview = keys.map(k => `${k}=${JSON.stringify(inst[k])}`).join(', ');
+        const preview = keys.map((k) => `${k}=${JSON.stringify(inst[k])}`).join(', ');
         output += chalk.gray(` - ${preview}`);
       }
       output += '\n';
@@ -378,7 +387,9 @@ const runCommand: REPLCommand = {
   handler: async (args: string[], context: REPLContext) => {
     const [entityName, commandName, ...inputArgs] = args;
     if (!entityName || !commandName) {
-      return chalk.red('Error: Entity name and command name required\nUsage: run <entity> <command> [json-input]');
+      return chalk.red(
+        'Error: Entity name and command name required\nUsage: run <entity> <command> [json-input]',
+      );
     }
 
     // Parse input JSON if provided
@@ -388,7 +399,9 @@ const runCommand: REPLCommand = {
         const inputStr = inputArgs.join(' ');
         input = JSON.parse(inputStr);
       } catch {
-        return chalk.red('Error: Invalid JSON input\nUsage: run <entity> <command> {"key": "value"}');
+        return chalk.red(
+          'Error: Invalid JSON input\nUsage: run <entity> <command> {"key": "value"}',
+        );
       }
     }
 
@@ -570,16 +583,20 @@ const infoCommand: REPLCommand = {
     const provenance = context.ir.provenance;
 
     if (context.jsonMode) {
-      return JSON.stringify({
-        manifestPath: context.manifestPath,
-        compilerVersion: provenance?.compilerVersion,
-        schemaVersion: provenance?.schemaVersion,
-        compiledAt: provenance?.compiledAt,
-        entities: context.ir.entities.length,
-        commands: context.ir.commands.length,
-        policies: context.ir.policies.length,
-        tenant: context.ir.tenant,
-      }, null, 2);
+      return JSON.stringify(
+        {
+          manifestPath: context.manifestPath,
+          compilerVersion: provenance?.compilerVersion,
+          schemaVersion: provenance?.schemaVersion,
+          compiledAt: provenance?.compiledAt,
+          entities: context.ir.entities.length,
+          commands: context.ir.commands.length,
+          policies: context.ir.policies.length,
+          tenant: context.ir.tenant,
+        },
+        null,
+        2,
+      );
     }
 
     let output = '\n' + chalk.bold('Runtime Information') + '\n\n';
@@ -714,18 +731,18 @@ function getAllCommands(): REPLCommand[] {
 
 // Command lookup by name (including aliases)
 const commandAliases: Record<string, string> = {
-  'ls': 'list',
-  'entities': 'list',
-  'exec': 'run',
-  'execute': 'run',
-  'quit': 'exit',
-  'q': 'exit',
-  'cls': 'clear',
+  ls: 'list',
+  entities: 'list',
+  exec: 'run',
+  execute: 'run',
+  quit: 'exit',
+  q: 'exit',
+  cls: 'clear',
 };
 
 function findCommand(name: string): REPLCommand | undefined {
   const canonicalName = commandAliases[name] || name;
-  return getAllCommands().find(c => c.name === canonicalName);
+  return getAllCommands().find((c) => c.name === canonicalName);
 }
 
 /**
@@ -785,8 +802,8 @@ function createReadline(context: REPLContext): Interface {
 
       // Complete command names
       if (args.length === 0) {
-        const commands = getAllCommands().map(c => c.name);
-        const hits = commands.filter(c => c.startsWith(command));
+        const commands = getAllCommands().map((c) => c.name);
+        const hits = commands.filter((c) => c.startsWith(command));
         return [hits.length ? hits : commands, line];
       }
 
@@ -846,12 +863,15 @@ async function replLoop(context: REPLContext): Promise<void> {
 /**
  * Main entry point for the repl command
  */
-export async function replCommand(source: string | undefined, options: {
-  json?: boolean;
-  user?: string;
-  tenant?: string;
-  context?: string;
-} = {}): Promise<void> {
+export async function replCommand(
+  source: string | undefined,
+  options: {
+    json?: boolean;
+    user?: string;
+    tenant?: string;
+    context?: string;
+  } = {},
+): Promise<void> {
   // Find and compile manifest file
   const files = await getManifestFiles(source || '');
 

@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { Parser } from './parser';
-import type { BinaryOpNode, MemberAccessNode, CallNode, ConditionalNode, ArrayNode, ObjectNode } from './types';
+import type {
+  BinaryOpNode,
+  MemberAccessNode,
+  CallNode,
+  ConditionalNode,
+  ArrayNode,
+  ObjectNode,
+} from './types';
 
 describe('Parser', () => {
   describe('Program Structure', () => {
@@ -55,19 +62,21 @@ entity User { property name: string }
 use "./types.manifest"
 `;
       const result = new Parser().parse(source);
-      expect(result.errors.some(e => e.message.includes("'use' declarations must appear before"))).toBe(true);
+      expect(
+        result.errors.some((e) => e.message.includes("'use' declarations must appear before")),
+      ).toBe(true);
     });
 
     it('should error on absolute paths', () => {
       const source = 'use "/absolute/path.manifest"';
       const result = new Parser().parse(source);
-      expect(result.errors.some(e => e.message.includes('must be relative'))).toBe(true);
+      expect(result.errors.some((e) => e.message.includes('must be relative'))).toBe(true);
     });
 
     it('should error on non-.manifest extension', () => {
       const source = 'use "./types.ts"';
       const result = new Parser().parse(source);
-      expect(result.errors.some(e => e.message.includes('.manifest'))).toBe(true);
+      expect(result.errors.some((e) => e.message.includes('.manifest'))).toBe(true);
     });
 
     it('should parse file with no use declarations', () => {
@@ -171,9 +180,21 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const entity = result.program.entities[0];
-      expect(entity.properties[0].defaultValue).toEqual({ type: 'Literal', value: 'Anonymous', dataType: 'string' });
-      expect(entity.properties[1].defaultValue).toEqual({ type: 'Literal', value: 0, dataType: 'number' });
-      expect(entity.properties[2].defaultValue).toEqual({ type: 'Literal', value: true, dataType: 'boolean' });
+      expect(entity.properties[0].defaultValue).toEqual({
+        type: 'Literal',
+        value: 'Anonymous',
+        dataType: 'string',
+      });
+      expect(entity.properties[1].defaultValue).toEqual({
+        type: 'Literal',
+        value: 0,
+        dataType: 'number',
+      });
+      expect(entity.properties[2].defaultValue).toEqual({
+        type: 'Literal',
+        value: true,
+        dataType: 'boolean',
+      });
     });
 
     it('should parse entity with computed property', () => {
@@ -206,7 +227,7 @@ entity Order {
       const result = new Parser().parse(source);
       const entity = result.program.entities[0];
       const byName: Record<string, string[]> = Object.fromEntries(
-        entity.computedProperties.map(c => [c.name, c.dependencies]),
+        entity.computedProperties.map((c) => [c.name, c.dependencies]),
       );
       expect(byName.tax.sort()).toEqual(['subtotal', 'taxRate']);
       expect(byName.taxThis.sort()).toEqual(['subtotal', 'taxRate']);
@@ -388,7 +409,9 @@ entity User {
 `;
       const result = new Parser().parse(source);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0].message).toContain('Masking strategy parameters must be numeric literals');
+      expect(result.errors[0].message).toContain(
+        'Masking strategy parameters must be numeric literals',
+      );
     });
   });
 
@@ -1207,7 +1230,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors.some(e => e.message.includes('Expected }'))).toBe(true);
+      expect(result.errors.some((e) => e.message.includes('Expected }'))).toBe(true);
     });
 
     it('should report error for missing colon in property', () => {
@@ -1218,7 +1241,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors.some(e => e.message.includes('Expected :'))).toBe(true);
+      expect(result.errors.some((e) => e.message.includes('Expected :'))).toBe(true);
     });
 
     it('should report error for incomplete expression', () => {
@@ -1251,7 +1274,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors.some(e => e.message.includes('expression'))).toBe(true);
+      expect(result.errors.some((e) => e.message.includes('expression'))).toBe(true);
     });
 
     it('should report error for reserved word as entity identifier', () => {
@@ -1261,7 +1284,11 @@ entity command {
 }
 `;
       const result = new Parser().parse(source);
-      expect(result.errors.some(e => e.message.includes('Reserved word') && e.message.includes('command'))).toBe(true);
+      expect(
+        result.errors.some(
+          (e) => e.message.includes('Reserved word') && e.message.includes('command'),
+        ),
+      ).toBe(true);
     });
 
     it('should report error for malformed relationship', () => {
@@ -1358,7 +1385,7 @@ value Bad {
 }
 `;
       const result = new Parser().parse(source);
-      expect(result.errors.some(e => e.message.includes('Unexpected token'))).toBe(true);
+      expect(result.errors.some((e) => e.message.includes('Unexpected token'))).toBe(true);
     });
   });
 

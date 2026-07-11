@@ -191,12 +191,14 @@ async function main() {
   }
 
   if (next === text) {
-    console.log(`generate-config-schema: no change (${names.length} projections, schema already in sync).`);
+    console.log(
+      `generate-config-schema: no change (${names.length} projections, schema already in sync).`,
+    );
     return;
   }
   await writeFile(SCHEMA_PATH, next, 'utf-8');
   console.log(
-    `generate-config-schema: rewrote projections block with ${names.length} projection(s): ${[...names].sort().join(', ')}`
+    `generate-config-schema: rewrote projections block with ${names.length} projection(s): ${[...names].sort().join(', ')}`,
   );
 }
 

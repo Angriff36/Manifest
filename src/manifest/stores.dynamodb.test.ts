@@ -17,11 +17,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import {
-  DynamoDBStore,
-  buildDynamoDBKey,
-  type DynamoDBConfig,
-} from './stores.node';
+import { DynamoDBStore, buildDynamoDBKey, type DynamoDBConfig } from './stores.node';
 import type { EntityInstance } from './stores.node';
 
 interface TestEntity extends EntityInstance {
@@ -35,7 +31,6 @@ interface TestEntity extends EntityInstance {
 // In-memory mock of DynamoDB DocumentClient
 // ---------------------------------------------------------------------------
 
- 
 type Item = Record<string, any>;
 
 class MockDynamoDB {
@@ -47,52 +42,61 @@ class MockDynamoDB {
     constructor(public input: { TableName: string; Key: Item }) {}
   };
   PutCommand = class {
-    constructor(public input: {
-      TableName: string;
-      Item: Item;
-      ConditionExpression?: string;
-      ExpressionAttributeNames?: Record<string, string>;
-    }) {}
+    constructor(
+      public input: {
+        TableName: string;
+        Item: Item;
+        ConditionExpression?: string;
+        ExpressionAttributeNames?: Record<string, string>;
+      },
+    ) {}
   };
   UpdateCommand = class {
-    constructor(public input: {
-      TableName: string;
-      Key: Item;
-      UpdateExpression: string;
-      ConditionExpression?: string;
-      ExpressionAttributeNames?: Record<string, string>;
-      ExpressionAttributeValues?: Record<string, unknown>;
-      ReturnValues?: string;
-    }) {}
+    constructor(
+      public input: {
+        TableName: string;
+        Key: Item;
+        UpdateExpression: string;
+        ConditionExpression?: string;
+        ExpressionAttributeNames?: Record<string, string>;
+        ExpressionAttributeValues?: Record<string, unknown>;
+        ReturnValues?: string;
+      },
+    ) {}
   };
   DeleteCommand = class {
-    constructor(public input: {
-      TableName: string;
-      Key: Item;
-      ConditionExpression?: string;
-      ExpressionAttributeNames?: Record<string, string>;
-    }) {}
+    constructor(
+      public input: {
+        TableName: string;
+        Key: Item;
+        ConditionExpression?: string;
+        ExpressionAttributeNames?: Record<string, string>;
+      },
+    ) {}
   };
   ScanCommand = class {
-    constructor(public input: {
-      TableName: string;
-      FilterExpression?: string;
-      ExpressionAttributeNames?: Record<string, string>;
-      ExpressionAttributeValues?: Record<string, unknown>;
-      ProjectionExpression?: string;
-      Limit?: number;
-    }) {}
+    constructor(
+      public input: {
+        TableName: string;
+        FilterExpression?: string;
+        ExpressionAttributeNames?: Record<string, string>;
+        ExpressionAttributeValues?: Record<string, unknown>;
+        ProjectionExpression?: string;
+        Limit?: number;
+      },
+    ) {}
   };
   BatchWriteCommand = class {
-    constructor(public input: {
-      RequestItems: Record<string, Array<{ DeleteRequest: { Key: Item } }>>;
-    }) {}
+    constructor(
+      public input: {
+        RequestItems: Record<string, Array<{ DeleteRequest: { Key: Item } }>>;
+      },
+    ) {}
   };
   TransactWriteCommand = class {
     constructor(public input: { TransactItems: unknown[] }) {}
   };
 
-   
   async send(command: any): Promise<any> {
     const Ctor = command.constructor.name;
     switch (Ctor) {
@@ -239,7 +243,7 @@ describe('buildDynamoDBKey', () => {
     const key = buildDynamoDBKey(
       'abc123',
       { partitionKey: 'pk', entityPrefix: 'PRODUCT' },
-      'Product'
+      'Product',
     );
     expect(key).toEqual({ pk: 'PRODUCT#abc123' });
   });
@@ -258,7 +262,7 @@ describe('buildDynamoDBKey', () => {
     const key = buildDynamoDBKey(
       '42',
       { partitionKey: 'pk', sortKey: 'sk', entityPrefix: 'ORDER' },
-      'Order'
+      'Order',
     );
     expect(key).toEqual({ pk: 'ORDER#42', sk: '42' });
   });
@@ -276,7 +280,7 @@ describe('DynamoDBStore', () => {
         tableName: 'Products',
         client: mock,
       },
-      () => `gen-${Math.random().toString(36).slice(2, 10)}`
+      () => `gen-${Math.random().toString(36).slice(2, 10)}`,
     );
   });
 
@@ -374,7 +378,7 @@ describe('DynamoDBStore - single-table design', () => {
         entityPrefix: 'USER',
         client: mock,
       },
-      () => 'gen-id'
+      () => 'gen-id',
     );
   });
 
@@ -389,11 +393,9 @@ describe('DynamoDBStore - single-table design', () => {
     const key = buildDynamoDBKey(
       'u1',
       { partitionKey: 'pk', sortKey: 'sk', entityPrefix: 'USER' },
-      'User'
+      'User',
     );
-    const result = await mock.send(
-      new mock.GetCommand({ TableName: 'main-table', Key: key })
-    );
+    const result = await mock.send(new mock.GetCommand({ TableName: 'main-table', Key: key }));
     expect(result.Item).toBeDefined();
     expect(result.Item.pk).toBe('USER#u1');
     expect(result.Item.sk).toBe('u1');
@@ -404,11 +406,7 @@ describe('DynamoDBStore - single-table design', () => {
 describe('DynamoDBStore - configuration', () => {
   it('uses default config values when none provided', () => {
     const mock = new MockDynamoDB();
-    const store = new DynamoDBStore<TestEntity>(
-      'Foo',
-      { client: mock },
-      () => 'id'
-    );
+    const store = new DynamoDBStore<TestEntity>('Foo', { client: mock }, () => 'id');
     // Should not throw on construction
     expect(store).toBeInstanceOf(DynamoDBStore);
   });

@@ -6,68 +6,68 @@ The runtime middleware pipeline allows registering hooks at specific points in t
 
 ## Middleware Hooks
 
-| Hook | When it runs |
-|------|-------------|
+| Hook            | When it runs             |
+| --------------- | ------------------------ |
 | `before-policy` | Before policy evaluation |
-| `before-guard` | Before guard evaluation |
-| `before-action` | Before action execution |
-| `after-emit` | After event emission |
+| `before-guard`  | Before guard evaluation  |
+| `before-action` | Before action execution  |
+| `after-emit`    | After event emission     |
 
 ## Usage
 
 Middleware is passed via `RuntimeOptions.middleware` (third constructor argument):
 
 ```typescript
-import { RuntimeEngine } from "@angriff36/manifest";
+import { RuntimeEngine } from '@angriff36/manifest';
 
 const runtime = new RuntimeEngine(
   ir,
-  { user: { id: "user-1", role: "admin" } },
+  { user: { id: 'user-1', role: 'admin' } },
   {
     middleware: [
       {
-        hooks: ["before-policy"],
+        hooks: ['before-policy'],
         handler: async (ctx) => {
           console.log(`[${ctx.entityName}] Checking policies for ${ctx.command.name}...`);
           return {};
         },
       },
       {
-        hooks: ["before-action"],
+        hooks: ['before-action'],
         handler: async (ctx) => {
-          if (ctx.command.name === "delete" && ctx.runtimeContext.user?.role !== "admin") {
+          if (ctx.command.name === 'delete' && ctx.runtimeContext.user?.role !== 'admin') {
             return {
               shortCircuit: true,
-              result: { success: false, error: "Admin required", emittedEvents: [] },
+              result: { success: false, error: 'Admin required', emittedEvents: [] },
             };
           }
           return {};
         },
       },
       {
-        hooks: ["after-emit"],
+        hooks: ['after-emit'],
         handler: async (ctx) => {
           console.log(`Emitted ${ctx.emittedEvents.length} events`);
           return {};
         },
       },
     ],
-  }
+  },
 );
 ```
 
 ## MiddlewareContext
 
-| Field | Description |
-|-------|-------------|
-| `hook` | Which lifecycle hook triggered this call |
-| `command` | The IR command being executed |
-| `evalContext` | Expression evaluation context (patch via `contextPatch`) |
-| `runtimeContext` | Runtime context (`user`, `tenantId`, etc.) |
-| `entityName` | Target entity name |
-| `instanceId` | Target instance ID |
-| `input` | Command input parameters |
-| `emittedEvents` | Events emitted so far (`after-emit` hook) |
+| Field            | Description                                              |
+| ---------------- | -------------------------------------------------------- |
+| `hook`           | Which lifecycle hook triggered this call                 |
+| `command`        | The IR command being executed                            |
+| `evalContext`    | Expression evaluation context (patch via `contextPatch`) |
+| `runtimeContext` | Runtime context (`user`, `tenantId`, etc.)               |
+| `entityName`     | Target entity name                                       |
+| `instanceId`     | Target instance ID                                       |
+| `input`          | Command input parameters                                 |
+| `emittedEvents`  | Events emitted so far (`after-emit` hook)                |
 
 ## Ordering
 

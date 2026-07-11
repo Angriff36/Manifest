@@ -78,14 +78,9 @@ async function resolveWatchRoot(source: string | undefined): Promise<string> {
 /**
  * Discover manifest files matching the watch pattern.
  */
-async function discoverFiles(
-  source: string | undefined,
-  globPattern?: string
-): Promise<string[]> {
+async function discoverFiles(source: string | undefined, globPattern?: string): Promise<string[]> {
   const pattern = globPattern || '**/*.manifest';
-  const cwd = source
-    ? path.resolve(process.cwd(), source)
-    : process.cwd();
+  const cwd = source ? path.resolve(process.cwd(), source) : process.cwd();
 
   // If source points to a single file, just return it
   if (source) {
@@ -100,7 +95,7 @@ async function discoverFiles(
   const effectiveCwd = searchCwd?.isDirectory() ? cwd : process.cwd();
 
   const files = await glob(pattern, { cwd: effectiveCwd });
-  return files.map(f => path.resolve(effectiveCwd, f));
+  return files.map((f) => path.resolve(effectiveCwd, f));
 }
 
 /**
@@ -110,10 +105,7 @@ async function discoverFiles(
  * Errors are caught and reported rather than thrown so the watcher
  * keeps running.
  */
-async function runBuild(
-  source: string | undefined,
-  options: WatchOptions
-): Promise<boolean> {
+async function runBuild(source: string | undefined, options: WatchOptions): Promise<boolean> {
   try {
     // Ensure output directories exist so compileCommand resolves them
     // as directories (not files) when computing output paths.
@@ -157,7 +149,7 @@ async function runBuild(
  */
 export async function watchCommand(
   source: string | undefined,
-  options: WatchOptions
+  options: WatchOptions,
 ): Promise<void> {
   const spinner = ora('Starting watch mode...').start();
 
@@ -196,7 +188,7 @@ export async function watchCommand(
     emitEvent({
       type: 'ready',
       timestamp: new Date().toISOString(),
-      files: initialFiles.map(f => path.relative(process.cwd(), f)),
+      files: initialFiles.map((f) => path.relative(process.cwd(), f)),
       irOutput: options.irOutput,
       codeOutput: options.codeOutput,
     });
@@ -206,7 +198,7 @@ export async function watchCommand(
   console.log(
     chalk.cyan('Watching for changes in'),
     chalk.bold(path.relative(process.cwd(), watchRoot) || '.'),
-    chalk.cyan('...')
+    chalk.cyan('...'),
   );
   console.log(chalk.gray('Press Ctrl+C to stop'));
   console.log('');
@@ -234,12 +226,12 @@ export async function watchCommand(
         process.stdout.write('\x1Bc');
       }
 
-      const relFiles = files.map(f => path.relative(process.cwd(), f));
+      const relFiles = files.map((f) => path.relative(process.cwd(), f));
       console.log(
         chalk.yellow(`\n[${new Date().toLocaleTimeString()}]`),
         chalk.white(`Change detected in ${relFiles.length} file(s):`),
       );
-      relFiles.forEach(f => console.log(chalk.gray(`  ${f}`)));
+      relFiles.forEach((f) => console.log(chalk.gray(`  ${f}`)));
 
       if (options.events) {
         emitEvent({
@@ -268,7 +260,7 @@ export async function watchCommand(
 
       if (success && rebuildExitCode === undefined) {
         buildSpinner.succeed(
-          `Rebuild complete ${chalk.gray(`[${new Date().toLocaleTimeString()}]`)}`
+          `Rebuild complete ${chalk.gray(`[${new Date().toLocaleTimeString()}]`)}`,
         );
 
         if (options.events) {
@@ -281,9 +273,7 @@ export async function watchCommand(
           });
         }
       } else {
-        buildSpinner.fail(
-          `Rebuild failed ${chalk.gray(`[${new Date().toLocaleTimeString()}]`)}`
-        );
+        buildSpinner.fail(`Rebuild failed ${chalk.gray(`[${new Date().toLocaleTimeString()}]`)}`);
 
         if (options.events) {
           emitEvent({

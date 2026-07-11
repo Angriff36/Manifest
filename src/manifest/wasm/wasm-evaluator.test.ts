@@ -23,11 +23,7 @@ import {
   getDefaultWasmEvaluator,
   resetDefaultWasmEvaluator,
 } from './wasm-evaluator.js';
-import {
-  serializeExpression,
-  serializeContext,
-  deserializeResult,
-} from './wasm-loader.js';
+import { serializeExpression, serializeContext, deserializeResult } from './wasm-loader.js';
 import type { IRExpression } from '../ir.js';
 
 // ============================================================================
@@ -60,7 +56,7 @@ function call(callee: IRExpression, args: IRExpression[]): IRExpression {
 function conditional(
   condition: IRExpression,
   consequent: IRExpression,
-  alternate: IRExpression
+  alternate: IRExpression,
 ): IRExpression {
   return { kind: 'conditional', condition, consequent, alternate };
 }
@@ -278,11 +274,7 @@ describe('Fallback evaluation (no WASM)', () => {
   });
 
   it('should evaluate conditional expressions', async () => {
-    const expr = conditional(
-      literal(true),
-      literal('yes'),
-      literal('no')
-    );
+    const expr = conditional(literal(true), literal('yes'), literal('no'));
     const result = await evaluator.evaluate(expr, {});
     expect(result).toBe('yes');
   });
@@ -339,11 +331,7 @@ describe('Parity with TypeScript runtime', () => {
 
   it('should evaluate complex binary expression identically', async () => {
     // (2 + 3) * 4
-    const expr = binary(
-      '*',
-      binary('+', literal(2), literal(3)),
-      literal(4)
-    );
+    const expr = binary('*', binary('+', literal(2), literal(3)), literal(4));
     const result = await evaluator.evaluate(expr, {});
     expect(result).toBe(20);
   });
@@ -380,7 +368,7 @@ describe('Parity with TypeScript runtime', () => {
     const expr = conditional(
       ident('flag'),
       literal('on'),
-      conditional(ident('other'), literal('maybe'), literal('off'))
+      conditional(ident('other'), literal('maybe'), literal('off')),
     );
     expect(await evaluator.evaluate(expr, { flag: true })).toBe('on');
     expect(await evaluator.evaluate(expr, { flag: false, other: true })).toBe('maybe');

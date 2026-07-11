@@ -81,7 +81,10 @@ export interface EntitySegmentOptions {
  * disagree on casing.
  */
 export function resolveEntitySegment(entityName: string, opts: EntitySegmentOptions = {}): string {
-  return opts.routeSegments?.[entityName] ?? applyRouteCasing(entityName, opts.routeCasing ?? 'lowercase');
+  return (
+    opts.routeSegments?.[entityName] ??
+    applyRouteCasing(entityName, opts.routeCasing ?? 'lowercase')
+  );
 }
 
 /**
@@ -252,7 +255,8 @@ export function resolveRouteContract(options: RouteContractOptions = {}): RouteC
   };
 
   const entitySegment = (entityName: string): string => resolveEntitySegment(entityName, segOpts);
-  const entityBasePath = (entityName: string): string => `${apiBasePath}/${entitySegment(entityName)}`;
+  const entityBasePath = (entityName: string): string =>
+    `${apiBasePath}/${entitySegment(entityName)}`;
 
   return {
     apiBasePath,
@@ -264,11 +268,14 @@ export function resolveRouteContract(options: RouteContractOptions = {}): RouteC
     entityBasePath,
 
     listPath: (entityName) => `${entityBasePath(entityName)}/list`,
-    detailPath: (entityName, paramStyle = 'nextjs') => `${entityBasePath(entityName)}/${paramSlot('id', paramStyle)}`,
-    concreteCommandPath: (entityName, commandName) => `${entityBasePath(entityName)}/${toCommandSlug(commandName)}`,
+    detailPath: (entityName, paramStyle = 'nextjs') =>
+      `${entityBasePath(entityName)}/${paramSlot('id', paramStyle)}`,
+    concreteCommandPath: (entityName, commandName) =>
+      `${entityBasePath(entityName)}/${toCommandSlug(commandName)}`,
     dispatcherPath: (paramStyle = 'nextjs') =>
       `${dispatcherBasePath}/${paramSlot('entity', paramStyle)}/commands/${paramSlot('command', paramStyle)}`,
-    dispatcherInvocationPath: (entityName, commandName) => `${dispatcherBasePath}/${entityName}/commands/${commandName}`,
+    dispatcherInvocationPath: (entityName, commandName) =>
+      `${dispatcherBasePath}/${entityName}/commands/${commandName}`,
 
     listRoutePathHint: (entityName) => `${appDir}/${entitySegment(entityName)}/list/route.ts`,
     detailRoutePathHint: (entityName) => `${appDir}/${entitySegment(entityName)}/[id]/route.ts`,

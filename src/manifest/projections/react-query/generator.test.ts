@@ -164,7 +164,9 @@ describe('ReactQueryProjection', () => {
     });
 
     it('maps canonical TypeScript scalars without leaking Manifest tokens', async () => {
-      const result = await compileToIR(`entity Asset { property id: uuid property metadata: json property createdAt: timestamp property content: bytes }`);
+      const result = await compileToIR(
+        `entity Asset { property id: uuid property metadata: json property createdAt: timestamp property content: bytes }`,
+      );
       expect(result.ir).not.toBeNull();
       const code = firstCode(projection.generate(result.ir!, { surface: 'react-query.hooks' }));
       expect(code).toContain('id: string;');
@@ -174,7 +176,9 @@ describe('ReactQueryProjection', () => {
     });
 
     it('emits a valid zero-parameter mutation while retaining void options typing', async () => {
-      const result = await compileToIR(`entity Task { property id: string command archive() { mutate id = self.id } }`);
+      const result = await compileToIR(
+        `entity Task { property id: string command archive() { mutate id = self.id } }`,
+      );
       expect(result.ir).not.toBeNull();
       const code = firstCode(projection.generate(result.ir!, { surface: 'react-query.hooks' }));
       expect(code).toContain('UseMutationOptions<ManifestCommandResponse<unknown>, Error, void>');
@@ -198,7 +202,10 @@ describe('ReactQueryProjection', () => {
       expect(dflt).toContain('due: Date;');
 
       const iso = firstCode(
-        projection.generate(result.ir!, { surface: 'react-query.hooks', options: { dateSerialization: 'iso-string' } }),
+        projection.generate(result.ir!, {
+          surface: 'react-query.hooks',
+          options: { dateSerialization: 'iso-string' },
+        }),
       );
       expect(iso).toContain('occurredAt: string;');
       expect(iso).toContain('due: string;');
@@ -214,7 +221,10 @@ describe('ReactQueryProjection', () => {
       expect(dflt).toContain('/api/preptask/list');
 
       const kebab = firstCode(
-        projection.generate(result.ir!, { surface: 'react-query.hooks', options: { routeCasing: 'kebab-case' } }),
+        projection.generate(result.ir!, {
+          surface: 'react-query.hooks',
+          options: { routeCasing: 'kebab-case' },
+        }),
       );
       expect(kebab).toContain('/api/prep-task/list');
       expect(kebab).not.toContain('/api/preptask/list');

@@ -9,11 +9,7 @@ import { findTokenAtPosition } from './completion.js';
 /**
  * Provide hover information at the given position.
  */
-export function getHover(
-  tokens: Token[],
-  ir: IR | null,
-  position: LspPosition
-): Hover | null {
+export function getHover(tokens: Token[], ir: IR | null, position: LspPosition): Hover | null {
   const mPos = toManifestPosition(position);
   const token = findTokenAtPosition(tokens, mPos);
   if (!token) return null;
@@ -51,14 +47,21 @@ export function getHover(
 
 function lookupInIR(name: string, ir: IR): string | null {
   // Entity
-  const entity = ir.entities.find(e => e.name === name);
+  const entity = ir.entities.find((e) => e.name === name);
   if (entity) {
-    const props = entity.properties.map(p => `- \`${p.name}\`: ${p.type.name}${p.modifiers?.includes('required') ? ' (required)' : ''}`).join('\n');
+    const props = entity.properties
+      .map(
+        (p) =>
+          `- \`${p.name}\`: ${p.type.name}${p.modifiers?.includes('required') ? ' (required)' : ''}`,
+      )
+      .join('\n');
     // entity.commands is string[] (command names); resolve to full IRCommand objects
     const cmds = entity.commands
-      .map(cmdName => ir.commands.find(c => c.name === cmdName))
+      .map((cmdName) => ir.commands.find((c) => c.name === cmdName))
       .filter(Boolean)
-      .map(c => `- \`${c!.name}(${c!.parameters.map((p: { name: string }) => p.name).join(', ')})\``)
+      .map(
+        (c) => `- \`${c!.name}(${c!.parameters.map((p: { name: string }) => p.name).join(', ')})\``,
+      )
       .join('\n');
     let md = `**entity** \`${name}\`\n\n`;
     if (props) md += `**Properties:**\n${props}\n\n`;
@@ -67,43 +70,47 @@ function lookupInIR(name: string, ir: IR): string | null {
   }
 
   // Enum
-  const en = ir.enums.find(e => e.name === name);
+  const en = ir.enums.find((e) => e.name === name);
   if (en) {
-    const vals = en.values.map(v => `- \`${v.name}\`${v.label ? ` — "${v.label}"` : ''}`).join('\n');
+    const vals = en.values
+      .map((v) => `- \`${v.name}\`${v.label ? ` — "${v.label}"` : ''}`)
+      .join('\n');
     return `**enum** \`${name}\`\n\n${vals}`;
   }
 
   // Command (top-level)
-  const cmd = ir.commands.find(c => c.name === name);
+  const cmd = ir.commands.find((c) => c.name === name);
   if (cmd) {
-    const params = cmd.parameters.map(p => `\`${p.name}: ${p.type.name}\``).join(', ');
+    const params = cmd.parameters.map((p) => `\`${p.name}: ${p.type.name}\``).join(', ');
     return `**command** \`${name}(${params})\``;
   }
 
   // Event
-  const event = ir.events.find(e => e.name === name);
+  const event = ir.events.find((e) => e.name === name);
   if (event) {
     return `**event** \`${name}\`\n\nChannel: \`${event.channel}\``;
   }
 
   // Store
-  const store = ir.stores.find(s => s.entity === name);
+  const store = ir.stores.find((s) => s.entity === name);
   if (store) {
     return `**store** \`${name}\` → ${store.target}`;
   }
 
   // Search inside entities for properties/commands
   for (const ent of ir.entities) {
-    const prop = ent.properties.find(p => p.name === name);
+    const prop = ent.properties.find((p) => p.name === name);
     if (prop) {
       const mods = prop.modifiers?.length ? ` [${prop.modifiers.join(', ')}]` : '';
       return `**property** \`${ent.name}.${name}\`: ${prop.type.name}${mods}`;
     }
     // entity.commands is string[]; look up the full command from top-level ir.commands
     if (ent.commands.includes(name)) {
-      const fullCmd = ir.commands.find(c => c.name === name);
+      const fullCmd = ir.commands.find((c) => c.name === name);
       if (fullCmd) {
-        const params = fullCmd.parameters.map((p: { name: string; type: { name: string } }) => `\`${p.name}: ${p.type.name}\``).join(', ');
+        const params = fullCmd.parameters
+          .map((p: { name: string; type: { name: string } }) => `\`${p.name}: ${p.type.name}\``)
+          .join(', ');
         return `**command** \`${ent.name}.${name}(${params})\``;
       }
       return `**command** \`${ent.name}.${name}\``;

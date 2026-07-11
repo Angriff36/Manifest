@@ -7,14 +7,14 @@ Design spec: `docs/superpowers/specs/2026-06-15-convex-projection-design.md`.
 
 ## Surface
 
-| Surface | Output | Status |
-|---|---|---|
-| `convex.schema` | `convex/schema.ts` (`defineSchema`/`defineTable` + `convex/values` validators) | ✅ Phase 1 |
-| `convex.queries` | `convex/queries.ts` (`list`/`get`/`listBy<Field>` reactive reads) | ✅ Phase 2 |
-| `convex.mutations` | `convex/mutations.ts` (governed `mutation` per command) | ✅ Phase 2 |
-| `convex.crons` | `convex/crons.ts` (`cronJobs()` scheduling command mutations) | ✅ Phase 3 |
-| `convex.http` | `convex/http.ts` (`httpRouter`/`httpAction` webhooks → commands) | ✅ Phase 3 |
-| `convex.sagas` | `convex/sagas.ts` (orchestrator `action`s + compensation) | ✅ Phase 3 |
+| Surface            | Output                                                                         | Status     |
+| ------------------ | ------------------------------------------------------------------------------ | ---------- |
+| `convex.schema`    | `convex/schema.ts` (`defineSchema`/`defineTable` + `convex/values` validators) | ✅ Phase 1 |
+| `convex.queries`   | `convex/queries.ts` (`list`/`get`/`listBy<Field>` reactive reads)              | ✅ Phase 2 |
+| `convex.mutations` | `convex/mutations.ts` (governed `mutation` per command)                        | ✅ Phase 2 |
+| `convex.crons`     | `convex/crons.ts` (`cronJobs()` scheduling command mutations)                  | ✅ Phase 3 |
+| `convex.http`      | `convex/http.ts` (`httpRouter`/`httpAction` webhooks → commands)               | ✅ Phase 3 |
+| `convex.sagas`     | `convex/sagas.ts` (orchestrator `action`s + compensation)                      | ✅ Phase 3 |
 
 ## Orchestration surfaces (Phase 3)
 
@@ -25,7 +25,7 @@ Design spec: `docs/superpowers/specs/2026-06-15-convex-projection-design.md`.
   `ctx.runMutation`s the command.
 - **`convex.sagas`** — each IR saga → an orchestrator `action` that runs steps
   via `ctx.runMutation`, tracks completed steps, and (when `onFailure:
-  compensate`) runs each completed step's compensating command in reverse.
+compensate`) runs each completed step's compensating command in reverse.
   `onFailure: abort` rethrows without compensation. Step argument mapping is not
   in the saga IR, so a single `input` payload is forwarded to each step.
 
@@ -56,6 +56,7 @@ are **tenant-scoped + soft-delete-filtered by default** (see below).
   Next.js projection.
 
 `convex.mutations` emits one `mutation` per IR command:
+
 - **Governance is inline and FAIL CLOSED.** Each command runs its policies →
   guards → constraints (runtime order), rendered from IR by a pure
   expression resolver. Anything the resolver cannot map emits a hard
@@ -64,7 +65,7 @@ are **tenant-scoped + soft-delete-filtered by default** (see below).
   expressions resolve.)
 - **Roles** become a `ROLE_PERMISSIONS` map + `checkRole()` (with `all`
   wildcard); `roleAllows(user.role, X)` → `checkRole(userRole, X)`.
-- **create** commands: args are the command *parameters*; `mutate` actions map
+- **create** commands: args are the command _parameters_; `mutate` actions map
   params → stored fields; guards reference the parameters.
 - non-**create**: `docId: v.id(table)` + params; load, govern, `patch`.
 - Each mutation appends an **event row** (to the `events` table) and fires
@@ -105,18 +106,18 @@ const result = projection.generate(ir, { surface: 'convex.schema', options });
 
 ## Type mapping (safe-default + per-property override)
 
-| IR `type.name` | Convex validator | Note |
-|---|---|---|
-| `string`, `text`, `uuid` | `v.string()` | |
-| `boolean`, `bool` | `v.boolean()` | |
-| `int`, `bigint`, `float`, `decimal`, `money` | `v.number()` | matches Manifest runtime (all numerics are JS numbers); opt into `v.int64()`/`v.string()` per property for lossless transport |
-| `date`, `datetime`, `time`, `duration` | `v.number()` | epoch ms (Convex-idiomatic) |
-| `json` | `v.any()` | |
-| `bytes` | `v.bytes()` | |
-| `array<T>` | `v.array(<T>)` | |
-| enum name | `v.union(v.literal(...))` | single value → `v.literal(...)` |
-| `number` (bare) | — | hard `CONVEX_AMBIGUOUS_NUMBER` |
-| unknown | — | hard `CONVEX_UNKNOWN_TYPE` |
+| IR `type.name`                               | Convex validator          | Note                                                                                                                          |
+| -------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `string`, `text`, `uuid`                     | `v.string()`              |                                                                                                                               |
+| `boolean`, `bool`                            | `v.boolean()`             |                                                                                                                               |
+| `int`, `bigint`, `float`, `decimal`, `money` | `v.number()`              | matches Manifest runtime (all numerics are JS numbers); opt into `v.int64()`/`v.string()` per property for lossless transport |
+| `date`, `datetime`, `time`, `duration`       | `v.number()`              | epoch ms (Convex-idiomatic)                                                                                                   |
+| `json`                                       | `v.any()`                 |                                                                                                                               |
+| `bytes`                                      | `v.bytes()`               |                                                                                                                               |
+| `array<T>`                                   | `v.array(<T>)`            |                                                                                                                               |
+| enum name                                    | `v.union(v.literal(...))` | single value → `v.literal(...)`                                                                                               |
+| `number` (bare)                              | —                         | hard `CONVEX_AMBIGUOUS_NUMBER`                                                                                                |
+| unknown                                      | —                         | hard `CONVEX_UNKNOWN_TYPE`                                                                                                    |
 
 Override per property: `typeMappings: { Entity: { prop: "v.number()" } }`.
 
@@ -126,7 +127,7 @@ Override per property: `typeMappings: { Entity: { prop: "v.number()" } }`.
 - The IR **`id`** property is dropped — Convex's document `_id` is identity.
 - **Nullable** → unioned with `v.null()`; **non-required** → wrapped in `v.optional(...)`.
 - **References** (`belongsTo`/`ref`): the non-tenant FK column is typed
-  `v.id("<targetTable>")` (convexId mode, default). A property that *backs* a
+  `v.id("<targetTable>")` (convexId mode, default). A property that _backs_ a
   relationship is retyped to the reference rather than its declared scalar.
   Set `referenceMode: 'stringId'` to keep app-level string ids instead.
 - **Indexes**: `indexed` properties, the tenant column, and every reference

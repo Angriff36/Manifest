@@ -93,7 +93,9 @@ class RecordingOutboxStore implements OutboxStore {
     this.entries.push(...entries);
     this.txSeen.push(tx);
   }
-  async claim(): Promise<OutboxEntry[]> { return []; }
+  async claim(): Promise<OutboxEntry[]> {
+    return [];
+  }
   async markDelivered(): Promise<void> {}
   async markFailed(): Promise<void> {}
 }
@@ -150,7 +152,7 @@ describe('emit action — named in-process event', () => {
     await rt.createInstance('Foo', { id: 'a' });
     const res = await rt.runCommand('run', {}, { entityName: 'Foo', instanceId: 'a' });
     expect(res.success).toBe(true);
-    expect(res.emittedEvents?.map(e => e.name)).toEqual(['Pinged']);
+    expect(res.emittedEvents?.map((e) => e.name)).toEqual(['Pinged']);
     expect(res.emittedEvents?.[0].channel).toBe('pings');
     // scalar payload is wrapped as { result }
     expect(res.emittedEvents?.[0].payload).toEqual({ result: 7 });
@@ -172,7 +174,11 @@ describe('emit action — named in-process event', () => {
           // resolve payload._subject.id → the emitting instance id ('a')
           resolve: {
             kind: 'member',
-            object: { kind: 'member', object: { kind: 'identifier', name: 'payload' }, property: '_subject' },
+            object: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'payload' },
+              property: '_subject',
+            },
             property: 'id',
           },
         } as unknown as NonNullable<IR['reactions']>[number],
@@ -213,7 +219,7 @@ describe('publish action — external delivery, fail-closed', () => {
     expect(outbox.entries[0].event.name).toBe('Shipped');
     expect(outbox.entries[0].status).toBe('pending');
     // also delivered in-process so reactions and the outbound bridge observe it
-    expect(res.emittedEvents?.map(e => e.name)).toEqual(['Shipped']);
+    expect(res.emittedEvents?.map((e) => e.name)).toEqual(['Shipped']);
   });
 
   it('fails closed with MISSING_OUTBOX_STORE when no outbox is configured', async () => {
@@ -239,14 +245,21 @@ describe('publish action — external delivery, fail-closed', () => {
     const rt = new RuntimeEngine(ir, {}, { deterministicMode: true });
     await rt.createInstance('Foo', { id: 'a' });
     await expect(
-      rt.runCommand('run', {}, { entityName: 'Foo', instanceId: 'a' })
+      rt.runCommand('run', {}, { entityName: 'Foo', instanceId: 'a' }),
     ).rejects.toBeInstanceOf(ManifestEffectBoundaryError);
   });
 });
 
 describe('effect action — host side-effect hook, fail-closed', () => {
   it('invokes effectHandler with name/value/context and returns its result', async () => {
-    type EffectInfo = { name?: string; value: unknown; commandName: string; entityName?: string; instanceId?: string; context: unknown };
+    type EffectInfo = {
+      name?: string;
+      value: unknown;
+      commandName: string;
+      entityName?: string;
+      instanceId?: string;
+      context: unknown;
+    };
     const handler = vi.fn((_info: EffectInfo): unknown => 'handled');
     const opts: RuntimeOptions = { effectHandler: handler };
     const ir = buildIR({
@@ -289,7 +302,7 @@ describe('effect action — host side-effect hook, fail-closed', () => {
     const rt = new RuntimeEngine(ir, {}, { deterministicMode: true, effectHandler: handler });
     await rt.createInstance('Foo', { id: 'a' });
     await expect(
-      rt.runCommand('run', {}, { entityName: 'Foo', instanceId: 'a' })
+      rt.runCommand('run', {}, { entityName: 'Foo', instanceId: 'a' }),
     ).rejects.toBeInstanceOf(ManifestEffectBoundaryError);
     expect(handler).not.toHaveBeenCalled();
   });
@@ -373,7 +386,7 @@ describe('persist action — explicit buffered flush', () => {
     const rt = new RuntimeEngine(ir, {}, { deterministicMode: true });
     await rt.createInstance('Foo', { id: 'a', total: 0 });
     await expect(
-      rt.runCommand('run', {}, { entityName: 'Foo', instanceId: 'a' })
+      rt.runCommand('run', {}, { entityName: 'Foo', instanceId: 'a' }),
     ).rejects.toBeInstanceOf(ManifestEffectBoundaryError);
   });
 });
@@ -389,9 +402,9 @@ describe('compiler diagnostics — action-kind contract', () => {
 store Order in memory`;
     const { ir, diagnostics } = await compileSource(source);
     expect(ir).toBeNull();
-    const errs = diagnostics.filter(d => d.severity === 'error');
-    expect(errs.some(d => d.message.includes('EMIT_ACTION_UNKNOWN_EVENT'))).toBe(true);
-    expect(errs.some(d => d.message.includes('OrderShipped'))).toBe(true);
+    const errs = diagnostics.filter((d) => d.severity === 'error');
+    expect(errs.some((d) => d.message.includes('EMIT_ACTION_UNKNOWN_EVENT'))).toBe(true);
+    expect(errs.some((d) => d.message.includes('OrderShipped'))).toBe(true);
   });
 
   it('EMIT_ACTION_UNKNOWN_EVENT: publish action with no event name is an error', async () => {
@@ -404,7 +417,11 @@ store Order in memory`;
 store Order in memory`;
     const { ir, diagnostics } = await compileSource(source);
     expect(ir).toBeNull();
-    expect(diagnostics.some(d => d.severity === 'error' && d.message.includes('EMIT_ACTION_UNKNOWN_EVENT'))).toBe(true);
+    expect(
+      diagnostics.some(
+        (d) => d.severity === 'error' && d.message.includes('EMIT_ACTION_UNKNOWN_EVENT'),
+      ),
+    ).toBe(true);
   });
 
   it('publish action targeting a DECLARED event compiles cleanly', async () => {
@@ -420,7 +437,7 @@ event OrderShipped: "order.shipped" {}
 store Order in memory`;
     const { ir, diagnostics } = await compileSource(source);
     expect(ir).not.toBeNull();
-    expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
   it('COMPUTE_USED_AS_MUTATE: compute assigning to a declared property warns (compiles)', async () => {
@@ -434,8 +451,12 @@ store Order in memory`;
 store Counter in memory`;
     const { ir, diagnostics } = await compileSource(source);
     expect(ir).not.toBeNull();
-    const warns = diagnostics.filter(d => d.severity === 'warning');
-    expect(warns.some(d => d.message.includes('COMPUTE_USED_AS_MUTATE') && d.message.includes('count'))).toBe(true);
+    const warns = diagnostics.filter((d) => d.severity === 'warning');
+    expect(
+      warns.some(
+        (d) => d.message.includes('COMPUTE_USED_AS_MUTATE') && d.message.includes('count'),
+      ),
+    ).toBe(true);
   });
 
   it('compute binding to a NON-property name does not warn', async () => {
@@ -450,6 +471,6 @@ store Counter in memory`;
 store Counter in memory`;
     const { ir, diagnostics } = await compileSource(source);
     expect(ir).not.toBeNull();
-    expect(diagnostics.some(d => d.message.includes('COMPUTE_USED_AS_MUTATE'))).toBe(false);
+    expect(diagnostics.some((d) => d.message.includes('COMPUTE_USED_AS_MUTATE'))).toBe(false);
   });
 });

@@ -4,7 +4,8 @@ export interface Position {
 }
 
 export interface Token {
-  type: 'KEYWORD' | 'IDENTIFIER' | 'STRING' | 'NUMBER' | 'OPERATOR' | 'PUNCTUATION' | 'NEWLINE' | 'EOF';
+  type:
+    'KEYWORD' | 'IDENTIFIER' | 'STRING' | 'NUMBER' | 'OPERATOR' | 'PUNCTUATION' | 'NEWLINE' | 'EOF';
   value: string;
   position: Position;
 }
@@ -327,9 +328,7 @@ export interface TenantNode extends ASTNode {
  * matched exactly by the engine. The string union preserves autocomplete for the
  * well-known values while permitting custom tokens.
  */
-export type RolePermissionAction =
-  | 'read' | 'write' | 'delete' | 'execute' | 'all'
-  | (string & {});
+export type RolePermissionAction = 'read' | 'write' | 'delete' | 'execute' | 'all' | (string & {});
 
 export interface RolePermissionNode {
   kind: 'allow' | 'deny';

@@ -291,7 +291,7 @@ describe('TursoStore', () => {
       await expect(
         store.transaction(async (_tx) => {
           throw new Error('test error');
-        })
+        }),
       ).rejects.toThrow('test error');
       expect(captureClient.commit).not.toHaveBeenCalled();
       expect(captureClient.rollback).toHaveBeenCalled();

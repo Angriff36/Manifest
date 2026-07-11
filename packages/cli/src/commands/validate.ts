@@ -20,7 +20,9 @@ type IRValue = unknown;
 type LoadedSchema = AnySchema;
 
 /** Node fs error shape we narrow against for ENOENT detection. */
-interface NodeFsError extends Error { code?: string; }
+interface NodeFsError extends Error {
+  code?: string;
+}
 function isNodeFsError(e: unknown): e is NodeFsError {
   return e instanceof Error && typeof (e as { code?: unknown }).code === 'string';
 }
@@ -59,8 +61,8 @@ async function loadSchema(schemaPath: string | undefined): Promise<LoadedSchema>
     } catch {
       throw new Error(
         `Bundled schema not found at ${defaultPath}. ` +
-        `This is a packaging bug — please report it. ` +
-        `Workaround: specify --schema <path>`
+          `This is a packaging bug — please report it. ` +
+          `Workaround: specify --schema <path>`,
       );
     }
   }
@@ -80,7 +82,7 @@ async function getIRFiles(irInput: string | undefined): Promise<string[]> {
 
     if (stat && stat.isDirectory()) {
       const files = await glob('**/*.ir.json', { cwd: resolved });
-      return files.map(f => path.join(resolved, f));
+      return files.map((f) => path.join(resolved, f));
     }
     return [resolved];
   }
@@ -88,9 +90,9 @@ async function getIRFiles(irInput: string | undefined): Promise<string[]> {
   // Find all .ir.json files in current directory
   const files = await glob('**/*.ir.json', {
     cwd: process.cwd(),
-    ignore: ['node_modules/**', 'dist/**', '.next/**']
+    ignore: ['node_modules/**', 'dist/**', '.next/**'],
   });
-  return files.map(f => path.resolve(process.cwd(), f));
+  return files.map((f) => path.resolve(process.cwd(), f));
 }
 
 /**
@@ -126,7 +128,11 @@ function formatAjvError(error: ErrorObject): string {
 /**
  * Validate IR against schema using Ajv
  */
-async function validateIR(irPath: string, schema: LoadedSchema, _strict: boolean): Promise<{
+async function validateIR(
+  irPath: string,
+  schema: LoadedSchema,
+  _strict: boolean,
+): Promise<{
   valid: boolean;
   errors: string[];
   warnings: string[];
@@ -141,12 +147,9 @@ async function validateIR(irPath: string, schema: LoadedSchema, _strict: boolean
     const validate = ajv.compile(schema);
     const valid = validate(ir) as boolean;
 
-    const errors = valid
-      ? []
-      : (validate.errors ?? []).map(formatAjvError);
+    const errors = valid ? [] : (validate.errors ?? []).map(formatAjvError);
 
     return { valid, errors, warnings };
-
   } catch (error: unknown) {
     if (isNodeFsError(error) && error.code === 'ENOENT') {
       return {
@@ -173,7 +176,7 @@ async function validateIR(irPath: string, schema: LoadedSchema, _strict: boolean
  */
 export async function validateCommand(
   ir: string | undefined,
-  options: ValidateOptions
+  options: ValidateOptions,
 ): Promise<void> {
   const spinner = ora('Loading schema').start();
 
@@ -209,7 +212,7 @@ export async function validateCommand(
         fileSpinner.succeed(chalk.green(`✓ ${path.relative(process.cwd(), irFile)}`));
 
         if (result.warnings.length > 0) {
-          result.warnings.forEach(warning => {
+          result.warnings.forEach((warning) => {
             console.warn(chalk.yellow(`  ⚠ ${warning}`));
           });
         }
@@ -218,18 +221,18 @@ export async function validateCommand(
       } else {
         fileSpinner.fail(chalk.red(`✗ ${path.relative(process.cwd(), irFile)}`));
 
-        result.errors.forEach(error => {
+        result.errors.forEach((error) => {
           console.error(chalk.red(`  • ${error}`));
         });
 
         if (result.warnings.length > 0) {
-          result.warnings.forEach(warning => {
+          result.warnings.forEach((warning) => {
             console.warn(chalk.yellow(`  ⚠ ${warning}`));
           });
         }
 
         invalidCount++;
-        allErrors.push(...result.errors.map(e => `${path.basename(irFile)}: ${e}`));
+        allErrors.push(...result.errors.map((e) => `${path.basename(irFile)}: ${e}`));
       }
 
       console.log('');
@@ -249,7 +252,6 @@ export async function validateCommand(
       }
       process.exit(1);
     }
-
   } catch (error: unknown) {
     spinner.fail(`Validation failed: ${errorMessage(error)}`);
     console.error(error);

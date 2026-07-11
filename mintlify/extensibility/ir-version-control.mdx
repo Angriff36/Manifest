@@ -1,7 +1,7 @@
 ---
-title: "IR version control with semantic tags and integrity checks"
-sidebarTitle: "IR Version Control"
-description: "Persist IR snapshots with semantic version tags, auto-increment versions from breaking-change analysis, generate changelogs, and verify integrity with SHA-256 hashing."
+title: 'IR version control with semantic tags and integrity checks'
+sidebarTitle: 'IR Version Control'
+description: 'Persist IR snapshots with semantic version tags, auto-increment versions from breaking-change analysis, generate changelogs, and verify integrity with SHA-256 hashing.'
 ---
 
 IR version control persists IR snapshots with semantic version tags, generates changelogs between versions, and verifies integrity via SHA-256 hashing. The pure versioning logic lives in `src/manifest/ir-version-store.ts`; filesystem I/O and the user-facing commands live in the `manifest versions` CLI command group.
@@ -50,7 +50,7 @@ CLI subcommands (under `manifest versions`, all accepting `--store <path>`): `li
 ## Notes and limitations
 
 <Note>
-The store module performs no filesystem access; persistence is handled by the CLI command layer.
+  The store module performs no filesystem access; persistence is handled by the CLI command layer.
 </Note>
 
 Semver tags must match `major.minor.patch` exactly — prerelease and build-metadata suffixes are not parsed. `autoIncrementSemver` resolves a major bump only from breaking changes and otherwise treats any change as a minor bump, so it does not distinguish deprecations from compatible additions in the resulting version number. Version references resolve against the in-index entries; an unknown reference returns `undefined`.
@@ -70,7 +70,7 @@ manifest versions decompress app.ir.bin --output ir/app.ir.json
 ### Programmatic API
 
 ```typescript
-import { compressIR, decompressIR } from "@angriff36/manifest/compression";
+import { compressIR, decompressIR } from '@angriff36/manifest/compression';
 
 // Compress
 const compressed = compressIR(irJson);
@@ -82,7 +82,8 @@ const original = decompressIR(compressed);
 ```
 
 <Note>
-IR compression uses standard deflate/inflate. It is deterministic — the same IR always produces the same compressed output. This makes it safe for content-addressed storage and caching.
+  IR compression uses standard deflate/inflate. It is deterministic — the same IR always produces
+  the same compressed output. This makes it safe for content-addressed storage and caching.
 </Note>
 
 ## IR entity relationship graph visualizer
@@ -99,11 +100,11 @@ manifest diagram ir/app.ir.json --type er --format dot --output diagrams/
 
 The visualizer produces:
 
-| Diagram type | Content |
-|-------------|---------|
-| `er` | Entity boxes with properties, relationships as labeled edges |
-| `state` | State transition diagrams for entities with state fields |
-| `sequence` | Command execution sequences showing guard → action → emit flow |
+| Diagram type | Content                                                        |
+| ------------ | -------------------------------------------------------------- |
+| `er`         | Entity boxes with properties, relationships as labeled edges   |
+| `state`      | State transition diagrams for entities with state fields       |
+| `sequence`   | Command execution sequences showing guard → action → emit flow |
 
 The graph is derived entirely from the IR — no source file access is needed.
 
@@ -128,5 +129,7 @@ The changelog includes:
 5. **Migration steps** — SQL and Prisma migration actions
 
 <Note>
-The changelog is generated from IR structural comparison, not from Git history. This means it captures semantic changes that a text diff would miss (e.g., renaming a property that produces identical JSON structure but different semantics).
+  The changelog is generated from IR structural comparison, not from Git history. This means it
+  captures semantic changes that a text diff would miss (e.g., renaming a property that produces
+  identical JSON structure but different semantics).
 </Note>

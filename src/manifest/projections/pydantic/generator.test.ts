@@ -38,38 +38,45 @@ describe('PydanticProjection', () => {
     });
 
     it('should declare correct surfaces', () => {
-      expect(projection.surfaces).toEqual(['pydantic.entity', 'pydantic.command', 'pydantic.models', 'pydantic.client']);
+      expect(projection.surfaces).toEqual([
+        'pydantic.entity',
+        'pydantic.command',
+        'pydantic.models',
+        'pydantic.client',
+      ]);
     });
   });
 
   describe('pydantic.entity surface', () => {
     it('should generate a simple entity model', () => {
       const ir: IR = makeIR({
-        entities: [{
-          name: 'User',
-          properties: [
-            {
-              name: 'id',
-              type: { name: 'uuid', nullable: false },
-              modifiers: ['required', 'unique'],
-            },
-            {
-              name: 'email',
-              type: { name: 'string', nullable: false },
-              modifiers: ['required'],
-            },
-            {
-              name: 'age',
-              type: { name: 'int', nullable: true },
-              modifiers: [],
-            },
-          ],
-          computedProperties: [],
-          relationships: [],
-          constraints: [],
-          commands: [],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'User',
+            properties: [
+              {
+                name: 'id',
+                type: { name: 'uuid', nullable: false },
+                modifiers: ['required', 'unique'],
+              },
+              {
+                name: 'email',
+                type: { name: 'string', nullable: false },
+                modifiers: ['required'],
+              },
+              {
+                name: 'age',
+                type: { name: 'int', nullable: true },
+                modifiers: [],
+              },
+            ],
+            computedProperties: [],
+            relationships: [],
+            constraints: [],
+            commands: [],
+            policies: [],
+          },
+        ],
         commands: [],
       });
 
@@ -97,32 +104,34 @@ describe('PydanticProjection', () => {
 
     it('should handle optional properties with defaults', () => {
       const ir: IR = makeIR({
-        entities: [{
-          name: 'Product',
-          properties: [
-            {
-              name: 'name',
-              type: { name: 'string', nullable: false },
-              modifiers: ['required'],
-            },
-            {
-              name: 'price',
-              type: { name: 'decimal', nullable: false },
-              modifiers: [],
-              defaultValue: { kind: 'number', value: 0 },
-            },
-            {
-              name: 'description',
-              type: { name: 'text', nullable: true },
-              modifiers: [],
-            },
-          ],
-          computedProperties: [],
-          relationships: [],
-          constraints: [],
-          commands: [],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'Product',
+            properties: [
+              {
+                name: 'name',
+                type: { name: 'string', nullable: false },
+                modifiers: ['required'],
+              },
+              {
+                name: 'price',
+                type: { name: 'decimal', nullable: false },
+                modifiers: [],
+                defaultValue: { kind: 'number', value: 0 },
+              },
+              {
+                name: 'description',
+                type: { name: 'text', nullable: true },
+                modifiers: [],
+              },
+            ],
+            computedProperties: [],
+            relationships: [],
+            constraints: [],
+            commands: [],
+            policies: [],
+          },
+        ],
         commands: [],
       });
 
@@ -141,56 +150,58 @@ describe('PydanticProjection', () => {
 
     it('should generate field validators from constraints', () => {
       const ir: IR = makeIR({
-        entities: [{
-          name: 'Person',
-          properties: [
-            {
-              name: 'age',
-              type: { name: 'int', nullable: false },
-              modifiers: ['required'],
-            },
-            {
-              name: 'username',
-              type: { name: 'string', nullable: false },
-              modifiers: ['required'],
-            },
-          ],
-          computedProperties: [],
-          relationships: [],
-          constraints: [
-            {
-              name: 'age_range',
-              code: 'age_range',
-              severity: 'block',
-              expression: {
-                kind: 'call',
-                callee: { kind: 'identifier', name: 'between' },
-                args: [
-                  { kind: 'identifier', name: 'age' },
-                  { kind: 'literal', value: { kind: 'number', value: 0 } },
-                  { kind: 'literal', value: { kind: 'number', value: 120 } },
-                ],
+        entities: [
+          {
+            name: 'Person',
+            properties: [
+              {
+                name: 'age',
+                type: { name: 'int', nullable: false },
+                modifiers: ['required'],
               },
-            },
-            {
-              name: 'username_length',
-              code: 'username_length',
-              severity: 'block',
-              expression: {
-                kind: 'binary',
-                operator: '<=',
-                left: {
+              {
+                name: 'username',
+                type: { name: 'string', nullable: false },
+                modifiers: ['required'],
+              },
+            ],
+            computedProperties: [],
+            relationships: [],
+            constraints: [
+              {
+                name: 'age_range',
+                code: 'age_range',
+                severity: 'block',
+                expression: {
                   kind: 'call',
-                  callee: { kind: 'identifier', name: 'length' },
-                  args: [{ kind: 'identifier', name: 'username' }],
+                  callee: { kind: 'identifier', name: 'between' },
+                  args: [
+                    { kind: 'identifier', name: 'age' },
+                    { kind: 'literal', value: { kind: 'number', value: 0 } },
+                    { kind: 'literal', value: { kind: 'number', value: 120 } },
+                  ],
                 },
-                right: { kind: 'literal', value: { kind: 'number', value: 20 } },
               },
-            },
-          ],
-          commands: [],
-          policies: [],
-        }],
+              {
+                name: 'username_length',
+                code: 'username_length',
+                severity: 'block',
+                expression: {
+                  kind: 'binary',
+                  operator: '<=',
+                  left: {
+                    kind: 'call',
+                    callee: { kind: 'identifier', name: 'length' },
+                    args: [{ kind: 'identifier', name: 'username' }],
+                  },
+                  right: { kind: 'literal', value: { kind: 'number', value: 20 } },
+                },
+              },
+            ],
+            commands: [],
+            policies: [],
+          },
+        ],
         commands: [],
       });
 
@@ -214,38 +225,40 @@ describe('PydanticProjection', () => {
 
     it('should generate computed properties with @computed_field', () => {
       const ir: IR = makeIR({
-        entities: [{
-          name: 'Invoice',
-          properties: [
-            {
-              name: 'subtotal',
-              type: { name: 'decimal', nullable: false },
-              modifiers: ['required'],
-            },
-            {
-              name: 'taxRate',
-              type: { name: 'float', nullable: false },
-              modifiers: ['required'],
-            },
-          ],
-          computedProperties: [
-            {
-              name: 'total',
-              type: { name: 'decimal', nullable: false },
-              expression: {
-                kind: 'binary',
-                operator: '*',
-                left: { kind: 'identifier', name: 'subtotal' },
-                right: { kind: 'identifier', name: 'taxRate' },
+        entities: [
+          {
+            name: 'Invoice',
+            properties: [
+              {
+                name: 'subtotal',
+                type: { name: 'decimal', nullable: false },
+                modifiers: ['required'],
               },
-              dependencies: ['subtotal', 'taxRate'],
-            },
-          ],
-          relationships: [],
-          constraints: [],
-          commands: [],
-          policies: [],
-        }],
+              {
+                name: 'taxRate',
+                type: { name: 'float', nullable: false },
+                modifiers: ['required'],
+              },
+            ],
+            computedProperties: [
+              {
+                name: 'total',
+                type: { name: 'decimal', nullable: false },
+                expression: {
+                  kind: 'binary',
+                  operator: '*',
+                  left: { kind: 'identifier', name: 'subtotal' },
+                  right: { kind: 'identifier', name: 'taxRate' },
+                },
+                dependencies: ['subtotal', 'taxRate'],
+              },
+            ],
+            relationships: [],
+            constraints: [],
+            commands: [],
+            policies: [],
+          },
+        ],
         commands: [],
       });
 
@@ -266,26 +279,36 @@ describe('PydanticProjection', () => {
 
     it('should handle array and map types', () => {
       const ir: IR = makeIR({
-        entities: [{
-          name: 'Blog',
-          properties: [
-            {
-              name: 'tags',
-              type: { name: 'array', nullable: false, generic: { name: 'string', nullable: false } },
-              modifiers: [],
-            },
-            {
-              name: 'metadata',
-              type: { name: 'map', nullable: false, generic: { name: 'string', nullable: false } },
-              modifiers: [],
-            },
-          ],
-          computedProperties: [],
-          relationships: [],
-          constraints: [],
-          commands: [],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'Blog',
+            properties: [
+              {
+                name: 'tags',
+                type: {
+                  name: 'array',
+                  nullable: false,
+                  generic: { name: 'string', nullable: false },
+                },
+                modifiers: [],
+              },
+              {
+                name: 'metadata',
+                type: {
+                  name: 'map',
+                  nullable: false,
+                  generic: { name: 'string', nullable: false },
+                },
+                modifiers: [],
+              },
+            ],
+            computedProperties: [],
+            relationships: [],
+            constraints: [],
+            commands: [],
+            policies: [],
+          },
+        ],
         commands: [],
       });
 
@@ -323,25 +346,27 @@ describe('PydanticProjection', () => {
     it('should generate command parameter models', () => {
       const ir: IR = makeIR({
         entities: [],
-        commands: [{
-          name: 'createUser',
-          entity: 'User',
-          parameters: [
-            {
-              name: 'email',
-              type: { name: 'string', nullable: false },
-              required: true,
-            },
-            {
-              name: 'name',
-              type: { name: 'string', nullable: true },
-              required: false,
-            },
-          ],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'createUser',
+            entity: 'User',
+            parameters: [
+              {
+                name: 'email',
+                type: { name: 'string', nullable: false },
+                required: true,
+              },
+              {
+                name: 'name',
+                type: { name: 'string', nullable: true },
+                required: false,
+              },
+            ],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
 
       const result = projection.generate(ir, {
@@ -361,15 +386,17 @@ describe('PydanticProjection', () => {
     it('should generate command return type models', () => {
       const ir: IR = makeIR({
         entities: [],
-        commands: [{
-          name: 'getUser',
-          entity: 'User',
-          parameters: [],
-          guards: [],
-          actions: [],
-          emits: [],
-          returns: { name: 'object', nullable: false },
-        }],
+        commands: [
+          {
+            name: 'getUser',
+            entity: 'User',
+            parameters: [],
+            guards: [],
+            actions: [],
+            emits: [],
+            returns: { name: 'object', nullable: false },
+          },
+        ],
       });
 
       const result = projection.generate(ir, {
@@ -388,27 +415,31 @@ describe('PydanticProjection', () => {
   describe('pydantic.models surface', () => {
     it('should generate all models in a single artifact', () => {
       const ir: IR = makeIR({
-        entities: [{
-          name: 'User',
-          properties: [
-            { name: 'id', type: { name: 'uuid', nullable: false }, modifiers: ['required'] },
-          ],
-          computedProperties: [],
-          relationships: [],
-          constraints: [],
-          commands: [],
-          policies: [],
-        }],
-        commands: [{
-          name: 'createUser',
-          entity: 'User',
-          parameters: [
-            { name: 'email', type: { name: 'string', nullable: false }, required: true },
-          ],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        entities: [
+          {
+            name: 'User',
+            properties: [
+              { name: 'id', type: { name: 'uuid', nullable: false }, modifiers: ['required'] },
+            ],
+            computedProperties: [],
+            relationships: [],
+            constraints: [],
+            commands: [],
+            policies: [],
+          },
+        ],
+        commands: [
+          {
+            name: 'createUser',
+            entity: 'User',
+            parameters: [
+              { name: 'email', type: { name: 'string', nullable: false }, required: true },
+            ],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
 
       const result = projection.generate(ir, {
@@ -426,17 +457,19 @@ describe('PydanticProjection', () => {
 
     it('should emit JSON schema export when requested', () => {
       const ir: IR = makeIR({
-        entities: [{
-          name: 'Item',
-          properties: [
-            { name: 'name', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-          ],
-          computedProperties: [],
-          relationships: [],
-          constraints: [],
-          commands: [],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'Item',
+            properties: [
+              { name: 'name', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+            ],
+            computedProperties: [],
+            relationships: [],
+            constraints: [],
+            commands: [],
+            policies: [],
+          },
+        ],
         commands: [],
       });
 
@@ -457,28 +490,34 @@ describe('PydanticProjection', () => {
   describe('type mapping', () => {
     it('should map all IR types correctly', () => {
       const ir: IR = makeIR({
-        entities: [{
-          name: 'TypeTest',
-          properties: [
-            { name: 'str_field', type: { name: 'string', nullable: false }, modifiers: [] },
-            { name: 'bool_field', type: { name: 'boolean', nullable: false }, modifiers: [] },
-            { name: 'int_field', type: { name: 'int', nullable: false }, modifiers: [] },
-            { name: 'float_field', type: { name: 'float', nullable: false }, modifiers: [] },
-            { name: 'decimal_field', type: { name: 'decimal', nullable: false }, modifiers: [] },
-            { name: 'date_field', type: { name: 'date', nullable: false }, modifiers: [] },
-            { name: 'datetime_field', type: { name: 'datetime', nullable: false }, modifiers: [] },
-            { name: 'uuid_field', type: { name: 'uuid', nullable: false }, modifiers: [] },
-            { name: 'email_field', type: { name: 'email', nullable: false }, modifiers: [] },
-            { name: 'url_field', type: { name: 'url', nullable: false }, modifiers: [] },
-            { name: 'bytes_field', type: { name: 'bytes', nullable: false }, modifiers: [] },
-            { name: 'json_field', type: { name: 'json', nullable: false }, modifiers: [] },
-          ],
-          computedProperties: [],
-          relationships: [],
-          constraints: [],
-          commands: [],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'TypeTest',
+            properties: [
+              { name: 'str_field', type: { name: 'string', nullable: false }, modifiers: [] },
+              { name: 'bool_field', type: { name: 'boolean', nullable: false }, modifiers: [] },
+              { name: 'int_field', type: { name: 'int', nullable: false }, modifiers: [] },
+              { name: 'float_field', type: { name: 'float', nullable: false }, modifiers: [] },
+              { name: 'decimal_field', type: { name: 'decimal', nullable: false }, modifiers: [] },
+              { name: 'date_field', type: { name: 'date', nullable: false }, modifiers: [] },
+              {
+                name: 'datetime_field',
+                type: { name: 'datetime', nullable: false },
+                modifiers: [],
+              },
+              { name: 'uuid_field', type: { name: 'uuid', nullable: false }, modifiers: [] },
+              { name: 'email_field', type: { name: 'email', nullable: false }, modifiers: [] },
+              { name: 'url_field', type: { name: 'url', nullable: false }, modifiers: [] },
+              { name: 'bytes_field', type: { name: 'bytes', nullable: false }, modifiers: [] },
+              { name: 'json_field', type: { name: 'json', nullable: false }, modifiers: [] },
+            ],
+            computedProperties: [],
+            relationships: [],
+            constraints: [],
+            commands: [],
+            policies: [],
+          },
+        ],
         commands: [],
       });
 
@@ -513,17 +552,23 @@ describe('PydanticProjection', () => {
 
     it('should generate warning for unknown types', () => {
       const ir: IR = makeIR({
-        entities: [{
-          name: 'UnknownTest',
-          properties: [
-            { name: 'unknown_field', type: { name: 'foobar_type', nullable: false }, modifiers: [] },
-          ],
-          computedProperties: [],
-          relationships: [],
-          constraints: [],
-          commands: [],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'UnknownTest',
+            properties: [
+              {
+                name: 'unknown_field',
+                type: { name: 'foobar_type', nullable: false },
+                modifiers: [],
+              },
+            ],
+            computedProperties: [],
+            relationships: [],
+            constraints: [],
+            commands: [],
+            policies: [],
+          },
+        ],
         commands: [],
       });
 
@@ -533,10 +578,10 @@ describe('PydanticProjection', () => {
       });
 
       // Should have a warning diagnostic
-      const warningDiagnostics = result.diagnostics.filter(d => d.severity === 'warning');
+      const warningDiagnostics = result.diagnostics.filter((d) => d.severity === 'warning');
       expect(warningDiagnostics.length).toBeGreaterThan(0);
 
-      const warning = warningDiagnostics.find(d => d.code === 'PYDANTIC_UNKNOWN_TYPE');
+      const warning = warningDiagnostics.find((d) => d.code === 'PYDANTIC_UNKNOWN_TYPE');
       expect(warning).toBeDefined();
 
       // Code should still generate with Any fallback
@@ -566,29 +611,33 @@ describe('PydanticProjection', () => {
   describe('pydantic.client surface', () => {
     it('should generate Python client with httpx', () => {
       const ir: IR = makeIR({
-        entities: [{
-          name: 'User',
-          properties: [
-            { name: 'id', type: { name: 'uuid', nullable: false }, modifiers: ['required'] },
-            { name: 'email', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-          ],
-          computedProperties: [],
-          relationships: [],
-          constraints: [],
-          commands: [],
-          policies: [],
-        }],
-        commands: [{
-          name: 'createUser',
-          entity: 'User',
-          parameters: [
-            { name: 'email', type: { name: 'string', nullable: false }, required: true },
-            { name: 'name', type: { name: 'string', nullable: true }, required: false },
-          ],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        entities: [
+          {
+            name: 'User',
+            properties: [
+              { name: 'id', type: { name: 'uuid', nullable: false }, modifiers: ['required'] },
+              { name: 'email', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+            ],
+            computedProperties: [],
+            relationships: [],
+            constraints: [],
+            commands: [],
+            policies: [],
+          },
+        ],
+        commands: [
+          {
+            name: 'createUser',
+            entity: 'User',
+            parameters: [
+              { name: 'email', type: { name: 'string', nullable: false }, required: true },
+              { name: 'name', type: { name: 'string', nullable: true }, required: false },
+            ],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
 
       const result = projection.generate(ir, {
@@ -623,17 +672,19 @@ describe('PydanticProjection', () => {
     it('should generate convenience functions for commands', () => {
       const ir: IR = makeIR({
         entities: [],
-        commands: [{
-          name: 'createPost',
-          entity: 'Post',
-          parameters: [
-            { name: 'title', type: { name: 'string', nullable: false }, required: true },
-            { name: 'content', type: { name: 'text', nullable: false }, required: true },
-          ],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'createPost',
+            entity: 'Post',
+            parameters: [
+              { name: 'title', type: { name: 'string', nullable: false }, required: true },
+              { name: 'content', type: { name: 'text', nullable: false }, required: true },
+            ],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
 
       const result = projection.generate(ir, {
@@ -654,14 +705,16 @@ describe('PydanticProjection', () => {
       const ir: IR = makeIR({
         entities: [],
         commands: [],
-        enums: [{
-          name: 'Status',
-          values: [
-            { name: 'active', label: 'Active' },
-            { name: 'inactive', label: 'Inactive' },
-            { name: 'pending', label: 'Pending' },
-          ],
-        }],
+        enums: [
+          {
+            name: 'Status',
+            values: [
+              { name: 'active', label: 'Active' },
+              { name: 'inactive', label: 'Inactive' },
+              { name: 'pending', label: 'Pending' },
+            ],
+          },
+        ],
       });
 
       const result = projection.generate(ir, {
@@ -684,15 +737,17 @@ describe('PydanticProjection', () => {
       const ir: IR = makeIR({
         entities: [],
         commands: [],
-        enums: [{
-          name: 'Role',
-          module: 'auth',
-          values: [
-            { name: 'admin', label: 'Administrator' },
-            { name: 'user', label: 'Standard User' },
-            { name: 'guest', label: 'Guest' },
-          ],
-        }],
+        enums: [
+          {
+            name: 'Role',
+            module: 'auth',
+            values: [
+              { name: 'admin', label: 'Administrator' },
+              { name: 'user', label: 'Standard User' },
+              { name: 'guest', label: 'Guest' },
+            ],
+          },
+        ],
       });
 
       const result = projection.generate(ir, {

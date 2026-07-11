@@ -80,11 +80,7 @@ export async function writeSeedPack(dir: string, pack: SeedPack): Promise<void> 
     ...pack.meta,
     entities: pack.tables.map((t) => t.entity),
   };
-  await fs.writeFile(
-    path.join(dir, META_FILE),
-    JSON.stringify(meta, null, 2) + '\n',
-    'utf8'
-  );
+  await fs.writeFile(path.join(dir, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf8');
   for (const table of pack.tables) {
     const file = path.join(dir, ENTITIES_DIR, `${table.entity}.csv`);
     await fs.writeFile(file, serializeCsv(table.columns, table.rows), 'utf8');

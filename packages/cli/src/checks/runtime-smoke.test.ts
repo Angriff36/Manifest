@@ -23,23 +23,23 @@ describe('runRuntimeSmoke', () => {
 
   it('asserts exactly-one audit emission per runCommand attempt', async () => {
     const result = await runRuntimeSmoke();
-    const audit = result.assertions.find(a => a.name === 'audit.emittedExactlyOnce');
+    const audit = result.assertions.find((a) => a.name === 'audit.emittedExactlyOnce');
     expect(audit?.passed).toBe(true);
     expect(audit?.actual).toBe(1);
   });
 
   it('asserts outbox enqueue produced exactly one pending entry', async () => {
     const result = await runRuntimeSmoke();
-    const outbox = result.assertions.find(a => a.name === 'outbox.enqueuedExactlyOnce');
+    const outbox = result.assertions.find((a) => a.name === 'outbox.enqueuedExactlyOnce');
     expect(outbox?.passed).toBe(true);
     expect(outbox?.actual).toBe(1);
   });
 
   it('threads RuntimeContext fields through into the AuditRecord', async () => {
     const result = await runRuntimeSmoke();
-    const tenant = result.assertions.find(a => a.name === 'audit.tenantId');
-    const actor = result.assertions.find(a => a.name === 'audit.actorId');
-    const source = result.assertions.find(a => a.name === 'audit.source');
+    const tenant = result.assertions.find((a) => a.name === 'audit.tenantId');
+    const actor = result.assertions.find((a) => a.name === 'audit.actorId');
+    const source = result.assertions.find((a) => a.name === 'audit.source');
     expect(tenant?.passed).toBe(true);
     expect(actor?.passed).toBe(true);
     expect(source?.passed).toBe(true);

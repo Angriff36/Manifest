@@ -103,7 +103,7 @@ async function getIRFiles(irInput: string): Promise<string[]> {
 
   // Directory: find all .ir.json files
   const files = await glob('**/*.ir.json', { cwd: resolved });
-  return files.map(f => path.join(resolved, f));
+  return files.map((f) => path.join(resolved, f));
 }
 
 /**
@@ -112,7 +112,7 @@ async function getIRFiles(irInput: string): Promise<string[]> {
 async function generateFromIR(
   irFile: string,
   options: GenerateOptions,
-  spinner: Ora
+  spinner: Ora,
 ): Promise<void> {
   const { NextJsProjection, loadIR } = await loadDependencies();
 
@@ -200,7 +200,7 @@ async function generateWithRegistryProjection(
   ir: IR,
   options: GenerateOptions,
   outputDir: string,
-  spinner: Ora
+  spinner: Ora,
 ): Promise<void> {
   const registry = await import('@angriff36/manifest/projections');
   const projection = registry.getProjection(options.projection);
@@ -215,14 +215,15 @@ async function generateWithRegistryProjection(
 
   // `--surface all` walks every surface; otherwise accept either the full
   // surface id ("kysely.types") or its short suffix ("types").
-  const surfaces = options.surface === 'all'
-    ? [...projection.surfaces]
-    : projection.surfaces.filter(
-        (s) => s === options.surface || s.endsWith(`.${options.surface}`)
-      );
+  const surfaces =
+    options.surface === 'all'
+      ? [...projection.surfaces]
+      : projection.surfaces.filter(
+          (s) => s === options.surface || s.endsWith(`.${options.surface}`),
+        );
   if (surfaces.length === 0) {
     throw new Error(
-      `Unknown surface: ${options.surface} (projection '${projection.name}' supports: ${projection.surfaces.join(', ')})`
+      `Unknown surface: ${options.surface} (projection '${projection.name}' supports: ${projection.surfaces.join(', ')})`,
     );
   }
 
@@ -239,7 +240,9 @@ async function generateWithRegistryProjection(
         }
       }
       for (const diag of result.diagnostics) {
-        if (!merged.diagnostics.some((d) => d.message === diag.message && d.entity === diag.entity)) {
+        if (
+          !merged.diagnostics.some((d) => d.message === diag.message && d.entity === diag.entity)
+        ) {
           merged.diagnostics.push(diag);
         }
       }
@@ -247,7 +250,9 @@ async function generateWithRegistryProjection(
 
     collect(projection.generate(ir, { surface, options: projectionOptions }));
     for (const entity of ir.entities ?? []) {
-      collect(projection.generate(ir, { surface, entity: entity.name, options: projectionOptions }));
+      collect(
+        projection.generate(ir, { surface, entity: entity.name, options: projectionOptions }),
+      );
     }
 
     // The surface walk probes every surface globally and per-entity; scoped
@@ -278,7 +283,7 @@ async function generateAllSurfaces(
   ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: NextJsProjectionOptions
+  projectionOptions: NextJsProjectionOptions,
 ): Promise<void> {
   const readRoutesEnabled = projectionOptions?.readRoutes?.enabled !== false; // default true
   const dispatcherEnabled = projectionOptions?.dispatcher?.enabled !== false; // default true
@@ -295,7 +300,9 @@ async function generateAllSurfaces(
     spinner.text = 'Generating concrete command routes (opt-in)...';
     await generateCommands(projection, ir, outputDir, spinner, projectionOptions);
   } else {
-    spinner.info('Skipping concrete per-command routes (concreteCommandRoutes.enabled: false — dispatcher is canonical)');
+    spinner.info(
+      'Skipping concrete per-command routes (concreteCommandRoutes.enabled: false — dispatcher is canonical)',
+    );
   }
 
   if (dispatcherEnabled) {
@@ -317,15 +324,17 @@ async function generateAllSurfaces(
   // registers them. Gated so the common (no schedules/approvals/async) program
   // doesn't emit an empty vercel.json.
   const hasSchedules = (ir.schedules?.length ?? 0) > 0;
-  const hasExpiringApprovals = (ir.entities ?? []).some(
-    (e) => (e.approvals ?? []).some((a) => typeof a.timeout === 'number'),
+  const hasExpiringApprovals = (ir.entities ?? []).some((e) =>
+    (e.approvals ?? []).some((a) => typeof a.timeout === 'number'),
   );
   const hasAsyncCommands = (ir.commands ?? []).some((c) => c.async === true);
   if (hasSchedules || hasExpiringApprovals || hasAsyncCommands) {
     spinner.text = 'Generating schedule cron routes...';
     await generateSchedule(projection, ir, outputDir, spinner, projectionOptions);
   } else {
-    spinner.info('Skipping schedule cron routes (no schedules, expiring approvals, or async commands)');
+    spinner.info(
+      'Skipping schedule cron routes (no schedules, expiring approvals, or async commands)',
+    );
   }
 
   // Webhook surface: one App Router route per declared inbound webhook, served
@@ -364,7 +373,7 @@ async function generateCompanions(
   ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: NextJsProjectionOptions
+  projectionOptions: NextJsProjectionOptions,
 ): Promise<void> {
   spinner.text = 'Generating companions...';
   const result = projection.generate(ir, {
@@ -384,7 +393,7 @@ async function generateSchedule(
   ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: NextJsProjectionOptions
+  projectionOptions: NextJsProjectionOptions,
 ): Promise<void> {
   spinner.text = 'Generating schedule cron routes...';
   const result = projection.generate(ir, {
@@ -404,7 +413,7 @@ async function generateWebhooks(
   ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: NextJsProjectionOptions
+  projectionOptions: NextJsProjectionOptions,
 ): Promise<void> {
   spinner.text = 'Generating webhook routes...';
   const result = projection.generate(ir, {
@@ -425,7 +434,7 @@ async function generateRealtime(
   ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: NextJsProjectionOptions
+  projectionOptions: NextJsProjectionOptions,
 ): Promise<void> {
   spinner.text = 'Generating realtime surfaces...';
   const shared = projection.generate(ir, {
@@ -456,7 +465,7 @@ async function generateDispatcher(
   ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: NextJsProjectionOptions
+  projectionOptions: NextJsProjectionOptions,
 ): Promise<void> {
   spinner.text = 'Generating dispatcher...';
   const result = projection.generate(ir, {
@@ -483,7 +492,7 @@ async function generateRoutes(
   ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: NextJsProjectionOptions
+  projectionOptions: NextJsProjectionOptions,
 ): Promise<void> {
   const entities = ir.entities || [];
 
@@ -509,7 +518,7 @@ async function generateCommands(
   ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: NextJsProjectionOptions
+  projectionOptions: NextJsProjectionOptions,
 ): Promise<void> {
   const commands = ir.commands || [];
 
@@ -538,7 +547,7 @@ async function generateTypes(
   ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: NextJsProjectionOptions
+  projectionOptions: NextJsProjectionOptions,
 ): Promise<void> {
   spinner.text = 'Generating TypeScript types...';
 
@@ -557,7 +566,7 @@ async function generateClient(
   ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: NextJsProjectionOptions
+  projectionOptions: NextJsProjectionOptions,
 ): Promise<void> {
   spinner.text = 'Generating client SDK...';
 
@@ -587,7 +596,7 @@ interface WriteContext {
 function recordGeneration(
   artifact: ProjectionResult['artifacts'][number],
   outputPath: string,
-  context: WriteContext | undefined
+  context: WriteContext | undefined,
 ): void {
   if (!context || !artifact.pathHint) return;
   const outputFile = path.relative(process.cwd(), outputPath).split(path.sep).join('/');
@@ -612,7 +621,7 @@ function recordGeneration(
 async function writeProjectionResult(
   result: ProjectionResult,
   outputDir: string,
-  opts: { failOnError?: boolean; context?: WriteContext } = {}
+  opts: { failOnError?: boolean; context?: WriteContext } = {},
 ): Promise<void> {
   // Show diagnostics first (if any errors, we might still write files)
   if (result.diagnostics && result.diagnostics.length > 0) {
@@ -661,7 +670,10 @@ async function writeProjectionResult(
     const hintSegs = segs(hint);
     let overlap = Math.min(outSegs.length, hintSegs.length);
     for (; overlap > 0; overlap--) {
-      if (outSegs.slice(outSegs.length - overlap).join('/') === hintSegs.slice(0, overlap).join('/')) break;
+      if (
+        outSegs.slice(outSegs.length - overlap).join('/') === hintSegs.slice(0, overlap).join('/')
+      )
+        break;
     }
     if (overlap > 0) {
       const collapsed = hintSegs.slice(overlap).join('/');
@@ -705,10 +717,7 @@ async function writeProjectionResult(
 /**
  * Generate command handler
  */
-export async function generateCommand(
-  ir: string,
-  options: GenerateOptions
-): Promise<void> {
+export async function generateCommand(ir: string, options: GenerateOptions): Promise<void> {
   const spinner = ora('Preparing to generate').start();
 
   // --check drift mode: compare generated code to committed files, no writes.
@@ -756,18 +765,26 @@ export async function generateCommand(
       // The generation manifest is a generated file too: --check verifies the
       // committed one matches what this run would emit (byte-stable contract).
       if (!generationRecorder.isEmpty) {
-        const manifestPath = path.resolve(process.cwd(), options.output, 'generation.manifest.json');
+        const manifestPath = path.resolve(
+          process.cwd(),
+          options.output,
+          'generation.manifest.json',
+        );
         const committed = await fs.readFile(manifestPath, 'utf-8').catch(() => null);
         if (committed !== generationRecorder.serialize()) {
           driftedFiles.push(path.relative(process.cwd(), manifestPath));
         }
       }
       if (driftedFiles.length > 0) {
-        console.error(chalk.red(`\n  Drift: ${driftedFiles.length} generated file(s) differ from committed:`));
+        console.error(
+          chalk.red(`\n  Drift: ${driftedFiles.length} generated file(s) differ from committed:`),
+        );
         for (const f of driftedFiles) {
           console.error(chalk.red(`    • ${f}`));
         }
-        console.error(chalk.red('  Run `manifest generate` (without --check) and commit the result.'));
+        console.error(
+          chalk.red('  Run `manifest generate` (without --check) and commit the result.'),
+        );
         if (options.throwOnError) throw new DriftError(driftedFiles.length);
         process.exit(1);
       }
@@ -782,7 +799,9 @@ export async function generateCommand(
       const manifestPath = path.resolve(process.cwd(), options.output, 'generation.manifest.json');
       await fs.mkdir(path.dirname(manifestPath), { recursive: true });
       await fs.writeFile(manifestPath, generationRecorder.serialize(), 'utf-8');
-      console.log(chalk.gray(`  → ${path.relative(process.cwd(), manifestPath)} (generation manifest)`));
+      console.log(
+        chalk.gray(`  → ${path.relative(process.cwd(), manifestPath)} (generation manifest)`),
+      );
     }
 
     spinner.succeed(`Generated code from ${successCount} IR file(s)`);
@@ -800,14 +819,18 @@ export async function generateCommand(
  * projection scripts. Aggregates failures/drift across projections and exits
  * once at the end.
  */
-export async function generateAllFromConfig(options: { check?: boolean; irOverride?: string } = {}): Promise<void> {
+export async function generateAllFromConfig(
+  options: { check?: boolean; irOverride?: string } = {},
+): Promise<void> {
   const { loadAllConfigs, layerProjectionOptions } = await import('../utils/config.js');
   const { build } = await loadAllConfigs(process.cwd());
   const projections = build.projections ?? {};
   const names = Object.keys(projections);
 
   if (names.length === 0) {
-    console.warn(chalk.yellow('No projections configured in manifest.config.yaml — nothing to generate.'));
+    console.warn(
+      chalk.yellow('No projections configured in manifest.config.yaml — nothing to generate.'),
+    );
     return;
   }
 
@@ -816,7 +839,9 @@ export async function generateAllFromConfig(options: { check?: boolean; irOverri
   // (types/client/registries) would be written once per IR with last-write-wins.
   // An explicit IR path (the merged IR from `compile --all`) avoids that.
   const irSource = options.irOverride || build.output || 'ir/';
-  console.log(chalk.bold(`\nGenerating ${names.length} configured projection(s): ${names.join(', ')}`));
+  console.log(
+    chalk.bold(`\nGenerating ${names.length} configured projection(s): ${names.join(', ')}`),
+  );
   console.log(chalk.gray(`  IR source: ${irSource}`));
 
   const failures: string[] = [];
@@ -848,7 +873,9 @@ export async function generateAllFromConfig(options: { check?: boolean; irOverri
       } else {
         failures.push(`${name}: ${error instanceof Error ? error.message : String(error)}`);
       }
-      console.error(chalk.red(`  ${name} failed: ${error instanceof Error ? error.message : String(error)}`));
+      console.error(
+        chalk.red(`  ${name} failed: ${error instanceof Error ? error.message : String(error)}`),
+      );
     }
   }
 
@@ -860,7 +887,9 @@ export async function generateAllFromConfig(options: { check?: boolean; irOverri
   }
   if (drifted.length > 0) {
     console.error(chalk.red(`Drift in ${drifted.length} projection(s): ${drifted.join(', ')}`));
-    console.error(chalk.red('  Run `manifest generate --all` (without --check) and commit the result.'));
+    console.error(
+      chalk.red('  Run `manifest generate --all` (without --check) and commit the result.'),
+    );
     process.exit(1);
   }
   console.log(chalk.green(`✔ All ${names.length} projection(s) generated from ${irSource}.`));

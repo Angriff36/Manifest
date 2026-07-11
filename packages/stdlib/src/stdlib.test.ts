@@ -36,23 +36,17 @@ describe('@manifest/stdlib catalog', () => {
   });
 
   it('ships all five archetypes', () => {
-    const names = ARCHETYPES.map(a => a.name);
-    expect(names).toEqual([
-      'Timestamped',
-      'SoftDeletable',
-      'Owned',
-      'Auditable',
-      'StateMachine',
-    ]);
+    const names = ARCHETYPES.map((a) => a.name);
+    expect(names).toEqual(['Timestamped', 'SoftDeletable', 'Owned', 'Auditable', 'StateMachine']);
   });
 
   it('ships all five value objects', () => {
-    const names = VALUE_OBJECTS.map(v => v.name);
+    const names = VALUE_OBJECTS.map((v) => v.name);
     expect(names).toEqual(['Money', 'Address', 'EmailAddress', 'PhoneNumber', 'AuditTrail']);
   });
 
   it('ships all three enums', () => {
-    const names = ENUMS.map(e => e.name);
+    const names = ENUMS.map((e) => e.name);
     expect(names).toEqual(['Status', 'Priority', 'AuditAction']);
   });
 
@@ -62,7 +56,7 @@ describe('@manifest/stdlib catalog', () => {
       expect(src.length, `${entry.name} source should not be empty`).toBeGreaterThan(0);
       // Every stdlib file declares a value, enum, or pattern reference
       expect(src, `${entry.name} source should declare a value, enum, or pattern`).toMatch(
-        /(value|enum)\s+[A-Z]/
+        /(value|enum)\s+[A-Z]/,
       );
     }
   });
@@ -97,7 +91,7 @@ describe('@manifest/stdlib source files compile independently', () => {
   for (const { name, src } of cases) {
     it(`${name} compiles without errors`, async () => {
       const result = await compileToIR(src());
-      const errors = result.diagnostics.filter(d => d.severity === 'error');
+      const errors = result.diagnostics.filter((d) => d.severity === 'error');
       expect(errors, `${name} produced errors: ${JSON.stringify(errors)}`).toEqual([]);
     });
   }
@@ -108,7 +102,10 @@ describe('@manifest/stdlib integrated usage', () => {
     // Simulate what happens when a user `use`s the stdlib files: the
     // contents are inlined into the compiled program. We build that
     // inlined source and compile it directly.
-    const inlined = [moneySource(), statusEnumSource(), `
+    const inlined = [
+      moneySource(),
+      statusEnumSource(),
+      `
 entity Product {
   property required id: string
   property name: string
@@ -116,20 +113,21 @@ entity Product {
   property status: Status = draft
   store Product in memory
 }
-`].join('\n');
+`,
+    ].join('\n');
 
     const result = await compileToIR(inlined);
-    const errors = result.diagnostics.filter(d => d.severity === 'error');
+    const errors = result.diagnostics.filter((d) => d.severity === 'error');
     expect(errors, `inline program errors: ${JSON.stringify(errors)}`).toEqual([]);
 
     expect(result.ir).not.toBeNull();
-    const product = result.ir!.entities.find(e => e.name === 'Product');
+    const product = result.ir!.entities.find((e) => e.name === 'Product');
     expect(product, 'Product entity should be present in compiled IR').toBeDefined();
 
     // The two value/enum declarations from the stdlib should be merged in.
-    const valueNames = result.ir!.values.map(v => v.name);
-    const enumNames = result.ir!.enums.map(e => e.name);
-    const entityNames = result.ir!.entities.map(e => e.name);
+    const valueNames = result.ir!.values.map((v) => v.name);
+    const enumNames = result.ir!.enums.map((e) => e.name);
+    const entityNames = result.ir!.entities.map((e) => e.name);
 
     expect(valueNames).toContain('Money');
     expect(enumNames).toContain('Status');

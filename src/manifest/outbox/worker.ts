@@ -94,7 +94,7 @@ function errorMessage(err: unknown): string {
 export async function drainOutboxOnce(
   store: OutboxStore,
   deliver: OutboxDeliver,
-  opts: DrainOutboxOptions = {}
+  opts: DrainOutboxOptions = {},
 ): Promise<DrainOutboxResult> {
   const batchSize = opts.batchSize ?? DEFAULT_BATCH_SIZE;
   const claimed = await store.claim(batchSize);
@@ -127,10 +127,10 @@ function delay(
   ms: number,
   signals: AbortSignal[],
   setTimeoutFn: (callback: () => void, ms: number) => unknown,
-  clearTimeoutFn: (handle: unknown) => void
+  clearTimeoutFn: (handle: unknown) => void,
 ): Promise<void> {
-  if (signals.some(s => s.aborted)) return Promise.resolve();
-  return new Promise<void>(resolve => {
+  if (signals.some((s) => s.aborted)) return Promise.resolve();
+  return new Promise<void>((resolve) => {
     let settled = false;
     const onAbort = () => {
       if (settled) return;
@@ -169,7 +169,7 @@ function delay(
 export function runOutboxWorker(
   store: OutboxStore,
   deliver: OutboxDeliver,
-  opts: OutboxWorkerOptions = {}
+  opts: OutboxWorkerOptions = {},
 ): OutboxWorkerHandle {
   const pollIntervalMs = opts.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
   const setTimeoutFn = opts.setTimeoutFn ?? ((cb, ms) => setTimeout(cb, ms));
@@ -179,7 +179,7 @@ export function runOutboxWorker(
   const controller = new AbortController();
   const signals: AbortSignal[] = [controller.signal];
   if (opts.signal) signals.push(opts.signal);
-  const stopped = () => signals.some(s => s.aborted);
+  const stopped = () => signals.some((s) => s.aborted);
 
   const loop = (async () => {
     while (!stopped()) {

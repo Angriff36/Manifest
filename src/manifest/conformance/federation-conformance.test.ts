@@ -16,11 +16,7 @@ import {
   validateBridgeHeaders,
 } from '../federation';
 import type { IR } from '../ir';
-import type {
-  FederationResponse,
-  FederationTransport,
-  ServiceDescriptor,
-} from '../federation';
+import type { FederationResponse, FederationTransport, ServiceDescriptor } from '../federation';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -158,7 +154,12 @@ describe('Federation Conformance: 87-federation.manifest', () => {
     const registry = new FederationRegistry({ healthCheckIntervalMs: 0 });
     registry.registerAll([ordersDesc, invDesc]);
 
-    const invocations: Array<{ entity: string; command: string; input: unknown; bridge: Record<string, string> }> = [];
+    const invocations: Array<{
+      entity: string;
+      command: string;
+      input: unknown;
+      bridge: Record<string, string>;
+    }> = [];
 
     const transport: FederationTransport = {
       invoke: async (descriptor, request) => {
@@ -171,7 +172,7 @@ describe('Federation Conformance: 87-federation.manifest', () => {
             Object.entries({
               'X-Manifest-Actor': request.bridge.actorId,
               'X-Manifest-Tenant': request.bridge.tenantId,
-            }).filter(([_, v]) => v !== undefined)
+            }).filter(([_, v]) => v !== undefined),
           ) as Record<string, string>,
         });
         const response: FederationResponse = {

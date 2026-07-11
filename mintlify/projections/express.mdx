@@ -1,7 +1,7 @@
 ---
-title: "Express & Fastify router projection"
-sidebarTitle: "Express"
-description: "Generate standalone Express or Fastify router modules from Manifest IR — typed handlers that read entities directly and dispatch writes through the runtime, with auth and optional Zod validation wired in."
+title: 'Express & Fastify router projection'
+sidebarTitle: 'Express'
+description: 'Generate standalone Express or Fastify router modules from Manifest IR — typed handlers that read entities directly and dispatch writes through the runtime, with auth and optional Zod validation wired in.'
 ---
 
 The Express projection generates standalone router modules — for either Express or Fastify — from compiled Manifest IR. Use it when you are building a Node.js HTTP service and want typed route handlers that read entities directly and dispatch writes through the Manifest runtime, with auth middleware and optional Zod validation already wired in.
@@ -48,7 +48,11 @@ Entity interface fields are optional unless the property has the `required` modi
 ## Notes & limitations
 
 <Note>
-The generated module imports the auth middleware and runtime factory from the configured paths; it does not define them. Read routes (`list`/`get`) bypass the runtime engine and call the runtime's read methods directly, while all writes go through `runtime.runCommand`. The `basePath` option is normalized but the entity route paths in the generated handlers are not prefixed with it, so the prefix is applied where you mount the router, not inside the generated route strings.
+  The generated module imports the auth middleware and runtime factory from the configured paths; it
+  does not define them. Read routes (`list`/`get`) bypass the runtime engine and call the runtime's
+  read methods directly, while all writes go through `runtime.runCommand`. The `basePath` option is
+  normalized but the entity route paths in the generated handlers are not prefixed with it, so the
+  prefix is applied where you mount the router, not inside the generated route strings.
 </Note>
 
 There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only — emit Express/Fastify output by invoking `getProjection('express')` programmatically. Per-feature notes referencing `manifest generate <ir> -p express` describe an intended CLI path that is not present in the current `generate` command.

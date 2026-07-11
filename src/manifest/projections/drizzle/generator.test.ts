@@ -145,11 +145,16 @@ describe('DrizzleProjection — type mapping', () => {
       properties: [
         { name: 'id', type: { name: 'uuid', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/id: uuid\("id"\)\.primaryKey\(\)\.defaultRandom\(\)/);
   });
 
@@ -161,11 +166,16 @@ describe('DrizzleProjection — type mapping', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'active', type: { name: 'boolean', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/active: boolean\("active"\)\.notNull\(\)/);
   });
 
@@ -177,11 +187,16 @@ describe('DrizzleProjection — type mapping', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'count', type: { name: 'int', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/count: integer\("count"\)\.notNull\(\)/);
   });
 
@@ -193,11 +208,16 @@ describe('DrizzleProjection — type mapping', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'temperature', type: { name: 'float', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/temperature: real\("temperature"\)\.notNull\(\)/);
   });
 
@@ -209,11 +229,16 @@ describe('DrizzleProjection — type mapping', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'price', type: { name: 'money', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/price: numeric\("price", \{ precision: 12, scale: 2 \}\)\.notNull\(\)/);
   });
 
@@ -225,11 +250,16 @@ describe('DrizzleProjection — type mapping', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/createdAt: timestamp\("createdAt"\)\.notNull\(\)/);
   });
 
@@ -241,11 +271,16 @@ describe('DrizzleProjection — type mapping', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'metadata', type: { name: 'json', nullable: false }, modifiers: [] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/metadata: jsonb\("metadata"\)/);
   });
 });
@@ -307,7 +342,8 @@ describe('DrizzleProjection — skipping rules', () => {
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/price: numeric/);
     expect(code).not.toMatch(/total/);
   });
@@ -322,7 +358,11 @@ describe('DrizzleProjection — bare `number` is ambiguous (DRIZZLE_AMBIGUOUS_NU
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'qty', type: { name: 'number', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -345,7 +385,11 @@ describe('DrizzleProjection — bare `number` is ambiguous (DRIZZLE_AMBIGUOUS_NU
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'legacyCount', type: { name: 'number', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -368,7 +412,11 @@ describe('DrizzleProjection — unknown type diagnostic', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'amount', type: { name: 'currency', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -403,7 +451,11 @@ describe('DrizzleProjection — config options', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -423,7 +475,11 @@ describe('DrizzleProjection — config options', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'price', type: { name: 'decimal', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -444,7 +500,11 @@ describe('DrizzleProjection — config options', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'data', type: { name: 'string', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -492,13 +552,22 @@ describe('DrizzleProjection — unique and indexed modifiers', () => {
       name: 'Widget',
       properties: [
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        { name: 'sku', type: { name: 'string', nullable: false }, modifiers: ['required', 'unique'] },
+        {
+          name: 'sku',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required', 'unique'],
+        },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/sku: varchar\("sku", \{ length: 255 \}\)\.notNull\(\)\.unique\(\)/);
   });
 });
@@ -548,11 +617,16 @@ describe('DrizzleProjection — composite PK', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'externalId', type: { name: 'string', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Organization'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     // alternate keys should not cause errors
     expect(code).toMatch(/export const organization = pgTable/);
   });
@@ -577,9 +651,13 @@ describe('DrizzleProjection — relationship wiring', () => {
     // FK column on Book
     expect(code).toMatch(/authorId: varchar\("authorId"\)/);
     // Relation definition
-    expect(code).toMatch(/author: one\(author, \{ fields: \[book\.authorId\], references: \[author\.id\] \}\)/);
+    expect(code).toMatch(
+      /author: one\(author, \{ fields: \[book\.authorId\], references: \[author\.id\] \}\)/,
+    );
 
-    expect(result.diagnostics.find((d) => d.code === 'DRIZZLE_RELATION_MISSING_BACKSIDE')).toBeUndefined();
+    expect(
+      result.diagnostics.find((d) => d.code === 'DRIZZLE_RELATION_MISSING_BACKSIDE'),
+    ).toBeUndefined();
   });
 
   it('emits one-to-one with .unique() on FK column', () => {
@@ -594,12 +672,15 @@ describe('DrizzleProjection — relationship wiring', () => {
     );
     ir.stores.push(durableStore('User'), durableStore('Profile'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
 
     // FK column with unique
     expect(code).toMatch(/userId: varchar\("userId"\)\.unique\(\)/);
     // Relation
-    expect(code).toMatch(/user: one\(user, \{ fields: \[profile\.userId\], references: \[user\.id\] \}\)/);
+    expect(code).toMatch(
+      /user: one\(user, \{ fields: \[profile\.userId\], references: \[user\.id\] \}\)/,
+    );
   });
 
   it('emits ref relationship like belongsTo with warning about missing back-relation', () => {
@@ -631,13 +712,19 @@ describe('DrizzleProjection — relationship wiring', () => {
       }),
       bareEntity('Book', {
         relationships: [
-          { name: 'author', kind: 'belongsTo', target: 'Author', foreignKey: { fields: ['writerId'] } },
+          {
+            name: 'author',
+            kind: 'belongsTo',
+            target: 'Author',
+            foreignKey: { fields: ['writerId'] },
+          },
         ],
       }),
     );
     ir.stores.push(durableStore('Author'), durableStore('Book'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/writerId: varchar\("writerId"\)/);
     expect(code).toMatch(/fields: \[book\.writerId\], references: \[author\.id\]/);
     expect(code).not.toMatch(/authorId/);
@@ -669,10 +756,14 @@ describe('DrizzleProjection — relationship wiring', () => {
     ir.entities.push(
       {
         name: 'Author',
-        properties: [{ name: 'id', type: { name: 'int', nullable: false }, modifiers: ['required'] }],
+        properties: [
+          { name: 'id', type: { name: 'int', nullable: false }, modifiers: ['required'] },
+        ],
         computedProperties: [],
         relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
-        commands: [], constraints: [], policies: [],
+        commands: [],
+        constraints: [],
+        policies: [],
       },
       bareEntity('Book', {
         relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
@@ -680,7 +771,8 @@ describe('DrizzleProjection — relationship wiring', () => {
     );
     ir.stores.push(durableStore('Author'), durableStore('Book'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/authorId: integer\("authorId"\)/);
   });
 });
@@ -698,7 +790,9 @@ describe('DrizzleProjection — relationship diagnostics', () => {
     ir.stores.push(durableStore('Author'), durableStore('Book'), durableStore('AuthorBook'));
 
     const result = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' });
-    const through = result.diagnostics.find((d) => d.code === 'DRIZZLE_RELATION_VIA_THROUGH_UNIMPLEMENTED');
+    const through = result.diagnostics.find(
+      (d) => d.code === 'DRIZZLE_RELATION_VIA_THROUGH_UNIMPLEMENTED',
+    );
     expect(through).toBeDefined();
     expect(through?.entity).toBe('Author');
   });
@@ -758,7 +852,8 @@ describe('DrizzleProjection — referential actions', () => {
     );
     ir.stores.push(durableStore('Author'), durableStore('Book'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/onDelete: 'cascade'/);
   });
 
@@ -782,7 +877,8 @@ describe('DrizzleProjection — referential actions', () => {
     );
     ir.stores.push(durableStore('Author'), durableStore('Book'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/onDelete: 'cascade'/);
     expect(code).toMatch(/onUpdate: 'noAction'/);
   });
@@ -797,11 +893,16 @@ describe('DrizzleProjection — imports', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'count', type: { name: 'int', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/import.*integer.*from 'drizzle-orm\/pg-core'/);
     expect(code).toMatch(/import.*varchar.*from 'drizzle-orm\/pg-core'/);
   });
@@ -818,7 +919,8 @@ describe('DrizzleProjection — imports', () => {
     );
     ir.stores.push(durableStore('Author'), durableStore('Book'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/import \{ relations \} from 'drizzle-orm'/);
   });
 });
@@ -832,7 +934,11 @@ describe('DrizzleProjection — index emission', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'sku', type: { name: 'string', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -853,7 +959,11 @@ describe('DrizzleProjection — index emission', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'name', type: { name: 'string', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -881,12 +991,19 @@ describe('DrizzleProjection — default values', () => {
           defaultValue: { kind: 'string', value: 'active' },
         },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
-    expect(code).toMatch(/status: varchar\("status", \{ length: 255 \}\)\.notNull\(\)\.default\("active"\)/);
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
+    expect(code).toMatch(
+      /status: varchar\("status", \{ length: 255 \}\)\.notNull\(\)\.default\("active"\)/,
+    );
   });
 
   it('emits .default() for boolean property with default', () => {
@@ -902,11 +1019,16 @@ describe('DrizzleProjection — default values', () => {
           defaultValue: { kind: 'boolean', value: true },
         },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/active: boolean\("active"\)\.notNull\(\)\.default\(true\)/);
   });
 
@@ -923,11 +1045,16 @@ describe('DrizzleProjection — default values', () => {
           defaultValue: { kind: 'number', value: 0 },
         },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/qty: integer\("qty"\)\.default\(0\)/);
   });
 });
@@ -939,13 +1066,22 @@ describe('DrizzleProjection — array types', () => {
       name: 'Taggable',
       properties: [
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        { name: 'tags', type: { name: 'array', generic: { name: 'string', nullable: false }, nullable: false }, modifiers: [] },
+        {
+          name: 'tags',
+          type: { name: 'array', generic: { name: 'string', nullable: false }, nullable: false },
+          modifiers: [],
+        },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Taggable'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/tags: varchar\("tags", \{ length: 255 \}\)\.array\(\)/);
   });
 
@@ -955,13 +1091,22 @@ describe('DrizzleProjection — array types', () => {
       name: 'Scored',
       properties: [
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        { name: 'scores', type: { name: 'array', generic: { name: 'int', nullable: false }, nullable: false }, modifiers: [] },
+        {
+          name: 'scores',
+          type: { name: 'array', generic: { name: 'int', nullable: false }, nullable: false },
+          modifiers: [],
+        },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Scored'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/scores: integer\("scores"\)\.array\(\)/);
   });
 });
@@ -974,7 +1119,11 @@ describe('DrizzleProjection — NO_ID_PROPERTY error', () => {
       properties: [
         { name: 'name', type: { name: 'string', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -991,13 +1140,25 @@ describe('DrizzleProjection — preserves IR source order', () => {
     const ir = emptyIR();
     const beta: IREntity = {
       name: 'Beta',
-      properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] }],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     };
     const alpha: IREntity = {
       name: 'Alpha',
-      properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] }],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     };
     ir.entities.push(beta, alpha);
     ir.stores.push(durableStore('Beta'), durableStore('Alpha'));
@@ -1025,7 +1186,9 @@ describe('DrizzleProjection — composite FK with referential actions', () => {
         ],
         computedProperties: [],
         relationships: [{ name: 'orders', kind: 'hasMany', target: 'Order' }],
-        commands: [], constraints: [], policies: [],
+        commands: [],
+        constraints: [],
+        policies: [],
       },
       {
         name: 'Order',
@@ -1043,7 +1206,9 @@ describe('DrizzleProjection — composite FK with referential actions', () => {
             foreignKey: { fields: ['tenantId', 'orderId'], references: ['tenantId', 'id'] },
           },
         ],
-        commands: [], constraints: [], policies: [],
+        commands: [],
+        constraints: [],
+        policies: [],
       },
     );
     ir.stores.push(durableStore('Organization'), durableStore('Order'));
@@ -1051,7 +1216,9 @@ describe('DrizzleProjection — composite FK with referential actions', () => {
     const result = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' });
     const code = result.artifacts[0].code;
 
-    expect(code).toMatch(/fields: \[order\.tenantId, order\.orderId\], references: \[organization\.tenantId, organization\.id\]/);
+    expect(code).toMatch(
+      /fields: \[order\.tenantId, order\.orderId\], references: \[organization\.tenantId, organization\.id\]/,
+    );
   });
 
   it('FK with onDelete from ForeignKeyConfig object', () => {
@@ -1102,11 +1269,16 @@ describe('DrizzleProjection — IRType.params precision/scale', () => {
           modifiers: ['required'],
         },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/price: numeric\("price", \{ precision: 20, scale: 6 \}\)/);
     expect(code).not.toMatch(/precision: 12, scale: 2/);
   });
@@ -1123,7 +1295,11 @@ describe('DrizzleProjection — IRType.params precision/scale', () => {
           modifiers: ['required'],
         },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -1143,11 +1319,16 @@ describe('DrizzleProjection — IRType.params precision/scale', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'cost', type: { name: 'decimal', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/cost: numeric\("cost", \{ precision: 12, scale: 2 \}\)/);
   });
 });
@@ -1163,13 +1344,22 @@ describe('DrizzleProjection — indexed modifier emits index()', () => {
       name: 'Widget',
       properties: [
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        { name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: ['required', 'indexed'] },
+        {
+          name: 'tenantId',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required', 'indexed'],
+        },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/index\("widget_tenantId_idx"\)/);
     expect(code).toMatch(/\.on\(widget\.tenantId\)/);
     expect(code).toMatch(/import \{ index \} from/);
@@ -1181,9 +1371,17 @@ describe('DrizzleProjection — indexed modifier emits index()', () => {
       name: 'Widget',
       properties: [
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        { name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: ['required', 'indexed'] },
+        {
+          name: 'tenantId',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required', 'indexed'],
+        },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -1199,8 +1397,10 @@ describe('DrizzleProjection — indexed modifier emits index()', () => {
     }).artifacts[0].code;
 
     // Both should produce exactly one index export block for tenantId
-    const exportBlocksWithOptions = codeWithOptionsIndex.match(/export const .* = index\(.*tenantId/g) ?? [];
-    const exportBlocksModifier = codeModifierOnly.match(/export const .* = index\(.*tenantId/g) ?? [];
+    const exportBlocksWithOptions =
+      codeWithOptionsIndex.match(/export const .* = index\(.*tenantId/g) ?? [];
+    const exportBlocksModifier =
+      codeModifierOnly.match(/export const .* = index\(.*tenantId/g) ?? [];
     expect(exportBlocksWithOptions).toHaveLength(1);
     expect(exportBlocksModifier).toHaveLength(1);
   });
@@ -1211,14 +1411,23 @@ describe('DrizzleProjection — indexed modifier emits index()', () => {
       name: 'Widget',
       properties: [
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        { name: 'accountId', type: { name: 'string', nullable: false }, modifiers: ['required', 'indexed'] },
+        {
+          name: 'accountId',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required', 'indexed'],
+        },
         { name: 'status', type: { name: 'string', nullable: false }, modifiers: ['indexed'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
-    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0]
+      .code;
     expect(code).toMatch(/widget_accountId_idx/);
     expect(code).toMatch(/widget_status_idx/);
     expect(code).toMatch(/\.on\(widget\.accountId\)/);

@@ -91,7 +91,7 @@ describe('sibling-binding entity/guard safety', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p =>
+      (p) =>
         p.mismatch?.kind === 'missing_required_input' &&
         p.capabilityId === 'Task.complete' &&
         p.mismatch.parameter === 'userId',
@@ -131,7 +131,7 @@ describe('sibling-binding entity/guard safety', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p =>
+      (p) =>
         p.mismatch?.kind === 'missing_required_input' &&
         p.capabilityId === 'VendorCatalog.deactivate',
     );
@@ -143,7 +143,7 @@ describe('sibling-binding entity/guard safety', () => {
       capabilityId: 'VendorCatalog.deactivate',
       autoFixableOnly: true,
     });
-    expect(result.applied.some(a => a.applied)).toBe(false);
+    expect(result.applied.some((a) => a.applied)).toBe(false);
     expect([...resultToMap(files, result).values()][0]).toBe(before);
   });
 
@@ -179,7 +179,7 @@ describe('sibling-binding entity/guard safety', () => {
       capabilityId: 'Task.complete',
       autoFixableOnly: true,
     });
-    expect(result.applied.some(a => a.applied && a.verification?.ok)).toBe(true);
+    expect(result.applied.some((a) => a.applied && a.verification?.ok)).toBe(true);
     const after = [...resultToMap(files, result).values()][0]!;
     expect(after).toMatch(/const complete = async \(\) => \{\s*if \(!currentUserId\)/);
     expect(after).toMatch(/taskComplete\(\{[^}]*userId\s*:\s*currentUserId/);
@@ -215,9 +215,7 @@ describe('sibling-binding entity/guard safety', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p =>
-        p.mismatch?.kind === 'missing_required_input' &&
-        p.capabilityId === 'Task.complete',
+      (p) => p.mismatch?.kind === 'missing_required_input' && p.capabilityId === 'Task.complete',
     );
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
@@ -251,9 +249,7 @@ describe('sibling-binding entity/guard safety', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p =>
-        p.mismatch?.kind === 'missing_required_input' &&
-        p.capabilityId === 'Task.complete',
+      (p) => p.mismatch?.kind === 'missing_required_input' && p.capabilityId === 'Task.complete',
     );
     // Sibling expression is String(currentUserId) — unique; target needs userId.
     // No same-expression sibling binding of currentUserId alone.
@@ -283,9 +279,7 @@ describe('sibling-binding entity/guard safety', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p =>
-        p.mismatch?.kind === 'missing_required_input' &&
-        p.capabilityId === 'Task.complete',
+      (p) => p.mismatch?.kind === 'missing_required_input' && p.capabilityId === 'Task.complete',
     );
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
@@ -319,7 +313,7 @@ describe('sibling-binding entity/guard safety', () => {
       capabilityId: 'Task.complete',
       autoFixableOnly: true,
     });
-    expect(result.applied.some(a => a.applied && a.verification?.ok)).toBe(true);
+    expect(result.applied.some((a) => a.applied && a.verification?.ok)).toBe(true);
     expect([...resultToMap(files, result).values()][0]).toMatch(
       /taskComplete\(\{[^}]*userId\s*:\s*currentUserId/,
     );

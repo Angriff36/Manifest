@@ -18,7 +18,7 @@ async function compileToIR(source: string): Promise<IR> {
   const compiler = new IRCompiler();
   const result = await compiler.compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compilation failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compilation failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
@@ -74,7 +74,7 @@ describe('Approval Workflow', () => {
   describe('Parser', () => {
     it('should parse approval block with stages', async () => {
       const ir = await compileToIR(APPROVAL_SOURCE);
-      const entity = ir.entities.find(e => e.name === 'PurchaseOrder');
+      const entity = ir.entities.find((e) => e.name === 'PurchaseOrder');
       expect(entity?.approvals).toBeDefined();
       expect(entity?.approvals).toHaveLength(1);
 
@@ -150,9 +150,11 @@ describe('Approval Workflow', () => {
         }
         event ApprovalRequested: "approval.requested" { orderId: string }
       `);
-      expect(result.diagnostics.some(d =>
-        d.severity === 'error' && d.message.includes("does not exist on entity")
-      )).toBe(true);
+      expect(
+        result.diagnostics.some(
+          (d) => d.severity === 'error' && d.message.includes('does not exist on entity'),
+        ),
+      ).toBe(true);
     });
 
     it('should emit error for duplicate stage names', async () => {
@@ -178,9 +180,11 @@ describe('Approval Workflow', () => {
         }
         event ApprovalRequested: "approval.requested" { orderId: string }
       `);
-      expect(result.diagnostics.some(d =>
-        d.severity === 'error' && d.message.includes("Duplicate stage name")
-      )).toBe(true);
+      expect(
+        result.diagnostics.some(
+          (d) => d.severity === 'error' && d.message.includes('Duplicate stage name'),
+        ),
+      ).toBe(true);
     });
 
     it('should emit error for approval with no stages', async () => {
@@ -198,9 +202,11 @@ describe('Approval Workflow', () => {
         }
         event ApprovalRequested: "approval.requested" { orderId: string }
       `);
-      expect(result.diagnostics.some(d =>
-        d.severity === 'error' && d.message.includes("at least one stage")
-      )).toBe(true);
+      expect(
+        result.diagnostics.some(
+          (d) => d.severity === 'error' && d.message.includes('at least one stage'),
+        ),
+      ).toBe(true);
     });
 
     it('should not emit approvals field for entities without approvals', async () => {
@@ -213,7 +219,7 @@ describe('Approval Workflow', () => {
           }
         }
       `);
-      const entity = ir.entities.find(e => e.name === 'User');
+      const entity = ir.entities.find((e) => e.name === 'User');
       expect(entity?.approvals).toBeUndefined();
     });
   });
@@ -231,13 +237,21 @@ describe('Approval Workflow', () => {
       });
 
       // Create the instance first
-      await runtime.createInstance('PurchaseOrder', { id: 'po-001', amount: 5000, status: 'draft' });
+      await runtime.createInstance('PurchaseOrder', {
+        id: 'po-001',
+        amount: 5000,
+        status: 'draft',
+      });
 
       // Running submit should be blocked
-      const result = await runtime.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-001',
-      });
+      const result = await runtime.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-001',
+        },
+      );
 
       expect(result.success).toBe(false);
       expect(result.approvalRequired).toBeDefined();
@@ -254,12 +268,20 @@ describe('Approval Workflow', () => {
         generateId: () => 'po-002',
       });
 
-      await runtime.createInstance('PurchaseOrder', { id: 'po-002', amount: 20000, status: 'draft' });
-
-      const result = await runtime.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-002',
+      await runtime.createInstance('PurchaseOrder', {
+        id: 'po-002',
+        amount: 20000,
+        status: 'draft',
       });
+
+      const result = await runtime.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-002',
+        },
+      );
 
       expect(result.success).toBe(false);
       expect(result.approvalRequired).toBeDefined();
@@ -274,27 +296,43 @@ describe('Approval Workflow', () => {
         generateId: () => 'po-003',
       });
 
-      await runtime.createInstance('PurchaseOrder', { id: 'po-003', amount: 5000, status: 'draft' });
+      await runtime.createInstance('PurchaseOrder', {
+        id: 'po-003',
+        amount: 5000,
+        status: 'draft',
+      });
 
       // First attempt - blocked
-      const blocked = await runtime.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-003',
-      });
+      const blocked = await runtime.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-003',
+        },
+      );
       expect(blocked.success).toBe(false);
       expect(blocked.approvalRequired).toBeDefined();
 
       // Approve the manager stage
       const approvalState = await runtime.approveStage(
-        'PurchaseOrder', 'po-003', 'submitApproval', 'manager', 'manager',
+        'PurchaseOrder',
+        'po-003',
+        'submitApproval',
+        'manager',
+        'manager',
       );
       expect(approvalState.status).toBe('granted');
 
       // Retry - should succeed
-      const result = await runtime.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-003',
-      });
+      const result = await runtime.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-003',
+        },
+      );
       expect(result.success).toBe(true);
     });
 
@@ -306,25 +344,41 @@ describe('Approval Workflow', () => {
         generateId: () => 'po-004',
       });
 
-      await runtime.createInstance('PurchaseOrder', { id: 'po-004', amount: 5000, status: 'draft' });
+      await runtime.createInstance('PurchaseOrder', {
+        id: 'po-004',
+        amount: 5000,
+        status: 'draft',
+      });
 
       // Trigger approval creation
-      await runtime.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-004',
-      });
+      await runtime.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-004',
+        },
+      );
 
       // Deny the approval
       const denied = await runtime.denyApproval(
-        'PurchaseOrder', 'po-004', 'submitApproval', 'manager-user', 'Budget exceeded',
+        'PurchaseOrder',
+        'po-004',
+        'submitApproval',
+        'manager-user',
+        'Budget exceeded',
       );
       expect(denied.status).toBe('denied');
 
       // Retry creates a NEW pending request (denied requests are reset)
-      const retryResult = await runtime.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-004',
-      });
+      const retryResult = await runtime.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-004',
+        },
+      );
       expect(retryResult.success).toBe(false);
       expect(retryResult.approvalRequired).toBeDefined();
     });
@@ -338,13 +392,21 @@ describe('Approval Workflow', () => {
         generateId: () => 'po-005',
       });
 
-      await runtime.createInstance('PurchaseOrder', { id: 'po-005', amount: 5000, status: 'draft' });
+      await runtime.createInstance('PurchaseOrder', {
+        id: 'po-005',
+        amount: 5000,
+        status: 'draft',
+      });
 
       // Trigger approval creation
-      await runtime.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-005',
-      });
+      await runtime.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-005',
+        },
+      );
 
       // Advance time past 72 hours
       currentTime = 1000000 + 73 * 3600000;
@@ -370,13 +432,21 @@ describe('Approval Workflow', () => {
         generateId: () => 'po-006',
       });
 
-      await runtime.createInstance('PurchaseOrder', { id: 'po-006', amount: 5000, status: 'draft' });
+      await runtime.createInstance('PurchaseOrder', {
+        id: 'po-006',
+        amount: 5000,
+        status: 'draft',
+      });
 
       // Trigger approval creation
-      await runtime.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-006',
-      });
+      await runtime.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-006',
+        },
+      );
 
       // Try to approve with wrong role
       await expect(
@@ -397,15 +467,23 @@ describe('Approval Workflow', () => {
         store Item in memory
       `);
 
-      const runtime = new RuntimeEngine(ir, {}, {
-        generateId: () => 'item-001',
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          generateId: () => 'item-001',
+        },
+      );
 
       await runtime.createInstance('Item', { id: 'item-001' });
-      const result = await runtime.runCommand('rename', { newName: 'Test' }, {
-        entityName: 'Item',
-        instanceId: 'item-001',
-      });
+      const result = await runtime.runCommand(
+        'rename',
+        { newName: 'Test' },
+        {
+          entityName: 'Item',
+          instanceId: 'item-001',
+        },
+      );
       expect(result.success).toBe(true);
       expect(result.approvalRequired).toBeUndefined();
     });
@@ -418,16 +496,26 @@ describe('Approval Workflow', () => {
         generateId: () => 'po-007',
       });
 
-      await runtime.createInstance('PurchaseOrder', { id: 'po-007', amount: 5000, status: 'draft' });
+      await runtime.createInstance('PurchaseOrder', {
+        id: 'po-007',
+        amount: 5000,
+        status: 'draft',
+      });
 
       // Before any approval attempt
-      expect(runtime.getApprovalRequest('PurchaseOrder', 'po-007', 'submitApproval')).toBeUndefined();
+      expect(
+        runtime.getApprovalRequest('PurchaseOrder', 'po-007', 'submitApproval'),
+      ).toBeUndefined();
 
       // Trigger approval
-      await runtime.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-007',
-      });
+      await runtime.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-007',
+        },
+      );
 
       const state = runtime.getApprovalRequest('PurchaseOrder', 'po-007', 'submitApproval');
       expect(state).toBeDefined();
@@ -443,39 +531,63 @@ describe('Approval Workflow', () => {
         generateId: () => 'po-008',
       });
 
-      await runtime.createInstance('PurchaseOrder', { id: 'po-008', amount: 20000, status: 'draft' });
+      await runtime.createInstance('PurchaseOrder', {
+        id: 'po-008',
+        amount: 20000,
+        status: 'draft',
+      });
 
       // Trigger approval
-      await runtime.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-008',
-      });
+      await runtime.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-008',
+        },
+      );
 
       // Approve manager stage
       let state = await runtime.approveStage(
-        'PurchaseOrder', 'po-008', 'submitApproval', 'manager', 'manager',
+        'PurchaseOrder',
+        'po-008',
+        'submitApproval',
+        'manager',
+        'manager',
       );
       expect(state.status).toBe('pending'); // Still pending - director required
 
       // Retry submit - should still be blocked
-      const blocked = await runtime.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-008',
-      });
+      const blocked = await runtime.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-008',
+        },
+      );
       expect(blocked.success).toBe(false);
       expect(blocked.approvalRequired!.pendingStages).toEqual(['director']);
 
       // Approve director stage
       state = await runtime.approveStage(
-        'PurchaseOrder', 'po-008', 'submitApproval', 'director', 'director',
+        'PurchaseOrder',
+        'po-008',
+        'submitApproval',
+        'director',
+        'director',
       );
       expect(state.status).toBe('granted');
 
       // Retry submit - should succeed
-      const result = await runtime.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-008',
-      });
+      const result = await runtime.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-008',
+        },
+      );
       expect(result.success).toBe(true);
     });
   });
@@ -490,56 +602,94 @@ describe('Approval Workflow', () => {
       const approvalStore = new MemoryApprovalStore();
 
       // Engine A — the request that blocks the command.
-      const engineA = new RuntimeEngine(irA, { user: { id: 'u1', role: 'employee' } }, {
-        now: () => 1000000,
-        generateId: () => 'po-dur',
-        approvalStore,
+      const engineA = new RuntimeEngine(
+        irA,
+        { user: { id: 'u1', role: 'employee' } },
+        {
+          now: () => 1000000,
+          generateId: () => 'po-dur',
+          approvalStore,
+        },
+      );
+      await engineA.createInstance('PurchaseOrder', {
+        id: 'po-dur',
+        amount: 5000,
+        status: 'draft',
       });
-      await engineA.createInstance('PurchaseOrder', { id: 'po-dur', amount: 5000, status: 'draft' });
 
-      const blocked = await engineA.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-dur',
-      });
+      const blocked = await engineA.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-dur',
+        },
+      );
       expect(blocked.success).toBe(false);
       expect(blocked.approvalRequired!.pendingStages).toEqual(['manager']);
 
       // Engine B — freshly constructed (e.g. a new HTTP request), same store.
       // It must SEE engine A's pending request and be able to approve it.
-      const engineB = new RuntimeEngine(irB, { user: { id: 'u2', role: 'employee' } }, {
-        now: () => 1000000,
-        approvalStore,
-      });
+      const engineB = new RuntimeEngine(
+        irB,
+        { user: { id: 'u2', role: 'employee' } },
+        {
+          now: () => 1000000,
+          approvalStore,
+        },
+      );
       const granted = await engineB.approveStage(
-        'PurchaseOrder', 'po-dur', 'submitApproval', 'manager',
+        'PurchaseOrder',
+        'po-dur',
+        'submitApproval',
+        'manager',
         { id: 'mgr-alice', role: 'manager' },
       );
       expect(granted.status).toBe('granted');
 
       // Engine A retries — the grant written by engine B is durable, so the
       // command now proceeds. (Without a shared store this is impossible.)
-      const ok = await engineA.runCommand('submit', {}, {
-        entityName: 'PurchaseOrder',
-        instanceId: 'po-dur',
-      });
+      const ok = await engineA.runCommand(
+        'submit',
+        {},
+        {
+          entityName: 'PurchaseOrder',
+          instanceId: 'po-dur',
+        },
+      );
       expect(ok.success).toBe(true);
     });
 
     it('evaluates the stage policy against a real role distinct from the userId', async () => {
       const ir = await compileToIR(APPROVAL_SOURCE);
       const approvalStore = new MemoryApprovalStore();
-      const runtime = new RuntimeEngine(ir, { user: { id: 'u1', role: 'employee' } }, {
-        now: () => 1000000,
-        generateId: () => 'po-rbac',
-        approvalStore,
+      const runtime = new RuntimeEngine(
+        ir,
+        { user: { id: 'u1', role: 'employee' } },
+        {
+          now: () => 1000000,
+          generateId: () => 'po-rbac',
+          approvalStore,
+        },
+      );
+      await runtime.createInstance('PurchaseOrder', {
+        id: 'po-rbac',
+        amount: 5000,
+        status: 'draft',
       });
-      await runtime.createInstance('PurchaseOrder', { id: 'po-rbac', amount: 5000, status: 'draft' });
-      await runtime.runCommand('submit', {}, { entityName: 'PurchaseOrder', instanceId: 'po-rbac' });
+      await runtime.runCommand(
+        'submit',
+        {},
+        { entityName: 'PurchaseOrder', instanceId: 'po-rbac' },
+      );
 
       // Approver id 'alice' has NOTHING to do with the role; her role is the
       // gate. The old userId-doubles-as-role hack would reject this.
       const state = await runtime.approveStage(
-        'PurchaseOrder', 'po-rbac', 'submitApproval', 'manager',
+        'PurchaseOrder',
+        'po-rbac',
+        'submitApproval',
+        'manager',
         { id: 'alice', role: 'manager' },
       );
       expect(state.status).toBe('granted');
@@ -549,19 +699,31 @@ describe('Approval Workflow', () => {
     it('rejects an approver whose real role fails the stage policy', async () => {
       const ir = await compileToIR(APPROVAL_SOURCE);
       const approvalStore = new MemoryApprovalStore();
-      const runtime = new RuntimeEngine(ir, { user: { id: 'u1', role: 'employee' } }, {
-        now: () => 1000000,
-        generateId: () => 'po-rbac2',
-        approvalStore,
+      const runtime = new RuntimeEngine(
+        ir,
+        { user: { id: 'u1', role: 'employee' } },
+        {
+          now: () => 1000000,
+          generateId: () => 'po-rbac2',
+          approvalStore,
+        },
+      );
+      await runtime.createInstance('PurchaseOrder', {
+        id: 'po-rbac2',
+        amount: 5000,
+        status: 'draft',
       });
-      await runtime.createInstance('PurchaseOrder', { id: 'po-rbac2', amount: 5000, status: 'draft' });
-      await runtime.runCommand('submit', {}, { entityName: 'PurchaseOrder', instanceId: 'po-rbac2' });
+      await runtime.runCommand(
+        'submit',
+        {},
+        { entityName: 'PurchaseOrder', instanceId: 'po-rbac2' },
+      );
 
       await expect(
-        runtime.approveStage(
-          'PurchaseOrder', 'po-rbac2', 'submitApproval', 'manager',
-          { id: 'bob', role: 'employee' },
-        ),
+        runtime.approveStage('PurchaseOrder', 'po-rbac2', 'submitApproval', 'manager', {
+          id: 'bob',
+          role: 'employee',
+        }),
       ).rejects.toThrow('not authorized');
     });
   });

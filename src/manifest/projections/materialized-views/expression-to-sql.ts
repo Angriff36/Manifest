@@ -141,7 +141,9 @@ function translateNode(
         entity: entityName,
       });
       const props = expr.properties
-        .map((p) => `"${p.key}", ${translateNode(p.value, columnResolver, entityName, diagnostics)}`)
+        .map(
+          (p) => `"${p.key}", ${translateNode(p.value, columnResolver, entityName, diagnostics)}`,
+        )
         .join(', ');
       return `json_build_object(${props})`;
     }

@@ -1,7 +1,7 @@
 ---
-title: "Manifest CLI overview and installation"
-sidebarTitle: "Overview"
-description: "The Manifest CLI compiles .manifest files to IR, generates Next.js routes and TypeScript types, and validates IR against the schema. Install via npm."
+title: 'Manifest CLI overview and installation'
+sidebarTitle: 'Overview'
+description: 'The Manifest CLI compiles .manifest files to IR, generates Next.js routes and TypeScript types, and validates IR against the schema. Install via npm.'
 ---
 
 The `manifest` CLI compiles `.manifest` source files to Intermediate Representation (IR), generates framework-specific code from that IR, and validates the output against the IR schema. You can run each stage independently or chain them together with a single `build` command. A config file lets you store project-level defaults so you rarely need to pass flags by hand.
@@ -55,26 +55,26 @@ manifest build modules/recipe.manifest --projection nextjs --code-output app/api
 
 ### Build pipeline
 
-| Command | Description |
-|---|---|
-| `manifest init` | Interactive setup that creates `manifest.config.yaml` |
-| `manifest compile [source]` | Compile `.manifest` source files to IR JSON |
-| `manifest generate <ir>` | Generate code from IR using a projection |
-| `manifest build [source]` | Compile and generate in one step |
-| `manifest validate [ir]` | Validate IR JSON against the IR schema |
+| Command                     | Description                                           |
+| --------------------------- | ----------------------------------------------------- |
+| `manifest init`             | Interactive setup that creates `manifest.config.yaml` |
+| `manifest compile [source]` | Compile `.manifest` source files to IR JSON           |
+| `manifest generate <ir>`    | Generate code from IR using a projection              |
+| `manifest build [source]`   | Compile and generate in one step                      |
+| `manifest validate [ir]`    | Validate IR JSON against the IR schema                |
 
 ### Governance & audit (v0.6.0+)
 
-| Command | Description |
-|---|---|
-| `manifest enforce-surface` | Detect duplicate/bypass write paths against the canonical dispatcher |
+| Command                      | Description                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `manifest enforce-surface`   | Detect duplicate/bypass write paths against the canonical dispatcher                            |
 | `manifest integration-check` | Umbrella validator for downstream consumers (package shape, dispatcher, surface, runtime smoke) |
-| `manifest audit-governance` | Run the five governance detectors in one pass |
-| `manifest audit-bypasses` | Validate the bypass registry schema and that referenced paths exist |
-| `manifest audit-routes` | Check that emitted routes line up with the canonical dispatcher |
-| `manifest scan` | Scan the codebase for direct writes, event fabrication, and route drift |
-| `manifest doctor` | Run ranked diagnostics for source/IR/route drift |
-| `manifest emit registries` | Emit `commands.json` and `entities.json` from compiled IR |
+| `manifest audit-governance`  | Run the five governance detectors in one pass                                                   |
+| `manifest audit-bypasses`    | Validate the bypass registry schema and that referenced paths exist                             |
+| `manifest audit-routes`      | Check that emitted routes line up with the canonical dispatcher                                 |
+| `manifest scan`              | Scan the codebase for direct writes, event fabrication, and route drift                         |
+| `manifest doctor`            | Run ranked diagnostics for source/IR/route drift                                                |
+| `manifest emit registries`   | Emit `commands.json` and `entities.json` from compiled IR                                       |
 
 See [Governance & audit commands](/cli/governance) for full flag reference.
 
@@ -94,7 +94,8 @@ manifest build --code-output apps/staging/app/api/
 ```
 
 <Tip>
-The CLI also accepts `manifest.config.yml`, `.manifestrc.yaml`, and `.manifestrc.yml` as config file names, checked in that order after `manifest.config.yaml`.
+  The CLI also accepts `manifest.config.yml`, `.manifestrc.yaml`, and `.manifestrc.yml` as config
+  file names, checked in that order after `manifest.config.yaml`.
 </Tip>
 
 ## Quick-start with npx

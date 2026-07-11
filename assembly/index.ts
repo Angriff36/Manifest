@@ -28,7 +28,12 @@ export type IRExpression =
   | { kind: 'binary'; operator: string; left: IRExpression; right: IRExpression }
   | { kind: 'unary'; operator: string; operand: IRExpression }
   | { kind: 'call'; callee: IRExpression; args: IRExpression[] }
-  | { kind: 'conditional'; condition: IRExpression; consequent: IRExpression; alternate: IRExpression }
+  | {
+      kind: 'conditional';
+      condition: IRExpression;
+      consequent: IRExpression;
+      alternate: IRExpression;
+    }
   | { kind: 'array'; elements: IRExpression[] }
   | { kind: 'object'; properties: Map<string, IRExpression> }
   | { kind: 'lambda'; params: string[]; body: IRExpression };
@@ -106,7 +111,7 @@ export class EvalValue {
     boolVal: bool = false,
     numVal: f64 = 0,
     strVal: string = '',
-    jsonVal: string = ''
+    jsonVal: string = '',
   ) {
     this.type = type;
     this.boolVal = boolVal;
@@ -143,14 +148,21 @@ export class EvalValue {
    */
   toJSString(): string {
     switch (this.type) {
-      case ValueType.NULL: return 'null';
-      case ValueType.UNDEFINED: return 'undefined';
-      case ValueType.BOOLEAN: return this.boolVal ? 'true' : 'false';
-      case ValueType.NUMBER: return this.numVal.toString();
-      case ValueType.STRING: return '"' + escapeJSON(this.strVal) + '"';
+      case ValueType.NULL:
+        return 'null';
+      case ValueType.UNDEFINED:
+        return 'undefined';
+      case ValueType.BOOLEAN:
+        return this.boolVal ? 'true' : 'false';
+      case ValueType.NUMBER:
+        return this.numVal.toString();
+      case ValueType.STRING:
+        return '"' + escapeJSON(this.strVal) + '"';
       case ValueType.ARRAY:
-      case ValueType.OBJECT: return this.jsonVal;
-      default: return 'null';
+      case ValueType.OBJECT:
+        return this.jsonVal;
+      default:
+        return 'null';
     }
   }
 
@@ -159,27 +171,43 @@ export class EvalValue {
    */
   toStringValue(): string {
     switch (this.type) {
-      case ValueType.NULL: return 'null';
-      case ValueType.UNDEFINED: return 'undefined';
-      case ValueType.BOOLEAN: return this.boolVal ? 'true' : 'false';
-      case ValueType.NUMBER: return this.numVal.toString();
-      case ValueType.STRING: return this.strVal;
-      case ValueType.ARRAY: return this.jsonVal;
-      case ValueType.OBJECT: return this.jsonVal;
-      default: return 'null';
+      case ValueType.NULL:
+        return 'null';
+      case ValueType.UNDEFINED:
+        return 'undefined';
+      case ValueType.BOOLEAN:
+        return this.boolVal ? 'true' : 'false';
+      case ValueType.NUMBER:
+        return this.numVal.toString();
+      case ValueType.STRING:
+        return this.strVal;
+      case ValueType.ARRAY:
+        return this.jsonVal;
+      case ValueType.OBJECT:
+        return this.jsonVal;
+      default:
+        return 'null';
     }
   }
 
   isTruthy(): bool {
     switch (this.type) {
-      case ValueType.NULL: return false;
-      case ValueType.UNDEFINED: return false;
-      case ValueType.BOOLEAN: return this.boolVal;
-      case ValueType.NUMBER: return this.numVal !== 0 && !isNaN(this.numVal);
-      case ValueType.STRING: return this.strVal.length > 0;
-      case ValueType.ARRAY: return true;
-      case ValueType.OBJECT: return true;
-      default: return false;
+      case ValueType.NULL:
+        return false;
+      case ValueType.UNDEFINED:
+        return false;
+      case ValueType.BOOLEAN:
+        return this.boolVal;
+      case ValueType.NUMBER:
+        return this.numVal !== 0 && !isNaN(this.numVal);
+      case ValueType.STRING:
+        return this.strVal.length > 0;
+      case ValueType.ARRAY:
+        return true;
+      case ValueType.OBJECT:
+        return true;
+      default:
+        return false;
     }
   }
 }
@@ -196,12 +224,12 @@ function escapeJSON(s: string): string {
   for (let i = 0; i < s.length; i++) {
     const c = s.charCodeAt(i);
     if (c === 0x22) out += '\\"';
-    else if (c === 0x5C) out += '\\\\';
+    else if (c === 0x5c) out += '\\\\';
     else if (c === 0x08) out += '\\b';
     else if (c === 0x09) out += '\\t';
-    else if (c === 0x0A) out += '\\n';
-    else if (c === 0x0C) out += '\\f';
-    else if (c === 0x0D) out += '\\r';
+    else if (c === 0x0a) out += '\\n';
+    else if (c === 0x0c) out += '\\f';
+    else if (c === 0x0d) out += '\\r';
     else if (c < 0x20) out += '\\u' + c.toString(16).padStart(4, '0');
     else out += s.charAt(i);
   }
@@ -224,19 +252,19 @@ function parseJSONValue(input: string, pos: i32): EvalValue | null {
   if (pos >= input.length) return EvalValue.nullValue();
   skipWhitespace(input, pos);
   const c = input.charCodeAt(pos);
-  if (c === 0x7B) return parseJSONObject(input, pos);
-  if (c === 0x5B) return parseJSONArray(input, pos);
+  if (c === 0x7b) return parseJSONObject(input, pos);
+  if (c === 0x5b) return parseJSONArray(input, pos);
   if (c === 0x22) return parseJSONString(input, pos);
   if (c === 0x74 || c === 0x66) return parseJSONBool(input, pos);
-  if (c === 0x6E) return parseJSONNull(input, pos);
-  if (c === 0x2D || (c >= 0x30 && c <= 0x39)) return parseJSONNumber(input, pos);
+  if (c === 0x6e) return parseJSONNull(input, pos);
+  if (c === 0x2d || (c >= 0x30 && c <= 0x39)) return parseJSONNumber(input, pos);
   return null;
 }
 
 function skipWhitespace(input: string, pos: i32): void {
   while (pos < input.length) {
     const c = input.charCodeAt(pos);
-    if (c === 0x20 || c === 0x09 || c === 0x0A || c === 0x0D) pos++;
+    if (c === 0x20 || c === 0x09 || c === 0x0a || c === 0x0d) pos++;
     else break;
   }
 }
@@ -248,7 +276,7 @@ function parseJSONObject(input: string, pos: i32): EvalValue | null {
   let json = '{';
   let first = true;
   skipWhitespace(input, pos);
-  if (pos < input.length && input.charCodeAt(pos) === 0x7D) {
+  if (pos < input.length && input.charCodeAt(pos) === 0x7d) {
     result.jsonVal = '{}';
     return result;
   }
@@ -260,7 +288,7 @@ function parseJSONObject(input: string, pos: i32): EvalValue | null {
     if (keyRes === null) return null;
     pos = keyRes.next;
     skipWhitespace(input, pos);
-    if (pos >= input.length || input.charCodeAt(pos) !== 0x3A) return null;
+    if (pos >= input.length || input.charCodeAt(pos) !== 0x3a) return null;
     pos++; // skip ':'
     skipWhitespace(input, pos);
     const valRes = parseRawJSONValue(input, pos);
@@ -270,11 +298,11 @@ function parseJSONObject(input: string, pos: i32): EvalValue | null {
     json += '"' + escapeJSON(keyRes.str) + '":' + valRes.json;
     first = false;
     skipWhitespace(input, pos);
-    if (pos < input.length && input.charCodeAt(pos) === 0x2C) {
+    if (pos < input.length && input.charCodeAt(pos) === 0x2c) {
       pos++;
       continue;
     }
-    if (pos < input.length && input.charCodeAt(pos) === 0x7D) {
+    if (pos < input.length && input.charCodeAt(pos) === 0x7d) {
       pos++;
       break;
     }
@@ -291,7 +319,7 @@ function parseJSONArray(input: string, pos: i32): EvalValue | null {
   let json = '[';
   let first = true;
   skipWhitespace(input, pos);
-  if (pos < input.length && input.charCodeAt(pos) === 0x5D) {
+  if (pos < input.length && input.charCodeAt(pos) === 0x5d) {
     result.jsonVal = '[]';
     return result;
   }
@@ -304,11 +332,11 @@ function parseJSONArray(input: string, pos: i32): EvalValue | null {
     json += valRes.json;
     first = false;
     skipWhitespace(input, pos);
-    if (pos < input.length && input.charCodeAt(pos) === 0x2C) {
+    if (pos < input.length && input.charCodeAt(pos) === 0x2c) {
       pos++;
       continue;
     }
-    if (pos < input.length && input.charCodeAt(pos) === 0x5D) {
+    if (pos < input.length && input.charCodeAt(pos) === 0x5d) {
       pos++;
       break;
     }
@@ -374,16 +402,16 @@ function parseRawJSONString(input: string, pos: i32): RawStringResult | null {
       r.next = pos + 1;
       return r;
     }
-    if (c === 0x5C) {
+    if (c === 0x5c) {
       pos++;
       if (pos >= input.length) return null;
       const esc = input.charCodeAt(pos);
       if (esc === 0x22) out += '"';
-      else if (esc === 0x5C) out += '\\';
-      else if (esc === 0x2F) out += '/';
+      else if (esc === 0x5c) out += '\\';
+      else if (esc === 0x2f) out += '/';
       else if (esc === 0x62) out += '\b';
       else if (esc === 0x66) out += '\f';
-      else if (esc === 0x6E) out += '\n';
+      else if (esc === 0x6e) out += '\n';
       else if (esc === 0x72) out += '\r';
       else if (esc === 0x74) out += '\t';
       else if (esc === 0x75) {
@@ -412,7 +440,7 @@ function parseRawJSONString(input: string, pos: i32): RawStringResult | null {
 function parseRawJSONValue(input: string, pos: i32): RawValueResult | null {
   if (pos >= input.length) return null;
   const c = input.charCodeAt(pos);
-  if (c === 0x7B) {
+  if (c === 0x7b) {
     const startPos = pos;
     const obj = parseJSONObject(input, pos);
     if (obj === null) return null;
@@ -422,7 +450,7 @@ function parseRawJSONValue(input: string, pos: i32): RawValueResult | null {
     r.next = findJSONEnd(input, startPos);
     return r;
   }
-  if (c === 0x5B) {
+  if (c === 0x5b) {
     const startPos = pos;
     const arr = parseJSONArray(input, pos);
     if (arr === null) return null;
@@ -451,13 +479,13 @@ function parseRawJSONValue(input: string, pos: i32): RawValueResult | null {
     r.next = pos + 5;
     return r;
   }
-  if (c === 0x6E) {
+  if (c === 0x6e) {
     const r = new RawValueResult();
     r.json = 'null';
     r.next = pos + 4;
     return r;
   }
-  if (c === 0x2D || (c >= 0x30 && c <= 0x39)) {
+  if (c === 0x2d || (c >= 0x30 && c <= 0x39)) {
     const num = parseRawJSONNumber(input, pos);
     if (num === null) return null;
     const r = new RawValueResult();
@@ -471,10 +499,17 @@ function parseRawJSONValue(input: string, pos: i32): RawValueResult | null {
 function parseRawJSONNumber(input: string, pos: i32): RawNumberResult | null {
   const start = pos;
   let end = pos;
-  if (input.charCodeAt(pos) === 0x2D) end++;
+  if (input.charCodeAt(pos) === 0x2d) end++;
   while (end < input.length) {
     const c = input.charCodeAt(end);
-    if ((c >= 0x30 && c <= 0x39) || c === 0x2E || c === 0x65 || c === 0x45 || c === 0x2B || c === 0x2D) {
+    if (
+      (c >= 0x30 && c <= 0x39) ||
+      c === 0x2e ||
+      c === 0x65 ||
+      c === 0x45 ||
+      c === 0x2b ||
+      c === 0x2d
+    ) {
       end++;
     } else break;
   }
@@ -499,15 +534,21 @@ function findJSONEnd(input: string, start: i32): i32 {
   let escape = false;
   for (let i = start; i < input.length; i++) {
     const c = input.charCodeAt(i);
-    if (escape) { escape = false; continue; }
+    if (escape) {
+      escape = false;
+      continue;
+    }
     if (inString) {
-      if (c === 0x5C) escape = true;
+      if (c === 0x5c) escape = true;
       else if (c === 0x22) inString = false;
       continue;
     }
-    if (c === 0x22) { inString = true; continue; }
-    if (c === 0x7B || c === 0x5B) depth++;
-    else if (c === 0x7D || c === 0x5D) {
+    if (c === 0x22) {
+      inString = true;
+      continue;
+    }
+    if (c === 0x7b || c === 0x5b) depth++;
+    else if (c === 0x7d || c === 0x5d) {
       depth--;
       if (depth === 0) return i + 1;
     }
@@ -588,15 +629,15 @@ function containsValue(needle: EvalValue, container: EvalValue): bool {
  */
 function arrayIncludes(json: string, needle: EvalValue): bool {
   // json is '[a,b,c]' or '[]'
-  if (json.length < 2 || json.charCodeAt(0) != 0x5B) return false;
+  if (json.length < 2 || json.charCodeAt(0) != 0x5b) return false;
   let pos = 1;
   while (pos < json.length) {
     while (pos < json.length) {
       const c = json.charCodeAt(pos);
-      if (c != 0x20 && c != 0x09 && c != 0x0A && c != 0x0D && c != 0x2C) break;
+      if (c != 0x20 && c != 0x09 && c != 0x0a && c != 0x0d && c != 0x2c) break;
       pos++;
     }
-    if (pos < json.length && json.charCodeAt(pos) == 0x5D) break;
+    if (pos < json.length && json.charCodeAt(pos) == 0x5d) break;
     const valRes = parseRawJSONValue(json, pos);
     if (valRes === null) return false;
     const elem = parseJSONValue(json, pos);
@@ -657,9 +698,10 @@ export class BuiltinRegistry {
     if (name == 'ceil') return EvalValue.fromNumber(Math.ceil(args[0].numVal));
     if (name == 'min') return minOfArgs(args);
     if (name == 'max') return maxOfArgs(args);
-    if (name == 'between') return EvalValue.fromBool(
-      args[0].numVal >= args[1].numVal && args[0].numVal <= args[2].numVal
-    );
+    if (name == 'between')
+      return EvalValue.fromBool(
+        args[0].numVal >= args[1].numVal && args[0].numVal <= args[2].numVal,
+      );
 
     // Aggregate
     if (name == 'sum') return sumArray(args);
@@ -683,17 +725,40 @@ export class BuiltinRegistry {
 
   private isCoreBuiltin(name: string): bool {
     return (
-      name == 'now' || name == 'uuid' ||
-      name == 'trim' || name == 'split' || name == 'count' ||
-      name == 'startsWith' || name == 'endsWith' || name == 'replace' ||
-      name == 'toUpperCase' || name == 'toLowerCase' || name == 'length' ||
-      name == 'substring' || name == 'indexOf' || name == 'matches' ||
-      name == 'abs' || name == 'round' || name == 'floor' || name == 'ceil' ||
-      name == 'min' || name == 'max' || name == 'between' ||
-      name == 'sum' || name == 'avg' || name == 'min_of' || name == 'max_of' ||
-      name == 'count_of' || name == 'filter' || name == 'map' ||
-      name == 'year' || name == 'month' || name == 'day' ||
-      name == 'hours' || name == 'minutes' || name == 'seconds'
+      name == 'now' ||
+      name == 'uuid' ||
+      name == 'trim' ||
+      name == 'split' ||
+      name == 'count' ||
+      name == 'startsWith' ||
+      name == 'endsWith' ||
+      name == 'replace' ||
+      name == 'toUpperCase' ||
+      name == 'toLowerCase' ||
+      name == 'length' ||
+      name == 'substring' ||
+      name == 'indexOf' ||
+      name == 'matches' ||
+      name == 'abs' ||
+      name == 'round' ||
+      name == 'floor' ||
+      name == 'ceil' ||
+      name == 'min' ||
+      name == 'max' ||
+      name == 'between' ||
+      name == 'sum' ||
+      name == 'avg' ||
+      name == 'min_of' ||
+      name == 'max_of' ||
+      name == 'count_of' ||
+      name == 'filter' ||
+      name == 'map' ||
+      name == 'year' ||
+      name == 'month' ||
+      name == 'day' ||
+      name == 'hours' ||
+      name == 'minutes' ||
+      name == 'seconds'
     );
   }
 }
@@ -736,11 +801,11 @@ function countJSONArrayElements(json: string): i32 {
   let depth = 1;
   while (pos < json.length && depth > 0) {
     const c = json.charCodeAt(pos);
-    if (c == 0x5B) depth++;
-    else if (c == 0x5D) {
+    if (c == 0x5b) depth++;
+    else if (c == 0x5d) {
       depth--;
       if (depth == 0) break;
-    } else if (depth == 1 && c != 0x20 && c != 0x09 && c != 0x0A && c != 0x0D && c != 0x2C) {
+    } else if (depth == 1 && c != 0x20 && c != 0x09 && c != 0x0a && c != 0x0d && c != 0x2c) {
       count++;
       const end = findJSONEnd(json, pos);
       pos = end;
@@ -754,14 +819,16 @@ function countJSONArrayElements(json: string): i32 {
 function startsWithStr(args: EvalValue[]): EvalValue {
   const s = args[0];
   const prefix = args[1];
-  if (s.type != ValueType.STRING || prefix.type != ValueType.STRING) return EvalValue.fromBool(false);
+  if (s.type != ValueType.STRING || prefix.type != ValueType.STRING)
+    return EvalValue.fromBool(false);
   return EvalValue.fromBool(s.strVal.startsWith(prefix.strVal));
 }
 
 function endsWithStr(args: EvalValue[]): EvalValue {
   const s = args[0];
   const suffix = args[1];
-  if (s.type != ValueType.STRING || suffix.type != ValueType.STRING) return EvalValue.fromBool(false);
+  if (s.type != ValueType.STRING || suffix.type != ValueType.STRING)
+    return EvalValue.fromBool(false);
   return EvalValue.fromBool(s.strVal.endsWith(suffix.strVal));
 }
 
@@ -802,7 +869,8 @@ function toLowerCaseStr(args: EvalValue[]): EvalValue {
 function lengthVal(args: EvalValue[]): EvalValue {
   const v = args[0];
   if (v.type == ValueType.STRING) return EvalValue.fromNumber(v.strVal.length as f64);
-  if (v.type == ValueType.ARRAY) return EvalValue.fromNumber(countJSONArrayElements(v.jsonVal) as f64);
+  if (v.type == ValueType.ARRAY)
+    return EvalValue.fromNumber(countJSONArrayElements(v.jsonVal) as f64);
   return v;
 }
 
@@ -828,7 +896,8 @@ function indexOfStr(args: EvalValue[]): EvalValue {
 function matchesStr(args: EvalValue[]): EvalValue {
   const s = args[0];
   const pattern = args[1];
-  if (s.type != ValueType.STRING || pattern.type != ValueType.STRING) return EvalValue.fromBool(false);
+  if (s.type != ValueType.STRING || pattern.type != ValueType.STRING)
+    return EvalValue.fromBool(false);
   try {
     const re = new RegExp(pattern.strVal);
     return EvalValue.fromBool(re.test(s.strVal));
@@ -865,11 +934,11 @@ function sumArray(args: EvalValue[]): EvalValue {
   const json = arr.jsonVal;
   while (pos < json.length && depth > 0) {
     const c = json.charCodeAt(pos);
-    if (c == 0x5B) depth++;
-    else if (c == 0x5D) {
+    if (c == 0x5b) depth++;
+    else if (c == 0x5d) {
       depth--;
       if (depth == 0) break;
-    } else if (depth == 1 && c != 0x20 && c != 0x09 && c != 0x0A && c != 0x0D && c != 0x2C) {
+    } else if (depth == 1 && c != 0x20 && c != 0x09 && c != 0x0a && c != 0x0d && c != 0x2c) {
       const valRes = parseRawJSONValue(json, pos);
       if (valRes !== null) {
         const elem = parseJSONValue(json, pos);
@@ -895,11 +964,11 @@ function avgArray(args: EvalValue[]): EvalValue {
   const json = arr.jsonVal;
   while (pos < json.length && depth > 0) {
     const c = json.charCodeAt(pos);
-    if (c == 0x5B) depth++;
-    else if (c == 0x5D) {
+    if (c == 0x5b) depth++;
+    else if (c == 0x5d) {
       depth--;
       if (depth == 0) break;
-    } else if (depth == 1 && c != 0x20 && c != 0x09 && c != 0x0A && c != 0x0D && c != 0x2C) {
+    } else if (depth == 1 && c != 0x20 && c != 0x09 && c != 0x0a && c != 0x0d && c != 0x2c) {
       const valRes = parseRawJSONValue(json, pos);
       if (valRes !== null) {
         const elem = parseJSONValue(json, pos);
@@ -926,11 +995,11 @@ function minOfArray(args: EvalValue[]): EvalValue {
   const json = arr.jsonVal;
   while (pos < json.length && depth > 0) {
     const c = json.charCodeAt(pos);
-    if (c == 0x5B) depth++;
-    else if (c == 0x5D) {
+    if (c == 0x5b) depth++;
+    else if (c == 0x5d) {
       depth--;
       if (depth == 0) break;
-    } else if (depth == 1 && c != 0x20 && c != 0x09 && c != 0x0A && c != 0x0D && c != 0x2C) {
+    } else if (depth == 1 && c != 0x20 && c != 0x09 && c != 0x0a && c != 0x0d && c != 0x2c) {
       const valRes = parseRawJSONValue(json, pos);
       if (valRes !== null) {
         const elem = parseJSONValue(json, pos);
@@ -959,11 +1028,11 @@ function maxOfArray(args: EvalValue[]): EvalValue {
   const json = arr.jsonVal;
   while (pos < json.length && depth > 0) {
     const c = json.charCodeAt(pos);
-    if (c == 0x5B) depth++;
-    else if (c == 0x5D) {
+    if (c == 0x5b) depth++;
+    else if (c == 0x5d) {
       depth--;
       if (depth == 0) break;
-    } else if (depth == 1 && c != 0x20 && c != 0x09 && c != 0x0A && c != 0x0D && c != 0x2C) {
+    } else if (depth == 1 && c != 0x20 && c != 0x09 && c != 0x0a && c != 0x0d && c != 0x2c) {
       const valRes = parseRawJSONValue(json, pos);
       if (valRes !== null) {
         const elem = parseJSONValue(json, pos);
@@ -1008,7 +1077,7 @@ function mapArray(args: EvalValue[]): EvalValue {
 export function evaluateExpression(
   exprJson: string,
   contextJson: string,
-  builtins: BuiltinRegistry
+  builtins: BuiltinRegistry,
 ): EvalValue {
   const expr = parseExpression(exprJson, 0);
   if (expr === null) return EvalValue.undefinedValue();
@@ -1023,7 +1092,7 @@ export function evaluateExpression(
 export function evaluateExpressionJSON(
   exprJson: string,
   contextJson: string,
-  builtins: BuiltinRegistry
+  builtins: BuiltinRegistry,
 ): string {
   const result = evaluateExpression(exprJson, contextJson, builtins);
   return valueToJSON(result);
@@ -1040,7 +1109,7 @@ export function evaluateConstraint(
   exprJson: string,
   contextJson: string,
   constraintName: string,
-  builtins: BuiltinRegistry
+  builtins: BuiltinRegistry,
 ): string {
   const result = evaluateExpression(exprJson, contextJson, builtins);
   const negative = constraintName.startsWith('severity');
@@ -1078,7 +1147,7 @@ function parseExpression(input: string, pos: i32): ExprNode | null {
   if (pos >= input.length) return null;
   skipWhitespace(input, pos);
   const c = input.charCodeAt(pos);
-  if (c != 0x7B) return null;
+  if (c != 0x7b) return null;
   return parseExprObject(input, pos);
 }
 
@@ -1090,16 +1159,32 @@ function parseExprObject(input: string, pos: i32): ExprNode | null {
   let escape = false;
   while (pos < input.length && depth > 0) {
     const c = input.charCodeAt(pos);
-    if (escape) { escape = false; pos++; continue; }
+    if (escape) {
+      escape = false;
+      pos++;
+      continue;
+    }
     if (inString) {
-      if (c == 0x5C) escape = true;
+      if (c == 0x5c) escape = true;
       else if (c == 0x22) inString = false;
       pos++;
       continue;
     }
-    if (c == 0x22) { inString = true; pos++; continue; }
-    if (c == 0x7B) { depth++; pos++; continue; }
-    if (c == 0x7D) { depth--; pos++; break; }
+    if (c == 0x22) {
+      inString = true;
+      pos++;
+      continue;
+    }
+    if (c == 0x7b) {
+      depth++;
+      pos++;
+      continue;
+    }
+    if (c == 0x7d) {
+      depth--;
+      pos++;
+      break;
+    }
     pos++;
   }
   if (depth != 0) return null;
@@ -1112,7 +1197,7 @@ function parseFullExpr(input: string, _pos: i32): ExprNode | null {
   // Use a state machine: read "kind": "...", then read the corresponding field.
   let pos = 0;
   skipWhitespace(input, pos);
-  if (pos >= input.length || input.charCodeAt(pos) != 0x7B) return null;
+  if (pos >= input.length || input.charCodeAt(pos) != 0x7b) return null;
   pos++;
   skipWhitespace(input, pos);
   const kindRes = parseStringField(input, pos);
@@ -1124,11 +1209,11 @@ function parseFullExpr(input: string, _pos: i32): ExprNode | null {
   // Parse remaining fields
   while (pos < input.length) {
     skipWhitespace(input, pos);
-    if (pos < input.length && input.charCodeAt(pos) == 0x7D) {
+    if (pos < input.length && input.charCodeAt(pos) == 0x7d) {
       pos++;
       break;
     }
-    if (pos < input.length && input.charCodeAt(pos) == 0x2C) {
+    if (pos < input.length && input.charCodeAt(pos) == 0x2c) {
       pos++;
       continue;
     }
@@ -1136,7 +1221,7 @@ function parseFullExpr(input: string, _pos: i32): ExprNode | null {
     if (fieldRes === null) return null;
     pos = fieldRes.next;
     skipWhitespace(input, pos);
-    if (pos >= input.length || input.charCodeAt(pos) != 0x3A) return null;
+    if (pos >= input.length || input.charCodeAt(pos) != 0x3a) return null;
     pos++;
     skipWhitespace(input, pos);
     // Read the value
@@ -1203,8 +1288,14 @@ function applyField(node: ExprNode, field: string, valJson: string): void {
     }
     return;
   }
-  if (field == 'operand' || field == 'object' || field == 'callee' ||
-      field == 'condition' || field == 'consequent' || field == 'alternate') {
+  if (
+    field == 'operand' ||
+    field == 'object' ||
+    field == 'callee' ||
+    field == 'condition' ||
+    field == 'consequent' ||
+    field == 'alternate'
+  ) {
     const child = parseFullExpr(valJson, 0);
     if (child !== null) {
       if (field == 'operand') node.operand = child;
@@ -1217,7 +1308,7 @@ function applyField(node: ExprNode, field: string, valJson: string): void {
     return;
   }
   if (field == 'args' || field == 'elements') {
-    if (valJson.charCodeAt(0) == 0x5B) {
+    if (valJson.charCodeAt(0) == 0x5b) {
       const arr = parseExprArray(valJson);
       if (arr !== null) {
         if (field == 'args') node.args = arr;
@@ -1227,14 +1318,14 @@ function applyField(node: ExprNode, field: string, valJson: string): void {
     return;
   }
   if (field == 'params') {
-    if (valJson.charCodeAt(0) == 0x5B) {
+    if (valJson.charCodeAt(0) == 0x5b) {
       const params = parseStringArray(valJson);
       if (params !== null) node.params = params;
     }
     return;
   }
   if (field == 'properties') {
-    if (valJson.charCodeAt(0) == 0x5B) {
+    if (valJson.charCodeAt(0) == 0x5b) {
       const props = parseObjectProperties(valJson);
       if (props !== null) node.properties = props;
     }
@@ -1248,7 +1339,7 @@ function parseExprArray(input: string): ExprNode[] | null {
   let pos = 1;
   while (pos < input.length) {
     skipWhitespace(input, pos);
-    if (pos < input.length && input.charCodeAt(pos) == 0x5D) break;
+    if (pos < input.length && input.charCodeAt(pos) == 0x5d) break;
     const valStart = pos;
     const valEnd = findJSONEnd(input, valStart);
     if (valEnd <= valStart) return null;
@@ -1257,7 +1348,7 @@ function parseExprArray(input: string): ExprNode[] | null {
     if (child !== null) result.push(child);
     pos = valEnd;
     skipWhitespace(input, pos);
-    if (pos < input.length && input.charCodeAt(pos) == 0x2C) pos++;
+    if (pos < input.length && input.charCodeAt(pos) == 0x2c) pos++;
   }
   return result;
 }
@@ -1267,14 +1358,14 @@ function parseStringArray(input: string): string[] | null {
   let pos = 1;
   while (pos < input.length) {
     skipWhitespace(input, pos);
-    if (pos < input.length && input.charCodeAt(pos) == 0x5D) break;
+    if (pos < input.length && input.charCodeAt(pos) == 0x5d) break;
     if (pos >= input.length || input.charCodeAt(pos) != 0x22) return null;
     const res = parseRawJSONString(input, pos);
     if (res === null) return null;
     result.push(res.str);
     pos = res.next;
     skipWhitespace(input, pos);
-    if (pos < input.length && input.charCodeAt(pos) == 0x2C) pos++;
+    if (pos < input.length && input.charCodeAt(pos) == 0x2c) pos++;
   }
   return result;
 }
@@ -1285,8 +1376,8 @@ function parseObjectProperties(input: string): Map<string, ExprNode> | null {
   let pos = 1;
   while (pos < input.length) {
     skipWhitespace(input, pos);
-    if (pos < input.length && input.charCodeAt(pos) == 0x5D) break;
-    if (pos >= input.length || input.charCodeAt(pos) != 0x7B) return null;
+    if (pos < input.length && input.charCodeAt(pos) == 0x5d) break;
+    if (pos >= input.length || input.charCodeAt(pos) != 0x7b) return null;
     const objStart = pos;
     const objEnd = findJSONEnd(input, objStart);
     if (objEnd <= objStart) return null;
@@ -1297,12 +1388,12 @@ function parseObjectProperties(input: string): Map<string, ExprNode> | null {
     let valueJson: string = '';
     while (innerPos < objJson.length) {
       skipWhitespace(objJson, innerPos);
-      if (innerPos < objJson.length && objJson.charCodeAt(innerPos) == 0x7D) break;
+      if (innerPos < objJson.length && objJson.charCodeAt(innerPos) == 0x7d) break;
       const fieldRes = parseStringField(objJson, innerPos);
       if (fieldRes === null) return null;
       innerPos = fieldRes.next;
       skipWhitespace(objJson, innerPos);
-      if (innerPos >= objJson.length || objJson.charCodeAt(innerPos) != 0x3A) return null;
+      if (innerPos >= objJson.length || objJson.charCodeAt(innerPos) != 0x3a) return null;
       innerPos++;
       skipWhitespace(objJson, innerPos);
       const valStart = innerPos;
@@ -1315,7 +1406,7 @@ function parseObjectProperties(input: string): Map<string, ExprNode> | null {
       }
       innerPos = valEnd;
       skipWhitespace(objJson, innerPos);
-      if (innerPos < objJson.length && objJson.charCodeAt(innerPos) == 0x2C) innerPos++;
+      if (innerPos < objJson.length && objJson.charCodeAt(innerPos) == 0x2c) innerPos++;
     }
     if (key.length > 0 && valueJson.length > 0) {
       const child = parseFullExpr(valueJson, 0);
@@ -1323,7 +1414,7 @@ function parseObjectProperties(input: string): Map<string, ExprNode> | null {
     }
     pos = objEnd;
     skipWhitespace(input, pos);
-    if (pos < input.length && input.charCodeAt(pos) == 0x2C) pos++;
+    if (pos < input.length && input.charCodeAt(pos) == 0x2c) pos++;
   }
   return result;
 }
@@ -1392,7 +1483,11 @@ function evaluateNode(node: ExprNode, ctx: EvalContext, builtins: BuiltinRegistr
     }
     case 'call': {
       // Built-in function call
-      if (node.callee !== null && node.callee.kind == 'identifier' && builtins.has(node.callee.strVal)) {
+      if (
+        node.callee !== null &&
+        node.callee.kind == 'identifier' &&
+        builtins.has(node.callee.strVal)
+      ) {
         const args = new Array<EvalValue>();
         for (let i = 0; i < node.args.length; i++) {
           args.push(evaluateNode(node.args[i], ctx, builtins));
@@ -1459,30 +1554,38 @@ function evaluateNode(node: ExprNode, ctx: EvalContext, builtins: BuiltinRegistr
 
 function valueToJSON(v: EvalValue): string {
   switch (v.type) {
-    case ValueType.NULL: return 'null';
-    case ValueType.UNDEFINED: return 'null';
-    case ValueType.BOOLEAN: return v.boolVal ? 'true' : 'false';
-    case ValueType.NUMBER: return v.numVal.toString();
-    case ValueType.STRING: return '"' + escapeJSON(v.strVal) + '"';
-    case ValueType.ARRAY: return v.jsonVal.length > 0 ? v.jsonVal : '[]';
-    case ValueType.OBJECT: return v.jsonVal.length > 0 ? v.jsonVal : '{}';
-    default: return 'null';
+    case ValueType.NULL:
+      return 'null';
+    case ValueType.UNDEFINED:
+      return 'null';
+    case ValueType.BOOLEAN:
+      return v.boolVal ? 'true' : 'false';
+    case ValueType.NUMBER:
+      return v.numVal.toString();
+    case ValueType.STRING:
+      return '"' + escapeJSON(v.strVal) + '"';
+    case ValueType.ARRAY:
+      return v.jsonVal.length > 0 ? v.jsonVal : '[]';
+    case ValueType.OBJECT:
+      return v.jsonVal.length > 0 ? v.jsonVal : '{}';
+    default:
+      return 'null';
   }
 }
 
 function getObjectProperty(json: string, prop: string): EvalValue | null {
   // json is '{...}'
-  if (json.length < 2 || json.charCodeAt(0) != 0x7B) return null;
+  if (json.length < 2 || json.charCodeAt(0) != 0x7b) return null;
   let pos = 1;
   while (pos < json.length) {
     skipWhitespace(json, pos);
-    if (pos < json.length && json.charCodeAt(pos) == 0x7D) return null;
+    if (pos < json.length && json.charCodeAt(pos) == 0x7d) return null;
     if (pos >= json.length || json.charCodeAt(pos) != 0x22) return null;
     const keyRes = parseRawJSONString(json, pos);
     if (keyRes === null) return null;
     pos = keyRes.next;
     skipWhitespace(json, pos);
-    if (pos >= json.length || json.charCodeAt(pos) != 0x3A) return null;
+    if (pos >= json.length || json.charCodeAt(pos) != 0x3a) return null;
     pos++;
     skipWhitespace(json, pos);
     const valStart = pos;
@@ -1493,18 +1596,18 @@ function getObjectProperty(json: string, prop: string): EvalValue | null {
     }
     pos = valEnd;
     skipWhitespace(json, pos);
-    if (pos < json.length && json.charCodeAt(pos) == 0x2C) pos++;
+    if (pos < json.length && json.charCodeAt(pos) == 0x2c) pos++;
   }
   return null;
 }
 
 function getArrayElement(json: string, index: i32): EvalValue | null {
-  if (json.length < 2 || json.charCodeAt(0) != 0x5B) return null;
+  if (json.length < 2 || json.charCodeAt(0) != 0x5b) return null;
   let pos = 1;
   let current: i32 = 0;
   while (pos < json.length) {
     skipWhitespace(json, pos);
-    if (pos < json.length && json.charCodeAt(pos) == 0x5D) return null;
+    if (pos < json.length && json.charCodeAt(pos) == 0x5d) return null;
     const valStart = pos;
     const valEnd = findJSONEnd(json, valStart);
     if (valEnd <= valStart) return null;
@@ -1514,7 +1617,7 @@ function getArrayElement(json: string, index: i32): EvalValue | null {
     current++;
     pos = valEnd;
     skipWhitespace(json, pos);
-    if (pos < json.length && json.charCodeAt(pos) == 0x2C) pos++;
+    if (pos < json.length && json.charCodeAt(pos) == 0x2c) pos++;
   }
   return null;
 }
@@ -1526,17 +1629,17 @@ function buildContextFromJSON(contextJson: string): EvalContext {
   let pos = 0;
   skipWhitespace(contextJson, pos);
   if (pos >= contextJson.length) return ctx;
-  if (contextJson.charCodeAt(pos) != 0x7B) return ctx;
+  if (contextJson.charCodeAt(pos) != 0x7b) return ctx;
   pos++;
   while (pos < contextJson.length) {
     skipWhitespace(contextJson, pos);
-    if (pos < contextJson.length && contextJson.charCodeAt(pos) == 0x7D) break;
+    if (pos < contextJson.length && contextJson.charCodeAt(pos) == 0x7d) break;
     if (pos >= contextJson.length || contextJson.charCodeAt(pos) != 0x22) return ctx;
     const keyRes = parseRawJSONString(contextJson, pos);
     if (keyRes === null) return ctx;
     pos = keyRes.next;
     skipWhitespace(contextJson, pos);
-    if (pos >= contextJson.length || contextJson.charCodeAt(pos) != 0x3A) return ctx;
+    if (pos >= contextJson.length || contextJson.charCodeAt(pos) != 0x3a) return ctx;
     pos++;
     skipWhitespace(contextJson, pos);
     const valStart = pos;
@@ -1546,7 +1649,7 @@ function buildContextFromJSON(contextJson: string): EvalContext {
     if (val !== null) ctx.set(keyRes.str, val);
     pos = valEnd;
     skipWhitespace(contextJson, pos);
-    if (pos < contextJson.length && contextJson.charCodeAt(pos) == 0x2C) pos++;
+    if (pos < contextJson.length && contextJson.charCodeAt(pos) == 0x2c) pos++;
   }
   return ctx;
 }
@@ -1560,7 +1663,10 @@ let hostNow: () => f64 = () => 0;
 let hostUuid: () => string = () => '';
 
 // Default builtins registry
-const defaultRegistry = new BuiltinRegistry(() => hostNow(), () => hostUuid());
+const defaultRegistry = new BuiltinRegistry(
+  () => hostNow(),
+  () => hostUuid(),
+);
 
 /**
  * WASM export: evaluate expression and return JSON.

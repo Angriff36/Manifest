@@ -40,13 +40,18 @@ entity Order {
 interface JobQueue {
   enqueue(job: JobRecord): Promise<void>;
   drainPending(): Promise<JobRecord[]>;
-  updateStatus(jobId: string, status: JobRecord['status'], detail?: { result?: unknown; error?: string }): Promise<void>;
+  updateStatus(
+    jobId: string,
+    status: JobRecord['status'],
+    detail?: { result?: unknown; error?: string },
+  ): Promise<void>;
 }
 ```
 
 ### Production Setup
 
 **No worker is auto-started.** The host must:
+
 1. Provide `RuntimeOptions.jobQueue` (implement `JobQueue` or use a shipped adapter). Without it, every async command returns `MISSING_JOB_QUEUE`.
 2. Separately poll the queue via `runtime.drainJobs()` or `runJobWorker()` in a background process or cron job.
 

@@ -48,10 +48,7 @@ function parseFrontmatter(src) {
     if (!m) continue;
     let v = m[2].trim();
     // strip matching quotes
-    if (
-      (v.startsWith('"') && v.endsWith('"')) ||
-      (v.startsWith("'") && v.endsWith("'"))
-    ) {
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
       v = v.slice(1, -1);
     }
     out[m[1]] = v;
@@ -125,7 +122,7 @@ async function main() {
     console.log(
       `check-doc-metadata: OK (${total} files scanned across ${groups
         .map((g) => `${g.name}=${g.scanned}`)
-        .join(', ')})`
+        .join(', ')})`,
     );
     return;
   }

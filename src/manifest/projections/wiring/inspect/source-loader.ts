@@ -54,7 +54,7 @@ export async function loadApplicationSources(
   for (let i = 0; i < pending.length; i += READ_CONCURRENCY) {
     const batch = pending.slice(i, i + READ_CONCURRENCY);
     await Promise.all(
-      batch.map(async item => {
+      batch.map(async (item) => {
         if (item.stub) {
           fileContents.set(item.key, '');
           return;
@@ -109,5 +109,5 @@ async function collectFiles(
     out.push({ abs, key, stub });
   }
   // Parallelize directory descent one level at a time
-  await Promise.all(subdirs.map(d => collectFiles(d, keyBase, out)));
+  await Promise.all(subdirs.map((d) => collectFiles(d, keyBase, out)));
 }

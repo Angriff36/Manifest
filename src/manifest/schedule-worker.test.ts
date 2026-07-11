@@ -257,7 +257,11 @@ describe('startScheduleWorker — lifecycle', () => {
   it('schedules the tick timer with the configured interval (default 30s)', () => {
     const runtime = makeRuntime({ schedules: [] });
     const ft = fakeTimer();
-    startScheduleWorker(runtime, { now: () => 0, setTimer: ft.setTimer, clearTimer: ft.clearTimer });
+    startScheduleWorker(runtime, {
+      now: () => 0,
+      setTimer: ft.setTimer,
+      clearTimer: ft.clearTimer,
+    });
     expect(ft.calls).toHaveLength(1);
     expect(ft.calls[0].ms).toBe(30_000);
 
@@ -362,10 +366,14 @@ describe('startScheduleWorker — integration with RuntimeEngine', () => {
     expect(compiled.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     const ir = compiled.ir!;
 
-    const runtime = new RuntimeEngine(ir, {}, {
-      generateId: () => 'todo-1',
-      now: () => 12345,
-    });
+    const runtime = new RuntimeEngine(
+      ir,
+      {},
+      {
+        generateId: () => 'todo-1',
+        now: () => 12345,
+      },
+    );
 
     const runResults: CommandResult[] = [];
     const ft = fakeTimer();

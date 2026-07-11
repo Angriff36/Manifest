@@ -46,7 +46,14 @@ const SURFACE_COMPANIONS = 'hono.companions' as const;
 const SURFACE_WEBHOOKS = 'hono.webhooks' as const;
 const SURFACE_ALL = 'hono.all' as const;
 
-const SURFACES = [SURFACE_ROUTER, SURFACE_ENTITY, SURFACE_TYPES, SURFACE_COMPANIONS, SURFACE_WEBHOOKS, SURFACE_ALL] as const;
+const SURFACES = [
+  SURFACE_ROUTER,
+  SURFACE_ENTITY,
+  SURFACE_TYPES,
+  SURFACE_COMPANIONS,
+  SURFACE_WEBHOOKS,
+  SURFACE_ALL,
+] as const;
 
 /** Package subpath for the runtime webhook handler (owned by src/manifest/webhooks). */
 const WEBHOOKS_IMPORT = '@angriff36/manifest/webhooks';
@@ -197,11 +204,16 @@ function expressionToString(expr: IRExpression): string {
 
 function irValueToJson(value: IRValue): unknown {
   switch (value.kind) {
-    case 'string': return value.value;
-    case 'number': return value.value;
-    case 'boolean': return value.value;
-    case 'null': return null;
-    case 'array': return value.elements.map(irValueToJson);
+    case 'string':
+      return value.value;
+    case 'number':
+      return value.value;
+    case 'boolean':
+      return value.value;
+    case 'null':
+      return null;
+    case 'array':
+      return value.elements.map(irValueToJson);
     case 'object': {
       const obj: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(value.properties)) {
@@ -277,7 +289,7 @@ function generateTypesSurface(
   lines.push(emitHeader(options));
 
   const entities = entityFilter
-    ? ir.entities.filter(e => e.name === entityFilter)
+    ? ir.entities.filter((e) => e.name === entityFilter)
     : [...ir.entities].sort((a, b) => a.name.localeCompare(b.name));
 
   if (entityFilter && entities.length === 0) {
@@ -314,7 +326,7 @@ function generateTypesSurface(
 
   // Command parameter types
   const commands = entityFilter
-    ? ir.commands.filter(c => c.entity === entityFilter)
+    ? ir.commands.filter((c) => c.entity === entityFilter)
     : [...ir.commands].sort((a, b) => {
         const aKey = `${a.entity ?? ''}.${a.name}`;
         const bKey = `${b.entity ?? ''}.${b.name}`;
@@ -345,7 +357,9 @@ function generateCommandComment(
   lines.push(`   * ${toPascalCase(command.name)} command for ${entity.name}.`);
 
   if (command.guards.length > 0) {
-    lines.push(`   * Guards: ${command.guards.length} (evaluated in order, halts on first failure)`);
+    lines.push(
+      `   * Guards: ${command.guards.length} (evaluated in order, halts on first failure)`,
+    );
     for (let i = 0; i < command.guards.length; i++) {
       lines.push(`   *   [${i}] ${expressionToString(command.guards[i])}`);
     }
@@ -355,9 +369,9 @@ function generateCommandComment(
     lines.push(`   * Constraints: ${command.constraints.length}`);
   }
 
-  const entityPolicies = policies.filter(p => p.entity === entity.name);
+  const entityPolicies = policies.filter((p) => p.entity === entity.name);
   if (entityPolicies.length > 0) {
-    lines.push(`   * Policies: ${entityPolicies.map(p => p.name).join(', ')}`);
+    lines.push(`   * Policies: ${entityPolicies.map((p) => p.name).join(', ')}`);
   }
 
   if (command.emits.length > 0) {
@@ -388,7 +402,7 @@ function generateHonoEntityRoutes(
 
   // Entity-scoped commands
   const entityCommands = commands
-    .filter(c => c.entity === entity.name)
+    .filter((c) => c.entity === entity.name)
     .sort((a, b) => a.name.localeCompare(b.name));
 
   // GET list route
@@ -398,12 +412,16 @@ function generateHonoEntityRoutes(
   if (options.publicReads) {
     lines.push(`  app.get('${contract.listPath(entity.name)}', async (c) => {`);
   } else {
-    lines.push(`  app.get('${contract.listPath(entity.name)}', ${options.authMiddlewareName}, async (c) => {`);
+    lines.push(
+      `  app.get('${contract.listPath(entity.name)}', ${options.authMiddlewareName}, async (c) => {`,
+    );
   }
   lines.push(`    const runtime = await ${options.runtimeFactoryName}();`);
   if (options.includeTenantContext && !options.publicReads) {
     lines.push(`    const user = c.get('user');`);
-    lines.push(`    const result = await runtime.list('${entity.name}', { ${options.tenantIdProperty}: user.${options.tenantIdProperty} });`);
+    lines.push(
+      `    const result = await runtime.list('${entity.name}', { ${options.tenantIdProperty}: user.${options.tenantIdProperty} });`,
+    );
   } else if (options.includeTenantContext && options.publicReads) {
     lines.push(`    const result = await runtime.list('${entity.name}');`);
   } else {
@@ -420,18 +438,24 @@ function generateHonoEntityRoutes(
   if (options.publicReads) {
     lines.push(`  app.get('${contract.detailPath(entity.name, 'colon')}', async (c) => {`);
   } else {
-    lines.push(`  app.get('${contract.detailPath(entity.name, 'colon')}', ${options.authMiddlewareName}, async (c) => {`);
+    lines.push(
+      `  app.get('${contract.detailPath(entity.name, 'colon')}', ${options.authMiddlewareName}, async (c) => {`,
+    );
   }
   lines.push(`    const id = c.req.param('id');`);
   lines.push(`    const runtime = await ${options.runtimeFactoryName}();`);
   if (options.includeTenantContext && !options.publicReads) {
     lines.push(`    const user = c.get('user');`);
-    lines.push(`    const result = await runtime.get('${entity.name}', id, { ${options.tenantIdProperty}: user.${options.tenantIdProperty} });`);
+    lines.push(
+      `    const result = await runtime.get('${entity.name}', id, { ${options.tenantIdProperty}: user.${options.tenantIdProperty} });`,
+    );
   } else {
     lines.push(`    const result = await runtime.get('${entity.name}', id);`);
   }
   lines.push('    if (!result) {');
-  lines.push(`      return c.json({ error: { code: 'NOT_FOUND', message: '${entity.name} not found' } }, 404);`);
+  lines.push(
+    `      return c.json({ error: { code: 'NOT_FOUND', message: '${entity.name} not found' } }, 404);`,
+  );
   lines.push('    }');
   lines.push('    return c.json(result);');
   lines.push('  });');
@@ -444,11 +468,12 @@ function generateHonoEntityRoutes(
     }
 
     const commandSegment = toKebabCase(command.name);
-    const schemaName = command.parameters.length > 0
-      ? zodParamsSchemaName(entity.name, command.name)
-      : undefined;
+    const schemaName =
+      command.parameters.length > 0 ? zodParamsSchemaName(entity.name, command.name) : undefined;
 
-    lines.push(`  app.post('${contract.entityBasePath(entity.name)}/${commandSegment}', ${options.authMiddlewareName}, async (c) => {`);
+    lines.push(
+      `  app.post('${contract.entityBasePath(entity.name)}/${commandSegment}', ${options.authMiddlewareName}, async (c) => {`,
+    );
     lines.push('    try {');
 
     // Validation
@@ -457,7 +482,9 @@ function generateHonoEntityRoutes(
       lines.push(`      const parseResult = ${schemaName}.safeParse(body);`);
       lines.push('      if (!parseResult.success) {');
       lines.push('        return c.json({');
-      lines.push("          error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parseResult.error.issues },");
+      lines.push(
+        "          error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parseResult.error.issues },",
+      );
       lines.push('        }, 400);');
       lines.push('      }');
       lines.push('      const params = parseResult.data;');
@@ -474,8 +501,10 @@ function generateHonoEntityRoutes(
       ? `, { user, ${options.tenantIdProperty}: user.${options.tenantIdProperty} }`
       : ', { user }';
 
-    lines.push("      const instanceId = body.instanceId ?? body.id;");
-    lines.push(`      const result = await runtime.runCommand('${entity.name}', '${command.name}', {`);
+    lines.push('      const instanceId = body.instanceId ?? body.id;');
+    lines.push(
+      `      const result = await runtime.runCommand('${entity.name}', '${command.name}', {`,
+    );
     lines.push('        params,');
     lines.push('        instanceId,');
     lines.push(`      }${contextArg});`);
@@ -483,15 +512,19 @@ function generateHonoEntityRoutes(
     lines.push('      return c.json(result);');
     lines.push('    } catch (err: unknown) {');
     lines.push("      if (err && typeof err === 'object' && 'code' in err) {");
-    lines.push("        const e = err as { code: string; message?: string; status?: number };");
+    lines.push('        const e = err as { code: string; message?: string; status?: number };');
     lines.push("        const status = e.code === 'GUARD_FAILED' ? 403");
     lines.push("          : e.code === 'CONSTRAINT_VIOLATION' ? 422");
     lines.push("          : e.code === 'CONCURRENCY_CONFLICT' ? 409");
     lines.push("          : e.code === 'NOT_FOUND' ? 404");
     lines.push('          : 500;');
-    lines.push("        return c.json({ error: { code: e.code, message: e.message ?? 'Command failed' } }, status as any);");
+    lines.push(
+      "        return c.json({ error: { code: e.code, message: e.message ?? 'Command failed' } }, status as any);",
+    );
     lines.push('      }');
-    lines.push("      return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } }, 500);");
+    lines.push(
+      "      return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } }, 500);",
+    );
     lines.push('    }');
     lines.push('  });');
   }
@@ -525,16 +558,16 @@ function generateHonoRouter(
   if (hasValidation) {
     // Import schemas for validation
     const entities = entityFilter
-      ? ir.entities.filter(e => e.name === entityFilter)
+      ? ir.entities.filter((e) => e.name === entityFilter)
       : ir.entities;
     const commands = entityFilter
-      ? ir.commands.filter(c => c.entity === entityFilter)
+      ? ir.commands.filter((c) => c.entity === entityFilter)
       : ir.commands;
 
     const schemaImports: string[] = [];
     for (const command of commands) {
       if (command.parameters.length > 0 && command.entity) {
-        const entity = entities.find(e => e.name === command.entity);
+        const entity = entities.find((e) => e.name === command.entity);
         if (entity) {
           schemaImports.push(zodParamsSchemaName(command.entity, command.name));
         }
@@ -568,7 +601,7 @@ function generateHonoRouter(
 
   // Filter entities
   const entities = entityFilter
-    ? ir.entities.filter(e => e.name === entityFilter)
+    ? ir.entities.filter((e) => e.name === entityFilter)
     : [...ir.entities].sort((a, b) => a.name.localeCompare(b.name));
 
   if (entityFilter && entities.length === 0) {
@@ -593,12 +626,7 @@ function generateHonoRouter(
       lines.push(`// --- ${entity.name} routes ---`);
       lines.push('');
     }
-    const entityRoutes = generateHonoEntityRoutes(
-      entity,
-      ir.commands,
-      ir.policies,
-      options,
-    );
+    const entityRoutes = generateHonoEntityRoutes(entity, ir.commands, ir.policies, options);
     lines.push(entityRoutes);
     lines.push('');
   }
@@ -650,8 +678,12 @@ function generateRuntimeCompanionModule(ir: IR, options: NormalizedOptions): str
   lines.push('');
   lines.push('/** The runtime surface the generated routes consume. */');
   lines.push('export interface ManifestRuntime {');
-  lines.push('  list(entityName: string, filter?: Record<string, unknown>): Promise<ManifestListResult>;');
-  lines.push('  get(entityName: string, id: string, filter?: Record<string, unknown>): Promise<ManifestInstanceResult>;');
+  lines.push(
+    '  list(entityName: string, filter?: Record<string, unknown>): Promise<ManifestListResult>;',
+  );
+  lines.push(
+    '  get(entityName: string, id: string, filter?: Record<string, unknown>): Promise<ManifestInstanceResult>;',
+  );
   lines.push('  runCommand(');
   lines.push('    entityName: string,');
   lines.push('    commandName: string,');
@@ -710,7 +742,9 @@ function generateHonoAuthStub(options: NormalizedOptions): string {
   lines.push('');
   lines.push(`export const ${name}: MiddlewareHandler = async (c) => {`);
   lines.push('  return c.json(');
-  lines.push(`    { error: { code: 'UNAUTHORIZED', message: 'Auth not configured: implement ${name} in this module.' } },`);
+  lines.push(
+    `    { error: { code: 'UNAUTHORIZED', message: 'Auth not configured: implement ${name} in this module.' } },`,
+  );
   lines.push('    401,');
   lines.push('  );');
   lines.push('};');
@@ -737,12 +771,18 @@ function generateCompanions(ir: IR, options: NormalizedOptions): ProjectionResul
     diagnostics.push({
       severity: 'info',
       code: 'COMPANIONS_DISABLED',
-      message: 'emitCompanions is false — no companion modules emitted (hand-written workflow preserved).',
+      message:
+        'emitCompanions is false — no companion modules emitted (hand-written workflow preserved).',
     });
     return { artifacts, diagnostics };
   }
 
-  const emit = (kind: string, importSpecifier: string, build: () => string, label: string): void => {
+  const emit = (
+    kind: string,
+    importSpecifier: string,
+    build: () => string,
+    label: string,
+  ): void => {
     // Package-ness is independent of the importer directory; probe once.
     const probe = resolveLocalImportPathHint(importSpecifier, {
       framework: 'hono',
@@ -769,12 +809,22 @@ function generateCompanions(ir: IR, options: NormalizedOptions): ProjectionResul
     const code = build();
     for (const pathHint of [...pathHints].sort()) {
       const topDir = pathHint.split('/')[0];
-      artifacts.push({ id: `hono.companions.${kind}.${topDir}`, pathHint, contentType: 'typescript', code });
+      artifacts.push({
+        id: `hono.companions.${kind}.${topDir}`,
+        pathHint,
+        contentType: 'typescript',
+        code,
+      });
     }
   };
 
   // Runtime factory — imported unconditionally by every router.
-  emit('runtime', options.runtimeImportPath, () => generateRuntimeCompanionModule(ir, options), 'runtime factory');
+  emit(
+    'runtime',
+    options.runtimeImportPath,
+    () => generateRuntimeCompanionModule(ir, options),
+    'runtime factory',
+  );
 
   // Auth middleware — imported unconditionally by every router.
   emit('auth', options.authImportPath, () => generateHonoAuthStub(options), 'auth middleware');
@@ -861,7 +911,9 @@ function generateHonoWebhooks(ir: IR, options: NormalizedOptions): ProjectionRes
       lines.push(`// Webhook "${webhook.name}" — ${method.toUpperCase()} ${webhook.path}`);
     }
     lines.push(`app.${method}('${webhook.path}', async (c) => {`);
-    lines.push('  // RAW body — HMAC is computed over the exact bytes; read text() before parsing.');
+    lines.push(
+      '  // RAW body — HMAC is computed over the exact bytes; read text() before parsing.',
+    );
     lines.push('  const rawBody = await c.req.text();');
     lines.push(`  const runtime = await ${engineFactory}();`);
     lines.push('  const result = await handleWebhookRequest(runtime, {');
@@ -882,7 +934,14 @@ function generateHonoWebhooks(ir: IR, options: NormalizedOptions): ProjectionRes
   lines.push('');
 
   return {
-    artifacts: [{ id: 'hono.webhooks', pathHint: 'src/webhooks.ts', contentType: 'typescript', code: lines.join('\n') }],
+    artifacts: [
+      {
+        id: 'hono.webhooks',
+        pathHint: 'src/webhooks.ts',
+        contentType: 'typescript',
+        code: lines.join('\n'),
+      },
+    ],
     diagnostics,
   };
 }
@@ -905,7 +964,8 @@ function generateHonoWebhooks(ir: IR, options: NormalizedOptions): ProjectionRes
  */
 export class HonoProjection implements ProjectionTarget {
   readonly name = 'hono';
-  readonly description = 'Hono route handlers optimized for edge runtimes (Cloudflare Workers, Vercel Edge, Deno Deploy)';
+  readonly description =
+    'Hono route handlers optimized for edge runtimes (Cloudflare Workers, Vercel Edge, Deno Deploy)';
   readonly surfaces = SURFACES;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
@@ -915,14 +975,16 @@ export class HonoProjection implements ProjectionTarget {
       case SURFACE_ROUTER: {
         const { code, diagnostics } = generateHonoRouter(ir, options, request.entity);
         return {
-          artifacts: [{
-            id: request.entity ? `hono.router.${request.entity}` : 'hono.router',
-            pathHint: request.entity
-              ? `routes/${toEntitySegment(request.entity)}.ts`
-              : 'src/routes.ts',
-            contentType: 'typescript',
-            code,
-          }],
+          artifacts: [
+            {
+              id: request.entity ? `hono.router.${request.entity}` : 'hono.router',
+              pathHint: request.entity
+                ? `routes/${toEntitySegment(request.entity)}.ts`
+                : 'src/routes.ts',
+              contentType: 'typescript',
+              code,
+            },
+          ],
           diagnostics,
         };
       }
@@ -949,12 +1011,14 @@ export class HonoProjection implements ProjectionTarget {
 
         const { code, diagnostics } = generateHonoRouter(ir, options, request.entity);
         return {
-          artifacts: [{
-            id: `hono.entity.${request.entity}`,
-            pathHint: `routes/${toEntitySegment(request.entity)}.ts`,
-            contentType: 'typescript',
-            code,
-          }],
+          artifacts: [
+            {
+              id: `hono.entity.${request.entity}`,
+              pathHint: `routes/${toEntitySegment(request.entity)}.ts`,
+              contentType: 'typescript',
+              code,
+            },
+          ],
           diagnostics,
         };
       }
@@ -962,14 +1026,16 @@ export class HonoProjection implements ProjectionTarget {
       case SURFACE_TYPES: {
         const { code, diagnostics } = generateTypesSurface(ir, options, request.entity);
         return {
-          artifacts: [{
-            id: request.entity ? `hono.types.${request.entity}` : 'hono.types',
-            pathHint: request.entity
-              ? `types/${toEntitySegment(request.entity)}.ts`
-              : 'types/manifest-types.ts',
-            contentType: 'typescript',
-            code,
-          }],
+          artifacts: [
+            {
+              id: request.entity ? `hono.types.${request.entity}` : 'hono.types',
+              pathHint: request.entity
+                ? `types/${toEntitySegment(request.entity)}.ts`
+                : 'types/manifest-types.ts',
+              contentType: 'typescript',
+              code,
+            },
+          ],
           diagnostics,
         };
       }
@@ -1016,11 +1082,13 @@ export class HonoProjection implements ProjectionTarget {
       default:
         return {
           artifacts: [],
-          diagnostics: [{
-            severity: 'error',
-            code: 'UNKNOWN_SURFACE',
-            message: `Unknown surface: "${request.surface}". Available: ${SURFACES.join(', ')}`,
-          }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'UNKNOWN_SURFACE',
+              message: `Unknown surface: "${request.surface}". Available: ${SURFACES.join(', ')}`,
+            },
+          ],
         };
     }
   }

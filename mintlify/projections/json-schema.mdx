@@ -1,7 +1,7 @@
 ---
-title: "JSON Schema projection"
-sidebarTitle: "JSON Schema"
-description: "Generate language-neutral JSON Schema documents (draft-07, 2019-09, or 2020-12) from Manifest IR entity definitions for cross-language validation contracts."
+title: 'JSON Schema projection'
+sidebarTitle: 'JSON Schema'
+description: 'Generate language-neutral JSON Schema documents (draft-07, 2019-09, or 2020-12) from Manifest IR entity definitions for cross-language validation contracts.'
 ---
 
 The JSON Schema projection generates JSON Schema documents (draft-07, 2019-09, or 2020-12) from Manifest IR entity definitions. Use it when you need a language-neutral validation contract for your domain objects — for request validation at an API gateway, payload validation in non-TypeScript services, or publishing entity shapes to external consumers.
@@ -51,7 +51,11 @@ Property defaults are emitted as `default`, and the `readonly` modifier sets `re
 ## Notes & limitations
 
 <Note>
-The projection is self-contained and adds no new dependencies; it relies only on existing IR types and the shared constraint-analysis utility. Pattern constraints are collapsed to a single `pattern` keyword — when a property has multiple pattern constraints, only the first is emitted. The nullable handling uses the array-type-union form across all three drafts rather than draft-specific idioms such as `oneOf`.
+  The projection is self-contained and adds no new dependencies; it relies only on existing IR types
+  and the shared constraint-analysis utility. Pattern constraints are collapsed to a single
+  `pattern` keyword — when a property has multiple pattern constraints, only the first is emitted.
+  The nullable handling uses the array-type-union form across all three drafts rather than
+  draft-specific idioms such as `oneOf`.
 </Note>
 
 There is no dedicated CLI command; invoke the projection programmatically through `getProjection('jsonschema')`.

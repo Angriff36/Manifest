@@ -27,13 +27,29 @@ export function getSchedulesFromIR(ir: IR): Map<string, IRSchedule> {
 
 /** Three-letter month aliases (1-12), matched case-insensitively. */
 const MONTH_NAMES: Record<string, number> = {
-  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
-  jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+  jan: 1,
+  feb: 2,
+  mar: 3,
+  apr: 4,
+  may: 5,
+  jun: 6,
+  jul: 7,
+  aug: 8,
+  sep: 9,
+  oct: 10,
+  nov: 11,
+  dec: 12,
 };
 
 /** Three-letter day-of-week aliases (0=Sunday), matched case-insensitively. */
 const DOW_NAMES: Record<string, number> = {
-  sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
+  sun: 0,
+  mon: 1,
+  tue: 2,
+  wed: 3,
+  thu: 4,
+  fri: 5,
+  sat: 6,
 };
 
 interface CronField {
@@ -44,7 +60,12 @@ interface CronField {
 }
 
 /** Resolve a single token (number or 3-letter name) to its numeric value. */
-function resolveCronToken(token: string, names: Record<string, number>, min: number, max: number): number {
+function resolveCronToken(
+  token: string,
+  names: Record<string, number>,
+  min: number,
+  max: number,
+): number {
   const t = token.trim().toLowerCase();
   if (t === '') throw new Error(`empty cron value in "${token}"`);
   const named = names[t];
@@ -62,7 +83,12 @@ function resolveCronToken(token: string, names: Record<string, number>, min: num
  * Parse one cron field into the set of values it matches. Supports `*`, single
  * values, lists (`a,b`), ranges (`a-b`), and steps (`* / n`, `a-b/n`, `a/n`).
  */
-function parseCronField(raw: string, min: number, max: number, names: Record<string, number>): CronField {
+function parseCronField(
+  raw: string,
+  min: number,
+  max: number,
+  names: Record<string, number>,
+): CronField {
   const field = raw.trim();
   if (field === '') throw new Error('empty cron field');
   const star = field === '*';
@@ -128,7 +154,9 @@ function parseDowField(raw: string): CronField {
 export function isCronDue(expression: string, date: Date): boolean {
   const fields = expression.trim().split(/\s+/);
   if (fields.length !== 5) {
-    throw new Error(`invalid cron expression "${expression}": expected 5 fields, got ${fields.length}`);
+    throw new Error(
+      `invalid cron expression "${expression}": expected 5 fields, got ${fields.length}`,
+    );
   }
   const [minuteF, hourF, domF, monthF, dowF] = fields;
   const minute = parseCronField(minuteF, 0, 59, {});
@@ -165,7 +193,11 @@ export function shouldRunCron(cronExpression: string, timestamp: number): boolea
  * @param lastRunAt - Last run timestamp (ms), or 0 if never run
  * @returns true if the interval has elapsed
  */
-export function shouldRunInterval(intervalExpression: string, now: number, lastRunAt: number): boolean {
+export function shouldRunInterval(
+  intervalExpression: string,
+  now: number,
+  lastRunAt: number,
+): boolean {
   const intervalMs = parseIntervalExpression(intervalExpression);
   if (intervalMs <= 0) return false;
   return now - lastRunAt >= intervalMs;

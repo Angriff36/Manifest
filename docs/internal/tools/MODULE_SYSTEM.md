@@ -111,13 +111,13 @@ For TypeScript projects, ensure `tsconfig.json`:
 
 ## File Extensions
 
-| Extension | Module Type | Notes |
-|-----------|--------------|-------|
-| `.js` | ESM | If `"type": "module"` in package.json |
-| `.mjs` | ESM | Always ESM, regardless of package.json |
-| `.cjs` | CommonJS | Always CommonJS |
-| `.ts` | ESM | If `"type": "module"` in package.json |
-| `.mts` | ESM | TypeScript ESM, compiles to `.mjs` |
+| Extension | Module Type | Notes                                  |
+| --------- | ----------- | -------------------------------------- |
+| `.js`     | ESM         | If `"type": "module"` in package.json  |
+| `.mjs`    | ESM         | Always ESM, regardless of package.json |
+| `.cjs`    | CommonJS    | Always CommonJS                        |
+| `.ts`     | ESM         | If `"type": "module"` in package.json  |
+| `.mts`    | ESM         | TypeScript ESM, compiles to `.mjs`     |
 
 ---
 

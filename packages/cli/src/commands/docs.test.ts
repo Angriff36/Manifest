@@ -51,7 +51,11 @@ const SAMPLE_IR = {
           expression: {
             kind: 'binary',
             operator: '>=',
-            left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'priority' },
+            left: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'self' },
+              property: 'priority',
+            },
             right: { kind: 'literal', value: { kind: 'number', value: 3 } },
           },
           dependencies: ['priority'],
@@ -73,7 +77,11 @@ const SAMPLE_IR = {
           expression: {
             kind: 'binary',
             operator: '!=',
-            left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'title' },
+            left: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'self' },
+              property: 'title',
+            },
             right: { kind: 'literal', value: { kind: 'string', value: '' } },
           },
           severity: 'block',
@@ -162,7 +170,11 @@ const SAMPLE_IR = {
         kind: 'binary',
         operator: '==',
         left: { kind: 'member', object: { kind: 'identifier', name: 'user' }, property: 'id' },
-        right: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'creatorId' },
+        right: {
+          kind: 'member',
+          object: { kind: 'identifier', name: 'self' },
+          property: 'creatorId',
+        },
       },
       message: 'Only the creator can modify this task',
     },
@@ -386,7 +398,7 @@ describe('docsCommand', () => {
     await fs.writeFile(
       path.join(subDir, 'app.ir.json'),
       JSON.stringify(SAMPLE_IR, null, 2),
-      'utf-8'
+      'utf-8',
     );
 
     const outputDir = path.join(tempDir, 'docs-dir');

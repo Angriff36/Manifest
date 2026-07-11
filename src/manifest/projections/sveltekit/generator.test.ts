@@ -81,7 +81,11 @@ function taskEntity(): IREntity {
         expression: {
           kind: 'binary',
           operator: '>=',
-          left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'priority' },
+          left: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'self' },
+            property: 'priority',
+          },
           right: { kind: 'literal', value: { kind: 'number', value: 3 } },
         },
         dependencies: ['priority'],
@@ -111,9 +115,7 @@ function updateStatusCommand(): IRCommand {
   return {
     name: 'updateStatus',
     entity: 'Task',
-    parameters: [
-      { name: 'newStatus', type: { name: 'string', nullable: false }, required: true },
-    ],
+    parameters: [{ name: 'newStatus', type: { name: 'string', nullable: false }, required: true }],
     guards: [
       {
         kind: 'binary',
@@ -142,7 +144,11 @@ function onlyAssigneePolicy(): IRPolicy {
       kind: 'binary',
       operator: '==',
       left: { kind: 'member', object: { kind: 'identifier', name: 'user' }, property: 'id' },
-      right: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'assigneeId' },
+      right: {
+        kind: 'member',
+        object: { kind: 'identifier', name: 'self' },
+        property: 'assigneeId',
+      },
     },
     message: 'Only the assigned user can execute this command',
   };

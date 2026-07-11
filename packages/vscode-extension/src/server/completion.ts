@@ -1,7 +1,4 @@
-import {
-  CompletionItem,
-  CompletionItemKind,
-} from 'vscode-languageserver/node';
+import { CompletionItem, CompletionItemKind } from 'vscode-languageserver/node';
 import type { ManifestProgram } from '@angriff36/manifest/compiler';
 import { SUPPORTED_TYPE_COMPLETIONS } from './semantic-diagnostics';
 
@@ -10,14 +7,42 @@ import { SUPPORTED_TYPE_COMPLETIONS } from './semantic-diagnostics';
  * Source of truth: src/manifest/lexer.ts KEYWORDS
  */
 const DECLARATION_KEYWORDS = [
-  'entity', 'property', 'command', 'module', 'policy', 'store', 'event',
-  'computed', 'derived', 'constraint', 'behavior', 'flow', 'effect',
-  'expose', 'compose', 'enum', 'tenant', 'role', 'approval',
+  'entity',
+  'property',
+  'command',
+  'module',
+  'policy',
+  'store',
+  'event',
+  'computed',
+  'derived',
+  'constraint',
+  'behavior',
+  'flow',
+  'effect',
+  'expose',
+  'compose',
+  'enum',
+  'tenant',
+  'role',
+  'approval',
 ];
 
 const CONTROL_KEYWORDS = [
-  'on', 'when', 'then', 'guard', 'returns', 'transition',
-  'async', 'use', 'run', 'resolve', 'params', 'stages', 'timeout', 'extends',
+  'on',
+  'when',
+  'then',
+  'guard',
+  'returns',
+  'transition',
+  'async',
+  'use',
+  'run',
+  'resolve',
+  'params',
+  'stages',
+  'timeout',
+  'extends',
 ];
 
 const ACTION_KEYWORDS = ['emit', 'mutate', 'compute', 'publish', 'persist'];
@@ -37,10 +62,24 @@ const STORE_KEYWORDS = ['memory', 'postgres', 'supabase', 'localStorage'];
 const SEVERITY_KEYWORDS = ['ok', 'warn', 'block', 'overrideable'];
 
 const MISC_KEYWORDS = [
-  'default', 'timestamps', 'key', 'fields', 'references',
-  'onDelete', 'onUpdate', 'cascade', 'restrict', 'setNull', 'setDefault', 'noAction',
-  'versionProperty', 'versionAtProperty',
-  'cache', 'request', 'session', 'ttl',
+  'default',
+  'timestamps',
+  'key',
+  'fields',
+  'references',
+  'onDelete',
+  'onUpdate',
+  'cascade',
+  'restrict',
+  'setNull',
+  'setDefault',
+  'noAction',
+  'versionProperty',
+  'versionAtProperty',
+  'cache',
+  'request',
+  'session',
+  'ttl',
 ];
 
 const CONSTANT_KEYWORDS = ['true', 'false', 'null'];
@@ -75,10 +114,7 @@ export function getCompletions(program: ManifestProgram): CompletionItem[] {
   for (const kw of TYPE_KEYWORDS) items.push(keywordItem(kw, CompletionItemKind.TypeParameter));
 
   // Entity names from AST
-  const allEntities = [
-    ...program.entities,
-    ...program.modules.flatMap((m) => m.entities),
-  ];
+  const allEntities = [...program.entities, ...program.modules.flatMap((m) => m.entities)];
   for (const entity of allEntities) {
     items.push({
       label: entity.name,
@@ -88,10 +124,7 @@ export function getCompletions(program: ManifestProgram): CompletionItem[] {
   }
 
   // Enum names from AST
-  const allEnums = [
-    ...program.enums,
-    ...program.modules.flatMap((m) => m.enums),
-  ];
+  const allEnums = [...program.enums, ...program.modules.flatMap((m) => m.enums)];
   for (const en of allEnums) {
     items.push({
       label: en.name,

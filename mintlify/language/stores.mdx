@@ -1,7 +1,7 @@
 ---
-title: "Stores: persistence targets for entities"
+title: 'Stores: persistence targets for entities'
 description: "Declare where each entity's instances are persisted using the store keyword. Choose from memory, postgres, or supabase, or plug in a custom adapter."
-sidebarTitle: "Stores"
+sidebarTitle: 'Stores'
 ---
 
 A store declaration tells the runtime where to persist instances of a given entity. Every entity that participates in runtime command execution needs a corresponding store. The store target determines which adapter the runtime uses to read and write instances.
@@ -30,13 +30,14 @@ store Product in memory
 ```
 
 Use `memory` for:
+
 - Local development and rapid iteration
 - Unit and conformance tests
 - Demos and prototyping
 
 ### `durable`
 
-The **backend-neutral semantic target**. Declares that the entity is persisted in *some* durable store; the specific technology (Prisma, raw SQL, supabase-js, a custom adapter, …) is chosen by the consumer at runtime via a `storeProvider`, and at compile time via projection config.
+The **backend-neutral semantic target**. Declares that the entity is persisted in _some_ durable store; the specific technology (Prisma, raw SQL, supabase-js, a custom adapter, …) is chosen by the consumer at runtime via a `storeProvider`, and at compile time via projection config.
 
 ```manifest
 store Order in durable
@@ -45,7 +46,8 @@ store Order in durable
 Use `durable` when you want the entity to participate in storage projections without coupling the `.manifest` source to a specific backend. The [Prisma projection](/integration/prisma) treats `durable`, `postgres`, and `supabase` identically — all three are schema-emission targets. The runtime engine rejects `durable` at command-execution time unless a custom `storeProvider` is bound, with a clear "no store adapter supplied" diagnostic.
 
 <Note>
-`durable` is the recommended target for new code. The legacy `postgres` and `supabase` targets continue to work; nothing was removed. Storage projections emit for all three.
+  `durable` is the recommended target for new code. The legacy `postgres` and `supabase` targets
+  continue to work; nothing was removed. Storage projections emit for all three.
 </Note>
 
 ### `postgres`
@@ -57,7 +59,9 @@ store Order in postgres
 ```
 
 <Note>
-`postgres` is a target identifier, not a built-in adapter included in the core runtime. You must supply a Postgres adapter via `RuntimeEngine` options. See [Custom Stores](/adapters/custom-stores) for the adapter contract.
+  `postgres` is a target identifier, not a built-in adapter included in the core runtime. You must
+  supply a Postgres adapter via `RuntimeEngine` options. See [Custom
+  Stores](/adapters/custom-stores) for the adapter contract.
 </Note>
 
 ### `supabase`
@@ -69,7 +73,8 @@ store User in supabase
 ```
 
 <Note>
-`supabase` is also an adapter target, not a built-in. Provide a Supabase-backed store via `RuntimeEngine` options.
+  `supabase` is also an adapter target, not a built-in. Provide a Supabase-backed store via
+  `RuntimeEngine` options.
 </Note>
 
 ## Multiple entities, multiple stores
@@ -112,7 +117,7 @@ store AuditLog in postgres
 When you declare `store EntityName in postgres` (or any non-`memory` target), the `RuntimeEngine` must receive a `storeProvider` function that returns the appropriate adapter for that entity name:
 
 ```typescript
-import { RuntimeEngine } from "@angriff36/manifest";
+import { RuntimeEngine } from '@angriff36/manifest';
 
 class PostgresOrderStore implements Store<Order> {
   async getAll() {
@@ -120,7 +125,7 @@ class PostgresOrderStore implements Store<Order> {
   }
 
   async getById(id: string) {
-    return await db.order.findUnique({ where: { id } }) ?? undefined;
+    return (await db.order.findUnique({ where: { id } })) ?? undefined;
   }
 
   async create(data: Partial<Order>) {
@@ -141,19 +146,66 @@ class PostgresOrderStore implements Store<Order> {
   }
 }
 
-const runtime = new RuntimeEngine(ir, {
-  user: { id: "user-1", role: "admin" },
-  storeProvider: (entityName) => {
-    if (entityName === "Order") return new PostgresOrderStore();
-    return undefined; // fall back to memory store
+const runtime = new RuntimeEngine(
+  ir,
+  { user: { id: 'user-1', role: 'admin' } },
+  {
+    storeProvider: (entityName) => {
+      if (entityName === 'Order') return new PostgresOrderStore();
+      return undefined;
+    },
+  },
+);
+```
+
+When `storeProvider` returns `undefined`, the runtime uses a built-in store only
+for a declared `memory` or browser `localStorage` target. Durable targets never
+fall back to memory: `postgres`, `supabase`, `durable`, and custom targets fail
+and identify the unbound entity.
+
+## Complete generated-companion PostgreSQL setup
+
+A database URL is necessary, but it is not the entire storage configuration.
+Bind every durable entity to a store and table:
+
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/acme
+```
+
+```ts
+// manifest.config.ts
+import { defineConfig } from '@angriff36/manifest/config';
+import { PostgresStore } from '@angriff36/manifest/stores';
+
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) throw new Error('DATABASE_URL is required');
+
+export default defineConfig({
+  stores: {
+    Customer: { implementation: new PostgresStore({ connectionString, tableName: 'customers' }) },
+    Invoice: { implementation: new PostgresStore({ connectionString, tableName: 'invoices' }) },
   },
 });
 ```
 
-When `storeProvider` returns `undefined` for an entity, the runtime falls back to an in-memory store for that entity.
+```yaml
+# manifest.config.yaml
+projections:
+  nextjs:
+    output: generated
+    options:
+      # Relative to the emitted lib/manifest-runtime.ts companion.
+      runtimeConfigImport: '../manifest.config'
+```
+
+The generated factory imports the TypeScript config, builds the
+`storeProvider`, and passes it to `RuntimeEngine`. Without
+`runtimeConfigImport`, a generated factory containing durable stores throws a
+clear error. Memory and browser localStorage targets need no extra binding.
 
 <Tip>
-See [Custom Stores](/adapters/custom-stores) for the full `Store` interface contract and a guide to implementing production-ready adapters.
+  See [Custom Stores](/adapters/custom-stores) for the full `Store` interface contract and a guide
+  to implementing production-ready adapters.
 </Tip>
 
 ## Store and `localStorage`
@@ -166,8 +218,12 @@ store Preferences in localStorage
 
 ## What the runtime does when a store is missing
 
-If an entity is referenced in a command but has no store declaration, the runtime uses an in-memory store by default. The compiler may emit a warning for undeclared stores depending on your toolchain configuration.
+If an entity has no store declaration, the runtime uses memory. This is distinct
+from declaring a durable target without binding it: an explicitly durable store
+fails rather than silently changing persistence.
 
 <Warning>
-Entities without an explicit store declaration have no persistence guarantee. In production, always declare an explicit store target to make your persistence intent clear and to enable adapter injection.
+  Entities without an explicit store declaration have no persistence guarantee. In production,
+  always declare an explicit store target to make your persistence intent clear and to enable
+  adapter injection.
 </Warning>

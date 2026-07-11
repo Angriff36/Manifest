@@ -86,13 +86,18 @@ export class FederationRegistry {
    * Find all commands exposed for a given entity across all services.
    * Returns an array of { serviceId, command } pairs.
    */
-  findCommandsByEntity(entityName: string): Array<{ serviceId: string; command: ExposedCommandRef }> {
+  findCommandsByEntity(
+    entityName: string,
+  ): Array<{ serviceId: string; command: ExposedCommandRef }> {
     const results: Array<{ serviceId: string; command: ExposedCommandRef }> = [];
     for (const svc of this.services.values()) {
       for (const entity of svc.entities) {
         if (entity.name === entityName) {
           for (const cmd of entity.commands) {
-            results.push({ serviceId: svc.serviceId, command: { name: cmd.name, descriptor: cmd } });
+            results.push({
+              serviceId: svc.serviceId,
+              command: { name: cmd.name, descriptor: cmd },
+            });
           }
         }
       }
@@ -104,7 +109,10 @@ export class FederationRegistry {
    * Find the service and command descriptor for a specific (entity, command) pair.
    * Returns undefined if not found.
    */
-  findCommand(entityName: string, commandName: string): { service: ServiceDescriptor; command: ExposedCommand } | undefined {
+  findCommand(
+    entityName: string,
+    commandName: string,
+  ): { service: ServiceDescriptor; command: ExposedCommand } | undefined {
     for (const svc of this.services.values()) {
       for (const entity of svc.entities) {
         if (entity.name === entityName) {
@@ -149,8 +157,12 @@ export class FederationRegistry {
     this.healthTimer = setInterval(() => {
       for (const svc of this.services.values()) {
         this.probeHealth(svc.endpoint)
-          .then((health) => { svc.health = health; })
-          .catch(() => { /* swallow — health will be marked unreachable */ });
+          .then((health) => {
+            svc.health = health;
+          })
+          .catch(() => {
+            /* swallow — health will be marked unreachable */
+          });
       }
     }, this.options.healthCheckIntervalMs);
   }

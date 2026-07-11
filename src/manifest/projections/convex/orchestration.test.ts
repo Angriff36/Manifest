@@ -9,8 +9,20 @@ import { ConvexProjection } from './generator.js';
 function emptyIR(): IR {
   return {
     version: '1.0',
-    provenance: { contentHash: 'h', compilerVersion: 'test', schemaVersion: '1.0', compiledAt: '2025-01-01T00:00:00.000Z' },
-    modules: [], values: [], entities: [], enums: [], stores: [], events: [], commands: [], policies: [],
+    provenance: {
+      contentHash: 'h',
+      compilerVersion: 'test',
+      schemaVersion: '1.0',
+      compiledAt: '2025-01-01T00:00:00.000Z',
+    },
+    modules: [],
+    values: [],
+    entities: [],
+    enums: [],
+    stores: [],
+    events: [],
+    commands: [],
+    policies: [],
   };
 }
 const gen = (ir: IR, surface: string) => new ConvexProjection().generate(ir, { surface });
@@ -19,8 +31,18 @@ describe('convex.crons', () => {
   it('emits cron + interval jobs referencing the command mutations', () => {
     const ir = emptyIR();
     ir.schedules = [
-      { name: 'nightly', entityName: 'Report', commandName: 'build', trigger: { kind: 'cron', cron: '0 9 * * MON' } },
-      { name: 'poll', entityName: 'Inbox', commandName: 'sync', trigger: { kind: 'interval', durationMs: 300000 } },
+      {
+        name: 'nightly',
+        entityName: 'Report',
+        commandName: 'build',
+        trigger: { kind: 'cron', cron: '0 9 * * MON' },
+      },
+      {
+        name: 'poll',
+        entityName: 'Inbox',
+        commandName: 'sync',
+        trigger: { kind: 'interval', durationMs: 300000 },
+      },
     ] as IRSchedule[];
     const code = gen(ir, 'convex.crons').artifacts[0].code;
     expect(code).toContain('import { cronJobs } from "convex/server";');
@@ -32,7 +54,7 @@ describe('convex.crons', () => {
 
   it('emits an empty crons file + info diagnostic when none declared', () => {
     const res = gen(emptyIR(), 'convex.crons');
-    expect(res.diagnostics.some(d => d.code === 'CONVEX_NO_SCHEDULES')).toBe(true);
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_NO_SCHEDULES')).toBe(true);
     expect(res.artifacts[0].code).toContain('export default crons;');
   });
 });
@@ -40,32 +62,59 @@ describe('convex.crons', () => {
 describe('convex.http', () => {
   it('emits an httpAction route per webhook, resolving transform params against body', () => {
     const ir = emptyIR();
-    ir.webhooks = [{
-      name: 'stripe', path: '/webhooks/stripe', method: 'POST', command: 'record', entity: 'Payment',
-      transform: [{ name: 'amount', expression: { kind: 'member', object: { kind: 'identifier', name: 'body' }, property: 'amount' } }],
-    }] as IRWebhook[];
+    ir.webhooks = [
+      {
+        name: 'stripe',
+        path: '/webhooks/stripe',
+        method: 'POST',
+        command: 'record',
+        entity: 'Payment',
+        transform: [
+          {
+            name: 'amount',
+            expression: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'body' },
+              property: 'amount',
+            },
+          },
+        ],
+      },
+    ] as IRWebhook[];
     const code = gen(ir, 'convex.http').artifacts[0].code;
     expect(code).toContain('import { httpRouter } from "convex/server";');
     expect(code).toContain('path: "/webhooks/stripe"');
     expect(code).toContain('method: "POST"');
     expect(code).toContain('const body = await request.json();');
-    expect(code).toContain('await ctx.runMutation(api.mutations.Payment_record, { amount: body.amount } as any);');
+    expect(code).toContain(
+      'await ctx.runMutation(api.mutations.Payment_record, { amount: body.amount } as any);',
+    );
     expect(code).toContain('export default http;');
   });
 
   it('emits an empty http router + info diagnostic when none declared', () => {
     const res = gen(emptyIR(), 'convex.http');
-    expect(res.diagnostics.some(d => d.code === 'CONVEX_NO_WEBHOOKS')).toBe(true);
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_NO_WEBHOOKS')).toBe(true);
   });
 });
 
 describe('convex.http — HMAC signature verification', () => {
   it('emits HMAC helper functions and secret env-var read when signature declared', () => {
     const ir = emptyIR();
-    ir.webhooks = [{
-      name: 'stripe', path: '/webhooks/stripe', method: 'POST', command: 'record', entity: 'Payment',
-      signature: { algorithm: 'hmac-sha256', header: 'X-Hub-Signature-256', secret: 'context.stripeWebhookSecret' },
-    }] as IRWebhook[];
+    ir.webhooks = [
+      {
+        name: 'stripe',
+        path: '/webhooks/stripe',
+        method: 'POST',
+        command: 'record',
+        entity: 'Payment',
+        signature: {
+          algorithm: 'hmac-sha256',
+          header: 'X-Hub-Signature-256',
+          secret: 'context.stripeWebhookSecret',
+        },
+      },
+    ] as IRWebhook[];
     const code = gen(ir, 'convex.http').artifacts[0].code;
     // HMAC helper functions present
     expect(code).toContain('_verifyHmac(');
@@ -83,10 +132,16 @@ describe('convex.http — HMAC signature verification', () => {
 
   it('emits SHA-512 hash algo for hmac-sha512', () => {
     const ir = emptyIR();
-    ir.webhooks = [{
-      name: 'gh', path: '/webhooks/gh', method: 'POST', command: 'push', entity: 'Repo',
-      signature: { algorithm: 'hmac-sha512', header: 'X-Signature', secret: 'context.ghSecret' },
-    }] as IRWebhook[];
+    ir.webhooks = [
+      {
+        name: 'gh',
+        path: '/webhooks/gh',
+        method: 'POST',
+        command: 'push',
+        entity: 'Repo',
+        signature: { algorithm: 'hmac-sha512', header: 'X-Signature', secret: 'context.ghSecret' },
+      },
+    ] as IRWebhook[];
     const code = gen(ir, 'convex.http').artifacts[0].code;
     expect(code).toContain('"SHA-512"');
     expect(code).toContain('"hmac-sha512"');
@@ -95,9 +150,15 @@ describe('convex.http — HMAC signature verification', () => {
 
   it('does NOT emit HMAC helpers when no signature declared', () => {
     const ir = emptyIR();
-    ir.webhooks = [{
-      name: 'simple', path: '/webhooks/simple', method: 'POST', command: 'act', entity: 'Foo',
-    }] as IRWebhook[];
+    ir.webhooks = [
+      {
+        name: 'simple',
+        path: '/webhooks/simple',
+        method: 'POST',
+        command: 'act',
+        entity: 'Foo',
+      },
+    ] as IRWebhook[];
     const code = gen(ir, 'convex.http').artifacts[0].code;
     expect(code).not.toContain('_verifyHmac');
     expect(code).not.toContain('process.env');
@@ -108,10 +169,16 @@ describe('convex.http — HMAC signature verification', () => {
 
   it('reads raw body as text (not json) when signature is declared', () => {
     const ir = emptyIR();
-    ir.webhooks = [{
-      name: 'gh', path: '/webhooks/gh', method: 'POST', command: 'push', entity: 'Repo',
-      signature: { algorithm: 'hmac-sha256', header: 'X-Sig', secret: 'context.secret' },
-    }] as IRWebhook[];
+    ir.webhooks = [
+      {
+        name: 'gh',
+        path: '/webhooks/gh',
+        method: 'POST',
+        command: 'push',
+        entity: 'Repo',
+        signature: { algorithm: 'hmac-sha256', header: 'X-Sig', secret: 'context.secret' },
+      },
+    ] as IRWebhook[];
     const code = gen(ir, 'convex.http').artifacts[0].code;
     expect(code).toContain('request.text()');
     expect(code).not.toContain('request.json()');
@@ -121,13 +188,19 @@ describe('convex.http — HMAC signature verification', () => {
 describe('convex.http — idempotency dedup', () => {
   it('emits internalMutation + key check when idempotencyHeader declared', () => {
     const ir = emptyIR();
-    ir.webhooks = [{
-      name: 'stripe', path: '/webhooks/stripe', method: 'POST', command: 'record', entity: 'Payment',
-      idempotencyHeader: 'Idempotency-Key',
-    }] as IRWebhook[];
+    ir.webhooks = [
+      {
+        name: 'stripe',
+        path: '/webhooks/stripe',
+        method: 'POST',
+        command: 'record',
+        entity: 'Payment',
+        idempotencyHeader: 'Idempotency-Key',
+      },
+    ] as IRWebhook[];
     const result = gen(ir, 'convex.http');
     const code = result.artifacts[0].code;
-    expect(result.diagnostics.some(d => d.severity === 'error')).toBe(false);
+    expect(result.diagnostics.some((d) => d.severity === 'error')).toBe(false);
     // Import additions
     expect(code).toContain('internalMutation');
     expect(code).toContain('internal');
@@ -146,9 +219,15 @@ describe('convex.http — idempotency dedup', () => {
 
   it('does NOT emit idempotency mutation when no idempotencyHeader declared', () => {
     const ir = emptyIR();
-    ir.webhooks = [{
-      name: 'simple', path: '/webhooks/simple', method: 'POST', command: 'act', entity: 'Foo',
-    }] as IRWebhook[];
+    ir.webhooks = [
+      {
+        name: 'simple',
+        path: '/webhooks/simple',
+        method: 'POST',
+        command: 'act',
+        entity: 'Foo',
+      },
+    ] as IRWebhook[];
     const code = gen(ir, 'convex.http').artifacts[0].code;
     expect(code).not.toContain('_checkIdempotencyKey');
     expect(code).not.toContain('internalMutation');
@@ -157,11 +236,21 @@ describe('convex.http — idempotency dedup', () => {
 
   it('HMAC check runs before idempotency check when both declared', () => {
     const ir = emptyIR();
-    ir.webhooks = [{
-      name: 'stripe', path: '/webhooks/stripe', method: 'POST', command: 'record', entity: 'Payment',
-      signature: { algorithm: 'hmac-sha256', header: 'X-Hub-Signature-256', secret: 'context.stripeWebhookSecret' },
-      idempotencyHeader: 'Idempotency-Key',
-    }] as IRWebhook[];
+    ir.webhooks = [
+      {
+        name: 'stripe',
+        path: '/webhooks/stripe',
+        method: 'POST',
+        command: 'record',
+        entity: 'Payment',
+        signature: {
+          algorithm: 'hmac-sha256',
+          header: 'X-Hub-Signature-256',
+          secret: 'context.stripeWebhookSecret',
+        },
+        idempotencyHeader: 'Idempotency-Key',
+      },
+    ] as IRWebhook[];
     const code = gen(ir, 'convex.http').artifacts[0].code;
     const hmacPos = code.indexOf('_verifyHmac(');
     const idempPos = code.indexOf('_checkIdempotencyKey');
@@ -177,10 +266,16 @@ describe('convex.http — idempotency dedup', () => {
 
   it('stores idempotency key using the configured table name', () => {
     const ir = emptyIR();
-    ir.webhooks = [{
-      name: 'pay', path: '/webhooks/pay', method: 'POST', command: 'handle', entity: 'Tx',
-      idempotencyHeader: 'X-Idempotency',
-    }] as IRWebhook[];
+    ir.webhooks = [
+      {
+        name: 'pay',
+        path: '/webhooks/pay',
+        method: 'POST',
+        command: 'handle',
+        entity: 'Tx',
+        idempotencyHeader: 'X-Idempotency',
+      },
+    ] as IRWebhook[];
     const code = gen(ir, 'convex.http').artifacts[0].code;
     // Default table name
     expect(code).toContain('"webhookIdempotencyKeys"');
@@ -190,10 +285,16 @@ describe('convex.http — idempotency dedup', () => {
 describe('convex.schema — idempotency table', () => {
   it('emits idempotency table when any webhook has idempotencyHeader', () => {
     const ir = emptyIR();
-    ir.webhooks = [{
-      name: 'stripe', path: '/webhooks/stripe', method: 'POST', command: 'record', entity: 'Payment',
-      idempotencyHeader: 'Idempotency-Key',
-    }] as IRWebhook[];
+    ir.webhooks = [
+      {
+        name: 'stripe',
+        path: '/webhooks/stripe',
+        method: 'POST',
+        command: 'record',
+        entity: 'Payment',
+        idempotencyHeader: 'Idempotency-Key',
+      },
+    ] as IRWebhook[];
     const code = gen(ir, 'convex.schema').artifacts[0].code;
     expect(code).toContain('webhookIdempotencyKeys');
     expect(code).toContain('by_key');
@@ -204,9 +305,14 @@ describe('convex.schema — idempotency table', () => {
 
   it('does NOT emit idempotency table when no webhook has idempotencyHeader', () => {
     const ir = emptyIR();
-    ir.webhooks = [{
-      name: 'stripe', path: '/webhooks/stripe', method: 'POST', command: 'record',
-    }] as IRWebhook[];
+    ir.webhooks = [
+      {
+        name: 'stripe',
+        path: '/webhooks/stripe',
+        method: 'POST',
+        command: 'record',
+      },
+    ] as IRWebhook[];
     const code = gen(ir, 'convex.schema').artifacts[0].code;
     expect(code).not.toContain('webhookIdempotencyKeys');
   });
@@ -220,15 +326,23 @@ describe('convex.schema — idempotency table', () => {
 describe('convex.sagas', () => {
   function sagaIR(onFailure: 'compensate' | 'abort'): IR {
     const ir = emptyIR();
-    ir.sagas = [{
-      name: 'Provision',
-      steps: [
-        { name: 's1', commandEntity: 'Account', command: 'open', compensateEntity: 'Account', compensate: 'close' },
-        { name: 's2', commandEntity: 'Billing', command: 'start' },
-      ],
-      onFailure,
-      emits: [],
-    }] as IRSaga[];
+    ir.sagas = [
+      {
+        name: 'Provision',
+        steps: [
+          {
+            name: 's1',
+            commandEntity: 'Account',
+            command: 'open',
+            compensateEntity: 'Account',
+            compensate: 'close',
+          },
+          { name: 's2', commandEntity: 'Billing', command: 'start' },
+        ],
+        onFailure,
+        emits: [],
+      },
+    ] as IRSaga[];
     return ir;
   }
 
@@ -239,7 +353,9 @@ describe('convex.sagas', () => {
     expect(code).toContain('await ctx.runMutation(api.mutations.Billing_start, input as any);');
     expect(code).toContain('completed.push(0)');
     // compensation only for the step that declares one
-    expect(code).toContain('if (completed.includes(0)) await ctx.runMutation(api.mutations.Account_close, input as any);');
+    expect(code).toContain(
+      'if (completed.includes(0)) await ctx.runMutation(api.mutations.Account_close, input as any);',
+    );
     expect(code).not.toContain('Billing_start, input as any);\n      throw'); // no compensate for s2
   });
 
@@ -250,6 +366,8 @@ describe('convex.sagas', () => {
   });
 
   it('emits an info diagnostic when no sagas declared', () => {
-    expect(gen(emptyIR(), 'convex.sagas').diagnostics.some(d => d.code === 'CONVEX_NO_SAGAS')).toBe(true);
+    expect(
+      gen(emptyIR(), 'convex.sagas').diagnostics.some((d) => d.code === 'CONVEX_NO_SAGAS'),
+    ).toBe(true);
   });
 });

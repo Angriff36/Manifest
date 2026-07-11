@@ -19,11 +19,13 @@ function captureLogs(): { logs: string[]; restore: () => void } {
   const original = console.log;
   const logs: string[] = [];
   console.log = (...args: unknown[]) => {
-    logs.push(args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '));
+    logs.push(args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '));
   };
   return {
     logs,
-    restore: () => { console.log = original; },
+    restore: () => {
+      console.log = original;
+    },
   };
 }
 
@@ -57,12 +59,21 @@ describe('manifest integration-check', () => {
         // directly so the captureLogs shim above doesn't swallow it.
         process.stderr.write(
           'integration-check sections: ' +
-          JSON.stringify(result.sections.map(s => ({ name: s.name, ok: s.ok, summary: s.summary, detail: s.detail })), null, 2) +
-          '\n'
+            JSON.stringify(
+              result.sections.map((s) => ({
+                name: s.name,
+                ok: s.ok,
+                summary: s.summary,
+                detail: s.detail,
+              })),
+              null,
+              2,
+            ) +
+            '\n',
         );
       }
       expect(result.ok).toBe(true);
-      const sections = Object.fromEntries(result.sections.map(s => [s.name, s.ok]));
+      const sections = Object.fromEntries(result.sections.map((s) => [s.name, s.ok]));
       expect(sections.governance).toBe(true);
       expect(sections.bypasses).toBe(true);
       expect(sections.dispatcher).toBe(true);
@@ -82,7 +93,7 @@ describe('manifest integration-check', () => {
         skipRuntimeSmoke: true,
         skipPackageShape: true,
       });
-      const dispatcher = result.sections.find(s => s.name === 'dispatcher');
+      const dispatcher = result.sections.find((s) => s.name === 'dispatcher');
       expect(dispatcher?.ok).toBe(false);
       expect(result.ok).toBe(false);
     } finally {
@@ -100,13 +111,13 @@ describe('manifest integration-check', () => {
         format: 'json',
         skipPackageShape: true,
       });
-      const smoke = result.sections.find(s => s.name === 'runtime-smoke');
+      const smoke = result.sections.find((s) => s.name === 'runtime-smoke');
       expect(smoke).toBeDefined();
       expect(smoke?.ok).toBe(true);
       // The smoke detail carries the assertion list, including audit + outbox.
       const detail = smoke?.detail as { assertions?: Array<{ name: string; passed: boolean }> };
-      const auditOnce = detail.assertions?.find(a => a.name === 'audit.emittedExactlyOnce');
-      const outboxOnce = detail.assertions?.find(a => a.name === 'outbox.enqueuedExactlyOnce');
+      const auditOnce = detail.assertions?.find((a) => a.name === 'audit.emittedExactlyOnce');
+      const outboxOnce = detail.assertions?.find((a) => a.name === 'outbox.enqueuedExactlyOnce');
       expect(auditOnce?.passed).toBe(true);
       expect(outboxOnce?.passed).toBe(true);
     } finally {

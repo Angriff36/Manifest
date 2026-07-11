@@ -13,8 +13,12 @@ function _typeAssertions(ctx: RuntimeContext): void {
   const _source: string | undefined = ctx.source;
   const _deterministic: boolean | undefined = ctx.deterministic;
   // Silence unused-var lints
-  void _tenantId; void _orgId; void _actorId; void _requestId;
-  void _source; void _deterministic;
+  void _tenantId;
+  void _orgId;
+  void _actorId;
+  void _requestId;
+  void _source;
+  void _deterministic;
 }
 void _typeAssertions;
 

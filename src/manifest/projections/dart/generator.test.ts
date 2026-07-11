@@ -6,13 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type {
-  IR,
-  IREntity,
-  IRCommand,
-  IREnum,
-  IRProperty,
-} from '../../ir';
+import type { IR, IREntity, IRCommand, IREnum, IRProperty } from '../../ir';
 import { DartProjection } from './generator';
 
 // ---------------------------------------------------------------------------
@@ -94,7 +88,7 @@ describe('DartProjection', () => {
       const ir = makeIR({ entities: [entity] });
       const result = projection.generate(ir, { surface: 'dart.entity' });
 
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
       expect(result.artifacts).toHaveLength(1);
       expect(result.artifacts[0].id).toBe('dart.entity.Task');
       expect(result.artifacts[0].contentType).toBe('dart');
@@ -226,7 +220,11 @@ describe('DartProjection', () => {
             expression: {
               kind: 'binary',
               operator: '>=',
-              left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'price' },
+              left: {
+                kind: 'member',
+                object: { kind: 'identifier', name: 'self' },
+                property: 'price',
+              },
               right: { kind: 'literal', value: { kind: 'number', value: 0 } },
             },
             severity: 'block',
@@ -356,10 +354,7 @@ describe('DartProjection', () => {
     it('includes enum models in models surface', () => {
       const enumDef: IREnum = {
         name: 'Status',
-        values: [
-          { name: 'active' },
-          { name: 'inactive' },
-        ],
+        values: [{ name: 'active' }, { name: 'inactive' }],
       };
 
       const ir = makeIR({ enums: [enumDef] });
@@ -411,9 +406,7 @@ describe('DartProjection', () => {
       const command: IRCommand = {
         name: 'completeTask',
         entity: 'Task',
-        parameters: [
-          { name: 'id', type: { name: 'string', nullable: false }, required: true },
-        ],
+        parameters: [{ name: 'id', type: { name: 'string', nullable: false }, required: true }],
         guards: [],
         actions: [],
         emits: [],
@@ -512,7 +505,7 @@ describe('DartProjection', () => {
       const ir = makeIR({ entities: [entity] });
       const result = projection.generate(ir, { surface: 'dart.package' });
 
-      const ids = result.artifacts.map(a => a.id);
+      const ids = result.artifacts.map((a) => a.id);
       expect(ids).toContain('dart.models');
       expect(ids).toContain('dart.client');
       expect(ids).toContain('dart.providers');
@@ -525,11 +518,11 @@ describe('DartProjection', () => {
         options: { emitPackageFiles: true, packageName: 'my_app_sdk' },
       });
 
-      const ids = result.artifacts.map(a => a.id);
+      const ids = result.artifacts.map((a) => a.id);
       expect(ids).toContain('dart.package.pubspec');
       expect(ids).toContain('dart.package.readme');
 
-      const pubspec = result.artifacts.find(a => a.id === 'dart.package.pubspec');
+      const pubspec = result.artifacts.find((a) => a.id === 'dart.package.pubspec');
       expect(pubspec?.code).toContain('name: my_app_sdk');
       expect(pubspec?.code).toContain('dio: ^5.4.0');
       expect(pubspec?.code).toContain('flutter_riverpod');
@@ -579,5 +572,5 @@ describe('DartProjection', () => {
 // ---------------------------------------------------------------------------
 
 function diagnosticsHasError(diagnostics: ReadonlyArray<{ severity: string }>): boolean {
-  return diagnostics.some(d => d.severity === 'error');
+  return diagnostics.some((d) => d.severity === 'error');
 }

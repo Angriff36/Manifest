@@ -23,34 +23,30 @@ export function registerIRCacheResource(server: McpServer): void {
     },
   });
 
-  server.resource(
-    'ir-cache',
-    template,
-    async (uri, variables) => {
-      const hash = variables.contentHash as string;
-      const entry = sessionStore.get(hash);
+  server.resource('ir-cache', template, async (uri, variables) => {
+    const hash = variables.contentHash as string;
+    const entry = sessionStore.get(hash);
 
-      if (!entry) {
-        return {
-          contents: [
-            {
-              uri: uri.href,
-              mimeType: 'application/json',
-              text: JSON.stringify({ error: 'Not found', contentHash: hash }),
-            },
-          ],
-        };
-      }
-
+    if (!entry) {
       return {
         contents: [
           {
             uri: uri.href,
             mimeType: 'application/json',
-            text: JSON.stringify(entry.ir, null, 2),
+            text: JSON.stringify({ error: 'Not found', contentHash: hash }),
           },
         ],
       };
-    },
-  );
+    }
+
+    return {
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: 'application/json',
+          text: JSON.stringify(entry.ir, null, 2),
+        },
+      ],
+    };
+  });
 }

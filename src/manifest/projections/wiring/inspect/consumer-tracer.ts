@@ -61,23 +61,19 @@ export class ConsumerTracer {
 
     const pushProven = (ev: ConsumerEvidence) => {
       const list = proven.get(ev.capabilityId) ?? [];
-      if (list.some(e => sameEvidence(e, ev))) return;
+      if (list.some((e) => sameEvidence(e, ev))) return;
       list.push(ev);
       proven.set(ev.capabilityId, list);
     };
 
-    const recordInv = (
-      inv: ManifestInvocation,
-      file: string,
-      reachable: boolean,
-    ) => {
+    const recordInv = (inv: ManifestInvocation, file: string, reachable: boolean) => {
       invocations.push({ ...inv, file, reachable });
     };
 
     const productFiles = [...this.fileContents.keys()].filter(
-      f => this.surface.isProductSurface(f) && !this.surface.isGeneratedDefinition(f),
+      (f) => this.surface.isProductSurface(f) && !this.surface.isGeneratedDefinition(f),
     );
-    const uiFiles = productFiles.filter(f => this.surface.isUiSurface(f));
+    const uiFiles = productFiles.filter((f) => this.surface.isUiSurface(f));
 
     // 1) Direct calls only on UI surfaces.
     // Server actions / helpers are NOT consumers unless a UI file reaches them
@@ -94,24 +90,25 @@ export class ConsumerTracer {
       for (const inv of extractGeneratedClientCalls(content, capabilityIds, clientFnIndex)) {
         recordInv(inv, file, true);
         pushProven(
-          makeEvidence(inv, file, content, 'generated_client', [
-            hop(file, content, inv.index),
-            { label: clientFunctionName(inv.entity, inv.command) },
-            { label: inv.intent },
-          ], clientFunctionName(inv.entity, inv.command)),
+          makeEvidence(
+            inv,
+            file,
+            content,
+            'generated_client',
+            [
+              hop(file, content, inv.index),
+              { label: clientFunctionName(inv.entity, inv.command) },
+              { label: inv.intent },
+            ],
+            clientFunctionName(inv.entity, inv.command),
+          ),
         );
       }
     }
 
     // 2) Indirect: UI → used imports / API
     for (const uiFile of uiFiles) {
-      this.traceDirectApiFlows(
-        uiFile,
-        capabilityIds,
-        pushProven,
-        staleReferences,
-        recordInv,
-      );
+      this.traceDirectApiFlows(uiFile, capabilityIds, pushProven, staleReferences, recordInv);
       this.traceUsedImportLinks(
         uiFile,
         capabilityIds,
@@ -190,7 +187,7 @@ export class ConsumerTracer {
       );
       if (!resolved) {
         // Unresolved import of a used symbol → ambiguous, not proven defect
-        const used = imp.symbols.filter(sym => uiReferencesSymbol(content, sym));
+        const used = imp.symbols.filter((sym) => uiReferencesSymbol(content, sym));
         if (used.length > 0) {
           ambiguous.push({
             capabilityId: `unresolved:${used[0]}`,
@@ -211,7 +208,7 @@ export class ConsumerTracer {
       }
       if (this.surface.isGeneratedDefinition(resolved)) continue;
 
-      const usedSymbols = imp.symbols.filter(sym => uiReferencesSymbol(content, sym));
+      const usedSymbols = imp.symbols.filter((sym) => uiReferencesSymbol(content, sym));
       if (usedSymbols.length === 0) continue; // import-only — not a consumer
 
       const moduleContent = this.fileContents.get(resolved) ?? '';
@@ -221,12 +218,19 @@ export class ConsumerTracer {
 
       for (const inv of this.manifestIntentsForModule(resolved)) {
         recordInv(inv, inv.file, true);
-        const ev = makeEvidence(inv, uiFile, content, via, [
-          { label: normalizeRepoPath(uiFile), file: uiFile },
-          { label: usedSymbols[0]!, file: resolved },
-          { label: normalizeRepoPath(inv.file), file: inv.file },
-          { label: inv.intent },
-        ], usedSymbols[0]);
+        const ev = makeEvidence(
+          inv,
+          uiFile,
+          content,
+          via,
+          [
+            { label: normalizeRepoPath(uiFile), file: uiFile },
+            { label: usedSymbols[0]!, file: resolved },
+            { label: normalizeRepoPath(inv.file), file: inv.file },
+            { label: inv.intent },
+          ],
+          usedSymbols[0],
+        );
         if (capabilityIds.has(inv.intent)) pushProven(ev);
         else staleReferences.push(ev);
       }
@@ -234,13 +238,20 @@ export class ConsumerTracer {
       for (const link of this.parser.resolveHandlersFromUi(moduleContent, this.routeHelpers)) {
         for (const inv of this.manifestIntentsForModule(link.handlerPath)) {
           recordInv(inv, inv.file, true);
-          const ev = makeEvidence(inv, uiFile, content, via, [
-            { label: normalizeRepoPath(uiFile), file: uiFile },
-            { label: usedSymbols[0]!, file: resolved },
-            { label: link.apiPath },
-            { label: normalizeRepoPath(inv.file), file: inv.file },
-            { label: inv.intent },
-          ], usedSymbols[0]);
+          const ev = makeEvidence(
+            inv,
+            uiFile,
+            content,
+            via,
+            [
+              { label: normalizeRepoPath(uiFile), file: uiFile },
+              { label: usedSymbols[0]!, file: resolved },
+              { label: link.apiPath },
+              { label: normalizeRepoPath(inv.file), file: inv.file },
+              { label: inv.intent },
+            ],
+            usedSymbols[0],
+          );
           if (capabilityIds.has(inv.intent)) pushProven(ev);
           else staleReferences.push(ev);
         }
@@ -257,11 +268,7 @@ export class ConsumerTracer {
     const cached = this.moduleIntentCache.get(cacheKey);
     if (cached) return cached;
 
-    const files = resolveLocalImportClosure(
-      entryFile,
-      this.fileContents,
-      this.caseInsensitive,
-    );
+    const files = resolveLocalImportClosure(entryFile, this.fileContents, this.caseInsensitive);
     // Keep every invocation with its real defining file. Collapsing to one
     // intent→inv and stamping the barrel import path loses payload locations
     // (e.g. Dish.create .join lives in importer.ts, not actions.ts).
@@ -326,9 +333,7 @@ function classifyInvocation(content: string, index: number): ConsumerTraceVia {
 function uiReferencesSymbol(content: string, symbol: string): boolean {
   const body = content.replace(/^\s*import[\s\S]*?;$/gm, '');
   const reCall = new RegExp(`\\b${escapeRegExp(symbol)}\\s*\\(`);
-  const reAction = new RegExp(
-    `(?:action|formAction)\\s*=\\s*\\{${escapeRegExp(symbol)}\\}`,
-  );
+  const reAction = new RegExp(`(?:action|formAction)\\s*=\\s*\\{${escapeRegExp(symbol)}\\}`);
   return reCall.test(body) || reAction.test(body);
 }
 

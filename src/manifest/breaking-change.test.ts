@@ -103,7 +103,7 @@ describe('Breaking Change Classifier', () => {
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
       expect(report.summary.compatible).toBeGreaterThanOrEqual(1);
-      const entityChange = report.classified.find(c => c.path === 'User');
+      const entityChange = report.classified.find((c) => c.path === 'User');
       expect(entityChange?.severity).toBe('compatible');
       expect(entityChange?.category).toBe('entity-added');
     });
@@ -115,7 +115,7 @@ describe('Breaking Change Classifier', () => {
       const newIR = makeIR();
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const entityChange = report.classified.find(c => c.path === 'User');
+      const entityChange = report.classified.find((c) => c.path === 'User');
       expect(entityChange?.severity).toBe('breaking');
       expect(entityChange?.category).toBe('entity-removed');
     });
@@ -130,16 +130,18 @@ describe('Breaking Change Classifier', () => {
         entities: [makeEntity('User', { properties: [makeProp('id', 'string')] })],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [
-            makeProp('id', 'string'),
-            makeProp('email', 'string', { modifiers: ['optional'] }),
-          ],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              makeProp('id', 'string'),
+              makeProp('email', 'string', { modifiers: ['optional'] }),
+            ],
+          }),
+        ],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const propChange = report.classified.find(c => c.path === 'User.email');
+      const propChange = report.classified.find((c) => c.path === 'User.email');
       // Diff engine doesn't carry details for added properties,
       // so classifier cannot see modifiers/defaults and defaults to breaking.
       expect(propChange?.severity).toBe('breaking');
@@ -151,32 +153,36 @@ describe('Breaking Change Classifier', () => {
         entities: [makeEntity('User', { properties: [makeProp('id', 'string')] })],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [
-            makeProp('id', 'string'),
-            makeProp('email', 'string', { modifiers: ['required'] }),
-          ],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              makeProp('id', 'string'),
+              makeProp('email', 'string', { modifiers: ['required'] }),
+            ],
+          }),
+        ],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const propChange = report.classified.find(c => c.path === 'User.email');
+      const propChange = report.classified.find((c) => c.path === 'User.email');
       expect(propChange?.severity).toBe('breaking');
       expect(propChange?.category).toBe('property-added');
     });
 
     it('classifies property removal as breaking', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string'), makeProp('email', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('email', 'string')],
+          }),
+        ],
       });
       const newIR = makeIR({
         entities: [makeEntity('User', { properties: [makeProp('id', 'string')] })],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const propChange = report.classified.find(c => c.path === 'User.email');
+      const propChange = report.classified.find((c) => c.path === 'User.email');
       expect(propChange?.severity).toBe('breaking');
       expect(propChange?.category).toBe('property-removed');
     });
@@ -190,43 +196,59 @@ describe('Breaking Change Classifier', () => {
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const propChange = report.classified.find(c => c.path === 'User.age');
+      const propChange = report.classified.find((c) => c.path === 'User.age');
       expect(propChange?.severity).toBe('breaking');
       expect(propChange?.category).toBe('property-type-changed');
     });
 
     it('classifies property made optional as compatible', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [{ name: 'email', type: { name: 'string', nullable: false }, modifiers: [] }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              { name: 'email', type: { name: 'string', nullable: false }, modifiers: [] },
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [{ name: 'email', type: { name: 'string', nullable: true }, modifiers: [] }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              { name: 'email', type: { name: 'string', nullable: true }, modifiers: [] },
+            ],
+          }),
+        ],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const propChange = report.classified.find(c => c.path === 'User.email');
+      const propChange = report.classified.find((c) => c.path === 'User.email');
       expect(propChange?.severity).toBe('compatible');
       expect(propChange?.category).toBe('property-made-optional');
     });
 
     it('classifies property made required as breaking', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [{ name: 'email', type: { name: 'string', nullable: true }, modifiers: [] }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              { name: 'email', type: { name: 'string', nullable: true }, modifiers: [] },
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [{ name: 'email', type: { name: 'string', nullable: false }, modifiers: [] }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              { name: 'email', type: { name: 'string', nullable: false }, modifiers: [] },
+            ],
+          }),
+        ],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const propChange = report.classified.find(c => c.path === 'User.email');
+      const propChange = report.classified.find((c) => c.path === 'User.email');
       expect(propChange?.severity).toBe('breaking');
       expect(propChange?.category).toBe('property-made-required');
     });
@@ -235,52 +257,66 @@ describe('Breaking Change Classifier', () => {
 
     it('classifies computed property expression change as deprecated', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          computedProperties: [{
-            name: 'displayName',
-            type: { name: 'string', nullable: false },
-            expression: { kind: 'identifier', name: 'firstName' },
-            dependencies: ['firstName'],
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            computedProperties: [
+              {
+                name: 'displayName',
+                type: { name: 'string', nullable: false },
+                expression: { kind: 'identifier', name: 'firstName' },
+                dependencies: ['firstName'],
+              },
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          computedProperties: [{
-            name: 'displayName',
-            type: { name: 'string', nullable: false },
-            expression: { kind: 'identifier', name: 'lastName' },
-            dependencies: ['lastName'],
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            computedProperties: [
+              {
+                name: 'displayName',
+                type: { name: 'string', nullable: false },
+                expression: { kind: 'identifier', name: 'lastName' },
+                dependencies: ['lastName'],
+              },
+            ],
+          }),
+        ],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const exprChange = report.classified.find(c =>
-        c.path === 'User.displayName' && c.category === 'computed-property-expression-changed');
+      const exprChange = report.classified.find(
+        (c) =>
+          c.path === 'User.displayName' && c.category === 'computed-property-expression-changed',
+      );
       expect(exprChange?.severity).toBe('deprecated');
     });
 
     it('classifies computed property removal as breaking', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          computedProperties: [{
-            name: 'displayName',
-            type: { name: 'string', nullable: false },
-            expression: { kind: 'identifier', name: 'name' },
-            dependencies: ['name'],
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            computedProperties: [
+              {
+                name: 'displayName',
+                type: { name: 'string', nullable: false },
+                expression: { kind: 'identifier', name: 'name' },
+                dependencies: ['name'],
+              },
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
         entities: [makeEntity('User', { properties: [makeProp('id', 'string')] })],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const cpChange = report.classified.find(c => c.path === 'User.displayName');
+      const cpChange = report.classified.find((c) => c.path === 'User.displayName');
       expect(cpChange?.severity).toBe('breaking');
       expect(cpChange?.category).toBe('computed-property-removed');
     });
@@ -289,37 +325,43 @@ describe('Breaking Change Classifier', () => {
 
     it('classifies relationship removal as breaking', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          relationships: [{ name: 'posts', kind: 'hasMany', target: 'Post' }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            relationships: [{ name: 'posts', kind: 'hasMany', target: 'Post' }],
+          }),
+        ],
       });
       const newIR = makeIR({
         entities: [makeEntity('User', { properties: [makeProp('id', 'string')] })],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const relChange = report.classified.find(c => c.path === 'User.posts');
+      const relChange = report.classified.find((c) => c.path === 'User.posts');
       expect(relChange?.severity).toBe('breaking');
       expect(relChange?.category).toBe('relationship-removed');
     });
 
     it('classifies relationship kind change as breaking', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          relationships: [{ name: 'profile', kind: 'hasOne', target: 'Profile' }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            relationships: [{ name: 'profile', kind: 'hasOne', target: 'Profile' }],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          relationships: [{ name: 'profile', kind: 'belongsTo', target: 'Profile' }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            relationships: [{ name: 'profile', kind: 'belongsTo', target: 'Profile' }],
+          }),
+        ],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const relChange = report.classified.find(c => c.path === 'User.profile');
+      const relChange = report.classified.find((c) => c.path === 'User.profile');
       expect(relChange?.severity).toBe('breaking');
       expect(relChange?.category).toBe('relationship-kind-changed');
     });
@@ -328,52 +370,64 @@ describe('Breaking Change Classifier', () => {
 
     it('classifies constraint removal as deprecated', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          constraints: [{
-            name: 'adultOnly',
-            code: 'adultOnly',
-            expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
-            severity: 'block',
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            constraints: [
+              {
+                name: 'adultOnly',
+                code: 'adultOnly',
+                expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+                severity: 'block',
+              },
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
         entities: [makeEntity('User', { properties: [makeProp('id', 'string')] })],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const conChange = report.classified.find(c => c.path === 'User.adultOnly');
+      const conChange = report.classified.find((c) => c.path === 'User.adultOnly');
       expect(conChange?.severity).toBe('deprecated');
       expect(conChange?.category).toBe('constraint-removed');
     });
 
     it('classifies constraint severity raised as compatible', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          constraints: [{
-            name: 'check',
-            code: 'check',
-            expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
-            severity: 'warn',
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            constraints: [
+              {
+                name: 'check',
+                code: 'check',
+                expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+                severity: 'warn',
+              },
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          constraints: [{
-            name: 'check',
-            code: 'check',
-            expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
-            severity: 'block',
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            constraints: [
+              {
+                name: 'check',
+                code: 'check',
+                expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+                severity: 'block',
+              },
+            ],
+          }),
+        ],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const conChange = report.classified.find(c => c.path === 'User.check');
+      const conChange = report.classified.find((c) => c.path === 'User.check');
       expect(conChange?.severity).toBe('compatible');
       expect(conChange?.category).toBe('constraint-severity-raised');
     });
@@ -382,102 +436,118 @@ describe('Breaking Change Classifier', () => {
 
     it('classifies command removal as breaking', () => {
       const oldIR = makeIR({
-        commands: [{
-          name: 'createUser',
-          parameters: [],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'createUser',
+            parameters: [],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
       const newIR = makeIR();
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const cmdChange = report.classified.find(c => c.path === 'createUser');
+      const cmdChange = report.classified.find((c) => c.path === 'createUser');
       expect(cmdChange?.severity).toBe('breaking');
       expect(cmdChange?.category).toBe('command-removed');
     });
 
     it('classifies command parameter removal as breaking', () => {
       const oldIR = makeIR({
-        commands: [{
-          name: 'createUser',
-          parameters: [
-            { name: 'name', type: { name: 'string', nullable: false }, required: true },
-            { name: 'email', type: { name: 'string', nullable: false }, required: true },
-          ],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'createUser',
+            parameters: [
+              { name: 'name', type: { name: 'string', nullable: false }, required: true },
+              { name: 'email', type: { name: 'string', nullable: false }, required: true },
+            ],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
       const newIR = makeIR({
-        commands: [{
-          name: 'createUser',
-          parameters: [
-            { name: 'name', type: { name: 'string', nullable: false }, required: true },
-          ],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'createUser',
+            parameters: [
+              { name: 'name', type: { name: 'string', nullable: false }, required: true },
+            ],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const paramChange = report.classified.find(c =>
-        c.path === 'createUser.parameters.email' && c.category === 'command-parameter-removed');
+      const paramChange = report.classified.find(
+        (c) =>
+          c.path === 'createUser.parameters.email' && c.category === 'command-parameter-removed',
+      );
       expect(paramChange?.severity).toBe('breaking');
     });
 
     it('classifies command guard change as deprecated', () => {
       const oldIR = makeIR({
-        commands: [{
-          name: 'createUser',
-          parameters: [],
-          guards: [{ kind: 'literal', value: { kind: 'boolean', value: true } }],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'createUser',
+            parameters: [],
+            guards: [{ kind: 'literal', value: { kind: 'boolean', value: true } }],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
       const newIR = makeIR({
-        commands: [{
-          name: 'createUser',
-          parameters: [],
-          guards: [{ kind: 'literal', value: { kind: 'boolean', value: false } }],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'createUser',
+            parameters: [],
+            guards: [{ kind: 'literal', value: { kind: 'boolean', value: false } }],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const guardChange = report.classified.find(c => c.category === 'command-guards-changed');
+      const guardChange = report.classified.find((c) => c.category === 'command-guards-changed');
       expect(guardChange?.severity).toBe('deprecated');
     });
 
     it('classifies command returns change as breaking', () => {
       const oldIR = makeIR({
-        commands: [{
-          name: 'createUser',
-          parameters: [],
-          guards: [],
-          actions: [],
-          emits: [],
-          returns: { name: 'string', nullable: false },
-        }],
+        commands: [
+          {
+            name: 'createUser',
+            parameters: [],
+            guards: [],
+            actions: [],
+            emits: [],
+            returns: { name: 'string', nullable: false },
+          },
+        ],
       });
       const newIR = makeIR({
-        commands: [{
-          name: 'createUser',
-          parameters: [],
-          guards: [],
-          actions: [],
-          emits: [],
-          returns: { name: 'int', nullable: false },
-        }],
+        commands: [
+          {
+            name: 'createUser',
+            parameters: [],
+            guards: [],
+            actions: [],
+            emits: [],
+            returns: { name: 'int', nullable: false },
+          },
+        ],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const retChange = report.classified.find(c => c.category === 'command-returns-changed');
+      const retChange = report.classified.find((c) => c.category === 'command-returns-changed');
       expect(retChange?.severity).toBe('breaking');
     });
 
@@ -485,38 +555,44 @@ describe('Breaking Change Classifier', () => {
 
     it('classifies policy removal as breaking', () => {
       const oldIR = makeIR({
-        policies: [{
-          name: 'adminOnly',
-          action: 'all',
-          expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
-        }],
+        policies: [
+          {
+            name: 'adminOnly',
+            action: 'all',
+            expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+          },
+        ],
       });
       const newIR = makeIR();
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const polChange = report.classified.find(c => c.path === 'adminOnly');
+      const polChange = report.classified.find((c) => c.path === 'adminOnly');
       expect(polChange?.severity).toBe('breaking');
       expect(polChange?.category).toBe('policy-removed');
     });
 
     it('classifies policy expression change as deprecated', () => {
       const oldIR = makeIR({
-        policies: [{
-          name: 'access',
-          action: 'read',
-          expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
-        }],
+        policies: [
+          {
+            name: 'access',
+            action: 'read',
+            expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+          },
+        ],
       });
       const newIR = makeIR({
-        policies: [{
-          name: 'access',
-          action: 'read',
-          expression: { kind: 'literal', value: { kind: 'boolean', value: false } },
-        }],
+        policies: [
+          {
+            name: 'access',
+            action: 'read',
+            expression: { kind: 'literal', value: { kind: 'boolean', value: false } },
+          },
+        ],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const exprChange = report.classified.find(c => c.category === 'policy-expression-changed');
+      const exprChange = report.classified.find((c) => c.category === 'policy-expression-changed');
       expect(exprChange?.severity).toBe('deprecated');
     });
 
@@ -529,7 +605,7 @@ describe('Breaking Change Classifier', () => {
       const newIR = makeIR();
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const storeChange = report.classified.find(c => c.path === 'store:User');
+      const storeChange = report.classified.find((c) => c.path === 'store:User');
       expect(storeChange?.severity).toBe('breaking');
       expect(storeChange?.category).toBe('store-removed');
     });
@@ -543,7 +619,7 @@ describe('Breaking Change Classifier', () => {
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const targetChange = report.classified.find(c => c.category === 'store-target-changed');
+      const targetChange = report.classified.find((c) => c.category === 'store-target-changed');
       expect(targetChange?.severity).toBe('breaking');
     });
 
@@ -551,26 +627,32 @@ describe('Breaking Change Classifier', () => {
 
     it('classifies event removal as breaking', () => {
       const oldIR = makeIR({
-        events: [{ name: 'userCreated', channel: 'users', payload: { name: 'string', nullable: false } }],
+        events: [
+          { name: 'userCreated', channel: 'users', payload: { name: 'string', nullable: false } },
+        ],
       });
       const newIR = makeIR();
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const evtChange = report.classified.find(c => c.path === 'userCreated');
+      const evtChange = report.classified.find((c) => c.path === 'userCreated');
       expect(evtChange?.severity).toBe('breaking');
       expect(evtChange?.category).toBe('event-removed');
     });
 
     it('classifies event channel change as breaking', () => {
       const oldIR = makeIR({
-        events: [{ name: 'userCreated', channel: 'users', payload: { name: 'string', nullable: false } }],
+        events: [
+          { name: 'userCreated', channel: 'users', payload: { name: 'string', nullable: false } },
+        ],
       });
       const newIR = makeIR({
-        events: [{ name: 'userCreated', channel: 'all', payload: { name: 'string', nullable: false } }],
+        events: [
+          { name: 'userCreated', channel: 'all', payload: { name: 'string', nullable: false } },
+        ],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const chChange = report.classified.find(c => c.category === 'event-channel-changed');
+      const chChange = report.classified.find((c) => c.category === 'event-channel-changed');
       expect(chChange?.severity).toBe('breaking');
     });
 
@@ -578,12 +660,22 @@ describe('Breaking Change Classifier', () => {
 
     it('classifies module removal as breaking', () => {
       const oldIR = makeIR({
-        modules: [{ name: 'auth', entities: ['User'], enums: [], commands: [], stores: [], events: [], policies: [] }],
+        modules: [
+          {
+            name: 'auth',
+            entities: ['User'],
+            enums: [],
+            commands: [],
+            stores: [],
+            events: [],
+            policies: [],
+          },
+        ],
       });
       const newIR = makeIR();
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const modChange = report.classified.find(c => c.path === 'module:auth');
+      const modChange = report.classified.find((c) => c.path === 'module:auth');
       expect(modChange?.severity).toBe('breaking');
       expect(modChange?.category).toBe('module-removed');
     });
@@ -591,11 +683,21 @@ describe('Breaking Change Classifier', () => {
     it('classifies module addition as compatible', () => {
       const oldIR = makeIR();
       const newIR = makeIR({
-        modules: [{ name: 'auth', entities: ['User'], enums: [], commands: [], stores: [], events: [], policies: [] }],
+        modules: [
+          {
+            name: 'auth',
+            entities: ['User'],
+            enums: [],
+            commands: [],
+            stores: [],
+            events: [],
+            policies: [],
+          },
+        ],
       });
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const modChange = report.classified.find(c => c.path === 'module:auth');
+      const modChange = report.classified.find((c) => c.path === 'module:auth');
       expect(modChange?.severity).toBe('compatible');
       expect(modChange?.category).toBe('module-added');
     });
@@ -604,7 +706,11 @@ describe('Breaking Change Classifier', () => {
 
     it('applies acknowledgments to filter unacknowledged breaking changes', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', { properties: [makeProp('id', 'string'), makeProp('email', 'string')] })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('email', 'string')],
+          }),
+        ],
         commands: [{ name: 'createUser', parameters: [], guards: [], actions: [], emits: [] }],
       });
       const newIR = makeIR({
@@ -613,32 +719,42 @@ describe('Breaking Change Classifier', () => {
 
       const acks: AcknowledgmentsFile = {
         version: 1,
-        acknowledged: [{
-          path: 'User.email',
-          category: 'property-removed',
-          acknowledgedAt: '2024-01-15T00:00:00Z',
-          reason: 'Email field migrated to separate Email entity',
-        }],
+        acknowledged: [
+          {
+            path: 'User.email',
+            category: 'property-removed',
+            acknowledgedAt: '2024-01-15T00:00:00Z',
+            reason: 'Email field migrated to separate Email entity',
+          },
+        ],
       };
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR), acks);
 
       // The property removal should be acknowledged
-      const emailRemoval = report.classified.find(c => c.path === 'User.email');
+      const emailRemoval = report.classified.find((c) => c.path === 'User.email');
       expect(emailRemoval?.severity).toBe('breaking');
-      expect(report.acknowledged).toContainEqual(expect.objectContaining({
-        path: 'User.email',
-        category: 'property-removed',
-      }));
-      expect(report.unacknowledged).not.toContainEqual(expect.objectContaining({
-        path: 'User.email',
-        category: 'property-removed',
-      }));
+      expect(report.acknowledged).toContainEqual(
+        expect.objectContaining({
+          path: 'User.email',
+          category: 'property-removed',
+        }),
+      );
+      expect(report.unacknowledged).not.toContainEqual(
+        expect.objectContaining({
+          path: 'User.email',
+          category: 'property-removed',
+        }),
+      );
     });
 
     it('does not acknowledge changes with wrong category', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', { properties: [makeProp('id', 'string'), makeProp('email', 'string')] })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('email', 'string')],
+          }),
+        ],
       });
       const newIR = makeIR({
         entities: [makeEntity('User', { properties: [makeProp('id', 'string')] })],
@@ -646,19 +762,23 @@ describe('Breaking Change Classifier', () => {
 
       const acks: AcknowledgmentsFile = {
         version: 1,
-        acknowledged: [{
-          path: 'User.email',
-          category: 'property-type-changed', // Wrong category
-          acknowledgedAt: '2024-01-15T00:00:00Z',
-          reason: 'Wrong category',
-        }],
+        acknowledged: [
+          {
+            path: 'User.email',
+            category: 'property-type-changed', // Wrong category
+            acknowledgedAt: '2024-01-15T00:00:00Z',
+            reason: 'Wrong category',
+          },
+        ],
       };
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR), acks);
-      expect(report.unacknowledged).toContainEqual(expect.objectContaining({
-        path: 'User.email',
-        category: 'property-removed',
-      }));
+      expect(report.unacknowledged).toContainEqual(
+        expect.objectContaining({
+          path: 'User.email',
+          category: 'property-removed',
+        }),
+      );
     });
 
     // --- Consumer impact ---
@@ -696,7 +816,7 @@ describe('Breaking Change Classifier', () => {
       const newIR = makeIR();
 
       const report = classifyBreakingChanges(diffIR(oldIR, newIR));
-      const paths = report.classified.map(c => c.path);
+      const paths = report.classified.map((c) => c.path);
       expect(paths).toEqual([...paths].sort());
     });
 
@@ -705,13 +825,21 @@ describe('Breaking Change Classifier', () => {
     it('handles multiple entity changes in one diff', () => {
       const oldIR = makeIR({
         entities: [
-          makeEntity('User', { properties: [makeProp('id', 'string'), makeProp('name', 'string')] }),
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('name', 'string')],
+          }),
           makeEntity('Post', { properties: [makeProp('id', 'string')] }),
         ],
       });
       const newIR = makeIR({
         entities: [
-          makeEntity('User', { properties: [makeProp('id', 'string'), makeProp('name', 'string'), makeProp('email', 'string', { modifiers: ['optional'] })] }),
+          makeEntity('User', {
+            properties: [
+              makeProp('id', 'string'),
+              makeProp('name', 'string'),
+              makeProp('email', 'string', { modifiers: ['optional'] }),
+            ],
+          }),
           makeEntity('Comment', { properties: [makeProp('id', 'string')] }),
         ],
       });

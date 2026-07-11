@@ -40,7 +40,11 @@ Build a descriptor from compiled IR with `buildDescriptor()` (`src/manifest/fede
 ## FederationClient
 
 ```typescript
-import { FederationRegistry, FederationClient, buildDescriptor } from '@angriff36/manifest/federation';
+import {
+  FederationRegistry,
+  FederationClient,
+  buildDescriptor,
+} from '@angriff36/manifest/federation';
 
 const ordersDescriptor = buildDescriptor('orders', ordersIR, {
   endpoint: 'https://orders.svc.cluster:8080',
@@ -64,14 +68,14 @@ const response = await client.invoke({
 
 Cross-service calls carry policy context via HTTP headers (`buildBridgeHeaders` in `client.ts`):
 
-| Header | Value |
-|--------|-------|
-| `X-Manifest-Actor` | Acting user ID |
-| `X-Manifest-Tenant` | Tenant ID |
-| `X-Manifest-Org` | Organization ID |
-| `X-Manifest-Roles` | Comma-separated roles |
-| `X-Request-Id` | Request ID for tracing |
-| `X-Correlation-Id` | Workflow correlation ID |
+| Header              | Value                   |
+| ------------------- | ----------------------- |
+| `X-Manifest-Actor`  | Acting user ID          |
+| `X-Manifest-Tenant` | Tenant ID               |
+| `X-Manifest-Org`    | Organization ID         |
+| `X-Manifest-Roles`  | Comma-separated roles   |
+| `X-Request-Id`      | Request ID for tracing  |
+| `X-Correlation-Id`  | Workflow correlation ID |
 
 Remote endpoint shape: `POST {endpoint}/__manifest/federation/{entity}/{command}`
 

@@ -25,15 +25,7 @@
  * Registers as the `sveltekit` projection in the canonical registry.
  */
 
-import type {
-  IR,
-  IREntity,
-  IRCommand,
-  IRType,
-  IRPolicy,
-  IRExpression,
-  IRValue,
-} from '../../ir';
+import type { IR, IREntity, IRCommand, IRType, IRPolicy, IRExpression, IRValue } from '../../ir';
 import type {
   ProjectionTarget,
   ProjectionRequest,
@@ -250,7 +242,9 @@ function expressionToString(expr: IRExpression): string {
       return `[${expr.elements.map(expressionToString).join(', ')}]`;
     case 'object':
       return `{${expr.properties
-        .map((p: { key: string; value: IRExpression }) => `${p.key}: ${expressionToString(p.value)}`)
+        .map(
+          (p: { key: string; value: IRExpression }) => `${p.key}: ${expressionToString(p.value)}`,
+        )
         .join(', ')}}`;
     case 'lambda':
       return `(${expr.params.join(', ')}) => ${expressionToString(expr.body)}`;
@@ -333,10 +327,9 @@ function generateServerAuthBody(options: NormalizedOptions): string {
       ].join('\n');
     case 'none':
     default:
-      return [
-        `  // Auth disabled — all requests allowed`,
-        `  const userId = "anonymous";`,
-      ].join('\n');
+      return [`  // Auth disabled — all requests allowed`, `  const userId = "anonymous";`].join(
+        '\n',
+      );
   }
 }
 
@@ -375,10 +368,9 @@ function generateLoadAuthBody(options: NormalizedOptions): string {
       ].join('\n');
     case 'none':
     default:
-      return [
-        `  // Auth disabled — all requests allowed`,
-        `  const userId = "anonymous";`,
-      ].join('\n');
+      return [`  // Auth disabled — all requests allowed`, `  const userId = "anonymous";`].join(
+        '\n',
+      );
   }
 }
 
@@ -432,16 +424,11 @@ function generateListReadQuery(entity: IREntity, options: NormalizedOptions): st
   if (options.includeTenantFilter) {
     conditions.push(options.tenantIdProperty);
   }
-  if (
-    options.includeSoftDeleteFilter &&
-    entityHasProperty(entity, options.deletedAtProperty)
-  ) {
+  if (options.includeSoftDeleteFilter && entityHasProperty(entity, options.deletedAtProperty)) {
     conditions.push(`${options.deletedAtProperty}: null`);
   }
 
-  const whereClause = conditions.length
-    ? `where: { ${conditions.join(', ')} },`
-    : '';
+  const whereClause = conditions.length ? `where: { ${conditions.join(', ')} },` : '';
 
   const orderByField = entityHasProperty(entity, 'createdAt') ? 'createdAt' : 'id';
 
@@ -535,9 +522,7 @@ function generateImports(options: NormalizedOptions, flags: ImportFlags): string
 
   // Runtime factory (for writes / command dispatch)
   if (flags.includeRuntime) {
-    lines.push(
-      `import { ${options.runtimeFactoryName} } from "${options.runtimeImportPath}";`,
-    );
+    lines.push(`import { ${options.runtimeFactoryName} } from "${options.runtimeImportPath}";`);
   }
 
   // Auth provider import
@@ -560,11 +545,7 @@ function generateImports(options: NormalizedOptions, flags: ImportFlags): string
 // +server.ts generator (sveltekit.server)
 // ============================================================================
 
-function generateServerFile(
-  entity: IREntity,
-  ir: IR,
-  options: NormalizedOptions,
-): string {
+function generateServerFile(entity: IREntity, ir: IR, options: NormalizedOptions): string {
   const lines: string[] = [];
   lines.push(emitHeader(options, `+server.ts route for ${entity.name}`));
 
@@ -594,9 +575,7 @@ function generateServerFile(
   lines.push('');
   lines.push(`    return json({ ${toLowerCamelCase(entity.name)}s });`);
   lines.push('  } catch (err) {');
-  lines.push(
-    `    console.error("Error fetching ${toLowerCamelCase(entity.name)}s:", err);`,
-  );
+  lines.push(`    console.error("Error fetching ${toLowerCamelCase(entity.name)}s:", err);`);
   lines.push('    return json(');
   lines.push('      { error: "Internal server error", diagnostics: [] },');
   lines.push('      { status: 500 }');
@@ -607,9 +586,7 @@ function generateServerFile(
 
   // POST → dispatch a command on this entity
   // Body shape: { command: string, params?: object, instanceId?: string }
-  const entityCommands = ir.commands
-    .filter((c) => c.entity === entity.name)
-    .map((c) => c.name);
+  const entityCommands = ir.commands.filter((c) => c.entity === entity.name).map((c) => c.name);
 
   lines.push(`/**`);
   lines.push(
@@ -681,11 +658,7 @@ function generateServerFile(
 // +page.server.ts generator (sveltekit.load)
 // ============================================================================
 
-function generateLoadFile(
-  entity: IREntity,
-  ir: IR,
-  options: NormalizedOptions,
-): string {
+function generateLoadFile(entity: IREntity, ir: IR, options: NormalizedOptions): string {
   const lines: string[] = [];
   lines.push(emitHeader(options, `+page.server.ts loader for ${entity.name}`));
 
@@ -704,9 +677,7 @@ function generateLoadFile(
   // load function
   const variable = `${toLowerCamelCase(entity.name)}s`;
   lines.push(`/**`);
-  lines.push(
-    ` * SvelteKit PageServerLoad for the ${entity.name} list page. Returns`,
-  );
+  lines.push(` * SvelteKit PageServerLoad for the ${entity.name} list page. Returns`);
   lines.push(' * type-safe `PageData` consumed by the corresponding +page.svelte.');
   lines.push(` */`);
   lines.push(`export const load: PageServerLoad = async (event) => {`);
@@ -728,9 +699,7 @@ function generateLoadFile(
     lines.push(`/**`);
     lines.push(' * SvelteKit form actions — POST-only handlers backing progressive');
     lines.push(' * enhancement <form action="?/commandName" method="POST"> submissions.');
-    lines.push(
-      ' * Each action validates input via the Manifest runtime so guards, policies,',
-    );
+    lines.push(' * Each action validates input via the Manifest runtime so guards, policies,');
     lines.push(' * and constraints remain authoritative.');
     lines.push(` */`);
     lines.push('export const actions: Actions = {');
@@ -753,18 +722,14 @@ function generateLoadFile(
       lines.push(
         '        (typeof params.instanceId === "string" ? params.instanceId : undefined) ??',
       );
-      lines.push(
-        '        (typeof params.id === "string" ? params.id : undefined);',
-      );
+      lines.push('        (typeof params.id === "string" ? params.id : undefined);');
       lines.push('');
 
       const userCtx = options.includeTenantFilter
         ? `{ user: { id: userId, ${options.tenantIdProperty} } }`
         : `{ user: { id: userId } }`;
 
-      lines.push(
-        `      const runtime = await ${options.runtimeFactoryName}(${userCtx});`,
-      );
+      lines.push(`      const runtime = await ${options.runtimeFactoryName}(${userCtx});`);
       lines.push(
         `      const result = await runtime.runCommand("${entity.name}", "${command.name}", {`,
       );
@@ -774,9 +739,7 @@ function generateLoadFile(
       lines.push('');
       lines.push('      if (!result.success) {');
       lines.push('        const firstDiagnostic = result.diagnostics?.[0];');
-      lines.push(
-        '        const status = firstDiagnostic?.kind === "policy_denial" ? 403',
-      );
+      lines.push('        const status = firstDiagnostic?.kind === "policy_denial" ? 403');
       lines.push('          : firstDiagnostic?.kind === "guard_failure" ? 422');
       lines.push('          : firstDiagnostic?.kind === "constraint_block" ? 422');
       lines.push('          : firstDiagnostic?.kind === "concurrency_conflict" ? 409');
@@ -794,9 +757,7 @@ function generateLoadFile(
       lines.push('        diagnostics: result.diagnostics,');
       lines.push('      };');
       lines.push('    } catch (err) {');
-      lines.push(
-        `      console.error("Error executing ${command.name}:", err);`,
-      );
+      lines.push(`      console.error("Error executing ${command.name}:", err);`);
       lines.push('      return fail(500, {');
       lines.push('        error: "Internal server error",');
       lines.push('        diagnostics: [],');
@@ -824,12 +785,7 @@ function generateCommandServerFile(
   options: NormalizedOptions,
 ): string {
   const lines: string[] = [];
-  lines.push(
-    emitHeader(
-      options,
-      `+server.ts route for ${entity.name}.${command.name}`,
-    ),
-  );
+  lines.push(emitHeader(options, `+server.ts route for ${entity.name}.${command.name}`));
 
   lines.push(
     generateImports(options, {
@@ -852,12 +808,8 @@ function generateCommandServerFile(
   lines.push('');
   lines.push('    const body = await event.request.json().catch(() => ({}));');
   lines.push('    const instanceId =');
-  lines.push(
-    '      (typeof body?.instanceId === "string" ? body.instanceId : undefined) ??',
-  );
-  lines.push(
-    '      (typeof body?.id === "string" ? body.id : undefined);',
-  );
+  lines.push('      (typeof body?.instanceId === "string" ? body.instanceId : undefined) ??');
+  lines.push('      (typeof body?.id === "string" ? body.id : undefined);');
   lines.push('');
 
   const userCtx = options.includeTenantFilter
@@ -865,9 +817,7 @@ function generateCommandServerFile(
     : `{ user: { id: userId } }`;
 
   lines.push(`    const runtime = await ${options.runtimeFactoryName}(${userCtx});`);
-  lines.push(
-    `    const result = await runtime.runCommand("${entity.name}", "${command.name}", {`,
-  );
+  lines.push(`    const result = await runtime.runCommand("${entity.name}", "${command.name}", {`);
   lines.push('      params: body ?? {},');
   lines.push('      instanceId,');
   lines.push('    });');
@@ -891,9 +841,7 @@ function generateCommandServerFile(
   lines.push('      diagnostics: result.diagnostics,');
   lines.push('    });');
   lines.push('  } catch (err) {');
-  lines.push(
-    `    console.error("Error executing ${entity.name}.${command.name}:", err);`,
-  );
+  lines.push(`    console.error("Error executing ${entity.name}.${command.name}:", err);`);
   lines.push('    return json(');
   lines.push('      { error: "Internal server error", diagnostics: [] },');
   lines.push('      { status: 500 }');
@@ -914,9 +862,7 @@ function generateEntityInterface(entity: IREntity): string {
   lines.push(`export interface ${entity.name} {`);
   for (const prop of entity.properties) {
     const optional =
-      prop.modifiers.includes('optional') ||
-      prop.defaultValue !== undefined ||
-      prop.type.nullable;
+      prop.modifiers.includes('optional') || prop.defaultValue !== undefined || prop.type.nullable;
     const sigil = optional ? '?' : '';
     lines.push(`  ${prop.name}${sigil}: ${irTypeToTs(prop.type)};`);
   }
@@ -1014,12 +960,18 @@ function generateClientFile(options: NormalizedOptions): string {
   lines.push('    headers: { "Content-Type": "application/json" },');
   lines.push('    body: JSON.stringify({ command, params, instanceId }),');
   lines.push('  });');
-  lines.push('  const payload = (await response.json().catch(() => ({}))) as ManifestActionResult<T>;');
+  lines.push(
+    '  const payload = (await response.json().catch(() => ({}))) as ManifestActionResult<T>;',
+  );
   lines.push('  if (!response.ok && payload.success === undefined) {');
   lines.push('    return {');
   lines.push('      success: false,');
-  lines.push('      error: (payload as unknown as { error?: string }).error ?? response.statusText,');
-  lines.push('      diagnostics: (payload as unknown as { diagnostics?: ManifestDiagnostic[] }).diagnostics ?? [],');
+  lines.push(
+    '      error: (payload as unknown as { error?: string }).error ?? response.statusText,',
+  );
+  lines.push(
+    '      diagnostics: (payload as unknown as { diagnostics?: ManifestDiagnostic[] }).diagnostics ?? [],',
+  );
   lines.push('    };');
   lines.push('  }');
   lines.push('  return payload;');
@@ -1124,13 +1076,17 @@ function generateAuthCompanion(kind: 'lucia' | 'getServerSession' | 'requireUser
     lines.push('  _event: unknown,');
     lines.push('): Promise<{ user: { id: string } } | null> {');
     lines.push('  throw new Error(');
-    lines.push('    "Manifest auth companion stub: implement getServerSession() to resolve the session. Return { user: { id } } or null.",');
+    lines.push(
+      '    "Manifest auth companion stub: implement getServerSession() to resolve the session. Return { user: { id } } or null.",',
+    );
     lines.push('  );');
     lines.push('}');
   } else {
     lines.push('export async function requireUser(_event: unknown): Promise<{ id: string }> {');
     lines.push('  throw new Error(');
-    lines.push('    "Manifest auth companion stub: implement requireUser() to resolve the authenticated user or throw a redirect.",');
+    lines.push(
+      '    "Manifest auth companion stub: implement requireUser() to resolve the authenticated user or throw a redirect.",',
+    );
     lines.push('  );');
     lines.push('}');
   }
@@ -1232,7 +1188,12 @@ function generateCompanions(ir: IR, options: NormalizedOptions): ProjectionResul
   //    by default → local); none imports nothing.
   const spec = authCompanionSpec(options);
   if (spec) {
-    emit('sveltekit.companions.auth', spec.importSpecifier, () => generateAuthCompanion(spec.kind), 'auth');
+    emit(
+      'sveltekit.companions.auth',
+      spec.importSpecifier,
+      () => generateAuthCompanion(spec.kind),
+      'auth',
+    );
   }
 
   // 4. Tenant lookup helper — only when a custom tenantProvider is configured
@@ -1254,10 +1215,7 @@ function generateCompanions(ir: IR, options: NormalizedOptions): ProjectionResul
 // Surface dispatchers
 // ============================================================================
 
-function entityNotFoundDiagnostic(
-  entityName: string,
-  ir: IR,
-): ProjectionDiagnostic {
+function entityNotFoundDiagnostic(entityName: string, ir: IR): ProjectionDiagnostic {
   return {
     severity: 'error',
     code: 'ENTITY_NOT_FOUND',
@@ -1273,9 +1231,7 @@ function commandNotFoundDiagnostic(
   commandName: string,
   ir: IR,
 ): ProjectionDiagnostic {
-  const entityCommands = ir.commands
-    .filter((c) => c.entity === entityName)
-    .map((c) => c.name);
+  const entityCommands = ir.commands.filter((c) => c.entity === entityName).map((c) => c.name);
   return {
     severity: 'error',
     code: 'COMMAND_NOT_FOUND',
@@ -1303,9 +1259,7 @@ export class SvelteKitProjection implements ProjectionTarget {
   readonly surfaces = SURFACES;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
-    const options = normalizeOptions(
-      (request.options ?? {}) as SvelteKitProjectionOptions,
-    );
+    const options = normalizeOptions((request.options ?? {}) as SvelteKitProjectionOptions);
 
     switch (request.surface) {
       case SURFACE_SERVER: {
@@ -1414,9 +1368,7 @@ export class SvelteKitProjection implements ProjectionTarget {
         if (!command) {
           return {
             artifacts: [],
-            diagnostics: [
-              commandNotFoundDiagnostic(request.entity, request.command, ir),
-            ],
+            diagnostics: [commandNotFoundDiagnostic(request.entity, request.command, ir)],
           };
         }
         const code = generateCommandServerFile(entity, command, ir, options);

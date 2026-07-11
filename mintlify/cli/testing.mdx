@@ -1,7 +1,7 @@
 ---
-title: "Testing tools: constraint harness, mock server, and load testing"
-description: "Interactive and automated testing tools for Manifest programs — a constraint test harness for exploring validation boundaries, an auto-generated mock server, and load testing fixture generation."
-sidebarTitle: "Testing"
+title: 'Testing tools: constraint harness, mock server, and load testing'
+description: 'Interactive and automated testing tools for Manifest programs — a constraint test harness for exploring validation boundaries, an auto-generated mock server, and load testing fixture generation.'
+sidebarTitle: 'Testing'
 ---
 
 Manifest provides three testing tools for validating program behavior beyond unit and conformance tests: an interactive constraint test harness, an auto-generated mock server for integration testing, and a load testing fixture generator.
@@ -52,13 +52,13 @@ Constraints:
 ### Programmatic API
 
 ```typescript
-import { ConstraintTestHarness } from "@angriff36/manifest/testing";
+import { ConstraintTestHarness } from '@angriff36/manifest/testing';
 
-const harness = new ConstraintTestHarness(ir, "Order");
+const harness = new ConstraintTestHarness(ir, 'Order');
 
 // Set property values
-harness.setProperty("total", 15000);
-harness.setProperty("customerStatus", "active");
+harness.setProperty('total', 15000);
+harness.setProperty('customerStatus', 'active');
 
 // Evaluate all constraints
 const results = harness.evaluate();
@@ -70,9 +70,9 @@ const results = harness.evaluate();
 // ]
 
 // Test override authorization
-const overrideResult = harness.testOverride("highValue", {
-  authorizedBy: "user-999",
-  reason: "Emergency processing",
+const overrideResult = harness.testOverride('highValue', {
+  authorizedBy: 'user-999',
+  reason: 'Emergency processing',
 });
 ```
 
@@ -96,26 +96,28 @@ manifest mock ir/app.ir.json --output mocks/ --format ts
 
 ### Mock server behavior
 
-| Endpoint | Behavior |
-|----------|----------|
-| `GET /api/{entity}` | Returns a paginated list of mock instances |
-| `GET /api/{entity}/{id}` | Returns a single mock instance |
+| Endpoint                       | Behavior                                                  |
+| ------------------------------ | --------------------------------------------------------- |
+| `GET /api/{entity}`            | Returns a paginated list of mock instances                |
+| `GET /api/{entity}/{id}`       | Returns a single mock instance                            |
 | `POST /api/{entity}/{command}` | Validates input, returns a `CommandResult` with mock data |
-| `GET /api/events` | Returns the mock event log |
+| `GET /api/events`              | Returns the mock event log                                |
 
 Mock instances are generated from the entity's property types with realistic defaults. Command execution follows the declared guard and policy rules — a guard denial returns the appropriate error response.
 
 ### Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--port` | `3456` | Port to listen on |
-| `--output` | — | Output directory (generates code instead of starting server) |
-| `--format` | `ts` | Output format: `ts` (Hono handlers) or `json` (OpenAPI mock) |
-| `--seed` | `42` | Seed for deterministic mock data generation |
+| Option     | Default | Description                                                  |
+| ---------- | ------- | ------------------------------------------------------------ |
+| `--port`   | `3456`  | Port to listen on                                            |
+| `--output` | —       | Output directory (generates code instead of starting server) |
+| `--format` | `ts`    | Output format: `ts` (Hono handlers) or `json` (OpenAPI mock) |
+| `--seed`   | `42`    | Seed for deterministic mock data generation                  |
 
 <Note>
-The mock server does not execute the real runtime engine. It validates input structure and guard/policy conditions, then returns pre-built mock responses. For full runtime behavior, use the embedded runtime in your test suite.
+  The mock server does not execute the real runtime engine. It validates input structure and
+  guard/policy conditions, then returns pre-built mock responses. For full runtime behavior, use the
+  embedded runtime in your test suite.
 </Note>
 
 ## Load testing fixture generator
@@ -142,11 +144,11 @@ manifest generate-fixtures ir/app.ir.json --entity Order --count 2000 --output f
   "entities": {
     "Order": [
       { "id": "order-001", "status": "pending", "total": 45.99, "customerName": "Customer 1" },
-      { "id": "order-002", "status": "confirmed", "total": 129.50, "customerName": "Customer 2" }
+      { "id": "order-002", "status": "confirmed", "total": 129.5, "customerName": "Customer 2" }
     ],
     "LineItem": [
       { "id": "li-001", "orderId": "order-001", "price": 25.99, "quantity": 1 },
-      { "id": "li-002", "orderId": "order-001", "price": 10.00, "quantity": 2 }
+      { "id": "li-002", "orderId": "order-001", "price": 10.0, "quantity": 2 }
     ]
   },
   "metadata": {
@@ -159,17 +161,20 @@ manifest generate-fixtures ir/app.ir.json --entity Order --count 2000 --output f
 
 ### Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--count` | `100` | Number of instances per entity |
-| `--entity` | all | Generate for a specific entity only |
-| `--seed` | `42` | Random seed for deterministic generation |
-| `--link-relationships` | `false` | Generate relationship-consistent foreign keys |
-| `--output` | `fixtures/` | Output directory |
-| `--format` | `json` | Output format: `json` or `csv` |
+| Option                 | Default     | Description                                   |
+| ---------------------- | ----------- | --------------------------------------------- |
+| `--count`              | `100`       | Number of instances per entity                |
+| `--entity`             | all         | Generate for a specific entity only           |
+| `--seed`               | `42`        | Random seed for deterministic generation      |
+| `--link-relationships` | `false`     | Generate relationship-consistent foreign keys |
+| `--output`             | `fixtures/` | Output directory                              |
+| `--format`             | `json`      | Output format: `json` or `csv`                |
 
 <Note>
-When `--link-relationships` is enabled, the generator ensures that `belongsTo` and `ref` properties reference valid instances of the target entity, and `hasMany` relationships have consistent back-references. This produces more realistic data for testing joins and cross-entity queries.
+  When `--link-relationships` is enabled, the generator ensures that `belongsTo` and `ref`
+  properties reference valid instances of the target entity, and `hasMany` relationships have
+  consistent back-references. This produces more realistic data for testing joins and cross-entity
+  queries.
 </Note>
 
 ## Property-based testing

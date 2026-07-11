@@ -17,9 +17,7 @@ describe('seed-pack pack-io', () => {
   });
 
   it('round-trips CSV escape', () => {
-    const csv = serializeCsv(['seedKey', 'name'], [
-      { seedKey: 'vendor-1', name: 'Acme, Inc.' },
-    ]);
+    const csv = serializeCsv(['seedKey', 'name'], [{ seedKey: 'vendor-1', name: 'Acme, Inc.' }]);
     const parsed = parseCsv(csv);
     expect(parsed.columns).toEqual(['seedKey', 'name']);
     expect(parsed.rows[0]).toEqual({ seedKey: 'vendor-1', name: 'Acme, Inc.' });

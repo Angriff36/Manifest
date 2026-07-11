@@ -25,15 +25,19 @@ interface Store<T extends EntityInstance = EntityInstance> {
 import { RuntimeEngine } from '@angriff36/manifest';
 import { MyStore } from './my-store';
 
-const runtime = new RuntimeEngine(ir, {
-  user: { id: 'user-1' },
-  context: { tenantId: 'tenant-1' }
-}, {
-  storeProvider: (entityName) => {
-    if (entityName === 'Recipe') return new MyStore('Recipe');
-    return undefined; // fall back to configured default behavior
-  }
-});
+const runtime = new RuntimeEngine(
+  ir,
+  {
+    user: { id: 'user-1' },
+    context: { tenantId: 'tenant-1' },
+  },
+  {
+    storeProvider: (entityName) => {
+      if (entityName === 'Recipe') return new MyStore('Recipe');
+      return undefined; // fall back to configured default behavior
+    },
+  },
+);
 ```
 
 ## Practical Guidance

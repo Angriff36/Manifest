@@ -54,9 +54,7 @@ type EntitiesRegistryShape = WrappedEntitiesRegistry | EntityRegistryEntry[];
 async function loadEntityNames(p: string): Promise<Set<string>> {
   const raw = await fs.readFile(p, 'utf-8');
   const parsed = JSON.parse(raw) as EntitiesRegistryShape;
-  const entries: EntityRegistryEntry[] = Array.isArray(parsed)
-    ? parsed
-    : (parsed.entities ?? []);
+  const entries: EntityRegistryEntry[] = Array.isArray(parsed) ? parsed : (parsed.entities ?? []);
   const out = new Set<string>();
   for (const e of entries) {
     if (!e?.name) continue;

@@ -30,7 +30,7 @@ entity ActionMilestone {
 store DisciplinaryAction in memory
 store ActionMilestone in memory`);
 
-    const err = diagnostics.find(d => d.severity === 'error' && /no belongsTo/.test(d.message));
+    const err = diagnostics.find((d) => d.severity === 'error' && /no belongsTo/.test(d.message));
     expect(err).toBeDefined();
     expect(err!.message).toContain('ActionMilestone');
     expect(err!.message).toContain('DisciplinaryAction');
@@ -67,7 +67,7 @@ on ActionClosed run ActionMilestone.create
     title: "closed"
   }`);
 
-    expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(ir).not.toBeNull();
   });
 
@@ -85,7 +85,7 @@ entity Book {
 store Author in memory
 store Book in memory`);
 
-    expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
   it('warns (does not block) when create takes a manual parentId with no nested command or reaction', async () => {
@@ -108,9 +108,13 @@ store DisciplinaryAction in memory
 store ActionMilestone in memory`);
 
     // Manual FK is valid (nudged via warning), so the program still compiles.
-    const warn = diagnostics.find(d => d.severity === 'warning' && /manual 'disciplinaryActionId'/.test(d.message));
+    const warn = diagnostics.find(
+      (d) => d.severity === 'warning' && /manual 'disciplinaryActionId'/.test(d.message),
+    );
     expect(warn).toBeDefined();
-    expect(diagnostics.some(d => d.severity === 'error' && /disciplinaryActionId/.test(d.message))).toBe(false);
+    expect(
+      diagnostics.some((d) => d.severity === 'error' && /disciplinaryActionId/.test(d.message)),
+    ).toBe(false);
     expect(ir).not.toBeNull();
   });
 });
@@ -130,7 +134,11 @@ entity Item {
 
 store Item in memory`);
 
-    expect(diagnostics.some(d => d.severity === 'error' && /requires 'tenantId'.*auto-provides/.test(d.message))).toBe(true);
+    expect(
+      diagnostics.some(
+        (d) => d.severity === 'error' && /requires 'tenantId'.*auto-provides/.test(d.message),
+      ),
+    ).toBe(true);
     expect(ir).toBeNull();
   });
 
@@ -148,8 +156,16 @@ store Item in memory`);
 
 store Membership in memory`);
 
-    expect(diagnostics.some(d => d.severity === 'error' && /requires 'userId'.*auto-provides/.test(d.message))).toBe(true);
-    expect(diagnostics.some(d => d.severity === 'error' && /requires 'orgId'.*auto-provides/.test(d.message))).toBe(true);
+    expect(
+      diagnostics.some(
+        (d) => d.severity === 'error' && /requires 'userId'.*auto-provides/.test(d.message),
+      ),
+    ).toBe(true);
+    expect(
+      diagnostics.some(
+        (d) => d.severity === 'error' && /requires 'orgId'.*auto-provides/.test(d.message),
+      ),
+    ).toBe(true);
     expect(ir).toBeNull();
   });
 
@@ -179,8 +195,14 @@ store Event in memory
 store BattleBoard in memory`);
 
     // Taking the parent's venueId directly is valid — nudged via warning, not blocked.
-    expect(diagnostics.some(d => d.severity === 'warning' && /venueId.*owned by parent/.test(d.message))).toBe(true);
-    expect(diagnostics.some(d => d.severity === 'error' && /owned by parent/.test(d.message))).toBe(false);
+    expect(
+      diagnostics.some(
+        (d) => d.severity === 'warning' && /venueId.*owned by parent/.test(d.message),
+      ),
+    ).toBe(true);
+    expect(
+      diagnostics.some((d) => d.severity === 'error' && /owned by parent/.test(d.message)),
+    ).toBe(false);
     expect(ir).not.toBeNull();
   });
 
@@ -216,7 +238,9 @@ entity Contact {
 store Client in memory
 store Contact in memory`);
 
-    expect(diagnostics.some(d => d.severity === 'error' && /owned by parent/.test(d.message))).toBe(false);
+    expect(
+      diagnostics.some((d) => d.severity === 'error' && /owned by parent/.test(d.message)),
+    ).toBe(false);
   });
 
   it('does NOT flag own fields as parent-owned for a self-referential relationship', async () => {
@@ -238,47 +262,59 @@ store Contact in memory`);
 
 store Txn in memory`);
 
-    expect(diagnostics.some(d => d.severity === 'error' && /owned by parent/.test(d.message))).toBe(false);
+    expect(
+      diagnostics.some((d) => d.severity === 'error' && /owned by parent/.test(d.message)),
+    ).toBe(false);
   });
 });
 
 describe('domain completeness — warnings', () => {
   it('errors on persisted orphan with domain FK wiring signals', () => {
-    const entities: IREntity[] = [{
-      name: 'Orphan',
-      properties: [
-        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        { name: 'parentId', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-      ],
-      computedProperties: [],
-      relationships: [{ name: 'parent', kind: 'belongsTo', target: 'Parent' }],
-      commands: [],
-      constraints: [],
-      policies: [],
-    }];
+    const entities: IREntity[] = [
+      {
+        name: 'Orphan',
+        properties: [
+          { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          { name: 'parentId', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        ],
+        computedProperties: [],
+        relationships: [{ name: 'parent', kind: 'belongsTo', target: 'Parent' }],
+        commands: [],
+        constraints: [],
+        policies: [],
+      },
+    ];
     const stores: IRStore[] = [{ entity: 'Orphan', target: 'memory', config: {} }];
     const diags: Array<{ severity: string; message: string }> = [];
     checkDomainCompleteness(entities, [], stores, (severity, message) => {
       diags.push({ severity, message });
     });
-    expect(diags.some(d => d.severity === 'error' && /unreachable in the product/.test(d.message))).toBe(true);
+    expect(
+      diags.some((d) => d.severity === 'error' && /unreachable in the product/.test(d.message)),
+    ).toBe(true);
   });
 
   it('warns on persisted property-only entity with no commands', () => {
-    const entities: IREntity[] = [{
-      name: 'Product',
-      properties: [{ name: 'name', type: { name: 'string', nullable: false }, modifiers: ['required'] }],
-      computedProperties: [],
-      relationships: [],
-      commands: [],
-      constraints: [],
-      policies: [],
-    }];
+    const entities: IREntity[] = [
+      {
+        name: 'Product',
+        properties: [
+          { name: 'name', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        ],
+        computedProperties: [],
+        relationships: [],
+        commands: [],
+        constraints: [],
+        policies: [],
+      },
+    ];
     const stores: IRStore[] = [{ entity: 'Product', target: 'memory', config: {} }];
     const diags: Array<{ severity: string; message: string }> = [];
     checkDomainCompleteness(entities, [], stores, (severity, message) => {
       diags.push({ severity, message });
     });
-    expect(diags.some(d => d.severity === 'warning' && /unreachable in the product/.test(d.message))).toBe(true);
+    expect(
+      diags.some((d) => d.severity === 'warning' && /unreachable in the product/.test(d.message)),
+    ).toBe(true);
   });
 });

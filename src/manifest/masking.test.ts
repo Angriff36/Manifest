@@ -28,7 +28,9 @@ describe('applyMaskStrategy', () => {
 
   describe('partial', () => {
     it('keeps first keepStart and last keepEnd characters', () => {
-      expect(applyMaskStrategy({ type: 'partial', params: [0, 4] }, '123-45-6789')).toBe('*******6789');
+      expect(applyMaskStrategy({ type: 'partial', params: [0, 4] }, '123-45-6789')).toBe(
+        '*******6789',
+      );
     });
 
     it('keeps characters at both ends', () => {

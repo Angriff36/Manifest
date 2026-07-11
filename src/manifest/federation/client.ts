@@ -34,7 +34,7 @@ export class HttpFederationTransport implements FederationTransport {
   async invoke(
     descriptor: ServiceDescriptor,
     request: FederationRequest,
-    options: { timeoutMs: number; authToken?: string }
+    options: { timeoutMs: number; authToken?: string },
   ): Promise<FederationResponse> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
@@ -106,7 +106,7 @@ export class FederationClient {
   constructor(
     registry: FederationRegistry,
     options: FederationClientOptions = {},
-    transport?: FederationTransport
+    transport?: FederationTransport,
   ) {
     this.registry = registry;
     this.options = {
@@ -139,9 +139,7 @@ export class FederationClient {
     const timeoutMs = request.timeoutMs ?? this.options.defaultTimeoutMs;
     const authToken = this.options.resolveAuthToken?.(descriptor.serviceId);
 
-    const maxAttempts = found.command.idempotent
-      ? this.options.maxRetries + 1
-      : 1;
+    const maxAttempts = found.command.idempotent ? this.options.maxRetries + 1 : 1;
 
     let lastResponse: FederationResponse | undefined;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -169,7 +167,10 @@ export class FederationClient {
 export function isTransientFailure(response: FederationResponse): boolean {
   if (response.success) return false;
   // Transport-level: error message indicates connection issue
-  if (response.error && /abort|fetch|network|timeout|ECONNREFUSED|ENOTFOUND/i.test(response.error)) {
+  if (
+    response.error &&
+    /abort|fetch|network|timeout|ECONNREFUSED|ENOTFOUND/i.test(response.error)
+  ) {
     return true;
   }
   return false;

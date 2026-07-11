@@ -26,7 +26,7 @@ export function DiagnosticsList({ diagnostics, errors, onLineClick }: Diagnostic
   }
   for (const d of diagnostics) {
     // Skip duplicates already covered by compiler errors
-    if (items.some(i => i.message === d.message && i.line === d.line)) continue;
+    if (items.some((i) => i.message === d.message && i.line === d.line)) continue;
     items.push(d);
   }
 
@@ -35,12 +35,18 @@ export function DiagnosticsList({ diagnostics, errors, onLineClick }: Diagnostic
   return (
     <div className="max-h-40 overflow-auto bg-gray-950/80 border-t border-gray-800">
       {items.map((item, i) => {
-        const Icon = item.severity === 'error' ? AlertCircle
-          : item.severity === 'warning' ? AlertTriangle
-          : Info;
-        const color = item.severity === 'error' ? 'text-rose-400'
-          : item.severity === 'warning' ? 'text-amber-400'
-          : 'text-blue-400';
+        const Icon =
+          item.severity === 'error'
+            ? AlertCircle
+            : item.severity === 'warning'
+              ? AlertTriangle
+              : Info;
+        const color =
+          item.severity === 'error'
+            ? 'text-rose-400'
+            : item.severity === 'warning'
+              ? 'text-amber-400'
+              : 'text-blue-400';
 
         return (
           <button
@@ -50,9 +56,7 @@ export function DiagnosticsList({ diagnostics, errors, onLineClick }: Diagnostic
           >
             <Icon size={14} className={`flex-shrink-0 mt-0.5 ${color}`} />
             <span className="text-gray-300">
-              {item.line != null && (
-                <span className={`${color} mr-1`}>Ln {item.line}:</span>
-              )}
+              {item.line != null && <span className={`${color} mr-1`}>Ln {item.line}:</span>}
               {item.message}
             </span>
           </button>

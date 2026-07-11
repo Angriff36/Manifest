@@ -25,9 +25,9 @@ export function buildReport(
   inputType: 'manifest-source' | 'ir-json',
   diagnostics: ValidationDiagnostic[],
 ): ValidationReport {
-  const errors = diagnostics.filter(d => d.severity === 'error').length;
-  const warnings = diagnostics.filter(d => d.severity === 'warning').length;
-  const info = diagnostics.filter(d => d.severity === 'info').length;
+  const errors = diagnostics.filter((d) => d.severity === 'error').length;
+  const warnings = diagnostics.filter((d) => d.severity === 'warning').length;
+  const info = diagnostics.filter((d) => d.severity === 'info').length;
 
   let score = 100;
   score -= errors * 25;

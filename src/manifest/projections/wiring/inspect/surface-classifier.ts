@@ -37,7 +37,9 @@ export class ProductSurfaceClassifier {
   private readonly exclude: string[];
   private readonly include: string[];
 
-  constructor(config: Pick<WiringInspectConfig, 'generated' | 'tests' | 'docs' | 'exclude' | 'include'>) {
+  constructor(
+    config: Pick<WiringInspectConfig, 'generated' | 'tests' | 'docs' | 'exclude' | 'include'>,
+  ) {
     this.generated = [...DEFAULT_GENERATED, ...(config.generated ?? [])];
     this.tests = [...DEFAULT_TESTS, ...(config.tests ?? [])];
     this.docs = [...DEFAULT_DOCS, ...(config.docs ?? [])];
@@ -47,18 +49,18 @@ export class ProductSurfaceClassifier {
 
   isExcluded(filePath: string): boolean {
     const norm = normalizeRepoPath(filePath);
-    if (this.include.length > 0 && !this.include.some(p => pathIncludes(norm, p))) {
+    if (this.include.length > 0 && !this.include.some((p) => pathIncludes(norm, p))) {
       return true;
     }
-    if (this.exclude.some(p => pathIncludes(norm, p))) return true;
-    if (this.tests.some(p => pathIncludes(norm, p))) return true;
-    if (this.docs.some(p => pathIncludes(norm, p))) return true;
+    if (this.exclude.some((p) => pathIncludes(norm, p))) return true;
+    if (this.tests.some((p) => pathIncludes(norm, p))) return true;
+    if (this.docs.some((p) => pathIncludes(norm, p))) return true;
     return false;
   }
 
   isGeneratedDefinition(filePath: string): boolean {
     const norm = normalizeRepoPath(filePath);
-    return this.generated.some(p => pathIncludes(norm, p));
+    return this.generated.some((p) => pathIncludes(norm, p));
   }
 
   /** Product UI / app surface eligible as a consumer entrypoint. */
@@ -91,10 +93,7 @@ export class ProductSurfaceClassifier {
 function pathIncludes(normPath: string, pattern: string): boolean {
   const p = normalizeRepoPath(pattern);
   if (p.includes('*')) {
-    const re = new RegExp(
-      p.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*'),
-      'i',
-    );
+    const re = new RegExp(p.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*'), 'i');
     return re.test(normPath);
   }
   return normPath.toLowerCase().includes(p.toLowerCase());

@@ -11,7 +11,10 @@ import path from 'path';
 import os from 'os';
 
 // Helper to create temp manifest files
-async function createTempManifest(content: string, filename: string = 'test.manifest'): Promise<string> {
+async function createTempManifest(
+  content: string,
+  filename: string = 'test.manifest',
+): Promise<string> {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-scan-test-'));
   const filePath = path.join(tempDir, filename);
   await fs.writeFile(filePath, content, 'utf-8');
@@ -81,10 +84,12 @@ policy CanIncrement execute: user.role in ["admin"]
 
       await scanCommand(filePath, { format: 'json' });
 
-      const jsonOutput = capture.outputs.find(o => o.includes('"errors"'));
+      const jsonOutput = capture.outputs.find((o) => o.includes('"errors"'));
       expect(jsonOutput).toBeDefined();
       const result = JSON.parse(jsonOutput!);
-      expect(result.errors.filter((e: any) => e.message?.includes('has no policy'))).toHaveLength(0);
+      expect(result.errors.filter((e: any) => e.message?.includes('has no policy'))).toHaveLength(
+        0,
+      );
 
       capture.restore();
     } finally {
@@ -111,10 +116,12 @@ policy AdminAllAccess all: user.role == "admin"
 
       await scanCommand(filePath, { format: 'json' });
 
-      const jsonOutput = capture.outputs.find(o => o.includes('"errors"'));
+      const jsonOutput = capture.outputs.find((o) => o.includes('"errors"'));
       expect(jsonOutput).toBeDefined();
       const result = JSON.parse(jsonOutput!);
-      expect(result.errors.filter((e: any) => e.message?.includes('has no policy'))).toHaveLength(0);
+      expect(result.errors.filter((e: any) => e.message?.includes('has no policy'))).toHaveLength(
+        0,
+      );
 
       capture.restore();
     } finally {
@@ -142,12 +149,11 @@ entity Counter {
 
       await scanCommand(filePath, { format: 'json' });
 
-      const jsonOutput = capture.outputs.find(o => o.includes('"warnings"'));
+      const jsonOutput = capture.outputs.find((o) => o.includes('"warnings"'));
       if (jsonOutput) {
         const result = JSON.parse(jsonOutput);
-        const storeWarnings = result.warnings?.filter(
-          (w: any) => w.message?.includes('not a built-in target')
-        ) || [];
+        const storeWarnings =
+          result.warnings?.filter((w: any) => w.message?.includes('not a built-in target')) || [];
         expect(storeWarnings).toHaveLength(0);
       }
 
@@ -171,13 +177,12 @@ entity Counter {
 
       await scanCommand(filePath, { format: 'json' });
 
-      const jsonOutput = capture.outputs.find(o => o.includes('"warnings"'));
+      const jsonOutput = capture.outputs.find((o) => o.includes('"warnings"'));
       expect(jsonOutput).toBeDefined();
       const result = JSON.parse(jsonOutput!);
 
-      const storeWarnings = result.warnings?.filter(
-        (w: any) => w.message?.includes('is not a built-in target')
-      ) || [];
+      const storeWarnings =
+        result.warnings?.filter((w: any) => w.message?.includes('is not a built-in target')) || [];
       expect(storeWarnings.length).toBeGreaterThan(0);
       expect(storeWarnings[0].message).toContain('customStore');
 
@@ -209,7 +214,7 @@ entity Counter {
 
       await scanCommand(filePath, { format: 'json' });
 
-      const jsonOutput = capture.outputs.find(o => o.includes('"filesScanned"'));
+      const jsonOutput = capture.outputs.find((o) => o.includes('"filesScanned"'));
       expect(jsonOutput).toBeDefined();
       const result = JSON.parse(jsonOutput!);
       expect(result).toHaveProperty('filesScanned');
@@ -252,10 +257,12 @@ policy AuthenticatedOnly execute: user.authenticated
 
       await scanCommand(filePath, { format: 'json' });
 
-      const jsonOutput = capture.outputs.find(o => o.includes('"errors"'));
+      const jsonOutput = capture.outputs.find((o) => o.includes('"errors"'));
       expect(jsonOutput).toBeDefined();
       const result = JSON.parse(jsonOutput!);
-      expect(result.errors.filter((e: any) => e.message?.includes('has no policy'))).toHaveLength(0);
+      expect(result.errors.filter((e: any) => e.message?.includes('has no policy'))).toHaveLength(
+        0,
+      );
 
       capture.restore();
     } finally {
@@ -271,7 +278,10 @@ describe('Scan Command - Conformance Fixtures', () => {
 
   it('should pass scan on fixtures with policies', async () => {
     // Use existing conformance fixtures that have policies
-    const fixturePath = path.resolve(process.cwd(), 'src/manifest/conformance/fixtures/17-tiny-app.manifest');
+    const fixturePath = path.resolve(
+      process.cwd(),
+      'src/manifest/conformance/fixtures/17-tiny-app.manifest',
+    );
 
     try {
       await fs.stat(fixturePath);
@@ -280,11 +290,13 @@ describe('Scan Command - Conformance Fixtures', () => {
 
       await scanCommand(fixturePath, { format: 'json' });
 
-      const jsonOutput = capture.outputs.find(o => o.includes('"errors"'));
+      const jsonOutput = capture.outputs.find((o) => o.includes('"errors"'));
       if (jsonOutput) {
         const result = JSON.parse(jsonOutput);
         // Tiny app fixture should have policy coverage
-        expect(result.errors.filter((e: any) => e.message?.includes('has no policy'))).toHaveLength(0);
+        expect(result.errors.filter((e: any) => e.message?.includes('has no policy'))).toHaveLength(
+          0,
+        );
       }
 
       capture.restore();
@@ -319,7 +331,7 @@ policy AdminOnly execute: user.role == "admin"
 
       await scanCommand(filePath, { format: 'json' });
 
-      const jsonOutput = capture.outputs.find(o => o.includes('"filesScanned"'));
+      const jsonOutput = capture.outputs.find((o) => o.includes('"filesScanned"'));
       expect(jsonOutput).toBeDefined();
       const result = JSON.parse(jsonOutput!);
       expect(result).toHaveProperty('routesScanned');
@@ -350,7 +362,7 @@ policy Anyone execute: true
 
       await scanCommand(filePath, { format: 'json' });
 
-      const jsonOutput = capture.outputs.find(o => o.includes('"filesScanned"'));
+      const jsonOutput = capture.outputs.find((o) => o.includes('"filesScanned"'));
       expect(jsonOutput).toBeDefined();
       const result = JSON.parse(jsonOutput!);
       // No routes to scan in temp directory
@@ -382,7 +394,7 @@ policy Authenticated execute: user.authenticated
 
       await scanCommand(filePath, { format: 'json' });
 
-      const jsonOutput = capture.outputs.find(o => o.includes('"routesScanned"'));
+      const jsonOutput = capture.outputs.find((o) => o.includes('"routesScanned"'));
       expect(jsonOutput).toBeDefined();
       const result = JSON.parse(jsonOutput!);
       expect(result).toHaveProperty('routesScanned');

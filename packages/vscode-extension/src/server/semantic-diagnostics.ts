@@ -1,9 +1,4 @@
-import {
-  Diagnostic,
-  DiagnosticSeverity,
-  Position,
-  Range,
-} from 'vscode-languageserver/node';
+import { Diagnostic, DiagnosticSeverity, Position, Range } from 'vscode-languageserver/node';
 import type {
   CommandNode,
   EntityNode,
@@ -29,7 +24,8 @@ interface FixData {
 
 const DATE_TYPES = new Set(['date', 'datetime', 'timestamp']);
 const PRECISE_NUMERIC_TYPES = new Set(['int', 'decimal', 'money']);
-const TIMESTAMP_FIELD_RE = /(?:createdAt|updatedAt|deletedAt|activatedAt|suspendedAt|occurredAt|[A-Za-z0-9_]+At)$/;
+const TIMESTAMP_FIELD_RE =
+  /(?:createdAt|updatedAt|deletedAt|activatedAt|suspendedAt|occurredAt|[A-Za-z0-9_]+At)$/;
 
 export const SUPPORTED_TYPE_COMPLETIONS = [
   'string',
@@ -67,12 +63,14 @@ export function getSemanticDiagnostics(
     const properties = new Map(entity.properties.map((property) => [property.name, property]));
     for (const property of entity.properties) {
       if (settings.projectionHints !== false && property.dataType.name === 'number') {
-        diagnostics.push(warn(
-          source,
-          'manifest.bareNumberStoredProperty',
-          property.name,
-          `Stored property '${property.name}' uses bare number; prefer int, decimal, money, or datetime/timestamp when projecting to storage.`,
-        ));
+        diagnostics.push(
+          warn(
+            source,
+            'manifest.bareNumberStoredProperty',
+            property.name,
+            `Stored property '${property.name}' uses bare number; prefer int, decimal, money, or datetime/timestamp when projecting to storage.`,
+          ),
+        );
       }
     }
 
@@ -124,12 +122,14 @@ function analyzeCreateRequiredFields(
     if (hasTimestamps && (property.name === 'createdAt' || property.name === 'updatedAt')) continue;
     if (set.has(property.name)) continue;
 
-    diagnostics.push(error(
-      source,
-      'manifest.createMissingRequiredField',
-      property.name,
-      `${entity.name}.create never sets non-null field '${property.name}' (${property.dataType.name}, no default). Persisting writes null and a non-null store column rejects it. Set it with 'mutate ${property.name} = ...' (or a default), or make it optional ('${property.name}: ${property.dataType.name}?').`,
-    ));
+    diagnostics.push(
+      error(
+        source,
+        'manifest.createMissingRequiredField',
+        property.name,
+        `${entity.name}.create never sets non-null field '${property.name}' (${property.dataType.name}, no default). Persisting writes null and a non-null store column rejects it. Set it with 'mutate ${property.name} = ...' (or a default), or make it optional ('${property.name}: ${property.dataType.name}?').`,
+      ),
+    );
   }
 }
 
@@ -153,23 +153,27 @@ function analyzeCommandMutations(
     const paramType = param.dataType.name;
     if (paramType !== propertyType && isNarrowerStoredType(property.dataType, param.dataType)) {
       const replacement = preferredParamType(property.dataType);
-      diagnostics.push(warn(
-        source,
-        'manifest.commandParamTypeMismatch',
-        param.name,
-        `Command parameter '${param.name}' is ${paramType}, but it mutates ${entity.name}.${property.name} (${propertyType}). Prefer ${replacement}.`,
-        typeFix(source, command, param, replacement),
-      ));
+      diagnostics.push(
+        warn(
+          source,
+          'manifest.commandParamTypeMismatch',
+          param.name,
+          `Command parameter '${param.name}' is ${paramType}, but it mutates ${entity.name}.${property.name} (${propertyType}). Prefer ${replacement}.`,
+          typeFix(source, command, param, replacement),
+        ),
+      );
     }
 
     if (isDateLike(property.dataType) && isUnsettableByDefault(property) && param.required) {
-      diagnostics.push(warn(
-        source,
-        'manifest.nullableDateCommandRequired',
-        param.name,
-        `Command parameter '${param.name}' is required, but ${entity.name}.${property.name} appears nullable/unbounded by default. Use optional/null support or separate set/clear commands.`,
-        typeFix(source, command, param, preferredParamType(property.dataType)),
-      ));
+      diagnostics.push(
+        warn(
+          source,
+          'manifest.nullableDateCommandRequired',
+          param.name,
+          `Command parameter '${param.name}' is required, but ${entity.name}.${property.name} appears nullable/unbounded by default. Use optional/null support or separate set/clear commands.`,
+          typeFix(source, command, param, preferredParamType(property.dataType)),
+        ),
+      );
     }
   }
 }
@@ -188,7 +192,9 @@ function analyzeEmittedEvents(
     const produced = new Set<string>([
       ...entity.properties.map((property) => property.name),
       ...command.parameters.map((param) => param.name),
-      ...command.actions.map((action) => action.target).filter((target): target is string => Boolean(target)),
+      ...command.actions
+        .map((action) => action.target)
+        .filter((target): target is string => Boolean(target)),
     ]);
 
     for (const field of event.payload.fields) {
@@ -197,32 +203,38 @@ function analyzeEmittedEvents(
         !produced.has(field.name) &&
         entity.properties.some((property) => property.name === 'id')
       ) {
-        diagnostics.push(warn(
-          source,
-          'manifest.eventPayloadNotProduced',
-          field.name,
-          `Event payload field '${field.name}' is not produced by ${entity.name}.${command.name}. Consider renaming it to id, computing it, or relying on the event subject id.`,
-          fieldFix(source, event, field, 'id'),
-        ));
+        diagnostics.push(
+          warn(
+            source,
+            'manifest.eventPayloadNotProduced',
+            field.name,
+            `Event payload field '${field.name}' is not produced by ${entity.name}.${command.name}. Consider renaming it to id, computing it, or relying on the event subject id.`,
+            fieldFix(source, event, field, 'id'),
+          ),
+        );
       }
 
       if (TIMESTAMP_FIELD_RE.test(field.name) && field.dataType.name === 'number') {
-        diagnostics.push(warn(
-          source,
-          'manifest.timestampPayloadAsNumber',
-          field.name,
-          `Event payload field '${field.name}' is typed as number; prefer timestamp for event time payloads.`,
-          typeFix(source, event, field, 'timestamp'),
-        ));
+        diagnostics.push(
+          warn(
+            source,
+            'manifest.timestampPayloadAsNumber',
+            field.name,
+            `Event payload field '${field.name}' is typed as number; prefer timestamp for event time payloads.`,
+            typeFix(source, event, field, 'timestamp'),
+          ),
+        );
       }
 
       if (field.dataType.name === 'number' && !TIMESTAMP_FIELD_RE.test(field.name)) {
-        diagnostics.push(warn(
-          source,
-          'manifest.bareNumberStoredProperty',
-          field.name,
-          `Payload field '${field.name}' uses bare number; prefer int, decimal, money, or timestamp when the value is projected or stored.`,
-        ));
+        diagnostics.push(
+          warn(
+            source,
+            'manifest.bareNumberStoredProperty',
+            field.name,
+            `Payload field '${field.name}' uses bare number; prefer int, decimal, money, or timestamp when the value is projected or stored.`,
+          ),
+        );
       }
     }
   }
@@ -283,12 +295,7 @@ function warn(
   };
 }
 
-function error(
-  source: string,
-  code: string,
-  token: string,
-  message: string,
-): Diagnostic {
+function error(source: string, code: string, token: string, message: string): Diagnostic {
   return {
     range: findTokenRange(source, token),
     message,
@@ -311,7 +318,12 @@ function typeFix(
   };
 }
 
-function fieldFix(source: string, event: OutboxEventNode, item: ParameterNode, replacement: string): FixData {
+function fieldFix(
+  source: string,
+  event: OutboxEventNode,
+  item: ParameterNode,
+  replacement: string,
+): FixData {
   return {
     kind: 'renameField',
     replacement,
@@ -319,7 +331,12 @@ function fieldFix(source: string, event: OutboxEventNode, item: ParameterNode, r
   };
 }
 
-function findTypedItemTypeRange(source: string, ownerName: string, itemName: string, typeName: string): Range {
+function findTypedItemTypeRange(
+  source: string,
+  ownerName: string,
+  itemName: string,
+  typeName: string,
+): Range {
   const lines = source.split(/\r?\n/);
   let ownerSeen = false;
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {

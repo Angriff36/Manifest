@@ -53,7 +53,7 @@ async function main() {
   console.log('Edit manifest.config.yaml to customize paths.');
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Init failed:', err.message);
   process.exit(1);
 });

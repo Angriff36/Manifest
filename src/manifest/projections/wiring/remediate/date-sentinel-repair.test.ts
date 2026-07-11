@@ -64,8 +64,7 @@ entity Task {
 }
 `;
 
-const ACTION_PATH =
-  'apps/app/app/(authenticated)/(events)/events/actions/task-breakdown.ts';
+const ACTION_PATH = 'apps/app/app/(authenticated)/(events)/events/actions/task-breakdown.ts';
 const UI_PATH =
   'apps/app/app/(authenticated)/(events)/events/components/task-breakdown-display.tsx';
 
@@ -122,7 +121,7 @@ describe('replace-empty-date-sentinel with proven Date local', () => {
     });
     expect(
       before.mismatches.some(
-        m =>
+        (m) =>
           m.kind === 'invalid_date_sentinel' &&
           m.capabilityId === 'PrepTask.updateDetails' &&
           m.parameter === 'dueByTime',
@@ -134,7 +133,7 @@ describe('replace-empty-date-sentinel with proven Date local', () => {
       report: before,
       fileContents: files,
       capabilityId: 'PrepTask.updateDetails',
-    }).plans.find(p => p.repairKind === 'replace-empty-date-sentinel');
+    }).plans.find((p) => p.repairKind === 'replace-empty-date-sentinel');
     expect(plan?.automaticApplicationAllowed).toBe(true);
     expect(plan?.edits[0]?.operation).toMatchObject({
       type: 'replace-object-property-value',
@@ -148,8 +147,8 @@ describe('replace-empty-date-sentinel with proven Date local', () => {
       mode: 'one-defect',
       capabilityId: 'PrepTask.updateDetails',
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
-    const content = [...applyRepairPlan(plan!, files).nextContents.values()].find(c =>
+    expect(result.applied.some((a) => a.applied)).toBe(true);
+    const content = [...applyRepairPlan(plan!, files).nextContents.values()].find((c) =>
       c.includes('dueByTime'),
     )!;
     expect(content).toMatch(/dueByTime:\s*dueByDate\.toISOString\(\)/);
@@ -165,7 +164,7 @@ describe('replace-empty-date-sentinel with proven Date local', () => {
     });
     expect(
       after.mismatches.some(
-        m =>
+        (m) =>
           m.kind === 'invalid_date_sentinel' &&
           m.capabilityId === 'PrepTask.updateDetails' &&
           m.parameter === 'dueByTime',
@@ -196,7 +195,7 @@ describe('replace-empty-date-sentinel with proven Date local', () => {
       }),
       fileContents: files,
       capabilityId: 'PrepTask.updateDetails',
-    }).plans.find(p => p.repairKind === 'replace-empty-date-sentinel');
+    }).plans.find((p) => p.repairKind === 'replace-empty-date-sentinel');
     expect(plan?.automaticApplicationAllowed).toBe(false);
     expect(plan?.decision).toBe('ambiguous-product-decision');
   });
@@ -222,7 +221,7 @@ describe('replace-empty-date-sentinel with proven Date local', () => {
       mode: 'one-defect',
       capabilityId: 'PrepTask.updateDetails',
     });
-    expect(result.applied.filter(a => a.applied)).toHaveLength(0);
+    expect(result.applied.filter((a) => a.applied)).toHaveLength(0);
     expect([...files.values()][0]).toMatch(/dueByTime:\s*""/);
   });
 
@@ -238,14 +237,14 @@ describe('replace-empty-date-sentinel with proven Date local', () => {
         files.set(path, content);
       },
     });
-    expect(first.applied.some(a => a.applied)).toBe(true);
+    expect(first.applied.some((a) => a.applied)).toBe(true);
     const second = remediateWiringSync({
       contract,
       fileContents: files,
       mode: 'one-defect',
       capabilityId: 'PrepTask.updateDetails',
     });
-    expect(second.applied.filter(a => a.applied)).toHaveLength(0);
+    expect(second.applied.filter((a) => a.applied)).toHaveLength(0);
   });
 
   it('5. stale source invalidates the plan', async () => {
@@ -260,14 +259,14 @@ describe('replace-empty-date-sentinel with proven Date local', () => {
       }),
       fileContents: files,
       capabilityId: 'PrepTask.updateDetails',
-    }).plans.find(p => p.repairKind === 'replace-empty-date-sentinel')!;
+    }).plans.find((p) => p.repairKind === 'replace-empty-date-sentinel')!;
     expect(plan.automaticApplicationAllowed).toBe(true);
     files.set(
       ACTION_PATH,
       LIVE_ACTION.replace('dueByTime: ""', 'dueByTime: dueByDate.toISOString()'),
     );
     const patch = applyRepairPlan(plan, files);
-    const content = [...patch.nextContents.values()].find(c => c.includes('dueByTime'))!;
+    const content = [...patch.nextContents.values()].find((c) => c.includes('dueByTime'))!;
     expect(content).not.toMatch(/dueByTime:\s*""/);
   });
 
@@ -287,8 +286,8 @@ describe('replace-empty-date-sentinel with proven Date local', () => {
       fileContents: files,
       mode: 'one-defect',
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
-    const applied = result.applied.find(a => a.applied)!;
+    expect(result.applied.some((a) => a.applied)).toBe(true);
+    const applied = result.applied.find((a) => a.applied)!;
     expect(applied.findingId).toMatch(/invalid_date_sentinel|PrepTask\.updateDetails|dueByTime/);
     expect(applied.findingId).not.toMatch(/wire-existing/);
   });

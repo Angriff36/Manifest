@@ -128,7 +128,7 @@ function defaultSuggestion(code: string): string {
 }
 
 export async function enforceSurfaceCommand(
-  options: EnforceSurfaceOptions = {}
+  options: EnforceSurfaceOptions = {},
 ): Promise<EnforceSurfaceResult> {
   const root = path.resolve(process.cwd(), options.root ?? '.');
   // Resolve every registry path to an absolute path up front. The
@@ -204,9 +204,7 @@ export async function enforceSurfaceCommand(
     if (findings.length === 0) {
       console.log(chalk.green('Surface enforced: all application code aligns with the registry.'));
     } else {
-      console.log(
-        chalk.bold(`enforce-surface — ${errors} errors, ${warnings} warnings`)
-      );
+      console.log(chalk.bold(`enforce-surface — ${errors} errors, ${warnings} warnings`));
       for (const [code, n] of Object.entries(byCode)) {
         console.log(`  ${code}: ${n}`);
       }

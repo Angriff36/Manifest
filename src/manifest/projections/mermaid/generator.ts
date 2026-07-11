@@ -122,7 +122,7 @@ function formatExpression(expr: {
       return `${expr.operator}${formatExpression(expr.operand as typeof expr)}`;
     case 'call': {
       const callee = formatExpression(expr.callee as typeof expr);
-      const args = (expr.args || []).map(a => formatExpression(a as typeof expr)).join(', ');
+      const args = (expr.args || []).map((a) => formatExpression(a as typeof expr)).join(', ');
       return `${callee}(${args})`;
     }
     default:
@@ -163,8 +163,11 @@ function generateERDiagram(ir: IR, options: MermaidProjectionOptions): string {
       lines.push(`    ${name} {`);
       for (const prop of entity.properties) {
         const type = irTypeToMermaidType(prop.type.name);
-        const comment = prop.modifiers.includes('required') ? 'PK' :
-          prop.type.nullable ? 'nullable' : '';
+        const comment = prop.modifiers.includes('required')
+          ? 'PK'
+          : prop.type.nullable
+            ? 'nullable'
+            : '';
         if (comment) {
           lines.push(`        ${type} ${sanitizeName(prop.name)} "${comment}"`);
         } else {
@@ -206,18 +209,18 @@ function generateERDiagram(ir: IR, options: MermaidProjectionOptions): string {
  */
 function generateStateDiagrams(
   ir: IR,
-  options: MermaidProjectionOptions
+  options: MermaidProjectionOptions,
 ): { diagrams: Array<{ entity: string; code: string }>; diagnostics: ProjectionDiagnostic[] } {
   const diagnostics: ProjectionDiagnostic[] = [];
   const diagrams: Array<{ entity: string; code: string }> = [];
 
   // Filter entities
-  let entities = ir.entities.filter(e => e.transitions && e.transitions.length > 0);
+  let entities = ir.entities.filter((e) => e.transitions && e.transitions.length > 0);
 
   if (options.entity) {
-    entities = entities.filter(e => e.name === options.entity);
+    entities = entities.filter((e) => e.name === options.entity);
     if (entities.length === 0) {
-      const hasEntity = ir.entities.some(e => e.name === options.entity);
+      const hasEntity = ir.entities.some((e) => e.name === options.entity);
       if (hasEntity) {
         diagnostics.push({
           severity: 'warning',
@@ -253,13 +256,13 @@ function generateStateDiagrams(
     const lines: string[] = ['stateDiagram-v2'];
 
     // Collect all states to determine the initial state
-    const allFromStates = new Set(transitions.map(t => t.from));
-    const allToStates = new Set(transitions.flatMap(t => t.to));
+    const allFromStates = new Set(transitions.map((t) => t.from));
+    const allToStates = new Set(transitions.flatMap((t) => t.to));
     const allStates = new Set([...allFromStates, ...allToStates]);
 
     // Find the default value of the status property (initial state)
-    const statusProp = entity.properties.find(p =>
-      transitions.some(t => t.property === p.name)
+    const statusProp = entity.properties.find((p) =>
+      transitions.some((t) => t.property === p.name),
     );
     const defaultVal = statusProp?.defaultValue;
     const initialState = defaultVal?.kind === 'string' ? defaultVal.value : undefined;
@@ -270,7 +273,7 @@ function generateStateDiagrams(
     }
 
     // Find terminal states (states that have no outgoing transitions)
-    const terminalStates = [...allStates].filter(s => !allFromStates.has(s));
+    const terminalStates = [...allStates].filter((s) => !allFromStates.has(s));
     for (const ts of terminalStates.sort()) {
       lines.push(`    ${sanitizeName(ts)} --> [*]`);
     }
@@ -306,16 +309,19 @@ function generateStateDiagrams(
  */
 function generateSequenceDiagrams(
   ir: IR,
-  options: MermaidProjectionOptions
-): { diagrams: Array<{ command: string; entity: string; code: string }>; diagnostics: ProjectionDiagnostic[] } {
+  options: MermaidProjectionOptions,
+): {
+  diagrams: Array<{ command: string; entity: string; code: string }>;
+  diagnostics: ProjectionDiagnostic[];
+} {
   const diagnostics: ProjectionDiagnostic[] = [];
   const diagrams: Array<{ command: string; entity: string; code: string }> = [];
 
   // Filter commands
-  let commands = [...ir.commands].filter(c => c.entity);
+  let commands = [...ir.commands].filter((c) => c.entity);
 
   if (options.entity) {
-    commands = commands.filter(c => c.entity === options.entity);
+    commands = commands.filter((c) => c.entity === options.entity);
     if (commands.length === 0) {
       diagnostics.push({
         severity: 'warning',
@@ -344,7 +350,7 @@ function generateSequenceDiagrams(
   });
 
   // Build event lookup
-  const eventMap = new Map(ir.events.map(e => [e.name, e]));
+  const eventMap = new Map(ir.events.map((e) => [e.name, e]));
 
   for (const cmd of commands) {
     const lines: string[] = ['sequenceDiagram'];
@@ -358,9 +364,8 @@ function generateSequenceDiagrams(
     }
 
     // Client invokes command
-    const paramList = cmd.parameters.length > 0
-      ? `(${cmd.parameters.map(p => p.name).join(', ')})`
-      : '()';
+    const paramList =
+      cmd.parameters.length > 0 ? `(${cmd.parameters.map((p) => p.name).join(', ')})` : '()';
     lines.push(`    Client->>+${sanitizeName(entityName)}: ${cmd.name}${paramList}`);
 
     // Policy checks
@@ -374,8 +379,10 @@ function generateSequenceDiagrams(
       for (let i = 0; i < cmd.guards.length; i++) {
         const guardExpr = formatExpression(cmd.guards[i]);
         const truncated = guardExpr.length > 60 ? guardExpr.substring(0, 57) + '...' : guardExpr;
-        lines.push(`    ${sanitizeName(entityName)}->>` +
-          `${sanitizeName(entityName)}: guard[${i}]: ${escapeMermaid(truncated)}`);
+        lines.push(
+          `    ${sanitizeName(entityName)}->>` +
+            `${sanitizeName(entityName)}: guard[${i}]: ${escapeMermaid(truncated)}`,
+        );
       }
     }
 
@@ -383,8 +390,10 @@ function generateSequenceDiagrams(
     if (cmd.actions.length > 0) {
       for (const action of cmd.actions) {
         const target = action.target ? `.${action.target}` : '';
-        lines.push(`    ${sanitizeName(entityName)}->>` +
-          `${sanitizeName(entityName)}: ${action.kind}${target}`);
+        lines.push(
+          `    ${sanitizeName(entityName)}->>` +
+            `${sanitizeName(entityName)}: ${action.kind}${target}`,
+        );
       }
     }
 
@@ -456,11 +465,13 @@ export class MermaidProjection implements ProjectionTarget {
       default:
         return {
           artifacts: [],
-          diagnostics: [{
-            severity: 'error',
-            code: 'UNKNOWN_SURFACE',
-            message: `Unknown surface: "${request.surface}". Available: ${this.surfaces.join(', ')}`,
-          }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'UNKNOWN_SURFACE',
+              message: `Unknown surface: "${request.surface}". Available: ${this.surfaces.join(', ')}`,
+            },
+          ],
         };
     }
   }
@@ -469,30 +480,38 @@ export class MermaidProjection implements ProjectionTarget {
     if (ir.entities.length === 0) {
       return {
         artifacts: [],
-        diagnostics: [{
-          severity: 'info',
-          code: 'NO_ENTITIES',
-          message: 'No entities found in IR.',
-        }],
+        diagnostics: [
+          {
+            severity: 'info',
+            code: 'NO_ENTITIES',
+            message: 'No entities found in IR.',
+          },
+        ],
       };
     }
 
     const code = generateERDiagram(ir, options);
     return {
-      artifacts: [{
-        id: 'mermaid.er',
-        pathHint: 'diagrams/er-diagram.mmd',
-        contentType: 'mermaid',
-        code: wrapMarkdown(code, wrap),
-      }],
+      artifacts: [
+        {
+          id: 'mermaid.er',
+          pathHint: 'diagrams/er-diagram.mmd',
+          contentType: 'mermaid',
+          code: wrapMarkdown(code, wrap),
+        },
+      ],
       diagnostics: [],
     };
   }
 
-  private generateState(ir: IR, options: MermaidProjectionOptions, wrap: boolean): ProjectionResult {
+  private generateState(
+    ir: IR,
+    options: MermaidProjectionOptions,
+    wrap: boolean,
+  ): ProjectionResult {
     const { diagrams, diagnostics } = generateStateDiagrams(ir, options);
 
-    const artifacts: ProjectionArtifact[] = diagrams.map(d => ({
+    const artifacts: ProjectionArtifact[] = diagrams.map((d) => ({
       id: `mermaid.state.${d.entity}`,
       pathHint: `diagrams/state-${d.entity}.mmd`,
       contentType: 'mermaid',
@@ -502,10 +521,14 @@ export class MermaidProjection implements ProjectionTarget {
     return { artifacts, diagnostics };
   }
 
-  private generateSequence(ir: IR, options: MermaidProjectionOptions, wrap: boolean): ProjectionResult {
+  private generateSequence(
+    ir: IR,
+    options: MermaidProjectionOptions,
+    wrap: boolean,
+  ): ProjectionResult {
     const { diagrams, diagnostics } = generateSequenceDiagrams(ir, options);
 
-    const artifacts: ProjectionArtifact[] = diagrams.map(d => ({
+    const artifacts: ProjectionArtifact[] = diagrams.map((d) => ({
       id: `mermaid.sequence.${d.entity}.${d.command}`,
       pathHint: `diagrams/sequence-${d.entity}-${d.command}.mmd`,
       contentType: 'mermaid',

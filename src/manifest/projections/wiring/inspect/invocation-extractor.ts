@@ -6,10 +6,7 @@
  */
 
 import ts from 'typescript';
-import {
-  extractObjectFieldNames,
-  scanObjectLiteralKeys,
-} from './object-literal-keys.js';
+import { extractObjectFieldNames, scanObjectLiteralKeys } from './object-literal-keys.js';
 
 export interface ManifestInvocation {
   entity: string;
@@ -97,13 +94,11 @@ export function extractRunManifestBody(optionsBlock: string): {
   payloadSource: string;
   bodyFields: string[];
 } {
-  const bodyKey = scanObjectLiteralKeys(optionsBlock).find(k => k.name === 'body');
+  const bodyKey = scanObjectLiteralKeys(optionsBlock).find((k) => k.name === 'body');
   if (!bodyKey) {
     return { payloadSource: '', bodyFields: [] };
   }
-  const payloadSource = optionsBlock
-    .slice(bodyKey.valueStart, bodyKey.valueEnd)
-    .trim();
+  const payloadSource = optionsBlock.slice(bodyKey.valueStart, bodyKey.valueEnd).trim();
   if (payloadSource.startsWith('{') && payloadSource.endsWith('}')) {
     return {
       payloadSource,
@@ -115,16 +110,14 @@ export function extractRunManifestBody(optionsBlock: string): {
 
 function extractExecuteCommandCalls(content: string): ManifestInvocation[] {
   const out: ManifestInvocation[] = [];
-  const execute =
-    /executeCommand(?:<[^>]*>)?\s*\(\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']/g;
+  const execute = /executeCommand(?:<[^>]*>)?\s*\(\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']/g;
   let m: RegExpExecArray | null;
   while ((m = execute.exec(content)) !== null) {
     const entity = m[1]!;
     const command = m[2]!;
     const after = content.slice(m.index + m[0].length, m.index + m[0].length + 2000);
     const objOpen = after.indexOf('{');
-    const payload =
-      objOpen >= 0 ? extractBalancedBraces(after, objOpen) : after;
+    const payload = objOpen >= 0 ? extractBalancedBraces(after, objOpen) : after;
     out.push({
       entity,
       command,
@@ -167,13 +160,9 @@ function extractRuntimeRunCommandCalls(content: string): ManifestInvocation[] {
  * Uses TypeScript AST call-argument inspection — never a broad paren/string regex —
  * so FormData keys like `text(formData, "title")` are not mistaken for commands.
  */
-function extractCommandArgLiteralsInManifestModules(
-  content: string,
-): ManifestInvocation[] {
+function extractCommandArgLiteralsInManifestModules(content: string): ManifestInvocation[] {
   if (!/runManifestCommand\s*\(/.test(content)) return [];
-  const entities = [
-    ...content.matchAll(/\bentity\s*:\s*["']([^"']+)["']/g),
-  ].map(m => m[1]!);
+  const entities = [...content.matchAll(/\bentity\s*:\s*["']([^"']+)["']/g)].map((m) => m[1]!);
   if (entities.length === 0) return [];
 
   const sf = ts.createSourceFile(
@@ -265,8 +254,7 @@ export function extractGeneratedClientCalls(
     const openParen = m.index + m[0].length - 1;
     const args = extractBalancedParens(content, openParen);
     const objOpen = args.indexOf('{');
-    const payload =
-      objOpen >= 0 ? extractBalancedBraces(args, objOpen) : args;
+    const payload = objOpen >= 0 ? extractBalancedBraces(args, objOpen) : args;
     out.push({
       entity: hit.entity,
       command: hit.command,

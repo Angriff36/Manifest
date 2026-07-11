@@ -70,13 +70,20 @@ const BINARY_OP: Readonly<Record<string, string>> = Object.freeze({
 
 function renderLiteralValue(v: IRValue): string {
   switch (v.kind) {
-    case 'string': return JSON.stringify(v.value);
-    case 'number': return String(v.value);
-    case 'boolean': return String(v.value);
-    case 'null': return 'null';
-    case 'array': return `[${v.elements.map(renderLiteralValue).join(', ')}]`;
+    case 'string':
+      return JSON.stringify(v.value);
+    case 'number':
+      return String(v.value);
+    case 'boolean':
+      return String(v.value);
+    case 'null':
+      return 'null';
+    case 'array':
+      return `[${v.elements.map(renderLiteralValue).join(', ')}]`;
     case 'object': {
-      const entries = Object.entries(v.properties).map(([k, val]) => `${JSON.stringify(k)}: ${renderLiteralValue(val)}`);
+      const entries = Object.entries(v.properties).map(
+        ([k, val]) => `${JSON.stringify(k)}: ${renderLiteralValue(val)}`,
+      );
       return `{${entries.join(', ')}}`;
     }
   }
@@ -116,7 +123,10 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
 
       case 'member': {
         // self.x / this.x → <selfVar>.x
-        if (e.object.kind === 'identifier' && (e.object.name === 'self' || e.object.name === 'this')) {
+        if (
+          e.object.kind === 'identifier' &&
+          (e.object.name === 'self' || e.object.name === 'this')
+        ) {
           return `${scope.selfVar}.${e.property}`;
         }
         return `${go(e.object)}.${e.property}`;
@@ -138,7 +148,10 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
         // absent field (Convex stores an unset optional as `undefined`, not
         // `null`). Strict `===`/`!==` against null would miss unset fields and
         // also fails to narrow `T | undefined` in generated TypeScript.
-        if ((e.operator === '==' || e.operator === '!=') && (isNullLiteral(e.left) || isNullLiteral(e.right))) {
+        if (
+          (e.operator === '==' || e.operator === '!=') &&
+          (isNullLiteral(e.left) || isNullLiteral(e.right))
+        ) {
           return `(${left} ${e.operator} ${right})`;
         }
         const jsOp = BINARY_OP[e.operator];
@@ -156,28 +169,40 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
         return `[${e.elements.map(go).join(', ')}]`;
 
       case 'object':
-        return `{${e.properties.map(p => `${JSON.stringify(p.key)}: ${go(p.value)}`).join(', ')}}`;
+        return `{${e.properties.map((p) => `${JSON.stringify(p.key)}: ${go(p.value)}`).join(', ')}}`;
 
       case 'call': {
         const callee = e.callee.kind === 'identifier' ? e.callee.name : undefined;
         const args = e.args.map(go);
         switch (callee) {
-          case 'now': return 'Date.now()';
-          case 'uuid': return 'crypto.randomUUID()';
-          case 'addDays': return `new Date(Date.now() + (${args[1]}) * 86400000).toISOString()`;
-          case 'percent': return args.length >= 2 ? `((${args[0]}) / (${args[1]}) * 100)` : `((${args[0]}) / 100)`;
-          case 'between': return `((${args[0]}) >= (${args[1]}) && (${args[0]}) <= (${args[2]}))`;
-          case 'removeTagFromString': return `${args[0]}.replace(${args[1]}, "").trim()`;
+          case 'now':
+            return 'Date.now()';
+          case 'uuid':
+            return 'crypto.randomUUID()';
+          case 'addDays':
+            return `new Date(Date.now() + (${args[1]}) * 86400000).toISOString()`;
+          case 'percent':
+            return args.length >= 2
+              ? `((${args[0]}) / (${args[1]}) * 100)`
+              : `((${args[0]}) / 100)`;
+          case 'between':
+            return `((${args[0]}) >= (${args[1]}) && (${args[0]}) <= (${args[2]}))`;
+          case 'removeTagFromString':
+            return `${args[0]}.replace(${args[1]}, "").trim()`;
           // Feature toggle (not an auth guard): render a call to the generated
           // `flag()` helper the functions file provides (configurable, not a
           // silent `true`). Keeps the expression resolved without fail-open auth.
-          case 'flag': return `flag(${args.join(', ')})`;
+          case 'flag':
+            return `flag(${args.join(', ')})`;
           case 'roleAllows':
             // roleAllows(user.role, X) → checkRole(userRole, X). The caller emits checkRole().
             return `checkRole(userRole, ${args[1]})`;
-          case 'length': return `(${args[0]}).length`;
-          case 'lower': return `(${args[0]}).toLowerCase()`;
-          case 'upper': return `(${args[0]}).toUpperCase()`;
+          case 'length':
+            return `(${args[0]}).length`;
+          case 'lower':
+            return `(${args[0]}).toLowerCase()`;
+          case 'upper':
+            return `(${args[0]}).toUpperCase()`;
           default:
             if (!callee) {
               unresolved.push('non-identifier callee');

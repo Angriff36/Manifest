@@ -1,7 +1,7 @@
 ---
-title: "Drizzle ORM schema projection"
-sidebarTitle: "Drizzle"
-description: "Generate a TypeScript-first Drizzle ORM schema from Manifest IR — compile-time, app-agnostic, with pgTable / mysqlTable / sqliteTable column builders and structured diagnostics."
+title: 'Drizzle ORM schema projection'
+sidebarTitle: 'Drizzle'
+description: 'Generate a TypeScript-first Drizzle ORM schema from Manifest IR — compile-time, app-agnostic, with pgTable / mysqlTable / sqliteTable column builders and structured diagnostics.'
 ---
 
 The Drizzle projection emits a TypeScript-first Drizzle ORM schema from compiled Manifest IR, compatible with Drizzle Kit. Use it when your persistence layer is Drizzle rather than Prisma; it mirrors the [Prisma projection's](/integration/prisma) compile-time, app-agnostic contract but targets Drizzle's `pgTable` / `mysqlTable` / `sqliteTable` column builders.
@@ -57,7 +57,9 @@ Per-property options use the nested `Record<EntityName, Record<PropertyName, X>>
 ## Notes & limitations
 
 <Note>
-Only persistent entities are emitted. Entities marked `external`, entities with no `store` declaration, and entities with a non-durable store target are skipped with info diagnostics (`DRIZZLE_SKIPPED_EXTERNAL`, `DRIZZLE_SKIPPED_NO_STORE`, `DRIZZLE_SKIPPED_NON_DURABLE`).
+  Only persistent entities are emitted. Entities marked `external`, entities with no `store`
+  declaration, and entities with a non-durable store target are skipped with info diagnostics
+  (`DRIZZLE_SKIPPED_EXTERNAL`, `DRIZZLE_SKIPPED_NO_STORE`, `DRIZZLE_SKIPPED_NON_DURABLE`).
 </Note>
 
 This projection's behavior is taken directly from `src/manifest/projections/drizzle/generator.ts`, `type-mapping.ts`, and `options.ts`. Like Prisma, an entity missing a usable key (no `id` property and no `key [...]` declaration) produces a diagnostic and is skipped.

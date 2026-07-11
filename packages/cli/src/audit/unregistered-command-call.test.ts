@@ -41,7 +41,7 @@ describe('loadCommandSet', () => {
             effects: [],
           },
         ],
-      })
+      }),
     );
     const set = await loadCommandSet(reg);
     expect(set.has('User.create')).toBe(true);
@@ -59,7 +59,7 @@ describe('loadCommandSet', () => {
       JSON.stringify([
         { entity: 'User', command: 'create', commandId: 'User.create' },
         { entity: 'Order', command: 'place', commandId: 'Order.place' },
-      ])
+      ]),
     );
     const set = await loadCommandSet(reg);
     expect(set.has('User.create')).toBe(true);
@@ -75,16 +75,16 @@ describe('loadCommandSet', () => {
         irHash: 'x',
         compilerVersion: 'y',
         commands: [{ entity: 'User', command: 'create' }],
-      })
+      }),
     );
     const set = await loadCommandSet(reg);
     expect(set.has('User.create')).toBe(true);
   });
 
   it('throws a clear error when registry file is missing', async () => {
-    await expect(
-      loadCommandSet(path.join('/nope/missing', 'no.json'))
-    ).rejects.toThrow(/commands registry/i);
+    await expect(loadCommandSet(path.join('/nope/missing', 'no.json'))).rejects.toThrow(
+      /commands registry/i,
+    );
   });
 });
 
@@ -154,10 +154,7 @@ describe('unregisteredCommandCallDetector', () => {
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(root, rel), body);
   }
-  async function writeRegistry(
-    root: string,
-    commands: Array<{ entity: string; command: string }>
-  ) {
+  async function writeRegistry(root: string, commands: Array<{ entity: string; command: string }>) {
     const reg = path.join(root, 'commands.json');
     await fs.writeFile(
       reg,
@@ -172,7 +169,7 @@ describe('unregisteredCommandCallDetector', () => {
           emits: [],
           effects: [],
         })),
-      })
+      }),
     );
     return reg;
   }
@@ -183,7 +180,7 @@ describe('unregisteredCommandCallDetector', () => {
     await writeRoute(
       root,
       'app/api/orders/route.ts',
-      `export async function POST(){ return runtime.runCommand('Order.place', {}); }`
+      `export async function POST(){ return runtime.runCommand('Order.place', {}); }`,
     );
     const findings = await unregisteredCommandCallDetector.run({ root, commandsRegistry: reg });
     expect(findings).toHaveLength(1);
@@ -201,7 +198,7 @@ describe('unregisteredCommandCallDetector', () => {
     await writeRoute(
       root,
       'app/api/users/route.ts',
-      `export async function POST(){ return runtime.runCommand('User.create', {}); }`
+      `export async function POST(){ return runtime.runCommand('User.create', {}); }`,
     );
     const findings = await unregisteredCommandCallDetector.run({ root, commandsRegistry: reg });
     expect(findings).toEqual([]);
@@ -213,7 +210,7 @@ describe('unregisteredCommandCallDetector', () => {
     await writeRoute(
       root,
       'app/api/x/route.ts',
-      `export async function POST(name){ return runtime.runCommand(name, {}); }`
+      `export async function POST(name){ return runtime.runCommand(name, {}); }`,
     );
     const findings = await unregisteredCommandCallDetector.run({ root, commandsRegistry: reg });
     expect(findings).toHaveLength(1);
@@ -226,7 +223,7 @@ describe('unregisteredCommandCallDetector', () => {
     await writeRoute(
       root,
       'app/api/x/route.ts',
-      `export async function POST(){ return runtime.runCommand('X.y', {}); }`
+      `export async function POST(){ return runtime.runCommand('X.y', {}); }`,
     );
     const findings = await unregisteredCommandCallDetector.run({ root });
     expect(findings).toEqual([]);
@@ -238,7 +235,7 @@ describe('unregisteredCommandCallDetector', () => {
     await writeRoute(
       root,
       'app/api/legacy/route.js',
-      `exports.POST = async function(){ return runtime.runCommand('Foo.bar', {}); };`
+      `exports.POST = async function(){ return runtime.runCommand('Foo.bar', {}); };`,
     );
     const findings = await unregisteredCommandCallDetector.run({ root, commandsRegistry: reg });
     expect(findings).toHaveLength(1);
@@ -252,18 +249,16 @@ describe('unregisteredCommandCallDetector', () => {
     await writeRoute(
       root,
       'app/actions/m.mjs',
-      `export const f = () => runtime.runCommand('Foo.bar', {});`
+      `export const f = () => runtime.runCommand('Foo.bar', {});`,
     );
     await writeRoute(
       root,
       'app/actions/c.cjs',
-      `module.exports.f = () => runtime.runCommand('Baz.qux', {});`
+      `module.exports.f = () => runtime.runCommand('Baz.qux', {});`,
     );
     const findings = await unregisteredCommandCallDetector.run({ root, commandsRegistry: reg });
     expect(findings).toHaveLength(2);
-    expect(findings.map(f => f.file).sort()).toEqual(
-      ['app/actions/c.cjs', 'app/actions/m.mjs']
-    );
+    expect(findings.map((f) => f.file).sort()).toEqual(['app/actions/c.cjs', 'app/actions/m.mjs']);
   });
 
   it('ignores test files via exclude globs', async () => {
@@ -272,7 +267,7 @@ describe('unregisteredCommandCallDetector', () => {
     await writeRoute(
       root,
       'app/api/users/route.test.ts',
-      `it('x', () => runtime.runCommand('Bogus.x', {}));`
+      `it('x', () => runtime.runCommand('Bogus.x', {}));`,
     );
     const findings = await unregisteredCommandCallDetector.run({ root, commandsRegistry: reg });
     expect(findings).toEqual([]);

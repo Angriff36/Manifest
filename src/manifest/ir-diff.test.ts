@@ -81,9 +81,11 @@ describe('IR Diff Engine', () => {
     it('detects added entities', () => {
       const oldIR = makeIR();
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string'), makeProp('name', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('name', 'string')],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -98,9 +100,11 @@ describe('IR Diff Engine', () => {
 
     it('detects removed entities', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+          }),
+        ],
       });
       const newIR = makeIR();
 
@@ -111,14 +115,18 @@ describe('IR Diff Engine', () => {
 
     it('detects property additions within an entity', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string'), makeProp('email', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('email', 'string')],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -132,14 +140,18 @@ describe('IR Diff Engine', () => {
 
     it('detects property removal within an entity', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string'), makeProp('email', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('email', 'string')],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -151,14 +163,18 @@ describe('IR Diff Engine', () => {
 
     it('detects property type changes', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('age', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('age', 'string')],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('age', 'int')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('age', 'int')],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -170,14 +186,18 @@ describe('IR Diff Engine', () => {
 
     it('detects property modifier changes', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('email', 'string', { modifiers: [] })],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('email', 'string', { modifiers: [] })],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('email', 'string', { modifiers: ['required', 'unique'] })],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('email', 'string', { modifiers: ['required', 'unique'] })],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -191,14 +211,22 @@ describe('IR Diff Engine', () => {
 
     it('detects property default value changes', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('name', 'string', { defaultValue: { kind: 'string', value: 'Anonymous' } })],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              makeProp('name', 'string', { defaultValue: { kind: 'string', value: 'Anonymous' } }),
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('name', 'string', { defaultValue: { kind: 'string', value: 'Unknown' } })],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              makeProp('name', 'string', { defaultValue: { kind: 'string', value: 'Unknown' } }),
+            ],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -209,88 +237,112 @@ describe('IR Diff Engine', () => {
 
     it('detects computed property additions and removals', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          computedProperties: [{
-            name: 'displayName',
-            type: { name: 'string', nullable: false },
-            expression: { kind: 'identifier', name: 'name' },
-            dependencies: ['name'],
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            computedProperties: [
+              {
+                name: 'displayName',
+                type: { name: 'string', nullable: false },
+                expression: { kind: 'identifier', name: 'name' },
+                dependencies: ['name'],
+              },
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          computedProperties: [{
-            name: 'fullName',
-            type: { name: 'string', nullable: false },
-            expression: { kind: 'identifier', name: 'firstName' },
-            dependencies: ['firstName'],
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            computedProperties: [
+              {
+                name: 'fullName',
+                type: { name: 'string', nullable: false },
+                expression: { kind: 'identifier', name: 'firstName' },
+                dependencies: ['firstName'],
+              },
+            ],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
       const cpDiffs = report.entities[0].computedProperties;
       expect(cpDiffs).toHaveLength(2);
-      const removed = cpDiffs.find(d => d.name === 'displayName');
-      const added = cpDiffs.find(d => d.name === 'fullName');
+      const removed = cpDiffs.find((d) => d.name === 'displayName');
+      const added = cpDiffs.find((d) => d.name === 'fullName');
       expect(removed?.change).toBe('removed');
       expect(added?.change).toBe('added');
     });
 
     it('detects relationship additions and removals', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          relationships: [{
-            name: 'posts',
-            kind: 'hasMany',
-            target: 'Post',
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            relationships: [
+              {
+                name: 'posts',
+                kind: 'hasMany',
+                target: 'Post',
+              },
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          relationships: [{
-            name: 'comments',
-            kind: 'hasMany',
-            target: 'Comment',
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            relationships: [
+              {
+                name: 'comments',
+                kind: 'hasMany',
+                target: 'Comment',
+              },
+            ],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
       const relDiffs = report.entities[0].relationships;
       expect(relDiffs).toHaveLength(2);
-      const removed = relDiffs.find(d => d.name === 'posts');
-      const added = relDiffs.find(d => d.name === 'comments');
+      const removed = relDiffs.find((d) => d.name === 'posts');
+      const added = relDiffs.find((d) => d.name === 'comments');
       expect(removed?.change).toBe('removed');
       expect(added?.change).toBe('added');
     });
 
     it('detects relationship kind changes', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          relationships: [{
-            name: 'profile',
-            kind: 'hasOne',
-            target: 'Profile',
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            relationships: [
+              {
+                name: 'profile',
+                kind: 'hasOne',
+                target: 'Profile',
+              },
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          relationships: [{
-            name: 'profile',
-            kind: 'belongsTo',
-            target: 'Profile',
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            relationships: [
+              {
+                name: 'profile',
+                kind: 'belongsTo',
+                target: 'Profile',
+              },
+            ],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -302,59 +354,85 @@ describe('IR Diff Engine', () => {
 
     it('detects constraint additions and removals', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string'), makeProp('age', 'int')],
-          constraints: [{
-            name: 'adultOnly',
-            code: 'adultOnly',
-            expression: { kind: 'binary', operator: '>=', left: { kind: 'identifier', name: 'age' }, right: { kind: 'literal', value: { kind: 'number', value: 18 } } },
-            severity: 'block',
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('age', 'int')],
+            constraints: [
+              {
+                name: 'adultOnly',
+                code: 'adultOnly',
+                expression: {
+                  kind: 'binary',
+                  operator: '>=',
+                  left: { kind: 'identifier', name: 'age' },
+                  right: { kind: 'literal', value: { kind: 'number', value: 18 } },
+                },
+                severity: 'block',
+              },
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string'), makeProp('age', 'int')],
-          constraints: [{
-            name: 'positiveAge',
-            code: 'positiveAge',
-            expression: { kind: 'binary', operator: '>', left: { kind: 'identifier', name: 'age' }, right: { kind: 'literal', value: { kind: 'number', value: 0 } } },
-            severity: 'warn',
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('age', 'int')],
+            constraints: [
+              {
+                name: 'positiveAge',
+                code: 'positiveAge',
+                expression: {
+                  kind: 'binary',
+                  operator: '>',
+                  left: { kind: 'identifier', name: 'age' },
+                  right: { kind: 'literal', value: { kind: 'number', value: 0 } },
+                },
+                severity: 'warn',
+              },
+            ],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
       const conDiffs = report.entities[0].constraints;
       expect(conDiffs).toHaveLength(2);
-      const removed = conDiffs.find(d => d.name === 'adultOnly');
-      const added = conDiffs.find(d => d.name === 'positiveAge');
+      const removed = conDiffs.find((d) => d.name === 'adultOnly');
+      const added = conDiffs.find((d) => d.name === 'positiveAge');
       expect(removed?.change).toBe('removed');
       expect(added?.change).toBe('added');
     });
 
     it('detects constraint severity changes', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          constraints: [{
-            name: 'check',
-            code: 'check',
-            expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
-            severity: 'warn',
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            constraints: [
+              {
+                name: 'check',
+                code: 'check',
+                expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+                severity: 'warn',
+              },
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-          constraints: [{
-            name: 'check',
-            code: 'check',
-            expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
-            severity: 'block',
-          }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+            constraints: [
+              {
+                name: 'check',
+                code: 'check',
+                expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+                severity: 'block',
+              },
+            ],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -366,51 +444,59 @@ describe('IR Diff Engine', () => {
 
     it('detects command additions and removals', () => {
       const oldIR = makeIR({
-        commands: [{
-          name: 'createUser',
-          parameters: [],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'createUser',
+            parameters: [],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
       const newIR = makeIR({
-        commands: [{
-          name: 'deleteUser',
-          parameters: [],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'deleteUser',
+            parameters: [],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
       expect(report.summary.commandsAdded).toBe(1);
       expect(report.summary.commandsRemoved).toBe(1);
-      expect(report.commands.find(c => c.name === 'deleteUser')?.change).toBe('added');
-      expect(report.commands.find(c => c.name === 'createUser')?.change).toBe('removed');
+      expect(report.commands.find((c) => c.name === 'deleteUser')?.change).toBe('added');
+      expect(report.commands.find((c) => c.name === 'createUser')?.change).toBe('removed');
     });
 
     it('detects command entity change', () => {
       const oldIR = makeIR({
-        commands: [{
-          name: 'create',
-          entity: 'User',
-          parameters: [],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'create',
+            entity: 'User',
+            parameters: [],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
       const newIR = makeIR({
-        commands: [{
-          name: 'create',
-          entity: 'Admin',
-          parameters: [],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'create',
+            entity: 'Admin',
+            parameters: [],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -421,18 +507,22 @@ describe('IR Diff Engine', () => {
 
     it('detects policy additions and removals', () => {
       const oldIR = makeIR({
-        policies: [{
-          name: 'adminOnly',
-          action: 'all',
-          expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
-        }],
+        policies: [
+          {
+            name: 'adminOnly',
+            action: 'all',
+            expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+          },
+        ],
       });
       const newIR = makeIR({
-        policies: [{
-          name: 'userRead',
-          action: 'read',
-          expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
-        }],
+        policies: [
+          {
+            name: 'userRead',
+            action: 'read',
+            expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+          },
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -442,18 +532,22 @@ describe('IR Diff Engine', () => {
 
     it('detects policy action change', () => {
       const oldIR = makeIR({
-        policies: [{
-          name: 'access',
-          action: 'read',
-          expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
-        }],
+        policies: [
+          {
+            name: 'access',
+            action: 'read',
+            expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+          },
+        ],
       });
       const newIR = makeIR({
-        policies: [{
-          name: 'access',
-          action: 'write',
-          expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
-        }],
+        policies: [
+          {
+            name: 'access',
+            action: 'write',
+            expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+          },
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -491,10 +585,14 @@ describe('IR Diff Engine', () => {
 
     it('detects event additions and removals', () => {
       const oldIR = makeIR({
-        events: [{ name: 'userCreated', channel: 'users', payload: { name: 'string', nullable: false } }],
+        events: [
+          { name: 'userCreated', channel: 'users', payload: { name: 'string', nullable: false } },
+        ],
       });
       const newIR = makeIR({
-        events: [{ name: 'userDeleted', channel: 'users', payload: { name: 'string', nullable: false } }],
+        events: [
+          { name: 'userDeleted', channel: 'users', payload: { name: 'string', nullable: false } },
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -504,10 +602,14 @@ describe('IR Diff Engine', () => {
 
     it('detects event channel change', () => {
       const oldIR = makeIR({
-        events: [{ name: 'userCreated', channel: 'users', payload: { name: 'string', nullable: false } }],
+        events: [
+          { name: 'userCreated', channel: 'users', payload: { name: 'string', nullable: false } },
+        ],
       });
       const newIR = makeIR({
-        events: [{ name: 'userCreated', channel: 'all', payload: { name: 'string', nullable: false } }],
+        events: [
+          { name: 'userCreated', channel: 'all', payload: { name: 'string', nullable: false } },
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -518,10 +620,30 @@ describe('IR Diff Engine', () => {
 
     it('detects module additions and removals', () => {
       const oldIR = makeIR({
-        modules: [{ name: 'auth', entities: ['User'], enums: [], commands: [], stores: [], events: [], policies: [] }],
+        modules: [
+          {
+            name: 'auth',
+            entities: ['User'],
+            enums: [],
+            commands: [],
+            stores: [],
+            events: [],
+            policies: [],
+          },
+        ],
       });
       const newIR = makeIR({
-        modules: [{ name: 'blog', entities: ['Post'], enums: [], commands: [], stores: [], events: [], policies: [] }],
+        modules: [
+          {
+            name: 'blog',
+            entities: ['Post'],
+            enums: [],
+            commands: [],
+            stores: [],
+            events: [],
+            policies: [],
+          },
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -539,20 +661,28 @@ describe('IR Diff Engine', () => {
       const newIR = makeIR();
 
       const report = diffIR(oldIR, newIR);
-      const names = report.entities.map(e => e.name);
+      const names = report.entities.map((e) => e.name);
       expect(names).toEqual([...names].sort());
     });
 
     it('detects nullable type changes', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [{ name: 'email', type: { name: 'string', nullable: false }, modifiers: [] }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              { name: 'email', type: { name: 'string', nullable: false }, modifiers: [] },
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [{ name: 'email', type: { name: 'string', nullable: true }, modifiers: [] }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              { name: 'email', type: { name: 'string', nullable: true }, modifiers: [] },
+            ],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -563,14 +693,34 @@ describe('IR Diff Engine', () => {
 
     it('detects generic type (array) changes', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [{ name: 'tags', type: { name: 'array', generic: { name: 'string', nullable: false }, nullable: false }, modifiers: [] }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              {
+                name: 'tags',
+                type: {
+                  name: 'array',
+                  generic: { name: 'string', nullable: false },
+                  nullable: false,
+                },
+                modifiers: [],
+              },
+            ],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [{ name: 'tags', type: { name: 'array', generic: { name: 'int', nullable: false }, nullable: false }, modifiers: [] }],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              {
+                name: 'tags',
+                type: { name: 'array', generic: { name: 'int', nullable: false }, nullable: false },
+                modifiers: [],
+              },
+            ],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -584,108 +734,130 @@ describe('IR Diff Engine', () => {
     it('generates CREATE TABLE for added entities', () => {
       const oldIR = makeIR();
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [
-            makeProp('id', 'string', { modifiers: ['required'] }),
-            makeProp('name', 'string', { modifiers: ['required'] }),
-            makeProp('email', 'string', { modifiers: ['required', 'unique'] }),
-          ],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              makeProp('id', 'string', { modifiers: ['required'] }),
+              makeProp('name', 'string', { modifiers: ['required'] }),
+              makeProp('email', 'string', { modifiers: ['required', 'unique'] }),
+            ],
+          }),
+        ],
         stores: [{ entity: 'User', target: 'postgres', config: {} }],
       });
 
       const report = diffIR(oldIR, newIR);
       const migration = generateMigration(report, oldIR, newIR);
 
-      expect(migration.sql.some(s => s.includes('CREATE TABLE'))).toBe(true);
-      expect(migration.sql.some(s => s.includes('id'))).toBe(true);
-      expect(migration.prisma.some(s => s.includes('model User'))).toBe(true);
-      expect(migration.summary.some(s => s.includes("Added entity 'User'"))).toBe(true);
+      expect(migration.sql.some((s) => s.includes('CREATE TABLE'))).toBe(true);
+      expect(migration.sql.some((s) => s.includes('id'))).toBe(true);
+      expect(migration.prisma.some((s) => s.includes('model User'))).toBe(true);
+      expect(migration.summary.some((s) => s.includes("Added entity 'User'"))).toBe(true);
     });
 
     it('generates DROP TABLE for removed entities', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+          }),
+        ],
       });
       const newIR = makeIR();
 
       const report = diffIR(oldIR, newIR);
       const migration = generateMigration(report, oldIR, newIR);
 
-      expect(migration.sql.some(s => s.includes('DROP TABLE'))).toBe(true);
-      expect(migration.warnings.some(w => w.includes('DROPPING TABLE'))).toBe(true);
-      expect(migration.summary.some(s => s.includes("Removed entity 'User'"))).toBe(true);
+      expect(migration.sql.some((s) => s.includes('DROP TABLE'))).toBe(true);
+      expect(migration.warnings.some((w) => w.includes('DROPPING TABLE'))).toBe(true);
+      expect(migration.summary.some((s) => s.includes("Removed entity 'User'"))).toBe(true);
     });
 
     it('generates ALTER TABLE ADD COLUMN for added properties', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string'), makeProp('email', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('email', 'string')],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
       const migration = generateMigration(report, oldIR, newIR);
 
-      expect(migration.sql.some(s => s.includes('ADD COLUMN') && s.includes('email'))).toBe(true);
-      expect(migration.summary.some(s => s.includes("Added property 'User.email'"))).toBe(true);
+      expect(migration.sql.some((s) => s.includes('ADD COLUMN') && s.includes('email'))).toBe(true);
+      expect(migration.summary.some((s) => s.includes("Added property 'User.email'"))).toBe(true);
     });
 
     it('generates ALTER TABLE DROP COLUMN for removed properties', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string'), makeProp('email', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('email', 'string')],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string')],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
       const migration = generateMigration(report, oldIR, newIR);
 
-      expect(migration.sql.some(s => s.includes('DROP COLUMN') && s.includes('email'))).toBe(true);
-      expect(migration.warnings.some(w => w.includes('DROPPING COLUMN'))).toBe(true);
-      expect(migration.summary.some(s => s.includes("Removed property 'User.email'"))).toBe(true);
+      expect(migration.sql.some((s) => s.includes('DROP COLUMN') && s.includes('email'))).toBe(
+        true,
+      );
+      expect(migration.warnings.some((w) => w.includes('DROPPING COLUMN'))).toBe(true);
+      expect(migration.summary.some((s) => s.includes("Removed property 'User.email'"))).toBe(true);
     });
 
     it('generates ALTER TABLE ALTER COLUMN for type changes', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string'), makeProp('age', 'string')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('age', 'string')],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [makeProp('id', 'string'), makeProp('age', 'int')],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('age', 'int')],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
       const migration = generateMigration(report, oldIR, newIR);
 
-      expect(migration.sql.some(s => s.includes('ALTER COLUMN') && s.includes('TYPE'))).toBe(true);
-      expect(migration.summary.some(s => s.includes("Changed type of 'User.age'"))).toBe(true);
+      expect(migration.sql.some((s) => s.includes('ALTER COLUMN') && s.includes('TYPE'))).toBe(
+        true,
+      );
+      expect(migration.summary.some((s) => s.includes("Changed type of 'User.age'"))).toBe(true);
     });
 
     it('generates Prisma model blocks for added entities', () => {
       const oldIR = makeIR();
       const newIR = makeIR({
-        entities: [makeEntity('Post', {
-          properties: [
-            makeProp('id', 'string', { modifiers: ['required'] }),
-            makeProp('title', 'string', { modifiers: ['required'] }),
-          ],
-        })],
+        entities: [
+          makeEntity('Post', {
+            properties: [
+              makeProp('id', 'string', { modifiers: ['required'] }),
+              makeProp('title', 'string', { modifiers: ['required'] }),
+            ],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
@@ -710,26 +882,27 @@ describe('IR Diff Engine', () => {
 
     it('includes UNIQUE constraint additions and removals', () => {
       const oldIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [
-            makeProp('id', 'string'),
-            makeProp('email', 'string', { modifiers: [] }),
-          ],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [makeProp('id', 'string'), makeProp('email', 'string', { modifiers: [] })],
+          }),
+        ],
       });
       const newIR = makeIR({
-        entities: [makeEntity('User', {
-          properties: [
-            makeProp('id', 'string'),
-            makeProp('email', 'string', { modifiers: ['unique'] }),
-          ],
-        })],
+        entities: [
+          makeEntity('User', {
+            properties: [
+              makeProp('id', 'string'),
+              makeProp('email', 'string', { modifiers: ['unique'] }),
+            ],
+          }),
+        ],
       });
 
       const report = diffIR(oldIR, newIR);
       const migration = generateMigration(report, oldIR, newIR);
 
-      expect(migration.sql.some(s => s.includes('ADD UNIQUE'))).toBe(true);
+      expect(migration.sql.some((s) => s.includes('ADD UNIQUE'))).toBe(true);
     });
   });
 
@@ -748,7 +921,11 @@ describe('IR Diff Engine', () => {
       const newIR = makeIR({
         entities: [
           makeEntity('User', {
-            properties: [makeProp('id', 'string'), makeProp('name', 'string'), makeProp('email', 'string')],
+            properties: [
+              makeProp('id', 'string'),
+              makeProp('name', 'string'),
+              makeProp('email', 'string'),
+            ],
           }),
           makeEntity('Comment', {
             properties: [makeProp('id', 'string'), makeProp('body', 'string')],
@@ -768,25 +945,31 @@ describe('IR Diff Engine', () => {
 
     it('handles commands with parameter changes', () => {
       const oldIR = makeIR({
-        commands: [{
-          name: 'createUser',
-          parameters: [{ name: 'name', type: { name: 'string', nullable: false }, required: true }],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'createUser',
+            parameters: [
+              { name: 'name', type: { name: 'string', nullable: false }, required: true },
+            ],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
       const newIR = makeIR({
-        commands: [{
-          name: 'createUser',
-          parameters: [
-            { name: 'name', type: { name: 'string', nullable: false }, required: true },
-            { name: 'email', type: { name: 'string', nullable: false }, required: true },
-          ],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'createUser',
+            parameters: [
+              { name: 'name', type: { name: 'string', nullable: false }, required: true },
+              { name: 'email', type: { name: 'string', nullable: false }, required: true },
+            ],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
 
       const report = diffIR(oldIR, newIR);

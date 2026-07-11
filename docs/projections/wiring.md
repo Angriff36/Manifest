@@ -180,18 +180,18 @@ manifest wiring-remediate --contract … --root apps/app \
 
 ### Repair kinds
 
-| Kind | When |
-| ---- | ---- |
-| `replace-payload-expression` | Wrong shape (e.g. `.join(",")` where `string[]` required) |
-| `add-required-input` | Required client field missing **and** a unique proven in-scope source exists (see below) |
-| `expand-partial-to-full-body` | Partial literal against a full-update contract **and** a unique proven same-capability full-body builder (+ loader) exists |
-| `remove-invalid-literal` | Finite/enum/range literal with deterministic allowed replacement |
-| `replace-empty-date-sentinel` | Required date sent as `""` with proven local date source |
-| `move-trusted-input-server-side` | Client supplies `from context.*` field — strip it |
-| `migrate-to-safe-binding` | Prefer generated bind helper / safe path |
-| `replace-fake-lifecycle-binding` | Control remapped to proven canonical lifecycle command |
-| `wire-existing-control` | Placeholder/local-only control **semantically** matches a capability (see below) |
-| `add-invalidation` | Mutation succeeds but local data pattern lacks invalidation |
+| Kind                             | When                                                                                                                       |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `replace-payload-expression`     | Wrong shape (e.g. `.join(",")` where `string[]` required)                                                                  |
+| `add-required-input`             | Required client field missing **and** a unique proven in-scope source exists (see below)                                   |
+| `expand-partial-to-full-body`    | Partial literal against a full-update contract **and** a unique proven same-capability full-body builder (+ loader) exists |
+| `remove-invalid-literal`         | Finite/enum/range literal with deterministic allowed replacement                                                           |
+| `replace-empty-date-sentinel`    | Required date sent as `""` with proven local date source                                                                   |
+| `move-trusted-input-server-side` | Client supplies `from context.*` field — strip it                                                                          |
+| `migrate-to-safe-binding`        | Prefer generated bind helper / safe path                                                                                   |
+| `replace-fake-lifecycle-binding` | Control remapped to proven canonical lifecycle command                                                                     |
+| `wire-existing-control`          | Placeholder/local-only control **semantically** matches a capability (see below)                                           |
+| `add-invalidation`               | Mutation succeeds but local data pattern lacks invalidation                                                                |
 
 ### Decision classes
 
@@ -235,7 +235,6 @@ label/behavior preservation — consumer existence alone is insufficient.
 Inspect gate (default): fails on proven `stale-consumer` and
 `contract-mismatch` defects. Ambiguous findings and raw unwired coverage do
 **not** fail unless `--strict-coverage` / `failOn` includes them.
-
 
 ### `add-required-input` source proof
 

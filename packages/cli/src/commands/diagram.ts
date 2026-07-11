@@ -96,7 +96,7 @@ async function getInputFiles(source: string): Promise<string[]> {
   const manifestFiles = await glob('**/*.manifest', { cwd: resolved });
   const irFiles = await glob('**/*.ir.json', { cwd: resolved });
   const all = [...manifestFiles, ...irFiles];
-  return all.map(f => path.join(resolved, f));
+  return all.map((f) => path.join(resolved, f));
 }
 
 /**
@@ -104,11 +104,16 @@ async function getInputFiles(source: string): Promise<string[]> {
  */
 function typeToSurface(type: string): string {
   switch (type) {
-    case 'er': return 'mermaid.er';
-    case 'state': return 'mermaid.state';
-    case 'sequence': return 'mermaid.sequence';
-    case 'all': return 'mermaid.all';
-    default: return 'mermaid.all';
+    case 'er':
+      return 'mermaid.er';
+    case 'state':
+      return 'mermaid.state';
+    case 'sequence':
+      return 'mermaid.sequence';
+    case 'all':
+      return 'mermaid.all';
+    default:
+      return 'mermaid.all';
   }
 }
 
@@ -117,7 +122,7 @@ function typeToSurface(type: string): string {
  */
 export async function diagramCommand(
   source: string | undefined,
-  options: DiagramOptions = {}
+  options: DiagramOptions = {},
 ): Promise<void> {
   const spinner = ora('Preparing to generate diagrams').start();
   const diagramType = options.type || 'all';
@@ -125,7 +130,9 @@ export async function diagramCommand(
 
   try {
     if (!source) {
-      spinner.fail('Source argument is required (path to .manifest file, .ir.json file, or directory)');
+      spinner.fail(
+        'Source argument is required (path to .manifest file, .ir.json file, or directory)',
+      );
       process.exitCode = 1;
       return;
     }
@@ -216,11 +223,13 @@ export async function diagramCommand(
       spinner.warn('No diagrams generated (check diagnostics above)');
     } else {
       spinner.succeed(
-        `Generated ${artifactCount} diagram(s) -> ${chalk.cyan(path.relative(process.cwd(), outputDir))}`
+        `Generated ${artifactCount} diagram(s) -> ${chalk.cyan(path.relative(process.cwd(), outputDir))}`,
       );
     }
   } catch (error: unknown) {
-    spinner.fail(`Diagram generation failed: ${error instanceof Error ? error.message : String(error)}`);
+    spinner.fail(
+      `Diagram generation failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exitCode = 1;
   }
 }

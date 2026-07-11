@@ -131,7 +131,10 @@ describe('route-contract coherence — nextjs + ts.client', () => {
 
     for (const url of urls) {
       const matched = routeUrls.some((route) => urlMatchesRoute(url, route));
-      expect(matched, `client URL ${url} has no matching emitted route in ${JSON.stringify(routeUrls)}`).toBe(true);
+      expect(
+        matched,
+        `client URL ${url} has no matching emitted route in ${JSON.stringify(routeUrls)}`,
+      ).toBe(true);
     }
   });
 
@@ -183,7 +186,9 @@ describe('route-contract coherence — nextjs + ts.client', () => {
     // the dispatcher must be emitted. concreteCommandRoutes stays off by default;
     // the dispatcher is canonical in every mode.
     expect(nextjs('nextjs.dispatcher', {}).artifacts.length).toBe(1);
-    expect(nextjs('nextjs.dispatcher', { concreteCommandRoutes: { enabled: true } }).artifacts.length).toBe(1);
+    expect(
+      nextjs('nextjs.dispatcher', { concreteCommandRoutes: { enabled: true } }).artifacts.length,
+    ).toBe(1);
 
     const client = clientCode({});
     // The command caller uses the RAW entity + command names, not lowercased/kebab.
@@ -191,8 +196,10 @@ describe('route-contract coherence — nextjs + ts.client', () => {
   });
 
   it('respects a client.fetchAdapter (imports it, aliased to apiFetch)', () => {
-    const client = clientCode({ client: { fetchAdapter: { importPath: '@/lib/api', importName: 'authedFetch' } } });
-    expect(client).toContain("import { authedFetch as apiFetch } from \"@/lib/api\";");
+    const client = clientCode({
+      client: { fetchAdapter: { importPath: '@/lib/api', importName: 'authedFetch' } },
+    });
+    expect(client).toContain('import { authedFetch as apiFetch } from "@/lib/api";');
     // The inline apiFetch helper is not emitted when an adapter is imported.
     expect(client).not.toContain('async function apiFetch');
   });
@@ -252,26 +259,37 @@ describe('route-contract coherence — react-query + routes', () => {
   ): string[] {
     const artifacts: ProjectionResult['artifacts'] = [];
     for (const entity of program.entities) {
-      artifacts.push(...nextjsFor(program, 'nextjs.route', options, { entity: entity.name }).artifacts);
-      artifacts.push(...nextjsFor(program, 'nextjs.detail', options, { entity: entity.name }).artifacts);
+      artifacts.push(
+        ...nextjsFor(program, 'nextjs.route', options, { entity: entity.name }).artifacts,
+      );
+      artifacts.push(
+        ...nextjsFor(program, 'nextjs.detail', options, { entity: entity.name }).artifacts,
+      );
     }
     artifacts.push(...nextjsFor(program, 'nextjs.dispatcher', options).artifacts);
     if (opts.concrete) {
       for (const command of program.commands) {
         if (!command.entity) continue;
         artifacts.push(
-          ...nextjsFor(program, 'nextjs.command', options, { entity: command.entity, command: command.name })
-            .artifacts,
+          ...nextjsFor(program, 'nextjs.command', options, {
+            entity: command.entity,
+            command: command.name,
+          }).artifacts,
         );
       }
     }
-    return artifacts.filter((a) => a.pathHint).map((a) => urlFromRoutePathHint(a.pathHint as string));
+    return artifacts
+      .filter((a) => a.pathHint)
+      .map((a) => urlFromRoutePathHint(a.pathHint as string));
   }
 
   function reactQueryHooks(program: IR, options: Record<string, unknown>): string {
     const projection = getProjection('react-query');
     expect(projection, 'react-query projection is registered').toBeDefined();
-    const artifacts = projection!.generate(program, { surface: 'react-query.hooks', options }).artifacts;
+    const artifacts = projection!.generate(program, {
+      surface: 'react-query.hooks',
+      options,
+    }).artifacts;
     expect(artifacts.length).toBe(1);
     return artifacts[0].code;
   }
@@ -279,7 +297,10 @@ describe('route-contract coherence — react-query + routes', () => {
   function routesManifestPaths(program: IR, options: Record<string, unknown>): string[] {
     const projection = getProjection('routes');
     expect(projection, 'routes projection is registered').toBeDefined();
-    const artifacts = projection!.generate(program, { surface: 'routes.manifest', options }).artifacts;
+    const artifacts = projection!.generate(program, {
+      surface: 'routes.manifest',
+      options,
+    }).artifacts;
     expect(artifacts.length).toBe(1);
     const manifest = JSON.parse(artifacts[0].code) as { routes: Array<{ path: string }> };
     return manifest.routes.map((r) => r.path);
@@ -416,7 +437,10 @@ describe('route-contract coherence — zod + hono + express', () => {
     const escaped = VALIDATION_PATH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const m = new RegExp(`import\\s*\\{([^}]*)\\}\\s*from\\s*['"]${escaped}['"]`).exec(serverCode);
     if (!m) return [];
-    return m[1].split(',').map((s) => s.trim()).filter(Boolean);
+    return m[1]
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
 
   /** Route path literals from `app` / `router` / `fastify` `.get`/`.post` calls. */
@@ -435,8 +459,12 @@ describe('route-contract coherence — zod + hono + express', () => {
 
   it('(a) zod export names == the exact validation-import names hono AND express emit', () => {
     const zodExports = zodParamsExports(gen('zod', 'zod.schemas', {}));
-    const honoImports = validationImports(gen('hono', 'hono.router', { validationImportPath: VALIDATION_PATH }));
-    const expressImports = validationImports(gen('express', 'express.router', { validationImportPath: VALIDATION_PATH }));
+    const honoImports = validationImports(
+      gen('hono', 'hono.router', { validationImportPath: VALIDATION_PATH }),
+    );
+    const expressImports = validationImports(
+      gen('express', 'express.router', { validationImportPath: VALIDATION_PATH }),
+    );
 
     // The previously-broken multi-word case now resolves to one agreed name.
     expect(zodExports).toContain('OrderLinePublishRecipeParamsSchema');
@@ -467,10 +495,14 @@ describe('route-contract coherence — zod + hono + express', () => {
   it('(c) every schema name hono/express import exists in the zod artifact text', () => {
     const zodCode = gen('zod', 'zod.schemas', {});
     for (const [name, surface] of servers) {
-      const imports = validationImports(gen(name, surface, { validationImportPath: VALIDATION_PATH }));
+      const imports = validationImports(
+        gen(name, surface, { validationImportPath: VALIDATION_PATH }),
+      );
       expect(imports.length).toBeGreaterThan(0);
       for (const schemaName of imports) {
-        expect(zodCode, `${name} imports ${schemaName} which zod must emit`).toContain(`export const ${schemaName} =`);
+        expect(zodCode, `${name} imports ${schemaName} which zod must emit`).toContain(
+          `export const ${schemaName} =`,
+        );
       }
     }
   });

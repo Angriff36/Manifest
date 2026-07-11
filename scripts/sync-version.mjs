@@ -17,7 +17,7 @@ const versionFile = join(root, 'src', 'manifest', 'version.ts');
 const source = readFileSync(versionFile, 'utf8');
 const updated = source.replace(
   /export const COMPILER_VERSION = '[^']*';/,
-  `export const COMPILER_VERSION = '${pkg.version}';`
+  `export const COMPILER_VERSION = '${pkg.version}';`,
 );
 
 if (updated === source) {

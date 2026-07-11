@@ -27,36 +27,40 @@ function createTestIR(): IR {
     },
     modules: [],
     values: [],
-    entities: [{
-      name: 'TestEntity',
-      properties: [
-        { name: 'id', type: { name: 'string', nullable: false }, modifiers: [] },
-        { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
-        { name: 'active', type: { name: 'boolean', nullable: false }, modifiers: [] },
-      ],
-      computedProperties: [],
-      relationships: [],
-      commands: ['testCommand'],
-      constraints: [],
-      policies: [],
-    }],
+    entities: [
+      {
+        name: 'TestEntity',
+        properties: [
+          { name: 'id', type: { name: 'string', nullable: false }, modifiers: [] },
+          { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
+          { name: 'active', type: { name: 'boolean', nullable: false }, modifiers: [] },
+        ],
+        computedProperties: [],
+        relationships: [],
+        commands: ['testCommand'],
+        constraints: [],
+        policies: [],
+      },
+    ],
     enums: [],
     stores: [],
     events: [],
-    commands: [{
-      name: 'testCommand',
-      entity: 'TestEntity',
-      parameters: [
-        { name: 'value', type: { name: 'number', nullable: false }, required: true },
-        // Optional: guard tests reference threshold only when they supply it in input;
-        // the runtime now enforces required params, so a fixture-required threshold that
-        // most cases omit would (correctly) be rejected before guards run.
-        { name: 'threshold', type: { name: 'number', nullable: false }, required: false },
-      ],
-      guards: [],
-      actions: [],
-      emits: [],
-    }],
+    commands: [
+      {
+        name: 'testCommand',
+        entity: 'TestEntity',
+        parameters: [
+          { name: 'value', type: { name: 'number', nullable: false }, required: true },
+          // Optional: guard tests reference threshold only when they supply it in input;
+          // the runtime now enforces required params, so a fixture-required threshold that
+          // most cases omit would (correctly) be rejected before guards run.
+          { name: 'threshold', type: { name: 'number', nullable: false }, required: false },
+        ],
+        guards: [],
+        actions: [],
+        emits: [],
+      },
+    ],
     policies: [],
   };
 }
@@ -74,9 +78,12 @@ function createIRWithGuards(guards: IRExpression[]): IR {
  * Helper for identifier names
  */
 const identifierName = fc
-  .array(fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789'.split('')), { minLength: 1, maxLength: 20 })
-  .map(chars => chars.join(''))
-  .filter(name => /^[a-zA-Z_]/.test(name));
+  .array(
+    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789'.split('')),
+    { minLength: 1, maxLength: 20 },
+  )
+  .map((chars) => chars.join(''))
+  .filter((name) => /^[a-zA-Z_]/.test(name));
 
 describe('Runtime Guard Execution - Property Tests', () => {
   describe('Guard Evaluation Properties', () => {
@@ -90,14 +97,18 @@ describe('Runtime Guard Execution - Property Tests', () => {
           ];
 
           const ir = createIRWithGuards(guards);
-          const runtime = new RuntimeEngine(ir, {}, {
-            generateId: () => 'test-id',
-            now: () => Date.now(),
-          });
+          const runtime = new RuntimeEngine(
+            ir,
+            {},
+            {
+              generateId: () => 'test-id',
+              now: () => Date.now(),
+            },
+          );
 
           const result = await runtime.runCommand('testCommand', { value });
           expect(result.success).toBe(true);
-        })
+        }),
       );
     });
 
@@ -105,8 +116,8 @@ describe('Runtime Guard Execution - Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(
           fc.float({ max: 1e6, min: -1e6, noNaN: true }),
-          fc.nat({ max: 2 }) // Index of false guard
-          , async (value, falseIndex) => {
+          fc.nat({ max: 2 }), // Index of false guard
+          async (value, falseIndex) => {
             const guards = [
               ExpressionBuilder.literal(jsToIRValue(true)),
               ExpressionBuilder.literal(jsToIRValue(true)),
@@ -115,14 +126,19 @@ describe('Runtime Guard Execution - Property Tests', () => {
             guards[falseIndex] = ExpressionBuilder.literal(jsToIRValue(false));
 
             const ir = createIRWithGuards(guards);
-            const runtime = new RuntimeEngine(ir, {}, {
-              generateId: () => 'test-id',
-              now: () => Date.now(),
-            });
+            const runtime = new RuntimeEngine(
+              ir,
+              {},
+              {
+                generateId: () => 'test-id',
+                now: () => Date.now(),
+              },
+            );
 
             const result = await runtime.runCommand('testCommand', { value });
             expect(result.success).toBe(false);
-          })
+          },
+        ),
       );
     });
 
@@ -137,15 +153,19 @@ describe('Runtime Guard Execution - Property Tests', () => {
           ];
 
           const ir = createIRWithGuards(guards);
-          const runtime = new RuntimeEngine(ir, {}, {
-            generateId: () => 'test-id',
-            now: () => Date.now(),
-          });
+          const runtime = new RuntimeEngine(
+            ir,
+            {},
+            {
+              generateId: () => 'test-id',
+              now: () => Date.now(),
+            },
+          );
 
           const result = await runtime.runCommand('testCommand', { value });
           // Should fail due to first guard being false, without evaluating second
           expect(result.success).toBe(false);
-        })
+        }),
       );
     });
   });
@@ -165,21 +185,30 @@ describe('Runtime Guard Execution - Property Tests', () => {
 
             const ir = createIRWithGuards(guards);
 
-            const runtime1 = new RuntimeEngine(ir, {}, {
-              generateId: () => 'test-id',
-              now: () => Date.now(),
-            });
-            const runtime2 = new RuntimeEngine(ir, {}, {
-              generateId: () => 'test-id',
-              now: () => Date.now(),
-            });
+            const runtime1 = new RuntimeEngine(
+              ir,
+              {},
+              {
+                generateId: () => 'test-id',
+                now: () => Date.now(),
+              },
+            );
+            const runtime2 = new RuntimeEngine(
+              ir,
+              {},
+              {
+                generateId: () => 'test-id',
+                now: () => Date.now(),
+              },
+            );
 
             const result1 = await runtime1.runCommand('testCommand', { value });
             const result2 = await runtime2.runCommand('testCommand', { value });
 
             expect(result1.success).toBe(result2.success);
             expect(result1.guardFailure).toEqual(result2.guardFailure);
-          })
+          },
+        ),
       );
     });
   });
@@ -196,9 +225,10 @@ describe('Runtime Guard Execution - Property Tests', () => {
 
             // Guard that reads context variable
             const guards = [
-              ExpressionBuilder.binary('==',
+              ExpressionBuilder.binary(
+                '==',
                 ExpressionBuilder.identifier('testVar'),
-                ExpressionBuilder.literal(jsToIRValue(42))
+                ExpressionBuilder.literal(jsToIRValue(42)),
               ),
             ];
 
@@ -212,7 +242,8 @@ describe('Runtime Guard Execution - Property Tests', () => {
 
             // Context should not be modified
             expect(originalContext).toEqual(contextCopy);
-          })
+          },
+        ),
       );
     });
   });
@@ -226,22 +257,28 @@ describe('Runtime Guard Execution - Property Tests', () => {
           fc.float({ max: 1e6, min: -1e6, noNaN: true }),
           async (a, b, value) => {
             const guards = [
-              ExpressionBuilder.binary('&&',
+              ExpressionBuilder.binary(
+                '&&',
                 ExpressionBuilder.literal(jsToIRValue(a)),
-                ExpressionBuilder.literal(jsToIRValue(b))
+                ExpressionBuilder.literal(jsToIRValue(b)),
               ),
             ];
 
             const ir = createIRWithGuards(guards);
-            const runtime = new RuntimeEngine(ir, {}, {
-              generateId: () => 'test-id',
-              now: () => Date.now(),
-            });
+            const runtime = new RuntimeEngine(
+              ir,
+              {},
+              {
+                generateId: () => 'test-id',
+                now: () => Date.now(),
+              },
+            );
 
             const result = await runtime.runCommand('testCommand', { value });
             const expected = a && b;
             expect(result.success).toBe(expected);
-          })
+          },
+        ),
       );
     });
 
@@ -249,22 +286,27 @@ describe('Runtime Guard Execution - Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(fc.float({ max: 1e6, min: -1e6, noNaN: true }), async (value) => {
           const guards = [
-            ExpressionBuilder.binary('>=',
+            ExpressionBuilder.binary(
+              '>=',
               ExpressionBuilder.identifier('value'),
-              ExpressionBuilder.literal(jsToIRValue(0))
+              ExpressionBuilder.literal(jsToIRValue(0)),
             ),
           ];
 
           const ir = createIRWithGuards(guards);
-          const runtime = new RuntimeEngine(ir, {}, {
-            generateId: () => 'test-id',
-            now: () => Date.now(),
-          });
+          const runtime = new RuntimeEngine(
+            ir,
+            {},
+            {
+              generateId: () => 'test-id',
+              now: () => Date.now(),
+            },
+          );
 
           const result = await runtime.runCommand('testCommand', { value });
           const expected = value >= 0;
           expect(result.success).toBe(expected);
-        })
+        }),
       );
     });
 
@@ -278,23 +320,30 @@ describe('Runtime Guard Execution - Property Tests', () => {
             if (minValue >= maxValue) return;
 
             const guards = [
-              ExpressionBuilder.binary('&&',
-                ExpressionBuilder.binary('>=',
+              ExpressionBuilder.binary(
+                '&&',
+                ExpressionBuilder.binary(
+                  '>=',
                   ExpressionBuilder.identifier('value'),
-                  ExpressionBuilder.literal(jsToIRValue(minValue))
+                  ExpressionBuilder.literal(jsToIRValue(minValue)),
                 ),
-                ExpressionBuilder.binary('<=',
+                ExpressionBuilder.binary(
+                  '<=',
                   ExpressionBuilder.identifier('value'),
-                  ExpressionBuilder.literal(jsToIRValue(maxValue))
-                )
+                  ExpressionBuilder.literal(jsToIRValue(maxValue)),
+                ),
               ),
             ];
 
             const ir = createIRWithGuards(guards);
-            const runtime = new RuntimeEngine(ir, {}, {
-              generateId: () => 'test-id',
-              now: () => Date.now(),
-            });
+            const runtime = new RuntimeEngine(
+              ir,
+              {},
+              {
+                generateId: () => 'test-id',
+                now: () => Date.now(),
+              },
+            );
 
             // Test with value in range
             const inRangeValue = (minValue + maxValue) / 2;
@@ -303,9 +352,12 @@ describe('Runtime Guard Execution - Property Tests', () => {
 
             // Test with value out of range
             const outOfRangeValue = maxValue + 1;
-            const outOfRangeResult = await runtime.runCommand('testCommand', { value: outOfRangeValue });
+            const outOfRangeResult = await runtime.runCommand('testCommand', {
+              value: outOfRangeValue,
+            });
             expect(outOfRangeResult.success).toBe(false);
-          })
+          },
+        ),
       );
     });
   });
@@ -321,17 +373,21 @@ describe('Runtime Guard Execution - Property Tests', () => {
           ];
 
           const ir = createIRWithGuards(guards);
-          const runtime = new RuntimeEngine(ir, {}, {
-            generateId: () => 'test-id',
-            now: () => Date.now(),
-          });
+          const runtime = new RuntimeEngine(
+            ir,
+            {},
+            {
+              generateId: () => 'test-id',
+              now: () => Date.now(),
+            },
+          );
 
           const result = await runtime.runCommand('testCommand', { value });
           expect(result.success).toBe(false);
           // The denied reason should indicate the second guard failed (index 1, but actually getting 2)
           // This might be due to an implicit system guard
           expect(result.guardFailure?.index).toBeGreaterThan(0);
-        })
+        }),
       );
     });
   });
@@ -345,32 +401,47 @@ describe('Runtime Guard Execution - Property Tests', () => {
           async (threshold, isAdmin) => {
             const guards = [
               // Non-admins need value >= threshold
-              ExpressionBuilder.binary('||',
+              ExpressionBuilder.binary(
+                '||',
                 ExpressionBuilder.identifier('isAdmin'),
-                ExpressionBuilder.binary('>=',
+                ExpressionBuilder.binary(
+                  '>=',
                   ExpressionBuilder.identifier('value'),
-                  ExpressionBuilder.literal(jsToIRValue(threshold))
-                )
+                  ExpressionBuilder.literal(jsToIRValue(threshold)),
+                ),
               ),
             ];
 
             const ir = createIRWithGuards(guards);
-            const runtime = new RuntimeEngine(ir, {}, {
-              generateId: () => 'test-id',
-              now: () => Date.now(),
-            });
+            const runtime = new RuntimeEngine(
+              ir,
+              {},
+              {
+                generateId: () => 'test-id',
+                now: () => Date.now(),
+              },
+            );
 
             // Admin should always pass
             if (isAdmin) {
-              const result = await runtime.runCommand('testCommand', { value: 0, threshold: threshold, isAdmin: true });
+              const result = await runtime.runCommand('testCommand', {
+                value: 0,
+                threshold: threshold,
+                isAdmin: true,
+              });
               expect(result.success).toBe(true);
             } else {
               // Non-admin needs value >= threshold
               const testValue = threshold;
-              const result = await runtime.runCommand('testCommand', { value: testValue, threshold: threshold, isAdmin: false });
+              const result = await runtime.runCommand('testCommand', {
+                value: testValue,
+                threshold: threshold,
+                isAdmin: false,
+              });
               expect(result.success).toBe(true);
             }
-          })
+          },
+        ),
       );
     });
   });

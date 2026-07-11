@@ -55,19 +55,19 @@ async function getEntityPropertiesIR(): Promise<IR> {
 
 async function getCommandsIR(): Promise<IR> {
   return compile(
-    'entity Counter { property value: number = 0 command increment() { mutate value = value + 1 } command reset() { mutate value = 0 } command setValue(newValue: number) { mutate value = newValue } } store Counter in memory'
+    'entity Counter { property value: number = 0 command increment() { mutate value = value + 1 } command reset() { mutate value = 0 } command setValue(newValue: number) { mutate value = newValue } } store Counter in memory',
   );
 }
 
 async function getOrderWithCommandsIR(): Promise<IR> {
   return compile(
-    'entity Order { property id: ID property status: String command placeOrder() { mutate status = "placed" } command cancelOrder() { mutate status = "cancelled" } } store Order in memory'
+    'entity Order { property id: ID property status: String command placeOrder() { mutate status = "placed" } command cancelOrder() { mutate status = "cancelled" } } store Order in memory',
   );
 }
 
 async function getRelationshipsIR(): Promise<IR> {
   return compile(
-    'entity User { property id: ID hasMany posts: Post } entity Post { property id: ID belongsTo author: User }'
+    'entity User { property id: ID hasMany posts: Post } entity Post { property id: ID belongsTo author: User }',
   );
 }
 
@@ -78,7 +78,12 @@ async function getRelationshipsIR(): Promise<IR> {
 function makeMinimalIR(overrides?: Partial<IR>): IR {
   return {
     version: '1.0',
-    provenance: { contentHash: 'test-hash', compilerVersion: '1.0.0', schemaVersion: '1.0', compiledAt: '2024-01-01T00:00:00.000Z' },
+    provenance: {
+      contentHash: 'test-hash',
+      compilerVersion: '1.0.0',
+      schemaVersion: '1.0',
+      compiledAt: '2024-01-01T00:00:00.000Z',
+    },
     modules: [],
     values: [],
     entities: [],
@@ -138,7 +143,11 @@ describe('irTypeToJsonSchema', () => {
   });
 
   it('maps Array<T> to { type: array, items: schema }', () => {
-    const schema = irTypeToJsonSchema({ name: 'Array', generic: { name: 'String', nullable: false }, nullable: false });
+    const schema = irTypeToJsonSchema({
+      name: 'Array',
+      generic: { name: 'String', nullable: false },
+      nullable: false,
+    });
     expect(schema).toEqual({ type: 'array', items: { type: 'string' } });
   });
 
@@ -157,11 +166,24 @@ describe('irValueToJson', () => {
   });
 
   it('converts arrays', () => {
-    expect(irValueToJson({ kind: 'array', elements: [{ kind: 'string', value: 'a' }, { kind: 'string', value: 'b' }] })).toEqual(['a', 'b']);
+    expect(
+      irValueToJson({
+        kind: 'array',
+        elements: [
+          { kind: 'string', value: 'a' },
+          { kind: 'string', value: 'b' },
+        ],
+      }),
+    ).toEqual(['a', 'b']);
   });
 
   it('converts objects', () => {
-    expect(irValueToJson({ kind: 'object', properties: { x: { kind: 'number', value: 1 }, y: { kind: 'number', value: 2 } } })).toEqual({ x: 1, y: 2 });
+    expect(
+      irValueToJson({
+        kind: 'object',
+        properties: { x: { kind: 'number', value: 1 }, y: { kind: 'number', value: 2 } },
+      }),
+    ).toEqual({ x: 1, y: 2 });
   });
 });
 
@@ -184,7 +206,9 @@ describe('irParametersToJsonSchema', () => {
 
 describe('formatExpression', () => {
   it('formats string literals with quotes', () => {
-    expect(formatExpression({ kind: 'literal', value: { kind: 'string', value: 'foo' } })).toBe('"foo"');
+    expect(formatExpression({ kind: 'literal', value: { kind: 'string', value: 'foo' } })).toBe(
+      '"foo"',
+    );
   });
 
   it('formats numeric literals without quotes', () => {
@@ -192,7 +216,9 @@ describe('formatExpression', () => {
   });
 
   it('formats boolean literals', () => {
-    expect(formatExpression({ kind: 'literal', value: { kind: 'boolean', value: true } })).toBe('true');
+    expect(formatExpression({ kind: 'literal', value: { kind: 'boolean', value: true } })).toBe(
+      'true',
+    );
     expect(formatExpression({ kind: 'literal', value: { kind: 'null' } })).toBe('null');
   });
 
@@ -201,56 +227,71 @@ describe('formatExpression', () => {
   });
 
   it('formats binary expressions', () => {
-    expect(formatExpression({
-      kind: 'binary',
-      operator: '+',
-      left: { kind: 'identifier', name: 'a' },
-      right: { kind: 'identifier', name: 'b' },
-    })).toBe('a + b');
+    expect(
+      formatExpression({
+        kind: 'binary',
+        operator: '+',
+        left: { kind: 'identifier', name: 'a' },
+        right: { kind: 'identifier', name: 'b' },
+      }),
+    ).toBe('a + b');
   });
 
   it('formats call expressions', () => {
-    expect(formatExpression({
-      kind: 'call',
-      callee: { kind: 'identifier', name: 'round' },
-      args: [{ kind: 'identifier', name: 'x' }],
-    })).toBe('round(x)');
+    expect(
+      formatExpression({
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'round' },
+        args: [{ kind: 'identifier', name: 'x' }],
+      }),
+    ).toBe('round(x)');
   });
 
   it('formats conditional expressions', () => {
-    expect(formatExpression({
-      kind: 'conditional',
-      condition: { kind: 'identifier', name: 'x' },
-      consequent: { kind: 'literal', value: { kind: 'number', value: 1 } },
-      alternate: { kind: 'literal', value: { kind: 'number', value: 0 } },
-    })).toBe('x ? 1 : 0');
+    expect(
+      formatExpression({
+        kind: 'conditional',
+        condition: { kind: 'identifier', name: 'x' },
+        consequent: { kind: 'literal', value: { kind: 'number', value: 1 } },
+        alternate: { kind: 'literal', value: { kind: 'number', value: 0 } },
+      }),
+    ).toBe('x ? 1 : 0');
   });
 
   it('formats array expressions', () => {
-    expect(formatExpression({
-      kind: 'array',
-      elements: [
-        { kind: 'literal', value: { kind: 'number', value: 1 } },
-        { kind: 'literal', value: { kind: 'number', value: 2 } },
-      ],
-    })).toBe('[1, 2]');
+    expect(
+      formatExpression({
+        kind: 'array',
+        elements: [
+          { kind: 'literal', value: { kind: 'number', value: 1 } },
+          { kind: 'literal', value: { kind: 'number', value: 2 } },
+        ],
+      }),
+    ).toBe('[1, 2]');
   });
 
   it('formats object expressions', () => {
-    expect(formatExpression({
-      kind: 'object',
-      properties: [
-        { key: 'x', value: { kind: 'literal', value: { kind: 'number', value: 1 } } },
-      ],
-    })).toBe('{x: 1}');
+    expect(
+      formatExpression({
+        kind: 'object',
+        properties: [{ key: 'x', value: { kind: 'literal', value: { kind: 'number', value: 1 } } }],
+      }),
+    ).toBe('{x: 1}');
   });
 
   it('formats lambda expressions', () => {
-    expect(formatExpression({
-      kind: 'lambda',
-      params: ['x'],
-      body: { kind: 'binary', operator: '+', left: { kind: 'identifier', name: 'x' }, right: { kind: 'literal', value: { kind: 'number', value: 1 } } },
-    })).toBe('(x) => x + 1');
+    expect(
+      formatExpression({
+        kind: 'lambda',
+        params: ['x'],
+        body: {
+          kind: 'binary',
+          operator: '+',
+          left: { kind: 'identifier', name: 'x' },
+          right: { kind: 'literal', value: { kind: 'number', value: 1 } },
+        },
+      }),
+    ).toBe('(x) => x + 1');
   });
 });
 
@@ -265,7 +306,13 @@ describe('formatIRType', () => {
   });
 
   it('formats generic types with inner type', () => {
-    expect(formatIRType({ name: 'Array', generic: { name: 'String', nullable: false }, nullable: false })).toBe('Array<String>');
+    expect(
+      formatIRType({
+        name: 'Array',
+        generic: { name: 'String', nullable: false },
+        nullable: false,
+      }),
+    ).toBe('Array<String>');
   });
 });
 
@@ -331,13 +378,17 @@ describe('getEntityRelationships', () => {
     const ir = await getRelationshipsIR();
     const graph = getEntityRelationships(ir, 'User');
     expect(graph.entity).toBe('User');
-    expect(graph.relationships.some((r) => r.direction === 'outgoing' && r.target === 'Post')).toBe(true);
+    expect(graph.relationships.some((r) => r.direction === 'outgoing' && r.target === 'Post')).toBe(
+      true,
+    );
   });
 
   it('includes incoming relationships', async () => {
     const ir = await getRelationshipsIR();
     const graph = getEntityRelationships(ir, 'Post');
-    expect(graph.relationships.some((r) => r.direction === 'incoming' && r.target === 'User')).toBe(true);
+    expect(graph.relationships.some((r) => r.direction === 'incoming' && r.target === 'User')).toBe(
+      true,
+    );
   });
 });
 
@@ -504,8 +555,29 @@ describe('AgentRuntime', () => {
 
   it('listEntities with module filter works', async () => {
     const ir = makeMinimalIR({
-      modules: [{ name: 'core', entities: ['User'], enums: [], commands: [], stores: [], events: [], policies: [] }],
-      entities: [{ name: 'User', module: 'core', properties: [], computedProperties: [], relationships: [], commands: [], constraints: [], policies: [] }],
+      modules: [
+        {
+          name: 'core',
+          entities: ['User'],
+          enums: [],
+          commands: [],
+          stores: [],
+          events: [],
+          policies: [],
+        },
+      ],
+      entities: [
+        {
+          name: 'User',
+          module: 'core',
+          properties: [],
+          computedProperties: [],
+          relationships: [],
+          commands: [],
+          constraints: [],
+          policies: [],
+        },
+      ],
     });
     const engine = new RuntimeEngine(ir, EMPTY_CONTEXT);
     const agent = new AgentRuntime(engine);

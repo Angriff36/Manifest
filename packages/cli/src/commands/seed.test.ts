@@ -55,7 +55,11 @@ function buildProductIR(): IR {
       {
         name: 'Product',
         properties: [
-          { name: 'name', type: { name: 'string', nullable: false }, modifiers: ['required', 'unique'] },
+          {
+            name: 'name',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required', 'unique'],
+          },
           { name: 'price', type: { name: 'number', nullable: false }, modifiers: [] },
           { name: 'inStock', type: { name: 'boolean', nullable: false }, modifiers: [] },
         ],
@@ -101,7 +105,12 @@ function buildAuthorBookIR(): IR {
         name: 'Book',
         properties: [
           { name: 'title', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-          { name: 'year', type: { name: 'int', nullable: false }, defaultValue: { kind: 'number', value: 2024 }, modifiers: [] },
+          {
+            name: 'year',
+            type: { name: 'int', nullable: false },
+            defaultValue: { kind: 'number', value: 2024 },
+            modifiers: [],
+          },
         ],
         computedProperties: [],
         relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
@@ -235,7 +244,9 @@ describe('seedCommand', () => {
       seed: 9,
     });
 
-    const written = JSON.parse(await fs.readFile(out, 'utf-8')) as { tables: Record<string, unknown[]> };
+    const written = JSON.parse(await fs.readFile(out, 'utf-8')) as {
+      tables: Record<string, unknown[]>;
+    };
     expect(written.tables).toBeDefined();
     expect(Array.isArray(written.tables['Product'])).toBe(true);
     expect((written.tables['Product'] as unknown[]).length).toBe(2);

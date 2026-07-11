@@ -1,7 +1,7 @@
 ---
-title: "Hono edge router projection"
-sidebarTitle: "Hono"
-description: "Generate edge-runtime-optimized Hono route handlers from Manifest IR — a single router file with zero Node.js dependencies for Cloudflare Workers, Vercel Edge, or Deno Deploy."
+title: 'Hono edge router projection'
+sidebarTitle: 'Hono'
+description: 'Generate edge-runtime-optimized Hono route handlers from Manifest IR — a single router file with zero Node.js dependencies for Cloudflare Workers, Vercel Edge, or Deno Deploy.'
 ---
 
 The Hono projection generates edge-runtime-optimized route handlers from compiled Manifest IR using the [Hono](https://hono.dev) framework. Use it when you are deploying to Cloudflare Workers, Vercel Edge, or Deno Deploy and need a single router file with zero Node.js dependencies. It mirrors the [Express projection's](/projections/express) structure but emits Hono idioms — `c.get('user')` for auth context, `c.req.json()` for bodies, and `c.json(data, status)` for responses.
@@ -46,7 +46,12 @@ Entity interface fields are optional unless the property has the `required` modi
 ## Notes & limitations
 
 <Note>
-The generated app imports its auth middleware and runtime factory from the configured paths rather than defining them, and uses Hono's `c.get('user')` convention (set by that middleware) rather than an Express-style `req.user`. As with the Express projection, the `basePath` option is normalized but not applied to the generated route strings; apply the prefix where you mount or `route()` the app. Read routes bypass the runtime engine; all writes go through `runtime.runCommand`.
+  The generated app imports its auth middleware and runtime factory from the configured paths rather
+  than defining them, and uses Hono's `c.get('user')` convention (set by that middleware) rather
+  than an Express-style `req.user`. As with the Express projection, the `basePath` option is
+  normalized but not applied to the generated route strings; apply the prefix where you mount or
+  `route()` the app. Read routes bypass the runtime engine; all writes go through
+  `runtime.runCommand`.
 </Note>
 
 There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only, so emit Hono output by invoking `getProjection('hono')` programmatically. Extending the CLI's `generate` to accept `hono` would be separate work.

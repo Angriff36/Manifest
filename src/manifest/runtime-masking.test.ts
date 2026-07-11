@@ -52,7 +52,7 @@ const patientData = {
 
 async function makeEngine(context: Record<string, unknown> = {}, options = {}) {
   const { ir, diagnostics } = await compileToIR(source);
-  expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+  expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   const engine = new RuntimeEngine(ir!, context, options);
   await engine.createInstance('Patient', { ...patientData } as EntityInstance);
   return engine;
@@ -63,12 +63,12 @@ describe('Runtime property masking', () => {
     it('masks every strategy on read', async () => {
       const engine = await makeEngine();
       const inst = await engine.getInstance('Patient', 'p1');
-      expect(inst?.ssn).toBe('*******6789');           // partial(0, 4)
-      expect(inst?.contact).toBe('a***@example.com');  // email (no user => masked)
-      expect(inst?.phone).toBe('***-***-5309');        // phone
-      expect(inst?.card).toBe('****1111');             // last4
-      expect(inst?.notes).toBe('***');                 // bare masked = redact
-      expect(inst?.name).toBe('Alice');                // unmasked property untouched
+      expect(inst?.ssn).toBe('*******6789'); // partial(0, 4)
+      expect(inst?.contact).toBe('a***@example.com'); // email (no user => masked)
+      expect(inst?.phone).toBe('***-***-5309'); // phone
+      expect(inst?.card).toBe('****1111'); // last4
+      expect(inst?.notes).toBe('***'); // bare masked = redact
+      expect(inst?.name).toBe('Alice'); // unmasked property untouched
     });
 
     it('masks all instances in getAllInstances', async () => {
@@ -116,11 +116,19 @@ store Doc in memory
 `;
       const { ir } = await compileToIR(selfSource);
       const owner = new RuntimeEngine(ir!, { user: { id: 'u1' } });
-      await owner.createInstance('Doc', { id: 'd1', ownerId: 'u1', body: 'secret' } as EntityInstance);
+      await owner.createInstance('Doc', {
+        id: 'd1',
+        ownerId: 'u1',
+        body: 'secret',
+      } as EntityInstance);
       expect((await owner.getInstance('Doc', 'd1'))?.body).toBe('secret');
 
       const stranger = new RuntimeEngine(ir!, { user: { id: 'u2' } });
-      await stranger.createInstance('Doc', { id: 'd1', ownerId: 'u1', body: 'secret' } as EntityInstance);
+      await stranger.createInstance('Doc', {
+        id: 'd1',
+        ownerId: 'u1',
+        body: 'secret',
+      } as EntityInstance);
       expect((await stranger.getInstance('Doc', 'd1'))?.body).toBe('***');
     });
 
@@ -131,13 +139,13 @@ store Doc in memory
         // nested member access in `user.role == "admin"` exceed the limit.
         const engine = await makeEngine(
           { user: { id: 'u1', role: 'admin' } },
-          { evaluationLimits: { maxExpressionDepth: 1 } }
+          { evaluationLimits: { maxExpressionDepth: 1 } },
         );
         const inst = await engine.getInstance('Patient', 'p1');
         // Error ⇒ masked, even though the role WOULD have allowed unmasking
         expect(inst?.contact).toBe('a***@example.com');
-        const maskingWarning = warnSpy.mock.calls.find(call =>
-          String(call[0]).includes("unmaskWhen evaluation error for 'Patient.contact'")
+        const maskingWarning = warnSpy.mock.calls.find((call) =>
+          String(call[0]).includes("unmaskWhen evaluation error for 'Patient.contact'"),
         );
         expect(maskingWarning).toBeDefined();
         const payload = maskingWarning![1] as { expression: string; error: string };
@@ -173,8 +181,7 @@ store Doc in memory
           ciphertext: Buffer.from(plaintext, 'utf-8').toString('base64'),
           keyId: 'k1',
         }),
-        decrypt: async (ciphertext: string) =>
-          Buffer.from(ciphertext, 'base64').toString('utf-8'),
+        decrypt: async (ciphertext: string) => Buffer.from(ciphertext, 'base64').toString('utf-8'),
       };
       const encSource = `
 entity Vault {
@@ -196,7 +203,11 @@ store Vault in memory
   describe('execution sees real values (read-projection only)', () => {
     it('guards evaluate against the real value', async () => {
       const engine = await makeEngine();
-      const result = await engine.runCommand('checkSsn', {}, { entityName: 'Patient', instanceId: 'p1' });
+      const result = await engine.runCommand(
+        'checkSsn',
+        {},
+        { entityName: 'Patient', instanceId: 'p1' },
+      );
       expect(result.success).toBe(true);
       // The mutation went through; reads still mask
       const inst = await engine.getInstance('Patient', 'p1');
@@ -212,7 +223,10 @@ store Vault in memory
 
     it('createInstance returns the unmasked created instance', async () => {
       const engine = await makeEngine();
-      const created = await engine.createInstance('Patient', { ...patientData, id: 'p3' } as EntityInstance);
+      const created = await engine.createInstance('Patient', {
+        ...patientData,
+        id: 'p3',
+      } as EntityInstance);
       // Masking is scoped to getInstance/getAllInstances; the create result is the real instance
       expect(created?.ssn).toBe('123-45-6789');
     });

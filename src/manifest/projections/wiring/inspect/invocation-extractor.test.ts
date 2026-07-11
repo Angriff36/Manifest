@@ -28,9 +28,7 @@ describe('extractRunManifestBody — literal vs non-literal body', () => {
         status: "draft",
       },
     }`);
-    expect(payloadSource.replace(/\s+/g, ' ').trim()).toBe(
-      '{ title: value, status: "draft", }',
-    );
+    expect(payloadSource.replace(/\s+/g, ' ').trim()).toBe('{ title: value, status: "draft", }');
     expect(bodyFields.sort()).toEqual(['status', 'title']);
   });
 
@@ -50,9 +48,7 @@ describe('extractRunManifestBody — literal vs non-literal body', () => {
       entity: "Event",
       user: { id: user.id, tenantId, role: user.role },
     }`);
-    expect(payloadSource).toBe(
-      'buildUpdateBody(existing, data, "draft", eventId)',
-    );
+    expect(payloadSource).toBe('buildUpdateBody(existing, data, "draft", eventId)');
     expect(bodyFields).toEqual([]);
   });
 
@@ -85,9 +81,7 @@ describe('extractRunManifestBody — literal vs non-literal body', () => {
       command: "update",
       entity: "Event",
     }`);
-    expect(payloadSource).toBe(
-      'buildUpdateBody(existing, data, "draft", input.eventId)',
-    );
+    expect(payloadSource).toBe('buildUpdateBody(existing, data, "draft", input.eventId)');
   });
 });
 
@@ -120,10 +114,7 @@ describe('extractObjectFieldNames — JavaScript comments', () => {
       }`),
     ).toEqual(['title', 'status']);
     expect(
-      readObjectLiteralFieldExpression(
-        `{ title: /* a, b, c */ value, status: "ok" }`,
-        'title',
-      ),
+      readObjectLiteralFieldExpression(`{ title: /* a, b, c */ value, status: "ok" }`, 'title'),
     ).toBe('value');
   });
 
@@ -151,12 +142,7 @@ describe('extractObjectFieldNames — JavaScript comments', () => {
   });
 
   it('6. real property after a block comment is still detected', () => {
-    expect(
-      objectLiteralHasKey(
-        `{ title: "x", /* skip */ eventDate: 1 }`,
-        'eventDate',
-      ),
-    ).toBe(true);
+    expect(objectLiteralHasKey(`{ title: "x", /* skip */ eventDate: 1 }`, 'eventDate')).toBe(true);
   });
 
   it('7. shorthand properties still work around comments', () => {
@@ -210,17 +196,12 @@ describe('extractObjectFieldNames — ES property shorthand', () => {
   });
 
   it('3. detects multiple shorthand properties', () => {
-    expect(extractObjectFieldNames('{ dropOff, bringHot }')).toEqual([
-      'dropOff',
-      'bringHot',
-    ]);
+    expect(extractObjectFieldNames('{ dropOff, bringHot }')).toEqual(['dropOff', 'bringHot']);
   });
 
   it('4. detects mixed explicit + shorthand', () => {
     expect(
-      extractObjectFieldNames(
-        '{ id: recipeVersionId, dropOff, bringHot, cookOnSite }',
-      ),
+      extractObjectFieldNames('{ id: recipeVersionId, dropOff, bringHot, cookOnSite }'),
     ).toEqual(['id', 'dropOff', 'bringHot', 'cookOnSite']);
   });
 
@@ -245,39 +226,21 @@ describe('extractObjectFieldNames — ES property shorthand', () => {
   });
 
   it('8. does not treat identifier inside ternary as a key', () => {
-    expect(
-      extractObjectFieldNames('{ value: condition ? dropOff : bringHot }'),
-    ).toEqual(['value']);
-    expect(
-      objectLiteralHasKey(
-        '{ value: condition ? dropOff : bringHot }',
-        'dropOff',
-      ),
-    ).toBe(false);
-    expect(
-      objectLiteralHasKey(
-        '{ value: condition ? dropOff : bringHot }',
-        'bringHot',
-      ),
-    ).toBe(false);
+    expect(extractObjectFieldNames('{ value: condition ? dropOff : bringHot }')).toEqual(['value']);
+    expect(objectLiteralHasKey('{ value: condition ? dropOff : bringHot }', 'dropOff')).toBe(false);
+    expect(objectLiteralHasKey('{ value: condition ? dropOff : bringHot }', 'bringHot')).toBe(
+      false,
+    );
   });
 
   it('9. shorthand field expression resolves to its identifier', () => {
-    expect(readObjectLiteralFieldExpression('{ dropOff }', 'dropOff')).toBe(
+    expect(readObjectLiteralFieldExpression('{ dropOff }', 'dropOff')).toBe('dropOff');
+    expect(readObjectLiteralFieldExpression('{ id: recipeVersionId, dropOff }', 'dropOff')).toBe(
       'dropOff',
     );
-    expect(
-      readObjectLiteralFieldExpression(
-        '{ id: recipeVersionId, dropOff }',
-        'dropOff',
-      ),
-    ).toBe('dropOff');
-    expect(
-      readObjectLiteralFieldExpression(
-        '{ id: recipeVersionId, dropOff }',
-        'id',
-      ),
-    ).toBe('recipeVersionId');
+    expect(readObjectLiteralFieldExpression('{ id: recipeVersionId, dropOff }', 'id')).toBe(
+      'recipeVersionId',
+    );
   });
 
   it('10. RecipeVersion.setPackaging Capsule shape yields all four fields', () => {
@@ -289,17 +252,11 @@ describe('extractObjectFieldNames — ES property shorthand', () => {
           cookOnSite,
         });
     `;
-    const invs = extractGeneratedClientCalls(
-      content,
-      new Set(['RecipeVersion.setPackaging']),
-    );
+    const invs = extractGeneratedClientCalls(content, new Set(['RecipeVersion.setPackaging']));
     expect(invs).toHaveLength(1);
-    expect(invs[0]!.bodyFields.sort()).toEqual(
-      ['bringHot', 'cookOnSite', 'dropOff', 'id'].sort(),
-    );
+    expect(invs[0]!.bodyFields.sort()).toEqual(['bringHot', 'cookOnSite', 'dropOff', 'id'].sort());
   });
 });
-
 
 describe('extractCommandArgLiteralsInManifestModules', () => {
   it('recovers lifecycle helper command literals (intended position)', () => {
@@ -326,7 +283,7 @@ describe('extractCommandArgLiteralsInManifestModules', () => {
         return runLifecycleCommand(menuId, "unpublish", {});
       }
     `;
-    const intents = extractAllManifestInvocations(content).map(i => i.intent);
+    const intents = extractAllManifestInvocations(content).map((i) => i.intent);
     expect(intents).toContain('Menu.markPublished');
     expect(intents).toContain('Menu.unpublish');
   });
@@ -352,7 +309,7 @@ describe('extractCommandArgLiteralsInManifestModules', () => {
         });
       }
     `;
-    const intents = extractAllManifestInvocations(content).map(i => i.intent);
+    const intents = extractAllManifestInvocations(content).map((i) => i.intent);
     expect(intents).toContain('Event.create');
     expect(intents).not.toContain('Event.title');
     expect(intents).not.toContain('Event.eventType');
@@ -370,9 +327,7 @@ describe('extractCommandArgLiteralsInManifestModules', () => {
       // Capsule-Pro is not always present in Manifest CI checkouts.
       return;
     }
-    const intents = new Set(
-      extractAllManifestInvocations(content).map(i => i.intent),
-    );
+    const intents = new Set(extractAllManifestInvocations(content).map((i) => i.intent));
     expect(intents.has('Event.create')).toBe(true);
     expect(intents.has('Event.title')).toBe(false);
     expect(intents.has('Event.eventType')).toBe(false);
@@ -392,12 +347,9 @@ describe('Capsule-Pro recipe-packaging-editor shorthand payload', () => {
     } catch {
       return;
     }
-    const invs = extractGeneratedClientCalls(
-      content,
-      new Set(['RecipeVersion.setPackaging']),
-    );
+    const invs = extractGeneratedClientCalls(content, new Set(['RecipeVersion.setPackaging']));
     expect(invs.length).toBeGreaterThanOrEqual(1);
-    const fields = new Set(invs.flatMap(i => i.bodyFields));
+    const fields = new Set(invs.flatMap((i) => i.bodyFields));
     expect(fields.has('id')).toBe(true);
     expect(fields.has('dropOff')).toBe(true);
     expect(fields.has('bringHot')).toBe(true);

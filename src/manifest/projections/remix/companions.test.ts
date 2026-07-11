@@ -123,7 +123,10 @@ describe('remix.companions surface', () => {
   });
 
   it('emits a local clerk stub when authImportPath is a local alias', async () => {
-    const result = await companions({ authProvider: 'clerk', authImportPath: '~/utils/clerk.server' });
+    const result = await companions({
+      authProvider: 'clerk',
+      authImportPath: '~/utils/clerk.server',
+    });
     const auth = byPath(result, 'app/utils/clerk.server.ts');
     expect(auth).toBeDefined();
     expect(auth!.code).toContain('export async function getAuth(');
@@ -131,11 +134,17 @@ describe('remix.companions surface', () => {
 
   it('emits a tenant companion at the configured provider path when tenantProvider is set', async () => {
     const result = await companions({
-      tenantProvider: { importPath: '~/utils/tenant', functionName: 'resolveTenantId', lookupKey: 'userId' },
+      tenantProvider: {
+        importPath: '~/utils/tenant',
+        functionName: 'resolveTenantId',
+        lookupKey: 'userId',
+      },
     });
     const tenant = byPath(result, 'app/utils/tenant.ts');
     expect(tenant).toBeDefined();
-    expect(tenant!.code).toContain('export async function resolveTenantId(userId: string): Promise<string | null>');
+    expect(tenant!.code).toContain(
+      'export async function resolveTenantId(userId: string): Promise<string | null>',
+    );
     expect(tenant!.code).toContain('import { database } from "~/utils/database.server";');
     // No tenant companion by default (inline userTenantMapping via the db companion).
     expect(byPath(await companions(), 'app/utils/tenant.ts')).toBeUndefined();
@@ -170,7 +179,9 @@ function localImportSpecifiers(code: string): string[] {
   return specs;
 }
 
-async function allArtifacts(options?: Record<string, unknown>): Promise<ProjectionResult['artifacts']> {
+async function allArtifacts(
+  options?: Record<string, unknown>,
+): Promise<ProjectionResult['artifacts']> {
   const source = `
     entity Recipe {
       property id: string

@@ -107,14 +107,14 @@ describe('add-required-input same-call runtime user.id', () => {
       capabilityId: 'Proposal.remove',
       autoFixableOnly: true,
     });
-    expect(result.applied.some(a => a.applied && a.verification?.ok)).toBe(true);
+    expect(result.applied.some((a) => a.applied && a.verification?.ok)).toBe(true);
     const after = resultToMap(files, result).get(ACTION_PATH)!;
     expect(after).toMatch(/body:\s*\{[^}]*userId\s*:\s*user\.id/);
     expect(after).toMatch(/user:\s*\{\s*id:\s*user\.id/);
     const report = reportFor(contract, resultToMap(files, result));
     expect(
       report.mismatches.some(
-        m =>
+        (m) =>
           m.kind === 'missing_required_input' &&
           m.capabilityId === 'Proposal.remove' &&
           m.parameter === 'userId',
@@ -138,7 +138,7 @@ export async function deleteProposal(id: string) {
     const report = reportFor(contract, files);
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const auto = bundle.plans.filter(
-      p =>
+      (p) =>
         p.automaticApplicationAllowed &&
         p.repairKind === 'add-required-input' &&
         p.capabilityId === 'Proposal.remove',
@@ -171,7 +171,7 @@ export async function deleteProposal(id: string) {
     const report = reportFor(contract, files);
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const auto = bundle.plans.filter(
-      p =>
+      (p) =>
         p.automaticApplicationAllowed &&
         p.repairKind === 'add-required-input' &&
         p.mismatch?.parameter === 'userId' &&
@@ -208,11 +208,9 @@ export async function deleteProposal(id: string, otherId: string) {
       capabilityId: 'Proposal.remove',
       autoFixableOnly: true,
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
+    expect(result.applied.some((a) => a.applied)).toBe(true);
     const after = resultToMap(files, result).get(ACTION_PATH)!;
-    expect(after).toMatch(
-      /command:\s*"remove"[\s\S]*?body:\s*\{[^}]*userId\s*:\s*user\.id/,
-    );
+    expect(after).toMatch(/command:\s*"remove"[\s\S]*?body:\s*\{[^}]*userId\s*:\s*user\.id/);
   });
 
   it('R5. different entity runtime user does not repair Proposal.remove', async () => {
@@ -244,9 +242,7 @@ export async function deleteProposal(id: string) {
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     expect(
       bundle.plans.some(
-        p =>
-          p.automaticApplicationAllowed &&
-          p.capabilityId === 'Proposal.remove',
+        (p) => p.automaticApplicationAllowed && p.capabilityId === 'Proposal.remove',
       ),
     ).toBe(false);
   });
@@ -280,9 +276,7 @@ export async function deleteProposal(id: string) {
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     expect(
       bundle.plans.some(
-        p =>
-          p.automaticApplicationAllowed &&
-          p.capabilityId === 'Proposal.remove',
+        (p) => p.automaticApplicationAllowed && p.capabilityId === 'Proposal.remove',
       ),
     ).toBe(false);
   });
@@ -305,9 +299,7 @@ export async function deleteProposal(id: string) {
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     expect(
       bundle.plans.some(
-        p =>
-          p.automaticApplicationAllowed &&
-          p.capabilityId === 'Proposal.remove',
+        (p) => p.automaticApplicationAllowed && p.capabilityId === 'Proposal.remove',
       ),
     ).toBe(false);
   });
@@ -321,7 +313,7 @@ export async function deleteProposal(id: string) {
       mode: 'one-defect',
       autoFixableOnly: true,
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
+    expect(result.applied.some((a) => a.applied)).toBe(true);
   });
 
   it('R9. incompatible typed local userId does not win over runtime user.id', async () => {
@@ -348,7 +340,7 @@ export async function deleteProposal(id: string) {
       capabilityId: 'Proposal.remove',
       autoFixableOnly: true,
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
+    expect(result.applied.some((a) => a.applied)).toBe(true);
     const after = resultToMap(files, result).get(ACTION_PATH)!;
     expect(after).toMatch(/userId\s*:\s*user\.id/);
     expect(after).not.toMatch(/body:\s*\{[^}]*userId\s*:\s*userId\b/);
@@ -360,15 +352,13 @@ export async function deleteProposal(id: string) {
     const report = reportFor(contract, files);
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p =>
+      (p) =>
         p.automaticApplicationAllowed &&
         p.repairKind === 'add-required-input' &&
         p.capabilityId === 'Proposal.remove',
     );
     expect(plan).toBeDefined();
-    expect(
-      plan!.edits.some(e => e.operation.type === 'insert-early-return-guard'),
-    ).toBe(false);
+    expect(plan!.edits.some((e) => e.operation.type === 'insert-early-return-guard')).toBe(false);
   });
 
   it('R11. exact target call alone changes under one-defect', async () => {
@@ -398,7 +388,7 @@ export async function deleteProposal(id: string) {
       mode: 'one-defect',
       autoFixableOnly: true,
     });
-    expect(result.applied.filter(a => a.applied)).toHaveLength(1);
+    expect(result.applied.filter((a) => a.applied)).toHaveLength(1);
     const after = resultToMap(files, result).get(ACTION_PATH)!;
     const userIdCount = (after.match(/userId\s*:/g) || []).length;
     expect(userIdCount).toBe(1);
@@ -413,7 +403,7 @@ export async function deleteProposal(id: string) {
       mode: 'one-defect',
       autoFixableOnly: true,
     });
-    expect(first.applied.some(a => a.applied)).toBe(true);
+    expect(first.applied.some((a) => a.applied)).toBe(true);
     const mid = resultToMap(files, first);
     const second = remediateWiringSync({
       contract,
@@ -422,7 +412,7 @@ export async function deleteProposal(id: string) {
       capabilityId: 'Proposal.remove',
       autoFixableOnly: true,
     });
-    expect(second.applied.some(a => a.applied)).toBe(false);
+    expect(second.applied.some((a) => a.applied)).toBe(false);
     expect(mid.get(ACTION_PATH)).toBe(resultToMap(mid, second).get(ACTION_PATH));
   });
 
@@ -432,7 +422,7 @@ export async function deleteProposal(id: string) {
     const before = reportFor(contract, files);
     expect(
       before.mismatches.some(
-        m =>
+        (m) =>
           m.kind === 'missing_required_input' &&
           m.capabilityId === 'Proposal.remove' &&
           m.parameter === 'userId',
@@ -447,7 +437,7 @@ export async function deleteProposal(id: string) {
     const after = reportFor(contract, resultToMap(files, result));
     expect(
       after.mismatches.some(
-        m =>
+        (m) =>
           m.kind === 'missing_required_input' &&
           m.capabilityId === 'Proposal.remove' &&
           m.parameter === 'userId',
@@ -472,10 +462,8 @@ export async function deleteProposal(id: string) {
       mode: 'one-defect',
       autoFixableOnly: true,
     });
-    expect(
-      result.applied.some(
-        a => a.applied && a.findingId.includes('Proposal.remove'),
-      ),
-    ).toBe(true);
+    expect(result.applied.some((a) => a.applied && a.findingId.includes('Proposal.remove'))).toBe(
+      true,
+    );
   });
 });

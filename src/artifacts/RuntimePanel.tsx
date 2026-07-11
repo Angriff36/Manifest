@@ -1,8 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
-import { Play, AlertCircle, CheckCircle, Code, User, Trash2, Clock, ChevronDown, ChevronRight, Shield, Ban, Plus, List, Info, Package } from 'lucide-react';
+import {
+  Play,
+  AlertCircle,
+  CheckCircle,
+  Code,
+  User,
+  Trash2,
+  Clock,
+  ChevronDown,
+  ChevronRight,
+  Shield,
+  Ban,
+  Plus,
+  List,
+  Info,
+  Package,
+} from 'lucide-react';
 import { compileToIR } from '../manifest/ir-compiler';
 import { RuntimeEngine } from '../manifest/runtime-engine';
-import type { CommandResult, EmittedEvent, PolicyDenial, EntityInstance, Store } from '../manifest/runtime-engine';
+import type {
+  CommandResult,
+  EmittedEvent,
+  PolicyDenial,
+  EntityInstance,
+  Store,
+} from '../manifest/runtime-engine';
 import type { IREntity, IRValue, IRProvenance } from '../manifest/ir';
 
 // Inline MemoryStore for browser demo (copied from runtime-engine)
@@ -53,7 +75,9 @@ interface RuntimePanelProps {
 
 export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
   const [engine, setEngine] = useState<RuntimeEngine | null>(null);
-  const [runtimeContextJson, setRuntimeContextJson] = useState('{\n  "user": {\n    "id": "u1",\n    "role": "cook"\n  }\n}');
+  const [runtimeContextJson, setRuntimeContextJson] = useState(
+    '{\n  "user": {\n    "id": "u1",\n    "role": "cook"\n  }\n}',
+  );
 
   // Entity and instance management
   const [entities, setEntities] = useState<IREntity[]>([]);
@@ -121,9 +145,9 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
           diagnostics: compileResult.diagnostics,
           hasIR: !!compileResult.ir,
           entityCount: compileResult.ir?.entities?.length,
-          entities: compileResult.ir?.entities?.map((e: IREntity) => e.name)
+          entities: compileResult.ir?.entities?.map((e: IREntity) => e.name),
         });
-        if (compileResult.diagnostics.some(d => d.severity === 'error')) {
+        if (compileResult.diagnostics.some((d) => d.severity === 'error')) {
           setEngine(null);
           setEntities([]);
           return;
@@ -171,7 +195,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
     return () => {
       cancelled = true;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, disabled]);
 
   // Load instances when entity selection changes
@@ -206,7 +230,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
     return () => {
       cancelled = true;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- Only re-run when entity changes, not when selectedInstanceId changes (intentional)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only re-run when entity changes, not when selectedInstanceId changes (intentional)
   }, [engine, selectedEntityName]);
 
   // Load computed values when instance selection changes
@@ -229,7 +253,11 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
         const computed: Record<string, unknown> = {};
         for (const comp of entity.computedProperties) {
           try {
-            computed[comp.name] = await engine.evaluateComputed(selectedEntityName, selectedInstanceId, comp.name);
+            computed[comp.name] = await engine.evaluateComputed(
+              selectedEntityName,
+              selectedInstanceId,
+              comp.name,
+            );
           } catch {
             computed[comp.name] = '<error>';
           }
@@ -307,14 +335,22 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
               // For required strings, provide a meaningful default
               defaultValues[prop.name] = isRequired ? `New ${selectedEntityName}` : '';
               break;
-            case 'number': defaultValues[prop.name] = 0; break;
-            case 'boolean': defaultValues[prop.name] = false; break;
-            default: defaultValues[prop.name] = null;
+            case 'number':
+              defaultValues[prop.name] = 0;
+              break;
+            case 'boolean':
+              defaultValues[prop.name] = false;
+              break;
+            default:
+              defaultValues[prop.name] = null;
           }
         }
       }
 
-      const newInstance = await engine.createInstance(selectedEntityName, defaultValues as unknown as EntityInstance);
+      const newInstance = await engine.createInstance(
+        selectedEntityName,
+        defaultValues as unknown as EntityInstance,
+      );
       if (newInstance) {
         // Refresh instances
         const instanceList = await engine.getAllInstances(selectedEntityName);
@@ -329,7 +365,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
 
   const handleDeleteInstance = (instanceId: string) => {
     // Filter from local state (RuntimeEngine doesn't have delete method)
-    setInstances(prev => prev.filter(i => i.id !== instanceId));
+    setInstances((prev) => prev.filter((i) => i.id !== instanceId));
     if (selectedInstanceId === instanceId) {
       setSelectedInstanceId(null);
     }
@@ -370,7 +406,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
 
       const result = await engine.runCommand(selectedCommand, params, {
         entityName: selectedEntityName,
-        instanceId: selectedInstanceId
+        instanceId: selectedInstanceId,
       });
       setCommandResult(result);
 
@@ -384,7 +420,11 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
         const computed: Record<string, unknown> = {};
         for (const comp of entity.computedProperties) {
           try {
-            computed[comp.name] = await engine.evaluateComputed(selectedEntityName, selectedInstanceId!, comp.name);
+            computed[comp.name] = await engine.evaluateComputed(
+              selectedEntityName,
+              selectedInstanceId!,
+              comp.name,
+            );
           } catch {
             computed[comp.name] = '<error>';
           }
@@ -405,7 +445,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
     const guardKey = `guard-${failure.index}`;
     const isExpanded = expandedDiagnostics.has(guardKey);
     const toggleExpanded = () => {
-      setExpandedDiagnostics(prev => {
+      setExpandedDiagnostics((prev) => {
         const next = new Set(prev);
         if (next.has(guardKey)) {
           next.delete(guardKey);
@@ -418,10 +458,9 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
 
     const resolvedValues = failure.resolved || [];
     const resolvedText = resolvedValues
-      .map(rv => {
-        const valueStr = typeof rv.value === 'string'
-          ? `"${rv.value}"`
-          : String(rv.value ?? 'undefined');
+      .map((rv) => {
+        const valueStr =
+          typeof rv.value === 'string' ? `"${rv.value}"` : String(rv.value ?? 'undefined');
         return `${rv.expression} = ${valueStr}`;
       })
       .join(', ');
@@ -432,11 +471,13 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
           onClick={toggleExpanded}
           className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rose-900/30 transition-colors rounded"
         >
-          {isExpanded ? <ChevronDown size={14} className="text-rose-400" /> : <ChevronRight size={14} className="text-rose-400" />}
+          {isExpanded ? (
+            <ChevronDown size={14} className="text-rose-400" />
+          ) : (
+            <ChevronRight size={14} className="text-rose-400" />
+          )}
           <Ban size={14} className="text-rose-400" />
-          <span className="text-sm font-medium text-rose-300">
-            Guard #{failure.index} failed
-          </span>
+          <span className="text-sm font-medium text-rose-300">Guard #{failure.index} failed</span>
         </button>
         {isExpanded && (
           <div className="px-3 pb-3">
@@ -458,7 +499,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
     const policyKey = `policy-${denial.policyName}`;
     const isExpanded = expandedDiagnostics.has(policyKey);
     const toggleExpanded = () => {
-      setExpandedDiagnostics(prev => {
+      setExpandedDiagnostics((prev) => {
         const next = new Set(prev);
         if (next.has(policyKey)) {
           next.delete(policyKey);
@@ -469,16 +510,13 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
       });
     };
 
-    const contextKeysText = denial.contextKeys.length > 0
-      ? denial.contextKeys.join(', ')
-      : 'none';
+    const contextKeysText = denial.contextKeys.length > 0 ? denial.contextKeys.join(', ') : 'none';
 
     const resolvedValues = denial.resolved || [];
     const resolvedText = resolvedValues
-      .map(rv => {
-        const valueStr = typeof rv.value === 'string'
-          ? `"${rv.value}"`
-          : String(rv.value ?? 'undefined');
+      .map((rv) => {
+        const valueStr =
+          typeof rv.value === 'string' ? `"${rv.value}"` : String(rv.value ?? 'undefined');
         return `${rv.expression} = ${valueStr}`;
       })
       .join(', ');
@@ -489,7 +527,11 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
           onClick={toggleExpanded}
           className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-amber-900/30 transition-colors rounded"
         >
-          {isExpanded ? <ChevronDown size={14} className="text-amber-400" /> : <ChevronRight size={14} className="text-amber-400" />}
+          {isExpanded ? (
+            <ChevronDown size={14} className="text-amber-400" />
+          ) : (
+            <ChevronRight size={14} className="text-amber-400" />
+          )}
           <Shield size={14} className="text-amber-400" />
           <span className="text-sm font-medium text-amber-300">
             Policy Denial: <code className="text-amber-400">{denial.policyName}</code>
@@ -516,7 +558,8 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
               </div>
             )}
             <div className="text-xs text-amber-400">
-              <span className="font-medium">Context Keys:</span> <span className="font-mono">{contextKeysText}</span>
+              <span className="font-medium">Context Keys:</span>{' '}
+              <span className="font-mono">{contextKeysText}</span>
             </div>
           </div>
         )}
@@ -525,8 +568,8 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
   };
 
   // Get current entity and command info
-  const selectedEntity = entities.find(e => e.name === selectedEntityName);
-  const selectedInstance = instances.find(i => i.id === selectedInstanceId);
+  const selectedEntity = entities.find((e) => e.name === selectedEntityName);
+  const selectedInstance = instances.find((i) => i.id === selectedInstanceId);
   const selectedCommandInfo = selectedEntity
     ? engine?.getCommand(selectedCommand, selectedEntityName)
     : null;
@@ -538,9 +581,10 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
   const getParameterHint = () => {
     if (commandParamsInfo.length === 0) return 'No parameters';
 
-    const hints = commandParamsInfo.map(p => {
+    const hints = commandParamsInfo.map((p) => {
       const required = p.required ? 'required' : 'optional';
-      const defaultHint = p.defaultValue !== undefined ? ` (default: ${JSON.stringify(p.defaultValue)})` : '';
+      const defaultHint =
+        p.defaultValue !== undefined ? ` (default: ${JSON.stringify(p.defaultValue)})` : '';
       return `${p.name}: ${p.type.name} (${required})${defaultHint}`;
     });
 
@@ -574,9 +618,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
                 {showProvenance ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                 <Shield size={12} className="text-emerald-400" />
                 <span className="font-medium">IR Provenance</span>
-                <span className="text-gray-600">
-                  v{provenance.compilerVersion}
-                </span>
+                <span className="text-gray-600">v{provenance.compilerVersion}</span>
               </button>
               {showProvenance && (
                 <div className="mt-2 ml-4 p-2 bg-gray-900/50 rounded border border-gray-800 space-y-1">
@@ -629,7 +671,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
             <div className="text-xs text-gray-500 uppercase tracking-wider">Entities</div>
           </div>
           <div className="p-2 space-y-1">
-            {entities.map(entity => (
+            {entities.map((entity) => (
               <button
                 key={entity.name}
                 onClick={() => setSelectedEntityName(entity.name)}
@@ -640,7 +682,12 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <Package size={14} className={selectedEntityName === entity.name ? 'text-sky-400' : 'text-gray-500'} />
+                  <Package
+                    size={14}
+                    className={
+                      selectedEntityName === entity.name ? 'text-sky-400' : 'text-gray-500'
+                    }
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-200 truncate">{entity.name}</div>
                     <div className="text-xs text-gray-500">
@@ -675,7 +722,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
                     No instances. Create one to get started.
                   </div>
                 ) : (
-                  instances.map(instance => (
+                  instances.map((instance) => (
                     <button
                       key={instance.id}
                       onClick={() => setSelectedInstanceId(instance.id)}
@@ -689,7 +736,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
                         {instance.id}
                       </div>
                       {/* Show a few key properties */}
-                      {selectedEntity.properties.slice(0, 2).map(prop => (
+                      {selectedEntity.properties.slice(0, 2).map((prop) => (
                         <div key={prop.name} className="text-xs text-gray-500 truncate">
                           {prop.name}: {String(instance[prop.name] ?? '<null>')}
                         </div>
@@ -730,17 +777,21 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
                     Properties
                   </h4>
                   <div className="grid grid-cols-2 gap-2">
-                    {selectedEntity.properties.map(prop => {
+                    {selectedEntity.properties.map((prop) => {
                       const value = selectedInstance[prop.name];
                       const isRequired = prop.modifiers.includes('required');
-                      const displayValue = value === undefined || value === null
-                        ? '<null>'
-                        : typeof value === 'object'
-                          ? JSON.stringify(value)
-                          : String(value);
+                      const displayValue =
+                        value === undefined || value === null
+                          ? '<null>'
+                          : typeof value === 'object'
+                            ? JSON.stringify(value)
+                            : String(value);
 
                       return (
-                        <div key={prop.name} className="p-2 bg-gray-900/50 rounded border border-gray-800">
+                        <div
+                          key={prop.name}
+                          className="p-2 bg-gray-900/50 rounded border border-gray-800"
+                        >
                           <div className="text-xs text-gray-500">
                             {prop.name}
                             {isRequired && <span className="text-rose-400 ml-1">*</span>}
@@ -762,16 +813,20 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
                       Computed Properties
                     </h4>
                     <div className="grid grid-cols-3 gap-2">
-                      {selectedEntity.computedProperties.map(comp => {
+                      {selectedEntity.computedProperties.map((comp) => {
                         const value = computedValues[comp.name];
-                        const displayValue = value === undefined || value === null
-                          ? '<null>'
-                          : typeof value === 'object'
-                            ? JSON.stringify(value)
-                            : String(value);
+                        const displayValue =
+                          value === undefined || value === null
+                            ? '<null>'
+                            : typeof value === 'object'
+                              ? JSON.stringify(value)
+                              : String(value);
 
                         return (
-                          <div key={comp.name} className="p-2 bg-gray-900/30 rounded border border-gray-800">
+                          <div
+                            key={comp.name}
+                            className="p-2 bg-gray-900/30 rounded border border-gray-800"
+                          >
                             <div className="text-xs text-gray-500">{comp.name}</div>
                             <div className="text-sm text-gray-300 truncate" title={displayValue}>
                               {displayValue}
@@ -786,7 +841,9 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
                 {/* Command Execution */}
                 {selectedEntity.commands.length > 0 && (
                   <div className="mb-6">
-                    <h4 className="text-xs text-gray-500 uppercase tracking-wider mb-2">Execute Command</h4>
+                    <h4 className="text-xs text-gray-500 uppercase tracking-wider mb-2">
+                      Execute Command
+                    </h4>
                     <div className="space-y-2">
                       <div>
                         <label className="text-xs text-gray-500 mb-1 block">Command</label>
@@ -796,11 +853,14 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
                           disabled={disabled || !engine}
                           className="w-full px-2 py-1.5 bg-gray-900 border border-gray-700 rounded text-xs text-gray-300 focus:outline-none focus:border-sky-500 disabled:opacity-50"
                         >
-                          {selectedEntity.commands.map(cmdName => {
+                          {selectedEntity.commands.map((cmdName) => {
                             const cmd = engine?.getCommand(cmdName, selectedEntityName);
                             return (
                               <option key={cmdName} value={cmdName}>
-                                {cmdName} {cmd?.parameters.length ? `(${cmd.parameters.map(p => p.name).join(', ')})` : ''}
+                                {cmdName}{' '}
+                                {cmd?.parameters.length
+                                  ? `(${cmd.parameters.map((p) => p.name).join(', ')})`
+                                  : ''}
                               </option>
                             );
                           })}
@@ -808,18 +868,18 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
                       </div>
                       {commandParamsInfo.length > 0 && (
                         <div>
-                          <label className="text-xs text-gray-500 mb-1 block">Parameters (JSON)</label>
+                          <label className="text-xs text-gray-500 mb-1 block">
+                            Parameters (JSON)
+                          </label>
                           <input
                             type="text"
                             value={commandParams}
                             onChange={(e) => setCommandParams(e.target.value)}
                             disabled={disabled || !engine}
                             className="w-full px-2 py-1.5 bg-gray-900 border border-gray-700 rounded text-xs font-mono text-gray-300 focus:outline-none focus:border-sky-500 disabled:opacity-50"
-                            placeholder={`{ ${commandParamsInfo.map(p => `"${p.name}": ${p.type.name}`).join(', ')} }`}
+                            placeholder={`{ ${commandParamsInfo.map((p) => `"${p.name}": ${p.type.name}`).join(', ')} }`}
                           />
-                          <div className="text-xs text-gray-500 mt-1">
-                            {getParameterHint()}
-                          </div>
+                          <div className="text-xs text-gray-500 mt-1">{getParameterHint()}</div>
                         </div>
                       )}
                       <button
@@ -848,20 +908,24 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
 
                 {commandResult && (
                   <div className="mb-4">
-                    <div className={`p-3 rounded border ${
-                      commandResult.success
-                        ? 'bg-emerald-900/20 border-emerald-800/50'
-                        : 'bg-rose-900/20 border-rose-800/50'
-                    }`}>
+                    <div
+                      className={`p-3 rounded border ${
+                        commandResult.success
+                          ? 'bg-emerald-900/20 border-emerald-800/50'
+                          : 'bg-rose-900/20 border-rose-800/50'
+                      }`}
+                    >
                       <div className="flex items-center gap-2 mb-2">
                         {commandResult.success ? (
                           <CheckCircle size={16} className="text-emerald-400" />
                         ) : (
                           <AlertCircle size={16} className="text-rose-400" />
                         )}
-                        <span className={`text-sm font-medium ${
-                          commandResult.success ? 'text-emerald-300' : 'text-rose-300'
-                        }`}>
+                        <span
+                          className={`text-sm font-medium ${
+                            commandResult.success ? 'text-emerald-300' : 'text-rose-300'
+                          }`}
+                        >
                           {commandResult.success ? 'Success' : 'Failed'}
                         </span>
                       </div>
@@ -878,7 +942,10 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
                         <div className="mt-3">
                           <div className="text-xs text-gray-400 mb-1">Emitted Events:</div>
                           {commandResult.emittedEvents.map((event, i) => (
-                            <div key={i} className="text-xs font-mono text-emerald-300 bg-gray-900/50 p-2 rounded mt-1">
+                            <div
+                              key={i}
+                              className="text-xs font-mono text-emerald-300 bg-gray-900/50 p-2 rounded mt-1"
+                            >
                               {event.name} ({event.channel})
                             </div>
                           ))}
@@ -949,30 +1016,31 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
           </div>
           <div className="p-2 space-y-2">
             {eventLog.length === 0 ? (
-              <div className="text-xs text-gray-500 text-center py-4">
-                No events yet
-              </div>
+              <div className="text-xs text-gray-500 text-center py-4">No events yet</div>
             ) : (
-              eventLog.slice().reverse().map((event, index) => (
-                <div
-                  key={index}
-                  className="p-2 bg-gray-900/50 rounded border border-gray-800 hover:border-purple-800/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-medium text-purple-300">{event.name}</span>
-                    <span className="text-xs text-gray-600 font-mono">({event.channel})</span>
+              eventLog
+                .slice()
+                .reverse()
+                .map((event, index) => (
+                  <div
+                    key={index}
+                    className="p-2 bg-gray-900/50 rounded border border-gray-800 hover:border-purple-800/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-purple-300">{event.name}</span>
+                      <span className="text-xs text-gray-600 font-mono">({event.channel})</span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(event.timestamp).toLocaleTimeString()}
+                    </div>
+                    <div className="mt-1">
+                      <div className="text-xs text-gray-600 mb-1">Payload:</div>
+                      <pre className="text-xs font-mono text-gray-400 bg-gray-950 p-1.5 rounded overflow-auto border border-gray-800">
+                        {JSON.stringify(event.payload, null, 2)}
+                      </pre>
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(event.timestamp).toLocaleTimeString()}
-                  </div>
-                  <div className="mt-1">
-                    <div className="text-xs text-gray-600 mb-1">Payload:</div>
-                    <pre className="text-xs font-mono text-gray-400 bg-gray-950 p-1.5 rounded overflow-auto border border-gray-800">
-                      {JSON.stringify(event.payload, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              ))
+                ))
             )}
           </div>
         </div>

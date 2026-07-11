@@ -99,9 +99,12 @@ export function resolveKyselyColumnType(
  */
 export function dialectClassName(dialect: KyselyDialect): string {
   switch (dialect) {
-    case 'postgresql': return 'PostgresDialect';
-    case 'mysql': return 'MysqlDialect';
-    case 'sqlite': return 'SqliteDialect';
+    case 'postgresql':
+      return 'PostgresDialect';
+    case 'mysql':
+      return 'MysqlDialect';
+    case 'sqlite':
+      return 'SqliteDialect';
   }
 }
 
@@ -110,8 +113,11 @@ export function dialectClassName(dialect: KyselyDialect): string {
  */
 export function dialectConfigTypeName(dialect: KyselyDialect): string {
   switch (dialect) {
-    case 'postgresql': return 'PostgresDialectConfig';
-    case 'mysql': return 'MysqlDialectConfig';
-    case 'sqlite': return 'SqliteDialectConfig';
+    case 'postgresql':
+      return 'PostgresDialectConfig';
+    case 'mysql':
+      return 'MysqlDialectConfig';
+    case 'sqlite':
+      return 'SqliteDialectConfig';
   }
 }

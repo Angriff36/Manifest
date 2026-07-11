@@ -12,19 +12,13 @@ import {
   findProperty,
   callMatchesCapability,
 } from './ast-utils.js';
-import {
-  findPayloadObjectInCall,
-  removeProperty,
-  addProperty,
-} from './patch-payload.js';
+import { findPayloadObjectInCall, removeProperty, addProperty } from './patch-payload.js';
 import {
   ensureExportSymbols,
   applyEnsureNamedImports,
   replaceCapabilityPayloadWithFullBody,
 } from './patch-full-body.js';
-import {
-  insertEarlyReturnGuard as insertGuardAtCall,
-} from './required-input-sibling-guard.js';
+import { insertEarlyReturnGuard as insertGuardAtCall } from './required-input-sibling-guard.js';
 
 export interface PatchApplyResult {
   ok: boolean;
@@ -133,7 +127,7 @@ export function applyRepairPlan(
   if (
     plan.repairKind === 'wire-existing-control' &&
     editsApplied === 0 &&
-    plan.edits.some(e => e.operation.type === 'wire-control-to-binding')
+    plan.edits.some((e) => e.operation.type === 'wire-control-to-binding')
   ) {
     return {
       ok: false,
@@ -152,11 +146,7 @@ export function applyRepairPlan(
   };
 }
 
-function applyOperation(
-  content: string,
-  fileName: string,
-  op: RepairOperation,
-): string | null {
+function applyOperation(content: string, fileName: string, op: RepairOperation): string | null {
   switch (op.type) {
     case 'replace-object-property-value':
       return replacePropertyValue(content, fileName, op);
@@ -192,12 +182,7 @@ function replacePropertyValue(
 ): string | null {
   // Prefer surgical text edit — never reprint the whole file (preserves formatting).
   if (content.includes(op.fromExpression)) {
-    const replaced = replacePropertyText(
-      content,
-      op.parameter,
-      op.fromExpression,
-      op.toExpression,
-    );
+    const replaced = replacePropertyText(content, op.parameter, op.fromExpression, op.toExpression);
     if (replaced !== content) return replaced;
   }
 
@@ -215,10 +200,7 @@ function replacePropertyValue(
   let splice: { start: number; end: number } | undefined;
   const visit = (node: import('typescript').Node) => {
     if (splice) return;
-    if (
-      ts.isCallExpression(node) &&
-      callMatchesCapability(node, content, op.capabilityId)
-    ) {
+    if (ts.isCallExpression(node) && callMatchesCapability(node, content, op.capabilityId)) {
       const obj = findPayloadObjectInCall(node);
       if (!obj) return;
       const prop = findProperty(obj, op.parameter);
@@ -243,9 +225,7 @@ function replacePropertyValue(
   }
 
   // Last resort: join-strip regex on the property
-  const joinRe = new RegExp(
-    `(${escape(op.parameter)}\\s*:\\s*)([^,\\n}]+\\.join\\s*\\([^)]*\\))`,
-  );
+  const joinRe = new RegExp(`(${escape(op.parameter)}\\s*:\\s*)([^,\\n}]+\\.join\\s*\\([^)]*\\))`);
   if (joinRe.test(content)) {
     return content.replace(joinRe, `$1${op.toExpression}`);
   }
@@ -259,12 +239,7 @@ function replaceCall(
 ): string | null {
   let next = content;
   if (op.ensureImport) {
-    next = ensureNamedImports(
-      next,
-      fileName,
-      op.ensureImport.module,
-      op.ensureImport.names,
-    );
+    next = ensureNamedImports(next, fileName, op.ensureImport.module, op.ensureImport.names);
   }
   // For trusted-field migration we primarily remove the field; call migration
   // is optional and only when executeCommand is clearly the callee.
@@ -283,12 +258,12 @@ function addInvalidation(
 ): string | null {
   const hints = op.queryKeyHints;
   if (hints.length === 0) return content;
-  const already = hints.every(h => content.includes(h));
+  const already = hints.every((h) => content.includes(h));
   if (already && /invalidateQueries/.test(content)) return content;
 
   if (op.pattern === 'react-query') {
     const block = hints
-      .map(h => `  void queryClient.invalidateQueries({ queryKey: ${h} });`)
+      .map((h) => `  void queryClient.invalidateQueries({ queryKey: ${h} });`)
       .join('\n');
     if (content.includes(block.trim())) return content;
     // Insert after successful mutation await if present
@@ -305,7 +280,9 @@ function addInvalidation(
     if (content.includes(line.trim())) return content;
     const m = /await\s+[^;]+;/.exec(content);
     if (!m) return content;
-    return content.slice(0, m.index + m[0].length) + '\n' + line + content.slice(m.index + m[0].length);
+    return (
+      content.slice(0, m.index + m[0].length) + '\n' + line + content.slice(m.index + m[0].length)
+    );
   }
   return content;
 }
@@ -323,15 +300,10 @@ function rewireLifecycle(
     `(executeCommand\\s*\\(\\s*["'])${escape(fromEntity)}(["']\\s*,\\s*["'])${escape(fromCmd)}(["'])`,
   );
   if (re.test(next)) {
-    next = next.replace(
-      re,
-      `$1${op.entity}$2${op.command}$3`,
-    );
+    next = next.replace(re, `$1${op.entity}$2${op.command}$3`);
   }
   // runManifestCommand command: "old"
-  const re2 = new RegExp(
-    `(command\\s*:\\s*["'])${escape(fromCmd)}(["'])`,
-  );
+  const re2 = new RegExp(`(command\\s*:\\s*["'])${escape(fromCmd)}(["'])`);
   if (re2.test(next) && next.includes(`"${fromEntity}"`)) {
     next = next.replace(re2, `$1${op.command}$2`);
   }
@@ -345,18 +317,12 @@ function wireControl(
 ): string | null {
   let next = content;
   if (op.ensureImport) {
-    next = ensureNamedImports(
-      next,
-      fileName,
-      op.ensureImport.module,
-      op.ensureImport.names,
-    );
+    next = ensureNamedImports(next, fileName, op.ensureImport.module, op.ensureImport.names);
   }
   if (next.includes(`${op.bindingCallee}(`)) return next; // already wired
 
   const payload =
-    op.payloadExpression ??
-    (op.identityExpression ? `{ id: ${op.identityExpression} }` : null);
+    op.payloadExpression ?? (op.identityExpression ? `{ id: ${op.identityExpression} }` : null);
   if (!payload) {
     // Instance/required inputs unknown — refuse rather than emit empty {}.
     return null;
@@ -374,9 +340,7 @@ function wireControl(
       return next.replace(exactHandler, `$1${replacement}$2`);
     }
     // Named handler reference: onClick={handleX}
-    const named = new RegExp(
-      `((?:onClick|onPress)\\s*=\\s*\\{\\s*)${escape(snippet)}(\\s*\\})`,
-    );
+    const named = new RegExp(`((?:onClick|onPress)\\s*=\\s*\\{\\s*)${escape(snippet)}(\\s*\\})`);
     if (named.test(next)) {
       return next.replace(named, `$1${replacement}$2`);
     }
@@ -397,10 +361,7 @@ function wireControl(
     const noopInControl =
       /(onClick|onPress)\s*=\s*\{\s*(?:\(\s*\)\s*=>\s*)?(?:noop|undefined|set\w+\([^)]*\))\s*\}/;
     if (noopInControl.test(control)) {
-      control = control.replace(
-        noopInControl,
-        `$1={${replacement}}`,
-      );
+      control = control.replace(noopInControl, `$1={${replacement}}`);
       return next.replace(op.controlSource, control);
     }
     const namedInControl = /(onClick|onPress)\s*=\s*\{\s*([A-Za-z_$][\w$]*)\s*\}/;
@@ -411,24 +372,16 @@ function wireControl(
   }
 
   // Explicit capability placeholder — only on the matching attribute
-  const capAttr = op.controlSymbol
-    ? `data-manifest-capability`
-    : null;
+  const capAttr = op.controlSymbol ? `data-manifest-capability` : null;
   if (capAttr && /data-manifest-capability="[^"]+"/.test(next)) {
-    const withHandler =
-      /(<button\b)([^>]*)(data-manifest-capability="[^"]+")([^>]*)(>)/i;
-    if (
-      withHandler.test(next) &&
-      !next.includes(`onClick={() => { void ${op.bindingCallee}`)
-    ) {
+    const withHandler = /(<button\b)([^>]*)(data-manifest-capability="[^"]+")([^>]*)(>)/i;
+    if (withHandler.test(next) && !next.includes(`onClick={() => { void ${op.bindingCallee}`)) {
       // Only add onClick when missing; never replace an unrelated set* elsewhere.
-      const buttonHasOnClick = /data-manifest-capability="[^"]+"[^>]*onClick=/i.test(next) ||
+      const buttonHasOnClick =
+        /data-manifest-capability="[^"]+"[^>]*onClick=/i.test(next) ||
         /onClick=[^>]*data-manifest-capability=/i.test(next);
       if (!buttonHasOnClick) {
-        return next.replace(
-          withHandler,
-          `$1$2$3$4 onClick={${replacement}}$5`,
-        );
+        return next.replace(withHandler, `$1$2$3$4 onClick={${replacement}}$5`);
       }
       // Replace onClick only on the capability-marked control
       return next.replace(
@@ -454,9 +407,7 @@ function replacePropertyText(
   const keyRe = new RegExp(`\\b${escape(parameter)}\\s*:\\s*`);
   const keyMatch = keyRe.exec(content);
   if (!keyMatch) {
-    const joinRe = new RegExp(
-      `(${escape(parameter)}\\s*:\\s*)([^,\\n}]+\\.join\\s*\\([^)]*\\))`,
-    );
+    const joinRe = new RegExp(`(${escape(parameter)}\\s*:\\s*)([^,\\n}]+\\.join\\s*\\([^)]*\\))`);
     return content.replace(joinRe, `$1${toExpression}`);
   }
   const valueStart = keyMatch.index + keyMatch[0].length;
@@ -464,18 +415,14 @@ function replacePropertyText(
   if (!afterKey.startsWith(fromExpression)) {
     // Allow whitespace between key and value already consumed by keyRe.
     // If fromExpression is not at the property value, try join-strip only.
-    const joinRe = new RegExp(
-      `(${escape(parameter)}\\s*:\\s*)([^,\\n}]+\\.join\\s*\\([^)]*\\))`,
-    );
+    const joinRe = new RegExp(`(${escape(parameter)}\\s*:\\s*)([^,\\n}]+\\.join\\s*\\([^)]*\\))`);
     if (joinRe.test(content)) {
       return content.replace(joinRe, `$1${toExpression}`);
     }
     return content;
   }
   return (
-    content.slice(0, valueStart) +
-    toExpression +
-    content.slice(valueStart + fromExpression.length)
+    content.slice(0, valueStart) + toExpression + content.slice(valueStart + fromExpression.length)
   );
 }
 

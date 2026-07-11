@@ -8,7 +8,9 @@ Enforced by: src/manifest/conformance/**, npm test
 This document defines built-in identifiers and functions available during expression evaluation.
 
 ## Core Identifiers (Required)
+
 A conforming runtime MUST provide these identifiers in the evaluation context:
+
 - `self`: the current entity instance, or `null` when no instance is bound
 - `this`: alias of `self`
 - `user`: the current user object, or `null` when unauthenticated
@@ -18,8 +20,10 @@ These identifiers are not reserved keywords in IR; they are injected by the runt
 If a runtime does not provide required built-ins, it is non-conforming even if a particular manifest does not reference them.
 
 ### Context Member Access
+
 The following `context.*` bindings are spec-guaranteed when the host runtime
 populates them (see `semantics.md` § "Runtime Context Schema"):
+
 - `context.tenantId: string | undefined`
 - `context.orgId: string | undefined`
 - `context.actorId: string | undefined`
@@ -32,13 +36,17 @@ Referencing an unset field MUST evaluate to `undefined` (no exception).
 The runtime MUST NOT auto-populate these fields; they are caller-supplied.
 
 ## Core Literals (Required)
+
 A conforming runtime MUST support these literal identifiers:
+
 - `true`
 - `false`
 - `null`
 
 ## Standard Library (Required)
+
 A conforming runtime MUST provide:
+
 - `now(): number` - returns the current time (milliseconds since epoch).
 - `uuid(): string` - returns a globally unique identifier.
 
@@ -63,6 +71,7 @@ Evidence: conformance fixture `56-expression-builtins.manifest`.
 ### Property Modifier: `searchable`
 
 The `searchable` modifier may be applied to `string` properties to declare them as full-text search targets. The compiler emits an error diagnostic if `searchable` is applied to a non-string property. In projection generators, `searchable` properties generate:
+
 - **Prisma**: `@@fulltext([field1, field2])` model attribute
 - **Drizzle (PostgreSQL)**: GIN index on `to_tsvector('english', ...)` expression
 
@@ -88,6 +97,7 @@ The `searchable` modifier may be applied to `string` properties to declare them 
 - `map(arr, mapper)` — apply `mapper` to each element, return new array
 
 Aggregate functions are designed for computed properties over `hasMany` relationships:
+
 ```manifest
 entity Order {
   hasMany lineItems: LineItem
@@ -116,6 +126,7 @@ All date builtins are pure and UTC-only.
 - `flag(name)` — resolves a feature flag value from the configured provider. Returns the provider's value (boolean, string, number, or object) when a `flagProvider` is configured via `RuntimeOptions.flagProvider`. Returns `false` when no provider is configured (safe default — features off). Returns `false` when `name` is not a string. Purity: `time-dependent` (flag values may change based on external state).
 
 Feature flags enable commands and policies to reference feature flags declaratively:
+
 ```manifest
 entity Feature {
   property status: string = "off"
@@ -128,6 +139,7 @@ entity Feature {
 ```
 
 Provider configuration:
+
 ```typescript
 const runtime = new RuntimeEngine(ir, context, {
   flagProvider: (name) => launchDarklyClient.variation(name, false),
@@ -148,10 +160,10 @@ Custom builtins are declared via the `BuiltinFunctionPlugin` interface in `plugi
 
 ```typescript
 interface BuiltinFunctionPlugin {
-  name: string;                          // Function identifier
-  purity: 'pure' | 'time-dependent' | 'random';  // Determinism guarantee
-  arity: number;                         // Required arguments (-1 for variadic)
-  fn: (...args: unknown[]) => unknown;   // Evaluation implementation
+  name: string; // Function identifier
+  purity: 'pure' | 'time-dependent' | 'random'; // Determinism guarantee
+  arity: number; // Required arguments (-1 for variadic)
+  fn: (...args: unknown[]) => unknown; // Evaluation implementation
 }
 ```
 
@@ -207,8 +219,6 @@ entity Counter {
 Evidence: runtime-engine.test.ts § "Custom Builtins (plugin injection)".
 
 ### Nonconformance
+
 - ~~The IR runtime does not provide `now()` or `uuid()` built-ins.~~
 - **RESOLVED (2026-02-05)**: Both functions are implemented in runtime-engine.ts:279-284. `now()` uses `Date.now()` (or custom override), `uuid()` uses `crypto.randomUUID()` (or custom override).
-
-
-

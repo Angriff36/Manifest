@@ -119,7 +119,7 @@ describe.runIf(ioredisAvailable)('RedisStore', () => {
 
     const all = await store.getAll();
     expect(all).toHaveLength(3);
-    expect(all.map(e => e.id).sort()).toEqual(['all-1', 'all-2', 'all-3']);
+    expect(all.map((e) => e.id).sort()).toEqual(['all-1', 'all-2', 'all-3']);
   });
 
   it('clears all entities', async () => {
@@ -166,12 +166,10 @@ describe.runIf(ioredisAvailable)('RedisStore', () => {
       keyPrefix: 'test:pubsub:',
     });
 
-    await expect(
-      pubSubStore.subscribe('test-channel', () => {})
-    ).rejects.toThrow(/events\/redis/);
-    await expect(
-      pubSubStore.publishEvent('test-channel', { name: 'test' })
-    ).rejects.toThrow(/events\/redis/);
+    await expect(pubSubStore.subscribe('test-channel', () => {})).rejects.toThrow(/events\/redis/);
+    await expect(pubSubStore.publishEvent('test-channel', { name: 'test' })).rejects.toThrow(
+      /events\/redis/,
+    );
 
     await pubSubStore.close();
   });

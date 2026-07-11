@@ -31,10 +31,7 @@ describeLive('PostgresAuditSink (live database)', () => {
 
   beforeAll(async () => {
     pool = new Pool({ connectionString: url });
-    const schema = readFileSync(
-      resolve(__dirname, 'postgres.sql'),
-      'utf8'
-    );
+    const schema = readFileSync(resolve(__dirname, 'postgres.sql'), 'utf8');
     // Run the shipped schema verbatim — the same statements a downstream
     // operator would run in production.
     await pool.query(`DROP TABLE IF EXISTS ${TABLE} CASCADE`);
@@ -69,10 +66,7 @@ describeLive('PostgresAuditSink (live database)', () => {
       irHash: 'sha256-live',
     };
     await sink.emit(record);
-    const { rows } = await pool.query(
-      `SELECT * FROM ${TABLE} WHERE record_id = $1`,
-      ['live-r1']
-    );
+    const { rows } = await pool.query(`SELECT * FROM ${TABLE} WHERE record_id = $1`, ['live-r1']);
     expect(rows).toHaveLength(1);
     expect(rows[0].tenant_id).toBe('t1');
     expect(rows[0].command_id).toBe('Item.create');
@@ -91,10 +85,9 @@ describeLive('PostgresAuditSink (live database)', () => {
     await sink.emit(record);
     await sink.emit({ ...record, outcome: 'guard_denied' });
 
-    const { rows } = await pool.query(
-      `SELECT outcome FROM ${TABLE} WHERE record_id = $1`,
-      ['live-dup']
-    );
+    const { rows } = await pool.query(`SELECT outcome FROM ${TABLE} WHERE record_id = $1`, [
+      'live-dup',
+    ]);
     expect(rows).toHaveLength(1);
     // First write wins — ON CONFLICT DO NOTHING.
     expect(rows[0].outcome).toBe('success');

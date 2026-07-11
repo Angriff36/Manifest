@@ -1,7 +1,7 @@
 ---
-title: "Prisma schema projection"
+title: 'Prisma schema projection'
 description: "Generate a Prisma schema from Manifest IR. Compile-time only, app-agnostic, with full @relation wiring, decimal defaults for money, and structured diagnostics for everything the projection can't safely emit."
-sidebarTitle: "Prisma"
+sidebarTitle: 'Prisma'
 ---
 
 The **Prisma projection** reads compiled Manifest IR and emits a `schema.prisma` artifact. It is compile-time only — it does not connect to a database, run migrations, or know anything about any specific application. All relational concepts (table names, column names, decimal precision, composite indexes, foreign-key field names) live in projection config; Manifest core stays backend-neutral.
@@ -9,7 +9,10 @@ The **Prisma projection** reads compiled Manifest IR and emits a `schema.prisma`
 The projection ships **inside the main `@angriff36/manifest` package** — no separate install needed. Running `manifest generate -p prisma` works out of the box.
 
 <Note>
-An earlier pre-release explored shipping the projection as `@manifest/projection-prisma`. That package was never published. Since v1.0.0 the projection is bundled in `@angriff36/manifest` with the same internal separation (`src/manifest/projections/prisma/`) as the Next.js and routes projections.
+  An earlier pre-release explored shipping the projection as `@manifest/projection-prisma`. That
+  package was never published. Since v1.0.0 the projection is bundled in `@angriff36/manifest` with
+  the same internal separation (`src/manifest/projections/prisma/`) as the Next.js and routes
+  projections.
 </Note>
 
 For programmatic use, import from the main package:
@@ -86,37 +89,39 @@ export default defineConfig({
 
 ## What gets emitted, what gets skipped
 
-| IR shape | Projection behavior |
-| --- | --- |
-| `entity X { ... }` + `store X in durable` (or `postgres` / `supabase`) | Emits a Prisma `model` |
-| `entity X { ... }` + `store X in memory` (or `localStorage`) | **Skipped** with `PRISMA_SKIPPED_NON_DURABLE` info |
-| `entity X { ... }` with no `store` declaration | **Skipped** with `PRISMA_SKIPPED_NO_STORE` info |
-| `external entity X { ... }` (sets `external: true` in IR) | **Skipped** with `PRISMA_SKIPPED_EXTERNAL` info |
-| `property` entries | Emitted as Prisma fields |
-| `computed` entries | **Never emitted** — derived values must not become columns |
+| IR shape                                                               | Projection behavior                                        |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `entity X { ... }` + `store X in durable` (or `postgres` / `supabase`) | Emits a Prisma `model`                                     |
+| `entity X { ... }` + `store X in memory` (or `localStorage`)           | **Skipped** with `PRISMA_SKIPPED_NON_DURABLE` info         |
+| `entity X { ... }` with no `store` declaration                         | **Skipped** with `PRISMA_SKIPPED_NO_STORE` info            |
+| `external entity X { ... }` (sets `external: true` in IR)              | **Skipped** with `PRISMA_SKIPPED_EXTERNAL` info            |
+| `property` entries                                                     | Emitted as Prisma fields                                   |
+| `computed` entries                                                     | **Never emitted** — derived values must not become columns |
 
 Entities are iterated in IR source order; the projection does not re-sort.
 
 <Warning>
-A property literally named `id` becomes the `@id` field. Entities without an `id` property get an info diagnostic (`PRISMA_NO_ID_PROPERTY`) because Prisma's schema validator will reject a model with no primary key.
+  A property literally named `id` becomes the `@id` field. Entities without an `id` property get an
+  info diagnostic (`PRISMA_NO_ID_PROPERTY`) because Prisma's schema validator will reject a model
+  with no primary key.
 </Warning>
 
 ## Type mapping
 
 The IR carries `type.name` as an arbitrary string (Manifest's type vocabulary is open). The projection holds the mapping table:
 
-| IR `type.name` | Prisma scalar |
-| --- | --- |
-| `string`, `text`, `uuid` | `String` |
-| `boolean`, `bool` | `Boolean` |
-| `int` | `Int` |
-| `bigint` | `BigInt` |
-| `float` | `Float` |
-| `decimal`, `money` | `Decimal` (with default `@db.Decimal(12, 2)`) |
-| `date`, `datetime` | `DateTime` |
-| `json` | `Json` |
-| `bytes` | `Bytes` |
-| anything else | **diagnostic** (`PRISMA_UNKNOWN_TYPE`) |
+| IR `type.name`           | Prisma scalar                                 |
+| ------------------------ | --------------------------------------------- |
+| `string`, `text`, `uuid` | `String`                                      |
+| `boolean`, `bool`        | `Boolean`                                     |
+| `int`                    | `Int`                                         |
+| `bigint`                 | `BigInt`                                      |
+| `float`                  | `Float`                                       |
+| `decimal`, `money`       | `Decimal` (with default `@db.Decimal(12, 2)`) |
+| `date`, `datetime`       | `DateTime`                                    |
+| `json`                   | `Json`                                        |
+| `bytes`                  | `Bytes`                                       |
+| anything else            | **diagnostic** (`PRISMA_UNKNOWN_TYPE`)        |
 
 The default mapping does **not** include `number`. That is deliberate.
 
@@ -153,7 +158,9 @@ entity Order {
 ```
 
 <Note>
-The escape hatch is the projection config's `typeMappings` — supply an explicit Prisma scalar there and the diagnostic disappears. Useful when migrating a legacy `.manifest` file that already used `number` for a field whose precision intent is recorded elsewhere.
+  The escape hatch is the projection config's `typeMappings` — supply an explicit Prisma scalar
+  there and the diagnostic disappears. Useful when migrating a legacy `.manifest` file that already
+  used `number` for a field whose precision intent is recorded elsewhere.
 </Note>
 
 ## Money and decimal precision
@@ -175,7 +182,7 @@ projections:
     options:
       precision:
         Order:
-          fxRate: { precision: 18, scale: 8 }   # → @db.Decimal(18, 8)
+          fxRate: { precision: 18, scale: 8 } # → @db.Decimal(18, 8)
 ```
 
 The rule is keyed on the **resolved Prisma scalar**, not the IR type name. A property routed to `Decimal` via `typeMappings` picks up the same default precision.
@@ -184,12 +191,12 @@ The rule is keyed on the **resolved Prisma scalar**, not the IR type name. A pro
 
 All four IR relationship kinds emit real Prisma `@relation`:
 
-| IR | Emitted Prisma | Notes |
-| --- | --- | --- |
-| `hasMany name: T` | `name T[]` | Parent side of 1:N |
-| `hasOne name: T` | `name T?` | Parent side of 1:1 |
+| IR                  | Emitted Prisma                                                           | Notes                                     |
+| ------------------- | ------------------------------------------------------------------------ | ----------------------------------------- |
+| `hasMany name: T`   | `name T[]`                                                               | Parent side of 1:N                        |
+| `hasOne name: T`    | `name T?`                                                                | Parent side of 1:1                        |
 | `belongsTo name: T` | `nameId String` + `name T @relation(fields: [nameId], references: [id])` | Child side; FK type follows target's `id` |
-| `ref name: T` | same shape as `belongsTo` | "Loose" — no missing-backside warning |
+| `ref name: T`       | same shape as `belongsTo`                                                | "Loose" — no missing-backside warning     |
 
 ### 1:1 vs 1:N
 
@@ -234,7 +241,7 @@ projections:
     options:
       foreignKeys:
         Book:
-          author: writerId       # → Book.writerId instead of Book.authorId
+          author: writerId # → Book.writerId instead of Book.authorId
 ```
 
 The FK type follows the target entity's `id` property type. A `string` PK gets a `String` FK; an `int` PK gets an `Int` FK. No type mismatches.
@@ -249,7 +256,7 @@ projections:
     options:
       columnMappings:
         Book:
-          authorId: author_id    # → authorId String @map("author_id")
+          authorId: author_id # → authorId String @map("author_id")
 ```
 
 ### `belongsTo` alongside an explicit FK property
@@ -343,7 +350,7 @@ projections:
     options:
       # Optional Prisma datasource provider. When set, the projection
       # emits a `datasource` block at the top of the artifact.
-      provider: postgresql       # one of: postgresql | mysql | sqlite | sqlserver | mongodb | cockroachdb
+      provider: postgresql # one of: postgresql | mysql | sqlite | sqlserver | mongodb | cockroachdb
 
       # Per-entity table-name override → @@map("...").
       tableMappings:
@@ -359,7 +366,7 @@ projections:
       # Automatic identifier casing (opt-in). Emits @map/@@map for any name
       # not already in the target case, so you don't hand-write the mappings
       # above for every field. Explicit tableMappings/columnMappings still win.
-      naming: snake_case          # shorthand: snake_case columns + pluralized snake_case tables
+      naming: snake_case # shorthand: snake_case columns + pluralized snake_case tables
       # Object form:
       # naming:
       #   table: snake_case        # snake_case | camelCase | PascalCase | preserve
@@ -376,22 +383,22 @@ projections:
       # Per-entity composite/named index definitions → @@index([...]).
       indexes:
         Order:
-          - ["customerId", "createdAt"]
-          - { fields: ["status"], name: "order_status_idx" }
+          - ['customerId', 'createdAt']
+          - { fields: ['status'], name: 'order_status_idx' }
 
       # Per-entity, per-property type override. Bypasses the default
       # IR-type-name → Prisma-scalar mapping. Value is the literal
       # Prisma scalar (e.g. "Int", "BigInt", "Decimal", "DateTime").
       typeMappings:
         Order:
-          legacyAmount: Decimal   # opt out of PRISMA_AMBIGUOUS_NUMBER for a `number` field
+          legacyAmount: Decimal # opt out of PRISMA_AMBIGUOUS_NUMBER for a `number` field
 
       # Per-entity, per-relationship FK field name override.
       # Overrides default `${relationshipName}Id` and IR `foreignKey` annotation.
       # Value is a plain string (field name) or a structured object with referential actions.
       foreignKeys:
         Order:
-          customer: customerRef   # → Order.customerRef instead of Order.customerId
+          customer: customerRef # → Order.customerRef instead of Order.customerId
           # Structured form — includes referential actions:
           # customer:
           #   fields: [customerId]
@@ -404,15 +411,15 @@ projections:
       # Use for types the projection can't infer, or to override the default @db.Decimal(12,2).
       dbAttributes:
         Order:
-          amount: Decimal(14, 2)     # → @db.Decimal(14, 2)
-          externalId: VarChar(36)    # → @db.VarChar(36)
+          amount: Decimal(14, 2) # → @db.Decimal(14, 2)
+          externalId: VarChar(36) # → @db.VarChar(36)
 
       # Per-entity, per-property array of verbatim Prisma field attributes.
       # Appended after type and dbAttributes. Use for @unique, @updatedAt, @default(...), etc.
       fieldAttributes:
         Order:
-          code: ["@unique"]
-          updatedAt: ["@updatedAt", "@default(now())"]
+          code: ['@unique']
+          updatedAt: ['@updatedAt', '@default(now())']
 
       # Environment variable name for the database URL in the emitted prisma.config.ts.
       # Default: DATABASE_URL. Only relevant when `provider` is set.
@@ -432,7 +439,7 @@ projections:
 
 `createdAt` emits `@map("created_at")`, `Widget` emits `@@map("widgets")`. The shorthand `snake_case` expands to `{ table: snake_case, column: snake_case, pluralizeTables: true }`; the object form tunes each axis independently.
 
-**The convention only ever adds `@map`/`@@map`.** The Prisma *model name* and *field identifiers* stay as the IR name, so relation `fields`/`references`, `@@id`, `@@unique`, and `@@index` are unaffected — only the physical database name changes, and a `@map`/`@@map` is emitted only when the physical name actually differs (so `id` stays bare):
+**The convention only ever adds `@map`/`@@map`.** The Prisma _model name_ and _field identifiers_ stay as the IR name, so relation `fields`/`references`, `@@id`, `@@unique`, and `@@index` are unaffected — only the physical database name changes, and a `@map`/`@@map` is emitted only when the physical name actually differs (so `id` stays bare):
 
 ```prisma
 model UserAccount {
@@ -456,9 +463,9 @@ A **global** `naming` can also be set once at the top level of `manifest.config.
 
 When `provider` is set, the projection emits **two artifacts** from a single `generate()` call:
 
-| Index | Path hint | Content |
-| --- | --- | --- |
-| `artifacts[0]` | `schema.prisma` | The full Prisma schema |
+| Index          | Path hint          | Content                                                   |
+| -------------- | ------------------ | --------------------------------------------------------- |
+| `artifacts[0]` | `schema.prisma`    | The full Prisma schema                                    |
 | `artifacts[1]` | `prisma.config.ts` | Prisma 7+ config file with `url: process.env.<urlEnvVar>` |
 
 Prisma 7 moved the connection URL out of `schema.prisma` into a `prisma.config.ts` file. The projection handles this automatically so `prisma migrate` works without edits:
@@ -488,18 +495,18 @@ Without `provider`, only `schema.prisma` is emitted (no datasource block, no `pr
 
 The projection emits structured diagnostics rather than silently doing the wrong thing. Each carries an entity name (where applicable) and a resolution hint. The CLI's `manifest generate` command **exits non-zero** when any error-severity diagnostic is returned, so CI pipelines detect generation failures.
 
-| Code | Severity | Trigger | Resolution |
-| --- | --- | --- | --- |
-| `PRISMA_AMBIGUOUS_NUMBER` | error | Property typed `number` with no `typeMappings` override | Pick `int`/`bigint`/`float`/`money`/`decimal` in source, or supply `typeMappings.<Entity>.<Property>` |
-| `PRISMA_UNKNOWN_TYPE` | error | `type.name` not in default mapping and not in `typeMappings` | Add a `typeMappings` entry or change the source type |
-| `PRISMA_NO_ID_PROPERTY` | info | Entity has no property named `id` | Add `property required id: string` |
-| `PRISMA_SKIPPED_EXTERNAL` | info | Entity marked `external entity` | Expected — projection intentionally skips external entities |
-| `PRISMA_SKIPPED_NO_STORE` | info | Entity has no `store` declaration | Add `store EntityName in durable` to opt in |
-| `PRISMA_SKIPPED_NON_DURABLE` | info | Store target is `memory` or `localStorage` | Flip to `durable` (or `postgres`/`supabase`) to opt in |
-| `PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED` | info | `hasMany ... through X` (explicit M2M) | Declare the join entity (`X`) with its own belongsTo relations |
-| `PRISMA_RELATION_AMBIGUOUS` | info | Multiple relationships between same entity pair (including two-sided self-relations like `parent` + `children` on the same type) | Refactor to a single relation, or hand-edit `@relation("name")` after generation |
-| `PRISMA_RELATION_MISSING_BACKSIDE` | warning | One-sided `hasMany` / `hasOne` / `belongsTo` / `ref` — all four emit a full `@relation` that Prisma rejects without the opposite side | Declare the matching relation on the other entity |
-| `PRISMA_RELATION_TARGET_NOT_EMITTED` | warning | Relationship targets an entity that is not emitted as a Prisma model (external entity, memory/localStorage store, no store) | Declare the target as a durable entity, or remove the relationship |
+| Code                                        | Severity | Trigger                                                                                                                               | Resolution                                                                                            |
+| ------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `PRISMA_AMBIGUOUS_NUMBER`                   | error    | Property typed `number` with no `typeMappings` override                                                                               | Pick `int`/`bigint`/`float`/`money`/`decimal` in source, or supply `typeMappings.<Entity>.<Property>` |
+| `PRISMA_UNKNOWN_TYPE`                       | error    | `type.name` not in default mapping and not in `typeMappings`                                                                          | Add a `typeMappings` entry or change the source type                                                  |
+| `PRISMA_NO_ID_PROPERTY`                     | info     | Entity has no property named `id`                                                                                                     | Add `property required id: string`                                                                    |
+| `PRISMA_SKIPPED_EXTERNAL`                   | info     | Entity marked `external entity`                                                                                                       | Expected — projection intentionally skips external entities                                           |
+| `PRISMA_SKIPPED_NO_STORE`                   | info     | Entity has no `store` declaration                                                                                                     | Add `store EntityName in durable` to opt in                                                           |
+| `PRISMA_SKIPPED_NON_DURABLE`                | info     | Store target is `memory` or `localStorage`                                                                                            | Flip to `durable` (or `postgres`/`supabase`) to opt in                                                |
+| `PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED` | info     | `hasMany ... through X` (explicit M2M)                                                                                                | Declare the join entity (`X`) with its own belongsTo relations                                        |
+| `PRISMA_RELATION_AMBIGUOUS`                 | info     | Multiple relationships between same entity pair (including two-sided self-relations like `parent` + `children` on the same type)      | Refactor to a single relation, or hand-edit `@relation("name")` after generation                      |
+| `PRISMA_RELATION_MISSING_BACKSIDE`          | warning  | One-sided `hasMany` / `hasOne` / `belongsTo` / `ref` — all four emit a full `@relation` that Prisma rejects without the opposite side | Declare the matching relation on the other entity                                                     |
+| `PRISMA_RELATION_TARGET_NOT_EMITTED`        | warning  | Relationship targets an entity that is not emitted as a Prisma model (external entity, memory/localStorage store, no store)           | Declare the target as a durable entity, or remove the relationship                                    |
 
 ## What the projection deliberately does NOT do
 

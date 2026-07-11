@@ -1,7 +1,7 @@
 ---
-title: "Zod validation schema projection"
-sidebarTitle: "Zod"
-description: "Generate Zod validation schemas from Manifest IR — one z.object() per entity and command, with constraint-derived refinements and type coercions."
+title: 'Zod validation schema projection'
+sidebarTitle: 'Zod'
+description: 'Generate Zod validation schemas from Manifest IR — one z.object() per entity and command, with constraint-derived refinements and type coercions.'
 ---
 
 The Zod projection generates Zod validation schemas from compiled Manifest IR — one `z.object()` per entity and per command parameter set, with constraint-derived refinements and type coercions. Use it for runtime validation in any TypeScript environment without coupling to a specific framework.
@@ -50,7 +50,8 @@ The options object is `ZodProjectionOptions` in `zod/types.ts`. All four options
 ## Notes & limitations
 
 <Note>
-Computed-property schemas are emitted only when both `emitComputedSchemas` is enabled and the entity actually declares computed properties.
+  Computed-property schemas are emitted only when both `emitComputedSchemas` is enabled and the
+  entity actually declares computed properties.
 </Note>
 
 The behavior documented here comes directly from `src/manifest/projections/zod/generator.ts` and `types.ts`.

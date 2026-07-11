@@ -20,13 +20,20 @@ export function toManifestPosition(pos: LspPosition): ManifestPosition {
  * Create an LSP Range from a Manifest Position.
  * If no end is provided, the range spans a single word-length token at that position.
  */
-export function toLspRange(start: ManifestPosition, end?: ManifestPosition, length?: number): Range {
+export function toLspRange(
+  start: ManifestPosition,
+  end?: ManifestPosition,
+  length?: number,
+): Range {
   const lspStart = toLspPosition(start);
   if (end) {
     return Range.create(lspStart, toLspPosition(end));
   }
   // Default: span the length of the token or a single character
-  return Range.create(lspStart, LspPosition.create(lspStart.line, lspStart.character + (length ?? 1)));
+  return Range.create(
+    lspStart,
+    LspPosition.create(lspStart.line, lspStart.character + (length ?? 1)),
+  );
 }
 
 /**

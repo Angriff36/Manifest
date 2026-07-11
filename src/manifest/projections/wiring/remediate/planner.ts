@@ -6,25 +6,12 @@
  */
 
 import type { WiringContract, WiringCommandDescriptor } from '../types.js';
-import type {
-  ContractMismatch,
-  ConsumerEvidence,
-  WiringInspectReport,
-} from '../inspect/types.js';
-import type {
-  RepairPlan,
-  RepairPlanBundle,
-  RepairDecisionClass,
-  RepairEditSpec,
-} from './types.js';
+import type { ContractMismatch, ConsumerEvidence, WiringInspectReport } from '../inspect/types.js';
+import type { RepairPlan, RepairPlanBundle, RepairDecisionClass, RepairEditSpec } from './types.js';
 import { WIRING_REPAIR_PLAN_SCHEMA } from './types.js';
 import { PatternAdapter } from './pattern-adapter.js';
 import { readObjectPropertyExpression } from './ast-utils.js';
-import {
-  planMissingRequired,
-  planInvalidLiteral,
-  planEmptyDate,
-} from './planner-payload.js';
+import { planMissingRequired, planInvalidLiteral, planEmptyDate } from './planner-payload.js';
 import { tryPlanExpandPartialToFullBody } from './planner-expand-partial.js';
 import {
   classify,
@@ -47,7 +34,7 @@ export interface PlanRepairsOptions {
 
 export function planWiringRepairs(options: PlanRepairsOptions): RepairPlanBundle {
   const adapter = new PatternAdapter(options.fileContents);
-  const byId = new Map(options.contract.capabilities.map(c => [c.capabilityId, c]));
+  const byId = new Map(options.contract.capabilities.map((c) => [c.capabilityId, c]));
   const plans: RepairPlan[] = [];
 
   const expandPlanned = new Set<string>();
@@ -96,12 +83,7 @@ export function planWiringRepairs(options: PlanRepairsOptions): RepairPlanBundle
     if (!cap) continue;
     const surfaceResult = adapter.findExecutableControlSurface(cap);
     if (!surfaceResult.surface) {
-      plans.push(
-        ambiguousUnwiredPlan(
-          cap,
-          surfaceResult.rejectReason ?? finding.message,
-        ),
-      );
+      plans.push(ambiguousUnwiredPlan(cap, surfaceResult.rejectReason ?? finding.message));
       continue;
     }
     const plan = planWireExistingControl(cap, surfaceResult.surface);
@@ -118,17 +100,17 @@ export function planWiringRepairs(options: PlanRepairsOptions): RepairPlanBundle
     $schema: WIRING_REPAIR_PLAN_SCHEMA,
     plans,
     summary: {
-      autoFixable: plans.filter(p => p.decision === 'auto-fixable').length,
-      repairableWithPattern: plans.filter(p => p.decision === 'repairable-with-existing-pattern')
+      autoFixable: plans.filter((p) => p.decision === 'auto-fixable').length,
+      repairableWithPattern: plans.filter((p) => p.decision === 'repairable-with-existing-pattern')
         .length,
-      ambiguous: plans.filter(p => p.decision === 'ambiguous-product-decision').length,
-      unsafe: plans.filter(p => p.decision === 'unsafe-to-apply').length,
+      ambiguous: plans.filter((p) => p.decision === 'ambiguous-product-decision').length,
+      unsafe: plans.filter((p) => p.decision === 'unsafe-to-apply').length,
     },
   };
 }
 
 function evidenceFor(report: WiringInspectReport, capabilityId: string): ConsumerEvidence[] {
-  const f = report.findings.find(x => x.capabilityId === capabilityId);
+  const f = report.findings.find((x) => x.capabilityId === capabilityId);
   return f?.evidence ?? [];
 }
 
@@ -206,7 +188,7 @@ function planWrongShape(
   const edits: RepairEditSpec[] = [
     {
       file,
-      description: `Send ${param} as ${cap.parameters.find(p => p.name === param)?.tsType ?? 'array'} instead of joined string`,
+      description: `Send ${param} as ${cap.parameters.find((p) => p.name === param)?.tsType ?? 'array'} instead of joined string`,
       operation: {
         type: 'replace-object-property-value',
         parameter: param,
@@ -233,7 +215,7 @@ function planWrongShape(
     },
     'auto-fixable',
     `Contract requires ${param}: string[]; application joins to string — reverse is deterministic`,
-    edits.map(e => e.file),
+    edits.map((e) => e.file),
   );
 }
 
@@ -276,8 +258,7 @@ function planTrustedSpoof(
     });
   }
 
-  const decision: RepairDecisionClass =
-    edits.length > 0 ? 'auto-fixable' : 'unsafe-to-apply';
+  const decision: RepairDecisionClass = edits.length > 0 ? 'auto-fixable' : 'unsafe-to-apply';
 
   return classify(
     {
@@ -302,7 +283,7 @@ function planTrustedSpoof(
     },
     decision,
     `Client supplies server-owned ${param}; strip and keep server injection path`,
-    edits.map(e => e.file),
+    edits.map((e) => e.file),
   );
 }
 
@@ -356,7 +337,7 @@ function planFakeLifecycle(
     },
     'repairable-with-existing-pattern',
     `Existing lifecycle control remapped to proven ${canonical.capabilityId}`,
-    edits.map(e => e.file),
+    edits.map((e) => e.file),
   );
 }
 

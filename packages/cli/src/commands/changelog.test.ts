@@ -42,9 +42,15 @@ interface OutputCapture {
 
 function captureOutput(): OutputCapture {
   const cap: OutputCapture = { out: '', err: '' };
-  console.log = (...args: unknown[]) => { cap.out += args.join(' ') + '\n'; };
-  console.error = (...args: unknown[]) => { cap.err += args.join(' ') + '\n'; };
-  console.warn = (...args: unknown[]) => { cap.err += args.join(' ') + '\n'; };
+  console.log = (...args: unknown[]) => {
+    cap.out += args.join(' ') + '\n';
+  };
+  console.error = (...args: unknown[]) => {
+    cap.err += args.join(' ') + '\n';
+  };
+  console.warn = (...args: unknown[]) => {
+    cap.err += args.join(' ') + '\n';
+  };
   return cap;
 }
 
@@ -56,7 +62,9 @@ function restoreOutput(): void {
 
 function suppressExit(): { exitCode: number | undefined } {
   const state = { exitCode: undefined as number | undefined };
-  process.exit = ((code?: number) => { state.exitCode = code ?? 0; }) as never;
+  process.exit = ((code?: number) => {
+    state.exitCode = code ?? 0;
+  }) as never;
   return state;
 }
 
@@ -72,7 +80,9 @@ function git(cwd: string, cmd: string): string {
 // Test suite
 // ============================================================================
 
-describe('CLI changelog command', () => {
+const GIT_TEST_TIMEOUT_MS = 30_000;
+
+describe('CLI changelog command', { timeout: GIT_TEST_TIMEOUT_MS }, () => {
   let origCwd: string;
 
   beforeEach(async () => {
@@ -97,14 +107,14 @@ describe('CLI changelog command', () => {
     git(tmpDir, 'tag v1.1.0');
 
     process.chdir(tmpDir);
-  });
+  }, GIT_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     restoreOutput();
     restoreExit();
     process.chdir(origCwd);
     await fs.rm(tmpDir, { recursive: true, force: true });
-  });
+  }, GIT_TEST_TIMEOUT_MS);
 
   // --------------------------------------------------------------------------
   // Basic Markdown output

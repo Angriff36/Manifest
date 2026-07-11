@@ -144,21 +144,27 @@ describe('LlmContextProjection', () => {
 
     it('includes enums, events, and stores by default', () => {
       const ir = makeMinimalIR({
-        enums: [{
-          name: 'Status',
-          values: [{ name: 'ACTIVE' }, { name: 'INACTIVE' }],
-        }],
-        events: [{
-          name: 'widgetCreated',
-          channel: 'widget.created',
-          payload: [
-            { name: 'widgetId', type: { name: 'string', nullable: false }, required: true },
-          ],
-        }],
-        stores: [{
-          entity: 'Widget',
-          target: 'supabase',
-        }],
+        enums: [
+          {
+            name: 'Status',
+            values: [{ name: 'ACTIVE' }, { name: 'INACTIVE' }],
+          },
+        ],
+        events: [
+          {
+            name: 'widgetCreated',
+            channel: 'widget.created',
+            payload: [
+              { name: 'widgetId', type: { name: 'string', nullable: false }, required: true },
+            ],
+          },
+        ],
+        stores: [
+          {
+            entity: 'Widget',
+            target: 'supabase',
+          },
+        ],
       });
 
       const result = projection.generate(ir, { surface: 'llm-context.full' });
@@ -192,15 +198,15 @@ describe('LlmContextProjection', () => {
       const projResult = projection.generate(result.ir!, { surface: 'llm-context.full' });
       const ctx = parseContext(projResult);
 
-      const widget = ctx.entities.find(e => e.name === 'Widget');
+      const widget = ctx.entities.find((e) => e.name === 'Widget');
       expect(widget).toBeDefined();
 
-      const idProp = widget!.properties.find(p => p.name === 'id');
+      const idProp = widget!.properties.find((p) => p.name === 'id');
       expect(idProp).toBeDefined();
       expect(idProp!.type).toContain('string');
       expect(idProp!.required).toBe(true);
 
-      const countProp = widget!.properties.find(p => p.name === 'count');
+      const countProp = widget!.properties.find((p) => p.name === 'count');
       expect(countProp).toBeDefined();
       expect(countProp!.type).toContain('null');
     });
@@ -220,10 +226,10 @@ describe('LlmContextProjection', () => {
       const projResult = projection.generate(result.ir!, { surface: 'llm-context.full' });
       const ctx = parseContext(projResult);
 
-      const entity = ctx.entities.find(e => e.name === 'OrderItem');
+      const entity = ctx.entities.find((e) => e.name === 'OrderItem');
       expect(entity).toBeDefined();
 
-      const computed = entity!.computedProperties.find(cp => cp.name === 'subtotal');
+      const computed = entity!.computedProperties.find((cp) => cp.name === 'subtotal');
       expect(computed).toBeDefined();
       expect(computed!.expression).not.toBe('[omitted]');
       expect(computed!.dependencies).toContain('price');
@@ -244,7 +250,7 @@ describe('LlmContextProjection', () => {
       const projResult = projection.generate(result.ir!, { surface: 'llm-context.full' });
       const ctx = parseContext(projResult);
 
-      const widget = ctx.entities.find(e => e.name === 'Widget');
+      const widget = ctx.entities.find((e) => e.name === 'Widget');
       expect(widget!.constraints.length).toBe(1);
       expect(widget!.constraints[0].name).toBe('positive_price');
       expect(widget!.constraints[0].expression).not.toBe('[omitted]');
@@ -256,20 +262,22 @@ describe('LlmContextProjection', () => {
 
     it('extracts relationships', () => {
       const ir = makeMinimalIR({
-        entities: [{
-          name: 'Widget',
-          properties: [
-            { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-          ],
-          computedProperties: [],
-          relationships: [
-            { name: 'parts', kind: 'hasMany', target: 'Part' },
-            { name: 'owner', kind: 'belongsTo', target: 'User' },
-          ],
-          commands: [],
-          constraints: [],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'Widget',
+            properties: [
+              { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+            ],
+            computedProperties: [],
+            relationships: [
+              { name: 'parts', kind: 'hasMany', target: 'Part' },
+              { name: 'owner', kind: 'belongsTo', target: 'User' },
+            ],
+            commands: [],
+            constraints: [],
+            policies: [],
+          },
+        ],
       });
 
       const result = projection.generate(ir, { surface: 'llm-context.full' });
@@ -303,7 +311,7 @@ describe('LlmContextProjection', () => {
       const projResult = projection.generate(result.ir!, { surface: 'llm-context.full' });
       const ctx = parseContext(projResult);
 
-      const cmd = ctx.commands.find(c => c.name === 'assign');
+      const cmd = ctx.commands.find((c) => c.name === 'assign');
       expect(cmd).toBeDefined();
       expect(cmd!.entity).toBe('Widget');
       expect(cmd!.parameters).toHaveLength(2);
@@ -328,7 +336,7 @@ describe('LlmContextProjection', () => {
       const projResult = projection.generate(result.ir!, { surface: 'llm-context.full' });
       const ctx = parseContext(projResult);
 
-      const cmd = ctx.commands.find(c => c.name === 'release');
+      const cmd = ctx.commands.find((c) => c.name === 'release');
       expect(cmd).toBeDefined();
       expect(cmd!.guards.length).toBeGreaterThan(0);
       expect(cmd!.guards[0]).not.toBe('[omitted]');
@@ -356,7 +364,7 @@ describe('LlmContextProjection', () => {
       const ctx = parseContext(projResult);
 
       expect(ctx.policies.length).toBe(2);
-      const canView = ctx.policies.find(p => p.name === 'canView');
+      const canView = ctx.policies.find((p) => p.name === 'canView');
       expect(canView).toBeDefined();
       expect(canView!.action).toBe('read');
     });
@@ -404,7 +412,7 @@ describe('LlmContextProjection', () => {
       expect(ctx.constraints[0].expression).toBe('[omitted]');
 
       // Command guards and actions should have [omitted]
-      const cmd = ctx.commands.find(c => c.name === 'release');
+      const cmd = ctx.commands.find((c) => c.name === 'release');
       expect(cmd!.guards[0]).toBe('[omitted]');
       expect(cmd!.actions[0].expression).toBe('[omitted]');
     });
@@ -494,10 +502,12 @@ describe('LlmContextProjection', () => {
 
     it('excludes enums when includeEnums is false', () => {
       const ir = makeMinimalIR({
-        enums: [{
-          name: 'Status',
-          values: [{ name: 'ACTIVE' }],
-        }],
+        enums: [
+          {
+            name: 'Status',
+            values: [{ name: 'ACTIVE' }],
+          },
+        ],
       });
 
       const result = projection.generate(ir, {
@@ -511,13 +521,15 @@ describe('LlmContextProjection', () => {
 
     it('excludes events when includeEvents is false', () => {
       const ir = makeMinimalIR({
-        events: [{
-          name: 'widgetCreated',
-          channel: 'widget.created',
-          payload: [
-            { name: 'widgetId', type: { name: 'string', nullable: false }, required: true },
-          ],
-        }],
+        events: [
+          {
+            name: 'widgetCreated',
+            channel: 'widget.created',
+            payload: [
+              { name: 'widgetId', type: { name: 'string', nullable: false }, required: true },
+            ],
+          },
+        ],
       });
 
       const result = projection.generate(ir, {
@@ -531,10 +543,12 @@ describe('LlmContextProjection', () => {
 
     it('excludes stores when includeStores is false', () => {
       const ir = makeMinimalIR({
-        stores: [{
-          entity: 'Widget',
-          target: 'supabase',
-        }],
+        stores: [
+          {
+            entity: 'Widget',
+            target: 'supabase',
+          },
+        ],
       });
 
       const result = projection.generate(ir, {
@@ -554,13 +568,15 @@ describe('LlmContextProjection', () => {
   describe('enum context', () => {
     it('includes enum values with labels and ordinals', () => {
       const ir = makeMinimalIR({
-        enums: [{
-          name: 'Priority',
-          values: [
-            { name: 'LOW', label: 'Low priority', ordinal: 0 },
-            { name: 'HIGH', label: 'High priority', ordinal: 1 },
-          ],
-        }],
+        enums: [
+          {
+            name: 'Priority',
+            values: [
+              { name: 'LOW', label: 'Low priority', ordinal: 0 },
+              { name: 'HIGH', label: 'High priority', ordinal: 1 },
+            ],
+          },
+        ],
       });
 
       const result = projection.generate(ir, { surface: 'llm-context.full' });
@@ -576,14 +592,16 @@ describe('LlmContextProjection', () => {
   describe('event context', () => {
     it('formats event payload as string', () => {
       const ir = makeMinimalIR({
-        events: [{
-          name: 'orderPlaced',
-          channel: 'order.placed',
-          payload: [
-            { name: 'orderId', type: { name: 'string', nullable: false }, required: true },
-            { name: 'total', type: { name: 'number', nullable: false }, required: true },
-          ],
-        }],
+        events: [
+          {
+            name: 'orderPlaced',
+            channel: 'order.placed',
+            payload: [
+              { name: 'orderId', type: { name: 'string', nullable: false }, required: true },
+              { name: 'total', type: { name: 'number', nullable: false }, required: true },
+            ],
+          },
+        ],
       });
 
       const result = projection.generate(ir, { surface: 'llm-context.full' });
@@ -650,27 +668,35 @@ describe('LlmContextProjection', () => {
   describe('determinism', () => {
     it('produces structurally identical output for identical IR (ignoring timestamps)', () => {
       const ir = makeMinimalIR({
-        entities: [{
-          name: 'Widget',
-          properties: [
-            { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-          ],
-          computedProperties: [],
-          relationships: [],
-          commands: ['activate'],
-          constraints: [],
-          policies: [],
-        }],
-        commands: [{
-          name: 'activate',
-          entity: 'Widget',
-          parameters: [],
-          guards: [],
-          actions: [
-            { kind: 'mutate', target: 'self.status', expression: { kind: 'literal', value: { kind: 'string', value: 'active' } } },
-          ],
-          emits: [],
-        }],
+        entities: [
+          {
+            name: 'Widget',
+            properties: [
+              { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+            ],
+            computedProperties: [],
+            relationships: [],
+            commands: ['activate'],
+            constraints: [],
+            policies: [],
+          },
+        ],
+        commands: [
+          {
+            name: 'activate',
+            entity: 'Widget',
+            parameters: [],
+            guards: [],
+            actions: [
+              {
+                kind: 'mutate',
+                target: 'self.status',
+                expression: { kind: 'literal', value: { kind: 'string', value: 'active' } },
+              },
+            ],
+            emits: [],
+          },
+        ],
       });
 
       const result1 = projection.generate(ir, { surface: 'llm-context.full' });
@@ -717,15 +743,17 @@ describe('LlmContextProjection', () => {
 
     it('handles entity with no properties', () => {
       const ir = makeMinimalIR({
-        entities: [{
-          name: 'Empty',
-          properties: [],
-          computedProperties: [],
-          relationships: [],
-          commands: [],
-          constraints: [],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'Empty',
+            properties: [],
+            computedProperties: [],
+            relationships: [],
+            commands: [],
+            constraints: [],
+            policies: [],
+          },
+        ],
       });
 
       const result = projection.generate(ir, { surface: 'llm-context.full' });
@@ -738,14 +766,16 @@ describe('LlmContextProjection', () => {
 
     it('handles command with no parameters or guards', () => {
       const ir = makeMinimalIR({
-        commands: [{
-          name: 'reset',
-          entity: 'Widget',
-          parameters: [],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'reset',
+            entity: 'Widget',
+            parameters: [],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
 
       const result = projection.generate(ir, { surface: 'llm-context.full' });
@@ -770,8 +800,24 @@ describe('LlmContextProjection', () => {
     it('handles modules in domain summary', () => {
       const ir = makeMinimalIR({
         modules: [
-          { name: 'core', entities: ['Widget'], enums: [], commands: [], stores: [], events: [], policies: [] },
-          { name: 'billing', entities: ['Invoice'], enums: [], commands: [], stores: [], events: [], policies: [] },
+          {
+            name: 'core',
+            entities: ['Widget'],
+            enums: [],
+            commands: [],
+            stores: [],
+            events: [],
+            policies: [],
+          },
+          {
+            name: 'billing',
+            entities: ['Invoice'],
+            enums: [],
+            commands: [],
+            stores: [],
+            events: [],
+            policies: [],
+          },
         ],
       });
 

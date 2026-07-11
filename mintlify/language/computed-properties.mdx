@@ -1,7 +1,7 @@
 ---
-title: "Computed properties: derived values"
-description: "Declare derived values with the computed keyword. Manifest evaluates them against the current instance automatically and prevents infinite recursion."
-sidebarTitle: "Computed properties"
+title: 'Computed properties: derived values'
+description: 'Declare derived values with the computed keyword. Manifest evaluates them against the current instance automatically and prevents infinite recursion.'
+sidebarTitle: 'Computed properties'
 ---
 
 A computed property is a read-only value derived from an expression rather than stored directly. You declare it with the `computed` keyword inside an entity block. The runtime evaluates it on demand, using the current instance fields and any declared dependencies.
@@ -31,13 +31,13 @@ entity Item {
 
 When the runtime evaluates a computed property, the context contains:
 
-| Binding | Value |
-|---------|-------|
-| `self` / `this` | The current entity instance |
-| All property values | Direct field access by name |
-| Any dependencies listed in IR | Other computed properties that have already resolved |
-| `user` | The current user object (if the runtime provides one) |
-| `context` | The runtime context object |
+| Binding                       | Value                                                 |
+| ----------------------------- | ----------------------------------------------------- |
+| `self` / `this`               | The current entity instance                           |
+| All property values           | Direct field access by name                           |
+| Any dependencies listed in IR | Other computed properties that have already resolved  |
+| `user`                        | The current user object (if the runtime provides one) |
+| `context`                     | The runtime context object                            |
 
 ```manifest
 entity Author {
@@ -89,7 +89,9 @@ entity Circular {
 ```
 
 <Warning>
-A computed property that returns `undefined` due to a cycle will silently produce `undefined` in guard and action expressions. If you rely on a computed value being non-null, ensure there are no cycles in the dependency graph.
+  A computed property that returns `undefined` due to a cycle will silently produce `undefined` in
+  guard and action expressions. If you rely on a computed value being non-null, ensure there are no
+  cycles in the dependency graph.
 </Warning>
 
 ## Using computed properties in guards and actions

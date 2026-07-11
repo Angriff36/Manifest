@@ -1,8 +1,4 @@
-import {
-  CodeAction,
-  CodeActionKind,
-  Diagnostic,
-} from 'vscode-languageserver/node';
+import { CodeAction, CodeActionKind, Diagnostic } from 'vscode-languageserver/node';
 
 interface ManifestFix {
   kind: 'replaceType' | 'renameField';
@@ -15,20 +11,22 @@ export function getCodeActions(uri: string, diagnostics: Diagnostic[]): CodeActi
     const fix = readFix(diagnostic);
     if (!fix) return [];
 
-    return [CodeAction.create(
-      titleForFix(fix),
-      {
-        changes: {
-          [uri]: [
-            {
-              range: fix.range,
-              newText: fix.replacement,
-            },
-          ],
+    return [
+      CodeAction.create(
+        titleForFix(fix),
+        {
+          changes: {
+            [uri]: [
+              {
+                range: fix.range,
+                newText: fix.replacement,
+              },
+            ],
+          },
         },
-      },
-      CodeActionKind.QuickFix,
-    )];
+        CodeActionKind.QuickFix,
+      ),
+    ];
   });
 }
 

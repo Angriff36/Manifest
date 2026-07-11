@@ -27,9 +27,7 @@ describe('resolveLocalImportPathHint', () => {
     expect(resolveLocalImportPathHint('@/lib/manifest-response', ctx('nextjs'))).toBe(
       'lib/manifest-response.ts',
     );
-    expect(resolveLocalImportPathHint('@/app/lib/tenant', ctx('nextjs'))).toBe(
-      'app/lib/tenant.ts',
-    );
+    expect(resolveLocalImportPathHint('@/app/lib/tenant', ctx('nextjs'))).toBe('app/lib/tenant.ts');
   });
 
   it('treats a scoped package ("@scope/pkg") as a package, not the "@/" alias', () => {
@@ -140,7 +138,10 @@ describe('generateRuntimeFactoryModule', () => {
   });
 
   it('fails closed during generation for durable IR without runtime configuration', () => {
-    const durableIR = { ...tinyIR, stores: [{ entity: 'Widget', target: 'postgres', config: {} }] } as unknown as IR;
+    const durableIR = {
+      ...tinyIR,
+      stores: [{ entity: 'Widget', target: 'postgres', config: {} }],
+    } as unknown as IR;
     const code = generateRuntimeFactoryModule({ ir: durableIR });
     expect(code).toMatch(/throw new Error\(.*storeProvider.*Widget.*postgres/i);
   });

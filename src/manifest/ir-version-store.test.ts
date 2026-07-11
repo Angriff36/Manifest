@@ -57,15 +57,31 @@ function makeMeta(overrides?: Partial<IRVersionMeta>): IRVersionMeta {
 
 const noChanges: IRDiffReport = {
   summary: {
-    entitiesAdded: 0, entitiesRemoved: 0, entitiesChanged: 0,
-    commandsAdded: 0, commandsRemoved: 0, commandsChanged: 0,
-    policiesAdded: 0, policiesRemoved: 0, policiesChanged: 0,
-    eventsAdded: 0, eventsRemoved: 0, eventsChanged: 0,
-    storesAdded: 0, storesRemoved: 0, storesChanged: 0,
-    modulesAdded: 0, modulesRemoved: 0,
+    entitiesAdded: 0,
+    entitiesRemoved: 0,
+    entitiesChanged: 0,
+    commandsAdded: 0,
+    commandsRemoved: 0,
+    commandsChanged: 0,
+    policiesAdded: 0,
+    policiesRemoved: 0,
+    policiesChanged: 0,
+    eventsAdded: 0,
+    eventsRemoved: 0,
+    eventsChanged: 0,
+    storesAdded: 0,
+    storesRemoved: 0,
+    storesChanged: 0,
+    modulesAdded: 0,
+    modulesRemoved: 0,
     hasChanges: false,
   },
-  modules: [], entities: [], commands: [], policies: [], stores: [], events: [],
+  modules: [],
+  entities: [],
+  commands: [],
+  policies: [],
+  stores: [],
+  events: [],
 };
 
 const compatibleChanges: IRDiffReport = {
@@ -75,7 +91,18 @@ const compatibleChanges: IRDiffReport = {
     entitiesAdded: 1,
     hasChanges: true,
   },
-  entities: [{ name: 'NewEntity', change: 'added' as const, properties: [], computedProperties: [], relationships: [], constraints: [], commands: [], policies: [] }],
+  entities: [
+    {
+      name: 'NewEntity',
+      change: 'added' as const,
+      properties: [],
+      computedProperties: [],
+      relationships: [],
+      constraints: [],
+      commands: [],
+      policies: [],
+    },
+  ],
 };
 
 const breakingChanges: IRDiffReport = {
@@ -85,7 +112,19 @@ const breakingChanges: IRDiffReport = {
     entitiesRemoved: 1,
     hasChanges: true,
   },
-  entities: [{ name: 'OldEntity', change: 'removed' as const, module: { from: undefined, to: undefined }, properties: [], computedProperties: [], relationships: [], constraints: [], commands: [], policies: [] }],
+  entities: [
+    {
+      name: 'OldEntity',
+      change: 'removed' as const,
+      module: { from: undefined, to: undefined },
+      properties: [],
+      computedProperties: [],
+      relationships: [],
+      constraints: [],
+      commands: [],
+      policies: [],
+    },
+  ],
 };
 
 const noBreaking: BreakingChangeReport = {
@@ -354,19 +393,25 @@ describe('ir-version-store', () => {
     it('produces a changelog entry with diff, breaking, and migration reports', () => {
       const oldIR = makeIR();
       const newIR = makeIR({
-        entities: [{
-          name: 'User',
-          module: undefined,
-          properties: [
-            { name: 'id', type: { name: 'uuid', nullable: false }, modifiers: ['required'] },
-            { name: 'email', type: { name: 'string', nullable: false }, modifiers: ['required', 'unique'] },
-          ],
-          computedProperties: [],
-          relationships: [],
-          commands: [],
-          constraints: [],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'User',
+            module: undefined,
+            properties: [
+              { name: 'id', type: { name: 'uuid', nullable: false }, modifiers: ['required'] },
+              {
+                name: 'email',
+                type: { name: 'string', nullable: false },
+                modifiers: ['required', 'unique'],
+              },
+            ],
+            computedProperties: [],
+            relationships: [],
+            commands: [],
+            constraints: [],
+            policies: [],
+          },
+        ],
       });
 
       const fromMeta = makeMeta({ versionNumber: 1, tag: '1.0.0' });

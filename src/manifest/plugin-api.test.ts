@@ -158,7 +158,7 @@ describe('plugin-api', () => {
         name: 'double',
         purity: 'pure',
         arity: 1,
-        fn: (x) => typeof x === 'number' ? x * 2 : x,
+        fn: (x) => (typeof x === 'number' ? x * 2 : x),
       };
 
       const cliCommand: CliCommandPlugin = {
@@ -181,22 +181,32 @@ describe('plugin-api', () => {
     });
 
     it('throws if manifest is missing', () => {
-      expect(() => definePlugin({} as ManifestPlugin)).toThrow('Plugin must have a manifest property');
+      expect(() => definePlugin({} as ManifestPlugin)).toThrow(
+        'Plugin must have a manifest property',
+      );
     });
 
     it('throws if manifest.name is missing', () => {
       expect(() =>
         definePlugin({
-          manifest: { version: '1.0.0', pluginApiVersion: '1', manifestVersion: '>=1.0.0' } as PluginManifest,
-        })
+          manifest: {
+            version: '1.0.0',
+            pluginApiVersion: '1',
+            manifestVersion: '>=1.0.0',
+          } as PluginManifest,
+        }),
       ).toThrow('Plugin manifest must have a name');
     });
 
     it('throws if manifest.version is missing', () => {
       expect(() =>
         definePlugin({
-          manifest: { name: 'test', pluginApiVersion: '1', manifestVersion: '>=1.0.0' } as PluginManifest,
-        })
+          manifest: {
+            name: 'test',
+            pluginApiVersion: '1',
+            manifestVersion: '>=1.0.0',
+          } as PluginManifest,
+        }),
       ).toThrow('Plugin manifest must have a version');
     });
 
@@ -209,7 +219,7 @@ describe('plugin-api', () => {
             pluginApiVersion: '99' as any,
             manifestVersion: '>=1.0.0',
           },
-        })
+        }),
       ).toThrow('Plugin "test" declares pluginApiVersion "99" but current API version is "1"');
     });
 
@@ -217,7 +227,9 @@ describe('plugin-api', () => {
       let called = false;
       const plugin = definePlugin({
         manifest: validManifest,
-        onLoad: () => { called = true; },
+        onLoad: () => {
+          called = true;
+        },
       });
       expect(typeof plugin.onLoad).toBe('function');
       plugin.onLoad!({ options: {}, manifestVersion: '1.0.5' });
@@ -227,17 +239,19 @@ describe('plugin-api', () => {
     it('accepts store adapter with custom scheme', () => {
       const result = definePlugin({
         manifest: validManifest,
-        storeAdapters: [{
-          scheme: 'redis',
-          createStore: async () => ({
-            getAll: async () => [],
-            getById: async () => undefined,
-            create: async (d) => ({ id: '1', ...d }) as any,
-            update: async () => undefined,
-            delete: async () => false,
-            clear: async () => {},
-          }),
-        }],
+        storeAdapters: [
+          {
+            scheme: 'redis',
+            createStore: async () => ({
+              getAll: async () => [],
+              getById: async () => undefined,
+              create: async (d) => ({ id: '1', ...d }) as any,
+              update: async () => undefined,
+              delete: async () => false,
+              clear: async () => {},
+            }),
+          },
+        ],
       });
       expect(result.storeAdapters).toHaveLength(1);
       expect(result.storeAdapters![0].scheme).toBe('redis');
@@ -247,18 +261,20 @@ describe('plugin-api', () => {
       expect(() =>
         definePlugin({
           manifest: validManifest,
-          storeAdapters: [{
-            scheme: 'memory',
-            createStore: async () => ({
-              getAll: async () => [],
-              getById: async () => undefined,
-              create: async (d) => ({ id: '1', ...d }) as any,
-              update: async () => undefined,
-              delete: async () => false,
-              clear: async () => {},
-            }),
-          }],
-        })
+          storeAdapters: [
+            {
+              scheme: 'memory',
+              createStore: async () => ({
+                getAll: async () => [],
+                getById: async () => undefined,
+                create: async (d) => ({ id: '1', ...d }) as any,
+                update: async () => undefined,
+                delete: async () => false,
+                clear: async () => {},
+              }),
+            },
+          ],
+        }),
       ).toThrow(/scheme "memory".*built-in store target/);
     });
   });

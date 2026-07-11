@@ -128,24 +128,21 @@ async function checkFile(file) {
 }
 
 async function main() {
-  const files = await glob(
-    ['docs/**/*.md', 'mintlify/**/*.{md,mdx}'],
-    {
-      cwd: ROOT,
-      nodir: true,
-      ignore: [
-        '**/node_modules/**',
-        '**/dist/**',
-        // Meta-documentation about the docs site itself — not part of
-        // the published nav, so links inside aren't required to resolve.
-        'mintlify/README.md',
-        'mintlify/CONTRIBUTING.md',
-        // Historical archives are kept for reference but their internal
-        // links may target since-deleted material.
-        'docs/archive/**',
-      ],
-    }
-  );
+  const files = await glob(['docs/**/*.md', 'mintlify/**/*.{md,mdx}'], {
+    cwd: ROOT,
+    nodir: true,
+    ignore: [
+      '**/node_modules/**',
+      '**/dist/**',
+      // Meta-documentation about the docs site itself — not part of
+      // the published nav, so links inside aren't required to resolve.
+      'mintlify/README.md',
+      'mintlify/CONTRIBUTING.md',
+      // Historical archives are kept for reference but their internal
+      // links may target since-deleted material.
+      'docs/archive/**',
+    ],
+  });
 
   let totalLinks = 0;
   let totalBroken = 0;
@@ -160,13 +157,13 @@ async function main() {
     // Count links from src for the OK summary line.
     const src = await readFile(full, 'utf-8');
     totalLinks += extractMarkdownLinks(src).filter(
-      (l) => classifyTarget(l.target).kind === 'internal'
+      (l) => classifyTarget(l.target).kind === 'internal',
     ).length;
   }
 
   if (totalBroken === 0) {
     console.log(
-      `check-doc-links: OK (${totalLinks} internal link(s) across ${files.length} file(s))`
+      `check-doc-links: OK (${totalLinks} internal link(s) across ${files.length} file(s))`,
     );
     return;
   }

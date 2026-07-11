@@ -104,23 +104,25 @@ function entityImpact(entityName: string): string[] {
 // Property classification
 // ============================================================================
 
-function classifyPropertyDiff(
-  entityPath: string,
-  prop: PropertyDiff,
-): ClassifiedChange[] {
+function classifyPropertyDiff(entityPath: string, prop: PropertyDiff): ClassifiedChange[] {
   const path = entityPath + '.' + prop.name;
   const results: ClassifiedChange[] = [];
 
   if (prop.change === 'added') {
     const isOptional = prop.details?.modifiers?.to?.includes('optional') ?? false;
     const hasDefault = prop.details?.defaultValue !== undefined;
-    const severity: ChangeSeverity = (hasDefault || isOptional) ? 'compatible' : 'breaking';
+    const severity: ChangeSeverity = hasDefault || isOptional ? 'compatible' : 'breaking';
     results.push({
       path,
       severity,
       category: 'property-added',
-      description: 'Property ' + q(path) + ' was added' +
-        (severity === 'breaking' ? ' (required, no default -- existing data violates constraint)' : ''),
+      description:
+        'Property ' +
+        q(path) +
+        ' was added' +
+        (severity === 'breaking'
+          ? ' (required, no default -- existing data violates constraint)'
+          : ''),
       consumerImpact: severity === 'breaking' ? entityImpact(entityPath) : [],
     });
     return results;
@@ -152,7 +154,13 @@ function classifyPropertyDiff(
         path,
         severity: 'breaking',
         category: 'property-type-changed',
-        description: 'Property ' + q(path) + ' type changed from ' + q(details.type.from) + ' to ' + q(details.type.to),
+        description:
+          'Property ' +
+          q(path) +
+          ' type changed from ' +
+          q(details.type.from) +
+          ' to ' +
+          q(details.type.to),
         consumerImpact: entityImpact(entityPath),
       });
     } else if (!fromNullable && toNullable) {
@@ -160,7 +168,14 @@ function classifyPropertyDiff(
         path,
         severity: 'compatible',
         category: 'property-made-optional',
-        description: 'Property ' + q(path) + ' was made optional (was ' + q(details.type.from) + ', now ' + q(details.type.to) + ')',
+        description:
+          'Property ' +
+          q(path) +
+          ' was made optional (was ' +
+          q(details.type.from) +
+          ', now ' +
+          q(details.type.to) +
+          ')',
         consumerImpact: [],
       });
     } else if (fromNullable && !toNullable) {
@@ -168,7 +183,14 @@ function classifyPropertyDiff(
         path,
         severity: 'breaking',
         category: 'property-made-required',
-        description: 'Property ' + q(path) + ' was made required (was ' + q(details.type.from) + ', now ' + q(details.type.to) + ')',
+        description:
+          'Property ' +
+          q(path) +
+          ' was made required (was ' +
+          q(details.type.from) +
+          ', now ' +
+          q(details.type.to) +
+          ')',
         consumerImpact: entityImpact(entityPath),
       });
     }
@@ -202,7 +224,13 @@ function classifyPropertyDiff(
       path,
       severity: 'compatible',
       category: 'property-default-changed',
-      description: 'Property ' + q(path) + ' default value changed from ' + details.defaultValue.from + ' to ' + details.defaultValue.to,
+      description:
+        'Property ' +
+        q(path) +
+        ' default value changed from ' +
+        details.defaultValue.from +
+        ' to ' +
+        details.defaultValue.to,
       consumerImpact: [],
     });
   }
@@ -221,23 +249,27 @@ function classifyComputedPropertyDiff(
   const path = entityPath + '.' + cp.name;
 
   if (cp.change === 'added') {
-    return [{
-      path,
-      severity: 'compatible',
-      category: 'computed-property-added',
-      description: 'Computed property ' + q(path) + ' was added',
-      consumerImpact: [],
-    }];
+    return [
+      {
+        path,
+        severity: 'compatible',
+        category: 'computed-property-added',
+        description: 'Computed property ' + q(path) + ' was added',
+        consumerImpact: [],
+      },
+    ];
   }
 
   if (cp.change === 'removed') {
-    return [{
-      path,
-      severity: 'breaking',
-      category: 'computed-property-removed',
-      description: 'Computed property ' + q(path) + ' was removed',
-      consumerImpact: entityImpact(entityPath),
-    }];
+    return [
+      {
+        path,
+        severity: 'breaking',
+        category: 'computed-property-removed',
+        description: 'Computed property ' + q(path) + ' was removed',
+        consumerImpact: entityImpact(entityPath),
+      },
+    ];
   }
 
   const results: ClassifiedChange[] = [];
@@ -249,7 +281,13 @@ function classifyComputedPropertyDiff(
       path,
       severity: 'breaking',
       category: 'computed-property-type-changed',
-      description: 'Computed property ' + q(path) + ' type changed from ' + q(details.type.from) + ' to ' + q(details.type.to),
+      description:
+        'Computed property ' +
+        q(path) +
+        ' type changed from ' +
+        q(details.type.from) +
+        ' to ' +
+        q(details.type.to),
       consumerImpact: entityImpact(entityPath),
     });
   }
@@ -269,7 +307,14 @@ function classifyComputedPropertyDiff(
       path,
       severity: 'deprecated',
       category: 'computed-property-dependencies-changed',
-      description: 'Computed property ' + q(path) + ' dependencies changed from [' + details.dependencies.from.join(', ') + '] to [' + details.dependencies.to.join(', ') + ']',
+      description:
+        'Computed property ' +
+        q(path) +
+        ' dependencies changed from [' +
+        details.dependencies.from.join(', ') +
+        '] to [' +
+        details.dependencies.to.join(', ') +
+        ']',
       consumerImpact: ['projection:' + entityPath],
     });
   }
@@ -281,30 +326,31 @@ function classifyComputedPropertyDiff(
 // Relationship classification
 // ============================================================================
 
-function classifyRelationshipDiff(
-  entityPath: string,
-  rel: RelationshipDiff,
-): ClassifiedChange[] {
+function classifyRelationshipDiff(entityPath: string, rel: RelationshipDiff): ClassifiedChange[] {
   const path = entityPath + '.' + rel.name;
 
   if (rel.change === 'added') {
-    return [{
-      path,
-      severity: 'compatible',
-      category: 'relationship-added',
-      description: 'Relationship ' + q(path) + ' was added',
-      consumerImpact: [],
-    }];
+    return [
+      {
+        path,
+        severity: 'compatible',
+        category: 'relationship-added',
+        description: 'Relationship ' + q(path) + ' was added',
+        consumerImpact: [],
+      },
+    ];
   }
 
   if (rel.change === 'removed') {
-    return [{
-      path,
-      severity: 'breaking',
-      category: 'relationship-removed',
-      description: 'Relationship ' + q(path) + ' was removed',
-      consumerImpact: entityImpact(entityPath),
-    }];
+    return [
+      {
+        path,
+        severity: 'breaking',
+        category: 'relationship-removed',
+        description: 'Relationship ' + q(path) + ' was removed',
+        consumerImpact: entityImpact(entityPath),
+      },
+    ];
   }
 
   const results: ClassifiedChange[] = [];
@@ -316,7 +362,13 @@ function classifyRelationshipDiff(
       path,
       severity: 'breaking',
       category: 'relationship-kind-changed',
-      description: 'Relationship ' + q(path) + ' kind changed from ' + q(details.kind.from) + ' to ' + q(details.kind.to),
+      description:
+        'Relationship ' +
+        q(path) +
+        ' kind changed from ' +
+        q(details.kind.from) +
+        ' to ' +
+        q(details.kind.to),
       consumerImpact: entityImpact(entityPath),
     });
   }
@@ -326,7 +378,13 @@ function classifyRelationshipDiff(
       path,
       severity: 'breaking',
       category: 'relationship-target-changed',
-      description: 'Relationship ' + q(path) + ' target changed from ' + q(details.target.from) + ' to ' + q(details.target.to),
+      description:
+        'Relationship ' +
+        q(path) +
+        ' target changed from ' +
+        q(details.target.from) +
+        ' to ' +
+        q(details.target.to),
       consumerImpact: entityImpact(entityPath),
     });
   }
@@ -358,30 +416,31 @@ function classifyRelationshipDiff(
 // Constraint classification
 // ============================================================================
 
-function classifyConstraintDiff(
-  entityPath: string,
-  con: ConstraintDiff,
-): ClassifiedChange[] {
+function classifyConstraintDiff(entityPath: string, con: ConstraintDiff): ClassifiedChange[] {
   const path = entityPath + '.' + con.name;
 
   if (con.change === 'added') {
-    return [{
-      path,
-      severity: 'compatible',
-      category: 'constraint-added',
-      description: 'Constraint ' + q(path) + ' was added',
-      consumerImpact: [],
-    }];
+    return [
+      {
+        path,
+        severity: 'compatible',
+        category: 'constraint-added',
+        description: 'Constraint ' + q(path) + ' was added',
+        consumerImpact: [],
+      },
+    ];
   }
 
   if (con.change === 'removed') {
-    return [{
-      path,
-      severity: 'deprecated',
-      category: 'constraint-removed',
-      description: 'Constraint ' + q(path) + ' was removed',
-      consumerImpact: [],
-    }];
+    return [
+      {
+        path,
+        severity: 'deprecated',
+        category: 'constraint-removed',
+        description: 'Constraint ' + q(path) + ' was removed',
+        consumerImpact: [],
+      },
+    ];
   }
 
   const results: ClassifiedChange[] = [];
@@ -398,7 +457,13 @@ function classifyConstraintDiff(
         path,
         severity: 'compatible',
         category: 'constraint-severity-raised',
-        description: 'Constraint ' + q(path) + ' severity raised from ' + q(details.severity.from) + ' to ' + q(details.severity.to),
+        description:
+          'Constraint ' +
+          q(path) +
+          ' severity raised from ' +
+          q(details.severity.from) +
+          ' to ' +
+          q(details.severity.to),
         consumerImpact: [],
       });
     } else {
@@ -406,7 +471,13 @@ function classifyConstraintDiff(
         path,
         severity: 'deprecated',
         category: 'constraint-severity-lowered',
-        description: 'Constraint ' + q(path) + ' severity lowered from ' + q(details.severity.from) + ' to ' + q(details.severity.to),
+        description:
+          'Constraint ' +
+          q(path) +
+          ' severity lowered from ' +
+          q(details.severity.from) +
+          ' to ' +
+          q(details.severity.to),
         consumerImpact: [],
       });
     }
@@ -429,10 +500,7 @@ function classifyConstraintDiff(
 // Entity classification
 // ============================================================================
 
-function classifyEntityDiff(
-  entity: EntityDiff,
-  report: IRDiffReport,
-): ClassifiedChange[] {
+function classifyEntityDiff(entity: EntityDiff, report: IRDiffReport): ClassifiedChange[] {
   const results: ClassifiedChange[] = [];
   const entityPath = entity.name;
 
@@ -453,7 +521,10 @@ function classifyEntityDiff(
       path: entityPath,
       severity: 'breaking',
       category: 'entity-removed',
-      description: 'Entity ' + q(entity.name) + ' was removed -- all routes and projections referencing it will break',
+      description:
+        'Entity ' +
+        q(entity.name) +
+        ' was removed -- all routes and projections referencing it will break',
       consumerImpact: impact,
     });
     for (const prop of entity.properties) {
@@ -461,7 +532,8 @@ function classifyEntityDiff(
         path: entityPath + '.' + prop.name,
         severity: 'breaking',
         category: 'property-removed',
-        description: 'Property ' + q(entityPath + '.' + prop.name) + ' was removed (entity removed)',
+        description:
+          'Property ' + q(entityPath + '.' + prop.name) + ' was removed (entity removed)',
         consumerImpact: [],
       });
     }
@@ -474,7 +546,13 @@ function classifyEntityDiff(
       path: entityPath + '.$module',
       severity: 'compatible',
       category: 'entity-module-changed',
-      description: 'Entity ' + q(entity.name) + ' moved from module ' + q(entity.module.from ?? '(none)') + ' to ' + q(entity.module.to ?? '(none)'),
+      description:
+        'Entity ' +
+        q(entity.name) +
+        ' moved from module ' +
+        q(entity.module.from ?? '(none)') +
+        ' to ' +
+        q(entity.module.to ?? '(none)'),
       consumerImpact: [],
     });
   }
@@ -503,29 +581,31 @@ function classifyEntityDiff(
 // Command classification
 // ============================================================================
 
-function classifyCommandDiff(
-  cmd: CommandDiff,
-): ClassifiedChange[] {
+function classifyCommandDiff(cmd: CommandDiff): ClassifiedChange[] {
   const path = cmd.name;
 
   if (cmd.change === 'added') {
-    return [{
-      path,
-      severity: 'compatible',
-      category: 'command-added',
-      description: 'Command ' + q(cmd.name) + ' was added',
-      consumerImpact: [],
-    }];
+    return [
+      {
+        path,
+        severity: 'compatible',
+        category: 'command-added',
+        description: 'Command ' + q(cmd.name) + ' was added',
+        consumerImpact: [],
+      },
+    ];
   }
 
   if (cmd.change === 'removed') {
-    return [{
-      path,
-      severity: 'breaking',
-      category: 'command-removed',
-      description: 'Command ' + q(cmd.name) + ' was removed -- callers will fail',
-      consumerImpact: ['command:' + cmd.name, 'route:/api/*/' + cmd.name],
-    }];
+    return [
+      {
+        path,
+        severity: 'breaking',
+        category: 'command-removed',
+        description: 'Command ' + q(cmd.name) + ' was removed -- callers will fail',
+        consumerImpact: ['command:' + cmd.name, 'route:/api/*/' + cmd.name],
+      },
+    ];
   }
 
   const results: ClassifiedChange[] = [];
@@ -537,7 +617,13 @@ function classifyCommandDiff(
       path: path + '.entity',
       severity: 'breaking',
       category: 'command-entity-changed',
-      description: 'Command ' + q(cmd.name) + ' entity binding changed from ' + q(details.entity.from ?? '(none)') + ' to ' + q(details.entity.to ?? '(none)'),
+      description:
+        'Command ' +
+        q(cmd.name) +
+        ' entity binding changed from ' +
+        q(details.entity.from ?? '(none)') +
+        ' to ' +
+        q(details.entity.to ?? '(none)'),
       consumerImpact: ['command:' + cmd.name],
     });
   }
@@ -573,7 +659,8 @@ function classifyCommandDiff(
       path: path + '.guards',
       severity: 'deprecated',
       category: 'command-guards-changed',
-      description: 'Command ' + q(cmd.name) + ' guard logic changed (may reject previously valid calls)',
+      description:
+        'Command ' + q(cmd.name) + ' guard logic changed (may reject previously valid calls)',
       consumerImpact: ['command:' + cmd.name],
     });
   }
@@ -615,29 +702,34 @@ function classifyCommandDiff(
 // Policy classification
 // ============================================================================
 
-function classifyPolicyDiff(
-  policy: PolicyDiff,
-): ClassifiedChange[] {
+function classifyPolicyDiff(policy: PolicyDiff): ClassifiedChange[] {
   const path = policy.name;
 
   if (policy.change === 'added') {
-    return [{
-      path,
-      severity: 'compatible',
-      category: 'policy-added',
-      description: 'Policy ' + q(policy.name) + ' was added',
-      consumerImpact: [],
-    }];
+    return [
+      {
+        path,
+        severity: 'compatible',
+        category: 'policy-added',
+        description: 'Policy ' + q(policy.name) + ' was added',
+        consumerImpact: [],
+      },
+    ];
   }
 
   if (policy.change === 'removed') {
-    return [{
-      path,
-      severity: 'breaking',
-      category: 'policy-removed',
-      description: 'Policy ' + q(policy.name) + ' was removed -- previously protected operations are now unrestricted',
-      consumerImpact: ['policy:' + policy.name],
-    }];
+    return [
+      {
+        path,
+        severity: 'breaking',
+        category: 'policy-removed',
+        description:
+          'Policy ' +
+          q(policy.name) +
+          ' was removed -- previously protected operations are now unrestricted',
+        consumerImpact: ['policy:' + policy.name],
+      },
+    ];
   }
 
   const results: ClassifiedChange[] = [];
@@ -649,7 +741,13 @@ function classifyPolicyDiff(
       path: path + '.action',
       severity: 'breaking',
       category: 'policy-action-changed',
-      description: 'Policy ' + q(policy.name) + ' action changed from ' + q(details.action.from) + ' to ' + q(details.action.to),
+      description:
+        'Policy ' +
+        q(policy.name) +
+        ' action changed from ' +
+        q(details.action.from) +
+        ' to ' +
+        q(details.action.to),
       consumerImpact: ['policy:' + policy.name],
     });
   }
@@ -671,29 +769,31 @@ function classifyPolicyDiff(
 // Store classification
 // ============================================================================
 
-function classifyStoreDiff(
-  store: StoreDiff,
-): ClassifiedChange[] {
+function classifyStoreDiff(store: StoreDiff): ClassifiedChange[] {
   const path = 'store:' + store.entity;
 
   if (store.change === 'added') {
-    return [{
-      path,
-      severity: 'compatible',
-      category: 'store-added',
-      description: 'Store for ' + q(store.entity) + ' was added',
-      consumerImpact: [],
-    }];
+    return [
+      {
+        path,
+        severity: 'compatible',
+        category: 'store-added',
+        description: 'Store for ' + q(store.entity) + ' was added',
+        consumerImpact: [],
+      },
+    ];
   }
 
   if (store.change === 'removed') {
-    return [{
-      path,
-      severity: 'breaking',
-      category: 'store-removed',
-      description: 'Store for ' + q(store.entity) + ' was removed -- data persistence lost',
-      consumerImpact: ['store:' + store.entity],
-    }];
+    return [
+      {
+        path,
+        severity: 'breaking',
+        category: 'store-removed',
+        description: 'Store for ' + q(store.entity) + ' was removed -- data persistence lost',
+        consumerImpact: ['store:' + store.entity],
+      },
+    ];
   }
 
   const results: ClassifiedChange[] = [];
@@ -705,7 +805,13 @@ function classifyStoreDiff(
       path: path + '.target',
       severity: 'breaking',
       category: 'store-target-changed',
-      description: 'Store for ' + q(store.entity) + ' target changed from ' + q(details.target.from) + ' to ' + q(details.target.to),
+      description:
+        'Store for ' +
+        q(store.entity) +
+        ' target changed from ' +
+        q(details.target.from) +
+        ' to ' +
+        q(details.target.to),
       consumerImpact: ['store:' + store.entity],
     });
   }
@@ -727,29 +833,31 @@ function classifyStoreDiff(
 // Event classification
 // ============================================================================
 
-function classifyEventDiff(
-  event: EventDiff,
-): ClassifiedChange[] {
+function classifyEventDiff(event: EventDiff): ClassifiedChange[] {
   const path = event.name;
 
   if (event.change === 'added') {
-    return [{
-      path,
-      severity: 'compatible',
-      category: 'event-added',
-      description: 'Event ' + q(event.name) + ' was added',
-      consumerImpact: [],
-    }];
+    return [
+      {
+        path,
+        severity: 'compatible',
+        category: 'event-added',
+        description: 'Event ' + q(event.name) + ' was added',
+        consumerImpact: [],
+      },
+    ];
   }
 
   if (event.change === 'removed') {
-    return [{
-      path,
-      severity: 'breaking',
-      category: 'event-removed',
-      description: 'Event ' + q(event.name) + ' was removed -- subscribers will break',
-      consumerImpact: ['event:' + event.name],
-    }];
+    return [
+      {
+        path,
+        severity: 'breaking',
+        category: 'event-removed',
+        description: 'Event ' + q(event.name) + ' was removed -- subscribers will break',
+        consumerImpact: ['event:' + event.name],
+      },
+    ];
   }
 
   const results: ClassifiedChange[] = [];
@@ -761,7 +869,13 @@ function classifyEventDiff(
       path: path + '.channel',
       severity: 'breaking',
       category: 'event-channel-changed',
-      description: 'Event ' + q(event.name) + ' channel changed from ' + q(details.channel.from) + ' to ' + q(details.channel.to),
+      description:
+        'Event ' +
+        q(event.name) +
+        ' channel changed from ' +
+        q(details.channel.from) +
+        ' to ' +
+        q(details.channel.to),
       consumerImpact: ['event:' + event.name],
     });
   }
@@ -783,38 +897,42 @@ function classifyEventDiff(
 // Module classification
 // ============================================================================
 
-function classifyModuleDiff(
-  mod: ModuleDiff,
-): ClassifiedChange[] {
+function classifyModuleDiff(mod: ModuleDiff): ClassifiedChange[] {
   const path = 'module:' + mod.name;
 
   if (mod.change === 'added') {
-    return [{
-      path,
-      severity: 'compatible',
-      category: 'module-added',
-      description: 'Module ' + q(mod.name) + ' was added',
-      consumerImpact: [],
-    }];
+    return [
+      {
+        path,
+        severity: 'compatible',
+        category: 'module-added',
+        description: 'Module ' + q(mod.name) + ' was added',
+        consumerImpact: [],
+      },
+    ];
   }
 
   if (mod.change === 'removed') {
-    return [{
-      path,
-      severity: 'breaking',
-      category: 'module-removed',
-      description: 'Module ' + q(mod.name) + ' was removed',
-      consumerImpact: [],
-    }];
+    return [
+      {
+        path,
+        severity: 'breaking',
+        category: 'module-removed',
+        description: 'Module ' + q(mod.name) + ' was removed',
+        consumerImpact: [],
+      },
+    ];
   }
 
-  return [{
-    path,
-    severity: 'compatible',
-    category: 'module-changed',
-    description: 'Module ' + q(mod.name) + ' contents changed',
-    consumerImpact: [],
-  }];
+  return [
+    {
+      path,
+      severity: 'compatible',
+      category: 'module-changed',
+      description: 'Module ' + q(mod.name) + ' contents changed',
+      consumerImpact: [],
+    },
+  ];
 }
 
 // ============================================================================
@@ -866,24 +984,22 @@ export function classifyBreakingChanges(
   });
 
   // Compute summary
-  const breaking = classified.filter(c => c.severity === 'breaking');
-  const deprecated = classified.filter(c => c.severity === 'deprecated');
-  const compatible = classified.filter(c => c.severity === 'compatible');
+  const breaking = classified.filter((c) => c.severity === 'breaking');
+  const deprecated = classified.filter((c) => c.severity === 'deprecated');
+  const compatible = classified.filter((c) => c.severity === 'compatible');
 
   // Apply acknowledgments -- match by path + category (two-key matching)
-  const ackSet = new Set(
-    (acks?.acknowledged ?? []).map(a => a.path + '::' + a.category),
-  );
+  const ackSet = new Set((acks?.acknowledged ?? []).map((a) => a.path + '::' + a.category));
 
-  const acknowledged = breaking.filter(c => ackSet.has(c.path + '::' + c.category));
-  const unacknowledged = breaking.filter(c => !ackSet.has(c.path + '::' + c.category));
+  const acknowledged = breaking.filter((c) => ackSet.has(c.path + '::' + c.category));
+  const unacknowledged = breaking.filter((c) => !ackSet.has(c.path + '::' + c.category));
 
   // Aggregate consumer impact
-  const allImpact = classified.flatMap(c => c.consumerImpact);
+  const allImpact = classified.flatMap((c) => c.consumerImpact);
   const consumerImpact: ConsumerImpactSummary = {
-    commands: [...new Set(allImpact.filter(i => i.startsWith('command:')))].sort(),
-    routes: [...new Set(allImpact.filter(i => i.startsWith('route:')))].sort(),
-    projections: [...new Set(allImpact.filter(i => i.startsWith('projection:')))].sort(),
+    commands: [...new Set(allImpact.filter((i) => i.startsWith('command:')))].sort(),
+    routes: [...new Set(allImpact.filter((i) => i.startsWith('route:')))].sort(),
+    projections: [...new Set(allImpact.filter((i) => i.startsWith('projection:')))].sort(),
   };
 
   return {

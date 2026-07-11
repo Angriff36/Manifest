@@ -37,16 +37,14 @@ const ALLOWLIST_SEGMENTS = [
 
 function isAllowlisted(filePath: string, root: string): boolean {
   const rel = path.relative(root, filePath).split(/[\\/]/);
-  return ALLOWLIST_SEGMENTS.some((segments) =>
-    segments.every((seg, i) => rel[i] === seg)
-  );
+  return ALLOWLIST_SEGMENTS.some((segments) => segments.every((seg, i) => rel[i] === seg));
 }
 
 async function scanFile(
   filePath: string,
   root: string,
   re: RegExp,
-  receiver: string
+  receiver: string,
 ): Promise<AuditFinding[]> {
   if (isAllowlisted(filePath, root)) return [];
   const content = await fs.readFile(filePath, 'utf-8');

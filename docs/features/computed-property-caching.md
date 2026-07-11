@@ -37,7 +37,7 @@ On a cache hit the engine returns `{ value, stale, cached: true }`; on a miss it
 
 ### Dependency extraction
 
-Staleness keys on the names of the instance properties a computed reads. Those names are collected at parse time by `extractDependencies()` (`src/manifest/parser.ts`) from the computed's expression and carried on the IR. It captures bare identifiers **and** member access on `self`/`this`: `computed tax = self.subtotal * self.taxRate` correctly lists `subtotal` and `taxRate` as dependencies. (Earlier versions only captured bare identifiers, so member references like `self.subtotal` listed *no* dependencies and the cache never went stale when those fields changed.) References through `user.*` and `context.*` are excluded — they are not instance properties — while a nested `self.a.b` recurses to capture `a`. This mirrors the `self`/`this` member check in the IR compiler's guard/constraint analysis.
+Staleness keys on the names of the instance properties a computed reads. Those names are collected at parse time by `extractDependencies()` (`src/manifest/parser.ts`) from the computed's expression and carried on the IR. It captures bare identifiers **and** member access on `self`/`this`: `computed tax = self.subtotal * self.taxRate` correctly lists `subtotal` and `taxRate` as dependencies. (Earlier versions only captured bare identifiers, so member references like `self.subtotal` listed _no_ dependencies and the cache never went stale when those fields changed.) References through `user.*` and `context.*` are excluded — they are not instance properties — while a nested `self.a.b` recurses to capture `a`. This mirrors the `self`/`this` member check in the IR compiler's guard/constraint analysis.
 
 ## How it maps to projections
 

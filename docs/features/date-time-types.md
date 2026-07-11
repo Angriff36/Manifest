@@ -31,20 +31,20 @@ module Scheduling {
 
 The `timestamps` entity modifier (fixture `62-timestamp-auto-fields.manifest`) injects `createdAt` and `updatedAt` as `datetime` properties.
 
-**Note:** `date` and `time` are valid property *names* as well as types — the fixture uses `property date: string` and `property time: number` to regression-test that names are not reserved.
+**Note:** `date` and `time` are valid property _names_ as well as types — the fixture uses `property date: string` and `property time: number` to regression-test that names are not reserved.
 
 ## Built-ins
 
 From `docs/spec/builtins.md` and the runtime:
 
-| Built-in | Purpose |
-|----------|---------|
-| `now()` | Current time (milliseconds since epoch) |
-| `year(ts)`, `month(ts)`, `day(ts)` | UTC date components from numeric timestamp |
-| `hours(ts)`, `minutes(ts)`, `seconds(ts)` | UTC time components |
-| `dateOf(ts)` | Date portion of a datetime |
-| `addDuration(ts, duration)` | Add a duration to a timestamp |
-| `durationBetween(a, b)` | Difference between two timestamps |
+| Built-in                                  | Purpose                                    |
+| ----------------------------------------- | ------------------------------------------ |
+| `now()`                                   | Current time (milliseconds since epoch)    |
+| `year(ts)`, `month(ts)`, `day(ts)`        | UTC date components from numeric timestamp |
+| `hours(ts)`, `minutes(ts)`, `seconds(ts)` | UTC time components                        |
+| `dateOf(ts)`                              | Date portion of a datetime                 |
+| `addDuration(ts, duration)`               | Add a duration to a timestamp              |
+| `durationBetween(a, b)`                   | Difference between two timestamps          |
 
 ## Property defaults: `now()` / `today()` (autoNow)
 

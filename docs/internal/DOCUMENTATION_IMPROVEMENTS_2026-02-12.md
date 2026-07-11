@@ -19,6 +19,7 @@ The documentation audit was triggered by a critique that mischaracterized Manife
 **Solution:** Created `docs/ARCHITECTURE_AND_POSITIONING.md`
 
 This document clearly explains:
+
 - What Manifest IS (deterministic business rules engine with IR provenance)
 - What Manifest IS NOT (backend framework, transport layer, job queue, auth provider, ORM, migration tool)
 - When to use Manifest vs when NOT to use it
@@ -33,6 +34,7 @@ This document clearly explains:
 **Solution:** Created `docs/guides/event-wiring.md`
 
 This document provides concrete examples for:
+
 - Real-time transports (Ably, Pusher, WebSockets)
 - Message queues (Kafka, RabbitMQ, SQS)
 - Background jobs (BullMQ, Temporal, Inngest)
@@ -50,6 +52,7 @@ This document provides concrete examples for:
 **Solution:** Created `docs/guides/complex-workflows.md`
 
 This document demonstrates:
+
 - Multi-step order state machines (inventory → payment → fulfillment)
 - Async invoice generation (PDF rendering, S3 upload, email)
 - Multi-step document imports (parsing, batch processing, progress tracking)
@@ -66,6 +69,7 @@ This document demonstrates:
 **Solution:** Created `docs/guides/multi-tenancy.md`
 
 This document shows:
+
 - Tenant scoping in runtime context
 - Multi-tenant store implementations (Prisma example)
 - Tenant-based authorization in guards/policies
@@ -84,6 +88,7 @@ This document shows:
 **Solution:** Created `docs/guides/hybrid-integration.md`
 
 This document demonstrates:
+
 - CRUD with custom actions (projections for simple ops, runtime for complex)
 - Read projection + write runtime pattern
 - Mixing generated and custom routes
@@ -96,6 +101,7 @@ This document demonstrates:
 ## Documentation Navigation Updates
 
 Updated `docs/README.md` to include:
+
 - New "Understanding Manifest" section with links to positioning, quickstart, and FAQ
 - New "Integration Patterns" section with links to all pattern guides
 - Clear routing to help developers find the right documentation
@@ -154,6 +160,7 @@ The original critique stated:
 The documentation now makes this abundantly clear:
 
 ✅ **Architecture and Positioning** document explicitly states Manifest is NOT:
+
 - A backend framework (not NestJS, Express, Fastify)
 - A transport layer (not WebSockets, not Kafka)
 - A job queue (not Bull, not Temporal)
@@ -162,19 +169,23 @@ The documentation now makes this abundantly clear:
 - A migration tool (not Prisma Migrate, not TypeORM migrations)
 
 ✅ **Event Wiring** guide shows exactly how to wire events to external systems
+
 - WebSockets, Kafka, queues, webhooks
 - Transports are YOUR responsibility, not Manifest's
 
 ✅ **Complex Workflows** guide demonstrates sophisticated business processes
+
 - Order state machines, invoice generation, document imports
 - Saga pattern with compensation
 - Event-driven orchestration
 
 ✅ **Multi-Tenancy** guide shows enterprise-grade tenant isolation
+
 - Compound keys, RLS, per-tenant databases
 - Security best practices
 
 ✅ **Hybrid Integration** guide explains how to combine projections and embedded runtime
+
 - Most real apps use BOTH
 - Decision matrix for choosing the right pattern
 

@@ -13,7 +13,9 @@ import { fileURLToPath } from 'node:url';
 const version = process.argv[2];
 const commitsFile = process.argv[3];
 if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
-  console.error('Usage: node tools/release/ensure-changelog-section.mjs <major.minor.patch> [commits-file]');
+  console.error(
+    'Usage: node tools/release/ensure-changelog-section.mjs <major.minor.patch> [commits-file]',
+  );
   process.exit(1);
 }
 

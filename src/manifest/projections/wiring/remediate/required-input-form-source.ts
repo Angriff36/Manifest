@@ -22,23 +22,11 @@ export function collectObjectFormProperties(
     beforePos: number,
   ) => boolean,
 ): void {
-  const memberHosts = [
-    'form',
-    'values',
-    'data',
-    'state',
-    'input',
-    'payload',
-    'body',
-    'formValues',
-  ];
+  const memberHosts = ['form', 'values', 'data', 'state', 'input', 'payload', 'body', 'formValues'];
   for (const host of memberHosts) {
     const member = `${host}.${name}`;
     const scopeForUse = innermost ?? sf;
-    if (
-      scopeForUse.getText(sf).includes(member) ||
-      content.includes(member)
-    ) {
+    if (scopeForUse.getText(sf).includes(member) || content.includes(member)) {
       if (hostInScopeChain(scopes, sf, host, callPos)) {
         out.push({
           expression: member,
@@ -86,9 +74,7 @@ export function collectFormDataSources(
     beforePos: number,
   ) => boolean,
 ): void {
-  const formGet = new RegExp(
-    `formData\\.get\\s*\\(\\s*["']${escapeRe(name)}["']\\s*\\)`,
-  );
+  const formGet = new RegExp(`formData\\.get\\s*\\(\\s*["']${escapeRe(name)}["']\\s*\\)`);
   if (!formGet.test(content) || !hostInScopeChain(scopes, sf, 'formData', callPos)) {
     return;
   }

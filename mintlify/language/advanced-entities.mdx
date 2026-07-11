@@ -1,7 +1,7 @@
 ---
-title: "Advanced entities: inheritance and mixins"
-description: "Extend entity types with single inheritance and mixin composition to build reusable, composable domain models."
-sidebarTitle: "Advanced entities"
+title: 'Advanced entities: inheritance and mixins'
+description: 'Extend entity types with single inheritance and mixin composition to build reusable, composable domain models.'
+sidebarTitle: 'Advanced entities'
 ---
 
 Manifest supports two patterns for structuring entity types beyond a flat declaration: single inheritance with `extends` and composition with `mixin`. Both are compile-time features — the runtime sees a flattened entity with no inheritance metadata.
@@ -40,7 +40,8 @@ Child entities can override inherited properties and commands by redeclaring the
 The compiler detects circular inheritance chains (e.g., `A extends B` and `B extends A`) and emits an error diagnostic. Cycles are also caught transitively (A → B → C → A).
 
 <Note>
-Only single inheritance is supported. An entity can extend exactly one parent. For sharing behavior across multiple entities, use mixins.
+  Only single inheritance is supported. An entity can extend exactly one parent. For sharing
+  behavior across multiple entities, use mixins.
 </Note>
 
 ## Mixin composition

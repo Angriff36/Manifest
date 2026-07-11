@@ -124,7 +124,12 @@ function decodeIRValue(value: unknown): unknown {
     return value;
   }
 
-  const node = value as { kind?: string; value?: unknown; elements?: unknown[]; properties?: Record<string, unknown> };
+  const node = value as {
+    kind?: string;
+    value?: unknown;
+    elements?: unknown[];
+    properties?: Record<string, unknown>;
+  };
   if (node.kind === 'string' || node.kind === 'number' || node.kind === 'boolean') {
     return node.value;
   }
@@ -170,16 +175,25 @@ function pushAssertion(
   details: AssertionDetail[],
   check: string,
   expected: unknown,
-  actual: unknown
+  actual: unknown,
 ): void {
   const passed = JSON.stringify(expected) === JSON.stringify(actual);
   details.push({ check, expected, actual, passed });
 }
 
 async function buildFallbackEntity(
-  ir: { entities?: Array<{ name: string; properties?: Array<{ name: string; type?: { name?: string } | string; defaultValue?: unknown }> }> },
+  ir: {
+    entities?: Array<{
+      name: string;
+      properties?: Array<{
+        name: string;
+        type?: { name?: string } | string;
+        defaultValue?: unknown;
+      }>;
+    }>;
+  },
   entityName: string,
-  id: string
+  id: string,
 ): Promise<Record<string, unknown>> {
   const entity = (ir.entities || []).find((candidate) => candidate.name === entityName);
   const defaults: Record<string, unknown> = { id };
@@ -197,7 +211,8 @@ async function buildFallbackEntity(
       continue;
     }
 
-    const typeName = typeof prop.type === 'object' ? prop.type?.name || 'string' : String(prop.type || 'string');
+    const typeName =
+      typeof prop.type === 'object' ? prop.type?.name || 'string' : String(prop.type || 'string');
     defaults[prop.name] = defaultForType(typeName);
   }
 
@@ -224,11 +239,17 @@ function printTextSummary(output: HarnessRunOutput): void {
   for (const step of output.execution.steps) {
     const stepPassed = step.assertions.failed === 0;
     const marker = stepPassed ? chalk.green('✓') : chalk.red('✗');
-    console.log(`${marker} Step ${step.step} ${step.command.entity}.${step.command.name} (${step.assertions.passed}/${step.assertions.passed + step.assertions.failed} assertions)`);
+    console.log(
+      `${marker} Step ${step.step} ${step.command.entity}.${step.command.name} (${step.assertions.passed}/${step.assertions.passed + step.assertions.failed} assertions)`,
+    );
 
     if (!stepPassed) {
       for (const detail of step.assertions.details.filter((item) => !item.passed)) {
-        console.log(chalk.red(`    - ${detail.check}: expected ${JSON.stringify(detail.expected)}, got ${JSON.stringify(detail.actual)}`));
+        console.log(
+          chalk.red(
+            `    - ${detail.check}: expected ${JSON.stringify(detail.expected)}, got ${JSON.stringify(detail.actual)}`,
+          ),
+        );
       }
     }
   }
@@ -240,7 +261,10 @@ function printTextSummary(output: HarnessRunOutput): void {
   console.log(`  Assertions: ${s.assertionsPassed} passed | ${s.assertionsFailed} failed`);
 }
 
-export async function harnessCommand(manifest: string, options: HarnessCommandOptions): Promise<void> {
+export async function harnessCommand(
+  manifest: string,
+  options: HarnessCommandOptions,
+): Promise<void> {
   const spinner = ora('Running harness script').start();
 
   try {
@@ -257,7 +281,9 @@ export async function harnessCommand(manifest: string, options: HarnessCommandOp
     assertScriptShape(parsedScript);
 
     const { ir, diagnostics } = await compileToIR(manifestSource);
-    const compileErrors = (diagnostics || []).filter((d: { severity?: string }) => d.severity === 'error');
+    const compileErrors = (diagnostics || []).filter(
+      (d: { severity?: string }) => d.severity === 'error',
+    );
     if (!ir || compileErrors.length > 0) {
       const messages = compileErrors
         .map((d: { message?: string }) => d.message || 'Unknown compile error')
@@ -331,7 +357,12 @@ export async function harnessCommand(manifest: string, options: HarnessCommandOp
           pushAssertion(assertionDetails, 'error.type', expect.error.type, actualType);
         }
         if (expect.error.guardIndex !== undefined) {
-          pushAssertion(assertionDetails, 'error.guardIndex', expect.error.guardIndex, commandResult.guardFailure?.index ?? null);
+          pushAssertion(
+            assertionDetails,
+            'error.guardIndex',
+            expect.error.guardIndex,
+            commandResult.guardFailure?.index ?? null,
+          );
         }
       }
 
@@ -343,7 +374,12 @@ export async function harnessCommand(manifest: string, options: HarnessCommandOp
       const entityStateAfter = normalizeRecord(await engine.getInstance(cmd.entity, cmd.id));
       if (expect.stateAfter) {
         for (const [key, expectedValue] of Object.entries(expect.stateAfter)) {
-          pushAssertion(assertionDetails, `stateAfter.${key}`, expectedValue, entityStateAfter[key]);
+          pushAssertion(
+            assertionDetails,
+            `stateAfter.${key}`,
+            expectedValue,
+            entityStateAfter[key],
+          );
         }
       }
 
@@ -367,10 +403,11 @@ export async function harnessCommand(manifest: string, options: HarnessCommandOp
               : commandResult.error
                 ? 'error'
                 : null,
-          errorMessage: commandResult.guardFailure?.formatted
-            || commandResult.policyDenial?.formatted
-            || commandResult.error
-            || null,
+          errorMessage:
+            commandResult.guardFailure?.formatted ||
+            commandResult.policyDenial?.formatted ||
+            commandResult.error ||
+            null,
           guardIndex: commandResult.guardFailure?.index ?? null,
           emittedEvents: (commandResult.emittedEvents || []).map((event) => event.name),
           entityStateAfter: Object.keys(entityStateAfter).length === 0 ? null : entityStateAfter,

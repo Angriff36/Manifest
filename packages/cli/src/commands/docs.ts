@@ -212,7 +212,7 @@ async function getInputFiles(source: string): Promise<string[]> {
   const manifestFiles = await glob('**/*.manifest', { cwd: resolved });
   const irFiles = await glob('**/*.ir.json', { cwd: resolved });
   const all = [...manifestFiles, ...irFiles];
-  return all.map(f => path.join(resolved, f));
+  return all.map((f) => path.join(resolved, f));
 }
 
 // ─── Expression formatting ──────────────────────────────────────────────
@@ -236,7 +236,7 @@ function formatExpression(expr: IRExpression): string {
     case 'array':
       return `[${(expr.elements || []).map(formatExpression).join(', ')}]`;
     case 'object':
-      return `{ ${(expr.properties || []).map(p => `${p.key}: ${formatExpression(p.value)}`).join(', ')} }`;
+      return `{ ${(expr.properties || []).map((p) => `${p.key}: ${formatExpression(p.value)}`).join(', ')} }`;
     case 'lambda':
       return `(${(expr.params || []).join(', ')}) => ${formatExpression(expr.body!)}`;
     default:
@@ -303,21 +303,20 @@ function generateEntityPageHtml(
   policies: IRPolicy[],
   events: IREvent[],
   stores: IRStore[],
-  siteTitle: string
+  siteTitle: string,
 ): string {
-  const entityCommands = commands.filter(c => c.entity === entity.name);
-  const commandPolicyNames = new Set(entityCommands.flatMap(c => c.policies || []));
-  const entityPolicies = policies.filter(p =>
-    p.entity === entity.name ||
-    entity.policies.includes(p.name) ||
-    (entity.defaultPolicies || []).includes(p.name) ||
-    commandPolicyNames.has(p.name) ||
-    (!p.entity && !p.module)
+  const entityCommands = commands.filter((c) => c.entity === entity.name);
+  const commandPolicyNames = new Set(entityCommands.flatMap((c) => c.policies || []));
+  const entityPolicies = policies.filter(
+    (p) =>
+      p.entity === entity.name ||
+      entity.policies.includes(p.name) ||
+      (entity.defaultPolicies || []).includes(p.name) ||
+      commandPolicyNames.has(p.name) ||
+      (!p.entity && !p.module),
   );
-  const entityEvents = events.filter(e =>
-    entityCommands.some(c => c.emits.includes(e.name))
-  );
-  const entityStore = stores.find(s => s.entity === entity.name);
+  const entityEvents = events.filter((e) => entityCommands.some((c) => c.emits.includes(e.name)));
+  const entityStore = stores.find((s) => s.entity === entity.name);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -373,15 +372,19 @@ ${getStyles()}
 
 <h2>Entities</h2>
 <ul class="entity-list">
-${ir.entities.map(e => `  <li><a href="${encodeURIComponent(e.name)}.html">${escapeHtml(e.name)}</a>${e.module ? ` <span class="module-badge">${escapeHtml(e.module)}</span>` : ''} &mdash; ${e.properties.length} properties, ${e.commands.length} commands</li>`).join('\n')}
+${ir.entities.map((e) => `  <li><a href="${encodeURIComponent(e.name)}.html">${escapeHtml(e.name)}</a>${e.module ? ` <span class="module-badge">${escapeHtml(e.module)}</span>` : ''} &mdash; ${e.properties.length} properties, ${e.commands.length} commands</li>`).join('\n')}
 </ul>
 
-${ir.modules.length > 0 ? `
+${
+  ir.modules.length > 0
+    ? `
 <h2>Modules</h2>
 <ul>
-${ir.modules.map(m => `  <li><strong>${escapeHtml(m.name)}</strong> &mdash; ${m.entities.length} entities</li>`).join('\n')}
+${ir.modules.map((m) => `  <li><strong>${escapeHtml(m.name)}</strong> &mdash; ${m.entities.length} entities</li>`).join('\n')}
 </ul>
-` : ''}
+`
+    : ''
+}
 
 <h2>Summary</h2>
 <table>
@@ -406,12 +409,16 @@ function renderPropertiesSection(properties: IRProperty[]): string {
 <table>
 <thead><tr><th>Name</th><th>Type</th><th>Modifiers</th><th>Default</th></tr></thead>
 <tbody>
-${properties.map(p => `<tr>
+${properties
+  .map(
+    (p) => `<tr>
   <td><code>${escapeHtml(p.name)}</code></td>
   <td><code>${escapeHtml(formatType(p.type))}</code></td>
-  <td>${p.modifiers.length > 0 ? p.modifiers.map(m => `<span class="badge">${escapeHtml(m)}</span>`).join(' ') : '&mdash;'}</td>
+  <td>${p.modifiers.length > 0 ? p.modifiers.map((m) => `<span class="badge">${escapeHtml(m)}</span>`).join(' ') : '&mdash;'}</td>
   <td>${p.defaultValue ? `<code>${escapeHtml(formatValue(p.defaultValue))}</code>` : '&mdash;'}</td>
-</tr>`).join('\n')}
+</tr>`,
+  )
+  .join('\n')}
 </tbody>
 </table>`;
 }
@@ -423,12 +430,16 @@ function renderComputedPropertiesSection(computedProperties: IRComputedProperty[
 <table>
 <thead><tr><th>Name</th><th>Type</th><th>Expression</th><th>Dependencies</th></tr></thead>
 <tbody>
-${computedProperties.map(cp => `<tr>
+${computedProperties
+  .map(
+    (cp) => `<tr>
   <td><code>${escapeHtml(cp.name)}</code></td>
   <td><code>${escapeHtml(formatType(cp.type))}</code></td>
   <td><code>${escapeHtml(formatExpression(cp.expression))}</code></td>
-  <td>${cp.dependencies.length > 0 ? cp.dependencies.map(d => `<code>${escapeHtml(d)}</code>`).join(', ') : '&mdash;'}</td>
-</tr>`).join('\n')}
+  <td>${cp.dependencies.length > 0 ? cp.dependencies.map((d) => `<code>${escapeHtml(d)}</code>`).join(', ') : '&mdash;'}</td>
+</tr>`,
+  )
+  .join('\n')}
 </tbody>
 </table>`;
 }
@@ -440,7 +451,8 @@ function renderRelationshipsSection(relationships: IRRelationship[]): string {
 <table>
 <thead><tr><th>Name</th><th>Kind</th><th>Target</th><th>FK / Through</th><th>On Delete</th></tr></thead>
 <tbody>
-${relationships.map(r => {
+${relationships
+  .map((r) => {
     let fkInfo = '&mdash;';
     if (r.foreignKey) {
       fkInfo = `fields: [${r.foreignKey.fields.join(', ')}]`;
@@ -457,7 +469,8 @@ ${relationships.map(r => {
   <td>${fkInfo}</td>
   <td>${r.onDelete ? escapeHtml(r.onDelete) : '&mdash;'}</td>
 </tr>`;
-  }).join('\n')}
+  })
+  .join('\n')}
 </tbody>
 </table>`;
 }
@@ -469,13 +482,17 @@ function renderConstraintsSection(constraints: IRConstraint[]): string {
 <table>
 <thead><tr><th>Name</th><th>Code</th><th>Severity</th><th>Expression</th><th>Message</th></tr></thead>
 <tbody>
-${constraints.map(c => `<tr>
+${constraints
+  .map(
+    (c) => `<tr>
   <td><code>${escapeHtml(c.name)}</code></td>
   <td><code>${escapeHtml(c.code)}</code></td>
   <td><span class="badge badge-${c.severity || 'block'}">${escapeHtml(c.severity || 'block')}</span></td>
   <td><code>${escapeHtml(formatExpression(c.expression))}</code></td>
   <td>${c.message ? escapeHtml(c.message) : '&mdash;'}</td>
-</tr>`).join('\n')}
+</tr>`,
+  )
+  .join('\n')}
 </tbody>
 </table>`;
 }
@@ -484,58 +501,86 @@ function renderCommandsSection(commands: IRCommand[]): string {
   if (commands.length === 0) return '';
   return `
 <h2>Commands</h2>
-${commands.map(cmd => `
+${commands
+  .map(
+    (cmd) => `
 <div class="command-card">
 <h3><code>${escapeHtml(cmd.name)}</code></h3>
-${cmd.policies && cmd.policies.length > 0 ? `<p class="meta">Policies: ${cmd.policies.map(p => `<code>${escapeHtml(p)}</code>`).join(', ')}</p>` : ''}
-${cmd.emits.length > 0 ? `<p class="meta">Emits: ${cmd.emits.map(e => `<code>${escapeHtml(e)}</code>`).join(', ')}</p>` : ''}
+${cmd.policies && cmd.policies.length > 0 ? `<p class="meta">Policies: ${cmd.policies.map((p) => `<code>${escapeHtml(p)}</code>`).join(', ')}</p>` : ''}
+${cmd.emits.length > 0 ? `<p class="meta">Emits: ${cmd.emits.map((e) => `<code>${escapeHtml(e)}</code>`).join(', ')}</p>` : ''}
 ${cmd.returns ? `<p class="meta">Returns: <code>${escapeHtml(formatType(cmd.returns))}</code></p>` : ''}
 
-${cmd.parameters.length > 0 ? `
+${
+  cmd.parameters.length > 0
+    ? `
 <h4>Parameters</h4>
 <table>
 <thead><tr><th>Name</th><th>Type</th><th>Required</th><th>Default</th></tr></thead>
 <tbody>
-${cmd.parameters.map(p => `<tr>
+${cmd.parameters
+  .map(
+    (p) => `<tr>
   <td><code>${escapeHtml(p.name)}</code></td>
   <td><code>${escapeHtml(formatType(p.type))}</code></td>
   <td>${p.required ? 'Yes' : 'No'}</td>
   <td>${p.defaultValue ? `<code>${escapeHtml(formatValue(p.defaultValue))}</code>` : '&mdash;'}</td>
-</tr>`).join('\n')}
+</tr>`,
+  )
+  .join('\n')}
 </tbody>
 </table>
-` : ''}
+`
+    : ''
+}
 
-${cmd.guards.length > 0 ? `
+${
+  cmd.guards.length > 0
+    ? `
 <h4>Guards</h4>
 <ol class="guard-list">
-${cmd.guards.map(g => `  <li><code>${escapeHtml(formatExpression(g))}</code></li>`).join('\n')}
+${cmd.guards.map((g) => `  <li><code>${escapeHtml(formatExpression(g))}</code></li>`).join('\n')}
 </ol>
-` : ''}
+`
+    : ''
+}
 
-${cmd.actions.length > 0 ? `
+${
+  cmd.actions.length > 0
+    ? `
 <h4>Actions</h4>
 <ol class="action-list">
-${cmd.actions.map(a => `  <li><span class="badge">${escapeHtml(a.kind)}</span>${a.target ? ` <code>${escapeHtml(a.target)}</code>` : ''} &larr; <code>${escapeHtml(formatExpression(a.expression))}</code></li>`).join('\n')}
+${cmd.actions.map((a) => `  <li><span class="badge">${escapeHtml(a.kind)}</span>${a.target ? ` <code>${escapeHtml(a.target)}</code>` : ''} &larr; <code>${escapeHtml(formatExpression(a.expression))}</code></li>`).join('\n')}
 </ol>
-` : ''}
+`
+    : ''
+}
 
-${(cmd.constraints || []).length > 0 ? `
+${
+  (cmd.constraints || []).length > 0
+    ? `
 <h4>Command Constraints</h4>
 <table>
 <thead><tr><th>Name</th><th>Severity</th><th>Expression</th><th>Message</th></tr></thead>
 <tbody>
-${(cmd.constraints || []).map(c => `<tr>
+${(cmd.constraints || [])
+  .map(
+    (c) => `<tr>
   <td><code>${escapeHtml(c.name)}</code></td>
   <td><span class="badge badge-${c.severity || 'block'}">${escapeHtml(c.severity || 'block')}</span></td>
   <td><code>${escapeHtml(formatExpression(c.expression))}</code></td>
   <td>${c.message ? escapeHtml(c.message) : '&mdash;'}</td>
-</tr>`).join('\n')}
+</tr>`,
+  )
+  .join('\n')}
 </tbody>
 </table>
-` : ''}
+`
+    : ''
+}
 </div>
-`).join('\n')}`;
+`,
+  )
+  .join('\n')}`;
 }
 
 function renderPoliciesSection(policies: IRPolicy[]): string {
@@ -545,12 +590,16 @@ function renderPoliciesSection(policies: IRPolicy[]): string {
 <table>
 <thead><tr><th>Name</th><th>Action</th><th>Expression</th><th>Message</th></tr></thead>
 <tbody>
-${policies.map(p => `<tr>
+${policies
+  .map(
+    (p) => `<tr>
   <td><code>${escapeHtml(p.name)}</code></td>
   <td><span class="badge">${escapeHtml(p.action)}</span></td>
   <td><code>${escapeHtml(formatExpression(p.expression))}</code></td>
   <td>${p.message ? escapeHtml(p.message) : '&mdash;'}</td>
-</tr>`).join('\n')}
+</tr>`,
+  )
+  .join('\n')}
 </tbody>
 </table>`;
 }
@@ -562,12 +611,13 @@ function renderEventsSection(events: IREvent[]): string {
 <table>
 <thead><tr><th>Name</th><th>Channel</th><th>Payload</th></tr></thead>
 <tbody>
-${events.map(e => {
+${events
+  .map((e) => {
     let payloadStr: string;
     if (Array.isArray(e.payload)) {
-      payloadStr = e.payload.map(f =>
-        `${f.name}: ${formatType(f.type)}${f.required ? '' : '?'}`
-      ).join(', ');
+      payloadStr = e.payload
+        .map((f) => `${f.name}: ${formatType(f.type)}${f.required ? '' : '?'}`)
+        .join(', ');
     } else {
       payloadStr = formatType(e.payload);
     }
@@ -576,13 +626,14 @@ ${events.map(e => {
   <td><code>${escapeHtml(e.channel)}</code></td>
   <td><code>${escapeHtml(payloadStr)}</code></td>
 </tr>`;
-  }).join('\n')}
+  })
+  .join('\n')}
 </tbody>
 </table>`;
 }
 
 function renderTransitionsSection(
-  transitions?: Array<{ property: string; from: string; to: string[] }>
+  transitions?: Array<{ property: string; from: string; to: string[] }>,
 ): string {
   if (!transitions || transitions.length === 0) return '';
   return `
@@ -590,11 +641,15 @@ function renderTransitionsSection(
 <table>
 <thead><tr><th>Property</th><th>From</th><th>To</th></tr></thead>
 <tbody>
-${transitions.map(t => `<tr>
+${transitions
+  .map(
+    (t) => `<tr>
   <td><code>${escapeHtml(t.property)}</code></td>
   <td><code>${escapeHtml(t.from)}</code></td>
-  <td>${t.to.map(v => `<code>${escapeHtml(v)}</code>`).join(', ')}</td>
-</tr>`).join('\n')}
+  <td>${t.to.map((v) => `<code>${escapeHtml(v)}</code>`).join(', ')}</td>
+</tr>`,
+  )
+  .join('\n')}
 </tbody>
 </table>`;
 }
@@ -639,21 +694,20 @@ function generateEntityPageMarkdown(
   commands: IRCommand[],
   policies: IRPolicy[],
   events: IREvent[],
-  stores: IRStore[]
+  stores: IRStore[],
 ): string {
-  const entityCommands = commands.filter(c => c.entity === entity.name);
-  const commandPolicyNames = new Set(entityCommands.flatMap(c => c.policies || []));
-  const entityPolicies = policies.filter(p =>
-    p.entity === entity.name ||
-    entity.policies.includes(p.name) ||
-    (entity.defaultPolicies || []).includes(p.name) ||
-    commandPolicyNames.has(p.name) ||
-    (!p.entity && !p.module)
+  const entityCommands = commands.filter((c) => c.entity === entity.name);
+  const commandPolicyNames = new Set(entityCommands.flatMap((c) => c.policies || []));
+  const entityPolicies = policies.filter(
+    (p) =>
+      p.entity === entity.name ||
+      entity.policies.includes(p.name) ||
+      (entity.defaultPolicies || []).includes(p.name) ||
+      commandPolicyNames.has(p.name) ||
+      (!p.entity && !p.module),
   );
-  const entityEvents = events.filter(e =>
-    entityCommands.some(c => c.emits.includes(e.name))
-  );
-  const entityStore = stores.find(s => s.entity === entity.name);
+  const entityEvents = events.filter((e) => entityCommands.some((c) => c.emits.includes(e.name)));
+  const entityStore = stores.find((s) => s.entity === entity.name);
 
   const lines: string[] = [];
 
@@ -673,7 +727,9 @@ function generateEntityPageMarkdown(
     for (const p of entity.properties) {
       const mods = p.modifiers.length > 0 ? p.modifiers.join(', ') : '\u2014';
       const def = p.defaultValue ? `\`${escapeMarkdown(formatValue(p.defaultValue))}\`` : '\u2014';
-      lines.push(`| \`${escapeMarkdown(p.name)}\` | \`${escapeMarkdown(formatType(p.type))}\` | ${mods} | ${def} |`);
+      lines.push(
+        `| \`${escapeMarkdown(p.name)}\` | \`${escapeMarkdown(formatType(p.type))}\` | ${mods} | ${def} |`,
+      );
     }
     lines.push('');
   }
@@ -685,8 +741,11 @@ function generateEntityPageMarkdown(
     lines.push('| Name | Type | Expression | Dependencies |');
     lines.push('|------|------|------------|--------------|');
     for (const cp of entity.computedProperties) {
-      const deps = cp.dependencies.length > 0 ? cp.dependencies.map(d => `\`${d}\``).join(', ') : '\u2014';
-      lines.push(`| \`${escapeMarkdown(cp.name)}\` | \`${escapeMarkdown(formatType(cp.type))}\` | \`${escapeMarkdown(formatExpression(cp.expression))}\` | ${deps} |`);
+      const deps =
+        cp.dependencies.length > 0 ? cp.dependencies.map((d) => `\`${d}\``).join(', ') : '\u2014';
+      lines.push(
+        `| \`${escapeMarkdown(cp.name)}\` | \`${escapeMarkdown(formatType(cp.type))}\` | \`${escapeMarkdown(formatExpression(cp.expression))}\` | ${deps} |`,
+      );
     }
     lines.push('');
   }
@@ -705,7 +764,9 @@ function generateEntityPageMarkdown(
       } else if (r.through) {
         fkInfo = `through: ${r.through}`;
       }
-      lines.push(`| \`${escapeMarkdown(r.name)}\` | ${escapeMarkdown(r.kind)} | \`${escapeMarkdown(r.target)}\` | ${escapeMarkdown(fkInfo)} | ${r.onDelete || '\u2014'} |`);
+      lines.push(
+        `| \`${escapeMarkdown(r.name)}\` | ${escapeMarkdown(r.kind)} | \`${escapeMarkdown(r.target)}\` | ${escapeMarkdown(fkInfo)} | ${r.onDelete || '\u2014'} |`,
+      );
     }
     lines.push('');
   }
@@ -717,7 +778,9 @@ function generateEntityPageMarkdown(
     lines.push('| Name | Code | Severity | Expression | Message |');
     lines.push('|------|------|----------|------------|---------|');
     for (const c of entity.constraints) {
-      lines.push(`| \`${escapeMarkdown(c.name)}\` | \`${escapeMarkdown(c.code)}\` | ${c.severity || 'block'} | \`${escapeMarkdown(formatExpression(c.expression))}\` | ${c.message ? escapeMarkdown(c.message) : '\u2014'} |`);
+      lines.push(
+        `| \`${escapeMarkdown(c.name)}\` | \`${escapeMarkdown(c.code)}\` | ${c.severity || 'block'} | \`${escapeMarkdown(formatExpression(c.expression))}\` | ${c.message ? escapeMarkdown(c.message) : '\u2014'} |`,
+      );
     }
     lines.push('');
   }
@@ -730,10 +793,10 @@ function generateEntityPageMarkdown(
       lines.push(`### \`${cmd.name}\``);
       lines.push('');
       if (cmd.policies && cmd.policies.length > 0) {
-        lines.push(`**Policies:** ${cmd.policies.map(p => `\`${p}\``).join(', ')}`);
+        lines.push(`**Policies:** ${cmd.policies.map((p) => `\`${p}\``).join(', ')}`);
       }
       if (cmd.emits.length > 0) {
-        lines.push(`**Emits:** ${cmd.emits.map(e => `\`${e}\``).join(', ')}`);
+        lines.push(`**Emits:** ${cmd.emits.map((e) => `\`${e}\``).join(', ')}`);
       }
       if (cmd.returns) {
         lines.push(`**Returns:** \`${formatType(cmd.returns)}\``);
@@ -746,8 +809,12 @@ function generateEntityPageMarkdown(
         lines.push('| Name | Type | Required | Default |');
         lines.push('|------|------|----------|---------|');
         for (const p of cmd.parameters) {
-          const def = p.defaultValue ? `\`${escapeMarkdown(formatValue(p.defaultValue))}\`` : '\u2014';
-          lines.push(`| \`${escapeMarkdown(p.name)}\` | \`${escapeMarkdown(formatType(p.type))}\` | ${p.required ? 'Yes' : 'No'} | ${def} |`);
+          const def = p.defaultValue
+            ? `\`${escapeMarkdown(formatValue(p.defaultValue))}\``
+            : '\u2014';
+          lines.push(
+            `| \`${escapeMarkdown(p.name)}\` | \`${escapeMarkdown(formatType(p.type))}\` | ${p.required ? 'Yes' : 'No'} | ${def} |`,
+          );
         }
         lines.push('');
       }
@@ -765,7 +832,9 @@ function generateEntityPageMarkdown(
         lines.push('#### Actions');
         lines.push('');
         for (const a of cmd.actions) {
-          lines.push(`- **${a.kind}**${a.target ? ` \`${a.target}\`` : ''} \u2190 \`${escapeMarkdown(formatExpression(a.expression))}\``);
+          lines.push(
+            `- **${a.kind}**${a.target ? ` \`${a.target}\`` : ''} \u2190 \`${escapeMarkdown(formatExpression(a.expression))}\``,
+          );
         }
         lines.push('');
       }
@@ -779,7 +848,9 @@ function generateEntityPageMarkdown(
     lines.push('| Name | Action | Expression | Message |');
     lines.push('|------|--------|------------|---------|');
     for (const p of entityPolicies) {
-      lines.push(`| \`${escapeMarkdown(p.name)}\` | ${escapeMarkdown(p.action)} | \`${escapeMarkdown(formatExpression(p.expression))}\` | ${p.message ? escapeMarkdown(p.message) : '\u2014'} |`);
+      lines.push(
+        `| \`${escapeMarkdown(p.name)}\` | ${escapeMarkdown(p.action)} | \`${escapeMarkdown(formatExpression(p.expression))}\` | ${p.message ? escapeMarkdown(p.message) : '\u2014'} |`,
+      );
     }
     lines.push('');
   }
@@ -793,13 +864,15 @@ function generateEntityPageMarkdown(
     for (const e of entityEvents) {
       let payloadStr: string;
       if (Array.isArray(e.payload)) {
-        payloadStr = e.payload.map(f =>
-          `${f.name}: ${formatType(f.type)}${f.required ? '' : '?'}`
-        ).join(', ');
+        payloadStr = e.payload
+          .map((f) => `${f.name}: ${formatType(f.type)}${f.required ? '' : '?'}`)
+          .join(', ');
       } else {
         payloadStr = formatType(e.payload);
       }
-      lines.push(`| \`${escapeMarkdown(e.name)}\` | \`${escapeMarkdown(e.channel)}\` | \`${escapeMarkdown(payloadStr)}\` |`);
+      lines.push(
+        `| \`${escapeMarkdown(e.name)}\` | \`${escapeMarkdown(e.channel)}\` | \`${escapeMarkdown(payloadStr)}\` |`,
+      );
     }
     lines.push('');
   }
@@ -811,7 +884,9 @@ function generateEntityPageMarkdown(
     lines.push('| Property | From | To |');
     lines.push('|----------|------|----|');
     for (const t of entity.transitions) {
-      lines.push(`| \`${escapeMarkdown(t.property)}\` | \`${escapeMarkdown(t.from)}\` | ${t.to.map(v => `\`${escapeMarkdown(v)}\``).join(', ')} |`);
+      lines.push(
+        `| \`${escapeMarkdown(t.property)}\` | \`${escapeMarkdown(t.from)}\` | ${t.to.map((v) => `\`${escapeMarkdown(v)}\``).join(', ')} |`,
+      );
     }
     lines.push('');
   }
@@ -824,13 +899,17 @@ function generateIndexPageMarkdown(ir: IR, siteTitle: string): string {
 
   lines.push(`# ${siteTitle}`);
   lines.push('');
-  lines.push(`Compiled with Manifest v${ir.provenance.compilerVersion} | Schema v${ir.provenance.schemaVersion}`);
+  lines.push(
+    `Compiled with Manifest v${ir.provenance.compilerVersion} | Schema v${ir.provenance.schemaVersion}`,
+  );
   lines.push('');
 
   lines.push('## Entities');
   lines.push('');
   for (const e of ir.entities) {
-    lines.push(`- [${e.name}](./${e.name}.md)${e.module ? ` *(${e.module})*` : ''} \u2014 ${e.properties.length} properties, ${e.commands.length} commands`);
+    lines.push(
+      `- [${e.name}](./${e.name}.md)${e.module ? ` *(${e.module})*` : ''} \u2014 ${e.properties.length} properties, ${e.commands.length} commands`,
+    );
   }
   lines.push('');
 
@@ -864,7 +943,7 @@ function generateIndexPageMarkdown(ir: IR, siteTitle: string): string {
  */
 export async function docsCommand(
   source: string | undefined,
-  options: DocsOptions = {}
+  options: DocsOptions = {},
 ): Promise<void> {
   const spinner = ora('Preparing to generate documentation').start();
   const format = options.format || 'html';
@@ -873,7 +952,9 @@ export async function docsCommand(
 
   try {
     if (!source) {
-      spinner.fail('Source argument is required (path to .manifest file, .ir.json file, or directory)');
+      spinner.fail(
+        'Source argument is required (path to .manifest file, .ir.json file, or directory)',
+      );
       process.exitCode = 1;
       return;
     }
@@ -925,27 +1006,44 @@ export async function docsCommand(
 
     // Generate index page
     spinner.text = 'Generating index page...';
-    const indexContent = format === 'markdown'
-      ? generateIndexPageMarkdown(mergedIR, siteTitle)
-      : generateIndexPageHtml(mergedIR, siteTitle);
+    const indexContent =
+      format === 'markdown'
+        ? generateIndexPageMarkdown(mergedIR, siteTitle)
+        : generateIndexPageHtml(mergedIR, siteTitle);
     await fs.writeFile(path.join(outputDir, `index.${ext}`), indexContent, 'utf-8');
 
     // Generate entity pages
     let entityCount = 0;
     for (const entity of mergedIR.entities) {
       spinner.text = `Generating ${entity.name} reference...`;
-      const content = format === 'markdown'
-        ? generateEntityPageMarkdown(entity, mergedIR.commands, mergedIR.policies, mergedIR.events, mergedIR.stores)
-        : generateEntityPageHtml(entity, mergedIR.commands, mergedIR.policies, mergedIR.events, mergedIR.stores, siteTitle);
+      const content =
+        format === 'markdown'
+          ? generateEntityPageMarkdown(
+              entity,
+              mergedIR.commands,
+              mergedIR.policies,
+              mergedIR.events,
+              mergedIR.stores,
+            )
+          : generateEntityPageHtml(
+              entity,
+              mergedIR.commands,
+              mergedIR.policies,
+              mergedIR.events,
+              mergedIR.stores,
+              siteTitle,
+            );
       await fs.writeFile(path.join(outputDir, `${entity.name}.${ext}`), content, 'utf-8');
       entityCount++;
     }
 
     spinner.succeed(
-      `Generated documentation: ${entityCount} entity page(s) + index → ${chalk.cyan(path.relative(process.cwd(), outputDir))}`
+      `Generated documentation: ${entityCount} entity page(s) + index → ${chalk.cyan(path.relative(process.cwd(), outputDir))}`,
     );
   } catch (error: unknown) {
-    spinner.fail(`Documentation generation failed: ${error instanceof Error ? error.message : String(error)}`);
+    spinner.fail(
+      `Documentation generation failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exitCode = 1;
   }
 }

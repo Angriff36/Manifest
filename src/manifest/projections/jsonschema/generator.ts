@@ -13,14 +13,7 @@
  *   - jsonschema.schemas → all entity schemas as separate artifacts
  */
 
-import type {
-  IR,
-  IREntity,
-  IRType,
-  IRValue,
-  IRExpression,
-  IREnum,
-} from '../../ir';
+import type { IR, IREntity, IRType, IRValue, IRExpression, IREnum } from '../../ir';
 import type {
   ProjectionTarget,
   ProjectionRequest,
@@ -115,7 +108,12 @@ function irTypeToJsonSchema(
   if (irType.name === 'map' && irType.generic) {
     return {
       type: 'object',
-      additionalProperties: irTypeToJsonSchema(irType.generic, enumsByName, diagnostics, entityName),
+      additionalProperties: irTypeToJsonSchema(
+        irType.generic,
+        enumsByName,
+        diagnostics,
+        entityName,
+      ),
     };
   }
 
@@ -128,34 +126,34 @@ function irTypeToJsonSchema(
   if (enumDef) {
     return {
       type: 'string',
-      enum: enumDef.values.map(v => v.name),
+      enum: enumDef.values.map((v) => v.name),
     };
   }
 
   // Scalar type mapping
   const SCALAR_MAP: Record<string, JsonSchemaObj> = {
-    string:   { type: 'string' },
-    text:     { type: 'string' },
-    number:   { type: 'number' },
-    float:    { type: 'number' },
-    decimal:  { type: 'number' },
-    int:      { type: 'integer' },
-    integer:  { type: 'integer' },
-    bigint:   { type: 'integer' },
-    boolean:  { type: 'boolean' },
-    bool:     { type: 'boolean' },
-    date:     { type: 'string', format: 'date' },
+    string: { type: 'string' },
+    text: { type: 'string' },
+    number: { type: 'number' },
+    float: { type: 'number' },
+    decimal: { type: 'number' },
+    int: { type: 'integer' },
+    integer: { type: 'integer' },
+    bigint: { type: 'integer' },
+    boolean: { type: 'boolean' },
+    bool: { type: 'boolean' },
+    date: { type: 'string', format: 'date' },
     datetime: { type: 'string', format: 'date-time' },
-    time:     { type: 'string', format: 'time' },
+    time: { type: 'string', format: 'time' },
     duration: { type: 'number' },
-    uuid:     { type: 'string', format: 'uuid' },
-    email:    { type: 'string', format: 'email' },
-    url:      { type: 'string', format: 'uri' },
-    uri:      { type: 'string', format: 'uri' },
-    json:     {},
-    any:      {},
-    object:   { type: 'object', additionalProperties: true },
-    bytes:    { type: 'string', format: 'byte' },
+    uuid: { type: 'string', format: 'uuid' },
+    email: { type: 'string', format: 'email' },
+    url: { type: 'string', format: 'uri' },
+    uri: { type: 'string', format: 'uri' },
+    json: {},
+    any: {},
+    object: { type: 'object', additionalProperties: true },
+    bytes: { type: 'string', format: 'byte' },
   };
 
   const mapped = SCALAR_MAP[irType.name];
@@ -176,10 +174,7 @@ function irTypeToJsonSchema(
  * - draft-07: uses `type: [original, "null"]` (array form)
  * - 2019-09/2020-12: same pattern (array type union)
  */
-function applyNullable(
-  schema: JsonSchemaObj,
-  irType: IRType,
-): JsonSchemaObj {
+function applyNullable(schema: JsonSchemaObj, irType: IRType): JsonSchemaObj {
   if (!irType.nullable) return schema;
   if (schema.type && typeof schema.type === 'string') {
     schema.type = [schema.type, 'null'];
@@ -194,11 +189,16 @@ function applyNullable(
 
 function irValueToJson(value: IRValue): unknown {
   switch (value.kind) {
-    case 'string': return value.value;
-    case 'number': return value.value;
-    case 'boolean': return value.value;
-    case 'null': return null;
-    case 'array': return value.elements.map(irValueToJson);
+    case 'string':
+      return value.value;
+    case 'number':
+      return value.value;
+    case 'boolean':
+      return value.value;
+    case 'null':
+      return null;
+    case 'array':
+      return value.elements.map(irValueToJson);
     case 'object': {
       const obj: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(value.properties)) {
@@ -379,7 +379,8 @@ function buildEntitySchema(
  */
 export class JsonSchemaProjection implements ProjectionTarget {
   readonly name = 'jsonschema';
-  readonly description = 'JSON Schema (draft-07/2019-09/2020-12) generation from Manifest IR entities';
+  readonly description =
+    'JSON Schema (draft-07/2019-09/2020-12) generation from Manifest IR entities';
   readonly surfaces = SURFACES;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
@@ -400,11 +401,13 @@ export class JsonSchemaProjection implements ProjectionTarget {
       default:
         return {
           artifacts: [],
-          diagnostics: [{
-            severity: 'error',
-            code: 'UNKNOWN_SURFACE',
-            message: `Unknown surface: "${request.surface}". Available: ${SURFACES.join(', ')}`,
-          }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'UNKNOWN_SURFACE',
+              message: `Unknown surface: "${request.surface}". Available: ${SURFACES.join(', ')}`,
+            },
+          ],
         };
     }
   }
@@ -421,15 +424,17 @@ export class JsonSchemaProjection implements ProjectionTarget {
       return this.generateAllSurface(ir, opts, enumsByName, diagnostics);
     }
 
-    const entity = ir.entities.find(e => e.name === request.entity);
+    const entity = ir.entities.find((e) => e.name === request.entity);
     if (!entity) {
       return {
         artifacts: [],
-        diagnostics: [{
-          severity: 'error',
-          code: 'ENTITY_NOT_FOUND',
-          message: `Entity "${request.entity}" not found in IR`,
-        }],
+        diagnostics: [
+          {
+            severity: 'error',
+            code: 'ENTITY_NOT_FOUND',
+            message: `Entity "${request.entity}" not found in IR`,
+          },
+        ],
       };
     }
 

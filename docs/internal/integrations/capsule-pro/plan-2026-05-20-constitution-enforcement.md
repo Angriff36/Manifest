@@ -9,6 +9,7 @@
 **Tech Stack:** TypeScript (CommonJS for `src/manifest`, ESM for UI), Vitest, Next.js App Router projection target, project-references tsconfig, pnpm workspaces.
 
 **Reference docs that govern this work:**
+
 - `C:/projects/capsule-pro/constitution.md` — the contract this plan delivers against
 - `C:/projects/manifest/CLAUDE.md` — house rules (IR-first, deterministic, no auto-repair)
 - `C:/projects/manifest/docs/spec/ir/ir-v1.schema.json` — IR shape
@@ -46,6 +47,7 @@ The constitution is binding once acknowledged. Before any code changes, register
 ### Task 0.1 — Add capsule-pro constitution reference into spec index
 
 **Files:**
+
 - Modify: `C:/projects/manifest/docs/spec/semantics.md` — add §"Capsule-Pro Constitution Reference" section near the top, linking to `docs/capsule-pro/constitution.md` (mirror copy) and the upstream `C:/projects/capsule-pro/constitution.md`.
 - Create: `C:/projects/manifest/docs/capsule-pro/constitution.md` — verbatim mirror of the upstream constitution (so Manifest spec consumers don't need to traverse repos).
 
@@ -65,6 +67,7 @@ git commit -m "docs(spec): mirror capsule-pro constitution and add reference to 
 ### Task 0.2 — Carve a "constitution gap matrix" tracker
 
 **Files:**
+
 - Create: `C:/projects/manifest/docs/capsule-pro/gap-matrix.md`
 
 - [ ] **Step 1:** Create the gap matrix with one row per constitution clause and columns `clause | status (✅/◐/✗) | evidence | phase`. Pre-populate from the analysis already captured in this plan's intro. Mark phases 1-5 as the closure path.
@@ -85,6 +88,7 @@ git commit -m "docs(capsule-pro): add constitution gap matrix tracker"
 **Why:** Constitution §3, §15, §19. Every governed mutation needs validated tenant/actor context. Today the runtime accepts whatever the caller hands it; nothing checks the shape.
 
 **Design notes (read before coding):**
+
 - Backwards compatibility: the existing `[key: string]: unknown` index signature stays for now so existing callers (especially conformance fixtures) keep working. New typed fields are optional at the type level but their absence is loggable.
 - `deterministic` flag is moved into context but `RuntimeOptions.deterministicMode` remains as a fallback. If both are set, options wins (explicit caller override).
 - Context becomes available to guard expressions via the existing `context.*` binding — adding fields does not require IR changes.
@@ -92,6 +96,7 @@ git commit -m "docs(capsule-pro): add constitution gap matrix tracker"
 ### Task 1.1 — Spec: document typed context
 
 **Files:**
+
 - Modify: `C:/projects/manifest/docs/spec/semantics.md` — add §"Runtime Context Schema" near §"Command Execution"
 - Modify: `C:/projects/manifest/docs/spec/builtins.md` — document `context.tenantId`, `context.actorId`, `context.requestId`, `context.source` as spec-guaranteed bindings
 
@@ -109,6 +114,7 @@ git commit -m "spec: document typed runtime context schema (tenantId/actorId/req
 ### Task 1.2 — Add typed RuntimeContext interface
 
 **Files:**
+
 - Modify: `C:/projects/manifest/src/manifest/runtime-engine.ts:35-38`
 
 - [ ] **Step 1: Write the failing test**
@@ -181,6 +187,7 @@ git commit -m "feat(runtime): add typed RuntimeContext fields (tenantId, orgId, 
 ### Task 1.3 — Wire `context.deterministic` into runtime execution
 
 **Files:**
+
 - Modify: `C:/projects/manifest/src/manifest/runtime-engine.ts` — inside `runCommand`, near the existing `deterministicMode` read, prefer `options.deterministicMode ?? context.deterministic ?? false`.
 
 - [ ] **Step 1: Write the failing test** at `src/manifest/runtime-deterministic-context.test.ts`:
@@ -205,9 +212,9 @@ describe('context.deterministic', () => {
   it('forces effect boundary errors when set on context', async () => {
     const ir = compileToIR(parse(tokenize(src)));
     const rt = new RuntimeEngine(ir, { tenantId: 't', deterministic: true });
-    await expect(
-      rt.runCommand('tag', { name: 'x' }, { entityName: 'Foo' })
-    ).rejects.toBeInstanceOf(ManifestEffectBoundaryError);
+    await expect(rt.runCommand('tag', { name: 'x' }, { entityName: 'Foo' })).rejects.toBeInstanceOf(
+      ManifestEffectBoundaryError,
+    );
   });
 });
 ```
@@ -230,6 +237,7 @@ git commit -m "feat(runtime): honor context.deterministic in addition to options
 **Design constraint:** "Tenant-scoped" is currently implicit. We add an opt-in marker via IR command metadata. Skip changing IR shape — instead, add a runtime-side helper that consults a soon-to-exist registry (see Phase 3). For now, gate behavior behind an explicit `RuntimeOptions.requireTenantContext = true` flag so existing tests don't break.
 
 **Files:**
+
 - Modify: `C:/projects/manifest/src/manifest/runtime-engine.ts` — `RuntimeOptions` adds `requireTenantContext?: boolean`; `runCommand` returns a `MISSING_TENANT_CONTEXT` failure when set and `context.tenantId` absent.
 
 - [ ] **Step 1: Write the failing test** at `src/manifest/runtime-tenant-required.test.ts`:
@@ -308,6 +316,7 @@ git commit -m "docs(capsule-pro): mark §3/§19 partial — typed context shippe
 **Why:** Constitution §6 makes this the canonical write path. The existing `nextjs.command` surface generates per-command concrete routes, exactly what §6 says are "not authoritative."
 
 **Design notes:**
+
 - Keep `nextjs.command` available but mark its emitted file with a `// DEPRECATED ALIAS` header pointing at the dispatcher.
 - Dispatcher imports the compiled IR via a configurable path (default `@/lib/manifest-ir`).
 - Auth provider config (Clerk/NextAuth/custom) reuses existing helpers in `generator.ts`.
@@ -315,6 +324,7 @@ git commit -m "docs(capsule-pro): mark §3/§19 partial — typed context shippe
 ### Task 2.1 — Spec: add §"Canonical Dispatcher" section
 
 **Files:**
+
 - Modify: `C:/projects/manifest/docs/spec/adapters.md` — new section explaining that any Next.js consumer SHOULD use the dispatcher and that direct per-command routes are alias-only.
 
 - [ ] **Step 1:** Author the section. Quote constitution §6 verbatim.
@@ -329,6 +339,7 @@ git commit -m "spec(adapters): document canonical /api/manifest/[entity]/command
 ### Task 2.2 — Register `nextjs.dispatcher` surface
 
 **Files:**
+
 - Modify: `C:/projects/manifest/src/manifest/projections/nextjs/generator.ts:285` — extend `surfaces` to include `'nextjs.dispatcher'`.
 - Modify: same file — add a `case 'nextjs.dispatcher':` branch in `generate()`.
 
@@ -359,10 +370,10 @@ describe('nextjs.dispatcher surface', () => {
 
   it('emits exactly one artifact at the canonical pathHint', () => {
     const result = target.generate(ir, { surface: 'nextjs.dispatcher' });
-    expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     expect(result.artifacts).toHaveLength(1);
     expect(result.artifacts[0].pathHint).toBe(
-      'apps/api/app/api/manifest/[entity]/commands/[command]/route.ts'
+      'apps/api/app/api/manifest/[entity]/commands/[command]/route.ts',
     );
   });
 
@@ -388,7 +399,7 @@ import { getRuntime } from '<runtimeImportPath>';
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { entity: string; command: string } }
+  { params }: { params: { entity: string; command: string } },
 ) {
   const { userId, orgId } = await auth();
   if (!userId) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
@@ -403,11 +414,10 @@ export async function POST(
     source: 'route' as const,
   };
 
-  const result = await runtime.runCommand(
-    params.command,
-    body,
-    { entityName: params.entity, context: ctx }
-  );
+  const result = await runtime.runCommand(params.command, body, {
+    entityName: params.entity,
+    context: ctx,
+  });
   return NextResponse.json(result, { status: result.success ? 200 : 422 });
 }
 ```
@@ -445,15 +455,20 @@ git commit -m "feat(projections/nextjs): add nextjs.dispatcher surface emitting 
 ### Task 2.3 — Mark `nextjs.command` output as a deprecated alias
 
 **Files:**
+
 - Modify: `C:/projects/manifest/src/manifest/projections/nextjs/generator.ts` — in `_command`, prepend the emitted code with a deprecation banner pointing at the dispatcher path.
 
 - [ ] **Step 1: Write the failing test** — add to `dispatcher.test.ts`:
 
 ```typescript
 it('marks legacy per-command routes as deprecated aliases', () => {
-  const result = target.generate(ir, { surface: 'nextjs.command', entity: 'Recipe', command: 'create' });
+  const result = target.generate(ir, {
+    surface: 'nextjs.command',
+    entity: 'Recipe',
+    command: 'create',
+  });
   expect(result.artifacts[0].code).toMatch(
-    /DEPRECATED ALIAS.*\/api\/manifest\/\[entity\]\/commands\/\[command\]/
+    /DEPRECATED ALIAS.*\/api\/manifest\/\[entity\]\/commands\/\[command\]/,
   );
 });
 ```
@@ -489,6 +504,7 @@ git commit -m "feat(projections/nextjs): mark per-command routes as deprecated a
 **Why:** Constitution §17 lists these as required artifacts. The audit suite (Phase 5) needs them as ground truth.
 
 **Design notes:**
+
 - Add a new CLI command `manifest emit registries [--out dir]` rather than embedding in `compile` (keeps responsibilities clean).
 - Schemas live at `docs/spec/registry/commands.schema.json` and `docs/spec/registry/entities.schema.json` and are validated by an in-process Ajv check (already a dep — verify).
 - Default classification for any tenant-scoped entity is `governed`. We infer `tenantScoped: true` if entity has a property named `tenantId` (matching the audit-routes default). Classification can be overridden by an explicit `// @manifest:classification ...` annotation in source — design that in but ship the default-only path first.
@@ -496,6 +512,7 @@ git commit -m "feat(projections/nextjs): mark per-command routes as deprecated a
 ### Task 3.1 — Spec: registry shape
 
 **Files:**
+
 - Create: `C:/projects/manifest/docs/spec/registry/README.md`
 - Create: `C:/projects/manifest/docs/spec/registry/commands.schema.json`
 - Create: `C:/projects/manifest/docs/spec/registry/entities.schema.json`
@@ -543,6 +560,7 @@ git commit -m "spec(registry): add command and governed-entity registry schemas"
 ### Task 3.2 — Registry emitter
 
 **Files:**
+
 - Create: `C:/projects/manifest/src/manifest/registry/emit.ts`
 - Create: `C:/projects/manifest/src/manifest/registry/emit.test.ts`
 
@@ -571,21 +589,21 @@ describe('emitRegistries', () => {
 
   it('emits one commands entry per entity-command pair', () => {
     const { commands } = emitRegistries(ir);
-    const found = commands.commands.find(c => c.entity === 'Recipe' && c.command === 'create');
+    const found = commands.commands.find((c) => c.entity === 'Recipe' && c.command === 'create');
     expect(found).toBeDefined();
     expect(found!.commandId).toMatch(/Recipe\.create/);
   });
 
   it('classifies tenantId-bearing entities as governed', () => {
     const { entities } = emitRegistries(ir);
-    const recipe = entities.entities.find(e => e.name === 'Recipe');
+    const recipe = entities.entities.find((e) => e.name === 'Recipe');
     expect(recipe?.classification).toBe('governed');
     expect(recipe?.tenantScoped).toBe(true);
   });
 
   it('classifies non-tenant entities as unknown_nonconforming by default', () => {
     const { entities } = emitRegistries(ir);
-    const sys = entities.entities.find(e => e.name === 'SystemLog');
+    const sys = entities.entities.find((e) => e.name === 'SystemLog');
     expect(sys?.classification).toBe('unknown_nonconforming');
   });
 
@@ -617,7 +635,12 @@ export interface CommandRegistryEntry {
 
 export interface EntityRegistryEntry {
   name: string;
-  classification: 'governed' | 'read_only_projection' | 'infrastructure' | 'bypass_allowed' | 'unknown_nonconforming';
+  classification:
+    | 'governed'
+    | 'read_only_projection'
+    | 'infrastructure'
+    | 'bypass_allowed'
+    | 'unknown_nonconforming';
   tenantScoped: boolean;
   commands: string[];
   properties: string[];
@@ -643,15 +666,15 @@ export function emitRegistries(ir: IR): { commands: CommandRegistry; entities: E
   const entities: EntityRegistryEntry[] = [];
 
   for (const entity of ir.entities) {
-    const tenantScoped = entity.properties?.some(p => p.name === 'tenantId') ?? false;
-    const commandNames = (entity.commands ?? []).map(c => c.name);
+    const tenantScoped = entity.properties?.some((p) => p.name === 'tenantId') ?? false;
+    const commandNames = (entity.commands ?? []).map((c) => c.name);
 
     entities.push({
       name: entity.name,
       classification: tenantScoped ? 'governed' : 'unknown_nonconforming',
       tenantScoped,
       commands: commandNames,
-      properties: (entity.properties ?? []).map(p => p.name),
+      properties: (entity.properties ?? []).map((p) => p.name),
     });
 
     for (const cmd of entity.commands ?? []) {
@@ -659,10 +682,10 @@ export function emitRegistries(ir: IR): { commands: CommandRegistry; entities: E
         entity: entity.name,
         command: cmd.name,
         commandId: `${entity.name}.${cmd.name}`,
-        policies: (cmd.policies ?? []).map(p => p.name),
+        policies: (cmd.policies ?? []).map((p) => p.name),
         guards: (cmd.guards ?? []).map((_, i) => `guard[${i}]`),
-        emits: (cmd.emits ?? []).map(e => e.name),
-        effects: (cmd.actions ?? []).map(a => a.kind),
+        emits: (cmd.emits ?? []).map((e) => e.name),
+        effects: (cmd.actions ?? []).map((a) => a.kind),
         description: cmd.description,
       });
     }
@@ -689,6 +712,7 @@ git commit -m "feat(registry): emit machine-readable command and governed-entity
 ### Task 3.3 — Schema validation step in emitter
 
 **Files:**
+
 - Modify: `C:/projects/manifest/src/manifest/registry/emit.ts` — at the end of `emitRegistries`, run Ajv validation against the schemas and throw on failure.
 - Add test asserting that a deliberately broken IR (mock) fails validation.
 
@@ -704,6 +728,7 @@ git commit -m "feat(registry): validate emitted registries against JSON schemas"
 ### Task 3.4 — CLI: `manifest emit registries`
 
 **Files:**
+
 - Create: `C:/projects/manifest/packages/cli/src/commands/emit-registries.ts`
 - Create: `C:/projects/manifest/packages/cli/src/commands/emit-registries.test.ts`
 - Modify: `C:/projects/manifest/packages/cli/src/index.ts` — register the subcommand.
@@ -732,9 +757,11 @@ git commit -m "feat(cli): add `manifest emit registries` to write commands.json 
 ### Task 4.1 — Schema
 
 **Files:**
+
 - Create: `C:/projects/manifest/docs/spec/registry/bypasses.schema.json`
 
 Fields per constitution §8:
+
 - `entity` (string)
 - `path` (string, relative to repo root)
 - `reason` (string)
@@ -755,6 +782,7 @@ git commit -m "spec(registry): add bypass registry JSON schema"
 ### Task 4.2 — Validator + CLI command
 
 **Files:**
+
 - Create: `C:/projects/manifest/packages/cli/src/commands/audit-bypasses.ts`
 - Create: `C:/projects/manifest/packages/cli/src/commands/audit-bypasses.test.ts`
 
@@ -786,17 +814,18 @@ git commit -m "feat(cli): add `manifest audit bypasses` validator"
 
 **Detectors to add:**
 
-| Detector | What it catches | Constitution clause |
-|---|---|---|
-| `directWrites` | `prisma.X.create/update/delete/upsert/*Many` in non-bypass routes | §9 |
-| `eventFabrication` | `emit(` / `eventBus.publish` / fabricated semantic events outside runtime adapters | §11 |
-| `routeDrift` | Per-command routes that don't immediately delegate to the canonical dispatcher | §6 |
-| `missingTests` | Governed commands in `manifest.commands.json` with no conformance fixture | §13 |
-| `bypassViolations` | Direct writes whose path is not in the bypass registry | §9, §17 |
+| Detector           | What it catches                                                                    | Constitution clause |
+| ------------------ | ---------------------------------------------------------------------------------- | ------------------- |
+| `directWrites`     | `prisma.X.create/update/delete/upsert/*Many` in non-bypass routes                  | §9                  |
+| `eventFabrication` | `emit(` / `eventBus.publish` / fabricated semantic events outside runtime adapters | §11                 |
+| `routeDrift`       | Per-command routes that don't immediately delegate to the canonical dispatcher     | §6                  |
+| `missingTests`     | Governed commands in `manifest.commands.json` with no conformance fixture          | §13                 |
+| `bypassViolations` | Direct writes whose path is not in the bypass registry                             | §9, §17             |
 
 ### Task 5.1 — Audit umbrella command
 
 **Files:**
+
 - Create: `C:/projects/manifest/packages/cli/src/commands/audit-constitution.ts`
 - Create: `C:/projects/manifest/packages/cli/src/commands/audit-constitution.test.ts`
 
@@ -812,9 +841,11 @@ git commit -m "feat(cli): scaffold `manifest audit constitution` umbrella with d
 ### Task 5.2 — Event fabrication detector
 
 **Files:**
+
 - Create: `C:/projects/manifest/packages/cli/src/audit/event-fabrication.ts` + test.
 
 Detector logic:
+
 - Scan route patterns (reuse `ROUTE_PATTERNS` from audit-routes).
 - Match `eventBus.publish(`, `emit(`, `new ManifestEvent(`, `'semantic:'` literal channels.
 - Allowlist files under `src/manifest/runtime/adapters/**`.
@@ -831,9 +862,11 @@ git commit -m "feat(audit): detect semantic event fabrication outside runtime ad
 ### Task 5.3 — Route drift detector
 
 **Files:**
+
 - Create: `C:/projects/manifest/packages/cli/src/audit/route-drift.ts` + test.
 
 Detector logic:
+
 - For every file matching `app/api/**/[command]/route.ts` that is NOT the dispatcher path, verify the route body contains an immediate delegation to the canonical path (regex on `fetch('/api/manifest/.../commands/...')` or `dispatchCommand(`).
 - Otherwise emit `ROUTE_DRIFT` finding.
 
@@ -848,9 +881,11 @@ git commit -m "feat(audit): detect concrete command routes that drift from canon
 ### Task 5.4 — Missing-tests detector
 
 **Files:**
+
 - Create: `C:/projects/manifest/packages/cli/src/audit/missing-tests.ts` + test.
 
 Detector logic:
+
 - Load `manifest.commands.json` (Phase 3).
 - For every command, search `**/*.{test,conformance}.{ts,json}` for a reference to `commandId`.
 - Anything unreferenced → `MISSING_CONFORMANCE_TEST` finding.
@@ -866,9 +901,11 @@ git commit -m "feat(audit): detect governed commands without conformance evidenc
 ### Task 5.5 — Bypass violations detector
 
 **Files:**
+
 - Create: `C:/projects/manifest/packages/cli/src/audit/bypass-violations.ts` + test.
 
 Detector logic:
+
 - Run `directWrites` detector.
 - Load bypass registry (path provided via `--bypass`).
 - Any direct-write finding whose route file is NOT listed in the bypass registry → upgrade severity to error and emit `BYPASS_VIOLATION`.
@@ -955,10 +992,12 @@ export interface OutboxStore {
 When an `OutboxStore` is provided, runtime persists emitted events in the same transaction as the entity mutation. Per constitution §11 this is the only way event emission becomes durable.
 
 **Adapters to build (Phase 6):**
+
 - `PostgresAuditSink`, `PostgresOutboxStore` in `stores.node.ts`.
 - `MemoryAuditSink`, `MemoryOutboxStore` for tests.
 
 **CI gates added in Phase 6:**
+
 - `audit-routes` extension: flag commands that emit events without an outbox configured (warn-by-default, error-by-strict).
 
 Phase 6 detailed task list to be written when Phases 1–5 close.
@@ -977,13 +1016,13 @@ Phase 6 detailed task list to be written when Phases 1–5 close.
 
 ## Risks and Rollback
 
-| Risk | Mitigation |
-|---|---|
-| Phase 1 widening of `RuntimeContext` breaks downstream consumers | Type is purely additive; index signature preserved. |
-| Phase 2 dispatcher generates code that breaks existing per-command consumers | Mark legacy as deprecated; do NOT remove until capsule-pro side migrates. |
-| Phase 3 registry shape changes after capsule-pro adopts | JSON schemas under `docs/spec/registry/` are versioned via `compilerVersion`. Bump only with reason. |
-| Phase 4 bypass schema is too strict for real-world legacy | `--strict-expiry` is opt-in. Default mode warns on missing fields. |
-| Phase 5 false positives flood CI | Each detector emits a stable `code`; capsule-pro can exempt by code per file via `audit-routes` exemption JSON. |
+| Risk                                                                         | Mitigation                                                                                                      |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Phase 1 widening of `RuntimeContext` breaks downstream consumers             | Type is purely additive; index signature preserved.                                                             |
+| Phase 2 dispatcher generates code that breaks existing per-command consumers | Mark legacy as deprecated; do NOT remove until capsule-pro side migrates.                                       |
+| Phase 3 registry shape changes after capsule-pro adopts                      | JSON schemas under `docs/spec/registry/` are versioned via `compilerVersion`. Bump only with reason.            |
+| Phase 4 bypass schema is too strict for real-world legacy                    | `--strict-expiry` is opt-in. Default mode warns on missing fields.                                              |
+| Phase 5 false positives flood CI                                             | Each detector emits a stable `code`; capsule-pro can exempt by code per file via `audit-routes` exemption JSON. |
 
 **Rollback:** Each phase is one or more commits. Reverting any phase removes its files cleanly because phases are additive (no modification of pre-existing semantics).
 

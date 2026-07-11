@@ -7,10 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { compileToIR } from '../../../ir-compiler.js';
 import { buildWiringContract } from '../contract-builder.js';
-import {
-  inspectWiringConsumersSync,
-  fileMapFromRecord,
-} from './inspector.js';
+import { inspectWiringConsumersSync, fileMapFromRecord } from './inspector.js';
 import { WIRING_CONSUMERS_SCHEMA } from '../types.js';
 import type { WiringContract } from '../types.js';
 import { bracketRoutePathToRegex, dynamicRouteProbePath } from './route-helper-index.js';
@@ -20,8 +17,8 @@ import { resolveImportPath } from './import-path-resolver.js';
 
 async function contractFrom(source: string): Promise<WiringContract> {
   const { ir, diagnostics } = await compileToIR(source);
-  const errors = diagnostics.filter(d => d.severity === 'error');
-  expect(errors, errors.map(e => e.message).join('\n')).toHaveLength(0);
+  const errors = diagnostics.filter((d) => d.severity === 'error');
+  expect(errors, errors.map((e) => e.message).join('\n')).toHaveLength(0);
   expect(ir).not.toBeNull();
   return buildWiringContract(ir!);
 }
@@ -101,7 +98,7 @@ describe('wiring inspect — consumer traces', () => {
       fileContents: files,
       config: { roots: ['.'] },
     });
-    const f = report.findings.find(x => x.capabilityId === 'Task.markPublished');
+    const f = report.findings.find((x) => x.capabilityId === 'Task.markPublished');
     expect(f?.status).toBe('consumed');
     expect(f?.evidence[0]?.classification).toBe('generated_client');
   });
@@ -121,9 +118,7 @@ describe('wiring inspect — consumer traces', () => {
       fileContents: files,
       config: { roots: ['.'] },
     });
-    expect(report.findings.find(x => x.capabilityId === 'Task.archive')?.status).toBe(
-      'consumed',
-    );
+    expect(report.findings.find((x) => x.capabilityId === 'Task.archive')?.status).toBe('consumed');
   });
 
   it('3. UI → server action → runManifestCommand', async () => {
@@ -150,10 +145,10 @@ describe('wiring inspect — consumer traces', () => {
       fileContents: files,
       config: { roots: ['.'] },
     });
-    const f = report.findings.find(x => x.capabilityId === 'Task.markPublished');
+    const f = report.findings.find((x) => x.capabilityId === 'Task.markPublished');
     expect(f?.status).toBe('consumed');
     expect(f?.evidence[0]?.classification).toBe('server_action');
-    const trace = f?.evidence[0]?.trace.map(t => t.label).join(' → ') ?? '';
+    const trace = f?.evidence[0]?.trace.map((t) => t.label).join(' → ') ?? '';
     expect(trace).toMatch(/page\.tsx/);
     expect(trace).toMatch(/publishTask/);
     expect(trace).toMatch(/Task\.markPublished/);
@@ -193,9 +188,7 @@ describe('wiring inspect — consumer traces', () => {
       fileContents: files,
       config: { roots: ['.'] },
     });
-    expect(report.findings.find(x => x.capabilityId === 'Task.archive')?.status).toBe(
-      'consumed',
-    );
+    expect(report.findings.find((x) => x.capabilityId === 'Task.archive')?.status).toBe('consumed');
   });
 
   it('5. UI → server action → API route → runtime command', async () => {
@@ -226,9 +219,7 @@ describe('wiring inspect — consumer traces', () => {
       fileContents: files,
       config: { roots: ['.'] },
     });
-    expect(report.findings.find(x => x.capabilityId === 'Task.archive')?.status).toBe(
-      'consumed',
-    );
+    expect(report.findings.find((x) => x.capabilityId === 'Task.archive')?.status).toBe('consumed');
   });
 
   it('6. imported helper chain', async () => {
@@ -254,9 +245,7 @@ describe('wiring inspect — consumer traces', () => {
       fileContents: files,
       config: { roots: ['.'] },
     });
-    expect(report.findings.find(x => x.capabilityId === 'Task.archive')?.status).toBe(
-      'consumed',
-    );
+    expect(report.findings.find((x) => x.capabilityId === 'Task.archive')?.status).toBe('consumed');
   });
 
   it('7. import-only action is not consumed', async () => {
@@ -279,9 +268,7 @@ describe('wiring inspect — consumer traces', () => {
       fileContents: files,
       config: { roots: ['.'] },
     });
-    expect(report.findings.find(x => x.capabilityId === 'Task.archive')?.status).toBe(
-      'unwired',
-    );
+    expect(report.findings.find((x) => x.capabilityId === 'Task.archive')?.status).toBe('unwired');
   });
 
   it('8. dead/unreferenced action is not consumed', async () => {
@@ -304,9 +291,7 @@ describe('wiring inspect — consumer traces', () => {
       fileContents: files,
       config: { roots: ['.'] },
     });
-    expect(report.findings.find(x => x.capabilityId === 'Task.archive')?.status).toBe(
-      'unwired',
-    );
+    expect(report.findings.find((x) => x.capabilityId === 'Task.archive')?.status).toBe('unwired');
   });
 
   it('9. generated client definition is not a consumer', async () => {
@@ -323,9 +308,7 @@ describe('wiring inspect — consumer traces', () => {
       fileContents: files,
       config: { roots: ['.'] },
     });
-    expect(report.findings.find(x => x.capabilityId === 'Task.archive')?.status).toBe(
-      'unwired',
-    );
+    expect(report.findings.find((x) => x.capabilityId === 'Task.archive')?.status).toBe('unwired');
   });
 });
 
@@ -352,7 +335,7 @@ describe('wiring inspect — contract mismatches', () => {
     });
     expect(
       report.mismatches.some(
-        m => m.kind === 'missing_required_input' && m.parameter === 'summary',
+        (m) => m.kind === 'missing_required_input' && m.parameter === 'summary',
       ),
     ).toBe(true);
   });
@@ -379,9 +362,7 @@ describe('wiring inspect — contract mismatches', () => {
       config: { roots: ['.'] },
     });
     expect(
-      report.mismatches.some(
-        m => m.kind === 'wrong_input_shape' && m.parameter === 'tags',
-      ),
+      report.mismatches.some((m) => m.kind === 'wrong_input_shape' && m.parameter === 'tags'),
     ).toBe(true);
   });
 
@@ -408,7 +389,7 @@ describe('wiring inspect — contract mismatches', () => {
     });
     expect(
       report.mismatches.some(
-        m => m.kind === 'invalid_finite_literal' && m.parameter === 'priority',
+        (m) => m.kind === 'invalid_finite_literal' && m.parameter === 'priority',
       ),
     ).toBe(true);
   });
@@ -436,7 +417,7 @@ describe('wiring inspect — contract mismatches', () => {
     });
     expect(
       report.mismatches.some(
-        m => m.kind === 'invalid_date_sentinel' && m.parameter === 'dueDate',
+        (m) => m.kind === 'invalid_date_sentinel' && m.parameter === 'dueDate',
       ),
     ).toBe(true);
   });
@@ -461,8 +442,7 @@ describe('wiring inspect — contract mismatches', () => {
     });
     expect(
       report.mismatches.some(
-        m =>
-          m.kind === 'trusted_field_spoofing' && m.parameter === 'completedByUserId',
+        (m) => m.kind === 'trusted_field_spoofing' && m.parameter === 'completedByUserId',
       ),
     ).toBe(true);
   });
@@ -482,12 +462,12 @@ describe('wiring inspect — contract mismatches', () => {
       fileContents: files,
       config: { roots: ['.'] },
     });
-    expect(
-      report.mismatches.filter(m => m.capabilityId === 'Task.markCompleted'),
-    ).toHaveLength(0);
-    expect(
-      report.findings.find(x => x.capabilityId === 'Task.markCompleted')?.status,
-    ).toBe('consumed');
+    expect(report.mismatches.filter((m) => m.capabilityId === 'Task.markCompleted')).toHaveLength(
+      0,
+    );
+    expect(report.findings.find((x) => x.capabilityId === 'Task.markCompleted')?.status).toBe(
+      'consumed',
+    );
   });
 
   it('15b. ES property shorthand is not reported as missing required input', async () => {
@@ -530,20 +510,17 @@ entity RecipeVersion {
       config: { roots: ['.'] },
     });
     const packagingMismatches = report.mismatches.filter(
-      m => m.capabilityId === 'RecipeVersion.setPackaging',
+      (m) => m.capabilityId === 'RecipeVersion.setPackaging',
     );
     expect(
       packagingMismatches.filter(
-        m =>
+        (m) =>
           m.kind === 'missing_required_input' &&
-          (m.parameter === 'dropOff' ||
-            m.parameter === 'bringHot' ||
-            m.parameter === 'cookOnSite'),
+          (m.parameter === 'dropOff' || m.parameter === 'bringHot' || m.parameter === 'cookOnSite'),
       ),
     ).toHaveLength(0);
     expect(
-      report.findings.find(x => x.capabilityId === 'RecipeVersion.setPackaging')
-        ?.status,
+      report.findings.find((x) => x.capabilityId === 'RecipeVersion.setPackaging')?.status,
     ).toBe('consumed');
   });
 
@@ -576,13 +553,10 @@ entity RecipeVersion {
     });
     expect(
       report.mismatches.filter(
-        m =>
-          m.capabilityId === 'Task.create' && m.kind === 'missing_required_input',
+        (m) => m.capabilityId === 'Task.create' && m.kind === 'missing_required_input',
       ),
     ).toHaveLength(0);
-    expect(
-      report.findings.find(x => x.capabilityId === 'Task.create')?.status,
-    ).toBe('consumed');
+    expect(report.findings.find((x) => x.capabilityId === 'Task.create')?.status).toBe('consumed');
   });
 
   it('15d. identifier-body payload emits no false missing-required-input', async () => {
@@ -611,8 +585,7 @@ entity RecipeVersion {
     });
     expect(
       report.mismatches.filter(
-        m =>
-          m.capabilityId === 'Task.create' && m.kind === 'missing_required_input',
+        (m) => m.capabilityId === 'Task.create' && m.kind === 'missing_required_input',
       ),
     ).toHaveLength(0);
   });
@@ -643,7 +616,7 @@ entity RecipeVersion {
     });
     expect(
       report.mismatches.some(
-        m =>
+        (m) =>
           m.kind === 'missing_required_input' &&
           m.capabilityId === 'Task.create' &&
           m.parameter === 'summary',
@@ -778,13 +751,10 @@ entity Event {
       config: { roots: ['.'] },
     });
     const missing = report.mismatches.filter(
-      m =>
-        m.capabilityId === 'Event.update' && m.kind === 'missing_required_input',
+      (m) => m.capabilityId === 'Event.update' && m.kind === 'missing_required_input',
     );
     expect(missing).toHaveLength(0);
-    expect(
-      report.findings.find(x => x.capabilityId === 'Event.update')?.status,
-    ).toBe('consumed');
+    expect(report.findings.find((x) => x.capabilityId === 'Event.update')?.status).toBe('consumed');
   });
 
   it('15g. Event.update Epoch ms comment does not hide eventDate', async () => {
@@ -841,15 +811,13 @@ entity Event {
     });
     expect(
       report.mismatches.filter(
-        m =>
+        (m) =>
           m.capabilityId === 'Event.update' &&
           m.kind === 'missing_required_input' &&
           m.parameter === 'eventDate',
       ),
     ).toHaveLength(0);
-    expect(
-      report.findings.find(x => x.capabilityId === 'Event.update')?.status,
-    ).toBe('consumed');
+    expect(report.findings.find((x) => x.capabilityId === 'Event.update')?.status).toBe('consumed');
   });
 
   it('16. stale command reference is reported', async () => {
@@ -869,7 +837,7 @@ entity Event {
     });
     expect(
       report.findings.some(
-        f => f.status === 'stale-consumer' && f.capabilityId === 'Task.oldCommand',
+        (f) => f.status === 'stale-consumer' && f.capabilityId === 'Task.oldCommand',
       ),
     ).toBe(true);
     expect(report.ok).toBe(false);
@@ -885,9 +853,7 @@ entity Event {
       fileContents: files,
       config: { roots: ['.'], strictCoverage: true },
     });
-    expect(report.findings.find(x => x.capabilityId === 'Task.archive')?.status).toBe(
-      'unwired',
-    );
+    expect(report.findings.find((x) => x.capabilityId === 'Task.archive')?.status).toBe('unwired');
     expect(report.ok).toBe(false);
   });
 
@@ -904,14 +870,14 @@ entity Event {
         strictCoverage: true,
         overrides: {
           $schema: WIRING_CONSUMERS_SCHEMA,
-          consumers: contract.capabilities.map(c => ({
+          consumers: contract.capabilities.map((c) => ({
             capabilityId: c.capabilityId,
             disposition: 'backend-only' as const,
           })),
         },
       },
     });
-    expect(report.findings.every(f => f.status === 'backend-only')).toBe(true);
+    expect(report.findings.every((f) => f.status === 'backend-only')).toBe(true);
     expect(report.ok).toBe(true);
   });
 
@@ -937,9 +903,7 @@ entity Event {
         },
       },
     });
-    expect(report.findings.find(x => x.capabilityId === 'Task.archive')?.status).toBe(
-      'deferred',
-    );
+    expect(report.findings.find((x) => x.capabilityId === 'Task.archive')?.status).toBe('deferred');
     expect(report.ok).toBe(true);
   });
 
@@ -959,9 +923,7 @@ entity Event {
       config: { roots: ['.'] },
     });
     expect(report.unresolved.length).toBeGreaterThan(0);
-    expect(report.findings.find(x => x.capabilityId === 'Task.archive')?.status).toBe(
-      'unwired',
-    );
+    expect(report.findings.find((x) => x.capabilityId === 'Task.archive')?.status).toBe('unwired');
     // ambiguous must not fail the gate by default
     expect(report.ok).toBe(true);
   });
@@ -970,9 +932,7 @@ entity Event {
     const re = bracketRoutePathToRegex('/api/tasks/[id]/update');
     expect(re.test('/api/tasks/abc/update')).toBe(true);
     expect(re.test('/api/tasks/abc/other')).toBe(false);
-    expect(dynamicRouteProbePath('/api/tasks/[id]/update')).toBe(
-      '/api/tasks/__probe__/update',
-    );
+    expect(dynamicRouteProbePath('/api/tasks/[id]/update')).toBe('/api/tasks/__probe__/update');
     expect(dynamicRouteProbePath('/api/tasks/[id]/update')).not.toMatch(/\[/);
   });
 
@@ -997,9 +957,7 @@ entity Event {
       fileContents: files,
       config: { roots: ['.'] },
     });
-    expect(report.findings.find(x => x.capabilityId === 'Task.archive')?.status).toBe(
-      'unwired',
-    );
+    expect(report.findings.find((x) => x.capabilityId === 'Task.archive')?.status).toBe('unwired');
   });
 
   it('23. FilePathIndex resolves @/ and relative imports without linear scan', () => {
@@ -1009,21 +967,11 @@ entity Event {
       'apps/app/app/ui/nested/child.tsx': `import { y } from "../sibling";`,
       'apps/app/app/ui/sibling.ts': `export const y = 2;`,
     });
-    expect(
-      resolveImportPath(
-        'apps/app/app/ui/page.tsx',
-        '@/app/lib/helpers',
-        files,
-        false,
-      ),
-    ).toBe('apps/app/app/lib/helpers.ts');
-    expect(
-      resolveImportPath(
-        'apps/app/app/ui/nested/child.tsx',
-        '../sibling',
-        files,
-        false,
-      ),
-    ).toBe('apps/app/app/ui/sibling.ts');
+    expect(resolveImportPath('apps/app/app/ui/page.tsx', '@/app/lib/helpers', files, false)).toBe(
+      'apps/app/app/lib/helpers.ts',
+    );
+    expect(resolveImportPath('apps/app/app/ui/nested/child.tsx', '../sibling', files, false)).toBe(
+      'apps/app/app/ui/sibling.ts',
+    );
   });
 });

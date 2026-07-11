@@ -150,10 +150,7 @@ function planServerExpand(
   const edits: RepairEditSpec[] = [];
   if (normalizePath(pattern.builderFile) !== normalizePath(file)) {
     const builderIsServerActions = isServerActionsModule(builderFileContent);
-    const builderAlreadyExported = isExportedSymbol(
-      builderFileContent,
-      pattern.builderName,
-    );
+    const builderAlreadyExported = isExportedSymbol(builderFileContent, pattern.builderName);
     const loaderAlreadyExported = isExportedSymbol(builderFileContent, loaderName);
 
     if (builderIsServerActions && (!builderAlreadyExported || !loaderAlreadyExported)) {
@@ -229,7 +226,7 @@ function planServerExpand(
     },
     'repairable-with-existing-pattern',
     `Partial ${cap.capabilityId} expanded via proven ${pattern.builderName}; overrides preserved`,
-    [...new Set(edits.map(e => e.file))],
+    [...new Set(edits.map((e) => e.file))],
   );
 }
 
@@ -281,10 +278,7 @@ function planClientViaServer(
   );
 }
 
-export function findPartialSite(
-  content: string,
-  cap: WiringCommandDescriptor,
-): PartialSite | null {
+export function findPartialSite(content: string, cap: WiringCommandDescriptor): PartialSite | null {
   for (const inv of extractGeneratedClientCalls(content, new Set([cap.capabilityId]))) {
     if (!inv.payloadSource.trim().startsWith('{')) continue;
     if (/\.\.\./.test(inv.payloadSource)) continue;
@@ -308,16 +302,16 @@ export function findPartialSite(
   }
   // Fallback: any object literal with id + few fields near capability name
   const fn = clientFunctionName(cap.entity, cap.command);
-  if (content.includes(fn) || content.includes(`/api/manifest/${cap.entity}/commands/${cap.command}`)) {
+  if (
+    content.includes(fn) ||
+    content.includes(`/api/manifest/${cap.entity}/commands/${cap.command}`)
+  ) {
     return null;
   }
   return null;
 }
 
-function readOverrideFields(
-  payloadSource: string,
-  bodyFields: string[],
-): Record<string, string> {
+function readOverrideFields(payloadSource: string, bodyFields: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const name of bodyFields) {
     const m = new RegExp(`\\b${escape(name)}\\s*:\\s*([^,}\\n]+)`).exec(payloadSource);
@@ -332,19 +326,19 @@ function findServerPartialPost(
   overrideFields: Record<string, string>,
 ): { file: string; content: string } | undefined {
   const pathHint = `/api/manifest/${cap.entity}/commands/${cap.command}`;
-  const overrideKeys = Object.keys(overrideFields).filter(k => k !== 'id');
+  const overrideKeys = Object.keys(overrideFields).filter((k) => k !== 'id');
   for (const [file, content] of fileContents) {
     if (isClientModule(content)) continue;
     if (!content.includes(pathHint)) continue;
     if (!/\bid\s*:/.test(content)) continue;
-    if (!overrideKeys.every(k => new RegExp(`\\b${escape(k)}\\s*:`).test(content))) {
+    if (!overrideKeys.every((k) => new RegExp(`\\b${escape(k)}\\s*:`).test(content))) {
       continue;
     }
-    const posts = extractApiManifestPosts(content).filter(p => p.intent === cap.capabilityId);
+    const posts = extractApiManifestPosts(content).filter((p) => p.intent === cap.capabilityId);
     for (const post of posts) {
       const fields = new Set(post.bodyFields);
       if (!fields.has('id')) continue;
-      if (!overrideKeys.every(k => fields.has(k))) continue;
+      if (!overrideKeys.every((k) => fields.has(k))) continue;
       if (post.bodyFields.length > overrideKeys.length + 2) continue;
       return { file, content };
     }
@@ -382,7 +376,10 @@ function relativeImportPath(fromFile: string, toFile: string): string {
   let i = 0;
   while (i < from.length && i < to.length && from[i] === to[i]) i++;
   const up = from.length - i;
-  const down = to.slice(i).join('/').replace(/\.tsx?$/, '');
+  const down = to
+    .slice(i)
+    .join('/')
+    .replace(/\.tsx?$/, '');
   const rel = `${up === 0 ? './' : '../'.repeat(up)}${down}`;
   return rel.startsWith('.') ? rel : `./${rel}`;
 }
@@ -416,6 +413,8 @@ export function payloadLooksPartial(
 ): boolean {
   if (!payloadSource.trim().startsWith('{')) return false;
   if (/\.\.\./.test(payloadSource)) return false;
-  return isPartialLiteralAgainstFullContract(bodyFields.length ? bodyFields : extractObjectFieldNames(payloadSource), cap)
-    .partial;
+  return isPartialLiteralAgainstFullContract(
+    bodyFields.length ? bodyFields : extractObjectFieldNames(payloadSource),
+    cap,
+  ).partial;
 }

@@ -1,13 +1,15 @@
 ---
-title: "Installing @angriff36/manifest: setup and configuration"
-sidebarTitle: "Installation"
-description: "Add @angriff36/manifest to any Node.js 18+ project with npm or pnpm, configure TypeScript, and optionally install the CLI and Supabase peer dependency."
+title: 'Installing @angriff36/manifest: setup and configuration'
+sidebarTitle: 'Installation'
+description: 'Add @angriff36/manifest to any Node.js 18+ project with npm or pnpm, configure TypeScript, and optionally install the CLI and Supabase peer dependency.'
 ---
 
 Manifest is published as `@angriff36/manifest` to the public npm registry. Before installing, make sure your project meets the minimum requirements: **Node.js 18 or later** and npm or pnpm.
 
 <Note>
-  The package is fully self-contained: the compiler, runtime, CLI, MCP server, and LSP server all ship inside `@angriff36/manifest`, and their runtime dependencies are declared and installed automatically — no manual dependency installs are needed.
+  The package is fully self-contained: the compiler, runtime, CLI, MCP server, and LSP server all
+  ship inside `@angriff36/manifest`, and their runtime dependencies are declared and installed
+  automatically — no manual dependency installs are needed.
 </Note>
 
 ## Install the package
@@ -25,31 +27,33 @@ pnpm add @angriff36/manifest
 </CodeGroup>
 
 <Note>
-  `@angriff36/manifest` resolves from the public npm registry — no GitHub Packages authentication, personal access token, or custom `.npmrc` registry entry is required. `npm install` / `pnpm add` works out of the box.
+  `@angriff36/manifest` resolves from the public npm registry — no GitHub Packages authentication,
+  personal access token, or custom `.npmrc` registry entry is required. `npm install` / `pnpm add`
+  works out of the box.
 </Note>
 
 ## Package exports
 
 The package ships multiple named entry points. Import only what you need — each export is independent.
 
-| Import path | What it provides |
-|-------------|-----------------|
-| `@angriff36/manifest` | `RuntimeEngine` — the main command execution engine |
-| `@angriff36/manifest/runtime-engine` | Full runtime module: `RuntimeEngine`, stores, event types |
-| `@angriff36/manifest/binary-ir` | Binary IR pack/unpack (MessagePack encoding) |
-| `@angriff36/manifest/compiler` | The high-level `compiler` orchestrator |
-| `@angriff36/manifest/ir-compiler` | `compileToIR` — parse source and produce IR v1 |
-| `@angriff36/manifest/ir` | IR data structure types |
-| `@angriff36/manifest/stores` | Node.js store adapters |
-| `@angriff36/manifest/projections/nextjs` | Next.js code generation projection |
-| `@angriff36/manifest/projections/routes` | Route generation projection |
-| `@angriff36/manifest/registry/emit` | Event registry emit helpers |
-| `@angriff36/manifest/audit` | `AuditSink` interface |
-| `@angriff36/manifest/audit/memory` | `MemoryAuditSink` for development and tests |
-| `@angriff36/manifest/audit/postgres` | `PostgresAuditSink` for production |
-| `@angriff36/manifest/outbox` | `OutboxStore` interface |
-| `@angriff36/manifest/outbox/memory` | `MemoryOutboxStore` for development and tests |
-| `@angriff36/manifest/outbox/postgres` | `PostgresOutboxStore` for production |
+| Import path                              | What it provides                                          |
+| ---------------------------------------- | --------------------------------------------------------- |
+| `@angriff36/manifest`                    | `RuntimeEngine` — the main command execution engine       |
+| `@angriff36/manifest/runtime-engine`     | Full runtime module: `RuntimeEngine`, stores, event types |
+| `@angriff36/manifest/binary-ir`          | Binary IR pack/unpack (MessagePack encoding)              |
+| `@angriff36/manifest/compiler`           | The high-level `compiler` orchestrator                    |
+| `@angriff36/manifest/ir-compiler`        | `compileToIR` — parse source and produce IR v1            |
+| `@angriff36/manifest/ir`                 | IR data structure types                                   |
+| `@angriff36/manifest/stores`             | Node.js store adapters                                    |
+| `@angriff36/manifest/projections/nextjs` | Next.js code generation projection                        |
+| `@angriff36/manifest/projections/routes` | Route generation projection                               |
+| `@angriff36/manifest/registry/emit`      | Event registry emit helpers                               |
+| `@angriff36/manifest/audit`              | `AuditSink` interface                                     |
+| `@angriff36/manifest/audit/memory`       | `MemoryAuditSink` for development and tests               |
+| `@angriff36/manifest/audit/postgres`     | `PostgresAuditSink` for production                        |
+| `@angriff36/manifest/outbox`             | `OutboxStore` interface                                   |
+| `@angriff36/manifest/outbox/memory`      | `MemoryOutboxStore` for development and tests             |
+| `@angriff36/manifest/outbox/postgres`    | `PostgresOutboxStore` for production                      |
 
 The most common imports for getting started are:
 
@@ -74,20 +78,22 @@ The package ships declaration files for every export. No `@types/` package is ne
 ```
 
 <Note>
-  The package is published as ESM (`"type": "module"`). If your project uses CommonJS, configure your bundler or TypeScript to handle ESM interop, or use a bundler like Vite or esbuild that handles this automatically.
+  The package is published as ESM (`"type": "module"`). If your project uses CommonJS, configure
+  your bundler or TypeScript to handle ESM interop, or use a bundler like Vite or esbuild that
+  handles this automatically.
 </Note>
 
 ## Optional peer dependencies
 
 Store and platform adapters that require external services are declared as **optional peer dependencies**. Install only the ones you use — everything else works without them:
 
-| Package | Needed for |
-|---------|-----------|
-| `@supabase/supabase-js` | Supabase store target |
-| `ioredis` | Redis outbox store |
-| `mongodb` | MongoDB store adapter |
-| `@libsql/client` | Turso store adapter |
-| `@assemblyscript/loader` | WASM compute modules |
+| Package                  | Needed for            |
+| ------------------------ | --------------------- |
+| `@supabase/supabase-js`  | Supabase store target |
+| `ioredis`                | Redis outbox store    |
+| `mongodb`                | MongoDB store adapter |
+| `@libsql/client`         | Turso store adapter   |
+| `@assemblyscript/loader` | WASM compute modules  |
 
 ```bash
 # Example: only if you use the Redis outbox
@@ -100,10 +106,10 @@ If an optional peer is not installed, the corresponding adapter fails with a cle
 
 Installing `@angriff36/manifest` registers three binaries, all working out of the box with no extra installs:
 
-| Binary | What it is |
-|--------|-----------|
-| `manifest` | The CLI — compile, generate, validate, scan |
-| `manifest-mcp` | Model Context Protocol server for AI agents |
+| Binary         | What it is                                             |
+| -------------- | ------------------------------------------------------ |
+| `manifest`     | The CLI — compile, generate, validate, scan            |
+| `manifest-mcp` | Model Context Protocol server for AI agents            |
 | `manifest-lsp` | Language Server Protocol server for editor integration |
 
 ```bash
@@ -130,7 +136,9 @@ manifest build modules/recipe.manifest
 The `manifest` CLI ships **inside** `@angriff36/manifest` — there is no separate CLI package to install. Once `@angriff36/manifest` is a dependency, the `manifest` binary is available via `npx manifest` or your package manager's script runner.
 
 <Tip>
-  Run `manifest init` once at the start of a project. It creates `manifest.config.yaml` with your framework, auth provider, import paths, and output directory. After that, `manifest build` reads those defaults and you only need to pass flags when overriding them.
+  Run `manifest init` once at the start of a project. It creates `manifest.config.yaml` with your
+  framework, auth provider, import paths, and output directory. After that, `manifest build` reads
+  those defaults and you only need to pass flags when overriding them.
 </Tip>
 
 ## Verifying your install

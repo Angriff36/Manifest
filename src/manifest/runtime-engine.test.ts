@@ -13,7 +13,14 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RuntimeEngine, EvaluationBudgetExceededError, type RuntimeContext, type RuntimeOptions, type EntityInstance, type EncryptionProvider } from './runtime-engine';
+import {
+  RuntimeEngine,
+  EvaluationBudgetExceededError,
+  type RuntimeContext,
+  type RuntimeOptions,
+  type EntityInstance,
+  type EncryptionProvider,
+} from './runtime-engine';
 import { IRCompiler } from './ir-compiler';
 import type { IR, IRExpression } from './ir';
 import { COMPILER_VERSION } from './version';
@@ -23,7 +30,7 @@ async function compileToIR(source: string): Promise<IR> {
   const compiler = new IRCompiler();
   const result = await compiler.compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compilation failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compilation failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
@@ -43,7 +50,12 @@ const simpleIR: IR = {
     {
       name: 'User',
       properties: [
-        { name: 'name', type: { name: 'string', nullable: false }, modifiers: [], defaultValue: { kind: 'string', value: 'Anonymous' } },
+        {
+          name: 'name',
+          type: { name: 'string', nullable: false },
+          modifiers: [],
+          defaultValue: { kind: 'string', value: 'Anonymous' },
+        },
         { name: 'age', type: { name: 'number', nullable: false }, modifiers: [] },
       ],
       computedProperties: [],
@@ -171,7 +183,9 @@ describe('RuntimeEngine', () => {
           },
         ],
       };
-      expect(() => new RuntimeEngine(irWithPostgres)).toThrow('not available in browser environments');
+      expect(() => new RuntimeEngine(irWithPostgres)).toThrow(
+        'not available in browser environments',
+      );
     });
 
     it('should throw error for supabase store in browser', async () => {
@@ -185,7 +199,9 @@ describe('RuntimeEngine', () => {
           },
         ],
       };
-      expect(() => new RuntimeEngine(irWithSupabase)).toThrow('not available in browser environments');
+      expect(() => new RuntimeEngine(irWithSupabase)).toThrow(
+        'not available in browser environments',
+      );
     });
 
     it('should resolve custom store target via storeProvider', async () => {
@@ -207,9 +223,13 @@ describe('RuntimeEngine', () => {
           },
         ],
       };
-      const runtime = new RuntimeEngine(irWithCustomTarget, {}, {
-        storeProvider: (entityName) => entityName === 'User' ? mockRedisStore : undefined,
-      });
+      const runtime = new RuntimeEngine(
+        irWithCustomTarget,
+        {},
+        {
+          storeProvider: (entityName) => (entityName === 'User' ? mockRedisStore : undefined),
+        },
+      );
       const store = runtime.getStore('User');
       expect(store).toBe(mockRedisStore);
       const instance = await store?.create({ name: 'Test' });
@@ -228,7 +248,7 @@ describe('RuntimeEngine', () => {
         ],
       };
       expect(() => new RuntimeEngine(irWithCustomTarget)).toThrow(
-        /store target 'redis'.*StoreAdapterPlugin/
+        /store target 'redis'.*StoreAdapterPlugin/,
       );
     });
   });
@@ -442,7 +462,9 @@ describe('RuntimeEngine', () => {
         callee: { kind: 'identifier', name: 'upper' },
         args: [{ kind: 'literal', value: { kind: 'string', value: 'hello' } }],
       };
-      const result = await runtime.evaluateExpression(expr, { upper: (s: string) => s.toUpperCase() });
+      const result = await runtime.evaluateExpression(expr, {
+        upper: (s: string) => s.toUpperCase(),
+      });
       expect(result).toBe('HELLO');
     });
 
@@ -453,7 +475,12 @@ describe('RuntimeEngine', () => {
         callee: {
           kind: 'lambda',
           params: ['x'],
-          body: { kind: 'binary', operator: '*', left: { kind: 'identifier', name: 'x' }, right: { kind: 'literal', value: { kind: 'number', value: 2 } } },
+          body: {
+            kind: 'binary',
+            operator: '*',
+            left: { kind: 'identifier', name: 'x' },
+            right: { kind: 'literal', value: { kind: 'number', value: 2 } },
+          },
         },
         args: [{ kind: 'literal', value: { kind: 'number', value: 5 } }],
       };
@@ -465,7 +492,7 @@ describe('RuntimeEngine', () => {
   describe('Custom Builtins (plugin injection)', () => {
     it('should evaluate a custom builtin function', async () => {
       const customBuiltins = new Map<string, (...args: unknown[]) => unknown>();
-      customBuiltins.set('double', (x: unknown) => typeof x === 'number' ? x * 2 : x);
+      customBuiltins.set('double', (x: unknown) => (typeof x === 'number' ? x * 2 : x));
 
       const runtime = new RuntimeEngine(simpleIR, {}, { customBuiltins });
       const expr: IRExpression = {
@@ -496,7 +523,7 @@ describe('RuntimeEngine', () => {
     it('should support multiple custom builtins', async () => {
       const customBuiltins = new Map<string, (...args: unknown[]) => unknown>();
       customBuiltins.set('greet', (name: unknown) => `Hello, ${name}!`);
-      customBuiltins.set('square', (x: unknown) => typeof x === 'number' ? x * x : x);
+      customBuiltins.set('square', (x: unknown) => (typeof x === 'number' ? x * x : x));
 
       const runtime = new RuntimeEngine(simpleIR, {}, { customBuiltins });
 
@@ -547,11 +574,19 @@ describe('RuntimeEngine', () => {
       await runtime.createInstance('Counter', { id: 'c1', value: 0 });
 
       // Even amount should succeed
-      const result1 = await runtime.runCommand('increment', { amount: 4 }, { entityName: 'Counter', instanceId: 'c1' });
+      const result1 = await runtime.runCommand(
+        'increment',
+        { amount: 4 },
+        { entityName: 'Counter', instanceId: 'c1' },
+      );
       expect(result1.success).toBe(true);
 
       // Odd amount should fail guard
-      const result2 = await runtime.runCommand('increment', { amount: 3 }, { entityName: 'Counter', instanceId: 'c1' });
+      const result2 = await runtime.runCommand(
+        'increment',
+        { amount: 3 },
+        { entityName: 'Counter', instanceId: 'c1' },
+      );
       expect(result2.success).toBe(false);
     });
   });
@@ -635,21 +670,37 @@ describe('RuntimeEngine', () => {
       `);
 
       // With flag disabled
-      const runtime1 = new RuntimeEngine(ir, {}, {
-        flagProvider: () => false,
-        generateId: () => 'f1',
-      });
+      const runtime1 = new RuntimeEngine(
+        ir,
+        {},
+        {
+          flagProvider: () => false,
+          generateId: () => 'f1',
+        },
+      );
       await runtime1.createInstance('Feature', { id: 'f1', status: 'off' });
-      const result1 = await runtime1.runCommand('enable', {}, { entityName: 'Feature', instanceId: 'f1' });
+      const result1 = await runtime1.runCommand(
+        'enable',
+        {},
+        { entityName: 'Feature', instanceId: 'f1' },
+      );
       expect(result1.success).toBe(false);
 
       // With flag enabled
-      const runtime2 = new RuntimeEngine(ir, {}, {
-        flagProvider: () => true,
-        generateId: () => 'f2',
-      });
+      const runtime2 = new RuntimeEngine(
+        ir,
+        {},
+        {
+          flagProvider: () => true,
+          generateId: () => 'f2',
+        },
+      );
       await runtime2.createInstance('Feature', { id: 'f2', status: 'off' });
-      const result2 = await runtime2.runCommand('enable', {}, { entityName: 'Feature', instanceId: 'f2' });
+      const result2 = await runtime2.runCommand(
+        'enable',
+        {},
+        { entityName: 'Feature', instanceId: 'f2' },
+      );
       expect(result2.success).toBe(true);
     });
   });
@@ -857,7 +908,7 @@ describe('RuntimeEngine', () => {
         expect.objectContaining({
           name: 'UserCreated',
           channel: 'UserCreated', // Channel defaults to event name
-        })
+        }),
       );
     });
 
@@ -950,13 +1001,18 @@ describe('RuntimeEngine', () => {
     // (e.g., delete irHash in one test corrupting the cached object for later tests).
     async function compileValidIR(): Promise<IR> {
       const compiler = new IRCompiler();
-      const result = await compiler.compileToIR(`
+      const result = await compiler.compileToIR(
+        `
         entity Item {
           property name: string
         }
-      `, { useCache: false });
+      `,
+        { useCache: false },
+      );
       if (!result.ir) {
-        throw new Error(`Compilation failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+        throw new Error(
+          `Compilation failed: ${result.diagnostics.map((d) => d.message).join(', ')}`,
+        );
       }
       return result.ir;
     }
@@ -1040,7 +1096,9 @@ describe('RuntimeEngine', () => {
       const ir = await compileValidIR();
 
       const runtime = new RuntimeEngine(ir);
-      const isValid = await runtime.verifyIRHash('0000000000000000000000000000000000000000000000000000000000000000');
+      const isValid = await runtime.verifyIRHash(
+        '0000000000000000000000000000000000000000000000000000000000000000',
+      );
       expect(isValid).toBe(false);
     });
 
@@ -1058,7 +1116,7 @@ describe('RuntimeEngine', () => {
 
       const runtime = new RuntimeEngine(ir, {}, { requireValidProvenance: true });
       await expect(runtime.assertValidProvenance()).rejects.toThrow(
-        'IR provenance verification failed'
+        'IR provenance verification failed',
       );
     });
 
@@ -1087,7 +1145,11 @@ describe('RuntimeEngine', () => {
       // The static factory verifies provenance when requireValidProvenance is true
       const ir = await compileValidIR();
 
-      const [runtime, result] = await RuntimeEngine.create(ir, {}, { requireValidProvenance: true });
+      const [runtime, result] = await RuntimeEngine.create(
+        ir,
+        {},
+        { requireValidProvenance: true },
+      );
       expect(result.valid).toBe(true);
       expect(result.error).toBeUndefined();
       expect(runtime).toBeInstanceOf(RuntimeEngine);
@@ -1099,7 +1161,11 @@ describe('RuntimeEngine', () => {
       // Tamper: modify a property name
       ir.entities[0].properties[0].name = 'tampered';
 
-      const [runtime, result] = await RuntimeEngine.create(ir, {}, { requireValidProvenance: true });
+      const [runtime, result] = await RuntimeEngine.create(
+        ir,
+        {},
+        { requireValidProvenance: true },
+      );
       expect(result.valid).toBe(false);
       expect(result.error).toBe('IR hash verification failed');
       // Runtime is still created (caller decides whether to use it)
@@ -1111,7 +1177,11 @@ describe('RuntimeEngine', () => {
       const ir = await compileValidIR();
       ir.entities[0].properties[0].name = 'tampered';
 
-      const [runtime, result] = await RuntimeEngine.create(ir, {}, { requireValidProvenance: false });
+      const [runtime, result] = await RuntimeEngine.create(
+        ir,
+        {},
+        { requireValidProvenance: false },
+      );
       expect(result.valid).toBe(true);
       expect(result.error).toBeUndefined();
       expect(runtime).toBeInstanceOf(RuntimeEngine);
@@ -1132,7 +1202,10 @@ describe('RuntimeEngine', () => {
       const serialized = await runtime.serialize();
       expect(serialized.ir).toBe(ir);
       expect(serialized.stores.User).toHaveLength(2);
-      expect(serialized.stores.User.map((u: EntityInstance) => u.name).sort()).toEqual(['Alice', 'Bob']);
+      expect(serialized.stores.User.map((u: EntityInstance) => u.name).sort()).toEqual([
+        'Alice',
+        'Bob',
+      ]);
     });
 
     it('should restore runtime state', async () => {
@@ -1181,29 +1254,33 @@ describe('RuntimeEngine', () => {
         },
         modules: [],
         values: [],
-        entities: [{
-          name: 'Item',
-          properties: [
-            { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
-          ],
-          computedProperties: [],
-          relationships: [],
-          commands: ['doSomething'],
-          constraints: [],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'Item',
+            properties: [
+              { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
+            ],
+            computedProperties: [],
+            relationships: [],
+            commands: ['doSomething'],
+            constraints: [],
+            policies: [],
+          },
+        ],
         enums: [],
         stores: [],
         events: [],
-        commands: [{
-          name: 'doSomething',
-          entity: 'Item',
-          parameters: [],
-          guards: [guardExpr],
-          actions: [],
-          emits: [],
-          constraints: [],
-        }],
+        commands: [
+          {
+            name: 'doSomething',
+            entity: 'Item',
+            parameters: [],
+            guards: [guardExpr],
+            actions: [],
+            emits: [],
+            constraints: [],
+          },
+        ],
         policies: [],
       };
     }
@@ -1227,9 +1304,13 @@ describe('RuntimeEngine', () => {
     it('depth limit exceeded returns CommandResult failure', async () => {
       const deepExpr = makeNestedBinaryExpr(10);
       const ir = makeIRWithGuard(deepExpr);
-      const runtime = new RuntimeEngine(ir, {}, {
-        evaluationLimits: { maxExpressionDepth: 5 },
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          evaluationLimits: { maxExpressionDepth: 5 },
+        },
+      );
       const result = await runtime.runCommand('doSomething', {}, { entityName: 'Item' });
       expect(result.success).toBe(false);
       expect(result.error).toContain('depth');
@@ -1246,9 +1327,13 @@ describe('RuntimeEngine', () => {
       }
       const wideExpr: IRExpression = { kind: 'array', elements };
       const ir = makeIRWithGuard(wideExpr);
-      const runtime = new RuntimeEngine(ir, {}, {
-        evaluationLimits: { maxEvaluationSteps: 50 },
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          evaluationLimits: { maxEvaluationSteps: 50 },
+        },
+      );
       const result = await runtime.runCommand('doSomething', {}, { entityName: 'Item' });
       expect(result.success).toBe(false);
       expect(result.error).toContain('steps');
@@ -1258,9 +1343,13 @@ describe('RuntimeEngine', () => {
     it('depth limit produces descriptive error with limit type and value', async () => {
       const deepExpr = makeNestedBinaryExpr(20);
       const ir = makeIRWithGuard(deepExpr);
-      const runtime = new RuntimeEngine(ir, {}, {
-        evaluationLimits: { maxExpressionDepth: 3 },
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          evaluationLimits: { maxExpressionDepth: 3 },
+        },
+      );
       const result = await runtime.runCommand('doSomething', {}, { entityName: 'Item' });
       expect(result.success).toBe(false);
       expect(result.error).toBe('Evaluation budget exceeded: depth limit 3 reached');
@@ -1276,9 +1365,13 @@ describe('RuntimeEngine', () => {
           }
         }
       `);
-      const runtime = new RuntimeEngine(ir, {}, {
-        evaluationLimits: { maxEvaluationSteps: 100 },
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          evaluationLimits: { maxEvaluationSteps: 100 },
+        },
+      );
       // First command should succeed
       const result1 = await runtime.runCommand('doCreate', { title: 'First' });
       expect(result1.success).toBe(true);
@@ -1308,34 +1401,43 @@ describe('RuntimeEngine', () => {
         },
         modules: [],
         values: [],
-        entities: [{
-          name: 'Item',
-          properties: [
-            { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
-          ],
-          computedProperties: [],
-          relationships: [],
-          commands: [],
-          constraints: [{
-            name: 'deepCheck',
-            code: 'deepCheck',
-            expression: deepExpr,
-            severity: 'block',
-          }],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'Item',
+            properties: [
+              { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
+            ],
+            computedProperties: [],
+            relationships: [],
+            commands: [],
+            constraints: [
+              {
+                name: 'deepCheck',
+                code: 'deepCheck',
+                expression: deepExpr,
+                severity: 'block',
+              },
+            ],
+            policies: [],
+          },
+        ],
         enums: [],
         stores: [],
         events: [],
         commands: [],
         policies: [],
       };
-      const runtime = new RuntimeEngine(ir, {}, {
-        evaluationLimits: { maxExpressionDepth: 5 },
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          evaluationLimits: { maxExpressionDepth: 5 },
+        },
+      );
       // checkConstraints should propagate the budget error (not swallowed)
-      await expect(runtime.checkConstraints('Item', { value: 1 }))
-        .rejects.toThrow(EvaluationBudgetExceededError);
+      await expect(runtime.checkConstraints('Item', { value: 1 })).rejects.toThrow(
+        EvaluationBudgetExceededError,
+      );
     });
 
     it('evaluateComputed respects evaluation limits', async () => {
@@ -1350,37 +1452,46 @@ describe('RuntimeEngine', () => {
         },
         modules: [],
         values: [],
-        entities: [{
-          name: 'Item',
-          properties: [
-            { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
-          ],
-          computedProperties: [{
-            name: 'deepValue',
-            expression: deepExpr,
-            type: { name: 'number', nullable: false },
-            dependencies: ['value'],
-          }],
-          relationships: [],
-          commands: [],
-          constraints: [],
-          policies: [],
-        }],
+        entities: [
+          {
+            name: 'Item',
+            properties: [
+              { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
+            ],
+            computedProperties: [
+              {
+                name: 'deepValue',
+                expression: deepExpr,
+                type: { name: 'number', nullable: false },
+                dependencies: ['value'],
+              },
+            ],
+            relationships: [],
+            commands: [],
+            constraints: [],
+            policies: [],
+          },
+        ],
         enums: [],
         stores: [],
         events: [],
         commands: [],
         policies: [],
       };
-      const runtime = new RuntimeEngine(ir, {}, {
-        evaluationLimits: { maxExpressionDepth: 5 },
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          evaluationLimits: { maxExpressionDepth: 5 },
+        },
+      );
       // Create an instance first
       const instance = await runtime.createInstance('Item', { value: 42 });
       expect(instance).toBeDefined();
       // evaluateComputed should propagate the budget error
-      await expect(runtime.evaluateComputed('Item', instance!.id, 'deepValue'))
-        .rejects.toThrow(EvaluationBudgetExceededError);
+      await expect(runtime.evaluateComputed('Item', instance!.id, 'deepValue')).rejects.toThrow(
+        EvaluationBudgetExceededError,
+      );
     });
   });
 
@@ -1409,7 +1520,10 @@ describe('RuntimeEngine', () => {
       `);
       const runtime = new RuntimeEngine(ir);
       const author = await runtime.createInstance('Author', { name: 'Alice' });
-      const book = await runtime.createInstance('Book', { title: 'Deep Dive', authorId: author!.id });
+      const book = await runtime.createInstance('Book', {
+        title: 'Deep Dive',
+        authorId: author!.id,
+      });
       const authorName = await runtime.evaluateComputed('Book', book!.id, 'authorName');
       expect(authorName).toBe('Alice');
     });
@@ -1435,8 +1549,16 @@ describe('RuntimeEngine', () => {
       `);
       const runtime = new RuntimeEngine(ir);
       // Two tenants share tenantId 't1'; only (tenantId, orgId) is unique.
-      await runtime.createInstance('Tenant', { tenantId: 't1', orgId: 'o1', tenantName: 'Acme Corp' });
-      await runtime.createInstance('Tenant', { tenantId: 't1', orgId: 'o2', tenantName: 'Beta LLC' });
+      await runtime.createInstance('Tenant', {
+        tenantId: 't1',
+        orgId: 'o1',
+        tenantName: 'Acme Corp',
+      });
+      await runtime.createInstance('Tenant', {
+        tenantId: 't1',
+        orgId: 'o2',
+        tenantName: 'Beta LLC',
+      });
       const item = await runtime.createInstance('Item', { tenantId: 't1', orgId: 'o2' });
       const resolved = await runtime.evaluateComputed('Item', item!.id, 'resolvedTenantName');
       expect(resolved).toBe('Beta LLC');
@@ -1500,20 +1622,33 @@ on OrderCompleted run Invoice.createFromOrder
 
     it('should execute reaction when matching event is emitted', async () => {
       const ir = await compileToIR(reactionSource);
-      const runtime = new RuntimeEngine(ir, {}, {
-        now: () => 1000000000000,
-        generateId: () => 'gen-id-1',
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          now: () => 1000000000000,
+          generateId: () => 'gen-id-1',
+        },
+      );
 
       // Create the Order and Invoice instances
       await runtime.createInstance('Order', { id: 'order-1', total: 50, status: 'open' });
-      await runtime.createInstance('Invoice', { id: 'order-1', orderId: '', amount: 0, status: 'draft' });
+      await runtime.createInstance('Invoice', {
+        id: 'order-1',
+        orderId: '',
+        amount: 0,
+        status: 'draft',
+      });
 
       // Complete the order — should trigger reaction
-      const result = await runtime.runCommand('complete', {}, {
-        entityName: 'Order',
-        instanceId: 'order-1',
-      });
+      const result = await runtime.runCommand(
+        'complete',
+        {},
+        {
+          entityName: 'Order',
+          instanceId: 'order-1',
+        },
+      );
 
       expect(result.success).toBe(true);
       expect(result.emittedEvents).toBeDefined();
@@ -1530,19 +1665,32 @@ on OrderCompleted run Invoice.createFromOrder
 
     it('should not execute reaction when no matching event is emitted', async () => {
       const ir = await compileToIR(reactionSource);
-      const runtime = new RuntimeEngine(ir, {}, {
-        now: () => 1000000000000,
-        generateId: () => 'gen-id-1',
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          now: () => 1000000000000,
+          generateId: () => 'gen-id-1',
+        },
+      );
 
       await runtime.createInstance('Order', { id: 'order-2', total: 0, status: 'open' });
-      await runtime.createInstance('Invoice', { id: 'order-2', orderId: '', amount: 0, status: 'draft' });
+      await runtime.createInstance('Invoice', {
+        id: 'order-2',
+        orderId: '',
+        amount: 0,
+        status: 'draft',
+      });
 
       // addItem emits OrderUpdated, not OrderCompleted — no reaction should fire
-      const result = await runtime.runCommand('addItem', { amount: 25 }, {
-        entityName: 'Order',
-        instanceId: 'order-2',
-      });
+      const result = await runtime.runCommand(
+        'addItem',
+        { amount: 25 },
+        {
+          entityName: 'Order',
+          instanceId: 'order-2',
+        },
+      );
 
       expect(result.success).toBe(true);
       // Invoice should remain unchanged
@@ -1553,22 +1701,35 @@ on OrderCompleted run Invoice.createFromOrder
     it('should propagate correlationId and set causationId on reaction commands', async () => {
       const ir = await compileToIR(reactionSource);
       const events: Array<{ name: string; correlationId?: string; causationId?: string }> = [];
-      const runtime = new RuntimeEngine(ir, {}, {
-        now: () => 1000000000000,
-        generateId: () => 'gen-id-1',
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          now: () => 1000000000000,
+          generateId: () => 'gen-id-1',
+        },
+      );
       runtime.onEvent((e) => {
         events.push({ name: e.name, correlationId: e.correlationId, causationId: e.causationId });
       });
 
       await runtime.createInstance('Order', { id: 'order-3', total: 75, status: 'open' });
-      await runtime.createInstance('Invoice', { id: 'order-3', orderId: '', amount: 0, status: 'draft' });
-
-      await runtime.runCommand('complete', {}, {
-        entityName: 'Order',
-        instanceId: 'order-3',
-        correlationId: 'corr-abc',
+      await runtime.createInstance('Invoice', {
+        id: 'order-3',
+        orderId: '',
+        amount: 0,
+        status: 'draft',
       });
+
+      await runtime.runCommand(
+        'complete',
+        {},
+        {
+          entityName: 'Order',
+          instanceId: 'order-3',
+          correlationId: 'corr-abc',
+        },
+      );
 
       // The first event is OrderCompleted (from the complete command)
       expect(events[0].name).toBe('OrderCompleted');
@@ -1598,18 +1759,28 @@ on CounterIncremented run Counter.increment
   resolve payload.counterId
 `;
       const ir = await compileToIR(circularSource);
-      const runtime = new RuntimeEngine(ir, {}, {
-        now: () => 1000000000000,
-        generateId: () => 'gen-id-1',
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          now: () => 1000000000000,
+          generateId: () => 'gen-id-1',
+        },
+      );
 
       await runtime.createInstance('Counter', { id: 'counter-1', value: 0 });
 
       // This should trigger infinite reactions and hit the depth limit
-      await expect(runtime.runCommand('increment', {}, {
-        entityName: 'Counter',
-        instanceId: 'counter-1',
-      })).rejects.toThrow('Reaction depth limit');
+      await expect(
+        runtime.runCommand(
+          'increment',
+          {},
+          {
+            entityName: 'Counter',
+            instanceId: 'counter-1',
+          },
+        ),
+      ).rejects.toThrow('Reaction depth limit');
     });
 
     // ─── BUG 2: a reaction targeting a `create` command must persist a new
@@ -1654,20 +1825,28 @@ on TicketResolved run Receipt.create
   }
 `;
       const ir = await compileToIR(createReactionSource);
-      const runtime = new RuntimeEngine(ir, {}, {
-        now: () => 1000000000000,
-        generateId: () => 'gen-receipt',
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          now: () => 1000000000000,
+          generateId: () => 'gen-receipt',
+        },
+      );
 
       await runtime.createInstance('Ticket', { id: 'ticket-1', status: 'new' });
 
       // No Receipt exists yet.
       expect(await runtime.getInstance('Receipt', 'ticket-1')).toBeUndefined();
 
-      const result = await runtime.runCommand('close', {}, {
-        entityName: 'Ticket',
-        instanceId: 'ticket-1',
-      });
+      const result = await runtime.runCommand(
+        'close',
+        {},
+        {
+          entityName: 'Ticket',
+          instanceId: 'ticket-1',
+        },
+      );
       expect(result.success).toBe(true);
 
       // The reaction must have CREATED a Receipt (id resolved from the event subject).
@@ -1698,10 +1877,14 @@ on TicketResolved run Receipt.create
         }
       `);
       const provider = createMockEncryptionProvider();
-      const runtime = new RuntimeEngine(ir, {}, {
-        generateId: () => 'patient-1',
-        encryptionProvider: provider,
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          generateId: () => 'patient-1',
+          encryptionProvider: provider,
+        },
+      );
 
       const instance = await runtime.createInstance('Patient', {
         name: 'Alice',
@@ -1722,10 +1905,14 @@ on TicketResolved run Receipt.create
         }
       `);
       const provider = createMockEncryptionProvider();
-      const runtime = new RuntimeEngine(ir, {}, {
-        generateId: () => 'patient-1',
-        encryptionProvider: provider,
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          generateId: () => 'patient-1',
+          encryptionProvider: provider,
+        },
+      );
 
       await runtime.createInstance('Patient', { name: 'Bob', ssn: '987-65-4321' });
       const fetched = await runtime.getInstance('Patient', 'patient-1');
@@ -1743,17 +1930,21 @@ on TicketResolved run Receipt.create
         }
       `);
       const provider = createMockEncryptionProvider();
-      const runtime = new RuntimeEngine(ir, {}, {
-        generateId: () => `patient-${++idCounter}`,
-        encryptionProvider: provider,
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          generateId: () => `patient-${++idCounter}`,
+          encryptionProvider: provider,
+        },
+      );
 
       await runtime.createInstance('Patient', { name: 'Alice', ssn: '111-11-1111' });
       await runtime.createInstance('Patient', { name: 'Bob', ssn: '222-22-2222' });
       const all = await runtime.getAllInstances('Patient');
 
       expect(all).toHaveLength(2);
-      expect(all.map(p => p.ssn).sort()).toEqual(['111-11-1111', '222-22-2222']);
+      expect(all.map((p) => p.ssn).sort()).toEqual(['111-11-1111', '222-22-2222']);
     });
 
     it('should re-encrypt on updateInstance', async () => {
@@ -1775,10 +1966,14 @@ on TicketResolved run Receipt.create
         decrypt: async (ciphertext: string, _keyId: string) =>
           Buffer.from(ciphertext, 'base64').toString('utf-8'),
       };
-      const runtime = new RuntimeEngine(ir, {}, {
-        generateId: () => 'patient-1',
-        encryptionProvider: provider,
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          generateId: () => 'patient-1',
+          encryptionProvider: provider,
+        },
+      );
 
       await runtime.createInstance('Patient', { name: 'Alice', ssn: '111-11-1111' });
       encryptCalls.length = 0; // reset
@@ -1798,9 +1993,13 @@ on TicketResolved run Receipt.create
         }
       `);
       // No encryptionProvider in options
-      const runtime = new RuntimeEngine(ir, {}, {
-        generateId: () => 'patient-1',
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          generateId: () => 'patient-1',
+        },
+      );
 
       const instance = await runtime.createInstance('Patient', {
         name: 'Alice',
@@ -1822,10 +2021,14 @@ on TicketResolved run Receipt.create
         }
       `);
       const provider = createMockEncryptionProvider();
-      const runtime = new RuntimeEngine(ir, {}, {
-        generateId: () => 'patient-1',
-        encryptionProvider: provider,
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          generateId: () => 'patient-1',
+          encryptionProvider: provider,
+        },
+      );
 
       await runtime.createInstance('Patient', { name: 'Alice', ssn: '123-45-6789' });
 
@@ -1833,10 +2036,7 @@ on TicketResolved run Receipt.create
       const decryptSpy = vi.spyOn(provider, 'decrypt');
       await runtime.getInstance('Patient', 'patient-1');
 
-      expect(decryptSpy).toHaveBeenCalledWith(
-        expect.any(String),
-        'test-key-1',
-      );
+      expect(decryptSpy).toHaveBeenCalledWith(expect.any(String), 'test-key-1');
     });
 
     it('should not encrypt non-encrypted properties', async () => {
@@ -1858,10 +2058,14 @@ on TicketResolved run Receipt.create
         decrypt: async (ciphertext: string, _keyId: string) =>
           Buffer.from(ciphertext, 'base64').toString('utf-8'),
       };
-      const runtime = new RuntimeEngine(ir, {}, {
-        generateId: () => 'patient-1',
-        encryptionProvider: provider,
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          generateId: () => 'patient-1',
+          encryptionProvider: provider,
+        },
+      );
 
       await runtime.createInstance('Patient', { name: 'Alice', ssn: '123-45-6789' });
 

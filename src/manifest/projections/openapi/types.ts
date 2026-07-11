@@ -50,16 +50,19 @@ export interface OpenApiProjectionOptions {
   }>;
 
   /** Security schemes to include in components */
-  securitySchemes?: Record<string, {
-    type: 'apiKey' | 'http' | 'oauth2' | 'openIdConnect';
-    description?: string;
-    name?: string;
-    in?: 'query' | 'header' | 'cookie';
-    scheme?: string;
-    bearerFormat?: string;
-    flows?: Record<string, unknown>;
-    openIdConnectUrl?: string;
-  }>;
+  securitySchemes?: Record<
+    string,
+    {
+      type: 'apiKey' | 'http' | 'oauth2' | 'openIdConnect';
+      description?: string;
+      name?: string;
+      in?: 'query' | 'header' | 'cookie';
+      scheme?: string;
+      bearerFormat?: string;
+      flows?: Record<string, unknown>;
+      openIdConnectUrl?: string;
+    }
+  >;
 
   /** Global security requirements applied to all operations */
   security?: OpenApiSecurityScheme[];

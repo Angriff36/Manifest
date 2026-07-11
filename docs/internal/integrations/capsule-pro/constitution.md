@@ -1,4 +1,3 @@
-
 > Mirror of `capsule-pro/constitution.md`. Authoritative copy lives in the
 > capsule-pro repository. Do not edit here. Sync on every capsule-pro change.
 
@@ -235,7 +234,7 @@ Canonical command shape:
 
 ```txt
 POST /api/manifest/{entity}/commands/{command}
-````
+```
 
 The dispatcher must resolve `{entity}` and `{command}` against compiled IR/command registry and invoke `RuntimeEngine.runCommand`.
 
@@ -255,19 +254,19 @@ A governed command is not considered covered merely because a route exists.
 
 A command is covered only when the answer to each question is discoverable from Manifest specification, compiled IR, runtime adapter mapping, or conformance evidence:
 
-* What entity does this command govern?
-* What tenant or organization context is required?
-* What actor context is required?
-* What permission or policy applies?
-* What inputs are accepted?
-* What validation rules apply?
-* What state transition or invariant is enforced?
-* What adapter/effect performs persistence?
-* What Prisma operation or storage operation occurs through the approved boundary?
-* What semantic event is emitted?
-* What audit or outbox behavior occurs?
-* What test or conformance evidence proves it?
-* What happens on failure or rollback?
+- What entity does this command govern?
+- What tenant or organization context is required?
+- What actor context is required?
+- What permission or policy applies?
+- What inputs are accepted?
+- What validation rules apply?
+- What state transition or invariant is enforced?
+- What adapter/effect performs persistence?
+- What Prisma operation or storage operation occurs through the approved boundary?
+- What semantic event is emitted?
+- What audit or outbox behavior occurs?
+- What test or conformance evidence proves it?
+- What happens on failure or rollback?
 
 If these answers live only in a route, server action, UI component, job, or ad hoc service, the command is not Manifest-covered.
 
@@ -279,24 +278,24 @@ Capsule-Pro must maintain a governed entity registry.
 
 The registry must classify entities as one of:
 
-* `governed`
-* `read_only_projection`
-* `infrastructure`
-* `bypass_allowed`
-* `unknown_nonconforming`
+- `governed`
+- `read_only_projection`
+- `infrastructure`
+- `bypass_allowed`
+- `unknown_nonconforming`
 
 Tenant-scoped entities default to `governed`.
 
 Any `bypass_allowed` entity must include:
 
-* entity name
-* file/path where bypass occurs
-* reason bypass is safe
-* why runtime governance is not required
-* what tenant/security boundary still applies
-* owner
-* date approved
-* expiration or review date
+- entity name
+- file/path where bypass occurs
+- reason bypass is safe
+- why runtime governance is not required
+- what tenant/security boundary still applies
+- owner
+- date approved
+- expiration or review date
 
 Any entity classified as `unknown_nonconforming` is technical debt, not permission to continue the pattern.
 
@@ -308,34 +307,34 @@ Agents must not invent bypasses.
 
 Capsule-Pro must not directly mutate governed entities from:
 
-* Next.js routes
-* server actions
-* React components
-* background jobs
-* cron jobs
-* workflow orchestrators
-* API handlers
-* import/export scripts
-* test helpers
-* seed scripts
-* admin tools
-* generated routes
-* one-off repair scripts
+- Next.js routes
+- server actions
+- React components
+- background jobs
+- cron jobs
+- workflow orchestrators
+- API handlers
+- import/export scripts
+- test helpers
+- seed scripts
+- admin tools
+- generated routes
+- one-off repair scripts
 
 Exception: direct writes are allowed only when listed in the approved bypass registry or when operating inside a Manifest runtime adapter/effect boundary.
 
 A direct write includes:
 
-* `prisma.model.create`
-* `prisma.model.update`
-* `prisma.model.upsert`
-* `prisma.model.delete`
-* `prisma.model.createMany`
-* `prisma.model.updateMany`
-* `prisma.model.deleteMany`
-* raw SQL mutation
-* transaction mutation
-* repository/helper mutation that wraps any of the above
+- `prisma.model.create`
+- `prisma.model.update`
+- `prisma.model.upsert`
+- `prisma.model.delete`
+- `prisma.model.createMany`
+- `prisma.model.updateMany`
+- `prisma.model.deleteMany`
+- raw SQL mutation
+- transaction mutation
+- repository/helper mutation that wraps any of the above
 
 Renaming the write behind a helper does not make it conforming.
 
@@ -347,28 +346,28 @@ Read paths may bypass Manifest runtime.
 
 Allowed read surfaces include:
 
-* dashboards
-* reports
-* projections
-* materialized views
-* list/detail pages
-* search
-* analytics
-* denormalized read models
-* server components
-* API GET handlers
+- dashboards
+- reports
+- projections
+- materialized views
+- list/detail pages
+- search
+- analytics
+- denormalized read models
+- server components
+- API GET handlers
 
 Read paths must still respect tenant isolation and product security.
 
 Read paths must not:
 
-* mutate governed state
-* define state transitions
-* enforce alternate domain rules
-* synthesize semantic events
-* become hidden command paths
-* override runtime outcomes
-* treat cached/projection state as semantic truth
+- mutate governed state
+- define state transitions
+- enforce alternate domain rules
+- synthesize semantic events
+- become hidden command paths
+- override runtime outcomes
+- treat cached/projection state as semantic truth
 
 If a read model implies behavior not defined by Manifest IR/runtime, the read model is wrong.
 
@@ -396,13 +395,13 @@ Every governed command must produce or connect to audit behavior defined by Mani
 
 Audit behavior must answer:
 
-* who invoked the command
-* which tenant/org context was used
-* what entity/record was targeted
-* what command executed
-* whether execution succeeded or failed
-* which semantic event resulted, if any
-* what runtime diagnostics were produced
+- who invoked the command
+- which tenant/org context was used
+- what entity/record was targeted
+- what command executed
+- whether execution succeeded or failed
+- which semantic event resulted, if any
+- what runtime diagnostics were produced
 
 Application code must not create a separate, conflicting audit meaning.
 
@@ -422,13 +421,13 @@ Test helpers that bypass runtime for governed behavior are nonconforming unless 
 
 CI must include checks for:
 
-* direct governed writes outside approved runtime boundaries
-* concrete generated command route drift
-* command registry/runtime mismatch
-* semantic event emission outside runtime
-* bypass registry violations
-* conformance test failures
-* tenant-scoped entity coverage gaps
+- direct governed writes outside approved runtime boundaries
+- concrete generated command route drift
+- command registry/runtime mismatch
+- semantic event emission outside runtime
+- bypass registry violations
+- conformance test failures
+- tenant-scoped entity coverage gaps
 
 ---
 
@@ -455,13 +454,13 @@ Agents working in Capsule-Pro must follow these rules.
 
 Before changing code, classify the task:
 
-* governed mutation
-* read path
-* UI orchestration
-* runtime adapter/effect
-* infrastructure/bypass
-* test/conformance
-* unknown
+- governed mutation
+- read path
+- UI orchestration
+- runtime adapter/effect
+- infrastructure/bypass
+- test/conformance
+- unknown
 
 If governed mutation, use Manifest runtime.
 
@@ -582,14 +581,14 @@ Every governed command invocation must include command context derived from auth
 
 The context must include, where applicable:
 
-* actor/user id
-* tenant id or organization id
-* active organization
-* role/membership/permission claims
-* request id
-* source surface
-* deterministic/test mode flags
-* audit metadata
+- actor/user id
+- tenant id or organization id
+- active organization
+- role/membership/permission claims
+- request id
+- source surface
+- deterministic/test mode flags
+- audit metadata
 
 Application code may adapt Clerk context into Manifest context.
 

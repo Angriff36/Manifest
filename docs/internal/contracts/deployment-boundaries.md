@@ -11,21 +11,22 @@ Canonical language authority remains in `docs/spec/**` and executable conformanc
 
 ## Scope Boundary
 
-| Need | Supported in Manifest DSL? | Canonical mechanism | Notes |
-|---|---|---|---|
-| Domain model and behavior (entities, commands, guards, policies, events) | Yes | `docs/spec/semantics.md` | Core language semantics. |
-| Persistence target selection | Yes | `store <Entity> in <target>` + `docs/spec/adapters.md` | `memory` required; other targets are adapters. |
-| External DB dependency | Yes | `store ... in postgres`/`supabase` or `storeProvider` adapter | Unsupported targets must produce diagnostics. |
-| Runtime user/environment input | Yes | built-ins `user` and `context` (`docs/spec/builtins.md`) | Variability enters through runtime context. |
-| Service image, ports, CPU/memory limits, build pipeline steps | No (language semantics) | Deployment/tooling layer (Kubernetes, ECS, CI, framework config) | May be represented as data metadata only; runtime does not interpret operational semantics. |
-| Environment variable mutation | Not a DSL primitive | runtime `context` and/or entity data mutation | Prefer `context` for runtime environment behavior. |
-| Structural correctness before deploy | Yes | compile to IR, validate schema, run conformance/tests | `docs/spec/ir/ir-v1.schema.json` is contract anchor. |
-| Cross-file consistency and references | Yes (at compile/conformance boundary) | compile multiple sources to one IR graph + deterministic checks | Missing references must fail compilation. |
-| Change tracking and rollback | Repo process, not DSL | Git + spec/conformance workflow | Follow spec -> tests -> implementation. |
+| Need                                                                     | Supported in Manifest DSL?            | Canonical mechanism                                              | Notes                                                                                       |
+| ------------------------------------------------------------------------ | ------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Domain model and behavior (entities, commands, guards, policies, events) | Yes                                   | `docs/spec/semantics.md`                                         | Core language semantics.                                                                    |
+| Persistence target selection                                             | Yes                                   | `store <Entity> in <target>` + `docs/spec/adapters.md`           | `memory` required; other targets are adapters.                                              |
+| External DB dependency                                                   | Yes                                   | `store ... in postgres`/`supabase` or `storeProvider` adapter    | Unsupported targets must produce diagnostics.                                               |
+| Runtime user/environment input                                           | Yes                                   | built-ins `user` and `context` (`docs/spec/builtins.md`)         | Variability enters through runtime context.                                                 |
+| Service image, ports, CPU/memory limits, build pipeline steps            | No (language semantics)               | Deployment/tooling layer (Kubernetes, ECS, CI, framework config) | May be represented as data metadata only; runtime does not interpret operational semantics. |
+| Environment variable mutation                                            | Not a DSL primitive                   | runtime `context` and/or entity data mutation                    | Prefer `context` for runtime environment behavior.                                          |
+| Structural correctness before deploy                                     | Yes                                   | compile to IR, validate schema, run conformance/tests            | `docs/spec/ir/ir-v1.schema.json` is contract anchor.                                        |
+| Cross-file consistency and references                                    | Yes (at compile/conformance boundary) | compile multiple sources to one IR graph + deterministic checks  | Missing references must fail compilation.                                                   |
+| Change tracking and rollback                                             | Repo process, not DSL                 | Git + spec/conformance workflow                                  | Follow spec -> tests -> implementation.                                                     |
 
 ## FAQ: 10 Common Prompts
 
 ### 1) Basic application service with name and image
+
 Manifest has no first-class `service` or `image` deployment primitives. Represent application metadata as entity data if needed.
 
 ```manifest
@@ -39,6 +40,7 @@ store Application in memory
 ```
 
 ### 2) Dependency on an external database service
+
 Declare the store target directly in Manifest:
 
 ```manifest
@@ -53,6 +55,7 @@ store Recipe in postgres
 When custom behavior is required, provide a custom store through runtime `storeProvider` (see `docs/spec/adapters.md`).
 
 ### 3) Different ports for development and production
+
 Not a Manifest semantic feature. Configure process/network ports in deployment/framework tooling, not in the Manifest language.
 
 If you need values represented in language data:
@@ -70,12 +73,15 @@ store RuntimeConfig in memory
 This models data only; it does not bind sockets.
 
 ### 4) CPU and memory limits
+
 Not in Manifest semantics. Define resource limits in your deployment platform (Kubernetes/ECS/Nomad/etc.).
 
 ### 5) Build step that executes a script
+
 Not in Manifest semantics. Build pipelines belong to CI/tooling; Manifest governs IR and runtime semantics.
 
 ### 6) Version control and revert workflow for manifest files
+
 Use Git for change tracking and rollback:
 
 ```bash
@@ -88,12 +94,15 @@ git restore --source <commit_sha> -- path/to/file.manifest
 For semantic changes, follow spec -> conformance/tests -> implementation.
 
 ### 7) Ensure schema adherence before deployment
+
 Canonical gate:
+
 1. Compile source to IR.
 2. Validate IR against `docs/spec/ir/ir-v1.schema.json`.
 3. Run conformance and required checks (`npm test`, `npm run typecheck`, `npm run lint`).
 
 ### 8) Update environment from DEV to PROD
+
 No native env-var block exists. Use runtime context and optionally persisted data.
 
 ```manifest
@@ -121,23 +130,27 @@ event ProdActionRan: "app.prod_action_ran" {
 Use `setEnvironment("PROD")` for persisted data, and/or pass `context.env = "PROD"` at runtime.
 
 ### 9) Custom business validation beyond schema (e.g., unique names across manifests)
+
 Duplicate name validation is enforced at compile time by the merge scripts:
 
 **Implementation locations:**
+
 - `scripts/manifest/compile.mjs` - Detects duplicates BEFORE writing combined IR, exits non-zero
 - `scripts/manifest/check.mjs` - Validates existing combined IR for duplicates
 
 **Identity rules (what makes a name unique):**
-| Element | Identity Key | Scope | Example |
-|---------|--------------|-------|---------|
-| Entities | `name` | Global | `"Recipe"` must be unique across all manifests |
+
+| Element  | Identity Key           | Scope            | Example                                                 |
+| -------- | ---------------------- | ---------------- | ------------------------------------------------------- |
+| Entities | `name`                 | Global           | `"Recipe"` must be unique across all manifests          |
 | Commands | `(entity, name)` tuple | Scoped to entity | `Recipe.update` and `User.update` are distinct commands |
-| Events | `channel` | Global | `"recipe.updated"` must be unique across all manifests |
-| Policies | `name` | Global | `"CanEditRecipe"` must be unique across all manifests |
+| Events   | `channel`              | Global           | `"recipe.updated"` must be unique across all manifests  |
+| Policies | `name`                 | Global           | `"CanEditRecipe"` must be unique across all manifests   |
 
 These rules are enforced by both `compile.mjs` and `check.mjs`. Common command names like `update`, `delete`, or `reset` are allowed across different entities because commands are scoped by entity.
 
 **Validation behavior:**
+
 1. All manifests are compiled to individual IRs
 2. A deterministic validation pass builds maps keyed by the appropriate identity for each element type
 3. If any key appears more than once, the script:
@@ -146,6 +159,7 @@ These rules are enforced by both `compile.mjs` and `check.mjs`. Common command n
    - Does NOT write `combined.ir.json` (compile.mjs) or fails the check (check.mjs)
 
 **Example diagnostic output:**
+
 ```
 [manifest/compile] Duplicate name validation failed:
   Duplicate entity "Recipe" found in:
@@ -164,9 +178,11 @@ These rules are enforced by both `compile.mjs` and `check.mjs`. Common command n
 **No auto-resolution:** The scripts do NOT auto-rename or auto-resolve collisions. Duplicates must be resolved manually by renaming or consolidating conflicting definitions in the source manifest files.
 
 ### 10) Managing references across multiple manifest files
+
 Manage references at compile-time by producing a single program graph (or equivalent merged IR) from multiple sources, then enforce referential integrity before runtime.
 
 Recommended checks:
+
 - all referenced commands/policies/events resolve,
 - names are unique where required,
 - provenance and schema validation pass,

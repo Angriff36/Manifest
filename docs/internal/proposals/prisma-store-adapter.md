@@ -59,10 +59,10 @@ export default {
   resolveUser: async (auth: { authUserId: string; orgId: string }) => {
     const tenantId = await getTenantIdForOrg(auth.orgId);
     const user = await prisma.user.findFirst({
-      where: { authUserId: auth.authUserId, tenantId }
+      where: { authUserId: auth.authUserId, tenantId },
     });
     return { id: user.id, role: user.role, tenantId };
-  }
+  },
 };
 ```
 
@@ -102,7 +102,7 @@ interface PrismaStoreConfig {
 
 export function createPrismaStore<T extends EntityInstance>(
   delegate: PrismaDelegate<T>,
-  config?: PrismaStoreConfig
+  config?: PrismaStoreConfig,
 ): Store<T> {
   const mapping = config?.propertyMapping || {};
   const tenantField = config?.tenantIdField;
@@ -112,7 +112,7 @@ export function createPrismaStore<T extends EntityInstance>(
       // Apply tenant filter if configured
       const where = tenantField ? { [tenantField]: getCurrentTenantId() } : {};
       const records = await delegate.findMany({ where });
-      return records.map(r => mapFromPrisma(r, mapping));
+      return records.map((r) => mapFromPrisma(r, mapping));
     },
 
     async getById(id: string): Promise<T | undefined> {
@@ -140,7 +140,7 @@ export function createPrismaStore<T extends EntityInstance>(
     async clear(): Promise<void> {
       // Not implemented for production stores
       throw new Error('clear() not supported on Prisma stores');
-    }
+    },
   };
 }
 
@@ -154,9 +154,7 @@ function mapToPrisma<T>(data: Partial<T>, mapping: Record<string, string>): any 
 }
 
 function mapFromPrisma<T>(record: any, mapping: Record<string, string>): T {
-  const reverseMapping = Object.fromEntries(
-    Object.entries(mapping).map(([k, v]) => [v, k])
-  );
+  const reverseMapping = Object.fromEntries(Object.entries(mapping).map(([k, v]) => [v, k]));
   const result: any = {};
   for (const [key, value] of Object.entries(record)) {
     const manifestKey = reverseMapping[key] || key;
@@ -217,6 +215,7 @@ Both resolve to the same database. The distinction is implementation, not semant
 ### 2. Implementation Complexity
 
 Prisma requires:
+
 - Generated client (not always available at compile time)
 - Schema parsing for property alignment
 - Migration awareness for schema changes
@@ -235,7 +234,7 @@ store InventoryItem in postgres
 ```typescript
 // Test config
 const testRuntime = new RuntimeEngine(ir, {
-  storeProvider: (entity) => new MemoryStore() // Override for tests
+  storeProvider: (entity) => new MemoryStore(), // Override for tests
 });
 ```
 
@@ -252,6 +251,7 @@ Since Prisma integration is config-driven, conformance fixtures continue to use 
 ### Unit Test Coverage
 
 The `createPrismaStore` factory should have unit tests for:
+
 - Property mapping (to/from Prisma field names)
 - Tenant filtering (multi-tenant scenarios)
 - CRUD operations with mapped properties

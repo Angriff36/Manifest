@@ -1,6 +1,6 @@
 /**
  * Node.js-only storage adapters for PostgreSQL and Supabase.
- * 
+ *
  * DO NOT import this file in browser code. It requires Node.js modules (pg).
  * For browser environments, use MemoryStore or LocalStorageStore from runtime-engine.ts.
  *
@@ -89,9 +89,7 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
     }
   }
 
-  private async withConnection<R>(
-    callback: (client: PoolClient) => Promise<R>
-  ): Promise<R> {
+  private async withConnection<R>(callback: (client: PoolClient) => Promise<R>): Promise<R> {
     await this.ensureInitialized();
     const client = await this.pool.connect();
     try {
@@ -111,7 +109,7 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
    */
   private async withRunner<R>(
     tx: unknown,
-    callback: (runner: Pool | PoolClient) => Promise<R>
+    callback: (runner: Pool | PoolClient) => Promise<R>,
   ): Promise<R> {
     if (tx !== undefined && tx !== null) {
       await this.ensureInitialized();
@@ -144,7 +142,7 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
       const quotedTable = this.quoteIdentifier(this.tableName);
       await client.query(
         `INSERT INTO ${quotedTable} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`,
-        [id, JSON.stringify(item)]
+        [id, JSON.stringify(item)],
       );
       return item;
     });
@@ -153,16 +151,18 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
   async update(id: string, data: Partial<T>, tx?: unknown): Promise<T | undefined> {
     return this.withRunner(tx, async (client) => {
       const quotedTable = this.quoteIdentifier(this.tableName);
-      const selectResult = await client.query(`SELECT data FROM ${quotedTable} WHERE id = $1`, [id]);
+      const selectResult = await client.query(`SELECT data FROM ${quotedTable} WHERE id = $1`, [
+        id,
+      ]);
       if (selectResult.rows.length === 0) return undefined;
 
       const existing = selectResult.rows[0].data as T;
       const updated = { ...existing, ...data, id };
 
-      await client.query(
-        `UPDATE ${quotedTable} SET data = $1, updated_at = NOW() WHERE id = $2`,
-        [JSON.stringify(updated), id]
-      );
+      await client.query(`UPDATE ${quotedTable} SET data = $1, updated_at = NOW() WHERE id = $2`, [
+        JSON.stringify(updated),
+        id,
+      ]);
       return updated;
     });
   }
@@ -222,7 +222,7 @@ export class SupabaseStore<T extends EntityInstance> implements Store<T> {
     } catch {
       throw new Error(
         `SupabaseStore requires '@supabase/supabase-js' to be installed.\n` +
-        `Run: npm install @supabase/supabase-js`
+          `Run: npm install @supabase/supabase-js`,
       );
     }
     this.client = createClient(config.url, config.key);
@@ -357,8 +357,7 @@ export class MongoDBStore<T extends EntityInstance> implements Store<T> {
       MongoClient = mod.MongoClient;
     } catch {
       throw new Error(
-        `MongoDBStore requires 'mongodb' to be installed.\n` +
-        `Run: npm install mongodb`
+        `MongoDBStore requires 'mongodb' to be installed.\n` + `Run: npm install mongodb`,
       );
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -394,11 +393,7 @@ export class MongoDBStore<T extends EntityInstance> implements Store<T> {
 
     // Store as document, using entity id as both `id` field and for lookups
     const doc = { ...item };
-    await this.collection.updateOne(
-      { id },
-      { $set: doc },
-      { upsert: true }
-    );
+    await this.collection.updateOne({ id }, { $set: doc }, { upsert: true });
     return item;
   }
 
@@ -422,7 +417,7 @@ export class MongoDBStore<T extends EntityInstance> implements Store<T> {
     const result = await this.collection.findOneAndUpdate(
       filter,
       { $set: merged },
-      { returnDocument: 'after' }
+      { returnDocument: 'after' },
     );
 
     if (!result) return undefined;
@@ -483,7 +478,7 @@ export interface DynamoDBConfig {
 export function buildDynamoDBKey(
   id: string,
   config: Partial<DynamoDBConfig>,
-  entityName: string
+  entityName: string,
 ): Record<string, string> {
   const pkName = config.partitionKey ?? 'pk';
   const prefix = config.entityPrefix ?? entityName.toUpperCase();
@@ -513,7 +508,7 @@ export class DynamoDBStore<T extends EntityInstance = EntityInstance> implements
   constructor(
     private entityName: string,
     config: DynamoDBConfig,
-    generateId?: () => string
+    generateId?: () => string,
   ) {
     this.client = config.client;
     this.tableName = config.tableName ?? 'entities';
@@ -524,11 +519,15 @@ export class DynamoDBStore<T extends EntityInstance = EntityInstance> implements
   }
 
   private buildKey(id: string): Record<string, string> {
-    return buildDynamoDBKey(id, {
-      partitionKey: this.partitionKey,
-      sortKey: this.sortKey,
-      entityPrefix: this.entityPrefix,
-    }, this.entityName);
+    return buildDynamoDBKey(
+      id,
+      {
+        partitionKey: this.partitionKey,
+        sortKey: this.sortKey,
+        entityPrefix: this.entityPrefix,
+      },
+      this.entityName,
+    );
   }
 
   private entityToItem(entity: T): Record<string, unknown> {
@@ -667,11 +666,7 @@ export class RedisStore<T extends EntityInstance = EntityInstance> implements St
   private defaultTTL: number | undefined;
   private generateId: () => string;
 
-  constructor(
-    entityName: string,
-    config: RedisConfig = {},
-    generateId?: () => string
-  ) {
+  constructor(entityName: string, config: RedisConfig = {}, generateId?: () => string) {
     this.keyPrefix = config.keyPrefix ?? `${entityName.toLowerCase()}:`;
     this.defaultTTL = config.defaultTTL;
     this.generateId = generateId || (() => crypto.randomUUID());
@@ -694,9 +689,7 @@ export class RedisStore<T extends EntityInstance = EntityInstance> implements St
     const keys = await this.client.keys(`${this.keyPrefix}*`);
     if (keys.length === 0) return [];
     const values = await this.client.mget(...keys);
-    return values
-      .filter((v: string | null) => v !== null)
-      .map((v: string) => JSON.parse(v));
+    return values.filter((v: string | null) => v !== null).map((v: string) => JSON.parse(v));
   }
 
   async getById(id: string): Promise<T | undefined> {
@@ -775,8 +768,8 @@ export class RedisStore<T extends EntityInstance = EntityInstance> implements St
    */
   async publishEvent(_channel: string, _event: unknown): Promise<void> {
     throw new Error(
-      "RedisStore.publishEvent is not implemented — it was a no-op stub. " +
-      "Use RedisEventBus from '@angriff36/manifest/events/redis'."
+      'RedisStore.publishEvent is not implemented — it was a no-op stub. ' +
+        "Use RedisEventBus from '@angriff36/manifest/events/redis'.",
     );
   }
 
@@ -787,8 +780,8 @@ export class RedisStore<T extends EntityInstance = EntityInstance> implements St
    */
   async subscribe(_channel: string, _callback: (event: unknown) => void): Promise<void> {
     throw new Error(
-      "RedisStore.subscribe is not implemented — it silently dropped callbacks. " +
-      "Use RedisEventBus from '@angriff36/manifest/events/redis'."
+      'RedisStore.subscribe is not implemented — it silently dropped callbacks. ' +
+        "Use RedisEventBus from '@angriff36/manifest/events/redis'.",
     );
   }
 }
@@ -863,7 +856,10 @@ export class TursoStore<T extends EntityInstance = EntityInstance> implements St
     if (this.initialized) return;
     const sql = generateTursoSchema(this.tableName);
     // Execute each statement separately (LibSQL client doesn't support multi-statement)
-    const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0);
+    const statements = sql
+      .split(';')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
     for (const stmt of statements) {
       await this.client.execute(stmt);
     }

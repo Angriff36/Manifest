@@ -117,11 +117,17 @@ describe('sveltekit.companions surface', () => {
 
   it('emits a tenant companion at the configured provider path when tenantProvider is set', async () => {
     const result = await companions({
-      tenantProvider: { importPath: '$lib/server/tenant', functionName: 'resolveTenantId', lookupKey: 'userId' },
+      tenantProvider: {
+        importPath: '$lib/server/tenant',
+        functionName: 'resolveTenantId',
+        lookupKey: 'userId',
+      },
     });
     const tenant = byPath(result, 'src/lib/server/tenant.ts');
     expect(tenant).toBeDefined();
-    expect(tenant!.code).toContain('export async function resolveTenantId(userId: string): Promise<string | null>');
+    expect(tenant!.code).toContain(
+      'export async function resolveTenantId(userId: string): Promise<string | null>',
+    );
     expect(tenant!.code).toContain('import { database } from "$lib/server/database";');
     // No tenant companion by default (inline userTenantMapping via the db companion).
     expect(byPath(await companions(), 'src/lib/server/tenant.ts')).toBeUndefined();
@@ -152,9 +158,15 @@ describe('sveltekit.companions surface', () => {
     expect(runtime!.code).not.toContain('export async function createManifestRuntime(');
 
     // Import side: a route imports that same name from the runtime module.
-    const serverResult = projection.generate(ir, { surface: 'sveltekit.server', entity: 'Recipe', options });
+    const serverResult = projection.generate(ir, {
+      surface: 'sveltekit.server',
+      entity: 'Recipe',
+      options,
+    });
     const server = serverResult.artifacts[0];
-    expect(server.code).toContain('import { makeManifestRuntime } from "$lib/server/manifest-runtime";');
+    expect(server.code).toContain(
+      'import { makeManifestRuntime } from "$lib/server/manifest-runtime";',
+    );
     expect(server.code).toContain('await makeManifestRuntime(');
   });
 
@@ -184,7 +196,9 @@ function localImportSpecifiers(code: string): string[] {
   return specs;
 }
 
-async function allArtifacts(options?: Record<string, unknown>): Promise<ProjectionResult['artifacts']> {
+async function allArtifacts(
+  options?: Record<string, unknown>,
+): Promise<ProjectionResult['artifacts']> {
   const source = `
     entity Recipe {
       property id: string

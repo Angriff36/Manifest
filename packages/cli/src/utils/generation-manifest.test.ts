@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  GenerationManifestRecorder,
-  GenerationArtifactRecord,
-} from './generation-manifest';
+import { GenerationManifestRecorder, GenerationArtifactRecord } from './generation-manifest';
 
 const artifact = (over: Partial<GenerationArtifactRecord> = {}): GenerationArtifactRecord => ({
   artifactId: 'nextjs.route',

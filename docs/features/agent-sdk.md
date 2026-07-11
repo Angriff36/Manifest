@@ -24,7 +24,12 @@ const result = await agent.executeToolCall({
 Stateless helpers are also exported and can be used without an `AgentRuntime`:
 
 ```ts
-import { toOpenAITools, listEntities, describeCommand, findMatchingCommands } from '@angriff36/manifest/agent-sdk';
+import {
+  toOpenAITools,
+  listEntities,
+  describeCommand,
+  findMatchingCommands,
+} from '@angriff36/manifest/agent-sdk';
 ```
 
 ## Behavior / What it does

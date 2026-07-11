@@ -26,7 +26,10 @@ export function findJsxButtons(content: string): JsxButtonMatch[] {
     if (closeIdx < 0) continue;
     const inner = content.slice(openEnd + 1, closeIdx);
     const full = content.slice(openStart, closeIdx + closeTag.length);
-    const body = inner.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const body = inner
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     out.push({ full, attrs, body, index: openStart });
     startRe.lastIndex = closeIdx + closeTag.length;
   }

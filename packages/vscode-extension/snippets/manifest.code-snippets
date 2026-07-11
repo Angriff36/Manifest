@@ -6,16 +6,16 @@
       "  property ${2:id} : string required unique",
       "  property ${3:name} : string required",
       "  $0",
-      "}"
+      "}",
     ],
-    "description": "Define a new entity with properties"
+    "description": "Define a new entity with properties",
   },
   "Property": {
     "prefix": "property",
     "body": [
-      "property ${1:name} : ${2|string,number,boolean,list,decimal|} ${3|required,optional,unique,indexed,readonly,private|}"
+      "property ${1:name} : ${2|string,number,boolean,list,decimal|} ${3|required,optional,unique,indexed,readonly,private|}",
     ],
-    "description": "Define a property on an entity"
+    "description": "Define a property on an entity",
   },
   "Command": {
     "prefix": "command",
@@ -24,18 +24,18 @@
       "  guard ${4:self.id != null}",
       "  mutate ${5:self.${2} = ${2}}",
       "  $0",
-      "}"
+      "}",
     ],
-    "description": "Define a command with guards and mutations"
+    "description": "Define a command with guards and mutations",
   },
   "Policy": {
     "prefix": "policy",
     "body": [
       "policy ${1:Name} {",
       "  ${2|read,write,delete,execute,all|} ${3:user.role == \"admin\"}",
-      "}"
+      "}",
     ],
-    "description": "Define an authorization policy"
+    "description": "Define an authorization policy",
   },
   "Constraint": {
     "prefix": "constraint",
@@ -43,37 +43,29 @@
       "constraint ${1:Name} {",
       "  ${2:self.value > 0} ${3|block,warn,ok|}",
       "  message \"${4:Validation failed}\"",
-      "}"
+      "}",
     ],
-    "description": "Define a data constraint with severity"
+    "description": "Define a data constraint with severity",
   },
   "Computed Property": {
     "prefix": "computed",
-    "body": [
-      "computed ${1:name} : ${2:number} = ${3:self.price * self.quantity}"
-    ],
-    "description": "Define a computed/derived property"
+    "body": ["computed ${1:name} : ${2:number} = ${3:self.price * self.quantity}"],
+    "description": "Define a computed/derived property",
   },
   "Relationship hasMany": {
     "prefix": "hasMany",
-    "body": [
-      "hasMany ${1:items} -> ${2:Item}"
-    ],
-    "description": "Define a hasMany relationship"
+    "body": ["hasMany ${1:items} -> ${2:Item}"],
+    "description": "Define a hasMany relationship",
   },
   "Relationship belongsTo": {
     "prefix": "belongsTo",
-    "body": [
-      "belongsTo ${1:owner} -> ${2:User} with ${3:ownerId}"
-    ],
-    "description": "Define a belongsTo relationship"
+    "body": ["belongsTo ${1:owner} -> ${2:User} with ${3:ownerId}"],
+    "description": "Define a belongsTo relationship",
   },
   "Store": {
     "prefix": "store",
-    "body": [
-      "store ${1:Entity} ${2|memory,postgres,supabase,localStorage|}"
-    ],
-    "description": "Define a persistence store for an entity"
+    "body": ["store ${1:Entity} ${2|memory,postgres,supabase,localStorage|}"],
+    "description": "Define a persistence store for an entity",
   },
   "Event": {
     "prefix": "event",
@@ -81,49 +73,33 @@
       "event ${1:Name} {",
       "  channel \"${2:events}\"",
       "  payload { ${3:id} : string }",
-      "}"
+      "}",
     ],
-    "description": "Define an outbox event"
+    "description": "Define an outbox event",
   },
   "Module": {
     "prefix": "module",
-    "body": [
-      "module ${1:Name} {",
-      "  $0",
-      "}"
-    ],
-    "description": "Define a module namespace"
+    "body": ["module ${1:Name} {", "  $0", "}"],
+    "description": "Define a module namespace",
   },
   "Enum": {
     "prefix": "enum",
-    "body": [
-      "enum ${1:Status} {",
-      "  ${2:Active}",
-      "  ${3:Inactive}",
-      "  $0",
-      "}"
-    ],
-    "description": "Define an enumeration type"
+    "body": ["enum ${1:Status} {", "  ${2:Active}", "  ${3:Inactive}", "  $0", "}"],
+    "description": "Define an enumeration type",
   },
   "Guard": {
     "prefix": "guard",
-    "body": [
-      "guard ${1:self.status == \"active\"}"
-    ],
-    "description": "Add a guard expression to a command"
+    "body": ["guard ${1:self.status == \"active\"}"],
+    "description": "Add a guard expression to a command",
   },
   "Mutate": {
     "prefix": "mutate",
-    "body": [
-      "mutate ${1:self.${2:field} = ${3:value}}"
-    ],
-    "description": "Add a mutation action"
+    "body": ["mutate ${1:self.${2:field} = ${3:value}}"],
+    "description": "Add a mutation action",
   },
   "Emit": {
     "prefix": "emit",
-    "body": [
-      "emit ${1:EventName}"
-    ],
-    "description": "Emit an event from a command"
-  }
+    "body": ["emit ${1:EventName}"],
+    "description": "Emit an event from a command",
+  },
 }

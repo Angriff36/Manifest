@@ -26,7 +26,11 @@ import type {
   ProjectionTarget,
 } from '../interface';
 
-import { normalizeOptions, type DrizzleProjectionOptions, type ForeignKeyConfig } from './options.js';
+import {
+  normalizeOptions,
+  type DrizzleProjectionOptions,
+  type ForeignKeyConfig,
+} from './options.js';
 import {
   resolveDrizzleColumnType,
   isNumericType,
@@ -74,7 +78,7 @@ function literalToDrizzleDefault(value: IRValue): string | undefined {
       return undefined;
     case 'array': {
       const elements = value.elements.map(literalToDrizzleDefault);
-      if (elements.some(element => element === undefined)) return undefined;
+      if (elements.some((element) => element === undefined)) return undefined;
       return `[${elements.join(', ')}]`;
     }
     case 'object':
@@ -122,10 +126,10 @@ function emitPropertyColumn(
   const isArray = prop.type.name === 'array' && prop.type.generic;
   const effectiveTypeName = isArray ? prop.type.generic!.name : prop.type.name;
 
-  const isValueObject = ir.values?.some(v => v.name === effectiveTypeName);
+  const isValueObject = ir.values?.some((v) => v.name === effectiveTypeName);
   const typeOverrides = isValueObject ? undefined : options.typeMappings?.[entity.name];
-  const hasOverride = typeOverrides !== undefined
-    && Object.prototype.hasOwnProperty.call(typeOverrides, prop.name);
+  const hasOverride =
+    typeOverrides !== undefined && Object.prototype.hasOwnProperty.call(typeOverrides, prop.name);
 
   const colType = isValueObject
     ? { builder: 'jsonb' }
@@ -181,19 +185,21 @@ function emitPropertyColumn(
   //   3. Default numeric(12, 2)          — applied below for decimal scalars
   const optPrec = options.precision?.[entity.name]?.[prop.name];
   const typeParams = prop.type.params;
-  const prec = optPrec ?? (
-    typeParams && (typeParams.precision !== undefined || typeParams.scale !== undefined)
+  const prec =
+    optPrec ??
+    (typeParams && (typeParams.precision !== undefined || typeParams.scale !== undefined)
       ? {
           precision: typeParams.precision ?? DEFAULT_DECIMAL_PRECISION,
           scale: typeParams.scale ?? DEFAULT_DECIMAL_SCALE,
         }
-      : undefined
-  );
-  if (isNumericType({ builder }) || (prec && (colType.builder === 'numeric'))) {
+      : undefined);
+  if (isNumericType({ builder }) || (prec && colType.builder === 'numeric')) {
     if (prec) {
       builderParams.push(`{ precision: ${prec.precision}, scale: ${prec.scale} }`);
     } else if (isNumericType({ builder })) {
-      builderParams.push(`{ precision: ${DEFAULT_DECIMAL_PRECISION}, scale: ${DEFAULT_DECIMAL_SCALE} }`);
+      builderParams.push(
+        `{ precision: ${DEFAULT_DECIMAL_PRECISION}, scale: ${DEFAULT_DECIMAL_SCALE} }`,
+      );
     }
   } else if (colType.hasParams && colType.defaultParams && colType.builder === 'varchar') {
     builderParams.push(`{ length: ${colType.defaultParams} }`);
@@ -231,7 +237,10 @@ function emitPropertyColumn(
   // Encrypted column annotation (informational — encryption is handled at runtime)
   const isEncrypted = prop.modifiers.includes('encrypted');
   if (isEncrypted) {
-    diagnostics.push({ severity: 'info', message: `Column '${prop.name}' is marked encrypted — values are envelope-encrypted at runtime.` });
+    diagnostics.push({
+      severity: 'info',
+      message: `Column '${prop.name}' is marked encrypted — values are envelope-encrypted at runtime.`,
+    });
   }
 
   // Default value
@@ -496,12 +505,12 @@ function emitTable(
   // Table name: use tableMappings override, else use lowercase entity name
   const tableName = options.tableMappings?.[entity.name] ?? entity.name.toLowerCase();
   // Variable name: use tableMappings if present, else camelCase entity name
-  const varName = options.tableMappings?.[entity.name] ?? entity.name.charAt(0).toLowerCase() + entity.name.slice(1);
+  const varName =
+    options.tableMappings?.[entity.name] ??
+    entity.name.charAt(0).toLowerCase() + entity.name.slice(1);
 
   // Build composite PK constraint
-  const compositePkLine = hasCompositeKey
-    ? `\n    ${entity.key!.map(k => k).join(', ')}`
-    : null;
+  const compositePkLine = hasCompositeKey ? `\n    ${entity.key!.map((k) => k).join(', ')}` : null;
 
   // Build unique constraints from alternateKeys
   const uniqueConstraints: string[] = [];
@@ -583,7 +592,9 @@ function emitTable(
       if (!onDelete && rel.onDelete) onDelete = rel.onDelete;
       if (!onUpdate && rel.onUpdate) onUpdate = rel.onUpdate;
 
-      const targetVarName = options.tableMappings?.[rel.target] ?? rel.target.charAt(0).toLowerCase() + rel.target.slice(1);
+      const targetVarName =
+        options.tableMappings?.[rel.target] ??
+        rel.target.charAt(0).toLowerCase() + rel.target.slice(1);
 
       switch (rel.kind) {
         case 'hasMany':
@@ -595,8 +606,10 @@ function emitTable(
         case 'belongsTo':
         case 'ref': {
           const relConfig: string[] = [];
-          relConfig.push(`fields: [${fkFields.map(f => `${varName}.${f}`).join(', ')}]`);
-          relConfig.push(`references: [${refsFields.map(r => `${targetVarName}.${r}`).join(', ')}]`);
+          relConfig.push(`fields: [${fkFields.map((f) => `${varName}.${f}`).join(', ')}]`);
+          relConfig.push(
+            `references: [${refsFields.map((r) => `${targetVarName}.${r}`).join(', ')}]`,
+          );
           if (onDelete) relConfig.push(`onDelete: ${toDrizzleAction(onDelete)}`);
           if (onUpdate) relConfig.push(`onUpdate: ${toDrizzleAction(onUpdate)}`);
 
@@ -626,23 +639,26 @@ function emitTable(
 function emitIndexes(entity: IREntity, options: DrizzleProjectionOptions): string[] {
   const idx = options.indexes?.[entity.name];
   const lines: string[] = [];
-  const varName = options.tableMappings?.[entity.name] ?? entity.name.charAt(0).toLowerCase() + entity.name.slice(1);
+  const varName =
+    options.tableMappings?.[entity.name] ??
+    entity.name.charAt(0).toLowerCase() + entity.name.slice(1);
 
   if (idx && idx.length > 0) {
     for (const entry of idx) {
       const fields = Array.isArray(entry) ? entry : entry.fields;
-      const name = !Array.isArray(entry) && entry.name ? entry.name : `${varName}_${fields.join('_')}_idx`;
+      const name =
+        !Array.isArray(entry) && entry.name ? entry.name : `${varName}_${fields.join('_')}_idx`;
       lines.push(`export const ${name.replace(/[^a-zA-Z0-9_]/g, '_')} = index("${name}")`);
-      lines.push(`  .on(${fields.map(f => `${varName}.${f}`).join(', ')});`);
+      lines.push(`  .on(${fields.map((f) => `${varName}.${f}`).join(', ')});`);
       lines.push(``);
     }
   }
 
   // Indexes for `indexed` modifier on properties — emit one index per such
   // property, but skip any that are already covered by options.indexes.
-  const indexedProps = entity.properties.filter(p => p.modifiers.includes('indexed'));
+  const indexedProps = entity.properties.filter((p) => p.modifiers.includes('indexed'));
   for (const indexedProp of indexedProps) {
-    const alreadyInOptions = (idx ?? []).some(entry => {
+    const alreadyInOptions = (idx ?? []).some((entry) => {
       const fields = Array.isArray(entry) ? entry : entry.fields;
       return fields.includes(indexedProp.name);
     });
@@ -656,9 +672,11 @@ function emitIndexes(entity: IREntity, options: DrizzleProjectionOptions): strin
 
   // GIN tsvector index for searchable properties (PostgreSQL only)
   const dialect = (options.dialect ?? 'postgresql') as DrizzleDialect;
-  const searchableFields = entity.properties.filter(p => p.modifiers.includes('searchable')).map(p => p.name);
+  const searchableFields = entity.properties
+    .filter((p) => p.modifiers.includes('searchable'))
+    .map((p) => p.name);
   if (searchableFields.length > 0 && dialect === 'postgresql') {
-    const tsvectorParts = searchableFields.map(f => `"${f}"`).join(` || ' ' || `);
+    const tsvectorParts = searchableFields.map((f) => `"${f}"`).join(` || ' ' || `);
     const idxName = `${varName}_search_idx`;
     lines.push(`export const ${idxName} = index("${idxName}")`);
     lines.push(`  .using("gin", sql\`to_tsvector('english', ${tsvectorParts})\`);`);
@@ -745,7 +763,11 @@ export class DrizzleProjection implements ProjectionTarget {
     const indexDefs: string[] = [];
 
     for (const entity of toEmit) {
-      const { tableCode, relationsCode, diagnostics: tableDiags } = emitTable(entity, ir, options, context);
+      const {
+        tableCode,
+        relationsCode,
+        diagnostics: tableDiags,
+      } = emitTable(entity, ir, options, context);
       diagnostics.push(...tableDiags);
       if (tableCode) {
         tableDefs.push(tableCode);
@@ -768,9 +790,11 @@ export class DrizzleProjection implements ProjectionTarget {
       for (const prop of entity.properties) {
         const isArray = prop.type.name === 'array' && prop.type.generic;
         const effectiveTypeName = isArray ? prop.type.generic!.name : prop.type.name;
-        const isValueObject = ir.values?.some(v => v.name === effectiveTypeName);
+        const isValueObject = ir.values?.some((v) => v.name === effectiveTypeName);
         const overrides = isValueObject ? undefined : options.typeMappings?.[entity.name];
-        const colType = isValueObject ? { builder: 'jsonb' } : resolveDrizzleColumnType(effectiveTypeName, overrides, prop.name);
+        const colType = isValueObject
+          ? { builder: 'jsonb' }
+          : resolveDrizzleColumnType(effectiveTypeName, overrides, prop.name);
         if (colType) usedTypes.add(colType.builder);
       }
     }
@@ -805,9 +829,7 @@ export class DrizzleProjection implements ProjectionTarget {
 
     header.push('');
 
-    const codeParts: string[] = [
-      header.join('\n'),
-    ];
+    const codeParts: string[] = [header.join('\n')];
 
     if (tableDefs.length > 0) {
       codeParts.push(tableDefs.join('\n\n'));

@@ -13,11 +13,7 @@
         "groups": [
           {
             "group": "Get Started",
-            "pages": [
-              "introduction",
-              "quickstart",
-              "installation"
-            ]
+            "pages": ["introduction", "quickstart", "installation"]
           },
           {
             "group": "Language",
@@ -41,26 +37,15 @@
           },
           {
             "group": "Adapters",
-            "pages": [
-              "adapters/custom-stores",
-              "adapters/audit-sink",
-              "adapters/outbox"
-            ]
+            "pages": ["adapters/custom-stores", "adapters/audit-sink", "adapters/outbox"]
           },
           {
             "group": "CLI",
-            "pages": [
-              "cli/overview",
-              "cli/commands",
-              "cli/configuration"
-            ]
+            "pages": ["cli/overview", "cli/commands", "cli/configuration"]
           },
           {
             "group": "Help",
-            "pages": [
-              "faq",
-              "troubleshooting"
-            ]
+            "pages": ["faq", "troubleshooting"]
           }
         ]
       }

@@ -105,25 +105,17 @@ export class PatternAdapter {
     }
 
     // const param = … or let param = (value binding, not a type-only name)
-    const decl = new RegExp(
-      `\\b(?:const|let|var)\\s+${escape(param)}\\s*=`,
-    );
+    const decl = new RegExp(`\\b(?:const|let|var)\\s+${escape(param)}\\s*=`);
     if (decl.test(content)) {
       return { expression: param, kind: 'identifier' };
     }
 
     // Function param: function f(param: …) or (param: string) =>
-    const fnParam = new RegExp(
-      `\\(\\s*(?:[\\w\\s,]*?\\b)?${escape(param)}\\s*:`,
-    );
+    const fnParam = new RegExp(`\\(\\s*(?:[\\w\\s,]*?\\b)?${escape(param)}\\s*:`);
     if (fnParam.test(content) && !formShape.test(content)) {
       // Only if it's a value parameter, not nested in a type literal alone
-      const nestedOnly = new RegExp(
-        `\\{\\s*[^}]*\\b${escape(param)}\\s*:`,
-      );
-      const bareParam = new RegExp(
-        `\\(\\s*${escape(param)}\\s*:`,
-      );
+      const nestedOnly = new RegExp(`\\{\\s*[^}]*\\b${escape(param)}\\s*:`);
+      const bareParam = new RegExp(`\\(\\s*${escape(param)}\\s*:`);
       if (bareParam.test(content)) {
         return { expression: param, kind: 'identifier' };
       }
@@ -238,9 +230,7 @@ export class PatternAdapter {
     staleId: string,
   ): { entity: string; command: string; capabilityId: string } | null {
     // Explicit remap comment in any file: // manifest-remap Entity.old -> Entity.new
-    const re = new RegExp(
-      `manifest-remap\\s+${escape(staleId)}\\s*->\\s*([\\w]+)\\.([\\w]+)`,
-    );
+    const re = new RegExp(`manifest-remap\\s+${escape(staleId)}\\s*->\\s*([\\w]+)\\.([\\w]+)`);
     for (const content of this.files.values()) {
       const m = re.exec(content);
       if (m) {
@@ -292,8 +282,7 @@ function pascal(entity: string, command: string): string {
 }
 
 function extractBindingsModule(content: string): string | undefined {
-  const m =
-    /from\s+["']([^"']*manifest-wiring-bindings[^"']*)["']/.exec(content);
+  const m = /from\s+["']([^"']*manifest-wiring-bindings[^"']*)["']/.exec(content);
   return m?.[1];
 }
 

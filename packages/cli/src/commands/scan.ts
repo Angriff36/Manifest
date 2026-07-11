@@ -16,7 +16,18 @@ import path from 'path';
 import { glob } from 'glob';
 import chalk from 'chalk';
 import ora, { Ora } from 'ora';
-import { loadAllConfigs, getStoreBindingsInfo, ManifestRuntimeConfig, findPrismaSchemaPath, parsePrismaSchema, getPrismaModel, propertyExistsInModel, getPrismaFieldNames, PrismaSchema, ManifestConfig } from '../utils/config.js';
+import {
+  loadAllConfigs,
+  getStoreBindingsInfo,
+  ManifestRuntimeConfig,
+  findPrismaSchemaPath,
+  parsePrismaSchema,
+  getPrismaModel,
+  propertyExistsInModel,
+  getPrismaFieldNames,
+  PrismaSchema,
+  ManifestConfig,
+} from '../utils/config.js';
 
 // Use the real IR types from the main package — scan accesses entity/
 // command/policy/store fields that are guaranteed to exist on a compiled
@@ -30,8 +41,6 @@ import type {
   IRProperty as _IRProperty,
 } from '@angriff36/manifest/ir';
 type ScanIRProperty = _IRProperty;
-
-
 
 // Import compiler from the monorepo root package
 async function loadCompiler() {
@@ -99,7 +108,8 @@ function expressionReferencesUser(expr: unknown): boolean {
         // user.X — object is `user` identifier (any property dereferenced
         // counts as referencing user)
         if (
-          e.object && typeof e.object === 'object' &&
+          e.object &&
+          typeof e.object === 'object' &&
           (e.object as { kind?: string }).kind === 'identifier' &&
           (e.object as { name?: string }).name === 'user'
         ) {
@@ -130,12 +140,12 @@ function expressionReferencesUser(expr: unknown): boolean {
  */
 function commandRequiresUserContext(
   command: { guards?: unknown[]; policies?: string[] },
-  policies: Array<{ name: string; expression?: unknown }>
+  policies: Array<{ name: string; expression?: unknown }>,
 ): boolean {
   for (const guard of command.guards || []) {
     if (expressionReferencesUser(guard)) return true;
   }
-  const policyMap = new Map(policies.map(p => [p.name, p]));
+  const policyMap = new Map(policies.map((p) => [p.name, p]));
   for (const policyName of command.policies || []) {
     const policy = policyMap.get(policyName);
     if (policy?.expression && expressionReferencesUser(policy.expression)) {
@@ -150,7 +160,7 @@ function commandRequiresUserContext(
  */
 async function scanRouteFile(
   filePath: string,
-  commandsRequiringUserContext: Set<string>
+  commandsRequiringUserContext: Set<string>,
 ): Promise<{ warnings: ScanWarning[]; routesScanned: number }> {
   const warnings: ScanWarning[] = [];
   let routesScanned = 0;
@@ -168,7 +178,7 @@ async function scanRouteFile(
   // Extract entity and command from the route file path or content
   // Routes typically follow: app/api/{entity}/{command}/route.ts pattern
   const pathParts = filePath.split(/[/\\]/);
-  const apiIndex = pathParts.findIndex(p => p === 'api');
+  const apiIndex = pathParts.findIndex((p) => p === 'api');
   let entityName: string | null = null;
   let commandName: string | null = null;
 
@@ -219,7 +229,7 @@ async function scanRouteFile(
 async function scanRoutes(
   projectRoot: string,
   ir: ScanIR,
-  spinner: Ora
+  spinner: Ora,
 ): Promise<{ warnings: ScanWarning[]; routesScanned: number }> {
   const warnings: ScanWarning[] = [];
   let routesScanned = 0;
@@ -255,7 +265,7 @@ async function scanRoutes(
     const files = await glob(pattern, {
       cwd: projectRoot,
       ignore: ['**/node_modules/**', '**/.next/**'],
-      absolute: true
+      absolute: true,
     });
     routeFiles.push(...files);
   }
@@ -263,7 +273,9 @@ async function scanRoutes(
   if (routeFiles.length === 0) {
     // No route files found - informational warning
     if (commandsRequiringUserContext.size > 0) {
-      spinner.info(`No route files found. ${commandsRequiringUserContext.size} command(s) require user context.`);
+      spinner.info(
+        `No route files found. ${commandsRequiringUserContext.size} command(s) require user context.`,
+      );
     }
     return { warnings, routesScanned: 0 };
   }
@@ -291,7 +303,7 @@ async function getManifestFiles(source: string, options: ScanOptions): Promise<s
   if (!source) {
     const pattern = options.glob || '**/*.manifest';
     const files = await glob(pattern, { cwd: process.cwd(), ignore: ['**/node_modules/**'] });
-    return files.map(f => path.resolve(process.cwd(), f));
+    return files.map((f) => path.resolve(process.cwd(), f));
   }
 
   const resolved = path.resolve(process.cwd(), source);
@@ -309,7 +321,7 @@ async function getManifestFiles(source: string, options: ScanOptions): Promise<s
   // If source is a directory, use glob pattern
   const pattern = options.glob || '**/*.manifest';
   const files = await glob(pattern, { cwd: resolved, ignore: ['**/node_modules/**'] });
-  return files.map(f => path.resolve(resolved, f));
+  return files.map((f) => path.resolve(resolved, f));
 }
 
 /**
@@ -321,7 +333,7 @@ async function getManifestFiles(source: string, options: ScanOptions): Promise<s
  */
 function isCommandCoveredByPolicy(
   entityName: string,
-  policies: Array<{ entity?: string; action: string }>
+  policies: Array<{ entity?: string; action: string }>,
 ): boolean {
   for (const policy of policies) {
     // Policy must have execute or all action
@@ -354,7 +366,11 @@ function findCommandLine(sourceLines: string[], commandName: string): number | u
 /**
  * Find the line number of a store declaration in source
  */
-function findStoreLine(sourceLines: string[], entityName: string, target: string): number | undefined {
+function findStoreLine(
+  sourceLines: string[],
+  entityName: string,
+  target: string,
+): number | undefined {
   const storePattern = new RegExp(`store\\s+${entityName}\\s+in\\s+${target}`);
   for (let i = 0; i < sourceLines.length; i++) {
     if (storePattern.test(sourceLines[i])) {
@@ -370,8 +386,13 @@ function findStoreLine(sourceLines: string[], entityName: string, target: string
 async function scanFile(
   filePath: string,
   spinner: Ora,
-  runtimeConfig: ManifestRuntimeConfig | null
-): Promise<{ errors: ScanError[]; warnings: ScanWarning[]; commandsChecked: number; ir: ScanIR | null }> {
+  runtimeConfig: ManifestRuntimeConfig | null,
+): Promise<{
+  errors: ScanError[];
+  warnings: ScanWarning[];
+  commandsChecked: number;
+  ir: ScanIR | null;
+}> {
   const compileToIR = await loadCompiler();
   const errors: ScanError[] = [];
   const warnings: ScanWarning[] = [];
@@ -515,8 +536,8 @@ function levenshteinDistance(a: string, b: string): number {
       } else {
         matrix[i][j] = Math.min(
           matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1,     // insertion
-          matrix[i - 1][j] + 1      // deletion
+          matrix[i][j - 1] + 1, // insertion
+          matrix[i - 1][j] + 1, // deletion
         );
       }
     }
@@ -531,7 +552,7 @@ function levenshteinDistance(a: string, b: string): number {
 function findClosestFields(
   propertyName: string,
   fieldNames: string[],
-  maxDistance: number = 3
+  maxDistance: number = 3,
 ): string[] {
   const suggestions: Array<{ name: string; distance: number }> = [];
 
@@ -546,7 +567,7 @@ function findClosestFields(
   return suggestions
     .sort((a, b) => a.distance - b.distance)
     .slice(0, 3)
-    .map(s => s.name);
+    .map((s) => s.name);
 }
 
 /**
@@ -557,7 +578,7 @@ function scanPropertyAlignment(
   entityProperties: Array<{ name: string; type: string }>,
   prismaSchema: PrismaSchema,
   prismaModelName: string,
-  propertyMapping?: Record<string, string>
+  propertyMapping?: Record<string, string>,
 ): ScanWarning[] {
   const warnings: ScanWarning[] = [];
   const model = getPrismaModel(prismaSchema, prismaModelName);
@@ -566,7 +587,7 @@ function scanPropertyAlignment(
     warnings.push({
       file: '',
       message: `Entity '${entityName}' references Prisma model '${prismaModelName}' but model not found in schema.`,
-      suggestion: `Available models: ${prismaSchema.models.map(m => m.name).join(', ')}`,
+      suggestion: `Available models: ${prismaSchema.models.map((m) => m.name).join(', ')}`,
     });
     return warnings;
   }
@@ -609,7 +630,7 @@ async function scanPropertyAlignmentForIR(
   ir: ScanIR,
   runtimeConfig: ManifestRuntimeConfig | null,
   buildConfig: ManifestConfig | null,
-  projectRoot: string
+  projectRoot: string,
 ): Promise<ScanWarning[]> {
   const warnings: ScanWarning[] = [];
 
@@ -665,7 +686,7 @@ async function scanPropertyAlignmentForIR(
       (entity.properties ?? []).map((p: ScanIRProperty) => ({ name: p.name, type: p.type.name })),
       prismaSchema,
       prismaModelName,
-      propertyMapping
+      propertyMapping,
     );
 
     // Add file context to warnings
@@ -690,7 +711,10 @@ function formatPath(filePath: string): string {
 /**
  * Scan command handler
  */
-export async function scanCommand(source: string | undefined, options: ScanOptions = {}): Promise<void> {
+export async function scanCommand(
+  source: string | undefined,
+  options: ScanOptions = {},
+): Promise<void> {
   const spinner = ora('Scanning manifest files').start();
 
   try {
@@ -748,12 +772,14 @@ export async function scanCommand(source: string | undefined, options: ScanOptio
           fileSpinner.warn(`${formatPath(file)} - ${fileResult.warnings.length} warning(s)`);
         }
       } catch (error: unknown) {
-        fileSpinner.fail(`Failed to scan ${formatPath(file)}: ${(error instanceof Error ? error.message : String(error))}`);
+        fileSpinner.fail(
+          `Failed to scan ${formatPath(file)}: ${error instanceof Error ? error.message : String(error)}`,
+        );
         result.errors.push({
           file,
           entityName: '',
           commandName: '',
-          message: (error instanceof Error ? error.message : String(error)),
+          message: error instanceof Error ? error.message : String(error),
           suggestion: 'Check the file for syntax errors.',
         });
       }
@@ -767,8 +793,8 @@ export async function scanCommand(source: string | undefined, options: ScanOptio
         // `commands` and `policies` — we cast through `Partial<ScanIR>`
         // because we deliberately produce a partial-IR shape here.
         const mergedIR = {
-          commands: allIRs.flatMap(ir => ir.commands || []),
-          policies: allIRs.flatMap(ir => ir.policies || []),
+          commands: allIRs.flatMap((ir) => ir.commands || []),
+          policies: allIRs.flatMap((ir) => ir.policies || []),
         } as unknown as ScanIR;
 
         const routeResult = await scanRoutes(process.cwd(), mergedIR, routeSpinner);
@@ -783,7 +809,9 @@ export async function scanCommand(source: string | undefined, options: ScanOptio
           routeSpinner.info('No route files found to scan');
         }
       } catch (error: unknown) {
-        routeSpinner.info(`Route scanning skipped: ${(error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error))}`);
+        routeSpinner.info(
+          `Route scanning skipped: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`,
+        );
       }
     }
 
@@ -797,16 +825,16 @@ export async function scanCommand(source: string | undefined, options: ScanOptio
         // Merge all IRs for property scanning — partial-IR shape; same
         // cast rationale as the route-scan path above.
         const mergedIR = {
-          entities: allIRs.flatMap(ir => ir.entities || []),
-          commands: allIRs.flatMap(ir => ir.commands || []),
-          policies: allIRs.flatMap(ir => ir.policies || []),
+          entities: allIRs.flatMap((ir) => ir.entities || []),
+          commands: allIRs.flatMap((ir) => ir.commands || []),
+          policies: allIRs.flatMap((ir) => ir.policies || []),
         } as unknown as ScanIR;
 
         const propertyWarnings = await scanPropertyAlignmentForIR(
           mergedIR,
           runtimeConfig,
           configs.build,
-          process.cwd()
+          process.cwd(),
         );
 
         result.warnings.push(...propertyWarnings);
@@ -817,7 +845,9 @@ export async function scanCommand(source: string | undefined, options: ScanOptio
           propertySpinner.warn(`Found ${propertyWarnings.length} property alignment issue(s)`);
         }
       } catch (error: unknown) {
-        propertySpinner.info(`Property alignment scanning skipped: ${(error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error))}`);
+        propertySpinner.info(
+          `Property alignment scanning skipped: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`,
+        );
       }
     }
 
@@ -842,7 +872,7 @@ export async function scanCommand(source: string | undefined, options: ScanOptio
         if (error.entityName && error.commandName) {
           console.log(`    Command '${error.entityName}.${error.commandName}' has no policy.`);
         } else {
-          console.log(`    ${(error instanceof Error ? error.message : String(error))}`);
+          console.log(`    ${error instanceof Error ? error.message : String(error)}`);
         }
 
         if (error.suggestion) {
@@ -890,11 +920,15 @@ export async function scanCommand(source: string | undefined, options: ScanOptio
         spinner.warn('Scan passed with warnings');
       }
     } else {
-      spinner.fail(`Scan failed with ${result.errors.length} error(s), ${result.warnings.length} warning(s)`);
+      spinner.fail(
+        `Scan failed with ${result.errors.length} error(s), ${result.warnings.length} warning(s)`,
+      );
       process.exit(1);
     }
   } catch (error: unknown) {
-    spinner.fail(`Scan failed: ${(error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error))}`);
+    spinner.fail(
+      `Scan failed: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`,
+    );
     console.error(error);
     process.exit(1);
   }

@@ -51,7 +51,9 @@ export interface MultiCompileResult {
  * 3. Validate cross-file references (entity names, relationships)
  * 4. Merge all IRs into single output with multi-source provenance
  */
-export async function compileProjectToIR(options: CompileProjectOptions): Promise<MultiCompileResult> {
+export async function compileProjectToIR(
+  options: CompileProjectOptions,
+): Promise<MultiCompileResult> {
   const { entries, host, useCache = true, basePath = '' } = options;
   const diagnostics: IRDiagnostic[] = [];
   const sources: Array<{ absPath: string; contentHash: string }> = [];
@@ -70,7 +72,7 @@ export async function compileProjectToIR(options: CompileProjectOptions): Promis
     });
   }
 
-  if (resolution.diagnostics.some(d => d.severity === 'error')) {
+  if (resolution.diagnostics.some((d) => d.severity === 'error')) {
     return { ir: null, diagnostics, sources };
   }
 
@@ -204,7 +206,7 @@ export async function compileProjectToIR(options: CompileProjectOptions): Promis
     }
   }
 
-  if (diagnostics.some(d => d.severity === 'error')) {
+  if (diagnostics.some((d) => d.severity === 'error')) {
     return { ir: null, diagnostics, sources };
   }
 
@@ -238,12 +240,16 @@ export async function compileProjectToIR(options: CompileProjectOptions): Promis
     }
   }
 
-  if (diagnostics.some(d => d.severity === 'error')) {
+  if (diagnostics.some((d) => d.severity === 'error')) {
     return { ir: null, diagnostics, sources };
   }
 
   // Phase 4: Merge IRs into single output
-  const mergedIR = mergeIRs(compiledIRs.map(c => c.ir), sources, basePath);
+  const mergedIR = mergeIRs(
+    compiledIRs.map((c) => c.ir),
+    sources,
+    basePath,
+  );
 
   // Phase 4.5: Whole-program reaction completeness. Deferred from the per-file
   // compiles (skipReactionCompleteness) because a reaction can listen for an
@@ -260,7 +266,7 @@ export async function compileProjectToIR(options: CompileProjectOptions): Promis
     },
     mergedIR.events ?? [],
   );
-  if (diagnostics.some(d => d.severity === 'error')) {
+  if (diagnostics.some((d) => d.severity === 'error')) {
     return { ir: null, diagnostics, sources };
   }
 
@@ -280,9 +286,9 @@ export async function compileProjectToIR(options: CompileProjectOptions): Promis
  * recomputed — call computeIRHash(result) if a content hash is required.
  */
 export function mergeIR(irs: IR[]): IR {
-  const sources = irs.flatMap(ir =>
+  const sources = irs.flatMap((ir) =>
     ir.provenance.sources && ir.provenance.sources.length > 0
-      ? ir.provenance.sources.map(s => ({ absPath: s.path, contentHash: s.contentHash }))
+      ? ir.provenance.sources.map((s) => ({ absPath: s.path, contentHash: s.contentHash }))
       : [{ absPath: ir.provenance.contentHash, contentHash: ir.provenance.contentHash }],
   );
   return mergeIRs(irs, sources, '');
@@ -342,7 +348,9 @@ function mergeIRs(
         existing.events = [...new Set([...existing.events, ...mod.events])].sort();
         existing.policies = [...new Set([...existing.policies, ...mod.policies])].sort();
         if (mod.reactions) {
-          existing.reactions = [...new Set([...(existing.reactions ?? []), ...mod.reactions])].sort();
+          existing.reactions = [
+            ...new Set([...(existing.reactions ?? []), ...mod.reactions]),
+          ].sort();
         }
         if (mod.roles) {
           existing.roles = [...new Set([...(existing.roles ?? []), ...mod.roles])].sort();
@@ -351,7 +359,9 @@ function mergeIRs(
           existing.sagas = [...new Set([...(existing.sagas ?? []), ...mod.sagas])].sort();
         }
         if (mod.schedules) {
-          existing.schedules = [...new Set([...(existing.schedules ?? []), ...mod.schedules])].sort();
+          existing.schedules = [
+            ...new Set([...(existing.schedules ?? []), ...mod.schedules]),
+          ].sort();
         }
         if (mod.webhooks) {
           existing.webhooks = [...new Set([...(existing.webhooks ?? []), ...mod.webhooks])].sort();
@@ -374,7 +384,9 @@ function mergeIRs(
   });
   policies.sort((a, b) => a.name.localeCompare(b.name));
   values.sort((a, b) => a.name.localeCompare(b.name));
-  reactions.sort((a, b) => `${a.event}.${a.targetEntity}`.localeCompare(`${b.event}.${b.targetEntity}`));
+  reactions.sort((a, b) =>
+    `${a.event}.${a.targetEntity}`.localeCompare(`${b.event}.${b.targetEntity}`),
+  );
   roles.sort((a, b) => a.name.localeCompare(b.name));
   sagas.sort((a, b) => a.name.localeCompare(b.name));
   webhooks.sort((a, b) => a.name.localeCompare(b.name));
@@ -383,11 +395,11 @@ function mergeIRs(
   const modules = [...moduleMap.values()].sort((a, b) => a.name.localeCompare(b.name));
 
   // Create merged provenance
-  const sortedHashes = sources.map(s => s.contentHash).sort();
+  const sortedHashes = sources.map((s) => s.contentHash).sort();
   const mergedContentHash = sortedHashes.join(':');
 
   const provenanceSources: IRProvenanceSource[] = sources
-    .map(s => ({
+    .map((s) => ({
       path: basePath ? s.absPath.replace(basePath, '').replace(/^[/\\]/, '') : s.absPath,
       contentHash: s.contentHash,
     }))

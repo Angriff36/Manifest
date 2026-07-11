@@ -40,9 +40,13 @@ const runtime = new RuntimeEngine(ir, {
 });
 
 // All commands execute within this tenant context
-const result = await runtime.runCommand('create', {
-  name: 'Chocolate Cake',
-}, { entityName: 'Recipe' });
+const result = await runtime.runCommand(
+  'create',
+  {
+    name: 'Chocolate Cake',
+  },
+  { entityName: 'Recipe' },
+);
 ```
 
 ### From Auth Provider (Clerk Example)
@@ -112,22 +116,22 @@ model UserTenantMapping {
 import { Store } from '@angriff36/manifest';
 import { PrismaClient } from '@prisma/client';
 
-export class TenantScopedPrismaStore<T extends { id: string; tenantId: string }>
-  implements Store<T>
-{
+export class TenantScopedPrismaStore<
+  T extends { id: string; tenantId: string },
+> implements Store<T> {
   constructor(
     private prisma: PrismaClient,
     private entityName: string,
-    private tenantId: string
+    private tenantId: string,
   ) {}
 
   async getAll(): Promise<T[]> {
-    return await this.prisma[this.entityName].findMany({
+    return (await this.prisma[this.entityName].findMany({
       where: {
         tenantId: this.tenantId,
         deletedAt: null, // Soft delete filter
       },
-    }) as T[];
+    })) as T[];
   }
 
   async getById(id: string): Promise<T | undefined> {
@@ -143,12 +147,12 @@ export class TenantScopedPrismaStore<T extends { id: string; tenantId: string }>
   }
 
   async create(data: Partial<T>): Promise<T> {
-    return await this.prisma[this.entityName].create({
+    return (await this.prisma[this.entityName].create({
       data: {
         ...data,
         tenantId: this.tenantId, // Inject tenant
       },
-    }) as T;
+    })) as T;
   }
 
   async update(id: string, data: Partial<T>): Promise<T | undefined> {
@@ -158,13 +162,13 @@ export class TenantScopedPrismaStore<T extends { id: string; tenantId: string }>
       return undefined;
     }
 
-    return await this.prisma[this.entityName].update({
+    return (await this.prisma[this.entityName].update({
       where: {
         id,
         tenantId: this.tenantId,
       },
       data,
-    }) as T;
+    })) as T;
   }
 
   async delete(id: string): Promise<boolean> {
@@ -196,12 +200,16 @@ export class TenantScopedPrismaStore<T extends { id: string; tenantId: string }>
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';
 
-const runtime = new RuntimeEngine(ir, { userId, tenantId }, {
-  storeProvider: (entityName) => {
-    // Return tenant-scoped store for each entity
-    return new TenantScopedPrismaStore(prisma, entityName, tenantId);
+const runtime = new RuntimeEngine(
+  ir,
+  { userId, tenantId },
+  {
+    storeProvider: (entityName) => {
+      // Return tenant-scoped store for each entity
+      return new TenantScopedPrismaStore(prisma, entityName, tenantId);
+    },
   },
-});
+);
 ```
 
 ---
@@ -245,12 +253,16 @@ const runtime = new RuntimeEngine(ir, {
 });
 
 // Attempt to update recipe from tenant-B
-const result = await runtime.runCommand('update', {
-  name: 'Hacked Recipe',
-}, {
-  entityName: 'Recipe',
-  instanceId: 'recipe-from-tenant-B',
-});
+const result = await runtime.runCommand(
+  'update',
+  {
+    name: 'Hacked Recipe',
+  },
+  {
+    entityName: 'Recipe',
+    instanceId: 'recipe-from-tenant-B',
+  },
+);
 
 // result.success = false
 // result.guardFailure = { index: 1, expression: "context.tenantId == this.tenantId" }
@@ -279,13 +291,11 @@ model Recipe {
 ### Custom Store with Compound Keys
 
 ```typescript
-export class CompoundKeyStore<T extends { id: string; tenantId: string }>
-  implements Store<T>
-{
+export class CompoundKeyStore<T extends { id: string; tenantId: string }> implements Store<T> {
   constructor(
     private prisma: PrismaClient,
     private entityName: string,
-    private tenantId: string
+    private tenantId: string,
   ) {}
 
   async getById(id: string): Promise<T | undefined> {
@@ -302,7 +312,7 @@ export class CompoundKeyStore<T extends { id: string; tenantId: string }>
   }
 
   async update(id: string, data: Partial<T>): Promise<T | undefined> {
-    return await this.prisma[this.entityName].update({
+    return (await this.prisma[this.entityName].update({
       where: {
         tenantId_id: {
           tenantId: this.tenantId,
@@ -310,7 +320,7 @@ export class CompoundKeyStore<T extends { id: string; tenantId: string }>
         },
       },
       data,
-    }) as T;
+    })) as T;
   }
 
   // ... other methods
@@ -395,11 +405,14 @@ export function getTenantPrisma(tenantId: string): PrismaClient {
   if (!tenantPools.has(tenantId)) {
     const databaseUrl = `postgresql://user:pass@localhost/${tenantId}_db`;
 
-    tenantPools.set(tenantId, new PrismaClient({
-      datasources: {
-        db: { url: databaseUrl },
-      },
-    }));
+    tenantPools.set(
+      tenantId,
+      new PrismaClient({
+        datasources: {
+          db: { url: databaseUrl },
+        },
+      }),
+    );
   }
 
   return tenantPools.get(tenantId)!;
@@ -409,29 +422,27 @@ export function getTenantPrisma(tenantId: string): PrismaClient {
 ### Store with Tenant Database
 
 ```typescript
-export class TenantDatabaseStore<T extends { id: string }>
-  implements Store<T>
-{
+export class TenantDatabaseStore<T extends { id: string }> implements Store<T> {
   private prisma: PrismaClient;
 
   constructor(
     private entityName: string,
-    private tenantId: string
+    private tenantId: string,
   ) {
     this.prisma = getTenantPrisma(tenantId);
   }
 
   async getAll(): Promise<T[]> {
     // No tenantId filter needed - separate database
-    return await this.prisma[this.entityName].findMany({
+    return (await this.prisma[this.entityName].findMany({
       where: { deletedAt: null },
-    }) as T[];
+    })) as T[];
   }
 
   async getById(id: string): Promise<T | undefined> {
-    return await this.prisma[this.entityName].findUnique({
+    return (await this.prisma[this.entityName].findUnique({
       where: { id },
-    }) as T | undefined;
+    })) as T | undefined;
   }
 
   // ... other methods
@@ -564,12 +575,16 @@ test('cannot access other tenant data', async () => {
     tenantId: 'tenant-A',
   });
 
-  const result = await runtime.runCommand('update', {
-    name: 'Hacked',
-  }, {
-    entityName: 'Recipe',
-    instanceId: 'recipe-from-tenant-B',
-  });
+  const result = await runtime.runCommand(
+    'update',
+    {
+      name: 'Hacked',
+    },
+    {
+      entityName: 'Recipe',
+      instanceId: 'recipe-from-tenant-B',
+    },
+  );
 
   expect(result.success).toBe(false);
   expect(result.error).toMatch(/not found/i);
@@ -593,12 +608,12 @@ runtime.onEvent((event) => {
 
 ## Common Patterns Summary
 
-| Pattern | Isolation Level | Complexity | Use Case |
-|---------|-----------------|------------|----------|
-| Tenant-scoped stores | Application | Low | Most common |
-| Compound keys | Database | Medium | Strong isolation |
-| Separate databases | Database | High | Compliance requirements |
-| Row-level security | Database | Medium | PostgreSQL-specific |
+| Pattern              | Isolation Level | Complexity | Use Case                |
+| -------------------- | --------------- | ---------- | ----------------------- |
+| Tenant-scoped stores | Application     | Low        | Most common             |
+| Compound keys        | Database        | Medium     | Strong isolation        |
+| Separate databases   | Database        | High       | Compliance requirements |
+| Row-level security   | Database        | Medium     | PostgreSQL-specific     |
 
 ---
 

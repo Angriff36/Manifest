@@ -57,19 +57,16 @@ export async function loadWasmModule(wasmBytes: BufferSource): Promise<WasmModul
     throw new Error('AssemblyScript loader is not available');
   }
 
-  const module = await asLoader.instantiate<WasmModule>(
-    wasmBytes,
-    {
-      env: {
-        abort: (msg: number, file: number, line: number, col: number) => {
-          throw new Error(`WASM abort: msg=${msg} file=${file} line=${line} col=${col}`);
-        },
-        trace: (_msg: number, _n: number, _args: number) => {
-          // Tracing disabled in release
-        },
+  const module = await asLoader.instantiate<WasmModule>(wasmBytes, {
+    env: {
+      abort: (msg: number, file: number, line: number, col: number) => {
+        throw new Error(`WASM abort: msg=${msg} file=${file} line=${line} col=${col}`);
       },
-    }
-  );
+      trace: (_msg: number, _n: number, _args: number) => {
+        // Tracing disabled in release
+      },
+    },
+  });
 
   return module.exports;
 }
@@ -79,13 +76,21 @@ export async function loadWasmModule(wasmBytes: BufferSource): Promise<WasmModul
  * Returns null if the optional package is not installed.
  */
 async function importAssemblyLoader(): Promise<{
-  instantiate: <T>(bytes: BufferSource, imports: Record<string, unknown>) => Promise<{ exports: T }>;
+  instantiate: <T>(
+    bytes: BufferSource,
+    imports: Record<string, unknown>,
+  ) => Promise<{ exports: T }>;
 } | null> {
   try {
     // The AssemblyScript runtime is required for hosted classes / strings.
     const mod = await import('@assemblyscript/loader');
     if (mod && typeof mod.instantiate === 'function') {
-      return mod as { instantiate: <T>(bytes: BufferSource, imports: Record<string, unknown>) => Promise<{ exports: T }> };
+      return mod as {
+        instantiate: <T>(
+          bytes: BufferSource,
+          imports: Record<string, unknown>,
+        ) => Promise<{ exports: T }>;
+      };
     }
     return null;
   } catch {
@@ -102,9 +107,8 @@ export async function loadDefaultWasmBytes(): Promise<ArrayBuffer | null> {
   try {
     if (typeof fetch !== 'undefined') {
       // Browser/edge: use fetch
-      const baseUrl = typeof window !== 'undefined'
-        ? window.location.origin
-        : 'http://localhost:5173';
+      const baseUrl =
+        typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
       const response = await fetch(`${baseUrl}/manifest-runtime.wasm`);
       if (response.ok) {
         return await response.arrayBuffer();

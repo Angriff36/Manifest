@@ -32,9 +32,7 @@
       ],
       "computedProperties": [],
       "relationships": [],
-      "commands": [
-        "archive"
-      ],
+      "commands": ["archive"],
       "constraints": [],
       "policies": []
     }

@@ -20,7 +20,7 @@ async function runCli(args: string[]): Promise<{ stdout: string; stderr: string;
     const { stdout, stderr } = await execFileAsync(
       process.platform === 'win32' ? 'npx.cmd' : 'npx',
       ['tsx', CLI_ENTRY, ...args],
-      { shell: process.platform === 'win32', timeout: 60_000 }
+      { shell: process.platform === 'win32', timeout: 60_000 },
     );
     return { stdout, stderr, code: 0 };
   } catch (error) {
@@ -45,42 +45,32 @@ describe('manifest generate-tests', () => {
     }
   });
 
-  it(
-    'is registered with help text and expected options',
-    async () => {
-      const { stdout, code } = await runCli(['generate-tests', '--help']);
-      expect(code).toBe(0);
-      expect(stdout).toContain('Generate conformance test fixtures');
-      expect(stdout).toContain('--feature');
-      expect(stdout).toContain('--category');
-      expect(stdout).toContain('--count');
-      expect(stdout).toContain('--dry-run');
-    },
-    30_000,
-  );
+  it('is registered with help text and expected options', async () => {
+    const { stdout, code } = await runCli(['generate-tests', '--help']);
+    expect(code).toBe(0);
+    expect(stdout).toContain('Generate conformance test fixtures');
+    expect(stdout).toContain('--feature');
+    expect(stdout).toContain('--category');
+    expect(stdout).toContain('--count');
+    expect(stdout).toContain('--dry-run');
+  }, 30_000);
 
-  it(
-    'is reachable via the gen-tests alias',
-    async () => {
-      const { stdout, code } = await runCli(['gen-tests', '--help']);
-      expect(code).toBe(0);
-      expect(stdout).toContain('Generate conformance test fixtures');
-    },
-    30_000,
-  );
+  it('is reachable via the gen-tests alias', async () => {
+    const { stdout, code } = await runCli(['gen-tests', '--help']);
+    expect(code).toBe(0);
+    expect(stdout).toContain('Generate conformance test fixtures');
+  }, 30_000);
 
   it('fails fast without an API key (exit 1, nothing written)', async () => {
     // The command handles its own errors and calls process.exit(1).
     // Intercept the exit so the failure path is observable in-process.
-    const exitSpy = vi
-      .spyOn(process, 'exit')
-      .mockImplementation(((code?: number) => {
-        throw new Error(`__exit_${code}__`);
-      }) as never);
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new Error(`__exit_${code}__`);
+    }) as never);
     try {
-      await expect(
-        genTestsCommand(undefined, { dryRun: true, count: 1 })
-      ).rejects.toThrow('__exit_1__');
+      await expect(genTestsCommand(undefined, { dryRun: true, count: 1 })).rejects.toThrow(
+        '__exit_1__',
+      );
     } finally {
       exitSpy.mockRestore();
     }

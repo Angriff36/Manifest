@@ -19,12 +19,14 @@ manifest compile <source> [options]
 ```
 
 **Options:**
+
 - `-o, --output <path>` - Output directory or file path
 - `-g, --glob <pattern>` - Glob pattern for multiple files
 - `-d, --diagnostics` - Include diagnostics in output
 - `--pretty` - Pretty-print JSON output (default: true)
 
 **Examples:**
+
 ```bash
 # Compile single file
 manifest compile Recipe.manifest -o ir/Recipe.ir.json
@@ -54,7 +56,7 @@ const source = `
 
 const { ir, diagnostics } = await compileToIR(source);
 
-if (diagnostics.some(d => d.severity === 'error')) {
+if (diagnostics.some((d) => d.severity === 'error')) {
   console.error('Compilation failed:', diagnostics);
   process.exit(1);
 }
@@ -72,7 +74,7 @@ const source = `entity Recipe { property id: string }`;
 
 const { ir, diagnostics } = await compiler.compile(source);
 
-if (diagnostics.some(d => d.severity === 'error')) {
+if (diagnostics.some((d) => d.severity === 'error')) {
   console.error('Compilation failed:', diagnostics);
   process.exit(1);
 }
@@ -84,11 +86,11 @@ console.log('IR:', ir);
 
 ## Import Paths
 
-| Import | What You Get |
-|--------|--------------|
+| Import                            | What You Get             |
+| --------------------------------- | ------------------------ |
 | `@angriff36/manifest/ir-compiler` | `compileToIR()` function |
-| `@angriff36/manifest/compiler` | `ManifestCompiler` class |
-| `@angriff36/manifest` | `RuntimeEngine` class |
+| `@angriff36/manifest/compiler`    | `ManifestCompiler` class |
+| `@angriff36/manifest`             | `RuntimeEngine` class    |
 
 **Note**: Context7 documentation may reference different paths. The paths above are **authoritative** as defined in `package.json` exports.
 
@@ -144,6 +146,7 @@ interface Diagnostic {
 **Cause**: Manifest not linked or not built.
 
 **Fix**:
+
 1. Run `npm run build:lib` in Manifest directory
 2. Run `npm link` in Manifest directory
 3. Run `npm link @angriff36/manifest` in your project
@@ -164,9 +167,9 @@ interface Diagnostic {
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `MANIFEST_SRC` | Override source pattern (for CLI) |
+| Variable          | Description                            |
+| ----------------- | -------------------------------------- |
+| `MANIFEST_SRC`    | Override source pattern (for CLI)      |
 | `MANIFEST_OUTPUT` | Override IR output directory (for CLI) |
 
 ---

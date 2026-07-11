@@ -146,7 +146,11 @@ describe('KyselyProjection — type mapping', () => {
       properties: [
         { name: 'id', type: { name: 'uuid', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -162,7 +166,11 @@ describe('KyselyProjection — type mapping', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'active', type: { name: 'boolean', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -178,7 +186,11 @@ describe('KyselyProjection — type mapping', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'count', type: { name: 'int', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -194,7 +206,11 @@ describe('KyselyProjection — type mapping', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -210,7 +226,11 @@ describe('KyselyProjection — type mapping', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'metadata', type: { name: 'json', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -226,7 +246,11 @@ describe('KyselyProjection — type mapping', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'description', type: { name: 'string', nullable: true }, modifiers: [] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -310,7 +334,11 @@ describe('KyselyProjection — bare `number` is ambiguous', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'qty', type: { name: 'number', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -332,7 +360,11 @@ describe('KyselyProjection — bare `number` is ambiguous', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'legacyCount', type: { name: 'number', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -355,7 +387,11 @@ describe('KyselyProjection — unknown type diagnostic', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'amount', type: { name: 'currency', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -390,7 +426,11 @@ describe('KyselyProjection — config options', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'data', type: { name: 'string', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -477,7 +517,9 @@ describe('KyselyProjection — relationship wiring', () => {
         ],
         computedProperties: [],
         relationships: [{ name: 'author', kind: 'belongsTo' as const, target: 'Author' }],
-        commands: [], constraints: [], policies: [],
+        commands: [],
+        constraints: [],
+        policies: [],
       },
     );
     ir.stores.push(durableStore('Author'), durableStore('Book'));
@@ -525,13 +567,25 @@ describe('KyselyProjection — preserves IR source order', () => {
     const ir = emptyIR();
     const beta: IREntity = {
       name: 'Beta',
-      properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] }],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     };
     const alpha: IREntity = {
       name: 'Alpha',
-      properties: [{ name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] }],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     };
     ir.entities.push(beta, alpha);
     ir.stores.push(durableStore('Beta'), durableStore('Alpha'));
@@ -564,7 +618,11 @@ describe('KyselyProjection — import optimization', () => {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
         { name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['required'] },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -587,7 +645,11 @@ describe('KyselyProjection — default values', () => {
           defaultValue: { kind: 'string', value: 'active' },
         },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Widget'));
 
@@ -603,9 +665,17 @@ describe('KyselyProjection — array types', () => {
       name: 'Taggable',
       properties: [
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        { name: 'tags', type: { name: 'array', generic: { name: 'string', nullable: false }, nullable: false }, modifiers: [] },
+        {
+          name: 'tags',
+          type: { name: 'array', generic: { name: 'string', nullable: false }, nullable: false },
+          modifiers: [],
+        },
       ],
-      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     });
     ir.stores.push(durableStore('Taggable'));
 

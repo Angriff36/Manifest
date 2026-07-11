@@ -88,15 +88,15 @@ export function emitRegistries(ir: IR): { commands: CommandRegistry; entities: E
   }
 
   for (const entity of ir.entities) {
-    const tenantScoped = entity.properties.some(p => p.name === 'tenantId');
+    const tenantScoped = entity.properties.some((p) => p.name === 'tenantId');
     const ownedCommandObjects = commandsByEntity.get(entity.name) ?? [];
 
     entities.push({
       name: entity.name,
       classification: classifyEntity(tenantScoped),
       tenantScoped,
-      commands: ownedCommandObjects.map(c => c.name),
-      properties: entity.properties.map(p => p.name),
+      commands: ownedCommandObjects.map((c) => c.name),
+      properties: entity.properties.map((p) => p.name),
     });
 
     for (const cmd of ownedCommandObjects) {
@@ -104,13 +104,10 @@ export function emitRegistries(ir: IR): { commands: CommandRegistry; entities: E
         entity: entity.name,
         command: cmd.name,
         commandId: `${entity.name}.${cmd.name}`,
-        policies: distinct([
-          ...(entity.defaultPolicies ?? []),
-          ...(cmd.policies ?? []),
-        ]),
+        policies: distinct([...(entity.defaultPolicies ?? []), ...(cmd.policies ?? [])]),
         guardCount: cmd.guards.length,
         emits: [...cmd.emits],
-        effects: distinct(cmd.actions.map(a => a.kind)),
+        effects: distinct(cmd.actions.map((a) => a.kind)),
       });
     }
   }
@@ -122,7 +119,7 @@ export function emitRegistries(ir: IR): { commands: CommandRegistry; entities: E
       name: UNOWNED_ENTITY_NAME,
       classification: 'infrastructure',
       tenantScoped: false,
-      commands: unowned.map(c => c.name),
+      commands: unowned.map((c) => c.name),
       properties: [],
     });
     for (const cmd of unowned) {
@@ -133,7 +130,7 @@ export function emitRegistries(ir: IR): { commands: CommandRegistry; entities: E
         policies: [...(cmd.policies ?? [])],
         guardCount: cmd.guards.length,
         emits: [...cmd.emits],
-        effects: distinct(cmd.actions.map(a => a.kind)),
+        effects: distinct(cmd.actions.map((a) => a.kind)),
       });
     }
   }

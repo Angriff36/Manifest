@@ -27,30 +27,36 @@ function createTestIR(): IR {
     },
     modules: [],
     values: [],
-    entities: [{
-      name: 'TestEntity',
-      properties: [
-        { name: 'id', type: { name: 'string', nullable: false }, modifiers: [] },
-        { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
-        { name: 'count', type: { name: 'number', nullable: false }, modifiers: [] },
-      ],
-      computedProperties: [],
-      relationships: [],
-      commands: ['createCommand'],
-      constraints: [],
-      policies: [],
-    }],
+    entities: [
+      {
+        name: 'TestEntity',
+        properties: [
+          { name: 'id', type: { name: 'string', nullable: false }, modifiers: [] },
+          { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
+          { name: 'count', type: { name: 'number', nullable: false }, modifiers: [] },
+        ],
+        computedProperties: [],
+        relationships: [],
+        commands: ['createCommand'],
+        constraints: [],
+        policies: [],
+      },
+    ],
     enums: [],
     stores: [],
     events: [],
-    commands: [{
-      name: 'createCommand',
-      entity: 'TestEntity',
-      parameters: [],
-      guards: [],
-      actions: [{ kind: 'mutate', target: 'TestEntity', expression: { kind: 'object', properties: [] } }],
-      emits: [],
-    }],
+    commands: [
+      {
+        name: 'createCommand',
+        entity: 'TestEntity',
+        parameters: [],
+        guards: [],
+        actions: [
+          { kind: 'mutate', target: 'TestEntity', expression: { kind: 'object', properties: [] } },
+        ],
+        emits: [],
+      },
+    ],
     policies: [],
   };
 }
@@ -68,9 +74,12 @@ function createIRWithConstraints(constraints: IR['entities'][0]['constraints']):
  * Helper for identifier names
  */
 const identifierName = fc
-  .array(fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789'.split('')), { minLength: 1, maxLength: 20 })
-  .map(chars => chars.join(''))
-  .filter(name => /^[a-zA-Z_]/.test(name));
+  .array(
+    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789'.split('')),
+    { minLength: 1, maxLength: 20 },
+  )
+  .map((chars) => chars.join(''))
+  .filter((name) => /^[a-zA-Z_]/.test(name));
 
 describe('Runtime Constraint Validation - Property Tests', () => {
   describe('Constraint Evaluation Properties', () => {
@@ -81,28 +90,34 @@ describe('Runtime Constraint Validation - Property Tests', () => {
             {
               name: 'positiveValue',
               code: 'positiveValue',
-              expression: ExpressionBuilder.binary('>=',
+              expression: ExpressionBuilder.binary(
+                '>=',
                 ExpressionBuilder.identifier('value'),
-                ExpressionBuilder.literal(jsToIRValue(0))
+                ExpressionBuilder.literal(jsToIRValue(0)),
               ),
               severity: 'block' as const,
             },
             {
               name: 'reasonableCount',
               code: 'reasonableCount',
-              expression: ExpressionBuilder.binary('<=',
+              expression: ExpressionBuilder.binary(
+                '<=',
                 ExpressionBuilder.identifier('count'),
-                ExpressionBuilder.literal(jsToIRValue(1000))
+                ExpressionBuilder.literal(jsToIRValue(1000)),
               ),
               severity: 'block' as const,
             },
           ];
 
           const ir = createIRWithConstraints(constraints);
-          const runtime = new RuntimeEngine(ir, {}, {
-            generateId: () => 'test-id',
-            now: () => Date.now(),
-          });
+          const runtime = new RuntimeEngine(
+            ir,
+            {},
+            {
+              generateId: () => 'test-id',
+              now: () => Date.now(),
+            },
+          );
 
           const result = await runtime.runCommand('createCommand', {
             value: Math.abs(value),
@@ -112,7 +127,7 @@ describe('Runtime Constraint Validation - Property Tests', () => {
           // With valid data, command should succeed (constraints pass)
           // Note: Actual execution depends on command structure
           expect(result).toBeDefined();
-        })
+        }),
       );
     });
 
@@ -123,19 +138,24 @@ describe('Runtime Constraint Validation - Property Tests', () => {
             {
               name: 'positiveValue',
               code: 'positiveValue',
-              expression: ExpressionBuilder.binary('>=',
+              expression: ExpressionBuilder.binary(
+                '>=',
                 ExpressionBuilder.identifier('value'),
-                ExpressionBuilder.literal(jsToIRValue(0))
+                ExpressionBuilder.literal(jsToIRValue(0)),
               ),
               severity: 'block' as const,
             },
           ];
 
           const ir = createIRWithConstraints(constraints);
-          const runtime = new RuntimeEngine(ir, {}, {
-            generateId: () => 'test-id',
-            now: () => Date.now(),
-          });
+          const runtime = new RuntimeEngine(
+            ir,
+            {},
+            {
+              generateId: () => 'test-id',
+              now: () => Date.now(),
+            },
+          );
 
           // Create instance with negative value (violates constraint)
           const store = runtime.getStore('TestEntity');
@@ -148,10 +168,11 @@ describe('Runtime Constraint Validation - Property Tests', () => {
           expect(result).toBeDefined();
           // If there are constraint outcomes, check for failure
           if (result && typeof result === 'object' && 'constraintOutcomes' in result) {
-            const outcomes = (result as unknown as { constraintOutcomes: unknown[] }).constraintOutcomes;
+            const outcomes = (result as unknown as { constraintOutcomes: unknown[] })
+              .constraintOutcomes;
             expect(outcomes.length).toBeGreaterThan(0);
           }
-        })
+        }),
       );
     });
   });
@@ -168,10 +189,14 @@ describe('Runtime Constraint Validation - Property Tests', () => {
       ];
 
       const ir = createIRWithConstraints(constraints);
-      const runtime = new RuntimeEngine(ir, {}, {
-        generateId: () => 'test-id',
-        now: () => Date.now(),
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          generateId: () => 'test-id',
+          now: () => Date.now(),
+        },
+      );
 
       const store = runtime.getStore('TestEntity');
       const result = await store!.create({
@@ -193,10 +218,14 @@ describe('Runtime Constraint Validation - Property Tests', () => {
       ];
 
       const ir = createIRWithConstraints(constraints);
-      const runtime = new RuntimeEngine(ir, {}, {
-        generateId: () => 'test-id',
-        now: () => Date.now(),
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          generateId: () => 'test-id',
+          now: () => Date.now(),
+        },
+      );
 
       const store = runtime.getStore('TestEntity');
       const result = await store!.create({
@@ -218,10 +247,14 @@ describe('Runtime Constraint Validation - Property Tests', () => {
       ];
 
       const ir = createIRWithConstraints(constraints);
-      const runtime = new RuntimeEngine(ir, {}, {
-        generateId: () => 'test-id',
-        now: () => Date.now(),
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          generateId: () => 'test-id',
+          now: () => Date.now(),
+        },
+      );
 
       const store = runtime.getStore('TestEntity');
       const result = await store!.create({
@@ -239,15 +272,16 @@ describe('Runtime Constraint Validation - Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(
           fc.float({ max: 1e6, min: -1e6, noNaN: true }),
-          fc.float({ max: 1e6, min: -1e6, noNaN: true })
-          , async (value, count) => {
+          fc.float({ max: 1e6, min: -1e6, noNaN: true }),
+          async (value, count) => {
             const constraints = [
               {
                 name: 'valueCheck',
                 code: 'valueCheck',
-                expression: ExpressionBuilder.binary('>',
+                expression: ExpressionBuilder.binary(
+                  '>',
                   ExpressionBuilder.identifier('value'),
-                  ExpressionBuilder.literal(jsToIRValue(0))
+                  ExpressionBuilder.literal(jsToIRValue(0)),
                 ),
                 severity: 'block' as const,
               },
@@ -255,14 +289,22 @@ describe('Runtime Constraint Validation - Property Tests', () => {
 
             const ir = createIRWithConstraints(constraints);
 
-            const runtime1 = new RuntimeEngine(ir, {}, {
-              generateId: () => 'test-id-1',
-              now: () => Date.now(),
-            });
-            const runtime2 = new RuntimeEngine(ir, {}, {
-              generateId: () => 'test-id-2',
-              now: () => Date.now(),
-            });
+            const runtime1 = new RuntimeEngine(
+              ir,
+              {},
+              {
+                generateId: () => 'test-id-1',
+                now: () => Date.now(),
+              },
+            );
+            const runtime2 = new RuntimeEngine(
+              ir,
+              {},
+              {
+                generateId: () => 'test-id-2',
+                now: () => Date.now(),
+              },
+            );
 
             const data = { value, count };
 
@@ -274,11 +316,14 @@ describe('Runtime Constraint Validation - Property Tests', () => {
             const result2 = await store2!.create(data);
 
             // Check if both have constraint outcomes
-            const hasOutcomes1 = result1 && typeof result1 === 'object' && 'constraintOutcomes' in result1;
-            const hasOutcomes2 = result2 && typeof result2 === 'object' && 'constraintOutcomes' in result2;
+            const hasOutcomes1 =
+              result1 && typeof result1 === 'object' && 'constraintOutcomes' in result1;
+            const hasOutcomes2 =
+              result2 && typeof result2 === 'object' && 'constraintOutcomes' in result2;
 
             expect(hasOutcomes1).toBe(hasOutcomes2);
-          })
+          },
+        ),
       );
     });
   });
@@ -291,34 +336,41 @@ describe('Runtime Constraint Validation - Property Tests', () => {
             {
               name: 'complexCheck',
               code: 'complexCheck',
-              expression: ExpressionBuilder.binary('&&',
-                ExpressionBuilder.binary('>',
+              expression: ExpressionBuilder.binary(
+                '&&',
+                ExpressionBuilder.binary(
+                  '>',
                   ExpressionBuilder.identifier('value'),
-                  ExpressionBuilder.literal(jsToIRValue(0))
+                  ExpressionBuilder.literal(jsToIRValue(0)),
                 ),
-                ExpressionBuilder.binary('<',
+                ExpressionBuilder.binary(
+                  '<',
                   ExpressionBuilder.identifier('value'),
-                  ExpressionBuilder.literal(jsToIRValue(1e6))
-                )
+                  ExpressionBuilder.literal(jsToIRValue(1e6)),
+                ),
               ),
               severity: 'block' as const,
             },
           ];
 
           const ir = createIRWithConstraints(constraints);
-          const runtime = new RuntimeEngine(ir, {}, {
-            generateId: () => 'test-id',
-            now: () => Date.now(),
-          });
+          const runtime = new RuntimeEngine(
+            ir,
+            {},
+            {
+              generateId: () => 'test-id',
+              now: () => Date.now(),
+            },
+          );
 
           const store = runtime.getStore('TestEntity');
           const result = await store!.create({
-            value: Math.abs(value) % 1000000 + 1, // Ensure positive and less than 1e6
+            value: (Math.abs(value) % 1000000) + 1, // Ensure positive and less than 1e6
             count: 10,
           });
 
           expect(result).toBeDefined();
-        })
+        }),
       );
     });
 
@@ -326,25 +378,30 @@ describe('Runtime Constraint Validation - Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(
           fc.float({ max: 1e6, min: -1e6, noNaN: true }),
-          fc.float({ max: 1e6, min: -1e6, noNaN: true })
-          , async (value, limit) => {
+          fc.float({ max: 1e6, min: -1e6, noNaN: true }),
+          async (value, limit) => {
             const constraints = [
               {
                 name: 'rangeCheck',
                 code: 'rangeCheck',
-                expression: ExpressionBuilder.binary('<=',
+                expression: ExpressionBuilder.binary(
+                  '<=',
                   ExpressionBuilder.identifier('count'),
-                  ExpressionBuilder.literal(jsToIRValue(Math.abs(limit)))
+                  ExpressionBuilder.literal(jsToIRValue(Math.abs(limit))),
                 ),
                 severity: 'block' as const,
               },
             ];
 
             const ir = createIRWithConstraints(constraints);
-            const runtime = new RuntimeEngine(ir, {}, {
-              generateId: () => 'test-id',
-              now: () => Date.now(),
-            });
+            const runtime = new RuntimeEngine(
+              ir,
+              {},
+              {
+                generateId: () => 'test-id',
+                now: () => Date.now(),
+              },
+            );
 
             const store = runtime.getStore('TestEntity');
             const result = await store!.create({
@@ -353,7 +410,8 @@ describe('Runtime Constraint Validation - Property Tests', () => {
             });
 
             expect(result).toBeDefined();
-          })
+          },
+        ),
       );
     });
   });
@@ -391,7 +449,8 @@ describe('Runtime Constraint Validation - Property Tests', () => {
 
             // Context should not be modified
             expect(originalContext).toEqual(contextCopy);
-          })
+          },
+        ),
       );
     });
   });
@@ -409,10 +468,14 @@ describe('Runtime Constraint Validation - Property Tests', () => {
       ];
 
       const ir = createIRWithConstraints(constraints);
-      const runtime = new RuntimeEngine(ir, {}, {
-        generateId: () => 'test-id',
-        now: () => Date.now(),
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          generateId: () => 'test-id',
+          now: () => Date.now(),
+        },
+      );
 
       const store = runtime.getStore('TestEntity');
       const result = await store!.create({
@@ -422,7 +485,8 @@ describe('Runtime Constraint Validation - Property Tests', () => {
 
       // Check if constraint outcomes include the code
       if (result && typeof result === 'object' && 'constraintOutcomes' in result) {
-        const outcomes = (result as unknown as { constraintOutcomes: Array<{ code: string }> }).constraintOutcomes;
+        const outcomes = (result as unknown as { constraintOutcomes: Array<{ code: string }> })
+          .constraintOutcomes;
         expect(outcomes.length).toBeGreaterThan(0);
         expect(outcomes[0].code).toBe(constraintCode);
       }
@@ -442,10 +506,14 @@ describe('Runtime Constraint Validation - Property Tests', () => {
       ];
 
       const ir = createIRWithConstraints(constraints);
-      const runtime = new RuntimeEngine(ir, {}, {
-        generateId: () => 'test-id',
-        now: () => Date.now(),
-      });
+      const runtime = new RuntimeEngine(
+        ir,
+        {},
+        {
+          generateId: () => 'test-id',
+          now: () => Date.now(),
+        },
+      );
 
       const store = runtime.getStore('TestEntity');
       const result = await store!.create({
@@ -455,7 +523,8 @@ describe('Runtime Constraint Validation - Property Tests', () => {
 
       // Check if constraint outcomes include the severity
       if (result && typeof result === 'object' && 'constraintOutcomes' in result) {
-        const outcomes = (result as unknown as { constraintOutcomes: Array<{ severity: string }> }).constraintOutcomes;
+        const outcomes = (result as unknown as { constraintOutcomes: Array<{ severity: string }> })
+          .constraintOutcomes;
         expect(outcomes.length).toBeGreaterThan(0);
         expect(outcomes[0].severity).toBe(severity);
       }
@@ -488,10 +557,14 @@ describe('Runtime Constraint Validation - Property Tests', () => {
           ];
 
           const ir = createIRWithConstraints(constraints);
-          const runtime = new RuntimeEngine(ir, {}, {
-            generateId: () => 'test-id',
-            now: () => Date.now(),
-          });
+          const runtime = new RuntimeEngine(
+            ir,
+            {},
+            {
+              generateId: () => 'test-id',
+              now: () => Date.now(),
+            },
+          );
 
           const store = runtime.getStore('TestEntity');
           const result = await store!.create({
@@ -503,10 +576,11 @@ describe('Runtime Constraint Validation - Property Tests', () => {
 
           // If constraint outcomes are present, check count
           if (result && typeof result === 'object' && 'constraintOutcomes' in result) {
-            const outcomes = (result as unknown as { constraintOutcomes: unknown[] }).constraintOutcomes;
+            const outcomes = (result as unknown as { constraintOutcomes: unknown[] })
+              .constraintOutcomes;
             expect(outcomes.length).toBe(3);
           }
-        })
+        }),
       );
     });
   });

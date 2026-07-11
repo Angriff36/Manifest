@@ -27,7 +27,15 @@ const TABS: { id: OutputTab; icon: typeof Code2; label: string }[] = [
   { id: 'graph', icon: Share2, label: 'Graph' },
 ];
 
-export function OutputTabs({ ir, clientCode, serverCode, testCode, ast, source, hasErrors }: OutputTabsProps) {
+export function OutputTabs({
+  ir,
+  clientCode,
+  serverCode,
+  testCode,
+  ast,
+  source,
+  hasErrors,
+}: OutputTabsProps) {
   const [tab, setTab] = useState<OutputTab>('ir');
 
   const irJson = ir ? JSON.stringify(ir, null, 2) : '';
@@ -96,9 +104,7 @@ export function OutputTabs({ ir, clientCode, serverCode, testCode, ast, source, 
             )}
           </div>
         )}
-        {tab === 'graph' && (
-          <IRGraphPanel source={source} disabled={hasErrors} />
-        )}
+        {tab === 'graph' && <IRGraphPanel source={source} disabled={hasErrors} />}
       </div>
     </div>
   );

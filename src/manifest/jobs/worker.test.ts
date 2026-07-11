@@ -40,7 +40,7 @@ async function compileToIR(source: string): Promise<IR> {
   const compiler = new IRCompiler();
   const result = await compiler.compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compilation failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compilation failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
@@ -76,7 +76,7 @@ describe('runJobWorker (loop mechanics)', () => {
     };
 
     let handle: JobWorkerHandle;
-    const parked = new Promise<void>(resolve => {
+    const parked = new Promise<void>((resolve) => {
       handle = runJobWorker(runtime, {
         setTimeoutFn: () => {
           // The loop only reaches a back-off after it has drained everything.
@@ -120,7 +120,7 @@ describe('runJobWorker (loop mechanics)', () => {
     };
     const errors: unknown[] = [];
 
-    const handle = runJobWorker(runtime, { setTimeoutFn, onError: err => errors.push(err) });
+    const handle = runJobWorker(runtime, { setTimeoutFn, onError: (err) => errors.push(err) });
 
     // Tick 1: drainJobs throws -> onError -> parked in the back-off.
     while (!releaseBackoff) await Promise.resolve();
@@ -140,7 +140,7 @@ describe('async command end-to-end (RuntimeEngine + MemoryJobQueue)', () => {
     const runtime = new RuntimeEngine(
       ir,
       { source: 'test' },
-      { generateId: () => `id-${++idCounter}`, now: () => 1000000, jobQueue }
+      { generateId: () => `id-${++idCounter}`, now: () => 1000000, jobQueue },
     );
     return { runtime, jobQueue };
   }
@@ -152,13 +152,17 @@ describe('async command end-to-end (RuntimeEngine + MemoryJobQueue)', () => {
     await store.create({ id: 'order-1', status: 'pending', total: 0 });
 
     // Invoke the async command: it enqueues a pending job, does not mutate yet.
-    const enqueueResult = await runtime.runCommand('processOrder', { amount: 250 }, {
-      entityName: 'Order',
-      instanceId: 'order-1',
-    });
+    const enqueueResult = await runtime.runCommand(
+      'processOrder',
+      { amount: 250 },
+      {
+        entityName: 'Order',
+        instanceId: 'order-1',
+      },
+    );
     expect(enqueueResult.success).toBe(true);
     expect((enqueueResult.result as { status: string }).status).toBe('pending');
-    expect(jobQueue.getAll().map(j => j.status)).toEqual(['pending']);
+    expect(jobQueue.getAll().map((j) => j.status)).toEqual(['pending']);
     expect((await store.getById('order-1'))?.status).toBe('pending');
 
     // Drain once: the worker executes the deferred command.
@@ -178,15 +182,19 @@ describe('async command end-to-end (RuntimeEngine + MemoryJobQueue)', () => {
 
     const store = runtime.getStore('Order')!;
     await store.create({ id: 'order-2', status: 'pending', total: 0 });
-    await runtime.runCommand('processOrder', { amount: 99 }, {
-      entityName: 'Order',
-      instanceId: 'order-2',
-    });
+    await runtime.runCommand(
+      'processOrder',
+      { amount: 99 },
+      {
+        entityName: 'Order',
+        instanceId: 'order-2',
+      },
+    );
 
     // Wrap drainJobs so we can observe deterministically when the job ran,
     // without relying on any timer.
     let handle: JobWorkerHandle;
-    const drained = new Promise<CommandResult[]>(resolve => {
+    const drained = new Promise<CommandResult[]>((resolve) => {
       const observed: JobDrainable = {
         drainJobs: async () => {
           const r = await runtime.drainJobs();

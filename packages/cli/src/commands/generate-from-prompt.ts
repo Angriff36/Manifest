@@ -339,13 +339,12 @@ ${examplesContent.length > 0 ? examplesContent : 'Examples: See src/manifest/exa
 /**
  * Calls Anthropic's Claude API to generate Manifest source code.
  */
-async function callAnthropic(
-  prompt: string,
-  options: GenerateFromPromptOptions
-): Promise<string> {
+async function callAnthropic(prompt: string, options: GenerateFromPromptOptions): Promise<string> {
   const apiKey = options.apiKey ?? process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY environment variable is required. Set it or pass --api-key.');
+    throw new Error(
+      'ANTHROPIC_API_KEY environment variable is required. Set it or pass --api-key.',
+    );
   }
 
   const model = options.model ?? 'claude-3-5-sonnet-20241022';
@@ -376,12 +375,12 @@ async function callAnthropic(
     throw new Error(`Anthropic API error (${response.status}): ${error}`);
   }
 
-  const data = await response.json() as { content: Array<{ type: string; text: string }> };
+  const data = (await response.json()) as { content: Array<{ type: string; text: string }> };
   const text = data.content?.[0]?.text ?? '';
 
   // Extract code blocks if present
-  const codeBlockMatch = text.match(/```(?:manifest)?\n([\s\S]+?)\n```/) ||
-                         text.match(/```\n([\s\S]+?)\n```/);
+  const codeBlockMatch =
+    text.match(/```(?:manifest)?\n([\s\S]+?)\n```/) || text.match(/```\n([\s\S]+?)\n```/);
 
   if (codeBlockMatch) {
     return codeBlockMatch[1].trim();
@@ -399,7 +398,7 @@ async function callAnthropic(
  * Validates generated Manifest source by compiling it.
  */
 async function validateManifestSource(
-  source: string
+  source: string,
 ): Promise<{ valid: boolean; errors: string[]; warnings: string[] }> {
   try {
     const { compileToIR } = await loadCompiler();
@@ -443,7 +442,7 @@ async function validateManifestSource(
 async function generateFromPrompt(
   prompt: string,
   options: GenerateFromPromptOptions,
-  spinner: Ora
+  spinner: Ora,
 ): Promise<GenerationResult> {
   const maxRetries = options.maxRetries ?? 3;
   const iterations: GenerationIteration[] = [];
@@ -459,10 +458,7 @@ async function generateFromPrompt(
 
     try {
       // The command handler guarantees an API key is present before we get here.
-      manifestSource = await callAnthropic(
-        `${systemPrompt}\n\nUser request:\n${prompt}`,
-        options
-      );
+      manifestSource = await callAnthropic(`${systemPrompt}\n\nUser request:\n${prompt}`, options);
 
       // Validate the output
       spinner.text = `Validating generated source (attempt ${attempt}/${maxRetries})...`;
@@ -470,13 +466,15 @@ async function generateFromPrompt(
       if (options.skipValidation) {
         return {
           manifestSource,
-          iterations: [{
-            attempt,
-            manifestSource,
-            valid: true,
-            errors: [],
-            warnings: [],
-          }],
+          iterations: [
+            {
+              attempt,
+              manifestSource,
+              valid: true,
+              errors: [],
+              warnings: [],
+            },
+          ],
           success: true,
           totalAttempts: attempt,
         };
@@ -515,9 +513,8 @@ async function generateFromPrompt(
 
       // Feed the validation errors back into the prompt for the next attempt.
       if (attempt < maxRetries) {
-        prompt = `${systemPrompt}\n\nUser request:\n${prompt}\n\nIMPORTANT: Your previous output had these errors:\n${validation.errors.map(e => `  - ${e}`).join('\n')}\n\nFix these issues and provide valid Manifest source code.`;
+        prompt = `${systemPrompt}\n\nUser request:\n${prompt}\n\nIMPORTANT: Your previous output had these errors:\n${validation.errors.map((e) => `  - ${e}`).join('\n')}\n\nFix these issues and provide valid Manifest source code.`;
       }
-
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       iterations.push({
@@ -557,7 +554,7 @@ async function generateFromPrompt(
 
 export async function generateFromPromptCommand(
   prompt: string,
-  options: GenerateFromPromptOptions = {}
+  options: GenerateFromPromptOptions = {},
 ): Promise<void> {
   // LLM-backed, like `generate-tests`: an API key is required. Fail fast with
   // an actionable message rather than a mid-run network stack trace. (Without
@@ -610,10 +607,11 @@ export async function generateFromPromptCommand(
       console.log(chalk.bold('Iteration summary:'));
       for (const iter of result.iterations) {
         const icon = iter.valid ? chalk.green('✓') : chalk.red('✗');
-        console.log(`  ${icon} Attempt ${iter.attempt}: ${iter.errors.length} error(s), ${iter.warnings.length} warning(s)`);
+        console.log(
+          `  ${icon} Attempt ${iter.attempt}: ${iter.errors.length} error(s), ${iter.warnings.length} warning(s)`,
+        );
       }
     }
-
   } catch (error) {
     spinner.fail(`Generation failed: ${error instanceof Error ? error.message : String(error)}`);
     console.error(error);

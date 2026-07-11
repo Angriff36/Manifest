@@ -8,17 +8,14 @@
 import type { WiringCommandDescriptor, WiringContract } from '../types.js';
 import type { ManifestInvocation } from './invocation-extractor.js';
 import { lineAtIndex } from './invocation-extractor.js';
-import {
-  objectLiteralHasKey,
-  readObjectLiteralFieldExpression,
-} from './object-literal-keys.js';
+import { objectLiteralHasKey, readObjectLiteralFieldExpression } from './object-literal-keys.js';
 import type { ContractMismatch } from './types.js';
 
 export function analyzeContractMismatches(
   contract: WiringContract,
   invocations: Array<ManifestInvocation & { file: string; reachable?: boolean }>,
 ): ContractMismatch[] {
-  const byId = new Map(contract.capabilities.map(c => [c.capabilityId, c]));
+  const byId = new Map(contract.capabilities.map((c) => [c.capabilityId, c]));
   const out: ContractMismatch[] = [];
 
   for (const inv of invocations) {
@@ -56,7 +53,7 @@ function analyzePayload(
         kind: 'trusted_field_spoofing',
         capabilityId: cap.capabilityId,
         parameter: serverParam,
-        message: `Client payload supplies trusted server-owned field '${serverParam}' (expected from ${cap.parameters.find(p => p.name === serverParam)?.trustedSource ?? 'context'})`,
+        message: `Client payload supplies trusted server-owned field '${serverParam}' (expected from ${cap.parameters.find((p) => p.name === serverParam)?.trustedSource ?? 'context'})`,
         source: loc,
         defect: true,
       });
@@ -208,4 +205,3 @@ function dedupeMismatches(items: ContractMismatch[]): ContractMismatch[] {
   }
   return out;
 }
-

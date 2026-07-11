@@ -24,8 +24,7 @@ export type StepValidation =
   | { type: 'has-policy'; name: string; action?: string } // Must have a policy
   | { type: 'source-contains'; text: string } // Source must contain this text
   | { type: 'source-matches'; pattern: string } // Source must match this regex
-  | { type: 'ir-has'; path: string; value?: unknown } // IR must have a value at a given path
-  ;
+  | { type: 'ir-has'; path: string; value?: unknown }; // IR must have a value at a given path
 
 /** A single step in a tutorial */
 export interface TutorialStep {

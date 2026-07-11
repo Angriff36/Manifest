@@ -23,7 +23,7 @@ async function writeRegistry(root: string, commands: Array<{ entity: string; com
         emits: [],
         effects: [],
       })),
-    })
+    }),
   );
   return reg;
 }
@@ -52,7 +52,7 @@ describe('enforceSurfaceCommand', () => {
     await writeRoute(
       root,
       'app/actions/createUserAction.ts',
-      `export async function POST(input){ return await runtime.runCommand('User.create', input); }`
+      `export async function POST(input){ return await runtime.runCommand('User.create', input); }`,
     );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const res = await enforceSurfaceCommand({
@@ -73,7 +73,7 @@ describe('enforceSurfaceCommand', () => {
     await writeRoute(
       root,
       'app/api/x/route.ts',
-      `export async function POST(){ return await runtime.runCommand('Foo.bar', {}); }`
+      `export async function POST(){ return await runtime.runCommand('Foo.bar', {}); }`,
     );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const res = await enforceSurfaceCommand({
@@ -94,7 +94,7 @@ describe('enforceSurfaceCommand', () => {
     await writeRoute(
       root,
       'app/api/x/route.ts',
-      `export async function POST(){ return await runtime.runCommand('Foo.bar', {}); }`
+      `export async function POST(){ return await runtime.runCommand('Foo.bar', {}); }`,
     );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const res = await enforceSurfaceCommand({
@@ -113,7 +113,7 @@ describe('enforceSurfaceCommand', () => {
     await writeRoute(
       root,
       'app/api/audit/route.ts',
-      `export async function POST(){ return prisma.user.create({ data: {} }); }`
+      `export async function POST(){ return prisma.user.create({ data: {} }); }`,
     );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const res = await enforceSurfaceCommand({
@@ -132,7 +132,7 @@ describe('enforceSurfaceCommand', () => {
     await writeRoute(
       root,
       'app/api/x/route.ts',
-      `export async function POST(name){ return runtime.runCommand(name, {}); }`
+      `export async function POST(name){ return runtime.runCommand(name, {}); }`,
     );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const res = await enforceSurfaceCommand({
@@ -153,7 +153,7 @@ describe('enforceSurfaceCommand', () => {
     await writeRoute(
       root,
       'app/api/x/route.ts',
-      `export async function POST(name){ return runtime.runCommand(name, {}); }`
+      `export async function POST(name){ return runtime.runCommand(name, {}); }`,
     );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const res = await enforceSurfaceCommand({
@@ -196,7 +196,7 @@ describe('enforceSurfaceCommand', () => {
     await writeRoute(
       root,
       'lib/server/legacy.ts',
-      `export async function POST(){ return runtime.runCommand('Foo.bar', {}); }`
+      `export async function POST(){ return runtime.runCommand('Foo.bar', {}); }`,
     );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const without = await enforceSurfaceCommand({
@@ -211,8 +211,8 @@ describe('enforceSurfaceCommand', () => {
       include: ['lib/**/*.{ts,js}'],
     });
     spy.mockRestore();
-    expect(without.findings.find(f => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeUndefined();
-    expect(withInclude.findings.find(f => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeDefined();
+    expect(without.findings.find((f) => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeUndefined();
+    expect(withInclude.findings.find((f) => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeDefined();
   });
 
   it('honors --exclude by suppressing a path that would otherwise be flagged', async () => {
@@ -221,7 +221,7 @@ describe('enforceSurfaceCommand', () => {
     await writeRoute(
       root,
       'app/api/legacy/route.ts',
-      `export async function POST(){ return runtime.runCommand('Foo.bar', {}); }`
+      `export async function POST(){ return runtime.runCommand('Foo.bar', {}); }`,
     );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const without = await enforceSurfaceCommand({
@@ -236,8 +236,10 @@ describe('enforceSurfaceCommand', () => {
       exclude: ['app/api/legacy/**'],
     });
     spy.mockRestore();
-    expect(without.findings.find(f => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeDefined();
-    expect(withExclude.findings.find(f => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeUndefined();
+    expect(without.findings.find((f) => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeDefined();
+    expect(
+      withExclude.findings.find((f) => f.code === 'UNREGISTERED_COMMAND_CALL'),
+    ).toBeUndefined();
   });
 
   it('does not flag --include non-route files as ROUTE_SURFACE_DRIFT', async () => {
@@ -249,7 +251,7 @@ describe('enforceSurfaceCommand', () => {
     await writeRoute(
       root,
       'lib/server/helpers.ts',
-      `export async function doIt(){ return runtime.runCommand('User.create', {}); }`
+      `export async function doIt(){ return runtime.runCommand('User.create', {}); }`,
     );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const res = await enforceSurfaceCommand({
@@ -259,7 +261,7 @@ describe('enforceSurfaceCommand', () => {
       format: 'json',
     });
     spy.mockRestore();
-    expect(res.findings.find(f => f.code === 'ROUTE_SURFACE_DRIFT')).toBeUndefined();
+    expect(res.findings.find((f) => f.code === 'ROUTE_SURFACE_DRIFT')).toBeUndefined();
   });
 
   it('deduplicates findings when --include overlaps default globs', async () => {
@@ -272,7 +274,7 @@ describe('enforceSurfaceCommand', () => {
     await writeRoute(
       root,
       'app/api/legacy/route.ts',
-      `export async function POST(){ return prisma.user.create({ data: {} }); }`
+      `export async function POST(){ return prisma.user.create({ data: {} }); }`,
     );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const res = await enforceSurfaceCommand({
@@ -282,7 +284,7 @@ describe('enforceSurfaceCommand', () => {
       format: 'json',
     });
     spy.mockRestore();
-    const directWrites = res.findings.filter(f => f.code === 'DIRECT_WRITE_BYPASS');
+    const directWrites = res.findings.filter((f) => f.code === 'DIRECT_WRITE_BYPASS');
     expect(directWrites).toHaveLength(1);
   });
 
@@ -292,7 +294,7 @@ describe('enforceSurfaceCommand', () => {
     await writeRoute(
       root,
       'app/api/x/route.ts',
-      `export async function POST(){ return runtime.runCommand('Foo.bar', {}); }`
+      `export async function POST(){ return runtime.runCommand('Foo.bar', {}); }`,
     );
     const captures: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((...args) => {

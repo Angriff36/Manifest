@@ -42,7 +42,10 @@ async function locateSchemas(): Promise<{ commands: object; entities: object }> 
       await fs.access(candidate);
       const commands = JSON.parse(await fs.readFile(candidate, 'utf-8')) as object;
       const entities = JSON.parse(
-        await fs.readFile(path.join(dir, 'docs', 'spec', 'registry', 'entities.schema.json'), 'utf-8')
+        await fs.readFile(
+          path.join(dir, 'docs', 'spec', 'registry', 'entities.schema.json'),
+          'utf-8',
+        ),
       ) as object;
       return { commands, entities };
     } catch {
@@ -84,9 +87,7 @@ async function resolveIR(options: EmitOptions): Promise<unknown> {
 
 function formatAjvErrors(errors: ErrorObject[] | null | undefined): string {
   if (!errors || errors.length === 0) return '';
-  return errors
-    .map((e) => `  - ${e.instancePath || '<root>'} ${e.message ?? ''}`)
-    .join('\n');
+  return errors.map((e) => `  - ${e.instancePath || '<root>'} ${e.message ?? ''}`).join('\n');
 }
 
 export async function emitRegistriesCommand(options: EmitOptions = {}): Promise<void> {
@@ -119,8 +120,16 @@ export async function emitRegistriesCommand(options: EmitOptions = {}): Promise<
   await fs.writeFile(commandsPath, JSON.stringify(commands, null, indent), 'utf-8');
   await fs.writeFile(entitiesPath, JSON.stringify(entities, null, indent), 'utf-8');
 
-  console.log(chalk.green('Wrote'), commandsPath, chalk.gray(`(${commands.commands.length} commands)`));
-  console.log(chalk.green('Wrote'), entitiesPath, chalk.gray(`(${entities.entities.length} entities)`));
+  console.log(
+    chalk.green('Wrote'),
+    commandsPath,
+    chalk.gray(`(${commands.commands.length} commands)`),
+  );
+  console.log(
+    chalk.green('Wrote'),
+    entitiesPath,
+    chalk.gray(`(${entities.entities.length} entities)`),
+  );
 }
 
 // Exported only for tests.

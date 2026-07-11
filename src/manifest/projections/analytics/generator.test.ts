@@ -187,9 +187,7 @@ describe('AnalyticsProjection', () => {
       });
       const plan = JSON.parse(result.artifacts[0].code);
 
-      const event = plan.events.find(
-        (e: { name: string }) => e.name === 'myapp TaskStatusUpdated',
-      );
+      const event = plan.events.find((e: { name: string }) => e.name === 'myapp TaskStatusUpdated');
       expect(event).toBeDefined();
       expect(plan.namespace).toBe('myapp');
     });
@@ -401,9 +399,7 @@ describe('AnalyticsProjection', () => {
       expect(result.diagnostics).toHaveLength(0);
       expect(result.artifacts.length).toBeGreaterThan(0);
 
-      const taskHandler = result.artifacts.find(
-        a => a.id === 'analytics.handlers.Task',
-      );
+      const taskHandler = result.artifacts.find((a) => a.id === 'analytics.handlers.Task');
       expect(taskHandler).toBeDefined();
       expect(taskHandler?.contentType).toBe('typescript');
       expect(taskHandler?.pathHint).toBe('analytics/handlers/task.ts');
@@ -464,9 +460,7 @@ describe('AnalyticsProjection', () => {
       const result = projection.generate(ir, { surface: 'analytics.handlers' });
 
       // Only Task should have a handler file
-      const emptyHandler = result.artifacts.find(
-        a => a.id === 'analytics.handlers.EmptyEntity',
-      );
+      const emptyHandler = result.artifacts.find((a) => a.id === 'analytics.handlers.EmptyEntity');
       expect(emptyHandler).toBeUndefined();
     });
 

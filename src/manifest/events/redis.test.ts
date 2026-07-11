@@ -157,7 +157,7 @@ describe('RedisEventBus (fake client)', () => {
     await bus.subscribe(() => {});
 
     // Two subscriptions -> two dedicated subscriber connections on the hub.
-    const subscriberConnections = [...publisher.hub.channels.get(CHANNEL) ?? []];
+    const subscriberConnections = [...(publisher.hub.channels.get(CHANNEL) ?? [])];
     expect(subscriberConnections).toHaveLength(2);
 
     await bus.close();
@@ -172,7 +172,7 @@ describe('RedisEventBus (fake client)', () => {
     const bus = new RedisEventBus({ client: publisher, channel: CHANNEL });
 
     const unsubscribe = await bus.subscribe(() => {});
-    const [sub] = [...publisher.hub.channels.get(CHANNEL) ?? []];
+    const [sub] = [...(publisher.hub.channels.get(CHANNEL) ?? [])];
     expect(sub).toBeDefined();
 
     await unsubscribe();

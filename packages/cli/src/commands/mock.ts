@@ -14,6 +14,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { compileToIR } from '@angriff36/manifest/ir-compiler';
 import { RuntimeEngine, type CommandResult } from '@angriff36/manifest';
+import type { IR as ManifestIR } from '@angriff36/manifest/ir';
 
 interface MockCommandOptions {
   port?: string | number;
@@ -156,7 +157,7 @@ function sendJson(
   res: http.ServerResponse,
   status: number,
   body: unknown,
-  corsHeaders?: Record<string, string>
+  corsHeaders?: Record<string, string>,
 ): void {
   const json = JSON.stringify(body);
   const headers: Record<string, string> = {
@@ -174,7 +175,7 @@ function sendJson(
 function matchRoute(
   method: string,
   url: string,
-  routes: Route[]
+  routes: Route[],
 ): { route: Route; params: Record<string, string> } | null {
   const urlPath = url.split('?')[0];
 
@@ -217,9 +218,7 @@ async function loadIR(sourcePath: string): Promise<IR> {
 
   // Compile .manifest source
   const { ir, diagnostics } = await compileToIR(content, { sourcePath: resolved });
-  const errors = (diagnostics || []).filter(
-    (d: { severity?: string }) => d.severity === 'error'
-  );
+  const errors = (diagnostics || []).filter((d: { severity?: string }) => d.severity === 'error');
 
   if (!ir || errors.length > 0) {
     const messages = errors
@@ -247,7 +246,7 @@ function printScenarioHints(ir: IR, scenario: string): void {
       if (guards && guards.length > 0) {
         console.log(
           chalk.yellow(`    ${cmd.entity ?? '(global)'}.${cmd.name}`) +
-            chalk.gray(` — ${guards.length} guard(s)`)
+            chalk.gray(` — ${guards.length} guard(s)`),
         );
       }
     }
@@ -259,8 +258,7 @@ function printScenarioHints(ir: IR, scenario: string): void {
       const constraints = entity.constraints as unknown[] | undefined;
       if (constraints && constraints.length > 0) {
         console.log(
-          chalk.yellow(`    ${entity.name}`) +
-            chalk.gray(` — ${constraints.length} constraint(s)`)
+          chalk.yellow(`    ${entity.name}`) + chalk.gray(` — ${constraints.length} constraint(s)`),
         );
       }
     }
@@ -273,7 +271,7 @@ function printScenarioHints(ir: IR, scenario: string): void {
 export function createMockServer(
   engine: RuntimeEngine,
   routes: Route[],
-  options: { cors?: boolean }
+  options: { cors?: boolean },
 ): http.Server {
   const corsHeaders: Record<string, string> = options.cors
     ? {
@@ -351,10 +349,7 @@ export function createMockServer(
 /**
  * Main mock command handler.
  */
-export async function mockCommand(
-  source: string,
-  options: MockCommandOptions
-): Promise<void> {
+export async function mockCommand(source: string, options: MockCommandOptions): Promise<void> {
   const spinner = ora('Loading manifest').start();
 
   try {
@@ -369,11 +364,14 @@ export async function mockCommand(
     spinner.succeed(`Loaded ${path.relative(process.cwd(), path.resolve(source))}`);
 
     // Create runtime engine with in-memory stores (default)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const engine = new RuntimeEngine(ir as any, {}, {
-      deterministicMode: true,
-      requireValidProvenance: false,
-    });
+    const engine = new RuntimeEngine(
+      ir as unknown as ManifestIR,
+      {},
+      {
+        deterministicMode: true,
+        requireValidProvenance: false,
+      },
+    );
 
     // Derive routes
     const routes = deriveRoutes(ir);
@@ -396,10 +394,7 @@ export async function mockCommand(
 
     server.listen(port, host, () => {
       console.log('');
-      console.log(
-        chalk.bold(`Mock server running at `) +
-          chalk.cyan(`http://${host}:${port}`)
-      );
+      console.log(chalk.bold(`Mock server running at `) + chalk.cyan(`http://${host}:${port}`));
       if (cors) {
         console.log(chalk.gray('  CORS enabled'));
       }
@@ -426,9 +421,7 @@ export async function mockCommand(
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
   } catch (error) {
-    spinner.fail(
-      `Mock server failed: ${error instanceof Error ? error.message : String(error)}`
-    );
+    spinner.fail(`Mock server failed: ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;
   }
 }

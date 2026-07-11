@@ -13,19 +13,19 @@ A non-Capsule sample app (`fixtures/sample-app/`) consumes the same public surfa
 
 ## Public Manifest surfaces consumed by Capsule-Pro
 
-| # | Surface | Where it lives in Manifest | How Capsule-Pro consumes it |
-|---|---|---|---|
-| 1 | `RuntimeContext` typed fields (`tenantId`, `orgId`, `actorId`, `requestId`, `source`, `deterministic`) | `src/manifest/runtime-engine.ts` | Capsule-Pro's auth middleware maps Clerk session → typed context. No Manifest patch required. |
-| 2 | `requireTenantContext` option | `RuntimeOptions` in `src/manifest/runtime-engine.ts` | Passed `true` for governed entities. |
-| 3 | `nextjs.dispatcher` projection | `src/manifest/projections/nextjs/generator.ts` (surface `nextjs.dispatcher`) | Generated dispatcher mounted at `apps/api/app/api/manifest/[entity]/commands/[command]/route.ts`. Capsule-Pro keeps no per-command override files. |
-| 4 | Command registry (`commands.json`) | `src/manifest/registry/emit.ts` → CLI: `manifest emit registries` | Capsule-Pro CI commits the emitted file under `manifest-registry/`. |
-| 5 | Governed-entity registry (`entities.json`) | Same as #4 | Same as #4. |
-| 6 | Approved-bypass registry (`bypasses.json`) | Schema: `docs/spec/registry/bypasses.schema.json` | Capsule-Pro hand-curates `bypasses.json` in its own repo; Manifest never sees the file. |
-| 7 | `manifest audit-governance` CLI (umbrella detector) | `packages/cli/src/commands/audit-governance.ts` | Capsule-Pro CI step runs `manifest audit-governance --strict --commands-registry … --bypass-registry …`. |
-| 8 | `manifest audit-bypasses` CLI | `packages/cli/src/commands/audit-bypasses.ts` | Capsule-Pro CI runs in `--strict-expiry` mode. |
-| 9 | `AuditSink` adapter contract | `src/manifest/audit/audit-sink.ts` | Capsule-Pro implements `PostgresAuditSink` in its own repo. |
-| 10 | `OutboxStore` adapter contract | `src/manifest/outbox/outbox-store.ts` | Capsule-Pro implements `PostgresOutboxStore` in its own repo. |
-| 11 | Conformance fixtures format | `src/manifest/conformance/` | Capsule-Pro authors its own fixtures using Manifest's fixture format. |
+| #   | Surface                                                                                                | Where it lives in Manifest                                                   | How Capsule-Pro consumes it                                                                                                                        |
+| --- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `RuntimeContext` typed fields (`tenantId`, `orgId`, `actorId`, `requestId`, `source`, `deterministic`) | `src/manifest/runtime-engine.ts`                                             | Capsule-Pro's auth middleware maps Clerk session → typed context. No Manifest patch required.                                                      |
+| 2   | `requireTenantContext` option                                                                          | `RuntimeOptions` in `src/manifest/runtime-engine.ts`                         | Passed `true` for governed entities.                                                                                                               |
+| 3   | `nextjs.dispatcher` projection                                                                         | `src/manifest/projections/nextjs/generator.ts` (surface `nextjs.dispatcher`) | Generated dispatcher mounted at `apps/api/app/api/manifest/[entity]/commands/[command]/route.ts`. Capsule-Pro keeps no per-command override files. |
+| 4   | Command registry (`commands.json`)                                                                     | `src/manifest/registry/emit.ts` → CLI: `manifest emit registries`            | Capsule-Pro CI commits the emitted file under `manifest-registry/`.                                                                                |
+| 5   | Governed-entity registry (`entities.json`)                                                             | Same as #4                                                                   | Same as #4.                                                                                                                                        |
+| 6   | Approved-bypass registry (`bypasses.json`)                                                             | Schema: `docs/spec/registry/bypasses.schema.json`                            | Capsule-Pro hand-curates `bypasses.json` in its own repo; Manifest never sees the file.                                                            |
+| 7   | `manifest audit-governance` CLI (umbrella detector)                                                    | `packages/cli/src/commands/audit-governance.ts`                              | Capsule-Pro CI step runs `manifest audit-governance --strict --commands-registry … --bypass-registry …`.                                           |
+| 8   | `manifest audit-bypasses` CLI                                                                          | `packages/cli/src/commands/audit-bypasses.ts`                                | Capsule-Pro CI runs in `--strict-expiry` mode.                                                                                                     |
+| 9   | `AuditSink` adapter contract                                                                           | `src/manifest/audit/audit-sink.ts`                                           | Capsule-Pro implements `PostgresAuditSink` in its own repo.                                                                                        |
+| 10  | `OutboxStore` adapter contract                                                                         | `src/manifest/outbox/outbox-store.ts`                                        | Capsule-Pro implements `PostgresOutboxStore` in its own repo.                                                                                      |
+| 11  | Conformance fixtures format                                                                            | `src/manifest/conformance/`                                                  | Capsule-Pro authors its own fixtures using Manifest's fixture format.                                                                              |
 
 ## What Manifest does NOT do for Capsule-Pro
 
@@ -71,16 +71,16 @@ export function createRuntime(ctx: SessionCtx) {
     compiledIR,
     {
       tenantId: ctx.orgId,
-      orgId:    ctx.orgId,
-      actorId:  ctx.userId,
+      orgId: ctx.orgId,
+      actorId: ctx.userId,
       requestId: ctx.requestId,
-      source:   'route',
+      source: 'route',
     },
     {
       requireTenantContext: true,
-      auditSink:    new PostgresAuditSink(pgPool),
-      outboxStore:  new PostgresOutboxStore(pgPool),
-    }
+      auditSink: new PostgresAuditSink(pgPool),
+      outboxStore: new PostgresOutboxStore(pgPool),
+    },
   );
 }
 ```

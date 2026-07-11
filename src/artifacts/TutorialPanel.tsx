@@ -25,11 +25,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { BUILTIN_TUTORIALS } from './tutorials/builtin';
-import {
-  validateStep,
-  getNextStep,
-  getProgressPercent,
-} from './tutorials/engine';
+import { validateStep, getNextStep, getProgressPercent } from './tutorials/engine';
 import type {
   Tutorial,
   TutorialStep,
@@ -73,7 +69,7 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
   const [tutorials] = useState<Tutorial[]>(BUILTIN_TUTORIALS);
   const [progress, setProgress] = useState<TutorialProgress>(loadProgress);
   const [activeTutorialId, setActiveTutorialId] = useState<string | null>(
-    progress.activeTutorialId
+    progress.activeTutorialId,
   );
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -90,7 +86,7 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
   // Get active tutorial
   const activeTutorial = useMemo(
     () => tutorials.find((t) => t.id === activeTutorialId) || null,
-    [tutorials, activeTutorialId]
+    [tutorials, activeTutorialId],
   );
 
   // Get current step
@@ -143,25 +139,25 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
       await Promise.resolve();
       if (cancelled) return;
       if (!activeTutorial || !activeStep || !validation) return;
-    // Guard against race condition: only mark complete if validation is for the current step
-    if (validation.stepId !== activeStep.id) return;
-    if (validation.passed && !completedStepsForActive.includes(activeStep.id)) {
-      setProgress((prev) => {
-        const updated = { ...prev };
-        const existing = updated.completedSteps[activeTutorial.id] || [];
-        updated.completedSteps = {
-          ...updated.completedSteps,
-          [activeTutorial.id]: [...existing, activeStep.id],
-        };
-        // Check if all steps done
-        if (updated.completedSteps[activeTutorial.id].length === activeTutorial.steps.length) {
-          updated.completedTutorials = {
-            ...updated.completedTutorials,
-            [activeTutorial.id]: true,
+      // Guard against race condition: only mark complete if validation is for the current step
+      if (validation.stepId !== activeStep.id) return;
+      if (validation.passed && !completedStepsForActive.includes(activeStep.id)) {
+        setProgress((prev) => {
+          const updated = { ...prev };
+          const existing = updated.completedSteps[activeTutorial.id] || [];
+          updated.completedSteps = {
+            ...updated.completedSteps,
+            [activeTutorial.id]: [...existing, activeStep.id],
           };
-        }
-        return updated;
-      });
+          // Check if all steps done
+          if (updated.completedSteps[activeTutorial.id].length === activeTutorial.steps.length) {
+            updated.completedTutorials = {
+              ...updated.completedTutorials,
+              [activeTutorial.id]: true,
+            };
+          }
+          return updated;
+        });
       }
     })();
     return () => {
@@ -170,17 +166,14 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
   }, [validation, activeStep, activeTutorial, completedStepsForActive]);
 
   // Select tutorial
-  const selectTutorial = useCallback(
-    (tutorialId: string) => {
-      setActiveTutorialId(tutorialId);
-      setActiveStepId(null);
-      setShowAnswer(false);
-      setHintsRevealed(0);
-      setFailureCount(0);
-      setTutorialListOpen(false);
-    },
-    []
-  );
+  const selectTutorial = useCallback((tutorialId: string) => {
+    setActiveTutorialId(tutorialId);
+    setActiveStepId(null);
+    setShowAnswer(false);
+    setHintsRevealed(0);
+    setFailureCount(0);
+    setTutorialListOpen(false);
+  }, []);
 
   // Load step code into editor
   const loadStarterCode = useCallback(() => {
@@ -251,8 +244,12 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
             {tutorials.map((tutorial) => {
               const completed = progress.completedTutorials[tutorial.id] || false;
               const stepCount = progress.completedSteps[tutorial.id]?.length || 0;
-              const percent = getProgressPercent(tutorial, progress.completedSteps[tutorial.id] || []);
-              const prereqsMet = !tutorial.prerequisites ||
+              const percent = getProgressPercent(
+                tutorial,
+                progress.completedSteps[tutorial.id] || [],
+              );
+              const prereqsMet =
+                !tutorial.prerequisites ||
                 tutorial.prerequisites.every((p) => progress.completedTutorials[p]);
               return (
                 <button
@@ -283,18 +280,21 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
                           <Clock className="w-3 h-3" />
                           {tutorial.estimatedMinutes} min
                         </span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${
-                          tutorial.difficulty === 'beginner'
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : tutorial.difficulty === 'intermediate'
-                            ? 'bg-amber-500/20 text-amber-400'
-                            : 'bg-rose-500/20 text-rose-400'
-                        }`}>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs ${
+                            tutorial.difficulty === 'beginner'
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : tutorial.difficulty === 'intermediate'
+                                ? 'bg-amber-500/20 text-amber-400'
+                                : 'bg-rose-500/20 text-rose-400'
+                          }`}
+                        >
                           {tutorial.difficulty}
                         </span>
                         {tutorial.tags.map((tag) => (
                           <span key={tag} className="flex items-center gap-1">
-                            <Tag className="w-3 h-3" />{tag}
+                            <Tag className="w-3 h-3" />
+                            {tag}
                           </span>
                         ))}
                       </div>
@@ -302,7 +302,9 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
                     {stepCount > 0 && (
                       <div className="text-right">
                         <div className="text-sm font-medium text-sky-400">{percent}%</div>
-                        <div className="text-xs text-gray-500">{stepCount}/{tutorial.steps.length} steps</div>
+                        <div className="text-xs text-gray-500">
+                          {stepCount}/{tutorial.steps.length} steps
+                        </div>
                       </div>
                     )}
                   </div>
@@ -386,11 +388,11 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
       <div className="flex-1 overflow-auto p-4 space-y-4">
         {/* Step Title */}
         <div className="flex items-start gap-3">
-          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-            isStepCompleted
-              ? 'bg-emerald-500/20 text-emerald-400'
-              : 'bg-sky-500/20 text-sky-400'
-          }`}>
+          <div
+            className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+              isStepCompleted ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400'
+            }`}
+          >
             {isStepCompleted ? <CheckCircle2 className="w-4 h-4" /> : stepIndex + 1}
           </div>
           <div className="flex-1">
@@ -410,7 +412,10 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
             </div>
             <div className="flex flex-wrap gap-1 mt-2">
               {activeStep.unlocks.map((u) => (
-                <span key={u} className="px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded text-xs">
+                <span
+                  key={u}
+                  className="px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded text-xs"
+                >
                   {u}
                 </span>
               ))}
@@ -426,7 +431,10 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
               Hint {Math.min(hintsRevealed, visibleHints.length)} of {visibleHints.length}
             </div>
             {visibleHints.slice(0, hintsRevealed).map((hint, i) => (
-              <div key={i} className="text-sm text-gray-300 whitespace-pre-wrap pl-6 border-l-2 border-sky-500/30 ml-1">
+              <div
+                key={i}
+                className="text-sm text-gray-300 whitespace-pre-wrap pl-6 border-l-2 border-sky-500/30 ml-1"
+              >
                 {hint.text}
               </div>
             ))}
@@ -434,9 +442,7 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
         )}
 
         {/* Validation Status */}
-        {validation && (
-          <ValidationStatus validation={validation} />
-        )}
+        {validation && <ValidationStatus validation={validation} />}
 
         {/* Answer preview */}
         {showAnswer && (
@@ -446,7 +452,7 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
               Expected solution:
             </div>
             <pre className="p-3 bg-gray-900 rounded text-xs text-gray-300 overflow-x-auto font-mono whitespace-pre-wrap">
-{activeStep.expectedCode}
+              {activeStep.expectedCode}
             </pre>
           </div>
         )}

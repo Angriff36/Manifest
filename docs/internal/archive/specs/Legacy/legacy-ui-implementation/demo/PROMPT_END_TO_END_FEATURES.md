@@ -7,6 +7,7 @@ The Manifest language implementation can parse, compile, and pass conformance te
 ## Constitutional Requirements
 
 Follow the repo's workflow:
+
 1. **Spec first**: Document behavior in `docs/spec/semantics.md` or `docs/spec/builtins.md` if needed
 2. **Tests second**: Add conformance fixtures that prove the behavior
 3. **Implementation third**: Wire runtime + UI
@@ -26,13 +27,13 @@ Follow the repo's workflow:
      entity Order {
        property required id: string
        property total: number = 0
-       
+
        command addItem(amount: number) {
          mutate total = self.total + amount
          emit OrderUpdated
        }
      }
-     
+
      event OrderUpdated: "order.updated" {
        orderId: string
        total: number
@@ -177,12 +178,14 @@ Follow the repo's workflow:
 ## Files to Create/Modify
 
 **New Files**:
+
 - `src/manifest/conformance/fixtures/15-event-log.manifest`
 - `src/manifest/conformance/fixtures/16-diagnostics-detail.manifest`
 - `src/manifest/conformance/fixtures/17-tiny-app.manifest`
 - `src/artifacts/TinyAppPanel.tsx` (for Option C)
 
 **Modify Files**:
+
 - `src/artifacts/RuntimePanel.tsx` (Options A & B)
 - `src/artifacts/ArtifactsPanel.tsx` (add Tiny App tab for Option C)
 - `docs/spec/semantics.md` (document diagnostics format for Option B)

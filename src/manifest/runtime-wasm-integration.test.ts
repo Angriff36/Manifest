@@ -84,10 +84,14 @@ describe('RuntimeEngine with WASM evaluator', () => {
       // Create a WASM evaluator but don't init it (no bytes available)
       // The runtime engine should handle this gracefully
       const wasmEvaluator = new WasmExpressionEvaluator();
-      engine = new RuntimeEngine(ir, {}, {
-        now: () => 1234567890,
-        wasmEvaluator,
-      });
+      engine = new RuntimeEngine(
+        ir,
+        {},
+        {
+          now: () => 1234567890,
+          wasmEvaluator,
+        },
+      );
     });
 
     it('should evaluate literal expressions correctly', async () => {
@@ -190,10 +194,9 @@ describe('RuntimeContext with WASM', () => {
     const engine = new RuntimeEngine(ir, context, { now: () => 1234567890 });
 
     // user.role should resolve to 'admin'
-    const result = await engine.evaluateExpression(
-      ident('user'),
-      { user: { id: 'user-1', role: 'admin' } }
-    );
+    const result = await engine.evaluateExpression(ident('user'), {
+      user: { id: 'user-1', role: 'admin' },
+    });
     expect(result).toEqual({ id: 'user-1', role: 'admin' });
   });
 });

@@ -38,7 +38,7 @@ export function basePlan(
     mismatch,
     evidence,
     sourceFiles: [mismatch.source.file],
-    consumerTrace: [mismatch.source, ...evidence.map(e => e.source)],
+    consumerTrace: [mismatch.source, ...evidence.map((e) => e.source)],
     preconditions: [],
     postconditions: [],
     edits: [],
@@ -66,7 +66,7 @@ export function classify(
     confidence: allowed ? 'high' : normalized === 'unsafe-to-apply' ? 'low' : 'medium',
     automaticApplicationAllowed: allowed,
     rationale,
-    sourceFiles: sourceFiles.length ? sourceFiles : plan.sourceFiles ?? [],
+    sourceFiles: sourceFiles.length ? sourceFiles : (plan.sourceFiles ?? []),
   };
 }
 
@@ -91,21 +91,21 @@ export function priorityFor(kind: RepairKind, cap: WiringCommandDescriptor): num
       ? 5
       : kind === 'replace-payload-expression' || kind === 'remove-invalid-literal'
         ? 10
-      : kind === 'replace-empty-date-sentinel'
-        ? 12
-      : kind === 'add-required-input'
-        ? 15
-      : kind === 'migrate-to-safe-binding'
-        ? 20
-      : kind === 'replace-fake-lifecycle-binding'
-        ? 25
-      : kind === 'expand-partial-to-full-body'
-        ? 35
-      : kind === 'add-invalidation'
-        ? 40
-      : kind === 'wire-existing-control'
-        ? 50
-        : 60;
+        : kind === 'replace-empty-date-sentinel'
+          ? 12
+          : kind === 'add-required-input'
+            ? 15
+            : kind === 'migrate-to-safe-binding'
+              ? 20
+              : kind === 'replace-fake-lifecycle-binding'
+                ? 25
+                : kind === 'expand-partial-to-full-body'
+                  ? 35
+                  : kind === 'add-invalidation'
+                    ? 40
+                    : kind === 'wire-existing-control'
+                      ? 50
+                      : 60;
   return isPrimary ? base : base + 5;
 }
 

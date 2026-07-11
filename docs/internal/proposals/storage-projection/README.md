@@ -23,6 +23,7 @@ emits one or two artifacts:
    Prisma 7+, which moved the connection URL out of the schema file.
 
 The projection is invoked via:
+
 ```typescript
 import { PrismaProjection } from '@angriff36/manifest/projections/prisma';
 
@@ -45,19 +46,19 @@ info diagnostic.
 
 ### Properties
 
-| IR type | Prisma scalar | Notes |
-|---|---|---|
-| `string` | `String` | |
-| `boolean` | `Boolean` | |
-| `timestamp` | `DateTime` | |
-| `number` | — | **Ambiguous**: must supply `typeMappings` entry (`Float`, `Decimal`, or `BigInt`). Emits `PRISMA_AMBIGUOUS_NUMBER` error and skips column if absent. |
+| IR type     | Prisma scalar | Notes                                                                                                                                                |
+| ----------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `string`    | `String`      |                                                                                                                                                      |
+| `boolean`   | `Boolean`     |                                                                                                                                                      |
+| `timestamp` | `DateTime`    |                                                                                                                                                      |
+| `number`    | —             | **Ambiguous**: must supply `typeMappings` entry (`Float`, `Decimal`, or `BigInt`). Emits `PRISMA_AMBIGUOUS_NUMBER` error and skips column if absent. |
 
 ### Primary key
 
-| IR declaration | Prisma output |
-|---|---|
-| `property id: string` (no `key`) | `id String @id` |
-| `key [tenantId, id]` | `@@id([tenantId, id])` — no `@id` on any single field |
+| IR declaration                   | Prisma output                                         |
+| -------------------------------- | ----------------------------------------------------- |
+| `property id: string` (no `key`) | `id String @id`                                       |
+| `key [tenantId, id]`             | `@@id([tenantId, id])` — no `@id` on any single field |
 
 An entity with no `id` property and no `key` declaration triggers `PRISMA_NO_ID_PROPERTY`
 (error severity) and the model is skipped entirely.
@@ -67,7 +68,9 @@ An entity with no `id` property and no `key` declaration triggers `PRISMA_NO_ID_
 ```manifest
 unique [tenantId, externalId]
 ```
+
 →
+
 ```prisma
 @@unique([tenantId, externalId])
 ```
@@ -76,10 +79,10 @@ Multiple `unique` declarations are each emitted as a separate `@@unique` line.
 
 ### Relationships
 
-| IR declaration | Prisma output |
-|---|---|
-| `belongsTo x: T with colName` | `x T @relation(fields: [colName], references: [id])` |
-| `belongsTo x: T fields [a, b] references [c, d]` | `x T @relation(fields: [a, b], references: [c, d])` |
+| IR declaration                                              | Prisma output                                                    |
+| ----------------------------------------------------------- | ---------------------------------------------------------------- |
+| `belongsTo x: T with colName`                               | `x T @relation(fields: [colName], references: [id])`             |
+| `belongsTo x: T fields [a, b] references [c, d]`            | `x T @relation(fields: [a, b], references: [c, d])`              |
 | `belongsTo x: T fields [a] references [r] onDelete cascade` | `x T @relation(fields: [a], references: [r], onDelete: Cascade)` |
 
 `onDelete` and `onUpdate` values (`cascade`, `restrict`, `setNull`, `setDefault`,
@@ -106,31 +109,32 @@ options: {
   },
 }
 ```
+
 → `@@index([tenantId, status])`
 
 ## Options reference
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `provider` | string | — | Datasource provider. Triggers `prisma.config.ts` emission. |
-| `urlEnvVar` | string | `"DATABASE_URL"` | Env var used in `prisma.config.ts`. |
-| `tableMappings` | `Record<EntityName, string>` | `{}` | `@@map` overrides. |
-| `columnMappings` | `Record<EntityName, Record<PropName, string>>` | `{}` | `@map` overrides. |
-| `precision` | `Record<EntityName, Record<PropName, {precision, scale}>>` | `{}` | `@db.Decimal(p,s)` per field. |
-| `typeMappings` | `Record<EntityName, Record<PropName, string>>` | `{}` | Required for `number`-typed fields. |
-| `foreignKeys` | `Record<EntityName, Record<RelName, string>>` | `{}` | FK column override for relationships without explicit `fields [...]`. |
-| `indexes` | `Record<EntityName, IndexEntry[]>` | `[]` | Additional `@@index` declarations. |
-| `output` | string | `"schema.prisma"` | Path hint for the schema artifact. |
+| Option           | Type                                                       | Default           | Description                                                           |
+| ---------------- | ---------------------------------------------------------- | ----------------- | --------------------------------------------------------------------- |
+| `provider`       | string                                                     | —                 | Datasource provider. Triggers `prisma.config.ts` emission.            |
+| `urlEnvVar`      | string                                                     | `"DATABASE_URL"`  | Env var used in `prisma.config.ts`.                                   |
+| `tableMappings`  | `Record<EntityName, string>`                               | `{}`              | `@@map` overrides.                                                    |
+| `columnMappings` | `Record<EntityName, Record<PropName, string>>`             | `{}`              | `@map` overrides.                                                     |
+| `precision`      | `Record<EntityName, Record<PropName, {precision, scale}>>` | `{}`              | `@db.Decimal(p,s)` per field.                                         |
+| `typeMappings`   | `Record<EntityName, Record<PropName, string>>`             | `{}`              | Required for `number`-typed fields.                                   |
+| `foreignKeys`    | `Record<EntityName, Record<RelName, string>>`              | `{}`              | FK column override for relationships without explicit `fields [...]`. |
+| `indexes`        | `Record<EntityName, IndexEntry[]>`                         | `[]`              | Additional `@@index` declarations.                                    |
+| `output`         | string                                                     | `"schema.prisma"` | Path hint for the schema artifact.                                    |
 
 ## Diagnostics
 
-| Code | Severity | Condition |
-|---|---|---|
-| `PRISMA_AMBIGUOUS_NUMBER` | error | `number`-typed property with no `typeMappings` override. Column skipped. |
-| `PRISMA_NO_ID_PROPERTY` | error | Entity has no `id` property and no `key`. Model skipped. |
-| `PRISMA_SKIPPED_NON_DURABLE` | info | Store is `memory` or `localStorage`. |
-| `PRISMA_SKIPPED_NO_STORE` | info | No store declaration. |
-| `PRISMA_SKIPPED_EXTERNAL` | info | Entity has `external: true`. |
+| Code                         | Severity | Condition                                                                |
+| ---------------------------- | -------- | ------------------------------------------------------------------------ |
+| `PRISMA_AMBIGUOUS_NUMBER`    | error    | `number`-typed property with no `typeMappings` override. Column skipped. |
+| `PRISMA_NO_ID_PROPERTY`      | error    | Entity has no `id` property and no `key`. Model skipped.                 |
+| `PRISMA_SKIPPED_NON_DURABLE` | info     | Store is `memory` or `localStorage`.                                     |
+| `PRISMA_SKIPPED_NO_STORE`    | info     | No store declaration.                                                    |
+| `PRISMA_SKIPPED_EXTERNAL`    | info     | Entity has `external: true`.                                             |
 
 ## Runtime scope boundary
 

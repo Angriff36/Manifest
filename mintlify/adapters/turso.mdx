@@ -1,7 +1,7 @@
 ---
-title: "Turso / libSQL store adapter"
+title: 'Turso / libSQL store adapter'
 description: "Persist entity state in Turso's edge-optimized libSQL database with automatic schema generation and low-latency reads."
-sidebarTitle: "Turso"
+sidebarTitle: 'Turso'
 ---
 
 The Turso adapter persists entity state in a [Turso](https://turso.tech/) edge database using libSQL. It is designed for low-latency reads at the edge, making it a good fit for globally distributed applications.
@@ -9,7 +9,7 @@ The Turso adapter persists entity state in a [Turso](https://turso.tech/) edge d
 ## Configuration
 
 ```typescript
-import { TursoStore } from "@angriff36/manifest/stores";
+import { TursoStore } from '@angriff36/manifest/stores';
 
 const store = new TursoStore({
   url: process.env.TURSO_DATABASE_URL,
@@ -19,27 +19,29 @@ const store = new TursoStore({
 
 ### Options
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `url` | Yes | Turso database URL (e.g., `libsql://my-db-xxxx.turso.io`) |
-| `authToken` | Yes | Turso authentication token |
-| `schemaPrefix` | No | Prefix for generated table names (default: none) |
+| Option         | Required | Description                                               |
+| -------------- | -------- | --------------------------------------------------------- |
+| `url`          | Yes      | Turso database URL (e.g., `libsql://my-db-xxxx.turso.io`) |
+| `authToken`    | Yes      | Turso authentication token                                |
+| `schemaPrefix` | No       | Prefix for generated table names (default: none)          |
 
 ## Wiring into the runtime
 
 ```typescript
-import { RuntimeEngine } from "@angriff36/manifest";
-import { TursoStore } from "@angriff36/manifest/stores";
+import { RuntimeEngine } from '@angriff36/manifest';
+import { TursoStore } from '@angriff36/manifest/stores';
 
-const runtime = new RuntimeEngine(ir, {
-  user: { id: "user-1" },
-  storeProvider: (entityName) => {
-    return new TursoStore({
-      url: process.env.TURSO_DATABASE_URL,
-      authToken: process.env.TURSO_AUTH_TOKEN,
-    });
+const runtime = new RuntimeEngine(
+  ir,
+  { user: { id: 'user-1' } },
+  {
+    storeProvider: () =>
+      new TursoStore({
+        url: process.env.TURSO_DATABASE_URL,
+        authToken: process.env.TURSO_AUTH_TOKEN,
+      }),
   },
-});
+);
 ```
 
 ## Schema generation
@@ -68,5 +70,5 @@ manifest generate ir/ --projection turso --output schema/
 - Connection pooling is handled by `@libsql/client`
 
 <Note>
-The Turso adapter requires `@libsql/client` as a peer dependency: `npm install @libsql/client`.
+  The Turso adapter requires `@libsql/client` as a peer dependency: `npm install @libsql/client`.
 </Note>

@@ -69,13 +69,7 @@ export class FilePathIndex {
 
   findWithSuffix(suffix: string): string | undefined {
     const norm = normalizeRepoPath(suffix);
-    const candidates = [
-      norm,
-      `${norm}.ts`,
-      `${norm}.tsx`,
-      `${norm}/index.ts`,
-      `${norm}/index.tsx`,
-    ];
+    const candidates = [norm, `${norm}.ts`, `${norm}.tsx`, `${norm}/index.ts`, `${norm}/index.tsx`];
     for (const c of candidates) {
       const hit = this.findExact(c) ?? this.byTail.get(this.caseInsensitive ? c.toLowerCase() : c);
       if (hit) return hit;
@@ -86,10 +80,7 @@ export class FilePathIndex {
 
 const indexCache = new WeakMap<Map<string, string>, FilePathIndex>();
 
-function getIndex(
-  fileContents: Map<string, string>,
-  caseInsensitive: boolean,
-): FilePathIndex {
+function getIndex(fileContents: Map<string, string>, caseInsensitive: boolean): FilePathIndex {
   let idx = indexCache.get(fileContents);
   if (!idx) {
     idx = new FilePathIndex(fileContents, caseInsensitive);
@@ -146,7 +137,12 @@ export function parseImportSpecifiers(
     const symbols = named
       ? named
           .split(',')
-          .map(s => s.trim().split(/\s+as\s+/)[0]!.trim())
+          .map((s) =>
+            s
+              .trim()
+              .split(/\s+as\s+/)[0]!
+              .trim(),
+          )
           .filter(Boolean)
       : defaultSym
         ? [defaultSym]
@@ -200,12 +196,7 @@ export function resolveLocalImportClosure(
     }
     for (const specifier of parseSideEffectImports(content)) {
       if (!specifier.startsWith('.')) continue;
-      const resolved = resolveImportPath(
-        current.file,
-        specifier,
-        fileContents,
-        caseInsensitive,
-      );
+      const resolved = resolveImportPath(current.file, specifier, fileContents, caseInsensitive);
       if (resolved) queue.push({ file: resolved, depth: current.depth + 1 });
     }
   }

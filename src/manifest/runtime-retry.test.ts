@@ -3,12 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  computeRetryDelays,
-  isRetryableError,
-  applyJitter,
-  RetryConfig,
-} from './runtime-retry';
+import { computeRetryDelays, isRetryableError, applyJitter, RetryConfig } from './runtime-retry';
 
 describe('computeRetryDelays', () => {
   it('computes fixed backoff correctly', () => {

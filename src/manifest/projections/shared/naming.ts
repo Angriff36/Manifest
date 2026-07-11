@@ -59,26 +59,32 @@ export function normalizeNaming(
 
 /** Split an identifier into lower-cased words on camel/Pascal/snake/kebab boundaries. */
 function splitWords(s: string): string[] {
-  return s
-    // acronym followed by a capitalized word: HTTPServer → HTTP Server
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-    // lower/digit followed by upper: createdAt → created At
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    // separators
-    .replace(/[\s_-]+/g, ' ')
-    .trim()
-    .split(' ')
-    .filter(Boolean);
+  return (
+    s
+      // acronym followed by a capitalized word: HTTPServer → HTTP Server
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+      // lower/digit followed by upper: createdAt → created At
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      // separators
+      .replace(/[\s_-]+/g, ' ')
+      .trim()
+      .split(' ')
+      .filter(Boolean)
+  );
 }
 
 /** `createdAt` / `Widget` / `author id` → `created_at` / `widget` / `author_id`. */
 export function toSnakeCase(s: string): string {
-  return splitWords(s).map(w => w.toLowerCase()).join('_');
+  return splitWords(s)
+    .map((w) => w.toLowerCase())
+    .join('_');
 }
 
 /** `createdAt` / `Widget` / `author id` → `created-at` / `widget` / `author-id`. */
 export function toKebabCase(s: string): string {
-  return splitWords(s).map(w => w.toLowerCase()).join('-');
+  return splitWords(s)
+    .map((w) => w.toLowerCase())
+    .join('-');
 }
 
 /**
@@ -93,18 +99,22 @@ export type RouteCasing = 'lowercase' | 'kebab-case' | 'snake_case' | 'preserve'
 /** Normalize an identifier to a URL route segment per the chosen casing. */
 export function applyRouteCasing(name: string, casing: RouteCasing): string {
   switch (casing) {
-    case 'kebab-case': return toKebabCase(name);
-    case 'snake_case': return toSnakeCase(name);
-    case 'preserve': return name;
+    case 'kebab-case':
+      return toKebabCase(name);
+    case 'snake_case':
+      return toSnakeCase(name);
+    case 'preserve':
+      return name;
     case 'lowercase':
-    default: return name.toLowerCase();
+    default:
+      return name.toLowerCase();
   }
 }
 
 /** `created_at` / `Widget` → `CreatedAt` / `Widget`. */
 export function toPascalCase(s: string): string {
   return splitWords(s)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join('');
 }
 
@@ -117,10 +127,14 @@ export function toCamelCase(s: string): string {
 /** Apply a case style. `'preserve'` returns the input unchanged. */
 export function applyCase(name: string, style: CaseStyle): string {
   switch (style) {
-    case 'snake_case': return toSnakeCase(name);
-    case 'camelCase': return toCamelCase(name);
-    case 'PascalCase': return toPascalCase(name);
-    case 'preserve': return name;
+    case 'snake_case':
+      return toSnakeCase(name);
+    case 'camelCase':
+      return toCamelCase(name);
+    case 'PascalCase':
+      return toPascalCase(name);
+    case 'preserve':
+      return name;
   }
 }
 

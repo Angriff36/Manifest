@@ -58,23 +58,25 @@ export const NEXTJS_DEFAULTS = {
    * keep hand-writing them.
    */
   emitCompanions: true,
-} as const satisfies Required<Omit<
-  NextJsProjectionOptions,
-  | 'tenantProvider'
-  | 'dispatcher'
-  | 'concreteCommandRoutes'
-  | 'readRoutes'
-  | 'generatedDir'
-  | 'paths'
-  | 'naming'
-  | 'accessorNames'
-  | 'routeSegments'
-  | 'runtimeConfigImport'
-  | 'apiBasePath'
-  | 'dispatcherBasePath'
-  | 'client'
-  | 'realtime'
->>;
+} as const satisfies Required<
+  Omit<
+    NextJsProjectionOptions,
+    | 'tenantProvider'
+    | 'dispatcher'
+    | 'concreteCommandRoutes'
+    | 'readRoutes'
+    | 'generatedDir'
+    | 'paths'
+    | 'naming'
+    | 'accessorNames'
+    | 'routeSegments'
+    | 'runtimeConfigImport'
+    | 'apiBasePath'
+    | 'dispatcherBasePath'
+    | 'client'
+    | 'realtime'
+  >
+>;
 
 /**
  * Default tenant provider hook.

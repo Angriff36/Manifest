@@ -1,6 +1,6 @@
 ---
-title: "Compiler and IR API"
-description: "Public APIs for ManifestCompiler, IRCompiler, compileToIR, and the IR contract types."
+title: 'Compiler and IR API'
+description: 'Public APIs for ManifestCompiler, IRCompiler, compileToIR, and the IR contract types.'
 ---
 
 > **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
@@ -13,7 +13,6 @@ description: "Public APIs for ManifestCompiler, IRCompiler, compileToIR, and the
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 ## Import Paths
 
@@ -44,8 +43,8 @@ Source files: `src/manifest/compiler.ts`, `src/manifest/ir-compiler.ts`, `src/ma
 
 ```ts
 class ManifestCompiler {
-  compile(source: string): CompilationResult
-  parse(source: string): { program: ManifestProgram; errors: unknown[] }
+  compile(source: string): CompilationResult;
+  parse(source: string): { program: ManifestProgram; errors: unknown[] };
 }
 ```
 
@@ -68,8 +67,8 @@ if (!result.success) {
 
 ```ts
 class IRCompiler {
-  constructor(cache?: IRCache)
-  compileToIR(source: string, options?: { useCache?: boolean }): Promise<CompileToIRResult>
+  constructor(cache?: IRCache);
+  compileToIR(source: string, options?: { useCache?: boolean }): Promise<CompileToIRResult>;
 }
 ```
 
@@ -87,7 +86,7 @@ console.log(result.ir?.provenance);
 ## `compileToIR`
 
 ```ts
-function compileToIR(source: string): Promise<CompileToIRResult>
+function compileToIR(source: string): Promise<CompileToIRResult>;
 ```
 
 This helper is the simplest public entry point when you do not need compiler object reuse.

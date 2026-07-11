@@ -1,6 +1,10 @@
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 import type { Position as LspPosition } from 'vscode-languageserver';
-import type { Token, Position as ManifestPosition, ManifestProgram } from '@angriff36/manifest/types';
+import type {
+  Token,
+  Position as ManifestPosition,
+  ManifestProgram,
+} from '@angriff36/manifest/types';
 import type { IR } from '@angriff36/manifest/ir';
 import { toManifestPosition } from '../position-utils.js';
 import {
@@ -53,7 +57,7 @@ export function getCompletions(
   tokens: Token[],
   program: ManifestProgram,
   ir: IR | null,
-  position: LspPosition
+  position: LspPosition,
 ): CompletionItem[] {
   const mPos = toManifestPosition(position);
   const context = classifyContext(tokens, mPos);
@@ -119,7 +123,18 @@ export function getCompletions(
 }
 
 interface CompletionContext {
-  kind: 'top-level' | 'entity-body' | 'command-body' | 'type' | 'modifier' | 'policy-action' | 'severity' | 'ref-action' | 'store-target' | 'member-access' | 'unknown';
+  kind:
+    | 'top-level'
+    | 'entity-body'
+    | 'command-body'
+    | 'type'
+    | 'modifier'
+    | 'policy-action'
+    | 'severity'
+    | 'ref-action'
+    | 'store-target'
+    | 'member-access'
+    | 'unknown';
   objectName?: string;
 }
 
@@ -128,12 +143,15 @@ interface CompletionContext {
  */
 function classifyContext(tokens: Token[], pos: ManifestPosition): CompletionContext {
   // Find the index of the cursor position
-  const significantTokens = tokens.filter(t => t.type !== 'NEWLINE' && t.type !== 'EOF');
+  const significantTokens = tokens.filter((t) => t.type !== 'NEWLINE' && t.type !== 'EOF');
   let cursorIdx = -1;
 
   for (let i = significantTokens.length - 1; i >= 0; i--) {
     const t = significantTokens[i];
-    if (t.position.line < pos.line || (t.position.line === pos.line && t.position.column + t.value.length <= pos.column)) {
+    if (
+      t.position.line < pos.line ||
+      (t.position.line === pos.line && t.position.column + t.value.length <= pos.column)
+    ) {
       cursorIdx = i;
       break;
     }
@@ -177,13 +195,27 @@ function classifyContext(tokens: Token[], pos: ManifestPosition): CompletionCont
 
   // After property name with type → modifier position
   // Detect: we're after a type keyword in a property context
-  const typeKeywords = new Set(['string', 'number', 'boolean', 'decimal', 'money', 'list', 'map', 'any', 'void']);
+  const typeKeywords = new Set([
+    'string',
+    'number',
+    'boolean',
+    'decimal',
+    'money',
+    'list',
+    'map',
+    'any',
+    'void',
+  ]);
   if (prev.type === 'KEYWORD' && typeKeywords.has(prev.value)) {
     // Check if we're in a property declaration context (preceded by 'property name')
     if (cursorIdx >= 2) {
       const nameToken = significantTokens[cursorIdx - 1];
       const propKeyword = significantTokens[cursorIdx - 2];
-      if (propKeyword.type === 'KEYWORD' && propKeyword.value === 'property' && nameToken.type === 'IDENTIFIER') {
+      if (
+        propKeyword.type === 'KEYWORD' &&
+        propKeyword.value === 'property' &&
+        nameToken.type === 'IDENTIFIER'
+      ) {
         return { kind: 'modifier' };
       }
     }
@@ -214,7 +246,10 @@ function computeNesting(tokens: Token[], pos: ManifestPosition): NestingInfo {
 
   for (const token of tokens) {
     // Stop at cursor position
-    if (token.position.line > pos.line || (token.position.line === pos.line && token.position.column >= pos.column)) {
+    if (
+      token.position.line > pos.line ||
+      (token.position.line === pos.line && token.position.column >= pos.column)
+    ) {
       break;
     }
 
@@ -296,7 +331,12 @@ function addEnumNames(items: CompletionItem[], program: ManifestProgram) {
   }
 }
 
-function addMemberCompletions(items: CompletionItem[], objectName: string, ir: IR, _program: ManifestProgram) {
+function addMemberCompletions(
+  items: CompletionItem[],
+  objectName: string,
+  ir: IR,
+  _program: ManifestProgram,
+) {
   // self. / this. → current entity properties (we suggest all entity properties)
   if (objectName === 'self' || objectName === 'this') {
     for (const entity of ir.entities) {
@@ -335,7 +375,7 @@ function addMemberCompletions(items: CompletionItem[], objectName: string, ir: I
   }
 
   // Entity name → show properties of that entity
-  const entity = ir.entities.find(e => e.name === objectName);
+  const entity = ir.entities.find((e) => e.name === objectName);
   if (entity) {
     for (const prop of entity.properties) {
       items.push({
@@ -346,11 +386,13 @@ function addMemberCompletions(items: CompletionItem[], objectName: string, ir: I
     }
     // entity.commands is string[] (command names); resolve from top-level ir.commands
     for (const cmdName of entity.commands) {
-      const fullCmd = ir.commands.find(c => c.name === cmdName);
+      const fullCmd = ir.commands.find((c) => c.name === cmdName);
       items.push({
         label: cmdName,
         kind: CompletionItemKind.Function,
-        detail: fullCmd ? `command(${fullCmd.parameters.map((p: { name: string }) => p.name).join(', ')})` : 'command',
+        detail: fullCmd
+          ? `command(${fullCmd.parameters.map((p: { name: string }) => p.name).join(', ')})`
+          : 'command',
       });
     }
   }

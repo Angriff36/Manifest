@@ -38,10 +38,14 @@ function createTestIR(): IR {
  */
 function createTestRuntime() {
   const ir = createTestIR();
-  return new RuntimeEngine(ir, {}, {
-    generateId: () => `test-${Math.random().toString(36).slice(2)}`,
-    now: () => 1234567890,
-  });
+  return new RuntimeEngine(
+    ir,
+    {},
+    {
+      generateId: () => `test-${Math.random().toString(36).slice(2)}`,
+      now: () => 1234567890,
+    },
+  );
 }
 
 /**
@@ -53,7 +57,7 @@ function jsToIRValue(value: unknown): { kind: string; value?: unknown; elements?
   if (typeof value === 'string') return { kind: 'string', value };
   if (typeof value === 'boolean') return { kind: 'boolean', value };
   if (Array.isArray(value)) {
-    return { kind: 'array', elements: value.map(v => jsToIRValue(v)) };
+    return { kind: 'array', elements: value.map((v) => jsToIRValue(v)) };
   }
   return { kind: 'null', value: null };
 }
@@ -64,7 +68,10 @@ function jsToIRValue(value: unknown): { kind: string; value?: unknown; elements?
 async function callBuiltin(name: string, args: unknown[]): Promise<unknown> {
   const runtime = createTestRuntime();
   const calleeExpr: IRExpression = { kind: 'identifier', name };
-  const argExprs: IRExpression[] = args.map(arg => ({ kind: 'literal', value: jsToIRValue(arg) as IRValue }));
+  const argExprs: IRExpression[] = args.map((arg) => ({
+    kind: 'literal',
+    value: jsToIRValue(arg) as IRValue,
+  }));
   const callExpr: IRExpression = { kind: 'call', callee: calleeExpr, args: argExprs };
   return runtime['evaluateExpression'](callExpr, {});
 }
@@ -72,31 +79,41 @@ async function callBuiltin(name: string, args: unknown[]): Promise<unknown> {
 /**
  * Helper for fast lowercase strings (a-z) - using a simple approach
  */
-const lowercaseString = fc.array(fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split(''))).map(chars => chars.join(''));
+const lowercaseString = fc
+  .array(fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')))
+  .map((chars) => chars.join(''));
 
 /**
  * Helper for fast uppercase strings (A-Z) - using a simple approach
  */
-const uppercaseString = fc.array(fc.constantFrom(...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''))).map(chars => chars.join(''));
+const uppercaseString = fc
+  .array(fc.constantFrom(...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')))
+  .map((chars) => chars.join(''));
 
 describe('Runtime Built-in Functions - Property Tests', () => {
   describe('String Built-ins', () => {
     describe('trim', () => {
       it('should remove leading and trailing whitespace', async () => {
         await fc.assert(
-          fc.asyncProperty(fc.string(), fc.string(), fc.string(), async (prefix, middle, suffix) => {
-            // Skip if middle is only whitespace or starts/ends with whitespace (would cause issues)
-            if (middle.trim().length === 0 || middle.startsWith(' ') || middle.endsWith(' ')) return;
+          fc.asyncProperty(
+            fc.string(),
+            fc.string(),
+            fc.string(),
+            async (prefix, middle, suffix) => {
+              // Skip if middle is only whitespace or starts/ends with whitespace (would cause issues)
+              if (middle.trim().length === 0 || middle.startsWith(' ') || middle.endsWith(' '))
+                return;
 
-            const whitespace = '  \t\n';
-            const s = prefix + whitespace + middle + whitespace + suffix;
-            const trimmed = await callBuiltin('trim', [s]) as string;
+              const whitespace = '  \t\n';
+              const s = prefix + whitespace + middle + whitespace + suffix;
+              const trimmed = (await callBuiltin('trim', [s])) as string;
 
-            // Should not start or end with whitespace
-            expect(trimmed.trim()).toBe(trimmed);
-            // Middle should be preserved
-            expect(trimmed).toContain(middle);
-          })
+              // Should not start or end with whitespace
+              expect(trimmed.trim()).toBe(trimmed);
+              // Middle should be preserved
+              expect(trimmed).toContain(middle);
+            },
+          ),
         );
       });
 
@@ -106,7 +123,7 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             const trimmed1 = await callBuiltin('trim', [s]);
             const trimmed2 = await callBuiltin('trim', [trimmed1]);
             expect(trimmed1).toEqual(trimmed2);
-          })
+          }),
         );
       });
     });
@@ -115,22 +132,22 @@ describe('Runtime Built-in Functions - Property Tests', () => {
       it('toUpperCase should convert lowercase to uppercase', async () => {
         await fc.assert(
           fc.asyncProperty(lowercaseString, async (s) => {
-            const upper = await callBuiltin('toUpperCase', [s]) as string;
+            const upper = (await callBuiltin('toUpperCase', [s])) as string;
             for (const c of upper) {
               expect(c).toBe(c.toUpperCase());
             }
-          })
+          }),
         );
       });
 
       it('toLowerCase should convert uppercase to lowercase', async () => {
         await fc.assert(
           fc.asyncProperty(uppercaseString, async (s) => {
-            const lower = await callBuiltin('toLowerCase', [s]) as string;
+            const lower = (await callBuiltin('toLowerCase', [s])) as string;
             for (const c of lower) {
               expect(c).toBe(c.toLowerCase());
             }
-          })
+          }),
         );
       });
 
@@ -144,7 +161,7 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             const lower1 = await callBuiltin('toLowerCase', [s]);
             const lower2 = await callBuiltin('toLowerCase', [lower1]);
             expect(lower1).toEqual(lower2);
-          })
+          }),
         );
       });
     });
@@ -156,7 +173,7 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             const s = prefix + suffix;
             const result = await callBuiltin('startsWith', [s, prefix]);
             expect(result).toBe(true);
-          })
+          }),
         );
       });
 
@@ -166,7 +183,7 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             const s = prefix + suffix;
             const result = await callBuiltin('endsWith', [s, suffix]);
             expect(result).toBe(true);
-          })
+          }),
         );
       });
 
@@ -185,7 +202,7 @@ describe('Runtime Built-in Functions - Property Tests', () => {
 
             const endsResult = await callBuiltin('endsWith', [s, b]);
             expect(endsResult).toBe(false);
-          })
+          }),
         );
       });
     });
@@ -196,23 +213,32 @@ describe('Runtime Built-in Functions - Property Tests', () => {
           fc.asyncProperty(fc.string(), fc.nat({ max: 100 }), async (s, start) => {
             if (start >= s.length) return; // Skip out of bounds
 
-            const result = await callBuiltin('substring', [s, start]) as string;
+            const result = (await callBuiltin('substring', [s, start])) as string;
             const expected = s.substring(start);
             expect(result).toBe(expected);
-          })
+          }),
         );
       });
 
       it('should return substring between start and end', async () => {
         await fc.assert(
-          fc.asyncProperty(fc.string(), fc.nat({ max: 50 }), fc.nat({ max: 50 }), async (s, start, end) => {
-            const adjustedStart = Math.min(start, s.length);
-            const adjustedEnd = Math.min(end, s.length);
+          fc.asyncProperty(
+            fc.string(),
+            fc.nat({ max: 50 }),
+            fc.nat({ max: 50 }),
+            async (s, start, end) => {
+              const adjustedStart = Math.min(start, s.length);
+              const adjustedEnd = Math.min(end, s.length);
 
-            const result = await callBuiltin('substring', [s, adjustedStart, adjustedEnd]) as string;
-            const expected = s.substring(adjustedStart, adjustedEnd);
-            expect(result).toBe(expected);
-          })
+              const result = (await callBuiltin('substring', [
+                s,
+                adjustedStart,
+                adjustedEnd,
+              ])) as string;
+              const expected = s.substring(adjustedStart, adjustedEnd);
+              expect(result).toBe(expected);
+            },
+          ),
         );
       });
     });
@@ -220,13 +246,18 @@ describe('Runtime Built-in Functions - Property Tests', () => {
     describe('indexOf', () => {
       it('should return index when substring is found', async () => {
         await fc.assert(
-          fc.asyncProperty(fc.string(), fc.string(), fc.string(), async (prefix, search, suffix) => {
-            if (search.length === 0) return; // Skip empty search
-            const s = prefix + search + suffix;
-            const result = await callBuiltin('indexOf', [s, search]);
-            expect(result).toBeGreaterThanOrEqual(0);
-            expect(result).toBeLessThan(s.length);
-          })
+          fc.asyncProperty(
+            fc.string(),
+            fc.string(),
+            fc.string(),
+            async (prefix, search, suffix) => {
+              if (search.length === 0) return; // Skip empty search
+              const s = prefix + search + suffix;
+              const result = await callBuiltin('indexOf', [s, search]);
+              expect(result).toBeGreaterThanOrEqual(0);
+              expect(result).toBeLessThan(s.length);
+            },
+          ),
         );
       });
 
@@ -236,7 +267,7 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             if (s.includes(search)) return; // Skip if search is in s
             const result = await callBuiltin('indexOf', [s, search]);
             expect(result).toBe(-1);
-          })
+          }),
         );
       });
     });
@@ -251,13 +282,13 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             if (replacement.includes(search)) return;
 
             const s = search + search; // Double the search string
-            const result = await callBuiltin('replace', [s, search, replacement]) as string;
+            const result = (await callBuiltin('replace', [s, search, replacement])) as string;
 
             // Should not contain the search string anymore
             expect(result).not.toContain(search);
             // Should contain the replacement string twice
             expect(result).toEqual(replacement + replacement);
-          })
+          }),
         );
       });
     });
@@ -268,17 +299,20 @@ describe('Runtime Built-in Functions - Property Tests', () => {
           fc.asyncProperty(fc.string(), fc.string(), async (s, sep) => {
             const result = await callBuiltin('split', [s, sep]);
             expect(Array.isArray(result)).toBe(true);
-          })
+          }),
         );
       });
 
       it('splitting empty string should return single element', async () => {
         await fc.assert(
-          fc.asyncProperty(fc.string().filter(s => s.length > 0), async (sep) => {
-            const result = await callBuiltin('split', ['', sep]) as unknown[];
-            expect(result.length).toBe(1);
-            expect(result[0]).toBe('');
-          })
+          fc.asyncProperty(
+            fc.string().filter((s) => s.length > 0),
+            async (sep) => {
+              const result = (await callBuiltin('split', ['', sep])) as unknown[];
+              expect(result.length).toBe(1);
+              expect(result[0]).toBe('');
+            },
+          ),
         );
       });
     });
@@ -286,11 +320,14 @@ describe('Runtime Built-in Functions - Property Tests', () => {
     describe('matches', () => {
       it('should match valid regex patterns', async () => {
         await fc.assert(
-          fc.asyncProperty(lowercaseString.filter(s => s.length > 0), async (s) => {
-            const pattern = '^[a-z]+$';
-            const result = await callBuiltin('matches', [s, pattern]);
-            expect(result).toBe(true);
-          })
+          fc.asyncProperty(
+            lowercaseString.filter((s) => s.length > 0),
+            async (s) => {
+              const pattern = '^[a-z]+$';
+              const result = await callBuiltin('matches', [s, pattern]);
+              expect(result).toBe(true);
+            },
+          ),
         );
       });
 
@@ -300,7 +337,7 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             const pattern = '^[a-z]+$';
             const result = await callBuiltin('matches', [s, pattern]);
             expect(result).toBe(false);
-          })
+          }),
         );
       });
     });
@@ -311,7 +348,7 @@ describe('Runtime Built-in Functions - Property Tests', () => {
           fc.asyncProperty(fc.string(), async (s) => {
             const result = await callBuiltin('length', [s]);
             expect(result).toBe(s.length);
-          })
+          }),
         );
       });
     });
@@ -325,7 +362,7 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             const result = await callBuiltin('abs', [n]);
             expect(typeof result).toBe('number');
             expect((result as number) >= 0).toBe(true);
-          })
+          }),
         );
       });
 
@@ -335,7 +372,7 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             const abs1 = await callBuiltin('abs', [n]);
             const abs2 = await callBuiltin('abs', [abs1]);
             expect(abs1).toEqual(abs2);
-          })
+          }),
         );
       });
     });
@@ -349,36 +386,36 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             async (n, fn) => {
               const result = await callBuiltin(fn, [n]);
               expect(Number.isInteger(result)).toBe(true);
-            }
-          )
+            },
+          ),
         );
       });
 
       it('round should satisfy round(n) >= n - 0.5 and round(n) <= n + 0.5', async () => {
         await fc.assert(
           fc.asyncProperty(fc.float({ max: 1e6, min: -1e6, noNaN: true }), async (n) => {
-            const result = await callBuiltin('round', [n]) as number;
+            const result = (await callBuiltin('round', [n])) as number;
             expect(result).toBeGreaterThanOrEqual(n - 0.5);
             expect(result).toBeLessThanOrEqual(n + 0.5);
-          })
+          }),
         );
       });
 
       it('floor should satisfy floor(n) <= n', async () => {
         await fc.assert(
           fc.asyncProperty(fc.float({ max: 1e6, min: -1e6, noNaN: true }), async (n) => {
-            const result = await callBuiltin('floor', [n]) as number;
+            const result = (await callBuiltin('floor', [n])) as number;
             expect(result).toBeLessThanOrEqual(n);
-          })
+          }),
         );
       });
 
       it('ceil should satisfy ceil(n) >= n', async () => {
         await fc.assert(
           fc.asyncProperty(fc.float({ max: 1e6, min: -1e6, noNaN: true }), async (n) => {
-            const result = await callBuiltin('ceil', [n]) as number;
+            const result = (await callBuiltin('ceil', [n])) as number;
             expect(result).toBeGreaterThanOrEqual(n);
-          })
+          }),
         );
       });
     });
@@ -387,26 +424,32 @@ describe('Runtime Built-in Functions - Property Tests', () => {
       it('min should return the smallest value', async () => {
         await fc.assert(
           fc.asyncProperty(
-            fc.array(fc.float({ max: 1e6, min: -1e6, noNaN: true }), { minLength: 1, maxLength: 10 }),
+            fc.array(fc.float({ max: 1e6, min: -1e6, noNaN: true }), {
+              minLength: 1,
+              maxLength: 10,
+            }),
             async (numbers) => {
               const result = await callBuiltin('min', numbers);
               const expected = Math.min(...numbers);
               expect(result).toEqual(expected);
-            }
-          )
+            },
+          ),
         );
       });
 
       it('max should return the largest value', async () => {
         await fc.assert(
           fc.asyncProperty(
-            fc.array(fc.float({ max: 1e6, min: -1e6, noNaN: true }), { minLength: 1, maxLength: 10 }),
+            fc.array(fc.float({ max: 1e6, min: -1e6, noNaN: true }), {
+              minLength: 1,
+              maxLength: 10,
+            }),
             async (numbers) => {
               const result = await callBuiltin('max', numbers);
               const expected = Math.max(...numbers);
               expect(result).toEqual(expected);
-            }
-          )
+            },
+          ),
         );
       });
     });
@@ -419,7 +462,7 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             const high = value + 10;
             const result = await callBuiltin('between', [value, low, high]);
             expect(result).toBe(true);
-          })
+          }),
         );
       });
 
@@ -430,7 +473,7 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             const high = value + 20;
             const result = await callBuiltin('between', [value, low, high]);
             expect(result).toBe(false);
-          })
+          }),
         );
       });
     });
@@ -445,8 +488,8 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             async (arr) => {
               const result = await callBuiltin('count', [arr]);
               expect(result).toBe(arr.length);
-            }
-          )
+            },
+          ),
         );
       });
     });
@@ -455,13 +498,16 @@ describe('Runtime Built-in Functions - Property Tests', () => {
       it('should sum numeric arrays', async () => {
         await fc.assert(
           fc.asyncProperty(
-            fc.array(fc.float({ max: 100, min: -100, noNaN: true }), { minLength: 1, maxLength: 20 }),
+            fc.array(fc.float({ max: 100, min: -100, noNaN: true }), {
+              minLength: 1,
+              maxLength: 20,
+            }),
             async (arr) => {
               const result = await callBuiltin('sum', [arr]);
               const expected = arr.reduce((a, b) => a + b, 0);
-              expect((result as number)).toBeCloseTo(expected, 10);
-            }
-          )
+              expect(result as number).toBeCloseTo(expected, 10);
+            },
+          ),
         );
       });
 
@@ -480,7 +526,7 @@ describe('Runtime Built-in Functions - Property Tests', () => {
               return; // Test passes
             }
             throw new Error(`Expected ${n} but got ${result}`);
-          })
+          }),
         );
       });
     });
@@ -489,28 +535,34 @@ describe('Runtime Built-in Functions - Property Tests', () => {
       it('should average numeric arrays', async () => {
         await fc.assert(
           fc.asyncProperty(
-            fc.array(fc.float({ max: 100, min: -100, noNaN: true }), { minLength: 1, maxLength: 20 }),
+            fc.array(fc.float({ max: 100, min: -100, noNaN: true }), {
+              minLength: 1,
+              maxLength: 20,
+            }),
             async (arr) => {
               const result = await callBuiltin('avg', [arr]);
               const expected = arr.reduce((a, b) => a + b, 0) / arr.length;
-              expect((result as number)).toBeCloseTo(expected, 9);
-            }
-          )
+              expect(result as number).toBeCloseTo(expected, 9);
+            },
+          ),
         );
       });
 
       it('avg should be between min and max', async () => {
         await fc.assert(
           fc.asyncProperty(
-            fc.array(fc.float({ max: 100, min: -100, noNaN: true }), { minLength: 2, maxLength: 20 }),
+            fc.array(fc.float({ max: 100, min: -100, noNaN: true }), {
+              minLength: 2,
+              maxLength: 20,
+            }),
             async (arr) => {
-              const result = await callBuiltin('avg', [arr]) as number;
+              const result = (await callBuiltin('avg', [arr])) as number;
               const min = Math.min(...arr);
               const max = Math.max(...arr);
               expect(result).toBeGreaterThanOrEqual(min);
               expect(result).toBeLessThanOrEqual(max);
-            }
-          )
+            },
+          ),
         );
       });
     });
@@ -519,26 +571,32 @@ describe('Runtime Built-in Functions - Property Tests', () => {
       it('min_of should return minimum', async () => {
         await fc.assert(
           fc.asyncProperty(
-            fc.array(fc.float({ max: 1e6, min: -1e6, noNaN: true }), { minLength: 1, maxLength: 20 }),
+            fc.array(fc.float({ max: 1e6, min: -1e6, noNaN: true }), {
+              minLength: 1,
+              maxLength: 20,
+            }),
             async (arr) => {
               const result = await callBuiltin('min_of', [arr]);
               const expected = Math.min(...arr);
               expect(result).toEqual(expected);
-            }
-          )
+            },
+          ),
         );
       });
 
       it('max_of should return maximum', async () => {
         await fc.assert(
           fc.asyncProperty(
-            fc.array(fc.float({ max: 1e6, min: -1e6, noNaN: true }), { minLength: 1, maxLength: 20 }),
+            fc.array(fc.float({ max: 1e6, min: -1e6, noNaN: true }), {
+              minLength: 1,
+              maxLength: 20,
+            }),
             async (arr) => {
               const result = await callBuiltin('max_of', [arr]);
               const expected = Math.max(...arr);
               expect(result).toEqual(expected);
-            }
-          )
+            },
+          ),
         );
       });
     });
@@ -595,8 +653,8 @@ describe('Runtime Built-in Functions - Property Tests', () => {
             const result1 = await callBuiltin(fn, [n]);
             const result2 = await callBuiltin(fn, [n]);
             expect(result1).toEqual(result2);
-          }
-        )
+          },
+        ),
       );
     });
   });

@@ -35,10 +35,13 @@ export interface ManifestConfig {
   prismaSchema?: string;
 
   // Optional: Projection settings for code generation
-  projections?: Record<string, {
-    output?: string;
-    options?: Record<string, unknown>;
-  }>;
+  projections?: Record<
+    string,
+    {
+      output?: string;
+      options?: Record<string, unknown>;
+    }
+  >;
 
   /**
    * Optional: Global identifier-casing convention inherited by projections
@@ -47,11 +50,13 @@ export interface ManifestConfig {
    * String shorthand `'snake_case'` or an object form
    * `{ table, column, pluralizeTables }`.
    */
-  naming?: 'snake_case' | {
-    table?: 'snake_case' | 'camelCase' | 'PascalCase' | 'preserve';
-    column?: 'snake_case' | 'camelCase' | 'preserve';
-    pluralizeTables?: boolean;
-  };
+  naming?:
+    | 'snake_case'
+    | {
+        table?: 'snake_case' | 'camelCase' | 'PascalCase' | 'preserve';
+        column?: 'snake_case' | 'camelCase' | 'preserve';
+        pluralizeTables?: boolean;
+      };
 
   /** Environment variable mapping for store/auth/adapter configuration */
   env?: EnvMapping;
@@ -188,10 +193,7 @@ const DEFAULT_CONFIG: ManifestConfig = {
 };
 
 // Config paths in precedence order (highest to lowest)
-const TS_CONFIG_PATHS = [
-  'manifest.config.ts',
-  'manifest.config.js',
-];
+const TS_CONFIG_PATHS = ['manifest.config.ts', 'manifest.config.js'];
 
 const YAML_CONFIG_PATHS = [
   'manifest.config.yaml',
@@ -275,7 +277,7 @@ async function loadTsConfig(cwd: string): Promise<ManifestRuntimeConfig | null> 
 async function loadModule(modulePath: string): Promise<unknown> {
   // Try jiti first for TypeScript support
   try {
-    const jiti = await import('jiti').then(m => m.default || m);
+    const jiti = await import('jiti').then((m) => m.default || m);
     // jiti's exported factory shape is `(cwd, opts) => loader`; typed as a
     // concrete signature so we don't lean on `Function`.
     const jitiFactory = jiti as unknown as (
@@ -344,12 +346,9 @@ function mergeConfig(defaults: ManifestConfig, user: ManifestConfig | null): Man
  */
 export function mergeBuildConfig(
   yamlConfig: ManifestConfig | null,
-  runtimeBuildConfig: ManifestConfig | undefined
+  runtimeBuildConfig: ManifestConfig | undefined,
 ): ManifestConfig {
-  return mergeConfig(
-    mergeConfig(DEFAULT_CONFIG, yamlConfig),
-    runtimeBuildConfig ?? null
-  );
+  return mergeConfig(mergeConfig(DEFAULT_CONFIG, yamlConfig), runtimeBuildConfig ?? null);
 }
 
 // ============================================================================
@@ -362,10 +361,7 @@ export function mergeBuildConfig(
  * Returns both build (YAML) and runtime (TS/JS) configs separately.
  */
 export async function loadAllConfigs(cwd: string = process.cwd()): Promise<CombinedConfig> {
-  const [yamlConfig, tsConfig] = await Promise.all([
-    loadYamlConfig(cwd),
-    loadTsConfig(cwd),
-  ]);
+  const [yamlConfig, tsConfig] = await Promise.all([loadYamlConfig(cwd), loadTsConfig(cwd)]);
 
   const build = mergeBuildConfig(yamlConfig, tsConfig?.build);
 
@@ -395,7 +391,9 @@ export async function getConfig(cwd: string = process.cwd()): Promise<ManifestCo
 /**
  * Get the runtime configuration
  */
-export async function getRuntimeConfig(cwd: string = process.cwd()): Promise<ManifestRuntimeConfig | null> {
+export async function getRuntimeConfig(
+  cwd: string = process.cwd(),
+): Promise<ManifestRuntimeConfig | null> {
   return loadTsConfig(cwd);
 }
 
@@ -407,7 +405,7 @@ export async function getRuntimeConfig(cwd: string = process.cwd()): Promise<Man
  */
 export async function saveConfig(
   config: ManifestConfig,
-  cwd: string = process.cwd()
+  cwd: string = process.cwd(),
 ): Promise<void> {
   const configPath = path.resolve(cwd, 'manifest.config.yaml');
   const yamlContent = yaml.dump(config, {
@@ -475,19 +473,20 @@ export async function getNextJsOptions(cwd: string = process.cwd()): Promise<{
   appDir: string;
 }> {
   const { build } = await loadAllConfigs(cwd);
-  const options = build.projections?.nextjs?.options || build.projections?.['nextjs']?.options || {};
+  const options =
+    build.projections?.nextjs?.options || build.projections?.['nextjs']?.options || {};
 
   return {
-    authProvider: options.authProvider as string || 'none',
-    authImportPath: options.authImportPath as string || '@/lib/auth',
-    databaseImportPath: options.databaseImportPath as string || '@/lib/database',
-    runtimeImportPath: options.runtimeImportPath as string || '@/lib/manifest-runtime',
-    responseImportPath: options.responseImportPath as string || '@/lib/manifest-response',
-    includeTenantFilter: options.includeTenantFilter as boolean ?? false,
-    includeSoftDeleteFilter: options.includeSoftDeleteFilter as boolean ?? false,
-    tenantIdProperty: options.tenantIdProperty as string || 'tenantId',
-    deletedAtProperty: options.deletedAtProperty as string || 'deletedAt',
-    appDir: options.appDir as string || 'app/api',
+    authProvider: (options.authProvider as string) || 'none',
+    authImportPath: (options.authImportPath as string) || '@/lib/auth',
+    databaseImportPath: (options.databaseImportPath as string) || '@/lib/database',
+    runtimeImportPath: (options.runtimeImportPath as string) || '@/lib/manifest-runtime',
+    responseImportPath: (options.responseImportPath as string) || '@/lib/manifest-response',
+    includeTenantFilter: (options.includeTenantFilter as boolean) ?? false,
+    includeSoftDeleteFilter: (options.includeSoftDeleteFilter as boolean) ?? false,
+    tenantIdProperty: (options.tenantIdProperty as string) || 'tenantId',
+    deletedAtProperty: (options.deletedAtProperty as string) || 'deletedAt',
+    appDir: (options.appDir as string) || 'app/api',
   };
 }
 
@@ -505,7 +504,7 @@ export async function getNextJsOptions(cwd: string = process.cwd()): Promise<{
  * overrides (--auth, --database, etc.) before passing to the projection.
  */
 export async function resolveNextJsProjectionOptions(
-  cwd: string = process.cwd()
+  cwd: string = process.cwd(),
 ): Promise<Record<string, unknown>> {
   const { build } = await loadAllConfigs(cwd);
   const options = (build.projections?.nextjs?.options ?? {}) as Record<string, unknown>;
@@ -529,10 +528,7 @@ export function layerProjectionOptions(
 ): Record<string, unknown> {
   // The CLI's ManifestConfig is structurally the build surface the main package
   // reads (projections + naming); the cast bridges the two nominal types.
-  return resolveProjectionOptionsForBuild(
-    build as unknown as ManifestBuildConfig,
-    projectionName,
-  );
+  return resolveProjectionOptionsForBuild(build as unknown as ManifestBuildConfig, projectionName);
 }
 
 /**
@@ -561,7 +557,8 @@ export async function getOutputPaths(cwd: string = process.cwd()): Promise<{
 
   return {
     irOutput: build.output || 'ir/',
-    codeOutput: build.projections?.nextjs?.output || build.projections?.['nextjs']?.output || 'generated/',
+    codeOutput:
+      build.projections?.nextjs?.output || build.projections?.['nextjs']?.output || 'generated/',
   };
 }
 
@@ -691,7 +688,7 @@ export function getStoreBindingsInfo(config: ManifestRuntimeConfig | null): {
 
   return {
     entityNames,
-    hasStore: (entityName: string) => !!(config?.stores?.[entityName]),
+    hasStore: (entityName: string) => !!config?.stores?.[entityName],
     getPrismaModel: (entityName: string) => config?.stores?.[entityName]?.prismaModel,
     getPropertyMapping: (entityName: string) => config?.stores?.[entityName]?.propertyMapping,
   };
@@ -723,7 +720,9 @@ export function getStoreBindingsInfo(config: ManifestRuntimeConfig | null): {
  * const runtime = new RuntimeEngine(ir, { user, ...otherContext });
  * ```
  */
-export function createUserResolver(config: ManifestRuntimeConfig | null): (auth: AuthContext) => Promise<UserContext | null> {
+export function createUserResolver(
+  config: ManifestRuntimeConfig | null,
+): (auth: AuthContext) => Promise<UserContext | null> {
   if (!config?.resolveUser) {
     // Return a pass-through resolver that returns null
     return async () => null;
@@ -788,7 +787,10 @@ export interface PrismaSchema {
  * 2. Default: prisma/schema.prisma
  * 3. Alternative: schema.prisma
  */
-export async function findPrismaSchemaPath(cwd: string, config: ManifestConfig | null): Promise<string | null> {
+export async function findPrismaSchemaPath(
+  cwd: string,
+  config: ManifestConfig | null,
+): Promise<string | null> {
   // Check config-specified path first
   if (config?.prismaSchema) {
     const configPath = path.resolve(cwd, config.prismaSchema);
@@ -801,11 +803,7 @@ export async function findPrismaSchemaPath(cwd: string, config: ManifestConfig |
   }
 
   // Default locations
-  const defaultPaths = [
-    'prisma/schema.prisma',
-    'schema.prisma',
-    'db/schema.prisma',
-  ];
+  const defaultPaths = ['prisma/schema.prisma', 'schema.prisma', 'db/schema.prisma'];
 
   for (const schemaPath of defaultPaths) {
     const fullPath = path.resolve(cwd, schemaPath);
@@ -832,8 +830,8 @@ export async function parsePrismaSchema(schemaPath: string): Promise<PrismaSchem
 
   // Remove comments
   const cleanedContent = content
-    .replace(/\/\/.*$/gm, '')  // Remove single-line comments
-    .replace(/\/\*[\s\S]*?\*\//g, '');  // Remove multi-line comments
+    .replace(/\/\/.*$/gm, '') // Remove single-line comments
+    .replace(/\/\*[\s\S]*?\*\//g, ''); // Remove multi-line comments
 
   // Match model blocks
   const modelRegex = /model\s+(\w+)\s*\{([^}]+)\}/g;
@@ -845,7 +843,10 @@ export async function parsePrismaSchema(schemaPath: string): Promise<PrismaSchem
     const fields: PrismaField[] = [];
 
     // Parse each field (line by line)
-    const fieldLines = modelBody.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const fieldLines = modelBody
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
 
     for (const fieldLine of fieldLines) {
       // Skip block attributes like @@id, @@index, etc.
@@ -885,11 +886,11 @@ export async function parsePrismaSchema(schemaPath: string): Promise<PrismaSchem
  */
 export function getPrismaModel(schema: PrismaSchema, modelName: string): PrismaModel | undefined {
   // Exact match first
-  let model = schema.models.find(m => m.name === modelName);
+  let model = schema.models.find((m) => m.name === modelName);
 
   if (!model) {
     // Case-insensitive search
-    model = schema.models.find(m => m.name.toLowerCase() === modelName.toLowerCase());
+    model = schema.models.find((m) => m.name.toLowerCase() === modelName.toLowerCase());
   }
 
   return model;
@@ -902,17 +903,17 @@ export function getPrismaModel(schema: PrismaSchema, modelName: string): PrismaM
 export function propertyExistsInModel(
   model: PrismaModel,
   propertyName: string,
-  propertyMapping?: Record<string, string>
+  propertyMapping?: Record<string, string>,
 ): boolean {
   // Check if property name matches a field
-  const hasDirectMatch = model.fields.some(f => f.name === propertyName);
+  const hasDirectMatch = model.fields.some((f) => f.name === propertyName);
 
   if (hasDirectMatch) return true;
 
   // Check if there's a mapping from this property to a field
   if (propertyMapping) {
     for (const [manifestProp, dbField] of Object.entries(propertyMapping)) {
-      if (manifestProp === propertyName && model.fields.some(f => f.name === dbField)) {
+      if (manifestProp === propertyName && model.fields.some((f) => f.name === dbField)) {
         return true;
       }
     }
@@ -925,5 +926,5 @@ export function propertyExistsInModel(
  * Get Prisma field names for a model
  */
 export function getPrismaFieldNames(model: PrismaModel): string[] {
-  return model.fields.map(f => f.name);
+  return model.fields.map((f) => f.name);
 }

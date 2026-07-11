@@ -63,7 +63,7 @@ describe('MemoryApprovalStore', () => {
     await store.save('k1', state({ instanceId: 'po-1' }));
     await store.save('k2', state({ instanceId: 'po-2' }));
     const all = await store.list();
-    expect(all.map(s => s.instanceId).sort()).toEqual(['po-1', 'po-2']);
+    expect(all.map((s) => s.instanceId).sort()).toEqual(['po-1', 'po-2']);
   });
 
   describe('expire', () => {
@@ -73,7 +73,7 @@ describe('MemoryApprovalStore', () => {
       await store.save('none', state({ instanceId: 'c' })); // no expiresAt
 
       const expired = await store.expire(1000);
-      expect(expired.map(s => s.instanceId)).toEqual(['a']);
+      expect(expired.map((s) => s.instanceId)).toEqual(['a']);
       expect((await store.load('past'))!.status).toBe('expired');
       expect((await store.load('future'))!.status).toBe('pending');
       expect((await store.load('none'))!.status).toBe('pending');

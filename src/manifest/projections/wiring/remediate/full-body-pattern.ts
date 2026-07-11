@@ -57,8 +57,8 @@ export function findUniqueFullBodyPattern(
   }
 
   const required = cap.parameters
-    .filter(p => p.ownership === 'client' && p.required)
-    .map(p => p.name);
+    .filter((p) => p.ownership === 'client' && p.required)
+    .map((p) => p.name);
   if (required.length < 2) {
     byCap.set(cap.capabilityId, null);
     return undefined;
@@ -84,7 +84,7 @@ export function findUniqueFullBodyPattern(
   if (candidates.length === 1) {
     result = candidates[0]!;
   } else if (candidates.length > 1) {
-    const uniqueNames = new Set(candidates.map(c => `${c.builderFile}:${c.builderName}`));
+    const uniqueNames = new Set(candidates.map((c) => `${c.builderFile}:${c.builderName}`));
     if (uniqueNames.size === 1) result = candidates[0]!;
     // else ambiguous → null
   }
@@ -125,8 +125,7 @@ function findBuildersInFile(
   const visit = (node: ts.Node) => {
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
       const init = node.initializer;
-      const fn =
-        ts.isArrowFunction(init) || ts.isFunctionExpression(init) ? init : undefined;
+      const fn = ts.isArrowFunction(init) || ts.isFunctionExpression(init) ? init : undefined;
       if (fn) {
         const pattern = patternFromFunction(node.name.text, file, content, fn, required);
         if (pattern) out.push(pattern);
@@ -153,19 +152,17 @@ function patternFromFunction(
   if (!returned) return undefined;
   const fields = extractObjectFieldNames(returned.getText());
   const fieldSet = new Set(fields);
-  if (!required.every(r => fieldSet.has(r))) return undefined;
+  if (!required.every((r) => fieldSet.has(r))) return undefined;
 
   const params = node.parameters;
   const acceptsOverrides = params.length >= 2;
-  const overrideParamNames = acceptsOverrides
-    ? extractOverrideNames(params[1]!, content)
-    : [];
+  const overrideParamNames = acceptsOverrides ? extractOverrideNames(params[1]!, content) : [];
 
   return {
     builderName,
     builderFile: file,
     builderSource: node.getText(),
-    coveredParams: required.filter(r => fieldSet.has(r)),
+    coveredParams: required.filter((r) => fieldSet.has(r)),
     overrideParamNames,
     acceptsOverrides,
   };
@@ -209,7 +206,7 @@ function extractOverrideNames(param: ts.ParameterDeclaration, _content: string):
     if (!names.includes(m[1]!)) names.push(m[1]!);
   }
   return [...new Set(names)].filter(
-    n => n !== 'Partial' && n !== 'string' && n !== 'null' && n !== 'number',
+    (n) => n !== 'Partial' && n !== 'string' && n !== 'null' && n !== 'number',
   );
 }
 
@@ -269,11 +266,11 @@ export function isPartialLiteralAgainstFullContract(
   cap: WiringCommandDescriptor,
 ): { partial: boolean; missing: string[] } {
   const required = cap.parameters
-    .filter(p => p.ownership === 'client' && p.required)
-    .map(p => p.name);
-  const present = new Set(presentFields.filter(f => f !== 'id'));
-  const missing = required.filter(r => !present.has(r));
-  const presentRequired = required.filter(r => present.has(r));
+    .filter((p) => p.ownership === 'client' && p.required)
+    .map((p) => p.name);
+  const present = new Set(presentFields.filter((f) => f !== 'id'));
+  const missing = required.filter((r) => !present.has(r));
+  const presentRequired = required.filter((r) => present.has(r));
   return {
     partial: presentRequired.length >= 1 && missing.length >= 2,
     missing,

@@ -61,7 +61,11 @@ export async function routesCommand(options: RoutesCommandOptions = {}): Promise
     // RouteEntry shape from the routes projection so downstream
     // serialization and filtering keep their static types.
     type RouteEntry = import('@angriff36/manifest/projections/routes').RouteEntry;
-    interface CollectedDiagnostic { file?: string; severity: 'error' | 'warning' | 'info'; message: string; }
+    interface CollectedDiagnostic {
+      file?: string;
+      severity: 'error' | 'warning' | 'info';
+      message: string;
+    }
     const allRoutes: RouteEntry[] = [];
     const allDiagnostics: CollectedDiagnostic[] = [];
     let filesCompiled = 0;
@@ -111,9 +115,9 @@ export async function routesCommand(options: RoutesCommandOptions = {}): Promise
     // 4. Output
     if (options.format === 'summary') {
       // Human-readable summary (for agents and humans)
-      const reads = allRoutes.filter(r => r.source.kind === 'entity-read');
-      const writes = allRoutes.filter(r => r.source.kind === 'command');
-      const manual = allRoutes.filter(r => r.source.kind === 'manual');
+      const reads = allRoutes.filter((r) => r.source.kind === 'entity-read');
+      const writes = allRoutes.filter((r) => r.source.kind === 'command');
+      const manual = allRoutes.filter((r) => r.source.kind === 'manual');
 
       console.log(chalk.bold('\nRoute Surface Summary'));
       console.log(`  Files compiled: ${filesCompiled}`);
@@ -135,15 +139,17 @@ export async function routesCommand(options: RoutesCommandOptions = {}): Promise
       console.log(chalk.bold('  Method  Path                                    Source'));
       console.log('  ' + '─'.repeat(70));
       for (const route of allRoutes) {
-        const method = route.method === 'GET'
-          ? chalk.blue(route.method.padEnd(6))
-          : chalk.yellow(route.method.padEnd(6));
+        const method =
+          route.method === 'GET'
+            ? chalk.blue(route.method.padEnd(6))
+            : chalk.yellow(route.method.padEnd(6));
         const pathStr = route.path.padEnd(40);
-        const source = route.source.kind === 'entity-read'
-          ? route.source.entity
-          : route.source.kind === 'command'
-            ? `${route.source.entity}.${route.source.command}`
-            : `manual:${route.source.id}`;
+        const source =
+          route.source.kind === 'entity-read'
+            ? route.source.entity
+            : route.source.kind === 'command'
+              ? `${route.source.entity}.${route.source.command}`
+              : `manual:${route.source.id}`;
         console.log(`  ${method}${pathStr}${source}`);
       }
       console.log('');
@@ -162,11 +168,13 @@ export async function routesCommand(options: RoutesCommandOptions = {}): Promise
     }
 
     // Exit non-zero if there were errors
-    if (allDiagnostics.some(d => d.severity === 'error')) {
+    if (allDiagnostics.some((d) => d.severity === 'error')) {
       process.exit(1);
     }
   } catch (error: unknown) {
-    spinner.fail(`Route generation failed: ${error instanceof Error ? error.message : String(error)}`);
+    spinner.fail(
+      `Route generation failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     console.error(error);
     process.exit(1);
   }

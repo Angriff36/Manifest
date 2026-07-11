@@ -11,24 +11,11 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { ManifestProgram } from './manifest/compiler';
-import {
-  FlameGraphPanel,
-  IRGraphPanel,
-  PolicyMatrixPanel,
-  TutorialPanel,
-} from './artifacts';
+import { FlameGraphPanel, IRGraphPanel, PolicyMatrixPanel, TutorialPanel } from './artifacts';
 import { ASTViewer, Docs, Editor } from './app-panels';
 
 export type Tab =
-  | 'output'
-  | 'server'
-  | 'tests'
-  | 'ast'
-  | 'graph'
-  | 'docs'
-  | 'tutorial'
-  | 'policies'
-  | 'profiler';
+  'output' | 'server' | 'tests' | 'ast' | 'graph' | 'docs' | 'tutorial' | 'policies' | 'profiler';
 
 interface TabDefinition {
   id: Tab;
@@ -61,11 +48,35 @@ export interface CenterPanelProps {
 export function renderCenterPanel(tab: Tab, props: CenterPanelProps) {
   switch (tab) {
     case 'output':
-      return <Editor value={props.output} onChange={() => {}} lang="ts" readOnly placeholder="Generated client code..." />;
+      return (
+        <Editor
+          value={props.output}
+          onChange={() => {}}
+          lang="ts"
+          readOnly
+          placeholder="Generated client code..."
+        />
+      );
     case 'server':
-      return <Editor value={props.serverCode} onChange={() => {}} lang="ts" readOnly placeholder="Generated server routes (add 'server' keyword to expose)..." />;
+      return (
+        <Editor
+          value={props.serverCode}
+          onChange={() => {}}
+          lang="ts"
+          readOnly
+          placeholder="Generated server routes (add 'server' keyword to expose)..."
+        />
+      );
     case 'tests':
-      return <Editor value={props.testCode} onChange={() => {}} lang="ts" readOnly placeholder="Generated tests from constraints..." />;
+      return (
+        <Editor
+          value={props.testCode}
+          onChange={() => {}}
+          lang="ts"
+          readOnly
+          placeholder="Generated tests from constraints..."
+        />
+      );
     case 'ast':
       return <ASTViewer ast={props.ast} />;
     case 'graph':

@@ -3,12 +3,7 @@
  */
 
 import type { IR } from '../ir.js';
-import {
-  isBlankCell,
-  type SeedFillProvider,
-  type SeedPack,
-  type SeedRow,
-} from './types.js';
+import { isBlankCell, type SeedFillProvider, type SeedPack, type SeedRow } from './types.js';
 import { findEntity, findRelationship, relationshipColumnNames } from './template.js';
 import { createHeuristicFillProvider } from './fill-providers.js';
 
@@ -29,7 +24,7 @@ function collectSeedKeys(pack: SeedPack, entity: string): string[] {
 export async function fillSeedPack(
   ir: IR,
   pack: SeedPack,
-  options: FillSeedPackOptions = {}
+  options: FillSeedPackOptions = {},
 ): Promise<SeedPack> {
   const overwrite = options.overwrite === true;
   const provider = options.provider ?? createHeuristicFillProvider();

@@ -384,9 +384,7 @@ function markCoverage(
         // Covered if a test exercises this constraint code OR referenced in tests
         const code = p.id.split(':constraint:')[1]?.split('(')[0] ?? '';
         p.covered =
-          exercisedConstraints.has(code) ||
-          testCorpus.includes(code) ||
-          testCorpus.includes(p.id);
+          exercisedConstraints.has(code) || testCorpus.includes(code) || testCorpus.includes(p.id);
         break;
       }
     }
@@ -452,7 +450,7 @@ function formatText(result: CoverageResult): void {
 
     console.log(
       `\n${chalk.bold(cat.name)} — ${pctColor(`${cat.summary.percentage}%`)} ` +
-      `(${cat.summary.covered}/${cat.summary.total})`
+        `(${cat.summary.covered}/${cat.summary.total})`,
     );
 
     const uncovered = cat.paths.filter((p) => !p.covered);
@@ -476,8 +474,8 @@ function formatText(result: CoverageResult): void {
 
   console.log(
     chalk.bold('Overall: ') +
-    overallColor(`${result.overall.percentage}%`) +
-    ` (${result.overall.covered}/${result.overall.total} paths covered)`
+      overallColor(`${result.overall.percentage}%`) +
+      ` (${result.overall.covered}/${result.overall.total} paths covered)`,
   );
 }
 
@@ -485,9 +483,7 @@ function formatText(result: CoverageResult): void {
 /*  Public command                                                     */
 /* ------------------------------------------------------------------ */
 
-export async function coverageCommand(
-  options: CoverageOptions = {},
-): Promise<CoverageResult> {
+export async function coverageCommand(options: CoverageOptions = {}): Promise<CoverageResult> {
   const root = path.resolve(process.cwd(), options.root ?? '.');
 
   // Resolve IR
@@ -504,9 +500,7 @@ export async function coverageCommand(
       ignore: ['node_modules/**', 'dist/**', '.next/**', '.turbo/**'],
     });
     if (candidates.length === 0) {
-      throw new Error(
-        'No IR file found. Supply --ir <path> or --source <manifest-file>.'
-      );
+      throw new Error('No IR file found. Supply --ir <path> or --source <manifest-file>.');
     }
     ir = await loadIR(candidates[0]);
   }

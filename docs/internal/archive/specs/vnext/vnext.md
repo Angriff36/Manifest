@@ -6,7 +6,6 @@
 
 **Last Updated**: 2026-02-05 (Parser fixes for block constraints, override mechanism, all tests passing)
 
-
 ---
 
 ## Current Implementation Status
@@ -15,52 +14,52 @@
 
 The following features are FULLY IMPLEMENTED and VERIFIED:
 
-| Feature | Status | Evidence |
-|---------|--------|----------|
-| IR provenance tracking | DONE | `ir.ts:IRProvenance` includes contentHash, irHash, compilerVersion, schemaVersion, compiledAt |
-| Entity-level constraint validation | DONE | Binary pass/fail validation in runtime engine |
-| Event emission with provenance | DONE | Events include provenance metadata from IR |
-| Policy and guard evaluation | DONE | Short-circuiting evaluation implemented |
-| Relationship resolution with index | DONE | Efficient lookup via relationshipIndex map |
-| ConstraintFailure diagnostics | DONE | Includes resolved values in GuardResolvedValue[] |
-| GuardFailure diagnostics | DONE | Includes formatted expression and resolved values |
-| PolicyDenial diagnostics | DONE | Includes formatted expression, message, and contextKeys |
-| 20 baseline conformance fixtures | DONE | All fixtures 01-20 passing |
+| Feature                            | Status | Evidence                                                                                      |
+| ---------------------------------- | ------ | --------------------------------------------------------------------------------------------- |
+| IR provenance tracking             | DONE   | `ir.ts:IRProvenance` includes contentHash, irHash, compilerVersion, schemaVersion, compiledAt |
+| Entity-level constraint validation | DONE   | Binary pass/fail validation in runtime engine                                                 |
+| Event emission with provenance     | DONE   | Events include provenance metadata from IR                                                    |
+| Policy and guard evaluation        | DONE   | Short-circuiting evaluation implemented                                                       |
+| Relationship resolution with index | DONE   | Efficient lookup via relationshipIndex map                                                    |
+| ConstraintFailure diagnostics      | DONE   | Includes resolved values in GuardResolvedValue[]                                              |
+| GuardFailure diagnostics           | DONE   | Includes formatted expression and resolved values                                             |
+| PolicyDenial diagnostics           | DONE   | Includes formatted expression, message, and contextKeys                                       |
+| 20 baseline conformance fixtures   | DONE   | All fixtures 01-20 passing                                                                    |
 
 ### vNext Features (PARTIALLY IMPLEMENTED - Phases 1-5 Complete)
 
-| Feature | Status | Evidence |
-|---------|--------|----------|
-| IRConstraint fields (code, severity, etc.) | ✅ DONE | `ir.ts:IRConstraint` |
-| Command-level constraints array | ✅ DONE | `ir.ts:IRCommand`, `types.ts:CommandNode` |
-| Entity version properties | ✅ DONE | `ir.ts:IREntity` |
-| EntityInstance version fields | ✅ DONE | `runtime-engine.ts:EntityInstance` |
-| ConstraintOutcome interface | ✅ DONE | `ir.ts` |
-| OverrideRequest interface | ✅ DONE | `ir.ts` |
-| ConcurrencyConflict interface | ✅ DONE | `ir.ts` |
-| CommandResult constraint outcomes | ✅ DONE | `runtime-engine.ts:CommandResult` |
-| Keywords: overrideable, ok, warn | ✅ DONE | `lexer.ts:KEYWORDS` |
-| ConstraintNode extended fields | ✅ DONE | `types.ts:ConstraintNode` |
-| Constraint severity parsing | ✅ DONE | `parser.ts:parseConstraint()` |
-| Command constraint parsing | ✅ DONE | `parser.ts:parseCommand()` |
-| transformConstraint extended | ✅ DONE | `ir-compiler.ts:transformConstraint()` |
-| transformCommand constraints | ✅ DONE | `ir-compiler.ts:transformCommand()` |
-| evaluateConstraint method | ✅ DONE | `runtime-engine.ts` |
-| evaluateCommandConstraints method | ✅ DONE | `runtime-engine.ts` |
-| validateOverrideAuthorization method | ✅ DONE | `runtime-engine.ts` |
-| emitOverrideAppliedEvent method | ✅ DONE | `runtime-engine.ts` |
-| emitConcurrencyConflictEvent method | ✅ DONE | `runtime-engine.ts` |
-| IR cache module | ✅ DONE | `ir-cache.ts` |
-| Relationship memoization | ✅ DONE | `runtime-engine.ts` |
-| Conformance fixtures 21-27 | ✅ DONE | All 27 fixtures passing (134/134 tests) |
-| vNext documentation | ❌ PENDING | Not written |
-
+| Feature                                    | Status     | Evidence                                  |
+| ------------------------------------------ | ---------- | ----------------------------------------- |
+| IRConstraint fields (code, severity, etc.) | ✅ DONE    | `ir.ts:IRConstraint`                      |
+| Command-level constraints array            | ✅ DONE    | `ir.ts:IRCommand`, `types.ts:CommandNode` |
+| Entity version properties                  | ✅ DONE    | `ir.ts:IREntity`                          |
+| EntityInstance version fields              | ✅ DONE    | `runtime-engine.ts:EntityInstance`        |
+| ConstraintOutcome interface                | ✅ DONE    | `ir.ts`                                   |
+| OverrideRequest interface                  | ✅ DONE    | `ir.ts`                                   |
+| ConcurrencyConflict interface              | ✅ DONE    | `ir.ts`                                   |
+| CommandResult constraint outcomes          | ✅ DONE    | `runtime-engine.ts:CommandResult`         |
+| Keywords: overrideable, ok, warn           | ✅ DONE    | `lexer.ts:KEYWORDS`                       |
+| ConstraintNode extended fields             | ✅ DONE    | `types.ts:ConstraintNode`                 |
+| Constraint severity parsing                | ✅ DONE    | `parser.ts:parseConstraint()`             |
+| Command constraint parsing                 | ✅ DONE    | `parser.ts:parseCommand()`                |
+| transformConstraint extended               | ✅ DONE    | `ir-compiler.ts:transformConstraint()`    |
+| transformCommand constraints               | ✅ DONE    | `ir-compiler.ts:transformCommand()`       |
+| evaluateConstraint method                  | ✅ DONE    | `runtime-engine.ts`                       |
+| evaluateCommandConstraints method          | ✅ DONE    | `runtime-engine.ts`                       |
+| validateOverrideAuthorization method       | ✅ DONE    | `runtime-engine.ts`                       |
+| emitOverrideAppliedEvent method            | ✅ DONE    | `runtime-engine.ts`                       |
+| emitConcurrencyConflictEvent method        | ✅ DONE    | `runtime-engine.ts`                       |
+| IR cache module                            | ✅ DONE    | `ir-cache.ts`                             |
+| Relationship memoization                   | ✅ DONE    | `runtime-engine.ts`                       |
+| Conformance fixtures 21-27                 | ✅ DONE    | All 27 fixtures passing (134/134 tests)   |
+| vNext documentation                        | ❌ PENDING | Not written                               |
 
 ## Executive Summary
 
 This plan implements the Manifest vNext enhancements for ops-scale rules, overrides, workflows, and runtime performance. **Phases 1-5 are COMPLETE, implementing the core vNext features for constraint severity, overrides, command-level constraints, and IR caching.**
 
 **Current Baseline (Already Implemented):**
+
 - ✅ IR provenance tracking (contentHash, irHash, compilerVersion, schemaVersion, compiledAt)
 - ✅ Entity-level constraint validation (binary pass/fail only, no severity levels)
 - ✅ Event emission with provenance
@@ -71,6 +70,7 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 - ✅ 20 conformance fixtures covering baseline functionality
 
 **vNext Features Implemented (Phases 1-5):**
+
 - ✅ Constraint severity levels (OK/WARN/BLOCK)
 - ✅ Constraint override mechanism with authorization
 - ✅ Command-level constraints (pre-execution validation)
@@ -80,9 +80,11 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 - ✅ New event types (OverrideApplied, ConcurrencyConflict)
 
 **Remaining Work:**
+
 - ❌ Documentation updates for all new features
 
 **Implementation Progress:**
+
 1. **IR Schema**: ✅ COMPLETE - All 8 fields added across 4 interfaces
 2. **New Interfaces**: ✅ COMPLETE - 3 new interfaces implemented
 3. **Parser/Lexer**: ✅ COMPLETE - All keywords added, command constraint parsing, severity syntax, override policy action
@@ -93,7 +95,6 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 
 ---
 
-
 ---
 
 ## Current Work (PROGRESS MADE - 2026-02-06)
@@ -103,6 +104,7 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 **Test Results: 114/133 passing (85.7% pass rate)**
 
 **What was fixed:**
+
 1. **Hybrid constraint semantics in `evaluateConstraint()`:**
    - Updated `evaluateConstraint()` in `runtime-engine.ts` (line 1457-1467)
    - Constraints named with "severity" prefix are negative-type (fire when TRUE)
@@ -130,21 +132,25 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 ### Remaining Issues (19 tests failing - 14.3%)
 
 **Fixture 22 (override-authorization) - 4 failures:**
+
 - Override mechanism needs runtime implementation
 - Tests expect override requests to be processed via options
 - Override authorization policies need to be checked
 
 **Fixture 25 (command-constraints) - 4 failures:**
+
 - Event name mismatch: emitting `OrderStatusChanged` instead of `OrderStatusUpdated`
 - Constraint semantics for warn/block need refinement in command execution path
 - Block constraints should prevent execution, warn constraints should allow with warning
 
 **Fixture 27 (vnext-integration) - 9 failures:**
+
 - Expected results JSON structure needs update to match CommandTestCase format
 - Some constraint logic may need adjustment
 - Override and policy integration tests need implementation
 
 **Key findings:**
+
 1. Core constraint evaluation is working (hybrid semantics)
 2. JSON structure issues resolved for most fixtures
 3. Parser now handles newlines in policies
@@ -157,6 +163,7 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 ### IR Schema Gaps (File: `src\manifest\ir.ts`)
 
 **IRConstraint (lines 70-74)** - Missing 6 fields:
+
 - `code: string` - Stable identifier for overrides/auditing
 - `severity?: 'ok' | 'warn' | 'block'` - Constraint severity level
 - `messageTemplate?: string` - Template for error messages with interpolation
@@ -165,13 +172,16 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 - `overridePolicyRef?: string` - Policy that authorizes overrides
 
 **IRCommand (lines 94-103)** - Missing 1 field:
+
 - `constraints?: IRConstraint[]` - Command-level constraints (pre-execution)
 
 **IREntity (lines 35-44)** - Missing 2 fields:
+
 - `versionProperty?: string` - Name of version field for concurrency
 - `versionAtProperty?: string` - Name of timestamp field for concurrency
 
 **New interfaces needed** - 3 interfaces don't exist:
+
 - `ConstraintOutcome` - Constraint evaluation outcome with severity and override info
 - `OverrideRequest` - Override request payload for command execution
 - `ConcurrencyConflict` - Concurrency conflict details for optimistic locking
@@ -179,11 +189,13 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 ### Parser/Lexer Gaps (Files: `src\manifest\lexer.ts`, `src\manifest\types.ts`, `src\manifest\parser.ts`)
 
 **Lexer KEYWORDS (line 16-31)** - Missing 3 keywords:
+
 - `overrideable` - Modifier for constraints that can be overridden
 - `ok` - Severity level keyword
 - `warn` - Severity level keyword (note: `block` is already a word)
 
 **ConstraintNode (types.ts lines 133-138)** - Missing 6 fields:
+
 - `code?: string` - Stable identifier (defaults to name)
 - `severity?: 'ok' | 'warn' | 'block'` - Severity level
 - `messageTemplate?: string` - Template string
@@ -192,6 +204,7 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 - `overridePolicyRef?: string` - Policy reference
 
 **parseConstraint() (parser.ts lines 340-347)** - Current limitations:
+
 - Only handles name, expression, and optional message
 - No severity parsing (`:ok`, `:warn`, `:block` suffixes)
 - No overrideable modifier support
@@ -199,9 +212,11 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 - No details mapping support
 
 **CommandNode (types.ts lines 65-73)** - Missing 1 field:
+
 - `constraints?: ConstraintNode[]` - Command-level constraints
 
 **parseCommand()** - Missing constraint parsing:
+
 - Does not check for `constraint` keyword in command body
 - Does not call parseConstraint() for command-level constraints
 - No constraints array in return value
@@ -209,6 +224,7 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 ### IR Compiler Gaps (File: `src\manifest\ir-compiler.ts`)
 
 **transformConstraint() (lines 217-223)** - Missing transformations:
+
 - Does not transform `code` field
 - Does not transform `severity` field
 - Does not transform `messageTemplate` field
@@ -217,6 +233,7 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 - Does not transform `overridePolicyRef` field
 
 **transformCommand() (lines 259-270)** - Missing constraints:
+
 - Does not include `constraints` in output IRCommand
 - Does not transform constraint nodes from CommandNode
 
@@ -225,15 +242,18 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 ### Runtime Engine Gaps (File: `src\manifest\runtime-engine.ts`)
 
 **EntityInstance (lines 84-87)** - Missing 2 fields:
+
 - `version?: number` - For optimistic concurrency control
 - `versionAt?: number` - Timestamp of last version change
 
 **CommandResult (lines 89-97)** - Missing 3 fields:
+
 - `constraintOutcomes?: ConstraintOutcome[]` - All constraint results
 - `overrideRequests?: OverrideRequest[]` - Pending override requests
 - `concurrencyConflict?: ConcurrencyConflict` - Version conflict details
 
 **Methods that don't exist** - 5 methods needed:
+
 - `evaluateConstraint()` - Evaluate single constraint with outcome
 - `evaluateCommandConstraints()` - Evaluate all command constraints with override support
 - `validateOverrideAuthorization()` - Check if override is authorized via policy
@@ -241,20 +261,24 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 - `emitConcurrencyConflictEvent()` - Emit ConcurrencyConflict event
 
 **createInstance()** - Missing concurrency:
+
 - No version field initialization
 - No versionAt field initialization
 
 **updateInstance()** - Missing concurrency:
+
 - No version checking for optimistic locking
 - No conflict detection or handling
 
 **Performance optimizations missing**:
+
 - No relationship memoization cache
 - No per-command cache clearing
 
 ### Conformance Test Gaps (Directory: `src\manifest\conformance\fixtures\`)
 
 **Fixtures 21-27 don't exist**:
+
 - `21-constraint-outcomes.manifest`
 - `22-override-authorization.manifest`
 - `23-workflow-idempotency.manifest`
@@ -263,7 +287,6 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 - `26-performance-constraints.manifest`
 - `27-vnext-integration.manifest`
 
-
 ---
 
 ## Technical Debt and Code Quality Issues
@@ -271,26 +294,30 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 ### Issues Discovered During Analysis (Not Blocking vNext, But Worth Noting)
 
 #### 1. Minimal Implementations and Stubs
-| Location | Issue | Impact |
-|----------|-------|--------|
-| `generator.ts:104-105` | Supabase client stub implementation | Supabase store generation doesn't work |
-| `standalone-generator.ts:83` | Default fallback to MemoryStore for unsupported stores | Silently falls back, may surprise users |
-| `ir-compiler.ts:388` | Default fallback for unknown expression types | Returns null literal, may hide errors |
-| `standalone-generator.ts:539` | Fallback for unknown expressions | Returns `/* unknown */` comment |
+
+| Location                      | Issue                                                  | Impact                                  |
+| ----------------------------- | ------------------------------------------------------ | --------------------------------------- |
+| `generator.ts:104-105`        | Supabase client stub implementation                    | Supabase store generation doesn't work  |
+| `standalone-generator.ts:83`  | Default fallback to MemoryStore for unsupported stores | Silently falls back, may surprise users |
+| `ir-compiler.ts:388`          | Default fallback for unknown expression types          | Returns null literal, may hide errors   |
+| `standalone-generator.ts:539` | Fallback for unknown expressions                       | Returns `/* unknown */` comment         |
 
 #### 2. Inconsistent Validation Patterns
-| Component | Pattern | Inconsistency |
-|-----------|---------|---------------|
+
+| Component       | Pattern                              | Inconsistency                     |
+| --------------- | ------------------------------------ | --------------------------------- |
 | **Constraints** | Silent failure with array collection | Returns `undefined`, logs warning |
-| **Guards** | Hard failure on first failure | Returns GuardFailure object |
-| **Policies** | Hard failure on first failure | Returns PolicyDenial object |
-| **Entity Ops** | Constraint validation only | No policy checks |
-| **Commands** | Policy + Guard checks only | No constraint checks |
+| **Guards**      | Hard failure on first failure        | Returns GuardFailure object       |
+| **Policies**    | Hard failure on first failure        | Returns PolicyDenial object       |
+| **Entity Ops**  | Constraint validation only           | No policy checks                  |
+| **Commands**    | Policy + Guard checks only           | No constraint checks              |
 
 **vNext Implication**: Need to standardize these patterns when adding command constraint evaluation.
 
 #### 3. Context Building Inconsistencies
+
 Different contexts are built for expression evaluation in different places:
+
 - Guards/Policies: `{ instance, input, self, this, user, context }`
 - Constraints: `{ instanceData, self, this, user, context, _entity }`
 - Computed Properties: Different context structure
@@ -298,7 +325,9 @@ Different contexts are built for expression evaluation in different places:
 **vNext Implication**: When implementing `evaluateConstraint`, follow a consistent pattern.
 
 #### 4. Version Hardcoding
+
 Multiple files have hardcoded `const COMPILER_VERSION = '0.0.0'`:
+
 - `generator.ts`
 - `standalone-generator.ts`
 - `ir-compiler.ts`
@@ -306,6 +335,7 @@ Multiple files have hardcoded `const COMPILER_VERSION = '0.0.0'`:
 **Recommendation**: Source from `package.json` during implementation.
 
 #### 5. Test Coverage Gaps
+
 - Only happy path tests exist (`runtime-engine.happy.test.ts`)
 - No negative test cases
 - No unit tests for parser/lexer components
@@ -458,9 +488,11 @@ Multiple files have hardcoded `const COMPILER_VERSION = '0.0.0'`:
 **Dependencies**: None
 
 #### Task 1.1: Extend IRConstraint Interface
+
 **File**: `C:\projects\manifest\src\manifest\ir.ts` (lines 70-74)
 
 **Current State**:
+
 ```typescript
 export interface IRConstraint {
   name: string;
@@ -470,26 +502,29 @@ export interface IRConstraint {
 ```
 
 **Required Changes**:
+
 ```typescript
 export interface IRConstraint {
   name: string;
-  code: string;                    // NEW: Stable identifier for overrides/auditing
+  code: string; // NEW: Stable identifier for overrides/auditing
   expression: IRExpression;
-  severity?: 'ok' | 'warn' | 'block';  // NEW: Constraint severity (default: block)
+  severity?: 'ok' | 'warn' | 'block'; // NEW: Constraint severity (default: block)
   message?: string;
-  messageTemplate?: string;        // NEW: Template for error messages with interpolation
-  detailsMapping?: Record<string, IRExpression>;  // NEW: Structured details for UI
-  overrideable?: boolean;          // NEW: Can this constraint be overridden?
-  overridePolicyRef?: string;      // NEW: Policy that authorizes overrides
+  messageTemplate?: string; // NEW: Template for error messages with interpolation
+  detailsMapping?: Record<string, IRExpression>; // NEW: Structured details for UI
+  overrideable?: boolean; // NEW: Can this constraint be overridden?
+  overridePolicyRef?: string; // NEW: Policy that authorizes overrides
 }
 ```
 
 **Backwards Compatibility**: All new fields are optional, default values maintain existing behavior.
 
 #### Task 1.2: Extend IRCommand Interface
+
 **File**: `C:\projects\manifest\src\manifest\ir.ts` (lines 94-103)
 
 **Current State**:
+
 ```typescript
 export interface IRCommand {
   name: string;
@@ -504,6 +539,7 @@ export interface IRCommand {
 ```
 
 **Required Changes**:
+
 ```typescript
 export interface IRCommand {
   name: string;
@@ -511,7 +547,7 @@ export interface IRCommand {
   entity?: string;
   parameters: IRParameter[];
   guards: IRExpression[];
-  constraints?: IRConstraint[];    // NEW: Command-level constraints (pre-execution)
+  constraints?: IRConstraint[]; // NEW: Command-level constraints (pre-execution)
   actions: IRAction[];
   emits: string[];
   returns?: IRType;
@@ -521,9 +557,11 @@ export interface IRCommand {
 **Backwards Compatibility**: Optional field, existing commands without constraints work unchanged.
 
 #### Task 1.3: Extend IREntity Interface
+
 **File**: `C:\projects\manifest\src\manifest\ir.ts` (lines 35-44)
 
 **Current State**:
+
 ```typescript
 export interface IREntity {
   name: string;
@@ -538,6 +576,7 @@ export interface IREntity {
 ```
 
 **Required Changes**:
+
 ```typescript
 export interface IREntity {
   name: string;
@@ -548,17 +587,19 @@ export interface IREntity {
   commands: string[];
   constraints: IRConstraint[];
   policies: string[];
-  versionProperty?: string;        // NEW: Name of version field for concurrency
-  versionAtProperty?: string;       // NEW: Name of timestamp field for concurrency
+  versionProperty?: string; // NEW: Name of version field for concurrency
+  versionAtProperty?: string; // NEW: Name of timestamp field for concurrency
 }
 ```
 
 **Backwards Compatibility**: Optional fields, entities without versioning work unchanged.
 
 #### Task 1.4: Add New Result Type Interfaces
+
 **File**: `C:\projects\manifest\src\manifest\ir.ts` (after line 164)
 
 **Add New Interfaces**:
+
 ```typescript
 /**
  * Constraint evaluation outcome with severity and override info
@@ -596,9 +637,11 @@ export interface ConcurrencyConflict {
 ```
 
 #### Task 1.5: Extend CommandResult Interface
+
 **File**: `C:\projects\manifest\src\manifest\runtime-engine.ts` (lines 89-97)
 
 **Current State**:
+
 ```typescript
 export interface CommandResult {
   success: boolean;
@@ -612,6 +655,7 @@ export interface CommandResult {
 ```
 
 **Required Changes**:
+
 ```typescript
 export interface CommandResult {
   success: boolean;
@@ -620,9 +664,9 @@ export interface CommandResult {
   deniedBy?: string;
   guardFailure?: GuardFailure;
   policyDenial?: PolicyDenial;
-  constraintOutcomes?: ConstraintOutcome[];  // NEW: All constraint results
-  overrideRequests?: OverrideRequest[];      // NEW: Pending override requests
-  concurrencyConflict?: ConcurrencyConflict;  // NEW: Version conflict details
+  constraintOutcomes?: ConstraintOutcome[]; // NEW: All constraint results
+  overrideRequests?: OverrideRequest[]; // NEW: Pending override requests
+  concurrencyConflict?: ConcurrencyConflict; // NEW: Version conflict details
   emittedEvents: EmittedEvent[];
 }
 ```
@@ -630,9 +674,11 @@ export interface CommandResult {
 **Backwards Compatibility**: Optional fields, existing code works unchanged.
 
 #### Task 1.6: Extend EntityInstance Interface
+
 **File**: `C:\projects\manifest\src\manifest\runtime-engine.ts` (lines 84-87)
 
 **Current State**:
+
 ```typescript
 export interface EntityInstance {
   id: string;
@@ -641,11 +687,12 @@ export interface EntityInstance {
 ```
 
 **Required Changes**:
+
 ```typescript
 export interface EntityInstance {
   id: string;
-  version?: number;      // NEW: For optimistic concurrency control
-  versionAt?: number;    // NEW: Timestamp of last version change
+  version?: number; // NEW: For optimistic concurrency control
+  versionAt?: number; // NEW: Timestamp of last version change
   [key: string]: unknown;
 }
 ```
@@ -653,9 +700,11 @@ export interface EntityInstance {
 **Backwards Compatibility**: Optional fields, existing instances work unchanged.
 
 #### Task 1.7: Update JSON Schema
+
 **File**: `C:\projects\manifest\docs\spec\ir\ir-v1.schema.json`
 
 **Changes Required**:
+
 1. Add `constraints` property to IRCommand definition
 2. Extend IRConstraint definition with new fields:
    - `code` (string, required)
@@ -676,36 +725,108 @@ export interface EntityInstance {
 **Dependencies**: Phase 1 complete
 
 #### Task 2.1: Extend Lexer Keywords
+
 **File**: `C:\projects\manifest\src\manifest\lexer.ts` (line 17)
 
 **Current STATE**: Missing keywords: `overrideable`, `ok`, `warn`
 
 **Required Changes**:
+
 ```typescript
 export const KEYWORDS = new Set([
-  'entity', 'property', 'behavior', 'constraint', 'flow', 'effect', 'expose', 'compose',
-  'command', 'module', 'policy', 'store', 'event', 'computed', 'derived',
-  'hasMany', 'hasOne', 'belongsTo', 'ref', 'through',
-  'on', 'when', 'then', 'emit', 'mutate', 'compute', 'guard', 'publish', 'persist',
-  'as', 'from', 'to', 'with', 'where', 'connect', 'returns',
-  'string', 'number', 'boolean', 'list', 'map', 'any', 'void',
-  'true', 'false', 'null',
-  'required', 'unique', 'indexed', 'private', 'readonly', 'optional',
-  'rest', 'graphql', 'websocket', 'function', 'server',
-  'http', 'storage', 'timer', 'custom',
-  'memory', 'postgres', 'supabase', 'localStorage',
-  'read', 'write', 'delete', 'execute', 'all', 'allow', 'deny',
-  'and', 'or', 'not', 'is', 'in', 'contains',
-  'user', 'self', 'context',
-  'overrideable',  // NEW
-  'ok', 'warn'     // NEW (block is already a word)
+  'entity',
+  'property',
+  'behavior',
+  'constraint',
+  'flow',
+  'effect',
+  'expose',
+  'compose',
+  'command',
+  'module',
+  'policy',
+  'store',
+  'event',
+  'computed',
+  'derived',
+  'hasMany',
+  'hasOne',
+  'belongsTo',
+  'ref',
+  'through',
+  'on',
+  'when',
+  'then',
+  'emit',
+  'mutate',
+  'compute',
+  'guard',
+  'publish',
+  'persist',
+  'as',
+  'from',
+  'to',
+  'with',
+  'where',
+  'connect',
+  'returns',
+  'string',
+  'number',
+  'boolean',
+  'list',
+  'map',
+  'any',
+  'void',
+  'true',
+  'false',
+  'null',
+  'required',
+  'unique',
+  'indexed',
+  'private',
+  'readonly',
+  'optional',
+  'rest',
+  'graphql',
+  'websocket',
+  'function',
+  'server',
+  'http',
+  'storage',
+  'timer',
+  'custom',
+  'memory',
+  'postgres',
+  'supabase',
+  'localStorage',
+  'read',
+  'write',
+  'delete',
+  'execute',
+  'all',
+  'allow',
+  'deny',
+  'and',
+  'or',
+  'not',
+  'is',
+  'in',
+  'contains',
+  'user',
+  'self',
+  'context',
+  'overrideable', // NEW
+  'ok',
+  'warn', // NEW (block is already a word)
 ]);
 ```
 
 #### Task 2.2: Extend ConstraintNode Interface
+
 **File**: `C:\projects\manifest\src\manifest\types.ts` (lines 133-138)
 
 **Current State**:
+
 ```typescript
 export interface ConstraintNode extends ASTNode {
   type: 'Constraint';
@@ -716,33 +837,37 @@ export interface ConstraintNode extends ASTNode {
 ```
 
 **Required Changes**:
+
 ```typescript
 export interface ConstraintNode extends ASTNode {
   type: 'Constraint';
   name: string;
-  code?: string;                      // NEW: Stable identifier (defaults to name)
+  code?: string; // NEW: Stable identifier (defaults to name)
   expression: ExpressionNode;
   severity?: 'ok' | 'warn' | 'block'; // NEW: Severity level
   message?: string;
-  messageTemplate?: string;           // NEW: Template string
-  detailsMapping?: Record<string, ExpressionNode>;  // NEW: Details object
-  overrideable?: boolean;             // NEW: Override modifier
-  overridePolicyRef?: string;         // NEW: Policy reference
+  messageTemplate?: string; // NEW: Template string
+  detailsMapping?: Record<string, ExpressionNode>; // NEW: Details object
+  overrideable?: boolean; // NEW: Override modifier
+  overridePolicyRef?: string; // NEW: Policy reference
 }
 ```
 
 #### Task 2.3: Rewrite parseConstraint Method
+
 **File**: `C:\projects\manifest\src\manifest\parser.ts` (lines 340-347)
 
 **Current Implementation**: Simple parser with name, expression, and optional message
 
 **Required Implementation**: Full parser supporting:
+
 1. Optional `overrideable` modifier before name
 2. Optional severity suffix: `:ok`, `:warn`, `:block`
 3. Block syntax with `{}` for complex constraints
 4. Structured fields: `messageTemplate`, `details`, `overridePolicy`
 
 **New Syntax Examples**:
+
 ```manifest
 // Simple form (existing, still works)
 constraint maxItems: self.items.length <= 10 "Too many items"
@@ -763,9 +888,11 @@ constraint overrideable requireApproval: {
 ```
 
 #### Task 2.4: Extend CommandNode Interface
+
 **File**: `C:\projects\manifest\src\manifest\types.ts` (lines 65-73)
 
 **Current State**:
+
 ```typescript
 export interface CommandNode extends ASTNode {
   type: 'Command';
@@ -779,13 +906,14 @@ export interface CommandNode extends ASTNode {
 ```
 
 **Required Changes**:
+
 ```typescript
 export interface CommandNode extends ASTNode {
   type: 'Command';
   name: string;
   parameters: ParameterNode[];
   guards?: ExpressionNode[];
-  constraints?: ConstraintNode[];   // NEW: Command-level constraints
+  constraints?: ConstraintNode[]; // NEW: Command-level constraints
   actions: ActionNode[];
   emits?: string[];
   returns?: TypeNode;
@@ -793,9 +921,11 @@ export interface CommandNode extends ASTNode {
 ```
 
 #### Task 2.5: Add Constraint Parsing to parseCommand
+
 **File**: `C:\projects\manifest\src\manifest\parser.ts` (around line 205)
 
 **Required Changes**:
+
 1. Initialize `constraints: ConstraintNode[] = []` array
 2. In command body parsing loop, check for `'constraint'` keyword
 3. Call `this.parseConstraint()` when constraint found
@@ -812,9 +942,11 @@ export interface CommandNode extends ASTNode {
 **Dependencies**: Phase 2 complete
 
 #### Task 3.1: Update transformConstraint Method
+
 **File**: `C:\projects\manifest\src\manifest\ir-compiler.ts` (lines 217-223)
 
 **Current Implementation**:
+
 ```typescript
 private transformConstraint(c: ConstraintNode): IRConstraint {
   return {
@@ -826,6 +958,7 @@ private transformConstraint(c: ConstraintNode): IRConstraint {
 ```
 
 **Required Implementation**:
+
 ```typescript
 private transformConstraint(c: ConstraintNode): IRConstraint {
   return {
@@ -847,11 +980,13 @@ private transformConstraint(c: ConstraintNode): IRConstraint {
 ```
 
 #### Task 3.2: Update transformCommand Method
+
 **File**: `C:\projects\manifest\src\manifest\ir-compiler.ts` (lines 259-270)
 
 **Current Implementation**: Does not transform constraints
 
 **Required Changes**:
+
 ```typescript
 private transformCommand(c: CommandNode, moduleName?: string, entityName?: string): IRCommand {
   return {
@@ -877,9 +1012,11 @@ private transformCommand(c: CommandNode, moduleName?: string, entityName?: strin
 **Dependencies**: Phase 3 complete
 
 #### Task 4.1: Implement evaluateConstraint Method
+
 **File**: `C:\projects\manifest\src\manifest\runtime-engine.ts` (after line 865)
 
 **New Method**:
+
 ```typescript
 /**
  * Evaluate a single constraint and return detailed outcome
@@ -911,9 +1048,11 @@ private async evaluateConstraint(
 ```
 
 #### Task 4.2: Implement evaluateCommandConstraints Method
+
 **File**: `C:\projects\manifest\src\manifest\runtime-engine.ts` (after evaluateConstraint)
 
 **New Method**:
+
 ```typescript
 /**
  * Evaluate command constraints with override support
@@ -956,20 +1095,24 @@ private async evaluateCommandConstraints(
 ```
 
 #### Task 4.3: Integrate Constraint Evaluation into runCommand
+
 **File**: `C:\projects\manifest\src\manifest\runtime-engine.ts` (around line 712)
 
 **Location**: After policy check, before guard evaluation
 
 **Required Changes**:
+
 1. Add `overrideRequests?: OverrideRequest[]` to runCommand options parameter
 2. Call `evaluateCommandConstraints` after policy check
 3. Return early if constraints not allowed
 4. Include constraint outcomes in final CommandResult
 
 #### Task 4.4: Implement validateOverrideAuthorization Method
+
 **File**: `C:\projects\manifest\src\manifest\runtime-engine.ts`
 
 **New Method**:
+
 ```typescript
 /**
  * Validate override authorization via policy or default admin check
@@ -1004,9 +1147,11 @@ private async validateOverrideAuthorization(
 ```
 
 #### Task 4.5: Implement emitOverrideAppliedEvent Method
+
 **File**: `C:\projects\manifest\src\manifest\runtime-engine.ts`
 
 **New Method**:
+
 ```typescript
 /**
  * Emit OverrideApplied event for auditing
@@ -1037,20 +1182,24 @@ private async emitOverrideAppliedEvent(
 ```
 
 #### Task 4.6: Implement Concurrency Controls
+
 **File**: `C:\projects\manifest\src\manifest\runtime-engine.ts`
 
 **Update createInstance Method** (line 628):
+
 1. Add optional parameter: `options?: { initialVersion?: number }`
 2. If entity has `versionProperty`, initialize `version` field
 3. If entity has `versionAtProperty`, initialize timestamp
 
 **Update updateInstance Method** (line 657):
+
 1. Add optional parameter: `options?: { version?: number }`
 2. Check version match if `options.version` provided and entity has `versionProperty`
 3. On mismatch, emit `ConcurrencyConflict` event and return undefined
 4. On match, increment version and update timestamp
 
 **New Method**: emitConcurrencyConflictEvent
+
 ```typescript
 private async emitConcurrencyConflictEvent(
   entityName: string,
@@ -1079,6 +1228,7 @@ private async emitConcurrencyConflictEvent(
 ```
 
 #### Task 4.7: ✅ Relationship Memoization COMPLETED
+
 - ✅ Added relationshipMemoCache map to RuntimeEngine
 - ✅ Added clearMemoCache method
 - ✅ Updated resolveRelationship to use cache
@@ -1093,9 +1243,11 @@ private async emitConcurrencyConflictEvent(
 **Dependencies**: None
 
 #### Task 5.1: Create IRCache Module
+
 **New File**: `C:\projects\manifest\src\manifest\ir-cache.ts`
 
 **Implementation**:
+
 ```typescript
 /**
  * IR Cache for compiled manifest IR
@@ -1105,7 +1257,8 @@ export class IRCache {
   private cache: Map<string, { ir: IR; timestamp: number }> = new Map();
   private maxAge: number;
 
-  constructor(maxAge: number = 3600000) { // 1 hour default
+  constructor(maxAge: number = 3600000) {
+    // 1 hour default
     this.maxAge = maxAge;
   }
 
@@ -1138,9 +1291,11 @@ export const globalIRCache = new IRCache();
 ```
 
 #### Task 5.2: Integrate Cache into IR Compiler
+
 **File**: `C:\projects\manifest\src\manifest\ir-compiler.ts`
 
 **Changes to compileToIR function**:
+
 1. Compute content hash of source
 2. Check cache for existing IR
 3. Return cached IR if found
@@ -1155,9 +1310,11 @@ export const globalIRCache = new IRCache();
 **Dependencies**: Phase 4 complete
 
 #### Task 6.1: Extend GuardResolvedValue Interface
+
 **File**: `C:\projects\manifest\src\manifest\runtime-engine.ts` (lines 116-119)
 
 **Current State**:
+
 ```typescript
 export interface GuardResolvedValue {
   expression: string;
@@ -1166,11 +1323,13 @@ export interface GuardResolvedValue {
 ```
 
 **Required Changes**:
+
 ```typescript
 export interface GuardResolvedValue {
   expression: string;
   value: unknown;
-  location?: {        // NEW: Source location for debugging
+  location?: {
+    // NEW: Source location for debugging
     line?: number;
     column?: number;
     source?: string;
@@ -1179,9 +1338,11 @@ export interface GuardResolvedValue {
 ```
 
 #### Task 6.2: Add Location to ConstraintFailure
+
 **File**: `C:\projects\manifest\src\manifest\runtime-engine.ts` (lines 121-127)
 
 **Required Changes**:
+
 ```typescript
 export interface ConstraintFailure {
   constraintName: string;
@@ -1189,7 +1350,8 @@ export interface ConstraintFailure {
   formatted: string;
   message?: string;
   resolved?: GuardResolvedValue[];
-  location?: {        // NEW: Source location
+  location?: {
+    // NEW: Source location
     line?: number;
     column?: number;
   };
@@ -1197,9 +1359,11 @@ export interface ConstraintFailure {
 ```
 
 #### Task 6.3: Bound Diagnostic Payload Size
+
 **File**: `C:\projects\manifest\src\manifest\runtime-engine.ts` (line 967)
 
 **Update resolveExpressionValues Method**:
+
 1. Add `maxDepth: number = 10` parameter (default 10)
 2. Add `maxValues: number = 100` parameter (default 100)
 3. Track recursion depth, stop if exceeded
@@ -1216,11 +1380,14 @@ export interface ConstraintFailure {
 **Dependencies**: Phase 4 complete
 
 #### Task 7.1: Fixture 21 - Constraint Outcomes
+
 **New Files**:
+
 - `C:\projects\manifest\src\manifest\conformance\fixtures\21-constraint-outcomes.manifest`
 - `C:\projects\manifest\src\manifest\conformance\expected\21-constraint-outcomes.results.json`
 
 **Test Coverage**:
+
 - OK constraint (informational, doesn't block)
 - WARN constraint (allows execution, includes warning)
 - BLOCK constraint (blocks execution on failure)
@@ -1228,11 +1395,14 @@ export interface ConstraintFailure {
 - Details mapping with resolved values
 
 #### Task 7.2: Fixture 22 - Override Authorization
+
 **New Files**:
+
 - `C:\projects\manifest\src\manifest\conformance\fixtures\22-override-authorization.manifest`
 - `C:\projects\manifest\src\manifest\conformance\expected\22-override-authorization.results.json`
 
 **Test Coverage**:
+
 - Overrideable constraint declaration
 - Override policy reference
 - Authorized override (allowed, event emitted)
@@ -1241,22 +1411,28 @@ export interface ConstraintFailure {
 - Constraint outcome with overridden flag
 
 #### Task 7.3: Fixture 23 - Workflow Idempotency
+
 **New Files**:
+
 - `C:\projects\manifest\src\manifest\conformance\fixtures\23-workflow-idempotency.manifest`
 - `C:\projects\manifest\src\manifest\conformance\expected\23-workflow-idempotency.results.json`
 
 **Test Coverage**:
+
 - Workflow step entity with status tracking
 - Idempotent step execution (re-running completed step is safe)
 - Constraint prevents duplicate state transitions
 - Event emission for step completion
 
 #### Task 7.4: Fixture 24 - Concurrency Conflict
+
 **New Files**:
+
 - `C:\projects\manifest\src\manifest\conformance\fixtures\24-concurrency-conflict.manifest`
 - `C:\projects\manifest\src\manifest\conformance\expected\24-concurrency-conflict.results.json`
 
 **Test Coverage**:
+
 - Entity with version property
 - Update with correct version (succeeds)
 - Update with stale version (fails)
@@ -1264,33 +1440,42 @@ export interface ConstraintFailure {
 - CommandResult includes conflict details
 
 #### Task 7.5: Fixture 25 - Command-Level Constraints
+
 **New Files**:
+
 - `C:\projects\manifest\src\manifest\conformance\fixtures\25-command-constraints.manifest`
 - `C:\projects\manifest\src\manifest\conformance\expected\25-command-constraints.results.json`
 
 **Test Coverage**:
+
 - Command with multiple constraints
 - Pre-execution constraint evaluation
 - Constraint ordering and short-circuiting
 - Command-level vs entity-level constraints
 
 #### Task 7.6: Fixture 26 - Performance Constraints
+
 **New Files**:
+
 - `C:\projects\manifest\src\manifest\conformance\fixtures\26-performance-constraints.manifest`
 - `C:\projects\manifest\src\manifest\conformance\expected\26-performance-constraints.results.json`
 
 **Test Coverage**:
+
 - Large number of constraints (performance test)
 - Relationship memoization effectiveness
 - IR cache hit/miss behavior
 - Diagnostic payload bounds
 
 #### Task 7.7: Fixture 27 - Integration Test
+
 **New Files**:
+
 - `C:\projects\manifest\src\manifest\conformance\fixtures\27-vnext-integration.manifest`
 - `C:\projects\manifest\src\manifest\conformance\expected\27-vnext-integration.results.json`
 
 **Test Coverage**:
+
 - Complete vNext feature integration
 - Overrides with severity levels
 - Concurrency with versioned entities
@@ -1306,9 +1491,11 @@ export interface ConstraintFailure {
 **Dependencies**: All phases complete
 
 #### Task 8.1: Update semantics.md
+
 **File**: `C:\projects\manifest\docs\spec\semantics.md`
 
 **Add New Sections**:
+
 1. **Constraint Severity**: OK/WARN/BLOCK levels and behavior
 2. **Constraint Overrides**: Overrideable modifier, authorization, events
 3. **Command Constraints**: Pre-execution validation
@@ -1316,9 +1503,11 @@ export interface ConstraintFailure {
 5. **Workflow Conventions**: Idempotency patterns, step tracking
 
 #### Task 8.2: Update Language Reference
+
 **File**: `C:\projects\manifest\docs\language\reference.md` (if exists)
 
 **Add Documentation For**:
+
 - Constraint block syntax
 - Severity modifiers
 - Overrideable modifier
@@ -1326,9 +1515,11 @@ export interface ConstraintFailure {
 - Details mapping syntax
 
 #### Task 8.3: Create Migration Guide
+
 **New File**: `C:\projects\manifest\docs\migration\vnext-migration-guide.md`
 
 **Content**:
+
 - Overview of new features
 - Breaking changes (none expected)
 - Recommended migration path
@@ -1337,9 +1528,11 @@ export interface ConstraintFailure {
 - Best practices for concurrency
 
 #### Task 8.4: Update README
+
 **File**: `C:\projects\manifest\README.md`
 
 **Add To README**:
+
 - vNext features section
 - Quick start examples with new syntax
 - Links to detailed documentation
@@ -1350,6 +1543,7 @@ export interface ConstraintFailure {
 ## Implementation Priority Matrix
 
 ### Critical Path (Must Complete First)
+
 1. **Phase 1**: IR Schema Extensions (2-3 hours) - Foundation for everything
 2. **Phase 2**: Parser/Lexer Updates (4-6 hours) - Enables new syntax
 3. **Phase 3**: IR Compiler Updates (2-3 hours) - Compiles new syntax
@@ -1359,17 +1553,20 @@ export interface ConstraintFailure {
 **Total Critical Path**: 22-32 hours
 
 ### Can Complete in Parallel
+
 - **Phase 5**: IR Caching (2-3 hours) - Independent performance feature
 - **Phase 6**: Diagnostics (2-3 hours) - Depends on Phase 4
 - **Phase 8**: Documentation (3-4 hours) - Can start once design is stable
 
 ### Quick Wins (High Value, Low Effort)
+
 1. **Task 1.7**: Update JSON Schema (30 min) - Completes IR phase
 2. **Task 2.1**: Lexer Keywords (15 min) - Unblocks parser work
 3. **Task 4.7**: Memoization (1 hour) - Immediate performance gain
 4. **Task 7.1**: Fixture 21 (1 hour) - First vNext test passing
 
 ### Complex Changes (Plan Carefully)
+
 1. **Task 2.3**: Rewrite parseConstraint (2-3 hours) - Grammar complexity
 2. **Task 4.2**: evaluateCommandConstraints (2 hours) - Override logic
 3. **Task 4.6**: Concurrency Controls (3 hours) - Version management
@@ -1380,6 +1577,7 @@ export interface ConstraintFailure {
 ## Risk Assessment
 
 ### High Risk Areas
+
 1. **Runtime Constraint Evaluation** (Task 4.1-4.3)
    - **Risk**: Breaking existing command execution
    - **Mitigation**: Comprehensive unit tests, gradual rollout
@@ -1396,6 +1594,7 @@ export interface ConstraintFailure {
    - **Rollback**: Backwards compatible syntax support
 
 ### Medium Risk Areas
+
 1. **IR Schema Changes** (Task 1.1-1.6)
    - **Risk**: Type mismatches in compiled code
    - **Mitigation**: Optional fields with defaults
@@ -1407,6 +1606,7 @@ export interface ConstraintFailure {
    - **Rollback**: Require explicit policy for all overrides
 
 ### Low Risk Areas
+
 1. **IR Caching** (Task 5.1-5.2)
    - **Risk**: Cache invalidation bugs
    - **Mitigation**: TTL-based expiration, explicit invalidation
@@ -1422,22 +1622,26 @@ export interface ConstraintFailure {
 ## Testing Strategy
 
 ### Unit Tests
+
 - **Constraint Evaluation**: Test severity levels, overrides, details mapping
 - **Concurrency Controls**: Test version checking, conflict detection
 - **Parser**: Test new constraint syntax variations
 - **IR Compiler**: Test transformation of new fields
 
 ### Integration Tests
+
 - **Command Execution**: Test constraints in full command flow
 - **Override Flow**: Test authorization, event emission
 - **Version Conflicts**: Test concurrent update scenarios
 
 ### Conformance Tests
+
 - **Fixtures 21-27**: Comprehensive vNext feature coverage
 - **Regression**: All 20 existing fixtures must pass
 - **Round-trip**: Parse -> Compile -> Execute -> Verify
 
 ### Performance Tests
+
 - **IR Cache**: Measure compilation time with/without cache
 - **Memoization**: Measure relationship lookup performance
 - **Diagnostics**: Measure impact of detailed diagnostics
@@ -1447,26 +1651,31 @@ export interface ConstraintFailure {
 ## Rollout Strategy
 
 ### Phase 1: Development (Week 1-2)
+
 - Complete Phases 1-4 (critical path)
 - Implement basic conformance tests (21-24)
 - Internal testing and validation
 
 ### Phase 2: Testing (Week 3)
+
 - Complete Phase 7 (all conformance fixtures)
 - Performance optimization (Phases 5-6)
 - Security review of override mechanism
 
 ### Phase 3: Documentation (Week 3-4)
+
 - Complete Phase 8 (all documentation)
 - Migration guide for existing users
 - Example applications using new features
 
 ### Phase 4: Beta Release (Week 5)
+
 - Feature flag for vNext features
 - Selective rollout to test users
 - Monitor for issues and gather feedback
 
 ### Phase 5: General Release (Week 6+)
+
 - Remove feature flags
 - Announce vNext features
 - Deprecate old patterns (if any)
@@ -1484,6 +1693,7 @@ export interface ConstraintFailure {
 5. **Events**: New event types don't affect existing listeners
 
 **Migration Path:**
+
 - Existing manifests: No changes required
 - Enhanced manifests: Opt-in to new features
 - Gradual adoption: Add features incrementally
@@ -1493,6 +1703,7 @@ export interface ConstraintFailure {
 ## Success Criteria
 
 ### Functional Requirements
+
 - ✅ All 20 existing conformance fixtures pass
 - ✅ All 7 new conformance fixtures pass (21-27)
 - ✅ Constraint severity levels work correctly
@@ -1501,18 +1712,21 @@ export interface ConstraintFailure {
 - ✅ Command constraints evaluated pre-execution
 
 ### Performance Requirements
+
 - ✅ IR compilation time < 100ms (cached)
 - ✅ Constraint evaluation < 10ms per constraint
 - ✅ Relationship memoization reduces lookups by 50%+
 - ✅ Diagnostic payloads bounded to < 10KB
 
 ### Quality Requirements
+
 - ✅ No regressions in existing functionality
 - ✅ TypeScript compilation with no errors
 - ✅ ESLint passes with no warnings
 - ✅ Test coverage > 80% for new code
 
 ### Documentation Requirements
+
 - ✅ All new features documented
 - ✅ Migration guide available
 - ✅ Examples for all new syntax
@@ -1529,6 +1743,7 @@ export interface ConstraintFailure {
 5. **Regular Reviews**: Review progress after each phase completion
 
 **Recommended Starting Point**: Task 1.1 (Extend IRConstraint Interface)
+
 - **Why**: Foundation for all other constraint work
 - **Effort**: 30 minutes
 - **Risk**: Very low (additive changes only)
@@ -1539,6 +1754,7 @@ export interface ConstraintFailure {
 ## Appendix: Quick Reference
 
 ### File Locations Summary
+
 ```
 IR Schema:
   C:\projects\manifest\src\manifest\ir.ts
@@ -1568,6 +1784,7 @@ Documentation:
 ```
 
 ### Interface Dependency Graph
+
 ```
 IRConstraint (Task 1.1)
   ├─> ConstraintNode (Task 2.2)
@@ -1587,6 +1804,7 @@ IREntity (Task 1.3)
 ```
 
 ### Glossary
+
 - **Severity**: Constraint outcome level (ok/warn/block)
 - **Overrideable**: Constraint that can be bypassed with authorization
 - **OverridePolicy**: Policy that authorizes constraint overrides

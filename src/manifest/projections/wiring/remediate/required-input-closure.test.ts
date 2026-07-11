@@ -51,7 +51,7 @@ describe('add-required-input closure useState + Number conversion', () => {
       capabilityId: 'Task.create',
       autoFixableOnly: true,
     });
-    expect(result.applied.some(a => a.applied && a.verification?.ok)).toBe(true);
+    expect(result.applied.some((a) => a.applied && a.verification?.ok)).toBe(true);
     const after = [...resultToMap(files, result).values()][0]!;
     expect(after).toMatch(/priority\s*:\s*priorityNum/);
     const report = inspectWiringConsumersSync({
@@ -61,7 +61,7 @@ describe('add-required-input closure useState + Number conversion', () => {
     });
     expect(
       report.mismatches.some(
-        m => m.kind === 'missing_required_input' && m.parameter === 'priority',
+        (m) => m.kind === 'missing_required_input' && m.parameter === 'priority',
       ),
     ).toBe(false);
   });
@@ -90,7 +90,7 @@ describe('add-required-input closure useState + Number conversion', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p => p.mismatch?.kind === 'missing_required_input' && p.mismatch.parameter === 'priority',
+      (p) => p.mismatch?.kind === 'missing_required_input' && p.mismatch.parameter === 'priority',
     );
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
@@ -122,7 +122,7 @@ describe('add-required-input closure useState + Number conversion', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p => p.mismatch?.kind === 'missing_required_input' && p.mismatch.parameter === 'priority',
+      (p) => p.mismatch?.kind === 'missing_required_input' && p.mismatch.parameter === 'priority',
     );
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
@@ -150,7 +150,7 @@ describe('add-required-input closure useState + Number conversion', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p => p.mismatch?.kind === 'missing_required_input' && p.mismatch.parameter === 'priority',
+      (p) => p.mismatch?.kind === 'missing_required_input' && p.mismatch.parameter === 'priority',
     );
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
@@ -175,7 +175,7 @@ describe('add-required-input closure useState + Number conversion', () => {
       capabilityId: 'Task.create',
       autoFixableOnly: true,
     });
-    expect(result.applied.every(a => !a.applied)).toBe(true);
+    expect(result.applied.every((a) => !a.applied)).toBe(true);
     expect([...files.values()][0]).toBe(before);
   });
 
@@ -205,7 +205,7 @@ describe('add-required-input closure useState + Number conversion', () => {
       capabilityId: 'Task.create',
       autoFixableOnly: true,
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
+    expect(result.applied.some((a) => a.applied)).toBe(true);
     const after = [...resultToMap(files, result).values()][0]!;
     expect(after).toMatch(/unrelated = \{ priority: 9 \}/);
     expect(after).toMatch(/executeCommand\([\s\S]*priority\s*:\s*priorityNum/);
@@ -236,7 +236,7 @@ describe('add-required-input closure useState + Number conversion', () => {
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     const plan = bundle.plans.find(
-      p =>
+      (p) =>
         p.mismatch?.kind === 'missing_required_input' &&
         p.mismatch.parameter === 'priority' &&
         p.automaticApplicationAllowed,
@@ -279,7 +279,7 @@ describe('add-required-input closure useState + Number conversion', () => {
       capabilityId: 'Task.create',
       autoFixableOnly: true,
     });
-    expect(first.applied.some(a => a.applied)).toBe(true);
+    expect(first.applied.some((a) => a.applied)).toBe(true);
     const after = resultToMap(files, first);
     const second = remediateWiringSync({
       contract,
@@ -290,7 +290,7 @@ describe('add-required-input closure useState + Number conversion', () => {
     });
     expect(
       second.applied.filter(
-        a =>
+        (a) =>
           a.applied &&
           a.findingId.includes('missing_required_input') &&
           a.findingId.includes('priority'),
@@ -325,7 +325,7 @@ describe('add-required-input closure useState + Number conversion', () => {
       mode: 'one-defect',
       autoFixableOnly: true,
     });
-    const applied = result.applied.find(a => a.applied);
+    const applied = result.applied.find((a) => a.applied);
     expect(applied?.findingId).toMatch(/missing_required_input/);
     expect(applied?.findingId).toMatch(/priority/);
   });
@@ -353,7 +353,7 @@ describe('add-required-input closure useState + Number conversion', () => {
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
     expect(
       bundle.plans.some(
-        p =>
+        (p) =>
           p.repairKind === 'add-required-input' &&
           p.mismatch?.parameter === 'completedByUserId' &&
           p.automaticApplicationAllowed,

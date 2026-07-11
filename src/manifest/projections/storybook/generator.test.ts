@@ -36,9 +36,24 @@ function taskEntity(): IREntity {
     name: 'Task',
     properties: [
       { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-      { name: 'title', type: { name: 'string', nullable: false }, modifiers: ['required'], defaultValue: { kind: 'string', value: '' } },
-      { name: 'status', type: { name: 'string', nullable: false }, modifiers: ['required'], defaultValue: { kind: 'string', value: 'todo' } },
-      { name: 'priority', type: { name: 'int', nullable: true }, modifiers: [], defaultValue: { kind: 'number', value: 1 } },
+      {
+        name: 'title',
+        type: { name: 'string', nullable: false },
+        modifiers: ['required'],
+        defaultValue: { kind: 'string', value: '' },
+      },
+      {
+        name: 'status',
+        type: { name: 'string', nullable: false },
+        modifiers: ['required'],
+        defaultValue: { kind: 'string', value: 'todo' },
+      },
+      {
+        name: 'priority',
+        type: { name: 'int', nullable: true },
+        modifiers: [],
+        defaultValue: { kind: 'number', value: 1 },
+      },
       { name: 'isPrivate', type: { name: 'boolean', nullable: false }, modifiers: ['private'] },
     ],
     computedProperties: [
@@ -48,7 +63,11 @@ function taskEntity(): IREntity {
         expression: {
           kind: 'binary',
           operator: '>=',
-          left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'priority' },
+          left: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'self' },
+            property: 'priority',
+          },
           right: { kind: 'literal', value: { kind: 'number', value: 3 } },
         },
         dependencies: ['priority'],
@@ -78,9 +97,7 @@ function updateStatusCommand(): IRCommand {
   return {
     name: 'updateStatus',
     entity: 'Task',
-    parameters: [
-      { name: 'newStatus', type: { name: 'string', nullable: false }, required: true },
-    ],
+    parameters: [{ name: 'newStatus', type: { name: 'string', nullable: false }, required: true }],
     guards: [
       {
         kind: 'binary',
@@ -188,7 +205,10 @@ describe('StorybookProjection', () => {
 
     it('returns error diagnostic for missing entity', () => {
       const ir = minimalIR({ entities: [taskEntity()] });
-      const result = projection.generate(ir, { surface: 'storybook.entity', entity: 'NonExistent' });
+      const result = projection.generate(ir, {
+        surface: 'storybook.entity',
+        entity: 'NonExistent',
+      });
 
       expect(result.artifacts).toHaveLength(0);
       expect(result.diagnostics).toHaveLength(1);
@@ -200,7 +220,11 @@ describe('StorybookProjection', () => {
       const entity: IREntity = {
         name: 'Order',
         properties: [
-          { name: 'status', type: { name: 'OrderStatus', nullable: false }, modifiers: ['required'] },
+          {
+            name: 'status',
+            type: { name: 'OrderStatus', nullable: false },
+            modifiers: ['required'],
+          },
         ],
         computedProperties: [],
         relationships: [],
@@ -210,7 +234,12 @@ describe('StorybookProjection', () => {
       };
       const ir = minimalIR({
         entities: [entity],
-        enums: [{ name: 'OrderStatus', values: [{ name: 'pending' }, { name: 'shipped' }, { name: 'delivered' }] }],
+        enums: [
+          {
+            name: 'OrderStatus',
+            values: [{ name: 'pending' }, { name: 'shipped' }, { name: 'delivered' }],
+          },
+        ],
       });
       const result = projection.generate(ir, { surface: 'storybook.entity', entity: 'Order' });
       const code = result.artifacts[0].code;
@@ -234,7 +263,10 @@ describe('StorybookProjection', () => {
   describe('storybook.command surface', () => {
     it('generates command story with parameters', () => {
       const ir = minimalIR({ commands: [updateStatusCommand()] });
-      const result = projection.generate(ir, { surface: 'storybook.command', command: 'updateStatus' });
+      const result = projection.generate(ir, {
+        surface: 'storybook.command',
+        command: 'updateStatus',
+      });
 
       expect(result.diagnostics).toHaveLength(0);
       expect(result.artifacts).toHaveLength(1);
@@ -248,7 +280,10 @@ describe('StorybookProjection', () => {
 
     it('includes play functions for guard scenarios', () => {
       const ir = minimalIR({ commands: [updateStatusCommand()] });
-      const result = projection.generate(ir, { surface: 'storybook.command', command: 'updateStatus' });
+      const result = projection.generate(ir, {
+        surface: 'storybook.command',
+        command: 'updateStatus',
+      });
       const code = result.artifacts[0].code;
 
       expect(code).toContain('play: async ({ canvasElement })');
@@ -259,7 +294,10 @@ describe('StorybookProjection', () => {
 
     it('generates correct pass/fail args for guards', () => {
       const ir = minimalIR({ commands: [updateStatusCommand()] });
-      const result = projection.generate(ir, { surface: 'storybook.command', command: 'updateStatus' });
+      const result = projection.generate(ir, {
+        surface: 'storybook.command',
+        command: 'updateStatus',
+      });
       const code = result.artifacts[0].code;
 
       // Pass story should have non-empty string
@@ -272,9 +310,7 @@ describe('StorybookProjection', () => {
       const assignCmd: IRCommand = {
         name: 'assignTask',
         entity: 'Task',
-        parameters: [
-          { name: 'userId', type: { name: 'string', nullable: false }, required: true },
-        ],
+        parameters: [{ name: 'userId', type: { name: 'string', nullable: false }, required: true }],
         guards: [],
         actions: [],
         emits: [],
@@ -287,7 +323,10 @@ describe('StorybookProjection', () => {
 
     it('returns error diagnostic for missing command', () => {
       const ir = minimalIR({ commands: [updateStatusCommand()] });
-      const result = projection.generate(ir, { surface: 'storybook.command', command: 'nonExistent' });
+      const result = projection.generate(ir, {
+        surface: 'storybook.command',
+        command: 'nonExistent',
+      });
 
       expect(result.artifacts).toHaveLength(0);
       expect(result.diagnostics[0].code).toBe('COMMAND_NOT_FOUND');
@@ -303,7 +342,10 @@ describe('StorybookProjection', () => {
         emits: [],
       };
       const ir = minimalIR({ commands: [cmd] });
-      const result = projection.generate(ir, { surface: 'storybook.command', command: 'simpleAction' });
+      const result = projection.generate(ir, {
+        surface: 'storybook.command',
+        command: 'simpleAction',
+      });
       const code = result.artifacts[0].code;
 
       expect(code).not.toContain('play:');
@@ -320,7 +362,7 @@ describe('StorybookProjection', () => {
       const result = projection.generate(ir, { surface: 'storybook.all' });
 
       expect(result.artifacts.length).toBeGreaterThanOrEqual(2);
-      const ids = result.artifacts.map(a => a.id);
+      const ids = result.artifacts.map((a) => a.id);
       expect(ids).toContain('storybook.entity.Task');
       expect(ids).toContain('storybook.command.updateStatus');
     });
@@ -396,7 +438,7 @@ describe('StorybookProjection', () => {
       const result1 = projection.generate(ir, { surface: 'storybook.all' });
       const result2 = projection.generate(ir, { surface: 'storybook.all' });
 
-      expect(result1.artifacts.map(a => a.code)).toEqual(result2.artifacts.map(a => a.code));
+      expect(result1.artifacts.map((a) => a.code)).toEqual(result2.artifacts.map((a) => a.code));
     });
   });
 });

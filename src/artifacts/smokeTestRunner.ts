@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SmokeTestReport, SmokeTestResult } from './types';
 
-export async function runSmokeTests(clientCode: string, ast: object | null): Promise<SmokeTestReport> {
+export async function runSmokeTests(
+  clientCode: string,
+  ast: object | null,
+): Promise<SmokeTestReport> {
   const startTime = performance.now();
   const results: SmokeTestResult[] = [];
 
@@ -11,7 +14,7 @@ export async function runSmokeTests(clientCode: string, ast: object | null): Pro
       passed: 0,
       failed: 0,
       results: [],
-      duration: 0
+      duration: 0,
     };
   }
 
@@ -35,18 +38,18 @@ export async function runSmokeTests(clientCode: string, ast: object | null): Pro
     results.push({
       name: 'Code Compiles',
       passed: true,
-      duration: 1
+      duration: 1,
     });
   }
 
-  const passed = results.filter(r => r.passed).length;
+  const passed = results.filter((r) => r.passed).length;
 
   return {
     total: results.length,
     passed,
     failed: results.length - passed,
     results,
-    duration: Math.round(performance.now() - startTime)
+    duration: Math.round(performance.now() - startTime),
   };
 }
 
@@ -156,7 +159,12 @@ function expressionToString(expr: unknown): string {
     if ('type' in expr) {
       if ((expr as any).type === 'identifier' && 'name' in expr) return (expr as any).name;
       if ((expr as any).type === 'literal' && 'value' in expr) return String((expr as any).value);
-      if ((expr as any).type === 'binary' && 'left' in expr && 'operator' in expr && 'right' in expr) {
+      if (
+        (expr as any).type === 'binary' &&
+        'left' in expr &&
+        'operator' in expr &&
+        'right' in expr
+      ) {
         return `${expressionToString((expr as any).left)} ${(expr as any).operator} ${expressionToString((expr as any).right)}`;
       }
       if ((expr as any).type === 'member' && 'object' in expr && 'property' in expr) {
@@ -167,7 +175,10 @@ function expressionToString(expr: unknown): string {
   return JSON.stringify(expr);
 }
 
-async function runEntityInstantiationTest(clientCode: string, entityName: string): Promise<SmokeTestResult> {
+async function runEntityInstantiationTest(
+  clientCode: string,
+  entityName: string,
+): Promise<SmokeTestResult> {
   const start = performance.now();
   const testName = `${entityName} instantiation`;
 
@@ -186,19 +197,23 @@ async function runEntityInstantiationTest(clientCode: string, entityName: string
     return {
       name: testName,
       passed: true,
-      duration: Math.round(performance.now() - start)
+      duration: Math.round(performance.now() - start),
     };
   } catch (err: unknown) {
     return {
       name: testName,
       passed: false,
       error: (err as Error).message || String(err),
-      duration: Math.round(performance.now() - start)
+      duration: Math.round(performance.now() - start),
     };
   }
 }
 
-async function runCommandTest(clientCode: string, entityName: string, commandName: string): Promise<SmokeTestResult> {
+async function runCommandTest(
+  clientCode: string,
+  entityName: string,
+  commandName: string,
+): Promise<SmokeTestResult> {
   const start = performance.now();
   const testName = `${entityName}.${commandName} exists`;
 
@@ -219,19 +234,23 @@ async function runCommandTest(clientCode: string, entityName: string, commandNam
     return {
       name: testName,
       passed: true,
-      duration: Math.round(performance.now() - start)
+      duration: Math.round(performance.now() - start),
     };
   } catch (err: unknown) {
     return {
       name: testName,
       passed: false,
       error: (err as Error).message || String(err),
-      duration: Math.round(performance.now() - start)
+      duration: Math.round(performance.now() - start),
     };
   }
 }
 
-async function runConstraintTest(clientCode: string, entityName: string, expression: string): Promise<SmokeTestResult> {
+async function runConstraintTest(
+  clientCode: string,
+  entityName: string,
+  expression: string,
+): Promise<SmokeTestResult> {
   const start = performance.now();
   const testName = `${entityName} constraint: ${expression.slice(0, 30)}...`;
 
@@ -252,14 +271,14 @@ async function runConstraintTest(clientCode: string, entityName: string, express
     return {
       name: testName,
       passed: true,
-      duration: Math.round(performance.now() - start)
+      duration: Math.round(performance.now() - start),
     };
   } catch (err: unknown) {
     return {
       name: testName,
       passed: false,
       error: (err as Error).message || String(err),
-      duration: Math.round(performance.now() - start)
+      duration: Math.round(performance.now() - start),
     };
   }
 }

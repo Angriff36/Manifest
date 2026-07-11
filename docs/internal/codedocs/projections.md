@@ -1,6 +1,6 @@
 ---
-title: "Projections"
-description: "Understand how Manifest turns IR into Next.js artifacts, route inventories, and typed helpers without changing semantics."
+title: 'Projections'
+description: 'Understand how Manifest turns IR into Next.js artifacts, route inventories, and typed helpers without changing semantics.'
 ---
 
 > **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
@@ -13,7 +13,6 @@ description: "Understand how Manifest turns IR into Next.js artifacts, route inv
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 Projections are Manifest's code generation layer. They consume IR and emit artifacts, but they are not allowed to redefine what a Manifest program means.
 
@@ -84,13 +83,15 @@ const result = projection.generate(ir, {
     basePath: '/api',
     includeAuth: true,
     includeTenant: true,
-    manualRoutes: [{
-      id: 'health-check',
-      path: '/api/health',
-      method: 'GET',
-      auth: false,
-      tenant: false,
-    }],
+    manualRoutes: [
+      {
+        id: 'health-check',
+        path: '/api/health',
+        method: 'GET',
+        auth: false,
+        tenant: false,
+      },
+    ],
     generatedAt: '2026-05-22T00:00:00.000Z',
   },
 });

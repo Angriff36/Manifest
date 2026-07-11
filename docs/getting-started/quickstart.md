@@ -84,9 +84,9 @@ const source = `
 
 const { ir, diagnostics } = await compileToIR(source);
 
-if (diagnostics.some(d => d.severity === 'error')) {
+if (diagnostics.some((d) => d.severity === 'error')) {
   console.error('Compilation errors:');
-  diagnostics.forEach(d => console.error(`  ${d.message}`));
+  diagnostics.forEach((d) => console.error(`  ${d.message}`));
   process.exit(1);
 }
 
@@ -119,12 +119,16 @@ if (!instance) {
 console.log('Created:', instance);
 
 // Update status via command
-const updateResult = await runtime.runCommand('updateStatus', {
-  newStatus: 'done',
-}, {
-  entityName: 'Task',
-  instanceId: instance.id,
-});
+const updateResult = await runtime.runCommand(
+  'updateStatus',
+  {
+    newStatus: 'done',
+  },
+  {
+    entityName: 'Task',
+    instanceId: instance.id,
+  },
+);
 
 if (updateResult.success) {
   console.log('Events:', updateResult.emittedEvents);
@@ -151,16 +155,16 @@ pnpm exec manifest generate ir/ -p nextjs -s route -o generated/
 Generated route (simplified):
 
 ```typescript
-import { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { database } from "@/lib/database";
-import { manifestSuccessResponse, manifestErrorResponse } from "@/lib/manifest-response";
-import { RuntimeEngine } from "@angriff36/manifest";
+import { NextRequest } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { database } from '@/lib/database';
+import { manifestSuccessResponse, manifestErrorResponse } from '@/lib/manifest-response';
+import { RuntimeEngine } from '@angriff36/manifest';
 
 export async function POST(request: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
-    return manifestErrorResponse("Unauthorized", 401);
+    return manifestErrorResponse('Unauthorized', 401);
   }
 
   const userMapping = await database.userTenantMapping.findUnique({
@@ -168,7 +172,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (!userMapping) {
-    return manifestErrorResponse("User not mapped to tenant", 400);
+    return manifestErrorResponse('User not mapped to tenant', 400);
   }
 
   const { tenantId } = userMapping;
@@ -180,10 +184,15 @@ export async function POST(request: NextRequest) {
     tenantId,
     user: { id: userId, role: userMapping.role },
   });
-  const result = await runtime.runCommand('updateStatus', input, { entityName: 'Task', instanceId: input.id });
+  const result = await runtime.runCommand('updateStatus', input, {
+    entityName: 'Task',
+    instanceId: input.id,
+  });
 
   if (!result.success) {
-    return manifestErrorResponse(result.guardFailure?.formatted ?? result.error ?? 'Command failed');
+    return manifestErrorResponse(
+      result.guardFailure?.formatted ?? result.error ?? 'Command failed',
+    );
   }
 
   return manifestSuccessResponse({ task: result.instance });
@@ -217,12 +226,12 @@ import { RuntimeEngine, Store } from '@angriff36/manifest';
 class PrismaTaskStore implements Store {
   async getAll() {
     return await prisma.task.findMany({
-      where: { deletedAt: null }
+      where: { deletedAt: null },
     });
   }
 
   async getById(id: string) {
-    return await prisma.task.findUnique({ where: { id } }) ?? undefined;
+    return (await prisma.task.findUnique({ where: { id } })) ?? undefined;
   }
 
   async create(data: Record<string, unknown>) {
@@ -255,9 +264,9 @@ const runtime = new RuntimeEngine(
       if (entityName === 'Task') {
         return new PrismaTaskStore();
       }
-      return undefined; // Use default memory store
+      return undefined; // only safe for entities declared with a built-in target
     },
-  }
+  },
 );
 ```
 
@@ -313,6 +322,11 @@ Conformance tests are executable semantics. If tests fail, you either changed la
 
 ### Unsupported storage target
 
-The runtime throws clear errors for unsupported targets. Use `storeProvider` in the third constructor argument to add custom stores.
+The runtime throws clear errors for unbound durable targets. `DATABASE_URL`
+alone does not bind storage: every durable entity needs a store implementation
+and table/model mapping. Hand-built runtimes pass `storeProvider` in the third
+constructor argument. Generated companions use `manifest.config.ts` plus
+`runtimeConfigImport`. See the
+[complete PostgreSQL example](../spec/config/manifest.config.md#complete-postgresql-runtime-companion-example).
 
 See: `docs/getting-started/faq.md` for more troubleshooting.

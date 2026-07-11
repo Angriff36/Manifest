@@ -54,6 +54,7 @@ Do not copy schema files, modify provenance, or create symlinks as workarounds. 
 **Cause**: Syntax error in `.manifest` source.
 
 **Solution**:
+
 - Check for missing braces, semicolons, or keywords
 - Verify property types are valid (`string`, `number`, `boolean`, `timestamp`, etc.)
 - Use the lexer output to see how tokens are being parsed
@@ -69,13 +70,14 @@ console.log(tokens);
 **Cause**: Referencing an entity that doesn't exist in the IR.
 
 **Solution**:
+
 - Verify entity name is spelled correctly (case-sensitive)
 - Check that the entity is defined before it's referenced
 - Ensure compilation succeeded and IR contains the entity
 
 ```typescript
 // Check what entities are in the IR
-console.log(result.ir.entities.map(e => e.name));
+console.log(result.ir.entities.map((e) => e.name));
 ```
 
 ### "Command X not found on entity Y"
@@ -83,6 +85,7 @@ console.log(result.ir.entities.map(e => e.name));
 **Cause**: Referencing a command that doesn't exist on the entity.
 
 **Solution**:
+
 - Verify the command is defined within the entity block
 - Check command name spelling (case-sensitive)
 - Ensure the command is defined before being called
@@ -96,6 +99,7 @@ console.log(result.ir.entities.map(e => e.name));
 **Cause**: Not checking the correct fields on `CommandResult`.
 
 **Solution**:
+
 - Always check `result.success` before accessing `result.result`
 - Inspect `result.guardFailure`, `result.policyDenial`, or `result.error` for detailed error information
 - Note: `CommandResult` does NOT have a `diagnostics` field - use the specific failure fields instead
@@ -108,12 +112,12 @@ if (!result.success) {
     console.error('Guard failed:', {
       index: result.guardFailure.index,
       expression: result.guardFailure.formatted,
-      resolved: result.guardFailure.resolved
+      resolved: result.guardFailure.resolved,
     });
   } else if (result.policyDenial) {
     console.error('Policy denied:', {
       policy: result.policyDenial.policyName,
-      message: result.policyDenial.message
+      message: result.policyDenial.message,
     });
   } else {
     console.error('Error:', result.error);
@@ -131,6 +135,7 @@ console.log('Success:', result.result);
 **Cause**: Authorization policy rejected the command.
 
 **Solution**:
+
 - Check that `user.*` bindings are correctly set in runtime context
 - Verify policy scope (`read`, `execute`, or `all`)
 - Ensure user context matches policy conditions
@@ -142,8 +147,8 @@ const runtime = new RuntimeEngine(ir, {
   tenantId: 'tenant-456',
   user: {
     id: 'user-123',
-    role: 'admin'
-  }
+    role: 'admin',
+  },
 });
 ```
 
@@ -152,12 +157,13 @@ const runtime = new RuntimeEngine(ir, {
 **Cause**: Data constraint failed validation.
 
 **Solution**:
+
 - Check constraint severity (`block`, `warn`, `ok`)
 - Review constraint expression and resolved values
 - For non-blocking constraints, check `result.constraintOutcomes`
 
 ```typescript
-const warnings = result.constraintOutcomes?.filter(o => o.severity === 'warn');
+const warnings = result.constraintOutcomes?.filter((o) => o.severity === 'warn');
 if (warnings?.length) {
   console.warn('Non-blocking constraint outcomes:', warnings);
 }
@@ -168,8 +174,10 @@ if (warnings?.length) {
 **Cause**: Runtime doesn't support the requested storage target.
 
 **Solution**:
-- Use a supported target (`memory`, `localStorage`, `postgres`, `supabase`)
-- Implement custom store via `storeProvider`
+
+- `memory` and browser `localStorage` need no provider.
+- `postgres`, `supabase`, `durable`, and custom targets require a matching store from `storeProvider`.
+- Generated companions require entity bindings in `manifest.config.ts` and `runtimeConfigImport` in projection options.
 - Check that you're using the correct runtime for your environment
 
 ```typescript
@@ -182,11 +190,13 @@ const runtime = new RuntimeEngine(
       if (entityName === 'Todo') {
         return new MyCustomStore();
       }
-      return undefined; // default to memory
+      return undefined; // only safe when the declared target has a built-in store
     },
-  }
+  },
 );
 ```
+
+See the [complete generated-companion PostgreSQL example](../spec/config/manifest.config.md#complete-postgresql-runtime-companion-example).
 
 ---
 
@@ -197,6 +207,7 @@ const runtime = new RuntimeEngine(
 **Cause**: Projection configuration mismatch or missing dependencies.
 
 **Solution**:
+
 - Verify IR contains the entity you're generating for
 - Check that import paths are correct for your project structure
 - Ensure `@/lib/database` and other dependencies exist
@@ -234,6 +245,7 @@ your own implementation. In that case create `src/lib/manifest-response.ts` expo
 **Cause**: Next.js projection uses Clerk by default; you may use a different auth provider.
 
 **Solution**:
+
 - Modify the projection template to use your auth provider
 - Or implement custom projection via `ProjectionTarget` interface
 
@@ -246,6 +258,7 @@ your own implementation. In that case create `src/lib/manifest-response.ts` expo
 **Cause**: Fixture update didn't regenerate expected outputs.
 
 **Solution**:
+
 ```bash
 npm run conformance:regen
 ```
@@ -257,6 +270,7 @@ npm run conformance:regen
 **Cause**: IR compiler behavior changed.
 
 **Solution**:
+
 - If change is intentional: update spec and regenerate fixtures
 - If change is unintentional: fix the compiler bug
 
@@ -265,6 +279,7 @@ npm run conformance:regen
 **Cause**: Runtime behavior changed.
 
 **Solution**:
+
 - If change is intentional: update spec and regenerate fixtures
 - If change is unintentional: fix the runtime bug
 
@@ -295,7 +310,7 @@ try {
   const source = await fs.readFile('manifest/Recipe.manifest', 'utf-8');
   const result = await compileToIR(source);
 
-  if (result.diagnostics.some(d => d.severity === 'error')) {
+  if (result.diagnostics.some((d) => d.severity === 'error')) {
     throw new Error('Compilation failed');
   }
 
@@ -312,6 +327,7 @@ try {
 **Cause**: Inefficient store implementation or missing indexes.
 
 **Solution**:
+
 - Add database indexes on frequently queried fields
 - Use store provider to optimize queries
 - Enable constraint pre-check for faster validation failure
@@ -321,6 +337,7 @@ try {
 **Cause**: Loading all instances into memory.
 
 **Solution**:
+
 - Use streaming/pagination for large datasets
 - Implement cursor-based pagination in custom store
 
@@ -333,6 +350,7 @@ try {
 **Cause**: Docs change shouldn't affect tests; check for unintended file modifications.
 
 **Solution**:
+
 ```bash
 git status  # Check what changed
 git diff    # Review changes
@@ -343,6 +361,7 @@ git diff    # Review changes
 **Cause**: TypeScript types changed but not rebuilt.
 
 **Solution**:
+
 ```bash
 npm run typecheck
 npm run build  # If needed
@@ -353,6 +372,7 @@ npm run build  # If needed
 **Cause**: Code formatting doesn't match ESLint rules.
 
 **Solution**:
+
 ```bash
 npm run lint -- --fix
 ```
@@ -366,6 +386,7 @@ npm run lint -- --fix
 **Cause**: Storing too much data in localStorage.
 
 **Solution**:
+
 - Use `memory` store for large datasets
 - Implement server-side persistence
 - Clear old data periodically
@@ -375,6 +396,7 @@ npm run lint -- --fix
 **Cause**: Database connection pool exhausted or misconfigured.
 
 **Solution**:
+
 - Configure connection pool size
 - Use connection timeouts
 - Implement retry logic
@@ -387,6 +409,9 @@ const store = new PostgresStore({
   tableName: 'todos',
 });
 ```
+
+The URL establishes the connection; it does not associate this store with an
+entity. Bind the store through `storeProvider` or `manifest.config.ts`.
 
 ---
 
@@ -407,11 +432,7 @@ Still stuck?
 ### Enable profiling
 
 ```typescript
-const runtime = new RuntimeEngine(
-  ir,
-  { actorId: 'user-123' },
-  { profiling: { enabled: true } }
-);
+const runtime = new RuntimeEngine(ir, { actorId: 'user-123' }, { profiling: { enabled: true } });
 ```
 
 ### Dump IR for inspection
@@ -430,7 +451,7 @@ if (!result.success && result.guardFailure) {
   console.log('Guard failed:', {
     guardIndex: result.guardFailure.index,
     expression: result.guardFailure.formatted,
-    resolved: result.guardFailure.resolved
+    resolved: result.guardFailure.resolved,
   });
 }
 ```

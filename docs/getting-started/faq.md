@@ -19,13 +19,14 @@ Manifest is a domain-specific language for defining business rules and workflows
 IR-first prevents semantic drift:
 
 - **IR is Authority**: The IR schema (`docs/spec/ir/ir-v1.schema.json`) is the executable contract
-- **Generated Code is Derivative**: Any TypeScript, React components, or other code generated from IR is a *view*—not source of truth
+- **Generated Code is Derivative**: Any TypeScript, React components, or other code generated from IR is a _view_—not source of truth
 - **Provenance is Mandatory**: IR includes `contentHash`, `irHash`, `compilerVersion`, `schemaVersion`, `compiledAt` for traceability
 - **No Silent Drift**: Changes to IR schema or semantics MUST be reflected in spec, fixtures, and templates
 
 ### Who is Manifest for?
 
 Primary consumers are **AI agents** that emit, validate, and reason about Manifest programs. Secondary consumers are developers who want:
+
 - Declarative business rules that compile to full-stack implementations
 - Deterministic execution (same IR + same context = same result)
 - Guard-based authorization that cannot be bypassed
@@ -33,13 +34,13 @@ Primary consumers are **AI agents** that emit, validate, and reason about Manife
 
 ### What makes Manifest different from ORMs like Prisma?
 
-| Prisma | Manifest |
-|--------|----------|
-| Database schema + type-safe queries | Business rules + execution semantics |
+| Prisma                                        | Manifest                                              |
+| --------------------------------------------- | ----------------------------------------------------- |
+| Database schema + type-safe queries           | Business rules + execution semantics                  |
 | Queries are imperative (`findMany`, `update`) | Commands are declarative (`command create() { ... }`) |
-| No built-in authorization | Guards and policies are first-class |
-| No event system | Events are first-class with ordering guarantees |
-| Generated code is source | IR is source; generated code is derivative |
+| No built-in authorization                     | Guards and policies are first-class                   |
+| No event system                               | Events are first-class with ordering guarantees       |
+| Generated code is source                      | IR is source; generated code is derivative            |
 
 ---
 
@@ -86,11 +87,11 @@ See: `docs/guides/usage-patterns.md` and `docs/guides/embedded-runtime.md`
 
 ### Should I use projections or embedded runtime?
 
-| Use Projections when | Use Embedded Runtime when |
-|---------------------|--------------------------|
-| You want generated route/controller code | You need custom orchestration around commands |
-| Your mutation flow is standard runtime execution | You need custom event handling pipelines |
-| You want convention-over-configuration | You need framework-specific behavior |
+| Use Projections when                             | Use Embedded Runtime when                     |
+| ------------------------------------------------ | --------------------------------------------- |
+| You want generated route/controller code         | You need custom orchestration around commands |
+| Your mutation flow is standard runtime execution | You need custom event handling pipelines      |
+| You want convention-over-configuration           | You need framework-specific behavior          |
 
 ### Can I use Manifest with existing databases?
 
@@ -147,6 +148,7 @@ Fixed order (defined in `docs/spec/semantics.md`):
 Execution halts immediately. No auto-repair, no fallback, no permissive defaults.
 
 The runtime returns a failure diagnostic that includes:
+
 - Failing guard index
 - Guard expression
 - Resolved values at failure time
@@ -247,6 +249,7 @@ v2.3.0 (see root `package.json`)
 ### What are vNext features?
 
 Implemented in IR and runtime, ready for adoption:
+
 - Constraint severity and outcomes
 - Command-level constraints
 - Entity concurrency controls
@@ -272,7 +275,7 @@ if (!result.success && result.guardFailure) {
   console.error('Guard failed:', {
     index: result.guardFailure.index,
     expression: result.guardFailure.formatted,
-    resolved: result.guardFailure.resolved
+    resolved: result.guardFailure.resolved,
   });
 }
 ```
@@ -294,6 +297,7 @@ If you need dynamic behavior, use computed properties, context bindings, or runt
 ### Why did my conformance test fail after a "small" change?
 
 Conformance tests are executable semantics. If a test fails, you either:
+
 1. Changed language meaning (update spec + fixtures)
 2. Introduced a bug (fix implementation)
 
@@ -325,6 +329,7 @@ From `house-style.md`:
 ### What is the definition of "done"?
 
 A change is only done when:
+
 - `pnpm test` is green
 - `npm run typecheck` passes
 - `npm run lint` passes

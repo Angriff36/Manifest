@@ -13,9 +13,9 @@ import { COMPILER_VERSION, SCHEMA_VERSION } from './version';
  */
 describe('version constants', () => {
   it('COMPILER_VERSION matches package.json version', () => {
-    const pkg = JSON.parse(
-      readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8')
-    ) as { version: string };
+    const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8')) as {
+      version: string;
+    };
     expect(COMPILER_VERSION).toBe(pkg.version);
   });
 

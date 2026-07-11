@@ -54,7 +54,12 @@ const ALL_DETECTORS: Detector[] = [
 
 function selectDetectors(only?: string): Detector[] {
   if (!only) return ALL_DETECTORS;
-  const requested = new Set(only.split(',').map((s) => s.trim()).filter(Boolean));
+  const requested = new Set(
+    only
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
   const selected = ALL_DETECTORS.filter((d) => requested.has(d.name));
   // If `--only` is given but no detector name matches, return empty so the
   // caller can decide whether that is a misconfiguration.
@@ -62,7 +67,7 @@ function selectDetectors(only?: string): Detector[] {
 }
 
 export async function auditGovernanceCommand(
-  options: AuditGovernanceOptions = {}
+  options: AuditGovernanceOptions = {},
 ): Promise<AuditGovernanceResult> {
   const root = path.resolve(process.cwd(), options.root ?? '.');
   const detectors = selectDetectors(options.only);
@@ -98,7 +103,9 @@ export async function auditGovernanceCommand(
       }
     }
     console.log(
-      chalk.gray(`Detectors: ${detectorsRun.join(', ')} — ${errorCount} errors, ${warningCount} warnings`)
+      chalk.gray(
+        `Detectors: ${detectorsRun.join(', ')} — ${errorCount} errors, ${warningCount} warnings`,
+      ),
     );
   }
   return result;

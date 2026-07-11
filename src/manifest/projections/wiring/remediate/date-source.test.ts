@@ -35,8 +35,6 @@ describe('findProvenDateSource', () => {
       const alphaTime = new Date();
       body: { alphaAt: "" }
     `;
-    expect(
-      findProvenDateSource(realTie, 'alphaAt', { preferIsoString: true }),
-    ).toBeUndefined();
+    expect(findProvenDateSource(realTie, 'alphaAt', { preferIsoString: true })).toBeUndefined();
   });
 });

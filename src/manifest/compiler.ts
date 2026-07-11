@@ -13,7 +13,13 @@ export class ManifestCompiler {
       const { code, serverCode, testCode } = this.generator.generate(program);
       return { success: true, code, serverCode, testCode, ast: program, errors: [] };
     } catch (e) {
-      return { success: false, errors: [{ message: e instanceof Error ? e.message : 'Generation failed', severity: 'error' }], ast: program };
+      return {
+        success: false,
+        errors: [
+          { message: e instanceof Error ? e.message : 'Generation failed', severity: 'error' },
+        ],
+        ast: program,
+      };
     }
   }
 

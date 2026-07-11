@@ -11,19 +11,19 @@
  * policies -> constraints -> guards -> approval gate -> actions -> emits -> return
  */
 export type ExecutionPhase =
-  | 'total'                    // End-to-end command execution
-  | 'tenantContextGate'        // Tenant context validation
-  | 'idempotencyCheck'         // Command deduplication check
-  | 'asyncDispatch'            // Async command job enqueuing
-  | 'policyEvaluation'         // Policy authorization checks
-  | 'constraintValidation'     // Constraint evaluation with override support
-  | 'guardEvaluation'          // Guard condition evaluation loop
-  | 'approvalGate'            // Approval workflow check
-  | 'autoCreate'               // Automatic instance creation for create commands
-  | 'actionExecution'          // Action execution loop (persist/compute/publish/effect)
-  | 'eventEmission'            // Event emission and notification
-  | 'reactionCascading'        // Event-reaction recursive execution
-  | 'computedEvaluation';     // Computed property evaluation (lazy)
+  | 'total' // End-to-end command execution
+  | 'tenantContextGate' // Tenant context validation
+  | 'idempotencyCheck' // Command deduplication check
+  | 'asyncDispatch' // Async command job enqueuing
+  | 'policyEvaluation' // Policy authorization checks
+  | 'constraintValidation' // Constraint evaluation with override support
+  | 'guardEvaluation' // Guard condition evaluation loop
+  | 'approvalGate' // Approval workflow check
+  | 'autoCreate' // Automatic instance creation for create commands
+  | 'actionExecution' // Action execution loop (persist/compute/publish/effect)
+  | 'eventEmission' // Event emission and notification
+  | 'reactionCascading' // Event-reaction recursive execution
+  | 'computedEvaluation'; // Computed property evaluation (lazy)
 
 /**
  * Detailed timing information for a single execution phase.
@@ -151,7 +151,8 @@ export class ProfileCollector {
   private startTime: number = 0;
   private commandStartTime: number = 0;
   private currentPhaseStart: Map<ExecutionPhase, number> = new Map();
-  private slowestExpression: { phase: ExecutionPhase; expression: string; duration: number } | undefined;
+  private slowestExpression:
+    { phase: ExecutionPhase; expression: string; duration: number } | undefined;
 
   /** Start a new command profiling session */
   start(startTime: number): void {
@@ -297,9 +298,11 @@ export function summarizeProfiles(profiles: CommandProfile[]): ProfileSummary {
     phaseStats.set(phase, {
       totalDuration: data.total,
       averageDuration: data.total / data.count,
-      maxDuration: Math.max(...profiles.flatMap(p =>
-        p.phases.filter(ph => ph.phase === phase).map(ph => ph.duration)
-      )),
+      maxDuration: Math.max(
+        ...profiles.flatMap((p) =>
+          p.phases.filter((ph) => ph.phase === phase).map((ph) => ph.duration),
+        ),
+      ),
       percentOfTotal: (data.total / totalDuration) * 100,
       executionCount: data.count,
     });
@@ -309,7 +312,7 @@ export function summarizeProfiles(profiles: CommandProfile[]): ProfileSummary {
   const slowestCommands = [...profiles]
     .sort((a, b) => b.totalDuration - a.totalDuration)
     .slice(0, 10)
-    .map(p => ({
+    .map((p) => ({
       commandName: p.commandName,
       entityName: p.entityName,
       duration: p.totalDuration,
@@ -340,21 +343,20 @@ export function summarizeProfiles(profiles: CommandProfile[]): ProfileSummary {
  */
 export function toFlameGraph(profile: CommandProfile): FlameGraphNode {
   const root: FlameGraphNode = {
-    name: profile.entityName
-      ? `${profile.entityName}.${profile.commandName}`
-      : profile.commandName,
+    name: profile.entityName ? `${profile.entityName}.${profile.commandName}` : profile.commandName,
     value: profile.totalDuration,
     phase: 'total',
-    children: profile.phases.map(phase => ({
+    children: profile.phases.map((phase) => ({
       name: phase.phase,
       value: phase.duration,
       phase: phase.phase,
-      children: phase.children?.map(child => ({
-        name: child.metadata?.name || child.phase,
-        value: child.duration,
-        phase: child.phase,
-        metadata: child.metadata,
-      })) || [],
+      children:
+        phase.children?.map((child) => ({
+          name: child.metadata?.name || child.phase,
+          value: child.duration,
+          phase: child.phase,
+          metadata: child.metadata,
+        })) || [],
       metadata: phase.metadata,
     })),
   };

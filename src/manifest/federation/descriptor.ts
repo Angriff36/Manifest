@@ -8,11 +8,7 @@
  */
 
 import type { IR, IREntity, IRCommand, IRPolicy } from '../ir';
-import type {
-  ServiceDescriptor,
-  ExposedEntity,
-  ExposedCommand,
-} from './types';
+import type { ServiceDescriptor, ExposedEntity, ExposedCommand } from './types';
 
 /**
  * Build a ServiceDescriptor from a compiled IR and a service identity.
@@ -30,14 +26,12 @@ export function buildDescriptor(
     exposeEntities?: string[];
     /** Per-command policy requirements. Defaults to the command's own policy list. */
     commandPolicies?: Record<string, string[]>;
-  }
+  },
 ): ServiceDescriptor {
   const commandsByEntity = indexCommands(ir);
   const policyByName = indexPolicies(ir);
 
-  const entityFilter = options.exposeEntities
-    ? new Set(options.exposeEntities)
-    : null;
+  const entityFilter = options.exposeEntities ? new Set(options.exposeEntities) : null;
 
   const exposedEntities: ExposedEntity[] = [];
 
@@ -48,8 +42,8 @@ export function buildDescriptor(
     if (commands.length === 0 && !entityFilter) continue;
 
     const exposedCommands: ExposedCommand[] = commands.map((cmd) => {
-      const requiredPolicies = options.commandPolicies?.[cmd.name]
-        ?? resolveCommandPolicies(cmd, entity, policyByName);
+      const requiredPolicies =
+        options.commandPolicies?.[cmd.name] ?? resolveCommandPolicies(cmd, entity, policyByName);
       return {
         name: cmd.name,
         idempotent: !cmd.async && isIdempotentCommand(cmd),
@@ -94,7 +88,7 @@ function isIdempotentCommand(cmd: IRCommand): boolean {
 function resolveCommandPolicies(
   cmd: IRCommand,
   entity: IREntity,
-  policyByName: Map<string, IRPolicy>
+  policyByName: Map<string, IRPolicy>,
 ): string[] {
   const policies: string[] = [];
   if (cmd.policies) policies.push(...cmd.policies);

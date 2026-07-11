@@ -4,7 +4,16 @@
   "title": "Manifest Tutorial",
   "description": "A structured tutorial for learning Manifest. Tutorials are defined as JSON and can be contributed by the community. They are consumed by the diagnostic UI's tutorial mode to walk new users through writing their first .manifest programs.",
   "type": "object",
-  "required": ["id", "title", "description", "difficulty", "estimatedMinutes", "author", "tags", "steps"],
+  "required": [
+    "id",
+    "title",
+    "description",
+    "difficulty",
+    "estimatedMinutes",
+    "author",
+    "tags",
+    "steps"
+  ],
   "properties": {
     "id": {
       "type": "string",
@@ -46,7 +55,15 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "title", "instruction", "starterCode", "expectedCode", "hints", "validation"],
+        "required": [
+          "id",
+          "title",
+          "instruction",
+          "starterCode",
+          "expectedCode",
+          "hints",
+          "validation"
+        ],
         "properties": {
           "id": {
             "type": "string",

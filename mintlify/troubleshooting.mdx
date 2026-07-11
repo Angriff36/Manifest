@@ -1,7 +1,7 @@
 ---
-title: "Troubleshoot common Manifest issues"
+title: 'Troubleshoot common Manifest issues'
 description: "Diagnose and fix the most common errors you'll encounter when compiling, running, or generating code with the Manifest SDK and CLI."
-sidebarTitle: "Troubleshooting"
+sidebarTitle: 'Troubleshooting'
 ---
 
 The issues below cover the most common problems reported when working with Manifest — from CLI configuration mismatches to runtime guard inspection and Windows-specific path bugs. Each entry describes what you see, why it happens, and how to fix it.
@@ -27,6 +27,7 @@ The issues below cover the most common problems reported when working with Manif
     ```
 
     Make sure the name you pass to `runCommand` matches exactly.
+
   </Accordion>
 
   <Accordion title='"Guard failed but no diagnostic"'>
@@ -69,6 +70,7 @@ The issues below cover the most common problems reported when working with Manif
     <Note>
       The runtime does not emit events like `runtime.on('guardFailed')`. All diagnostic information is returned in the `CommandResult` object returned by `runCommand`.
     </Note>
+
   </Accordion>
 
   <Accordion title='"No .manifest files found"'>
@@ -101,6 +103,7 @@ The issues below cover the most common problems reported when working with Manif
     ```bash
     manifest compile
     ```
+
   </Accordion>
 
   <Accordion title='"Cannot find module" errors during manifest compile'>
@@ -132,6 +135,7 @@ The issues below cover the most common problems reported when working with Manif
     npm run build
     pnpm exec manifest compile
     ```
+
   </Accordion>
 
   <Accordion title="Windows: manifest exits 0 with no output">
@@ -166,6 +170,7 @@ The issues below cover the most common problems reported when working with Manif
     <Warning>
       `manifest init --force` is interactive and requires terminal input. In non-interactive or headless shells it may wait for prompts or exit without rewriting the config file. Run it in an interactive terminal.
     </Warning>
+
   </Accordion>
 
   <Accordion title='TypeError: Cannot read properties of undefined (reading "output") in manifest compile'>
@@ -199,6 +204,7 @@ The issues below cover the most common problems reported when working with Manif
     ```
 
     If `compile` still shows the argument listed twice, you are on an older build. Upgrade the package and rebuild.
+
   </Accordion>
 
   <Accordion title="Constraint is not blocking execution">
@@ -228,6 +234,7 @@ The issues below cover the most common problems reported when working with Manif
       console.warn('Non-blocking violations:', result.nonBlockingViolations);
     }
     ```
+
   </Accordion>
 
   <Accordion title="Read policies are not being enforced">
@@ -260,6 +267,7 @@ The issues below cover the most common problems reported when working with Manif
     ```
 
     `execute` is enforced during `runCommand`. `all` is enforced during command execution AND at the read gate. `read` is enforced at the read gate only.
+
   </Accordion>
 
   <Accordion title="Generated Next.js routes don't work">
@@ -306,6 +314,7 @@ The issues below cover the most common problems reported when working with Manif
     pnpm exec manifest compile modules/recipe.manifest
     cat ir/recipe.ir.json | grep -o '"name":"[^"]*"'
     ```
+
   </Accordion>
 
   <Accordion title='"Unsupported storage target" error'>
@@ -319,25 +328,32 @@ The issues below cover the most common problems reported when working with Manif
 
     **How to fix it**
 
-    For built-in targets (`memory`, `localStorage`, `postgres`, `supabase`), make sure you are using the correct runtime for your environment (browser versus Node.js).
+    `memory` and browser `localStorage` are built in. `postgres`, `supabase`,
+    `durable`, and custom targets require a provider; a database URL alone is
+    not a provider.
 
     For custom databases, implement the `Store` interface and pass it via `storeProvider`:
 
     ```typescript
     import { RuntimeEngine } from '@angriff36/manifest';
 
-    const runtime = new RuntimeEngine(ir, {
-      userId: 'user-123',
-      storeProvider: (entityName) => {
-        if (entityName === 'Todo') {
-          return new MyCustomTodoStore();
-        }
-        return undefined; // falls back to in-memory store
-      }
-    });
+    const runtime = new RuntimeEngine(
+      ir,
+      { actorId: 'user-123' },
+      {
+        storeProvider: (entityName) => {
+          if (entityName === 'Todo') return new MyCustomTodoStore();
+          return undefined;
+        },
+      },
+    );
     ```
 
-    The `storeProvider` callback receives the entity name and must return a `Store` instance or `undefined` (to use the default memory store for that entity).
+    Returning `undefined` uses built-in behavior only for `memory` and browser
+    `localStorage`. Generated companions load providers from
+    `manifest.config.ts` through `runtimeConfigImport`. See the
+    [complete setup](/language/stores#complete-generated-companion-postgresql-setup).
+
   </Accordion>
 
   <Accordion title='manifest validate reports "Missing required field: metadata" or "Schema not found"'>
@@ -379,10 +395,13 @@ The issues below cover the most common problems reported when working with Manif
     <Tip>
       Always use `pnpm exec manifest` (or `npx manifest`) rather than a globally installed binary. Run `pnpm exec manifest --version` to confirm the version matches the installed package.
     </Tip>
+
   </Accordion>
 
 </AccordionGroup>
 
 <Note>
-  If your issue is not listed here, check the [FAQ](/faq) for answers about Manifest's design and semantics. To report a new issue, open a GitHub issue and include your `.manifest` source, the compiled IR, and any diagnostic output.
+  If your issue is not listed here, check the [FAQ](/faq) for answers about Manifest's design and
+  semantics. To report a new issue, open a GitHub issue and include your `.manifest` source, the
+  compiled IR, and any diagnostic output.
 </Note>

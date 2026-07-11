@@ -83,13 +83,17 @@ describe('generateWebhookRoutes — route emission', () => {
     const slack = result.artifacts.find((a) => a.id === 'nextjs.webhook.SlackInbound')!;
 
     expect(slack.code).toContain('import { createManifestRuntime } from "@/lib/manifest-runtime";');
-    expect(slack.code).toContain('import { handleWebhookRequest } from "@angriff36/manifest/webhooks";');
+    expect(slack.code).toContain(
+      'import { handleWebhookRequest } from "@angriff36/manifest/webhooks";',
+    );
     // RAW body — HMAC needs the exact bytes; the route reads text(), not json().
     expect(slack.code).toContain('const rawBody = await request.text();');
     expect(slack.code).not.toContain('request.json()');
     expect(slack.code).toContain('headers: Object.fromEntries(request.headers),');
     expect(slack.code).toContain('path: "/webhooks/slack",');
-    expect(slack.code).toContain('return NextResponse.json(result.body, { status: result.status });');
+    expect(slack.code).toContain(
+      'return NextResponse.json(result.body, { status: result.status });',
+    );
   });
 
   it('emits no auth guard (webhooks authenticate via signature, not app auth)', () => {
@@ -103,7 +107,10 @@ describe('generateWebhookRoutes — route emission', () => {
 
 describe('generateWebhookRoutes — appDir mapping', () => {
   it('serves at the declared path under a src/app project root', () => {
-    const result = generateWebhookRoutes(ir, { runtimeImportPath: '@/lib/manifest-runtime', appDir: 'src/app/api' });
+    const result = generateWebhookRoutes(ir, {
+      runtimeImportPath: '@/lib/manifest-runtime',
+      appDir: 'src/app/api',
+    });
     const slack = result.artifacts.find((a) => a.id === 'nextjs.webhook.SlackInbound')!;
     // appDir 'src/app/api' → app root 'src/app' → src/app/webhooks/slack/route.ts,
     // still served at /webhooks/slack (App Router strips through `app`).

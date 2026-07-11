@@ -104,6 +104,8 @@ describe('resolveTableName / resolveColumnName', () => {
   });
 
   it('respect pluralizeTables: false', () => {
-    expect(resolveTableName('Widget', { table: 'snake_case', pluralizeTables: false })).toBe('widget');
+    expect(resolveTableName('Widget', { table: 'snake_case', pluralizeTables: false })).toBe(
+      'widget',
+    );
   });
 });

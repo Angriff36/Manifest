@@ -1,6 +1,6 @@
 ---
-title: "Next.js Projection"
-description: "Generate Next.js route handlers, a dispatcher, types, and client helpers from compiled Manifest IR."
+title: 'Next.js Projection'
+description: 'Generate Next.js route handlers, a dispatcher, types, and client helpers from compiled Manifest IR.'
 ---
 
 > **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
@@ -13,7 +13,6 @@ description: "Generate Next.js route handlers, a dispatcher, types, and client h
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 Use this guide when you want Manifest to generate App Router artifacts from IR while keeping write semantics anchored to the runtime.
 

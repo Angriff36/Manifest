@@ -6,7 +6,7 @@ import { RuntimeEngine, type EntityInstance, type Store } from './runtime-engine
 async function compile(source: string): Promise<IR> {
   const result = await new IRCompiler().compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compilation failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compilation failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
@@ -75,9 +75,13 @@ describe('command-scoped batched persistence', () => {
       status: 'draft',
     });
 
-    const runtime = new RuntimeEngine(ir, {}, {
-      storeProvider: name => (name === 'Event' ? store : undefined),
-    });
+    const runtime = new RuntimeEngine(
+      ir,
+      {},
+      {
+        storeProvider: (name) => (name === 'Event' ? store : undefined),
+      },
+    );
 
     const result = await runtime.runCommand(
       'reschedule',
@@ -120,9 +124,13 @@ describe('command-scoped batched persistence', () => {
     const store = new CountingStore();
     store.rows.set('doc-1', { id: 'doc-1', title: 'Old', status: 'draft' });
 
-    const runtime = new RuntimeEngine(ir, {}, {
-      storeProvider: name => (name === 'Doc' ? store : undefined),
-    });
+    const runtime = new RuntimeEngine(
+      ir,
+      {},
+      {
+        storeProvider: (name) => (name === 'Doc' ? store : undefined),
+      },
+    );
 
     const result = await runtime.runCommand(
       'release',

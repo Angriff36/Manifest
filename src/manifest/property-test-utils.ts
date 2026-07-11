@@ -12,33 +12,35 @@ import * as fc from 'fast-check';
  * Arbitrary for IR literal values (strings, numbers, booleans, null)
  */
 export const irLiteralValue: fc.Arbitrary<IRValue> = fc.oneof(
-  fc.string().map(s => ({ kind: 'string' as const, value: s })),
-  fc.float({ max: 1e6, min: -1e6, noNaN: true }).map(n => ({ kind: 'number' as const, value: n })),
-  fc.boolean().map(b => ({ kind: 'boolean' as const, value: b })),
-  fc.constant({ kind: 'null' as const })
+  fc.string().map((s) => ({ kind: 'string' as const, value: s })),
+  fc
+    .float({ max: 1e6, min: -1e6, noNaN: true })
+    .map((n) => ({ kind: 'number' as const, value: n })),
+  fc.boolean().map((b) => ({ kind: 'boolean' as const, value: b })),
+  fc.constant({ kind: 'null' as const }),
 );
 
 /**
  * Arbitrary for IR values including nested arrays and objects
  * Note: fast-check v4 uses letrec instead of lazyRecursion
  */
-export const irValue: fc.Arbitrary<IRValue> = fc.letrec<{ oneof: IRValue }>(tie => ({
+export const irValue: fc.Arbitrary<IRValue> = fc.letrec<{ oneof: IRValue }>((tie) => ({
   oneof: fc.oneof(
     irLiteralValue,
     fc.array(tie('oneof')).map((elements: IRValue[]) => ({ kind: 'array' as const, elements })),
     fc.dictionary(fc.string(), tie('oneof')).map((properties: Record<string, IRValue>) => ({
       kind: 'object' as const,
       properties,
-    }))
-  )
+    })),
+  ),
 })).oneof;
 
 /**
  * Arbitrary for literal expressions
  */
-export const literalExpression: fc.Arbitrary<IRExpression> = irValue.map(value => ({
+export const literalExpression: fc.Arbitrary<IRExpression> = irValue.map((value) => ({
   kind: 'literal' as const,
-  value
+  value,
 }));
 
 /**
@@ -46,17 +48,34 @@ export const literalExpression: fc.Arbitrary<IRExpression> = irValue.map(value =
  * Note: Using a simpler approach since stringMatching has issues in fast-check v4
  */
 export const identifierExpression = fc
-  .array(fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789'.split('')), { minLength: 1, maxLength: 20 })
-  .map(chars => {
+  .array(
+    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789'.split('')),
+    { minLength: 1, maxLength: 20 },
+  )
+  .map((chars) => {
     const name = chars.join('');
     return { kind: 'identifier' as const, name };
   })
-  .filter(expr => /^[a-zA-Z_]/.test(expr.name));
+  .filter((expr) => /^[a-zA-Z_]/.test(expr.name));
 
 /**
  * Operators for binary expressions
  */
-const binaryOperators = ['+', '-', '*', '/', '%', '==', '!=', '<', '>', '<=', '>=', '&&', '||'] as const;
+const binaryOperators = [
+  '+',
+  '-',
+  '*',
+  '/',
+  '%',
+  '==',
+  '!=',
+  '<',
+  '>',
+  '<=',
+  '>=',
+  '&&',
+  '||',
+] as const;
 
 /**
  * Arbitrary for binary expressions (simple, limited depth)
@@ -64,12 +83,12 @@ const binaryOperators = ['+', '-', '*', '/', '%', '==', '!=', '<', '>', '<=', '>
 export const binaryExpression: fc.Arbitrary<IRExpression> = fc
   .tuple(literalExpression, literalExpression)
   .chain(([left, right]) =>
-    fc.constantFrom(...binaryOperators).map(operator => ({
+    fc.constantFrom(...binaryOperators).map((operator) => ({
       kind: 'binary' as const,
       operator,
       left,
-      right
-    }))
+      right,
+    })),
   );
 
 /**
@@ -83,11 +102,11 @@ const unaryOperators = ['!', '-'] as const;
 export const unaryExpression: fc.Arbitrary<IRExpression> = fc
   .tuple(literalExpression)
   .chain(([operand]) =>
-    fc.constantFrom(...unaryOperators).map(operator => ({
+    fc.constantFrom(...unaryOperators).map((operator) => ({
       kind: 'unary' as const,
       operator,
-      operand
-    }))
+      operand,
+    })),
   );
 
 /**
@@ -97,7 +116,7 @@ export const basicExpression: fc.Arbitrary<IRExpression> = fc.oneof(
   literalExpression,
   identifierExpression,
   binaryExpression,
-  unaryExpression
+  unaryExpression,
 );
 
 /**
@@ -105,30 +124,27 @@ export const basicExpression: fc.Arbitrary<IRExpression> = fc.oneof(
  */
 export const arrayExpression = fc
   .array(literalExpression, { maxLength: 5 })
-  .map(elements => ({ kind: 'array' as const, elements }));
+  .map((elements) => ({ kind: 'array' as const, elements }));
 
 /**
  * Helper for identifier names (first char must be letter or underscore)
  */
 const identifierName = fc
-  .array(fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789'.split('')), { minLength: 1, maxLength: 20 })
-  .map(chars => chars.join(''))
-  .filter(name => /^[a-zA-Z_]/.test(name));
+  .array(
+    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789'.split('')),
+    { minLength: 1, maxLength: 20 },
+  )
+  .map((chars) => chars.join(''))
+  .filter((name) => /^[a-zA-Z_]/.test(name));
 
 /**
  * Arbitrary for object expressions
  */
 export const objectExpression = fc
-  .array(
-    fc.tuple(
-      identifierName,
-      literalExpression
-    ),
-    { maxLength: 5 }
-  )
-  .map(properties => ({
+  .array(fc.tuple(identifierName, literalExpression), { maxLength: 5 })
+  .map((properties) => ({
     kind: 'object' as const,
-    properties: properties.map(([key, value]) => ({ key, value }))
+    properties: properties.map(([key, value]) => ({ key, value })),
   }));
 
 /**
@@ -136,12 +152,12 @@ export const objectExpression = fc
  */
 export const lambdaExpression = fc
   .array(identifierName, { minLength: 1, maxLength: 3 })
-  .chain(params =>
-    literalExpression.map(body => ({
+  .chain((params) =>
+    literalExpression.map((body) => ({
       kind: 'lambda' as const,
       params,
-      body
-    }))
+      body,
+    })),
   );
 
 /**
@@ -154,7 +170,7 @@ export const anyExpression: fc.Arbitrary<IRExpression> = fc.oneof(
   unaryExpression,
   arrayExpression,
   objectExpression,
-  lambdaExpression
+  lambdaExpression,
 );
 
 /**
@@ -165,14 +181,23 @@ export const contextValue = fc.oneof(
   fc.float({ max: 1e6, min: -1e6, noNaN: true }),
   fc.boolean(),
   fc.constant(null),
-  fc.array(fc.oneof(fc.string(), fc.float({ max: 1e6, min: -1e6, noNaN: true }), fc.boolean()), { maxLength: 5 }),
-  fc.dictionary(fc.string(), fc.oneof(fc.string(), fc.float({ max: 1e6, min: -1e6, noNaN: true }), fc.boolean()), { maxKeys: 5 })
+  fc.array(fc.oneof(fc.string(), fc.float({ max: 1e6, min: -1e6, noNaN: true }), fc.boolean()), {
+    maxLength: 5,
+  }),
+  fc.dictionary(
+    fc.string(),
+    fc.oneof(fc.string(), fc.float({ max: 1e6, min: -1e6, noNaN: true }), fc.boolean()),
+    { maxKeys: 5 },
+  ),
 );
 
 /**
  * Runtime context for expression evaluation
  */
-export const runtimeContext = fc.dictionary(fc.string().filter(s => /^[a-zA-Z_]/.test(s)), contextValue);
+export const runtimeContext = fc.dictionary(
+  fc.string().filter((s) => /^[a-zA-Z_]/.test(s)),
+  contextValue,
+);
 
 /**
  * Property test helpers
@@ -192,18 +217,20 @@ export function createTestIR(entityName: string = 'TestEntity') {
     },
     modules: [],
     values: [],
-    entities: [{
-      name: entityName,
-      properties: [
-        { name: 'id', type: { name: 'string', nullable: false }, modifiers: [] },
-        { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
-      ],
-      computedProperties: [],
-      relationships: [],
-      commands: [],
-      constraints: [],
-      policies: [],
-    }],
+    entities: [
+      {
+        name: entityName,
+        properties: [
+          { name: 'id', type: { name: 'string', nullable: false }, modifiers: [] },
+          { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
+        ],
+        computedProperties: [],
+        relationships: [],
+        commands: [],
+        constraints: [],
+        policies: [],
+      },
+    ],
     enums: [],
     stores: [],
     events: [],
@@ -240,7 +267,11 @@ export class ExpressionBuilder {
     return { kind: 'call', callee, args };
   }
 
-  static conditional(condition: IRExpression, consequent: IRExpression, alternate: IRExpression): IRExpression {
+  static conditional(
+    condition: IRExpression,
+    consequent: IRExpression,
+    alternate: IRExpression,
+  ): IRExpression {
     return { kind: 'conditional', condition, consequent, alternate };
   }
 
@@ -274,15 +305,13 @@ export function jsToIRValue(value: unknown): IRValue {
     return { kind: 'boolean', value };
   }
   if (Array.isArray(value)) {
-    return { kind: 'array', elements: value.map(v => jsToIRValue(v)) };
+    return { kind: 'array', elements: value.map((v) => jsToIRValue(v)) };
   }
   if (typeof value === 'object') {
     const obj = value as Record<string, unknown>;
     return {
       kind: 'object',
-      properties: Object.fromEntries(
-        Object.entries(obj).map(([k, v]) => [k, jsToIRValue(v)])
-      )
+      properties: Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, jsToIRValue(v)])),
     };
   }
   return { kind: 'null' };

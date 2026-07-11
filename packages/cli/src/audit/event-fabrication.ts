@@ -58,9 +58,7 @@ const PATTERNS: ReadonlyArray<{ regex: RegExp; code: string; reason: string }> =
 
 function isAllowlisted(filePath: string, root: string): boolean {
   const rel = path.relative(root, filePath).split(/[\\/]/);
-  return ALLOWLIST_SEGMENTS.some((segments) =>
-    segments.every((seg, i) => rel[i] === seg)
-  );
+  return ALLOWLIST_SEGMENTS.some((segments) => segments.every((seg, i) => rel[i] === seg));
 }
 
 async function scanFile(filePath: string, root: string): Promise<AuditFinding[]> {

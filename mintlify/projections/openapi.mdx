@@ -1,7 +1,7 @@
 ---
-title: "OpenAPI specification projection"
-sidebarTitle: "OpenAPI"
-description: "Generate a complete OpenAPI 3.1.0 specification from Manifest IR — entity reads, command writes, JSON Schema bodies, security schemes, and constraint error responses."
+title: 'OpenAPI specification projection'
+sidebarTitle: 'OpenAPI'
+description: 'Generate a complete OpenAPI 3.1.0 specification from Manifest IR — entity reads, command writes, JSON Schema bodies, security schemes, and constraint error responses.'
 ---
 
 The OpenAPI projection generates a complete OpenAPI 3.1.0 specification from compiled Manifest IR — entity read operations, command write operations, JSON Schema-typed bodies, security schemes, and constraint error responses. Use it to feed OpenAPI toolchains for SDK generation, mock servers, or API documentation.
@@ -56,5 +56,9 @@ Boolean toggles default to true: `includeAuth` (auth on routes), `includeTenant`
 ## Notes & limitations
 
 <Note>
-Earlier feature notes list `includeAuth`, `includeConstraintErrors`, and the `info`/`servers`/`securitySchemes`/`security` options; the source additionally exposes `includeTenant`, `includePolicySecurity`, and `generatedAt`, all documented above. The `email` type maps to `string` with `format: email`, and `url`/`uri` are also handled even though older notes do not mention them.
+  Earlier feature notes list `includeAuth`, `includeConstraintErrors`, and the
+  `info`/`servers`/`securitySchemes`/`security` options; the source additionally exposes
+  `includeTenant`, `includePolicySecurity`, and `generatedAt`, all documented above. The `email`
+  type maps to `string` with `format: email`, and `url`/`uri` are also handled even though older
+  notes do not mention them.
 </Note>

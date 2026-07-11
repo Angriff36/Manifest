@@ -77,9 +77,7 @@ export async function seedTemplateCommand(options: SeedTemplateCliOptions): Prom
     });
     await writeSeedPack(path.resolve(options.output), pack);
     spinner.succeed(
-      chalk.green(
-        `Wrote seed pack template (${pack.tables.length} entities) → ${options.output}`
-      )
+      chalk.green(`Wrote seed pack template (${pack.tables.length} entities) → ${options.output}`),
     );
   } catch (err) {
     spinner.fail(err instanceof Error ? err.message : String(err));
@@ -101,9 +99,7 @@ export async function seedFillCommand(options: SeedFillCliOptions): Promise<void
   try {
     const dir = path.resolve(options.packDir);
     const pack = await readSeedPack(dir);
-    const ir = options.source
-      ? await loadIR(options.source)
-      : await loadIRNearPack(dir);
+    const ir = options.source ? await loadIR(options.source) : await loadIRNearPack(dir);
 
     const providerName = options.provider ?? 'heuristic';
     const provider =
@@ -146,9 +142,7 @@ export async function seedValidateCommand(options: SeedValidateCliOptions): Prom
   try {
     const dir = path.resolve(options.packDir);
     const pack = await readSeedPack(dir);
-    const ir = options.source
-      ? await loadIR(options.source)
-      : await loadIRNearPack(dir);
+    const ir = options.source ? await loadIR(options.source) : await loadIRNearPack(dir);
     const validation = validateSeedPack(ir, pack, {
       requireFilled: options.requireFilled === true,
     });
@@ -185,7 +179,5 @@ async function loadIRNearPack(packDir: string): Promise<IR> {
     const ok = await fs.stat(c).catch(() => null);
     if (ok?.isFile()) return loadIR(c);
   }
-  throw new Error(
-    'Could not locate IR near pack. Pass --source <file.ir.json|.manifest>.'
-  );
+  throw new Error('Could not locate IR near pack. Pass --source <file.ir.json|.manifest>.');
 }

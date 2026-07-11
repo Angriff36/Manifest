@@ -31,9 +31,7 @@ test.describe('Interactive Tutorial Mode', () => {
     await expect(page.getByText('Define an Entity')).toBeVisible();
 
     // Should see the instruction text
-    await expect(
-      page.getByText(/describe a business object/i)
-    ).toBeVisible();
+    await expect(page.getByText(/describe a business object/i)).toBeVisible();
 
     // Should see step counter
     await expect(page.getByText('Step 1 of 3')).toBeVisible();

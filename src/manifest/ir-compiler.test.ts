@@ -12,7 +12,11 @@ describe('IRCompiler', () => {
   it('rejects a property default incompatible with its declared scalar type', async () => {
     const result = await compileToIR(`entity Item { property metadata: string? = {} }`);
     expect(result.ir).toBeNull();
-    expect(result.diagnostics.some(d => d.severity === 'error' && /default.*metadata.*string/i.test(d.message))).toBe(true);
+    expect(
+      result.diagnostics.some(
+        (d) => d.severity === 'error' && /default.*metadata.*string/i.test(d.message),
+      ),
+    ).toBe(true);
   });
   describe('Basic Compilation', () => {
     it('should compile empty source', async () => {
@@ -46,14 +50,16 @@ describe('IRCompiler', () => {
     });
 
     it('should propagate the `external` flag from `external entity` into IR', async () => {
-      const result = await compileToIR('external entity ImportedUser { property required id: string }');
-      const entity = result.ir?.entities.find(e => e.name === 'ImportedUser');
+      const result = await compileToIR(
+        'external entity ImportedUser { property required id: string }',
+      );
+      const entity = result.ir?.entities.find((e) => e.name === 'ImportedUser');
       expect(entity?.external).toBe(true);
     });
 
     it('should omit `external` for a plain entity', async () => {
       const result = await compileToIR('entity Plain { property required id: string }');
-      const entity = result.ir?.entities.find(e => e.name === 'Plain');
+      const entity = result.ir?.entities.find((e) => e.name === 'Plain');
       expect(entity?.external).toBeUndefined();
     });
 
@@ -171,21 +177,21 @@ describe('IRCompiler', () => {
       `);
 
       const props = result.ir?.entities[0].properties ?? [];
-      expect(props.find(p => p.name === 'amount')?.type).toEqual({
+      expect(props.find((p) => p.name === 'amount')?.type).toEqual({
         name: 'decimal',
         nullable: false,
         params: { precision: 10, scale: 2 },
       });
-      expect(props.find(p => p.name === 'tax')?.type).toEqual({
+      expect(props.find((p) => p.name === 'tax')?.type).toEqual({
         name: 'money',
         nullable: false,
         params: { precision: 12, scale: 4 },
       });
-      expect(props.find(p => p.name === 'total')?.type).toEqual({
+      expect(props.find((p) => p.name === 'total')?.type).toEqual({
         name: 'decimal',
         nullable: false,
       });
-      expect(props.find(p => p.name === 'optionalFee')?.type).toEqual({
+      expect(props.find((p) => p.name === 'optionalFee')?.type).toEqual({
         name: 'money',
         nullable: true,
       });
@@ -204,7 +210,7 @@ describe('IRCompiler', () => {
         }
       `);
 
-      const status = result.ir?.entities[0].properties.find(p => p.name === 'status');
+      const status = result.ir?.entities[0].properties.find((p) => p.name === 'status');
       expect(status?.type.name).toBe('Status');
       expect(status?.defaultValue).toEqual({ kind: 'string', value: 'draft' });
     });
@@ -288,7 +294,7 @@ describe('IRCompiler', () => {
         }
       `);
 
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       const [order, plain] = result.ir?.entities ?? [];
       expect(order.realtime).toBe(true);
       // Non-realtime entities omit the key entirely (deterministic IR shape).
@@ -304,7 +310,7 @@ describe('IRCompiler', () => {
         }
       `);
 
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       const entity = result.ir?.entities[0];
       expect(entity?.realtime).toBeUndefined();
       expect(entity?.properties[0].name).toBe('realtime');
@@ -321,7 +327,7 @@ describe('IRCompiler', () => {
         }
       `);
 
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       const prop = result.ir?.entities[0].properties[0];
       expect(prop?.modifiers).toContain('masked');
       expect(prop?.maskStrategy).toEqual({ type: 'email' });
@@ -336,7 +342,7 @@ describe('IRCompiler', () => {
         }
       `);
 
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       const props = result.ir?.entities[0].properties ?? [];
       expect(props[0].modifiers).toContain('masked');
       expect(props[0].maskStrategy).toEqual({ type: 'redact' });
@@ -353,7 +359,7 @@ describe('IRCompiler', () => {
         }
       `);
 
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       const prop = result.ir?.entities[0].properties[0];
       expect(prop?.maskStrategy).toEqual({ type: 'partial', params: [0, 4] });
     });
@@ -366,7 +372,7 @@ describe('IRCompiler', () => {
         }
       `);
 
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       const prop = result.ir?.entities[0].properties[0];
       expect(prop?.maskStrategy?.type).toBe('email');
       expect(prop?.maskStrategy?.unmaskWhen).toEqual({
@@ -386,9 +392,12 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).toBeNull();
-      expect(result.diagnostics.some(d =>
-        d.severity === 'error' && d.message.includes("Unknown masking strategy 'tokenize'")
-      )).toBe(true);
+      expect(
+        result.diagnostics.some(
+          (d) =>
+            d.severity === 'error' && d.message.includes("Unknown masking strategy 'tokenize'"),
+        ),
+      ).toBe(true);
     });
 
     it('should error on wrong arity for partial', async () => {
@@ -400,9 +409,12 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).toBeNull();
-      expect(result.diagnostics.some(d =>
-        d.severity === 'error' && d.message.includes("'partial' requires exactly 2 parameters")
-      )).toBe(true);
+      expect(
+        result.diagnostics.some(
+          (d) =>
+            d.severity === 'error' && d.message.includes("'partial' requires exactly 2 parameters"),
+        ),
+      ).toBe(true);
     });
 
     it('should error on params given to a parameterless strategy', async () => {
@@ -414,9 +426,11 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).toBeNull();
-      expect(result.diagnostics.some(d =>
-        d.severity === 'error' && d.message.includes("'email' takes no parameters")
-      )).toBe(true);
+      expect(
+        result.diagnostics.some(
+          (d) => d.severity === 'error' && d.message.includes("'email' takes no parameters"),
+        ),
+      ).toBe(true);
     });
 
     it('should error on negative or non-integer partial params', async () => {
@@ -428,9 +442,11 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).toBeNull();
-      expect(result.diagnostics.some(d =>
-        d.severity === 'error' && d.message.includes('non-negative integers')
-      )).toBe(true);
+      expect(
+        result.diagnostics.some(
+          (d) => d.severity === 'error' && d.message.includes('non-negative integers'),
+        ),
+      ).toBe(true);
     });
   });
 
@@ -661,10 +677,12 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).toBeNull();
-      expect(result.diagnostics).toContainEqual(expect.objectContaining({
-        severity: 'error',
-        message: expect.stringContaining("Duplicate command intent for Recipe.create"),
-      }));
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          severity: 'error',
+          message: expect.stringContaining('Duplicate command intent for Recipe.create'),
+        }),
+      );
       expect(result.diagnostics[0].message).toContain('use or extend the existing command');
     });
 
@@ -683,7 +701,7 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).toBeNull();
-      const diagnostic = result.diagnostics.find(d => d.message.includes('Recipe.addRecipe'));
+      const diagnostic = result.diagnostics.find((d) => d.message.includes('Recipe.addRecipe'));
       expect(diagnostic?.severity).toBe('error');
       expect(diagnostic?.message).toContain('existing command Recipe.create');
       expect(diagnostic?.message).toContain('use or extend the existing command');
@@ -707,8 +725,11 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).not.toBeNull();
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
-      expect(result.ir?.commands.map(c => `${c.entity}.${c.name}`)).toEqual(['Recipe.create', 'Ingredient.create']);
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
+      expect(result.ir?.commands.map((c) => `${c.entity}.${c.name}`)).toEqual([
+        'Recipe.create',
+        'Ingredient.create',
+      ]);
     });
   });
 
@@ -1014,7 +1035,7 @@ describe('IRCompiler', () => {
         }
       `);
 
-      const entity = result.ir?.entities.find(e => e.name === 'User');
+      const entity = result.ir?.entities.find((e) => e.name === 'User');
       expect(entity?.module).toBe('Users');
     });
 
@@ -1030,7 +1051,7 @@ describe('IRCompiler', () => {
         }
       `);
 
-      const command = result.ir?.commands.find(c => c.name === 'createUser');
+      const command = result.ir?.commands.find((c) => c.name === 'createUser');
       expect(command?.module).toBe('Users');
     });
 
@@ -1044,7 +1065,7 @@ describe('IRCompiler', () => {
         }
       `);
 
-      const policy = result.ir?.policies.find(p => p.name === 'canRead');
+      const policy = result.ir?.policies.find((p) => p.name === 'canRead');
       expect(policy?.module).toBe('Users');
     });
   });
@@ -1162,7 +1183,7 @@ describe('IRCompiler', () => {
         kind: 'binary',
         operator: '*',
         left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'age' },
-        right: { kind: 'literal', value: { kind: 'number', value: 2 } }
+        right: { kind: 'literal', value: { kind: 'number', value: 2 } },
       });
     });
 
@@ -1180,7 +1201,7 @@ describe('IRCompiler', () => {
         kind: 'binary',
         operator: '>=',
         left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'age' },
-        right: { kind: 'literal', value: { kind: 'number', value: 18 } }
+        right: { kind: 'literal', value: { kind: 'number', value: 18 } },
       });
     });
 
@@ -1198,8 +1219,12 @@ describe('IRCompiler', () => {
       expect(expr).toEqual({
         kind: 'binary',
         operator: '&&',
-        left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'authenticated' },
-        right: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'active' }
+        left: {
+          kind: 'member',
+          object: { kind: 'identifier', name: 'self' },
+          property: 'authenticated',
+        },
+        right: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'active' },
       });
     });
 
@@ -1220,14 +1245,14 @@ describe('IRCompiler', () => {
           kind: 'binary',
           operator: '==',
           left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'role' },
-          right: { kind: 'literal', value: { kind: 'string', value: 'admin' } }
+          right: { kind: 'literal', value: { kind: 'string', value: 'admin' } },
         },
         right: {
           kind: 'binary',
           operator: '==',
           left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'role' },
-          right: { kind: 'literal', value: { kind: 'string', value: 'moderator' } }
-        }
+          right: { kind: 'literal', value: { kind: 'string', value: 'moderator' } },
+        },
       });
     });
 
@@ -1244,7 +1269,11 @@ describe('IRCompiler', () => {
       expect(expr).toEqual({
         kind: 'unary',
         operator: '!',
-        operand: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'banned' }
+        operand: {
+          kind: 'member',
+          object: { kind: 'identifier', name: 'self' },
+          property: 'banned',
+        },
       });
     });
 
@@ -1261,7 +1290,7 @@ describe('IRCompiler', () => {
       expect(expr).toEqual({
         kind: 'unary',
         operator: '-',
-        operand: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'age' }
+        operand: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'age' },
       });
     });
 
@@ -1282,13 +1311,13 @@ describe('IRCompiler', () => {
           kind: 'call',
           callee: { kind: 'identifier', name: 'upper' },
           args: [
-            { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'name' }
-          ]
+            { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'name' },
+          ],
         },
         right: {
           kind: 'literal',
-          value: { kind: 'string', value: 'ADMIN' }
-        }
+          value: { kind: 'string', value: 'ADMIN' },
+        },
       });
     });
 
@@ -1304,9 +1333,13 @@ describe('IRCompiler', () => {
       const expr = result.ir?.entities[0].computedProperties[0].expression;
       expect(expr).toEqual({
         kind: 'conditional',
-        condition: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'active' },
+        condition: {
+          kind: 'member',
+          object: { kind: 'identifier', name: 'self' },
+          property: 'active',
+        },
         consequent: { kind: 'literal', value: { kind: 'string', value: 'active' } },
-        alternate: { kind: 'literal', value: { kind: 'string', value: 'inactive' } }
+        alternate: { kind: 'literal', value: { kind: 'string', value: 'inactive' } },
       });
     });
 
@@ -1361,8 +1394,8 @@ describe('IRCompiler', () => {
           kind: 'binary',
           operator: '*',
           left: { kind: 'identifier', name: 'x' },
-          right: { kind: 'literal', value: { kind: 'number', value: 2 } }
-        }
+          right: { kind: 'literal', value: { kind: 'number', value: 2 } },
+        },
       });
     });
   });
@@ -1472,7 +1505,7 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir?.entities).toHaveLength(3);
-      expect(result.ir?.entities.map(e => e.name)).toEqual(['User', 'Post', 'Comment']);
+      expect(result.ir?.entities.map((e) => e.name)).toEqual(['User', 'Post', 'Comment']);
     });
 
     it('should handle entity with all components', async () => {
@@ -1555,7 +1588,7 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).toBeNull();
-      const errors = result.diagnostics.filter(d => d.severity === 'error');
+      const errors = result.diagnostics.filter((d) => d.severity === 'error');
       expect(errors).toHaveLength(1);
       expect(errors[0].message).toContain("uses 'through'");
       expect(errors[0].message).toContain('not supported');
@@ -1597,7 +1630,7 @@ describe('IRCompiler', () => {
             property orderId: string required
           }
         `);
-        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
         const entity = result.ir?.entities[0];
         expect(entity?.key).toEqual(['tenantId', 'orderId']);
       });
@@ -1613,7 +1646,7 @@ describe('IRCompiler', () => {
             property externalId: string required
           }
         `);
-        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
         const entity = result.ir?.entities[0];
         expect(entity?.key).toEqual(['tenantId', 'id']);
         expect(entity?.alternateKeys).toEqual([['tenantId', 'externalId']]);
@@ -1629,9 +1662,12 @@ describe('IRCompiler', () => {
             belongsTo org: Organization fields [orgTenantId, orgId] references [tenantId, id]
           }
         `);
-        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
         const rel = result.ir?.entities[0].relationships[0];
-        expect(rel?.foreignKey).toEqual({ fields: ['orgTenantId', 'orgId'], references: ['tenantId', 'id'] });
+        expect(rel?.foreignKey).toEqual({
+          fields: ['orgTenantId', 'orgId'],
+          references: ['tenantId', 'id'],
+        });
       });
 
       it('fields [...] without references stores foreignKey with absent references', async () => {
@@ -1641,7 +1677,7 @@ describe('IRCompiler', () => {
             belongsTo author: User fields [authorId]
           }
         `);
-        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
         const rel = result.ir?.entities[0].relationships[0];
         expect(rel?.foreignKey).toEqual({ fields: ['authorId'] });
         expect(rel?.foreignKey?.references).toBeUndefined();
@@ -1654,7 +1690,7 @@ describe('IRCompiler', () => {
             belongsTo author: User references [id]
           }
         `);
-        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
         const rel = result.ir?.entities[0].relationships[0];
         expect(rel?.foreignKey).toEqual({ fields: ['authorId'], references: ['id'] });
       });
@@ -1666,7 +1702,7 @@ describe('IRCompiler', () => {
             belongsTo author: User with authorId onDelete cascade onUpdate restrict
           }
         `);
-        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
         const rel = result.ir?.entities[0].relationships[0];
         expect(rel?.onDelete).toBe('cascade');
         expect(rel?.onUpdate).toBe('restrict');
@@ -1680,7 +1716,7 @@ describe('IRCompiler', () => {
           }
         `);
         expect(result.ir).toBeNull();
-        const errors = result.diagnostics.filter(d => d.severity === 'error');
+        const errors = result.diagnostics.filter((d) => d.severity === 'error');
         expect(errors).toHaveLength(1);
         expect(errors[0].message).toContain("uses 'through'");
         expect(errors[0].message).toContain('not supported');
@@ -1694,10 +1730,10 @@ describe('IRCompiler', () => {
           }
         `);
         expect(result.ir).toBeNull();
-        const errors = result.diagnostics.filter(d => d.severity === 'error');
+        const errors = result.diagnostics.filter((d) => d.severity === 'error');
         expect(errors).toHaveLength(1);
         expect(errors[0].message).toBe(
-          "Relationship 'tags' on entity 'Post' cannot set both 'foreignKey' and 'through' — they are mutually exclusive."
+          "Relationship 'tags' on entity 'Post' cannot set both 'foreignKey' and 'through' — they are mutually exclusive.",
         );
       });
 
@@ -1714,11 +1750,8 @@ describe('IRCompiler', () => {
           }
         `);
         const entity = result.ir?.entities[0];
-        const computedNames = entity?.computedProperties.map(cp => cp.name) ?? [];
-        const allKeyCols = [
-          ...(entity?.key ?? []),
-          ...(entity?.alternateKeys ?? []).flat(),
-        ];
+        const computedNames = entity?.computedProperties.map((cp) => cp.name) ?? [];
+        const allKeyCols = [...(entity?.key ?? []), ...(entity?.alternateKeys ?? []).flat()];
         for (const col of allKeyCols) {
           expect(computedNames).not.toContain(col);
         }
@@ -1768,7 +1801,7 @@ describe('IRCompiler', () => {
 
         expect(result.ir).toBeNull();
         expect(result.diagnostics.length).toBeGreaterThan(0);
-        const errorDiag = result.diagnostics.find(d => d.severity === 'error');
+        const errorDiag = result.diagnostics.find((d) => d.severity === 'error');
         expect(errorDiag).toBeDefined();
         expect(errorDiag!.message).toContain("Duplicate constraint code 'balanceCheck'");
         expect(errorDiag!.message).toContain("entity 'Account'");
@@ -1791,7 +1824,7 @@ describe('IRCompiler', () => {
         `);
 
         expect(result.ir).toBeNull();
-        const errorDiag = result.diagnostics.find(d => d.severity === 'error');
+        const errorDiag = result.diagnostics.find((d) => d.severity === 'error');
         expect(errorDiag).toBeDefined();
         expect(errorDiag!.message).toContain("Duplicate constraint code 'BALANCE_CHECK'");
         expect(errorDiag!.message).toContain("entity 'Account'");
@@ -1811,7 +1844,7 @@ describe('IRCompiler', () => {
         `);
 
         expect(result.ir).toBeNull();
-        const errorDiag = result.diagnostics.find(d => d.severity === 'error');
+        const errorDiag = result.diagnostics.find((d) => d.severity === 'error');
         expect(errorDiag).toBeDefined();
         expect(errorDiag!.message).toContain("Duplicate constraint code 'amountLimit'");
         expect(errorDiag!.message).toContain("command 'Payment.transfer'");
@@ -1831,7 +1864,7 @@ describe('IRCompiler', () => {
         `);
 
         expect(result.ir).not.toBeNull();
-        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
       });
 
       it('should allow same constraint code in entity and command scopes', async () => {
@@ -1848,7 +1881,7 @@ describe('IRCompiler', () => {
         `);
 
         expect(result.ir).not.toBeNull();
-        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
       });
 
       it('should detect multiple duplicates and emit one error per duplicate', async () => {
@@ -1864,10 +1897,10 @@ describe('IRCompiler', () => {
         `);
 
         expect(result.ir).toBeNull();
-        const errors = result.diagnostics.filter(d => d.severity === 'error');
+        const errors = result.diagnostics.filter((d) => d.severity === 'error');
         // Two duplicates: the second and third "check" constraints
         expect(errors).toHaveLength(2);
-        errors.forEach(e => {
+        errors.forEach((e) => {
           expect(e.message).toContain("Duplicate constraint code 'check'");
         });
       });
@@ -1883,7 +1916,7 @@ describe('IRCompiler', () => {
         `);
 
         expect(result.ir).not.toBeNull();
-        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
         expect(result.ir!.entities[0].constraints).toHaveLength(2);
       });
     });
@@ -1946,8 +1979,8 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).not.toBeNull();
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
-      const userEntity = result.ir?.entities.find(e => e.name === 'User');
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
+      const userEntity = result.ir?.entities.find((e) => e.name === 'User');
       expect(userEntity?.parent).toBe('Base');
     });
 
@@ -1967,8 +2000,8 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).not.toBeNull();
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
-      const docEntity = result.ir?.entities.find(e => e.name === 'Document');
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
+      const docEntity = result.ir?.entities.find((e) => e.name === 'Document');
       expect(docEntity?.mixins).toContain('Timestamped');
       expect(docEntity?.mixins).toContain('Audited');
     });
@@ -1993,7 +2026,7 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).not.toBeNull();
-      const submitCmd = result.ir?.commands.find(c => c.name === 'submit');
+      const submitCmd = result.ir?.commands.find((c) => c.name === 'submit');
       expect(submitCmd?.retry).toBeDefined();
       expect(submitCmd?.retry?.maxAttempts).toBe(3);
       expect(submitCmd?.retry?.backoff).toBe('exponential');
@@ -2008,7 +2041,7 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).not.toBeNull();
-      const policy = result.ir?.policies.find(p => p.name === 'readTask');
+      const policy = result.ir?.policies.find((p) => p.name === 'readTask');
       expect(policy?.rateLimit).toBeDefined();
       expect(policy?.rateLimit?.maxRequests).toBe(100);
       expect(policy?.rateLimit?.scope).toBe('user');
@@ -2024,7 +2057,7 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).not.toBeNull();
-      const cmd = result.ir?.commands.find(c => c.name === 'process');
+      const cmd = result.ir?.commands.find((c) => c.name === 'process');
       expect(cmd?.rateLimit).toBeDefined();
       expect(cmd?.rateLimit?.maxRequests).toBe(10);
       expect(cmd?.rateLimit?.scope).toBe('tenant');
@@ -2039,7 +2072,7 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).not.toBeNull();
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
       expect(result.ir?.schedules).toHaveLength(1);
       const schedule = result.ir?.schedules?.[0];
       expect(schedule?.name).toBe('dailyReport');
@@ -2054,7 +2087,7 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).not.toBeNull();
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
       const schedule = result.ir?.schedules?.[0];
       expect(schedule?.trigger.kind).toBe('interval');
       expect(schedule?.trigger.durationMs).toBe(5 * 60 * 1000);
@@ -2066,7 +2099,7 @@ describe('IRCompiler', () => {
         schedule invalidCron cron "invalid" run Task.check
       `);
 
-      const errors = result.diagnostics.filter(d => d.severity === 'error');
+      const errors = result.diagnostics.filter((d) => d.severity === 'error');
       expect(errors.length).toBeGreaterThan(0);
       expect(errors[0].message).toContain('Invalid cron expression');
     });
@@ -2077,7 +2110,7 @@ describe('IRCompiler', () => {
         schedule quarterHourly cron "*/15 * * * *" run Event.applyExternalCalendarUpdate
       `);
 
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       expect(result.ir).not.toBeNull();
       expect(result.ir?.schedules?.[0]?.trigger).toEqual({
         kind: 'cron',
@@ -2092,9 +2125,11 @@ describe('IRCompiler', () => {
       `);
 
       expect(result.ir).toBeNull();
-      expect(result.diagnostics.some(d =>
-        d.severity === 'error' && d.message.includes('Invalid cron expression'),
-      )).toBe(true);
+      expect(
+        result.diagnostics.some(
+          (d) => d.severity === 'error' && d.message.includes('Invalid cron expression'),
+        ),
+      ).toBe(true);
     });
 
     it('should compile schedule with parameters', async () => {

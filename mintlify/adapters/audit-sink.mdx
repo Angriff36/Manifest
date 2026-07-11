@@ -1,7 +1,7 @@
 ---
-title: "Log command execution with the Manifest audit sink"
-description: "Wire in an AuditSink to receive one AuditRecord per runCommand call — success or failure — for compliance, debugging, and observability."
-sidebarTitle: "Audit Sink"
+title: 'Log command execution with the Manifest audit sink'
+description: 'Wire in an AuditSink to receive one AuditRecord per runCommand call — success or failure — for compliance, debugging, and observability.'
+sidebarTitle: 'Audit Sink'
 ---
 
 Every call to `RuntimeEngine.runCommand` produces a single `AuditRecord`, regardless of whether the command succeeds, is denied by a guard or policy, hits a constraint, or throws an unexpected error. You receive that record by providing an `AuditSink` in `RuntimeOptions`.
@@ -49,19 +49,21 @@ interface AuditRecord {
 
 The `outcome` field is one of:
 
-| Value | Meaning |
-|-------|---------|
-| `success` | Command completed; state was mutated and events emitted. |
-| `guard_denied` | A guard expression evaluated to false. |
-| `policy_denied` | A policy check rejected the command. |
-| `rate_limit_denied` | A command or policy rate limiter blocked execution. |
-| `constraint_failed` | One or more constraint validations failed. |
-| `concurrency_conflict` | Optimistic concurrency check failed. |
+| Value                    | Meaning                                                      |
+| ------------------------ | ------------------------------------------------------------ |
+| `success`                | Command completed; state was mutated and events emitted.     |
+| `guard_denied`           | A guard expression evaluated to false.                       |
+| `policy_denied`          | A policy check rejected the command.                         |
+| `rate_limit_denied`      | A command or policy rate limiter blocked execution.          |
+| `constraint_failed`      | One or more constraint validations failed.                   |
+| `concurrency_conflict`   | Optimistic concurrency check failed.                         |
 | `missing_tenant_context` | The command required a tenant context that was not supplied. |
-| `error` | An unexpected error occurred during evaluation. |
+| `error`                  | An unexpected error occurred during evaluation.              |
 
 <Note>
-`diagnostics` carries the structured failure details — `policyDenial`, `guardFailure`, `concurrencyConflict`, `constraintOutcomes`, or `error` — so downstream tooling can reason about a denial without reshaping the runtime contract.
+  `diagnostics` carries the structured failure details — `policyDenial`, `guardFailure`,
+  `concurrencyConflict`, `constraintOutcomes`, or `error` — so downstream tooling can reason about a
+  denial without reshaping the runtime contract.
 </Note>
 
 ## First-party sinks
@@ -94,7 +96,9 @@ const sink = new PostgresAuditSink(pool);
 `PostgresAuditSink` is backed by `pg` and uses `INSERT … ON CONFLICT (record_id) DO NOTHING` for idempotency. Apply the included schema before using it:
 
 <Tip>
-The schema file `postgres.sql` is included in the published package. Find it at `node_modules/@angriff36/manifest/src/manifest/audit/sinks/postgres.sql` and run it against your database once during deployment.
+  The schema file `postgres.sql` is included in the published package. Find it at
+  `node_modules/@angriff36/manifest/src/manifest/audit/sinks/postgres.sql` and run it against your
+  database once during deployment.
 </Tip>
 
 ## Wiring in an audit sink
@@ -111,23 +115,23 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const runtime = new RuntimeEngine(ir, {
   userId: session.userId,
   tenantId: session.tenantId,
-  auditSink: new PostgresAuditSink(pool)
+  auditSink: new PostgresAuditSink(pool),
 });
 
 // Every runtime.runCommand(...) call now writes one AuditRecord.
 const result = await runtime.runCommand('createOrder', input, {
   entityName: 'Order',
-  instanceId: orderId
+  instanceId: orderId,
 });
 ```
 
 ## Import paths
 
-| What | Import path |
-|------|-------------|
-| `AuditSink` interface and `AuditRecord` type | `@angriff36/manifest/audit` |
-| `MemoryAuditSink` | `@angriff36/manifest/audit/memory` |
-| `PostgresAuditSink` | `@angriff36/manifest/audit/postgres` |
+| What                                         | Import path                          |
+| -------------------------------------------- | ------------------------------------ |
+| `AuditSink` interface and `AuditRecord` type | `@angriff36/manifest/audit`          |
+| `MemoryAuditSink`                            | `@angriff36/manifest/audit/memory`   |
+| `PostgresAuditSink`                          | `@angriff36/manifest/audit/postgres` |
 
 ## Implementing a custom sink
 
@@ -144,7 +148,7 @@ export class OpenTelemetryAuditSink implements AuditSink {
       entity: record.entity,
       command: record.command,
       actorId: record.actorId,
-      tenantId: record.tenantId
+      tenantId: record.tenantId,
     });
   }
 }
@@ -164,4 +168,5 @@ The audit subsystem is observability, not enforcement. Monitor for the log line:
 ```
 
 Alert on it in production so you know when audit records are being lost.
+
 </Warning>

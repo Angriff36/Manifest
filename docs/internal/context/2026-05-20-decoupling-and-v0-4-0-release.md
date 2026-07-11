@@ -1,13 +1,24 @@
 ---
 session: 2026-05-20-decoupling-and-v0-4-0-release
-project: "@angriff36/manifest"
+project: '@angriff36/manifest'
 project_root: C:/projects/manifest
 head_at_save: efd8203
 parent_at_session_start: 74ae68e
 status: v0.4.0 published; CI lint debt out-of-scope; runtime audit/outbox still deferred
 tests_at_save: 822/822 passing
 typecheck_at_save: clean
-tags: [decoupling, application-agnostic, audit-governance, capsule-pro, release, v0.4.0, github-packages, pnpm, crlf-fix]
+tags:
+  [
+    decoupling,
+    application-agnostic,
+    audit-governance,
+    capsule-pro,
+    release,
+    v0.4.0,
+    github-packages,
+    pnpm,
+    crlf-fix,
+  ]
 ---
 
 # Application-Agnostic Decoupling + v0.4.0 Release — Session Handoff
@@ -20,9 +31,9 @@ tags: [decoupling, application-agnostic, audit-governance, capsule-pro, release,
 
 Two-stage goal across this session:
 
-1. *(decoupling)* "Validate and patch Manifest's enforcement layer so it is an application-agnostic governance system, then prove Capsule-Pro can integrate only through documented adapters/projections without Manifest depending on Capsule-Pro."
+1. _(decoupling)_ "Validate and patch Manifest's enforcement layer so it is an application-agnostic governance system, then prove Capsule-Pro can integrate only through documented adapters/projections without Manifest depending on Capsule-Pro."
 
-2. *(release)* "commit and push and update the npm package"
+2. _(release)_ "commit and push and update the npm package"
 
 ## Outcome
 
@@ -40,31 +51,31 @@ cat docs/integrations/capsule-pro/integration-proof.md  # the dependency map
 
 ## What Shipped (the v0.4.0 cut)
 
-| Layer | Change |
-|---|---|
-| Spec (`docs/spec/**`) | Removed all "Constitution §N" and Capsule-Pro authority wording. Replaced with application-neutral phrasing (governance, governed entity, downstream application, command/bypass registry, route drift, etc.). |
-| Runtime (`src/manifest/**`) | Stripped Capsule-Pro / Constitution references from `runtime-engine.ts`, `audit/audit-sink.ts`, `outbox/outbox-store.ts`, `registry/emit.ts`, and the test files. `RuntimeContext` typed shape unchanged. |
-| Generator | `nextjs.dispatcher` now emits Next.js 15 App Router shape: `ctx.params: Promise<{entity:string;command:string}>` and `await ctx.params` before destructuring. Regression test added that fails if synchronous params shape regresses. |
-| CLI | Renamed `audit-constitution` → `audit-governance` (canonical). Kept `audit-constitution` as a Commander alias that emits a stderr deprecation hint when invoked. Detector descriptions and finding codes all application-neutral. |
-| Lexer | **Cross-platform fix**: normalizes `\r\n` and bare `\r` to `\n` in the constructor, so column tracking is platform-independent. Was a latent CRLF-vs-LF bug. 36 conformance fixtures regenerated. |
-| Docs | Moved `docs/capsule-pro/` → `docs/integrations/capsule-pro/` via `git mv`. Added `docs/integrations/README.md` and `docs/integrations/capsule-pro/integration-proof.md` (one-directional dependency map). |
-| Fixture | New `fixtures/sample-app/` (library/book domain) — a non-Capsule generic governed app that audits clean against all 5 detectors. Proof of application-agnosticism. |
-| Release infra | New `.github/workflows/release.yml` — triggers on `v*` tag push, runs pnpm install on both root and `packages/cli/`, typechecks, tests, publishes to GitHub Packages via `secrets.GITHUB_TOKEN`. |
-| Repo hygiene | Added `.gitattributes` pinning LF for all source/fixture/lockfile types. |
-| Version | `package.json` 0.3.39 → 0.4.0 (minor — bundled four feature waves). |
+| Layer                       | Change                                                                                                                                                                                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Spec (`docs/spec/**`)       | Removed all "Constitution §N" and Capsule-Pro authority wording. Replaced with application-neutral phrasing (governance, governed entity, downstream application, command/bypass registry, route drift, etc.).                        |
+| Runtime (`src/manifest/**`) | Stripped Capsule-Pro / Constitution references from `runtime-engine.ts`, `audit/audit-sink.ts`, `outbox/outbox-store.ts`, `registry/emit.ts`, and the test files. `RuntimeContext` typed shape unchanged.                             |
+| Generator                   | `nextjs.dispatcher` now emits Next.js 15 App Router shape: `ctx.params: Promise<{entity:string;command:string}>` and `await ctx.params` before destructuring. Regression test added that fails if synchronous params shape regresses. |
+| CLI                         | Renamed `audit-constitution` → `audit-governance` (canonical). Kept `audit-constitution` as a Commander alias that emits a stderr deprecation hint when invoked. Detector descriptions and finding codes all application-neutral.     |
+| Lexer                       | **Cross-platform fix**: normalizes `\r\n` and bare `\r` to `\n` in the constructor, so column tracking is platform-independent. Was a latent CRLF-vs-LF bug. 36 conformance fixtures regenerated.                                     |
+| Docs                        | Moved `docs/capsule-pro/` → `docs/integrations/capsule-pro/` via `git mv`. Added `docs/integrations/README.md` and `docs/integrations/capsule-pro/integration-proof.md` (one-directional dependency map).                             |
+| Fixture                     | New `fixtures/sample-app/` (library/book domain) — a non-Capsule generic governed app that audits clean against all 5 detectors. Proof of application-agnosticism.                                                                    |
+| Release infra               | New `.github/workflows/release.yml` — triggers on `v*` tag push, runs pnpm install on both root and `packages/cli/`, typechecks, tests, publishes to GitHub Packages via `secrets.GITHUB_TOKEN`.                                      |
+| Repo hygiene                | Added `.gitattributes` pinning LF for all source/fixture/lockfile types.                                                                                                                                                              |
+| Version                     | `package.json` 0.3.39 → 0.4.0 (minor — bundled four feature waves).                                                                                                                                                                   |
 
 ## Commits (8, oldest first)
 
-| Hash | Message | Notes |
-|---|---|---|
-| `33442c2` | Decouple governance enforcement from Capsule-Pro | The main decoupling commit (41 files, +982/-404) |
-| `4911285` | chore(release): bump @angriff36/manifest to 0.4.0 | package.json bump |
-| `8b51fc0` | ci(release): publish to GitHub Packages on v* tag push | First version of release.yml |
-| `e9195ee` | fix(ci/release): use pnpm install + test (workspace deps) | Discovered root npm ci misses packages/cli/ deps |
-| `352a456` | fix(ci/release): pin pnpm to v9 (matches lockfileVersion 9.0) | pnpm/action-setup requires explicit version |
-| `b70d8e3` | fix(repo): add .gitattributes to pin LF (conformance column drift) | Without renormalizing committed content, only affects future checkouts |
-| `b737ff6` | fix(lexer): normalize CRLF/CR to LF for platform-independent positions | The real cross-platform fix. Regenerated 36 conformance fixtures. |
-| `efd8203` | fix(ci/release): also install packages/cli deps | packages/cli is its own pnpm project, not a workspace member |
+| Hash      | Message                                                                | Notes                                                                  |
+| --------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `33442c2` | Decouple governance enforcement from Capsule-Pro                       | The main decoupling commit (41 files, +982/-404)                       |
+| `4911285` | chore(release): bump @angriff36/manifest to 0.4.0                      | package.json bump                                                      |
+| `8b51fc0` | ci(release): publish to GitHub Packages on v* tag push                 | First version of release.yml                                           |
+| `e9195ee` | fix(ci/release): use pnpm install + test (workspace deps)              | Discovered root npm ci misses packages/cli/ deps                       |
+| `352a456` | fix(ci/release): pin pnpm to v9 (matches lockfileVersion 9.0)          | pnpm/action-setup requires explicit version                            |
+| `b70d8e3` | fix(repo): add .gitattributes to pin LF (conformance column drift)     | Without renormalizing committed content, only affects future checkouts |
+| `b737ff6` | fix(lexer): normalize CRLF/CR to LF for platform-independent positions | The real cross-platform fix. Regenerated 36 conformance fixtures.      |
+| `efd8203` | fix(ci/release): also install packages/cli deps                        | packages/cli is its own pnpm project, not a workspace member           |
 
 ## Tag State
 

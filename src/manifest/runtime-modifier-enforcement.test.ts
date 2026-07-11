@@ -7,17 +7,21 @@ async function compile(source: string): Promise<IR> {
   const compiler = new IRCompiler();
   const result = await compiler.compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compilation failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compilation failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
 
 function engine(ir: IR): RuntimeEngine {
   let counter = 0;
-  return new RuntimeEngine(ir, {}, {
-    generateId: () => `id-${++counter}`,
-    now: () => 1000,
-  });
+  return new RuntimeEngine(
+    ir,
+    {},
+    {
+      generateId: () => `id-${++counter}`,
+      now: () => 1000,
+    },
+  );
 }
 
 // ── Item 1: command parameter validation (required + defaultValue) ──
@@ -54,14 +58,19 @@ describe('command parameter enforcement', () => {
 
   it('uses the supplied argument over the default', async () => {
     const rt = engine(await compile(source));
-    const result = await rt.runCommand('create', { title: 'Hello', tag: 'final' }, { entityName: 'Doc' });
+    const result = await rt.runCommand(
+      'create',
+      { title: 'Hello', tag: 'final' },
+      { entityName: 'Doc' },
+    );
     expect(result.success).toBe(true);
     const stored = await rt.getInstance('Doc', result.instance!.id);
     expect(stored?.tag).toBe('final');
   });
 
   it('allows an omitted optional parameter with no default', async () => {
-    const rt = engine(await compile(`
+    const rt = engine(
+      await compile(`
       entity Doc {
         property id: string
         property title: string
@@ -69,7 +78,8 @@ describe('command parameter enforcement', () => {
           mutate title = "x"
         }
       }
-    `));
+    `),
+    );
     const result = await rt.runCommand('touch', {}, { entityName: 'Doc' });
     expect(result.success).toBe(true);
   });
@@ -78,30 +88,35 @@ describe('command parameter enforcement', () => {
 // ── Item 2a: required property modifier on create ──
 describe('required property modifier on create', () => {
   it('blocks createInstance when a required property is absent with no default', async () => {
-    const rt = engine(await compile(`
+    const rt = engine(
+      await compile(`
       entity Person {
         property id: string
         property required name: string
       }
-    `));
+    `),
+    );
     const created = await rt.createInstance('Person', { id: 'p1' });
     expect(created).toBeUndefined();
     expect(await rt.getAllInstances('Person')).toEqual([]);
   });
 
   it('allows createInstance when the required property is provided', async () => {
-    const rt = engine(await compile(`
+    const rt = engine(
+      await compile(`
       entity Person {
         property id: string
         property required name: string
       }
-    `));
+    `),
+    );
     const created = await rt.createInstance('Person', { id: 'p1', name: 'Ada' });
     expect(created).toMatchObject({ id: 'p1', name: 'Ada' });
   });
 
   it('treats a required property written by the create command actions as satisfied', async () => {
-    const rt = engine(await compile(`
+    const rt = engine(
+      await compile(`
       entity Person {
         property id: string
         property required name: string
@@ -109,14 +124,16 @@ describe('required property modifier on create', () => {
           mutate name = name
         }
       }
-    `));
+    `),
+    );
     const result = await rt.runCommand('create', { name: 'Grace' }, { entityName: 'Person' });
     expect(result.success).toBe(true);
     expect(result.instance).toMatchObject({ name: 'Grace' });
   });
 
   it('blocks the create command when a required property is neither input nor produced', async () => {
-    const rt = engine(await compile(`
+    const rt = engine(
+      await compile(`
       entity Person {
         property id: string
         property required name: string
@@ -125,10 +142,11 @@ describe('required property modifier on create', () => {
           mutate note = note
         }
       }
-    `));
+    `),
+    );
     const result = await rt.runCommand('create', { note: 'hi' }, { entityName: 'Person' });
     expect(result.success).toBe(false);
-    expect(result.constraintOutcomes?.some(o => o.code === 'E_REQUIRED')).toBe(true);
+    expect(result.constraintOutcomes?.some((o) => o.code === 'E_REQUIRED')).toBe(true);
   });
 });
 
@@ -159,7 +177,8 @@ describe('readonly property modifier on update', () => {
   });
 
   it('allows setting the readonly property while the creating command runs', async () => {
-    const rt = engine(await compile(`
+    const rt = engine(
+      await compile(`
       entity Account {
         property id: string
         property readonly ssn: string
@@ -167,7 +186,8 @@ describe('readonly property modifier on update', () => {
           mutate ssn = ssn
         }
       }
-    `));
+    `),
+    );
     const result = await rt.runCommand('create', { ssn: '999' }, { entityName: 'Account' });
     expect(result.success).toBe(true);
     expect(result.instance).toMatchObject({ ssn: '999' });
@@ -244,7 +264,8 @@ describe('plain private property read filtering', () => {
   });
 
   it('still evaluates guards against the real private value (execution sees plaintext)', async () => {
-    const rt = engine(await compile(`
+    const rt = engine(
+      await compile(`
       entity Secret {
         property id: string
         property private token: string
@@ -254,7 +275,8 @@ describe('plain private property read filtering', () => {
           mutate label = "ok"
         }
       }
-    `));
+    `),
+    );
     await rt.createInstance('Secret', { id: 's1', token: 'sk-123', label: '' });
     const result = await rt.runCommand('reveal', {}, { entityName: 'Secret', instanceId: 's1' });
     expect(result.success).toBe(true);

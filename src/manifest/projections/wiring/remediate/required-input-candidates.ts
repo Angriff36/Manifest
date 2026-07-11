@@ -75,16 +75,7 @@ export function collectCandidates(
     out,
     hostInScopeChain,
   );
-  collectFormDataSources(
-    sf,
-    content,
-    scopes,
-    callPos,
-    name,
-    param,
-    out,
-    hostInScopeChain,
-  );
+  collectFormDataSources(sf, content, scopes, callPos, name, param, out, hostInScopeChain);
   collectFormAliases(innermost, sf, callPos, name, out, findLocalDeclarations);
 
   return dedupeSources(out);
@@ -100,9 +91,7 @@ export function isTypeCompatible(
   if (source.kind === 'form-field') {
     if (want === 'string' || param.irTypeName === 'string') return true;
     if (param.constraints.dateLike && source.conversion === 'formData-string') {
-      return Boolean(
-        source.expression.includes('Date') || source.expression.includes('String'),
-      );
+      return Boolean(source.expression.includes('Date') || source.expression.includes('String'));
     }
     return false;
   }
@@ -111,10 +100,7 @@ export function isTypeCompatible(
     if (got === 'number') return true;
     if (got === 'string' || got === 'boolean') return false;
     const compact = source.expression.replace(/\s+/g, '');
-    if (
-      /^(Number|parseFloat|parseInt)\(/.test(compact) ||
-      compact === `+${param.name}`
-    ) {
+    if (/^(Number|parseFloat|parseInt)\(/.test(compact) || compact === `+${param.name}`) {
       return true;
     }
     if (!got && source.expression === param.name && source.rank <= 2) {
@@ -272,13 +258,7 @@ function readUseStateBinding(
 
 function paramNeedsNumber(param: WiringParameterDescriptor): boolean {
   const ir = param.irTypeName;
-  if (
-    ir === 'number' ||
-    ir === 'money' ||
-    ir === 'decimal' ||
-    ir === 'int' ||
-    ir === 'float'
-  ) {
+  if (ir === 'number' || ir === 'money' || ir === 'decimal' || ir === 'int' || ir === 'float') {
     return true;
   }
   return normalizeType(param.tsType) === 'number';
@@ -345,11 +325,7 @@ interface LocalDecl {
   initText?: string;
 }
 
-function findLocalDeclarations(
-  scope: ts.Node,
-  sf: ts.SourceFile,
-  beforePos: number,
-): LocalDecl[] {
+function findLocalDeclarations(scope: ts.Node, sf: ts.SourceFile, beforePos: number): LocalDecl[] {
   const out: LocalDecl[] = [];
   const visit = (node: ts.Node) => {
     if (node.getStart(sf) >= beforePos) return;
@@ -385,7 +361,7 @@ function hostInScopeChain(
   host: string,
   beforePos: number,
 ): boolean {
-  return scopes.some(scope => hostInScope(scope, sf, host, beforePos));
+  return scopes.some((scope) => hostInScope(scope, sf, host, beforePos));
 }
 
 function hostInScope(
@@ -400,14 +376,10 @@ function hostInScope(
       if (ts.isIdentifier(p.name) && p.name.text === host) return true;
     }
   }
-  return findLocalDeclarations(scope, sf, beforePos).some(l => l.name === host);
+  return findLocalDeclarations(scope, sf, beforePos).some((l) => l.name === host);
 }
 
-function typesAssignable(
-  got: string,
-  want: string,
-  param: WiringParameterDescriptor,
-): boolean {
+function typesAssignable(got: string, want: string, param: WiringParameterDescriptor): boolean {
   if (got === want) return true;
   if (want === 'string' && got === 'string') return true;
   if (param.constraints.dateLike && (got === 'string' || got === 'date')) return true;

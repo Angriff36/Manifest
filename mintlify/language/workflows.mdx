@@ -1,7 +1,7 @@
 ---
-title: "Workflows: saga orchestration and scheduled commands"
-description: "Orchestrate multi-step distributed workflows with saga compensation, and trigger commands on time-based schedules using cron expressions or fixed intervals."
-sidebarTitle: "Workflows"
+title: 'Workflows: saga orchestration and scheduled commands'
+description: 'Orchestrate multi-step distributed workflows with saga compensation, and trigger commands on time-based schedules using cron expressions or fixed intervals.'
+sidebarTitle: 'Workflows'
 ---
 
 Manifest provides two workflow primitives for coordinating execution across time and services: **saga orchestration** for distributed transactions with compensation, and **scheduled commands** for time-based triggers.
@@ -39,16 +39,20 @@ saga ProcessOrder {
 
 <Steps>
   <Step title="Start">
-    The saga begins when the first step's command is invoked. The runtime creates a saga execution record tracking the current step index.
+    The saga begins when the first step's command is invoked. The runtime creates a saga execution
+    record tracking the current step index.
   </Step>
   <Step title="Execute steps">
-    Each step's command runs in sequence. If the command succeeds, the saga advances to the next step.
+    Each step's command runs in sequence. If the command succeeds, the saga advances to the next
+    step.
   </Step>
   <Step title="On failure — compensate">
-    If any step's command fails, the saga enters compensation mode. It runs each completed step's compensate command in reverse order (last completed first).
+    If any step's command fails, the saga enters compensation mode. It runs each completed step's
+    compensate command in reverse order (last completed first).
   </Step>
   <Step title="Complete or failed">
-    After all steps complete (or all compensations run), the saga emits a completion or failure event.
+    After all steps complete (or all compensations run), the saga emits a completion or failure
+    event.
   </Step>
 </Steps>
 
@@ -58,16 +62,17 @@ Compensation is best-effort. If a compensate command itself fails, the saga logs
 
 ### Saga lifecycle events
 
-| Event | When emitted |
-|-------|-------------|
-| `{SagaName}Started` | Saga execution begins |
-| `{SagaName}StepCompleted` | Each step's command succeeds |
-| `{SagaName}Completed` | All steps complete |
-| `{SagaName}StepCompensated` | Each compensate step completes |
-| `{SagaName}Failed` | Saga enters compensation mode or compensation fails |
+| Event                       | When emitted                                        |
+| --------------------------- | --------------------------------------------------- |
+| `{SagaName}Started`         | Saga execution begins                               |
+| `{SagaName}StepCompleted`   | Each step's command succeeds                        |
+| `{SagaName}Completed`       | All steps complete                                  |
+| `{SagaName}StepCompensated` | Each compensate step completes                      |
+| `{SagaName}Failed`          | Saga enters compensation mode or compensation fails |
 
 <Note>
-Saga events carry `correlationId` and `causationId` from the originating command, enabling cross-service tracing through the entire workflow.
+  Saga events carry `correlationId` and `causationId` from the originating command, enabling
+  cross-service tracing through the entire workflow.
 </Note>
 
 ## Scheduled commands
@@ -113,11 +118,11 @@ entity Report {
 
 ### Trigger types
 
-| Type | Syntax | Description |
-|------|--------|-------------|
-| `cron` | `cron "0 6 * * *"` | Standard 5-field cron expression (minute hour day month weekday) |
-| `interval` | `interval <ms>` | Fixed interval in milliseconds |
-| `every` | `every <n> hours/minutes/seconds` | Human-readable period |
+| Type       | Syntax                            | Description                                                      |
+| ---------- | --------------------------------- | ---------------------------------------------------------------- |
+| `cron`     | `cron "0 6 * * *"`                | Standard 5-field cron expression (minute hour day month weekday) |
+| `interval` | `interval <ms>`                   | Fixed interval in milliseconds                                   |
+| `every`    | `every <n> hours/minutes/seconds` | Human-readable period                                            |
 
 ### Schedule resolution
 
@@ -144,7 +149,10 @@ entity Cache {
 ```
 
 <Warning>
-The `RuntimeEngine` class has no built-in timer. On Vercel, the generated cron routes and `vercel.json` fire schedules automatically; on other hosts, run `startScheduleWorker(runtime)` from `@angriff36/manifest/schedule-worker`, or invoke `runSchedule(name)` from your own scheduler. Cron triggers are matched in UTC to the minute.
+  The `RuntimeEngine` class has no built-in timer. On Vercel, the generated cron routes and
+  `vercel.json` fire schedules automatically; on other hosts, run `startScheduleWorker(runtime)`
+  from `@angriff36/manifest/schedule-worker`, or invoke `runSchedule(name)` from your own scheduler.
+  Cron triggers are matched in UTC to the minute.
 </Warning>
 
 ## Combining sagas and schedules

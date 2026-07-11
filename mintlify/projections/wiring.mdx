@@ -1,7 +1,7 @@
 ---
-title: "Product wiring projection"
-sidebarTitle: "Product wiring"
-description: "Machine-readable command wiring contracts and safe bindings so apps wire UI to Manifest without guessing — not a UI generator."
+title: 'Product wiring projection'
+sidebarTitle: 'Product wiring'
+description: 'Machine-readable command wiring contracts and safe bindings so apps wire UI to Manifest without guessing — not a UI generator.'
 ---
 
 The **wiring** projection emits a deterministic product-wiring contract and TypeScript binding helpers from compiled IR. Use it so applications and agents connect real UI to Manifest commands without inventing types, lifecycle states, or client-side identity fields.
@@ -82,10 +82,10 @@ Modes: `plan`, `dry-run`, `apply`, `one-defect`. Auto-fixable findings are patch
 
 ## Boundary
 
-| Manifest | Application |
-| --- | --- |
-| Command truth, types, ownership, constraints | Layout, visuals, labels |
-| Safe bindings + invalidation metadata | Button vs menu vs gesture |
+| Manifest                                     | Application                                    |
+| -------------------------------------------- | ---------------------------------------------- |
+| Command truth, types, ownership, constraints | Layout, visuals, labels                        |
+| Safe bindings + invalidation metadata        | Button vs menu vs gesture                      |
 | Coverage truth + deterministic wiring repair | Explicit consumer registry / product placement |
 
 Full reference: [docs/projections/wiring.md](https://github.com/Angriff36/Manifest/blob/main/docs/projections/wiring.md) in the repository.

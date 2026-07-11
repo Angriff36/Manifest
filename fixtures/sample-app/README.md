@@ -8,15 +8,15 @@ Domain: a simple library that lends books to members. Two governed entities (`Bo
 
 ## What this fixture exercises
 
-| Manifest surface | Used by this fixture? |
-|---|---|
-| Typed `RuntimeContext` (tenantId, actorId, requestId, source) | yes (auth shim in route) |
-| `requireTenantContext: true` | yes |
-| `nextjs.dispatcher` generated route at `/api/manifest/[entity]/commands/[command]` | yes (a paste of generator output lives in `app/api/manifest/[entity]/commands/[command]/route.ts`) |
-| `manifest emit registries` | yes (committed under `manifest-registry/`) |
-| `manifest audit-governance` (all 5 detectors) | yes (see `Verify.md`) |
-| Approved-bypass registry | yes (`bypasses.json`) |
-| `AuditSink` / `OutboxStore` contracts | the contracts are referenced but not implemented here — this fixture is a CI-gate sample, not a runnable app |
+| Manifest surface                                                                   | Used by this fixture?                                                                                        |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Typed `RuntimeContext` (tenantId, actorId, requestId, source)                      | yes (auth shim in route)                                                                                     |
+| `requireTenantContext: true`                                                       | yes                                                                                                          |
+| `nextjs.dispatcher` generated route at `/api/manifest/[entity]/commands/[command]` | yes (a paste of generator output lives in `app/api/manifest/[entity]/commands/[command]/route.ts`)           |
+| `manifest emit registries`                                                         | yes (committed under `manifest-registry/`)                                                                   |
+| `manifest audit-governance` (all 5 detectors)                                      | yes (see `Verify.md`)                                                                                        |
+| Approved-bypass registry                                                           | yes (`bypasses.json`)                                                                                        |
+| `AuditSink` / `OutboxStore` contracts                                              | the contracts are referenced but not implemented here — this fixture is a CI-gate sample, not a runnable app |
 
 No Capsule-Pro identifier appears anywhere under this directory. Verification:
 

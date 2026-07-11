@@ -97,10 +97,7 @@ describe('DynamoDBProjection', () => {
   });
 
   it('emits a warning diagnostic for unknown surface', () => {
-    const result = projection.generate(
-      {} as IR,
-      { surface: 'dynamodb.bogus' }
-    );
+    const result = projection.generate({} as IR, { surface: 'dynamodb.bogus' });
     expect(result.artifacts).toHaveLength(0);
     // The error diagnostic is the last one (the no-stores info comes first)
     const errorDiag = result.diagnostics.find((d) => d.severity === 'error');

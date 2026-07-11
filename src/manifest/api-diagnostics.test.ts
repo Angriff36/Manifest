@@ -60,11 +60,14 @@ describe('normalizeCommandResult', () => {
       error: "Guard condition failed for command 'update'",
       guardFailure: {
         index: 2,
-        expression: { kind: 'binary', operator: '!=', left: { kind: 'identifier', name: 'status' }, right: { kind: 'literal', value: { kind: 'string', value: 'completed' } } },
+        expression: {
+          kind: 'binary',
+          operator: '!=',
+          left: { kind: 'identifier', name: 'status' },
+          right: { kind: 'literal', value: { kind: 'string', value: 'completed' } },
+        },
         formatted: 'status != "completed"',
-        resolved: [
-          { expression: 'status', value: 'completed' },
-        ],
+        resolved: [{ expression: 'status', value: 'completed' }],
       },
       emittedEvents: [],
     };
@@ -90,13 +93,16 @@ describe('normalizeCommandResult', () => {
       error: 'Policy denied',
       policyDenial: {
         policyName: 'AdminOnly',
-        expression: { kind: 'binary', operator: '==', left: { kind: 'member', object: { kind: 'identifier', name: 'user' }, property: 'role' }, right: { kind: 'literal', value: { kind: 'string', value: 'admin' } } },
+        expression: {
+          kind: 'binary',
+          operator: '==',
+          left: { kind: 'member', object: { kind: 'identifier', name: 'user' }, property: 'role' },
+          right: { kind: 'literal', value: { kind: 'string', value: 'admin' } },
+        },
         formatted: 'user.role == "admin"',
         message: 'Only administrators can perform this action',
         contextKeys: ['user.role'],
-        resolved: [
-          { expression: 'user.role', value: 'user' },
-        ],
+        resolved: [{ expression: 'user.role', value: 'user' }],
       },
       emittedEvents: [],
     };

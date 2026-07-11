@@ -33,6 +33,7 @@ This page explains the boundary between them, how to decide which to reach for f
     | `ts.client` | Typed fetch wrappers for calling your routes from client code |
 
     **Read operations** in generated routes use direct database queries and intentionally bypass the runtime for performance. **Write operations** always flow through `RuntimeEngine.runCommand` so that guards, policies, constraints, and event emissions run in the order the spec requires.
+
   </Tab>
   <Tab title="Embedded Runtime">
     The Embedded Runtime lets you instantiate `RuntimeEngine` directly in your own handlers and call `runCommand` yourself. You control request parsing, response shaping, event routing, and any custom side-effect pipeline.
@@ -67,6 +68,7 @@ This page explains the boundary between them, how to decide which to reach for f
     6. Execute actions in declared order
     7. Emit declared events
     8. Return `CommandResult`
+
   </Tab>
 </Tabs>
 
@@ -83,7 +85,9 @@ Use the **Embedded Runtime** when:
 - You need a custom event-handling pipeline: publishing to a queue, writing to an outbox, or triggering side effects in a specific order.
 
 <Note>
-  These patterns are not mutually exclusive. A common setup uses generated routes for straightforward CRUD entities and the Embedded Runtime for commands that require complex orchestration.
+  These patterns are not mutually exclusive. A common setup uses generated routes for
+  straightforward CRUD entities and the Embedded Runtime for commands that require complex
+  orchestration.
 </Note>
 
 ## Security: never trust client-supplied identity fields
@@ -96,24 +100,32 @@ When a command is executed from an HTTP handler, the request body is **untrusted
 
 ```typescript
 // Correct: derive identity from trusted server-side sources
-const { userId } = await auth();                  // from your auth provider
-const { id: entityId } = params;                  // from the URL path param
+const { userId } = await auth(); // from your auth provider
+const { id: entityId } = params; // from the URL path param
 
 const body = await request.json();
 
 // Strip any identity fields the client may have sent
-const { id: _id, userId: _userId, tenantId: _tenantId, orgId: _orgId, user: _user, ...safeInput } = body;
+const {
+  id: _id,
+  userId: _userId,
+  tenantId: _tenantId,
+  orgId: _orgId,
+  user: _user,
+  ...safeInput
+} = body;
 
 // Inject authoritative identity before execution
 const result = await runtime.runCommand(
   'update',
   { ...safeInput, userId, entityId },
-  { entityName: 'Invoice', instanceId: entityId }
+  { entityName: 'Invoice', instanceId: entityId },
 );
 ```
 
 <Warning>
-  Do not pass `await request.json()` directly to `runCommand` without stripping identity fields. This is the most common source of privilege-escalation bugs in Manifest-backed APIs.
+  Do not pass `await request.json()` directly to `runCommand` without stripping identity fields.
+  This is the most common source of privilege-escalation bugs in Manifest-backed APIs.
 </Warning>
 
 ## Next steps

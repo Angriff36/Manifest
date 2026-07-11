@@ -103,22 +103,24 @@ export function addVersionToIndex(index: IRVersionIndex, meta: IRVersionMeta): I
 export function removeTagFromIndex(index: IRVersionIndex, tag: string): IRVersionIndex {
   return {
     ...index,
-    versions: index.versions.map(v =>
-      v.tag === tag ? { ...v, tag: undefined } : v
-    ),
+    versions: index.versions.map((v) => (v.tag === tag ? { ...v, tag: undefined } : v)),
   };
 }
 
 /** Apply a tag to a specific version number, removing it from any other version. */
-export function tagVersionInIndex(index: IRVersionIndex, versionNumber: number, tag: string): IRVersionIndex {
+export function tagVersionInIndex(
+  index: IRVersionIndex,
+  versionNumber: number,
+  tag: string,
+): IRVersionIndex {
   return {
     ...index,
-    versions: index.versions.map(v =>
+    versions: index.versions.map((v) =>
       v.versionNumber === versionNumber
         ? { ...v, tag }
         : v.tag === tag
           ? { ...v, tag: undefined }
-          : v
+          : v,
     ),
   };
 }
@@ -230,11 +232,11 @@ export function resolveVersionRef(index: IRVersionIndex, ref?: string): number |
   // Try numeric
   const num = parseInt(ref, 10);
   if (!isNaN(num) && String(num) === ref) {
-    return index.versions.find(v => v.versionNumber === num)?.versionNumber;
+    return index.versions.find((v) => v.versionNumber === num)?.versionNumber;
   }
 
   // Try tag
-  const found = index.versions.find(v => v.tag === ref);
+  const found = index.versions.find((v) => v.tag === ref);
   return found?.versionNumber;
 }
 

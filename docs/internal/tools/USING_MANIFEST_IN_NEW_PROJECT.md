@@ -24,6 +24,7 @@ npm run build:lib
 ```
 
 This creates the required distribution files:
+
 - `dist/manifest/*.js` - Runtime and compiler
 - `packages/cli/dist/*.js` - CLI entry points
 
@@ -36,6 +37,7 @@ This creates the required distribution files:
 **Two-step process** (per [npm-link documentation](https://docs.npmjs.com/cli/v9/commands/npm-link/)):
 
 1. **Create global symlink** in Manifest directory:
+
    ```bash
    cd /path/to/manifest
    npm link
@@ -52,6 +54,7 @@ This creates the required distribution files:
 **Two forms** (per [pnpm link documentation](https://pnpm.io/cli/link)):
 
 1. **Create global symlink** in Manifest directory:
+
    ```bash
    cd /path/to/manifest
    pnpm link
@@ -88,6 +91,7 @@ ls -la node_modules/@angriff36/manifest
 **Cause**: The CLI tries to import `@angriff36/manifest` but the symlink is broken or missing.
 
 **Fix**: Ensure you:
+
 1. Ran `npm run build:lib` in Manifest
 2. Ran `npm link` in Manifest directory
 3. Ran `npm link @angriff36/manifest` in your project
@@ -115,6 +119,7 @@ const { compileToIR } = require('@angriff36/manifest/ir-compiler');
 ```
 
 Per [Node.js ESM documentation](https://nodejs.org/api/esm.html), import statements are only permitted in ES modules. Your project must either:
+
 - Use `"type": "module"` in `package.json`, OR
 - Use `.mjs` file extension
 
@@ -122,13 +127,13 @@ Per [Node.js ESM documentation](https://nodejs.org/api/esm.html), import stateme
 
 ## Import Reference
 
-| Feature | Import Path | Export |
-|---------|-------------|--------|
-| IR Compiler | `@angriff36/manifest/ir-compiler` | `compileToIR()` function |
-| Compiler | `@angriff36/manifest/compiler` | `ManifestCompiler` class |
-| Runtime Engine | `@angriff36/manifest` | `RuntimeEngine` class |
+| Feature            | Import Path                              | Export                   |
+| ------------------ | ---------------------------------------- | ------------------------ |
+| IR Compiler        | `@angriff36/manifest/ir-compiler`        | `compileToIR()` function |
+| Compiler           | `@angriff36/manifest/compiler`           | `ManifestCompiler` class |
+| Runtime Engine     | `@angriff36/manifest`                    | `RuntimeEngine` class    |
 | Next.js Projection | `@angriff36/manifest/projections/nextjs` | `NextJsProjection` class |
-| TypeScript Types | `@angriff36/manifest/ir` | IR type definitions |
+| TypeScript Types   | `@angriff36/manifest/ir`                 | IR type definitions      |
 
 ---
 

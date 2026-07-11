@@ -1,16 +1,16 @@
 /**
  * Manifest Comprehensive Verification Script for Capsule-Pro
- * 
+ *
  * This script verifies that Manifest is correctly integrated and working in capsule-pro.
  * It checks: IR structure, route generation, guards, commands, policies, execution order,
  * constraints, runtime context, relationships, stores, and determinism.
- * 
+ *
  * USAGE:
  *   1. Copy this file to your capsule-pro project (e.g., scripts/manifest-verification-test.ts)
  *   2. Adjust the import paths below to match your project structure
  *   3. Adjust the config paths at the bottom
  *   4. Run with: npx tsx scripts/manifest-verification-test.ts
- * 
+ *
  * Spec References:
  * - docs/spec/ir/ir-v1.schema.json - IR shape contract
  * - docs/spec/semantics.md - Runtime meaning
@@ -35,7 +35,11 @@ import { join } from 'path';
 // Option B: From local build (capsule-pro)
 // Adjust these paths to match your project
 import { compileToIR } from '../../src/manifest/ir-compiler.js';
-import { RuntimeEngine, type RuntimeOptions, type EntityInstance } from '../../src/manifest/runtime-engine.js';
+import {
+  RuntimeEngine,
+  type RuntimeOptions,
+  type EntityInstance,
+} from '../../src/manifest/runtime-engine.js';
 import type { IR, IREntity } from '../../src/manifest/ir.js';
 
 // ============================================================================
@@ -58,7 +62,7 @@ interface TestSuite {
 class AsyncTestRunner {
   private suites: TestSuite[] = [];
   private currentSuite: TestSuite | null = null;
-  
+
   describe(name: string, fn: () => Promise<void> | void): void {
     this.currentSuite = { name, tests: [] };
     const result = fn();
@@ -68,36 +72,45 @@ class AsyncTestRunner {
     this.suites.push(this.currentSuite);
     this.currentSuite = null;
   }
-  
-  it(name: string, fn: () => Promise<{ passed: boolean; message: string; details?: Record<string, unknown> }> | { passed: boolean; message: string; details?: Record<string, unknown> }): void {
+
+  it(
+    name: string,
+    fn: () =>
+      | Promise<{ passed: boolean; message: string; details?: Record<string, unknown> }>
+      | { passed: boolean; message: string; details?: Record<string, unknown> },
+  ): void {
     if (!this.currentSuite) throw new Error('No active suite');
-    
+
     const result = fn();
     if (result instanceof Promise) {
-      result.then(r => {
-        this.currentSuite!.tests.push({ category: this.currentSuite!.name, name, ...r });
-      }).catch(error => {
-        this.currentSuite!.tests.push({
-          category: this.currentSuite!.name,
-          name,
-          passed: false,
-          message: `Exception: ${error instanceof Error ? error.message : String(error)}`,
+      result
+        .then((r) => {
+          this.currentSuite!.tests.push({ category: this.currentSuite!.name, name, ...r });
+        })
+        .catch((error) => {
+          this.currentSuite!.tests.push({
+            category: this.currentSuite!.name,
+            name,
+            passed: false,
+            message: `Exception: ${error instanceof Error ? error.message : String(error)}`,
+          });
         });
-      });
     } else {
       this.currentSuite.tests.push({ category: this.currentSuite.name, name, ...result });
     }
   }
-  
+
   expect<T>(actual: T) {
     return {
       toBe: (expected: T) => {
-        if (actual !== expected) throw new Error(`Expected ${JSON.stringify(expected)} but got ${JSON.stringify(actual)}`);
+        if (actual !== expected)
+          throw new Error(`Expected ${JSON.stringify(expected)} but got ${JSON.stringify(actual)}`);
       },
       toEqual: (expected: T) => {
         const actualStr = JSON.stringify(actual, null, 2);
         const expectedStr = JSON.stringify(expected, null, 2);
-        if (actualStr !== expectedStr) throw new Error(`Expected:\n${expectedStr}\n\nGot:\n${actualStr}`);
+        if (actualStr !== expectedStr)
+          throw new Error(`Expected:\n${expectedStr}\n\nGot:\n${actualStr}`);
       },
       toBeTruthy: () => {
         if (!actual) throw new Error(`Expected truthy but got ${actual}`);
@@ -113,7 +126,9 @@ class AsyncTestRunner {
       toHaveLength: (expected: number) => {
         if (!('length' in Object(actual))) throw new Error(`Expected ${actual} to have length`);
         if ((actual as { length: number }).length !== expected) {
-          throw new Error(`Expected length ${expected} but got ${(actual as { length: number }).length}`);
+          throw new Error(
+            `Expected length ${expected} but got ${(actual as { length: number }).length}`,
+          );
         }
       },
       toBeGreaterThan: (expected: number) => {
@@ -140,41 +155,43 @@ class AsyncTestRunner {
       },
     };
   }
-  
+
   report(): void {
     console.log('\n' + '='.repeat(80));
     console.log('MANIFEST VERIFICATION REPORT');
     console.log('='.repeat(80) + '\n');
-    
+
     let totalPassed = 0;
     let totalFailed = 0;
-    
+
     for (const suite of this.suites) {
-      const passed = suite.tests.filter(t => t.passed).length;
-      const failed = suite.tests.filter(t => !t.passed).length;
+      const passed = suite.tests.filter((t) => t.passed).length;
+      const failed = suite.tests.filter((t) => !t.passed).length;
       totalPassed += passed;
       totalFailed += failed;
-      
+
       const status = failed === 0 ? '✅' : '❌';
       console.log(`${status} ${suite.name}: ${passed}/${suite.tests.length} passed`);
-      
+
       for (const test of suite.tests) {
         const icon = test.passed ? '  ✓' : '  ✗';
         console.log(`${icon} ${test.name}`);
         if (!test.passed) {
           console.log(`      ERROR: ${test.message}`);
           if (test.details) {
-            console.log(`      DETAILS: ${JSON.stringify(test.details, null, 2).split('\n').join('\n      ')}`);
+            console.log(
+              `      DETAILS: ${JSON.stringify(test.details, null, 2).split('\n').join('\n      ')}`,
+            );
           }
         }
       }
       console.log('');
     }
-    
+
     console.log('='.repeat(80));
     console.log(`TOTAL: ${totalPassed} passed, ${totalFailed} failed`);
     console.log('='.repeat(80) + '\n');
-    
+
     if (totalFailed > 0) {
       process.exit(1);
     }
@@ -192,14 +209,14 @@ interface TestConfig {
   manifestDir: string;
   expectedDir: string;
   generatedRoutesDir: string;
-  primaryManifest: string;  // Main manifest file to test
+  primaryManifest: string; // Main manifest file to test
 }
 
 const config: TestConfig = {
   manifestDir: './manifests',
   expectedDir: './expected',
   generatedRoutesDir: './app/api',
-  primaryManifest: 'Recipe.manifest',  // Change to your main manifest
+  primaryManifest: 'Recipe.manifest', // Change to your main manifest
 };
 
 // ============================================================================
@@ -235,17 +252,22 @@ async function compileManifest(name: string): Promise<{ ir: IR | null; diagnosti
 }
 
 function findEntity(ir: IR, name: string): IREntity | undefined {
-  return ir.entities.find(e => e.name === name);
+  return ir.entities.find((e) => e.name === name);
 }
 
 function getDefaultValue(typeName: string): unknown {
   switch (typeName) {
-    case 'string': return 'test';
-    case 'number': return 0;
-    case 'boolean': return false;
+    case 'string':
+      return 'test';
+    case 'number':
+      return 0;
+    case 'boolean':
+      return false;
     case 'date':
-    case 'datetime': return '2024-01-01';
-    default: return null;
+    case 'datetime':
+      return '2024-01-01';
+    default:
+      return null;
   }
 }
 
@@ -256,11 +278,11 @@ function getDefaultValue(typeName: string): unknown {
 describe('1. IR Structure Validation', async () => {
   it('IR has required top-level fields', async () => {
     const { ir, diagnostics } = await compileManifest(config.primaryManifest);
-    
+
     if (!ir) {
       return { passed: false, message: `Compilation failed: ${JSON.stringify(diagnostics)}` };
     }
-    
+
     try {
       expect(ir.version).toBe('1.0');
       expect(ir.provenance).toBeDefined();
@@ -279,7 +301,7 @@ describe('1. IR Structure Validation', async () => {
   it('IR has valid provenance', async () => {
     const { ir } = await compileManifest(config.primaryManifest);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
+
     try {
       expect(ir.provenance.contentHash).toBeDefined();
       expect(ir.provenance.compilerVersion).toBeDefined();
@@ -295,7 +317,7 @@ describe('1. IR Structure Validation', async () => {
   it('Entities have required structure', async () => {
     const { ir } = await compileManifest(config.primaryManifest);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
+
     try {
       for (const entity of ir.entities) {
         expect(entity.name).toBeDefined();
@@ -315,7 +337,7 @@ describe('1. IR Structure Validation', async () => {
   it('Commands have required structure', async () => {
     const { ir } = await compileManifest(config.primaryManifest);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
+
     try {
       for (const command of ir.commands) {
         expect(command.name).toBeDefined();
@@ -333,7 +355,7 @@ describe('1. IR Structure Validation', async () => {
   it('Policies have required structure', async () => {
     const { ir } = await compileManifest(config.primaryManifest);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
+
     try {
       for (const policy of ir.policies) {
         expect(policy.name).toBeDefined();
@@ -350,7 +372,7 @@ describe('1. IR Structure Validation', async () => {
   it('Stores have required structure', async () => {
     const { ir } = await compileManifest(config.primaryManifest);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
+
     try {
       for (const store of ir.stores) {
         expect(store.entity).toBeDefined();
@@ -375,9 +397,9 @@ describe('2. Route Generation Verification', async () => {
     if (!existsSync(apiDir)) {
       return { passed: false, message: `API directory not found: ${apiDir}` };
     }
-    
+
     const routeFiles: string[] = [];
-    
+
     function findRoutes(dir: string) {
       try {
         const entries = readdirSync(dir, { withFileTypes: true });
@@ -385,33 +407,39 @@ describe('2. Route Generation Verification', async () => {
           if (entry.isDirectory()) findRoutes(join(dir, entry.name));
           else if (entry.name === 'route.ts') routeFiles.push(join(dir, entry.name));
         }
-      } catch { /* best-effort directory walk: ignore unreadable dirs */ }
+      } catch {
+        /* best-effort directory walk: ignore unreadable dirs */
+      }
     }
 
     findRoutes(apiDir);
-    
+
     if (routeFiles.length === 0) return { passed: false, message: 'No route.ts files found' };
-    return { passed: true, message: `Found ${routeFiles.length} route files`, details: { routes: routeFiles } };
+    return {
+      passed: true,
+      message: `Found ${routeFiles.length} route files`,
+      details: { routes: routeFiles },
+    };
   });
 
   it('Routes have correct HTTP method exports', () => {
     const apiDir = config.generatedRoutesDir;
     if (!existsSync(apiDir)) return { passed: false, message: 'API directory not found' };
-    
+
     const issues: string[] = [];
     let checkedCount = 0;
-    
+
     function checkRouteFile(dir: string) {
       const routePath = join(dir, 'route.ts');
       if (!existsSync(routePath)) return;
-      
+
       const content = readFileSync(routePath, 'utf-8');
       checkedCount++;
-      
+
       const hasMethod = /export\s+async\s+function\s+(GET|POST|PUT|DELETE|PATCH)/.test(content);
       if (!hasMethod) issues.push(`${routePath}: No HTTP method exports`);
     }
-    
+
     function scan(dir: string) {
       try {
         const entries = readdirSync(dir, { withFileTypes: true });
@@ -419,31 +447,35 @@ describe('2. Route Generation Verification', async () => {
           if (entry.isDirectory()) scan(join(dir, entry.name));
         }
         checkRouteFile(dir);
-      } catch { /* best-effort directory walk: ignore unreadable dirs */ }
+      } catch {
+        /* best-effort directory walk: ignore unreadable dirs */
+      }
     }
-    
+
     scan(apiDir);
-    
-    if (issues.length > 0) return { passed: false, message: 'Routes missing HTTP methods', details: { issues } };
+
+    if (issues.length > 0)
+      return { passed: false, message: 'Routes missing HTTP methods', details: { issues } };
     return { passed: true, message: `Checked ${checkedCount} route files` };
   });
 
   it('Routes use runtime.runCommand for writes', () => {
     const apiDir = config.generatedRoutesDir;
     if (!existsSync(apiDir)) return { passed: false, message: 'API directory not found' };
-    
+
     const issues: string[] = [];
-    
+
     function checkRouteFile(dir: string) {
       const routePath = join(dir, 'route.ts');
       if (!existsSync(routePath)) return;
-      
+
       const content = readFileSync(routePath, 'utf-8');
       if (/export\s+async\s+function\s+POST/.test(content)) {
-        if (!content.includes('runCommand')) issues.push(`${routePath}: POST route must use runtime.runCommand`);
+        if (!content.includes('runCommand'))
+          issues.push(`${routePath}: POST route must use runtime.runCommand`);
       }
     }
-    
+
     function scan(dir: string) {
       try {
         const entries = readdirSync(dir, { withFileTypes: true });
@@ -451,26 +483,29 @@ describe('2. Route Generation Verification', async () => {
           if (entry.isDirectory()) scan(join(dir, entry.name));
         }
         checkRouteFile(dir);
-      } catch { /* best-effort directory walk: ignore unreadable dirs */ }
+      } catch {
+        /* best-effort directory walk: ignore unreadable dirs */
+      }
     }
-    
+
     scan(apiDir);
-    
-    if (issues.length > 0) return { passed: false, message: 'POST routes must use runCommand', details: { issues } };
+
+    if (issues.length > 0)
+      return { passed: false, message: 'POST routes must use runCommand', details: { issues } };
     return { passed: true, message: 'All POST routes correctly use runCommand' };
   });
 
   it('Routes strip client identity fields', () => {
     const apiDir = config.generatedRoutesDir;
     if (!existsSync(apiDir)) return { passed: false, message: 'API directory not found' };
-    
+
     const issues: string[] = [];
     const dangerousPatterns = [/body\.id/, /body\.userId/, /body\.tenantId/, /body\.orgId/];
-    
+
     function checkRouteFile(dir: string) {
       const routePath = join(dir, 'route.ts');
       if (!existsSync(routePath)) return;
-      
+
       const content = readFileSync(routePath, 'utf-8');
       for (const pattern of dangerousPatterns) {
         if (pattern.test(content)) {
@@ -479,7 +514,7 @@ describe('2. Route Generation Verification', async () => {
         }
       }
     }
-    
+
     function scan(dir: string) {
       try {
         const entries = readdirSync(dir, { withFileTypes: true });
@@ -487,12 +522,15 @@ describe('2. Route Generation Verification', async () => {
           if (entry.isDirectory()) scan(join(dir, entry.name));
         }
         checkRouteFile(dir);
-      } catch { /* best-effort directory walk: ignore unreadable dirs */ }
+      } catch {
+        /* best-effort directory walk: ignore unreadable dirs */
+      }
     }
-    
+
     scan(apiDir);
-    
-    if (issues.length > 0) return { passed: false, message: 'Routes should strip client identity', details: { issues } };
+
+    if (issues.length > 0)
+      return { passed: false, message: 'Routes should strip client identity', details: { issues } };
     return { passed: true, message: 'Routes properly handle identity' };
   });
 });
@@ -515,20 +553,31 @@ describe('3. Guard Evaluation Testing', async () => {
       }
       store TestEntity in memory
     `;
-    
+
     const { ir } = await compileToIR(testSource);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
+
     const engine = new RuntimeEngine(ir, {}, createDeterministicOptions());
-    await engine.createInstance('TestEntity', { id: 'test-1', status: 'blocked' } as EntityInstance);
-    
-    const result = await engine.runCommand('testCommand', {}, { entityName: 'TestEntity', instanceId: 'test-1' });
-    
+    await engine.createInstance('TestEntity', {
+      id: 'test-1',
+      status: 'blocked',
+    } as EntityInstance);
+
+    const result = await engine.runCommand(
+      'testCommand',
+      {},
+      { entityName: 'TestEntity', instanceId: 'test-1' },
+    );
+
     try {
       expect(result.success).toBeFalsy();
       expect(result.guardFailure).toBeDefined();
       expect(result.guardFailure?.index).toBe(0);
-      return { passed: true, message: 'First guard failed as expected', details: { guardIndex: result.guardFailure?.index } };
+      return {
+        passed: true,
+        message: 'First guard failed as expected',
+        details: { guardIndex: result.guardFailure?.index },
+      };
     } catch (e) {
       return { passed: false, message: (e as Error).message };
     }
@@ -537,11 +586,14 @@ describe('3. Guard Evaluation Testing', async () => {
   it('Guard failure has diagnostic info', async () => {
     const { ir } = await compileManifest(config.primaryManifest);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
-    const commandWithGuards = ir.commands.find(c => c.guards.length > 0);
+
+    const commandWithGuards = ir.commands.find((c) => c.guards.length > 0);
     if (!commandWithGuards) return { passed: true, message: 'No commands with guards to test' };
-    
-    return { passed: true, message: `Command "${commandWithGuards.name}" has ${commandWithGuards.guards.length} guards` };
+
+    return {
+      passed: true,
+      message: `Command "${commandWithGuards.name}" has ${commandWithGuards.guards.length} guards`,
+    };
   });
 });
 
@@ -559,17 +611,25 @@ describe('4. Policy Authorization Testing', async () => {
       }
       store SecureEntity in memory
     `;
-    
+
     const { ir } = await compileToIR(testSource);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
-    const engine = new RuntimeEngine(ir, { user: { id: 'user-1', role: 'user' } }, createDeterministicOptions());
+
+    const engine = new RuntimeEngine(
+      ir,
+      { user: { id: 'user-1', role: 'user' } },
+      createDeterministicOptions(),
+    );
     const result = await engine.runCommand('secureAction', {}, { entityName: 'SecureEntity' });
-    
+
     try {
       expect(result.success).toBeFalsy();
       expect(result.policyDenial).toBeDefined();
-      return { passed: true, message: 'Policy correctly denied non-admin', details: { policyName: result.policyDenial?.policyName } };
+      return {
+        passed: true,
+        message: 'Policy correctly denied non-admin',
+        details: { policyName: result.policyDenial?.policyName },
+      };
     } catch (e) {
       return { passed: false, message: (e as Error).message };
     }
@@ -578,13 +638,17 @@ describe('4. Policy Authorization Testing', async () => {
   it('Commands have policies defined', async () => {
     const { ir } = await compileManifest(config.primaryManifest);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
+
     const commandsWithoutPolicies = ir.commands
-      .filter(c => c.entity && (c.policies?.length ?? 0) === 0)
-      .map(c => c.name);
-    
+      .filter((c) => c.entity && (c.policies?.length ?? 0) === 0)
+      .map((c) => c.name);
+
     if (commandsWithoutPolicies.length > 0) {
-      return { passed: false, message: 'Commands without policies', details: { commands: commandsWithoutPolicies } };
+      return {
+        passed: false,
+        message: 'Commands without policies',
+        details: { commands: commandsWithoutPolicies },
+      };
     }
     return { passed: true, message: 'All entity-bound commands have policies' };
   });
@@ -598,11 +662,15 @@ describe('5. Command Execution Testing', async () => {
   it('CommandResult has correct shape', async () => {
     const { ir } = await compileManifest(config.primaryManifest);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
-    const engine = new RuntimeEngine(ir, { user: { id: 'test-user' } }, createDeterministicOptions());
+
+    const engine = new RuntimeEngine(
+      ir,
+      { user: { id: 'test-user' } },
+      createDeterministicOptions(),
+    );
     const command = ir.commands[0];
     if (!command) return { passed: true, message: 'No commands to test' };
-    
+
     if (command.entity) {
       const entity = findEntity(ir, command.entity);
       if (entity) {
@@ -613,13 +681,21 @@ describe('5. Command Execution Testing', async () => {
         await engine.createInstance(command.entity, instanceData as EntityInstance);
       }
     }
-    
-    const result = await engine.runCommand(command.name, {}, { entityName: command.entity, instanceId: 'test-instance' });
-    
+
+    const result = await engine.runCommand(
+      command.name,
+      {},
+      { entityName: command.entity, instanceId: 'test-instance' },
+    );
+
     try {
       expect(typeof result.success).toBe('boolean');
       expect(Array.isArray(result.emittedEvents)).toBeTruthy();
-      return { passed: true, message: 'CommandResult has correct shape', details: { success: result.success, eventCount: result.emittedEvents.length } };
+      return {
+        passed: true,
+        message: 'CommandResult has correct shape',
+        details: { success: result.success, eventCount: result.emittedEvents.length },
+      };
     } catch (e) {
       return { passed: false, message: (e as Error).message };
     }
@@ -638,19 +714,23 @@ describe('5. Command Execution Testing', async () => {
       }
       store Counter in memory
     `;
-    
+
     const { ir } = await compileToIR(testSource);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
+
     const engine = new RuntimeEngine(ir, {}, createDeterministicOptions());
     await engine.createInstance('Counter', { id: 'counter-1', value: 0 } as EntityInstance);
     await engine.runCommand('increment', {}, { entityName: 'Counter', instanceId: 'counter-1' });
-    
+
     const instance = await engine.getInstance('Counter', 'counter-1');
-    
+
     try {
       expect(instance?.value).toBe(111); // 0 + 1 + 10 + 100
-      return { passed: true, message: 'Actions executed in order', details: { finalValue: instance?.value } };
+      return {
+        passed: true,
+        message: 'Actions executed in order',
+        details: { finalValue: instance?.value },
+      };
     } catch (e) {
       return { passed: false, message: (e as Error).message };
     }
@@ -665,7 +745,7 @@ describe('6. Constraint Testing', async () => {
   it('Entities have constraints array', async () => {
     const { ir } = await compileManifest(config.primaryManifest);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
+
     try {
       for (const entity of ir.entities) {
         expect(Array.isArray(entity.constraints)).toBeTruthy();
@@ -695,15 +775,23 @@ describe('7. Runtime Context Testing', async () => {
       }
       store SelfTest in memory
     `;
-    
+
     const { ir } = await compileToIR(testSource);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
+
     const engine = new RuntimeEngine(ir, {}, createDeterministicOptions());
-    await engine.createInstance('SelfTest', { id: 'self-1', name: 'TestName', selfWorks: false } as EntityInstance);
-    
-    const result = await engine.runCommand('testSelf', {}, { entityName: 'SelfTest', instanceId: 'self-1' });
-    
+    await engine.createInstance('SelfTest', {
+      id: 'self-1',
+      name: 'TestName',
+      selfWorks: false,
+    } as EntityInstance);
+
+    const result = await engine.runCommand(
+      'testSelf',
+      {},
+      { entityName: 'SelfTest', instanceId: 'self-1' },
+    );
+
     try {
       expect(result.success).toBeTruthy();
       const instance = await engine.getInstance('SelfTest', 'self-1');
@@ -723,16 +811,16 @@ describe('7. Runtime Context Testing', async () => {
       }
       store TimeTest in memory
     `;
-    
+
     const { ir } = await compileToIR(testSource);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
+
     const engine = new RuntimeEngine(ir, {}, createDeterministicOptions());
     await engine.createInstance('TimeTest', { id: 'time-1', timestamp: 0 } as EntityInstance);
     await engine.runCommand('recordTime', {}, { entityName: 'TimeTest', instanceId: 'time-1' });
-    
+
     const instance = await engine.getInstance('TimeTest', 'time-1');
-    
+
     try {
       expect(instance?.timestamp).toBe(DETERMINISTIC_TIMESTAMP);
       return { passed: true, message: `now() returned deterministic value` };
@@ -750,9 +838,9 @@ describe('8. Relationship Testing', async () => {
   it('Relationships have valid structure', async () => {
     const { ir } = await compileManifest(config.primaryManifest);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
+
     const validKinds = ['hasMany', 'hasOne', 'belongsTo', 'ref'];
-    
+
     try {
       for (const entity of ir.entities) {
         for (const rel of entity.relationships) {
@@ -777,19 +865,19 @@ describe('9. Store Testing', async () => {
   it('Memory store works correctly', async () => {
     const { ir } = await compileManifest(config.primaryManifest);
     if (!ir) return { passed: false, message: 'Compilation failed' };
-    
+
     const engine = new RuntimeEngine(ir, {}, createDeterministicOptions());
     const entity = ir.entities[0];
     if (!entity) return { passed: true, message: 'No entities to test' };
-    
+
     const instanceData: Record<string, unknown> = { id: 'store-test-1' };
     for (const prop of entity.properties) {
       if (prop.name !== 'id') instanceData[prop.name] = getDefaultValue(prop.type.name);
     }
-    
+
     await engine.createInstance(entity.name, instanceData as EntityInstance);
     const retrieved = await engine.getInstance(entity.name, 'store-test-1');
-    
+
     try {
       expect(retrieved).toBeDefined();
       expect(retrieved?.id).toBe('store-test-1');
@@ -807,10 +895,10 @@ describe('9. Store Testing', async () => {
 describe('10. Determinism Testing', async () => {
   it('Identical source produces identical IR', async () => {
     const source = loadManifest(config.primaryManifest);
-    
+
     const result1 = await compileToIR(source);
     const result2 = await compileToIR(source);
-    
+
     function normalize(ir: IR): IR {
       const n = JSON.parse(JSON.stringify(ir));
       if (n.provenance) {
@@ -820,7 +908,7 @@ describe('10. Determinism Testing', async () => {
       }
       return n;
     }
-    
+
     try {
       expect(normalize(result1.ir!)).toEqual(normalize(result2.ir!));
       return { passed: true, message: 'IR compilation is deterministic' };
@@ -841,10 +929,10 @@ async function main() {
   console.log(`📁 Primary manifest: ${config.primaryManifest}`);
   console.log(`📁 Generated routes: ${config.generatedRoutesDir}`);
   console.log('━'.repeat(60));
-  
+
   // Wait a moment for async tests to complete
-  await new Promise(resolve => setTimeout(resolve, 100));
-  
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
   runner.report();
 }
 

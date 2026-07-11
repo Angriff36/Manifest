@@ -77,7 +77,12 @@ export type { StorybookProjectionOptions } from './storybook/generator.js';
 export type { HealthCheckProjectionOptions } from './health/types.js';
 export type { MaterializedViewsProjectionOptions } from './materialized-views/options.js';
 export type { ElasticsearchProjectionOptions } from './elasticsearch/options.js';
-export type { TerraformProjectionOptions, TerraformProvider, TerraformBucket, TerraformDatabaseConfig } from './terraform/options.js';
+export type {
+  TerraformProjectionOptions,
+  TerraformProvider,
+  TerraformBucket,
+  TerraformDatabaseConfig,
+} from './terraform/options.js';
 export type {
   MaterializedViewDefinition,
   MaterializedViewIndex,

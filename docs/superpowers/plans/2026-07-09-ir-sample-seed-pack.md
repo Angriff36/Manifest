@@ -13,6 +13,7 @@
 ### Task 1: Seed pack types + SampleDataRow contract
 
 **Files:**
+
 - Create: `src/manifest/seed-pack/types.ts`
 - Create: `src/manifest/seed-pack/sample-data-row.ts`
 - Create: `src/manifest/seed-pack/index.ts`
@@ -66,6 +67,7 @@ git commit -m "[seed-pack] add types and SampleDataRow contract"
 ### Task 2: Pack IO (read/write CSV + meta)
 
 **Files:**
+
 - Create: `src/manifest/seed-pack/pack-io.ts`
 - Test: `src/manifest/seed-pack/pack-io.test.ts`
 
@@ -86,6 +88,7 @@ Round-trip: write a tiny pack to a temp dir (`manifest.seed.json` + `entities/Ve
 ### Task 3: Template generator from IR
 
 **Files:**
+
 - Create: `src/manifest/seed-pack/template.ts`
 - Test: `src/manifest/seed-pack/template.test.ts`
 
@@ -113,6 +116,7 @@ Skip `external` entities and optionally skip `SampleData` / `SampleDataRow`.
 ### Task 4: Pack validator (soft IR drift)
 
 **Files:**
+
 - Create: `src/manifest/seed-pack/validate.ts`
 - Test: `src/manifest/seed-pack/validate.test.ts`
 
@@ -134,6 +138,7 @@ Skip `external` entities and optionally skip `SampleData` / `SampleDataRow`.
 ### Task 5: Fill blanks (provider + blank-only)
 
 **Files:**
+
 - Create: `src/manifest/seed-pack/fill.ts`
 - Create: `src/manifest/seed-pack/fill-providers.ts`
 - Test: `src/manifest/seed-pack/fill.test.ts`
@@ -168,6 +173,7 @@ Include `createOllamaFillProvider` (HTTP) and `createHeuristicFillProvider` (det
 ### Task 6: Two-phase apply + clear + idempotency
 
 **Files:**
+
 - Create: `src/manifest/seed-pack/apply.ts`
 - Create: `src/manifest/seed-pack/clear.ts`
 - Test: `src/manifest/seed-pack/apply.test.ts`
@@ -191,6 +197,7 @@ Store access: accept `getStore(entityName): Store` (same shape as runtime `Store
 ### Task 7: Wire CLI subcommands
 
 **Files:**
+
 - Modify: `packages/cli/src/commands/seed.ts` (or split `seed-pack-cli.ts`)
 - Modify: `packages/cli/src/index.ts`
 - Test: `packages/cli/src/commands/seed-pack.test.ts`
@@ -213,6 +220,7 @@ Store access: accept `getStore(entityName): Store` (same shape as runtime `Store
 ### Task 8: Package export + FEATURE-LIST note
 
 **Files:**
+
 - Modify: `package.json` exports → `./seed-pack`
 - Modify: `docs/FEATURE-LIST.md` (short entry for `ir-sample-seed-pack`)
 - Modify: `CHANGELOG.md` under Unreleased / next version stub

@@ -28,9 +28,7 @@ export function proveBindingAvailable(
       `|export\\s*\\{[^}]*\\b${escape(bindingCallee)}\\b`,
   );
 
-  const moduleFiles = importModule
-    ? resolveModuleFiles(files, importModule)
-    : [...files.keys()];
+  const moduleFiles = importModule ? resolveModuleFiles(files, importModule) : [...files.keys()];
 
   if (importModule && moduleFiles.length === 0) {
     return {
@@ -103,14 +101,11 @@ export function proveWirePatchConstructible(
     };
   }
 
-  for (const p of cap.parameters.filter(x => x.ownership === 'client' && x.required)) {
+  for (const p of cap.parameters.filter((x) => x.ownership === 'client' && x.required)) {
     if (p.name === 'id') continue;
     if (isEntityIdParam(cap, p.name) && surface.identityExpression) continue;
     // Payload must reference the input, or the surrounding file scope must prove it.
-    if (
-      !payload.includes(`${p.name}:`) &&
-      !new RegExp(`\\b${escape(p.name)}\\b`).test(content)
-    ) {
+    if (!payload.includes(`${p.name}:`) && !new RegExp(`\\b${escape(p.name)}\\b`).test(content)) {
       return {
         ok: false,
         decision: 'ambiguous-product-decision',
@@ -129,9 +124,7 @@ export function proveWirePatchConstructible(
     const exactHandler = new RegExp(
       `((?:onClick|onPress)\\s*=\\s*\\{\\s*)(?:\\(\\s*\\)\\s*=>\\s*)?${escape(snippet)}(\\s*\\})`,
     );
-    const named = new RegExp(
-      `((?:onClick|onPress)\\s*=\\s*\\{\\s*)${escape(snippet)}(\\s*\\})`,
-    );
+    const named = new RegExp(`((?:onClick|onPress)\\s*=\\s*\\{\\s*)${escape(snippet)}(\\s*\\})`);
     if (exactHandler.test(content) || named.test(content)) {
       return { ok: true, reason: `Constructible wire via handler ${snippet}` };
     }
@@ -161,11 +154,7 @@ export function proveWireExistingControlPreflight(
   surface: ControlSemanticSurface,
   files: Map<string, string>,
 ): PreflightVerdict {
-  const binding = proveBindingAvailable(
-    files,
-    surface.bindingCallee,
-    surface.ensureImport?.module,
-  );
+  const binding = proveBindingAvailable(files, surface.bindingCallee, surface.ensureImport?.module);
   if (!binding.ok) return binding;
 
   const fileContent = get(files, surface.file);
@@ -189,10 +178,7 @@ function isEntityIdParam(cap: WiringCommandDescriptor, name: string): boolean {
 }
 
 function resolveModuleFiles(files: Map<string, string>, importModule: string): string[] {
-  const stripped = importModule
-    .replace(/^@\//, '')
-    .replace(/^\.\//, '')
-    .replace(/\\/g, '/');
+  const stripped = importModule.replace(/^@\//, '').replace(/^\.\//, '').replace(/\\/g, '/');
   const base = stripped.split('/').pop() ?? stripped;
   const out: string[] = [];
   for (const file of files.keys()) {

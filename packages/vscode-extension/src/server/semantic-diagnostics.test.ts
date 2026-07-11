@@ -54,7 +54,9 @@ describe('Manifest VS Code semantic diagnostics', () => {
     expect(codes).toContain('manifest.timestampPayloadAsNumber');
     expect(codes).toContain('manifest.nullableDateCommandRequired');
     expect(codes).toContain('manifest.bareNumberStoredProperty');
-    expect(diagnostics.every((diagnostic) => diagnostic.severity === DiagnosticSeverity.Warning)).toBe(true);
+    expect(
+      diagnostics.every((diagnostic) => diagnostic.severity === DiagnosticSeverity.Warning),
+    ).toBe(true);
   });
 
   it('can be disabled for cheap edit loops', () => {
@@ -95,9 +97,24 @@ describe('Manifest VS Code completions', () => {
     const labels = new Set(getCompletions(parseProgram()).map((item) => item.label));
 
     for (const typeName of [
-      'string', 'number', 'boolean', 'int', 'decimal', 'money', 'datetime',
-      'timestamp', 'date', 'uuid', 'email', 'url', 'list', 'array', 'map',
-      'json', 'any', 'void',
+      'string',
+      'number',
+      'boolean',
+      'int',
+      'decimal',
+      'money',
+      'datetime',
+      'timestamp',
+      'date',
+      'uuid',
+      'email',
+      'url',
+      'list',
+      'array',
+      'map',
+      'json',
+      'any',
+      'void',
     ]) {
       expect(labels.has(typeName), `${typeName} should be completed`).toBe(true);
     }

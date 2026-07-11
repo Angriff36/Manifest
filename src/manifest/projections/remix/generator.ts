@@ -108,7 +108,8 @@ function normalizeOptions(options?: RemixProjectionOptions): NormalizedRemixOpti
     runtimeImportPath: options?.runtimeImportPath ?? REMIX_DEFAULTS.runtimeImportPath,
     sessionStoragePath: options?.sessionStoragePath ?? REMIX_DEFAULTS.sessionStoragePath,
     includeTenantFilter: options?.includeTenantFilter ?? REMIX_DEFAULTS.includeTenantFilter,
-    includeSoftDeleteFilter: options?.includeSoftDeleteFilter ?? REMIX_DEFAULTS.includeSoftDeleteFilter,
+    includeSoftDeleteFilter:
+      options?.includeSoftDeleteFilter ?? REMIX_DEFAULTS.includeSoftDeleteFilter,
     tenantIdProperty: options?.tenantIdProperty ?? REMIX_DEFAULTS.tenantIdProperty,
     deletedAtProperty: options?.deletedAtProperty ?? REMIX_DEFAULTS.deletedAtProperty,
     routesDir: options?.routesDir ?? REMIX_DEFAULTS.routesDir,
@@ -137,10 +138,7 @@ function toKebabCase(value: string): string {
 /**
  * Generate an import statement with proper path handling.
  */
-function generateImport(
-  module: string,
-  from: string
-): string {
+function generateImport(module: string, from: string): string {
   return `import ${module} from "${from}";`;
 }
 
@@ -152,7 +150,8 @@ function generateAuthImport(options: NormalizedRemixOptions): string {
 
   switch (authProvider) {
     case 'clerk': {
-      const clerkImport = authImportPath === '~/utils/auth.server' ? '@clerk/remix' : authImportPath;
+      const clerkImport =
+        authImportPath === '~/utils/auth.server' ? '@clerk/remix' : authImportPath;
       return generateImport('{ getAuth }', clerkImport);
     }
     case 'remix-auth': {
@@ -177,9 +176,7 @@ function generateAuthBody(options: NormalizedRemixOptions): string {
     case 'clerk': {
       const needsOrgId = options.tenantProvider?.lookupKey === 'orgId';
       const destructure = needsOrgId ? '{ orgId, userId }' : '{ userId }';
-      const authGuard = needsOrgId
-        ? 'if (!(userId && orgId)) {'
-        : 'if (!userId) {';
+      const authGuard = needsOrgId ? 'if (!(userId && orgId)) {' : 'if (!userId) {';
       return `  const ${destructure} = await getAuth(request);
   ${authGuard}
     throw redirect("/login", { status: ${status} });
@@ -258,13 +255,11 @@ function entityHasProperty(entity: IREntity, propertyName: string): boolean {
 /**
  * Generate Prisma query with filters for Remix loaders.
  */
-function generatePrismaQuery(
-  entity: IREntity,
-  options: NormalizedRemixOptions
-): string {
+function generatePrismaQuery(entity: IREntity, options: NormalizedRemixOptions): string {
   const delegateName = toLowerCamelCase(entity.name);
   const variableName = `${delegateName}s`;
-  const { includeTenantFilter, includeSoftDeleteFilter, tenantIdProperty, deletedAtProperty } = options;
+  const { includeTenantFilter, includeSoftDeleteFilter, tenantIdProperty, deletedAtProperty } =
+    options;
 
   const whereConditions: string[] = [];
 
@@ -276,11 +271,12 @@ function generatePrismaQuery(
     whereConditions.push(`${deletedAtProperty}: null`);
   }
 
-  const whereClause = whereConditions.length > 0
-    ? `where: {
+  const whereClause =
+    whereConditions.length > 0
+      ? `where: {
         ${whereConditions.join(',\n        ')}
       },`
-    : '';
+      : '';
 
   const orderByField = entityHasProperty(entity, 'createdAt') ? 'createdAt' : 'id';
 
@@ -319,9 +315,8 @@ function generateEntityTypes(entity: IREntity): string {
   lines.push(`export interface ${entity.name} {`);
   for (const prop of entity.properties) {
     const tsType = irTypeToTsType(prop.type);
-    const isOptional = prop.modifiers.includes('optional') ||
-                       prop.defaultValue !== undefined ||
-                       prop.type.nullable;
+    const isOptional =
+      prop.modifiers.includes('optional') || prop.defaultValue !== undefined || prop.type.nullable;
     const optional = isOptional ? '?' : '';
     lines.push(`  ${prop.name}${optional}: ${tsType};`);
   }
@@ -353,10 +348,7 @@ export function ErrorBoundary() {
 /**
  * Generate loader function for entity list routes.
  */
-function generateListLoader(
-  entity: IREntity,
-  options: NormalizedRemixOptions
-): string {
+function generateListLoader(entity: IREntity, options: NormalizedRemixOptions): string {
   const delegateName = toLowerCamelCase(entity.name);
   const variableName = `${delegateName}s`;
   const lines: string[] = [];
@@ -386,10 +378,7 @@ function generateListLoader(
 /**
  * Generate loader function for entity detail routes.
  */
-function generateDetailLoader(
-  entity: IREntity,
-  options: NormalizedRemixOptions
-): string {
+function generateDetailLoader(entity: IREntity, options: NormalizedRemixOptions): string {
   const delegateName = toLowerCamelCase(entity.name);
   const lines: string[] = [];
 
@@ -455,7 +444,7 @@ function generateDetailLoader(
 function generateCommandAction(
   entity: IREntity,
   command: IRCommand,
-  options: NormalizedRemixOptions
+  options: NormalizedRemixOptions,
 ): string {
   const lines: string[] = [];
 
@@ -525,7 +514,7 @@ function generateCommandAction(
 function generateImports(
   options: NormalizedRemixOptions,
   includeLoader: boolean,
-  includeAction: boolean
+  includeAction: boolean,
 ): string {
   const lines: string[] = [];
 
@@ -563,7 +552,12 @@ function generateImports(
   // Tenant provider function — the loaders/actions call it (generateTenantLookup)
   // when a custom provider is configured, so it must be imported here.
   if (options.includeTenantFilter && options.tenantProvider) {
-    lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
+    lines.push(
+      generateImport(
+        `{ ${options.tenantProvider.functionName} }`,
+        options.tenantProvider.importPath,
+      ),
+    );
   }
 
   lines.push('');
@@ -573,10 +567,7 @@ function generateImports(
 /**
  * Generate a complete list route file for an entity.
  */
-function generateListRouteFile(
-  entity: IREntity,
-  options: NormalizedRemixOptions
-): string {
+function generateListRouteFile(entity: IREntity, options: NormalizedRemixOptions): string {
   const lines: string[] = [];
 
   // File header comment
@@ -618,10 +609,7 @@ function generateListRouteFile(
 /**
  * Generate a complete detail route file for an entity.
  */
-function generateDetailRouteFile(
-  entity: IREntity,
-  options: NormalizedRemixOptions
-): string {
+function generateDetailRouteFile(entity: IREntity, options: NormalizedRemixOptions): string {
   const lines: string[] = [];
 
   // File header comment
@@ -666,7 +654,7 @@ function generateDetailRouteFile(
 function generateCommandRouteFile(
   entity: IREntity,
   command: IRCommand,
-  options: NormalizedRemixOptions
+  options: NormalizedRemixOptions,
 ): string {
   const lines: string[] = [];
 
@@ -750,7 +738,9 @@ function authCompanionSpec(
     case 'clerk':
       return {
         importSpecifier:
-          options.authImportPath === '~/utils/auth.server' ? '@clerk/remix' : options.authImportPath,
+          options.authImportPath === '~/utils/auth.server'
+            ? '@clerk/remix'
+            : options.authImportPath,
         kind: 'getAuth',
       };
     case 'none':
@@ -835,20 +825,28 @@ function generateAuthCompanion(kind: 'authenticator' | 'getUser' | 'getAuth'): s
     lines.push('    _options?: { failureRedirect?: string; successRedirect?: string },');
     lines.push('  ): Promise<{ user: { id: string } } | null> {');
     lines.push('    throw new Error(');
-    lines.push('      "Manifest auth companion stub: implement authenticator.isAuthenticated() (e.g. via remix-auth) to resolve the session. Return { user: { id } } or null.",');
+    lines.push(
+      '      "Manifest auth companion stub: implement authenticator.isAuthenticated() (e.g. via remix-auth) to resolve the session. Return { user: { id } } or null.",',
+    );
     lines.push('    );');
     lines.push('  },');
     lines.push('};');
   } else if (kind === 'getUser') {
-    lines.push('export async function getUser(_request: Request): Promise<{ id: string } | null> {');
+    lines.push(
+      'export async function getUser(_request: Request): Promise<{ id: string } | null> {',
+    );
     lines.push('  throw new Error(');
-    lines.push('    "Manifest auth companion stub: implement getUser() to resolve the authenticated user from the request. Return { id } or null.",');
+    lines.push(
+      '    "Manifest auth companion stub: implement getUser() to resolve the authenticated user from the request. Return { id } or null.",',
+    );
     lines.push('  );');
     lines.push('}');
     lines.push('');
     lines.push('export async function requireUser(_request: Request): Promise<{ id: string }> {');
     lines.push('  throw new Error(');
-    lines.push('    "Manifest auth companion stub: implement requireUser() to resolve the authenticated user or throw a redirect.",');
+    lines.push(
+      '    "Manifest auth companion stub: implement requireUser() to resolve the authenticated user or throw a redirect.",',
+    );
     lines.push('  );');
     lines.push('}');
   } else {
@@ -856,7 +854,9 @@ function generateAuthCompanion(kind: 'authenticator' | 'getUser' | 'getAuth'): s
     lines.push('  _request: Request,');
     lines.push('): Promise<{ userId: string | null; orgId: string | null }> {');
     lines.push('  throw new Error(');
-    lines.push('    "Manifest auth companion stub: implement getAuth() to resolve { userId, orgId } from the request.",');
+    lines.push(
+      '    "Manifest auth companion stub: implement getAuth() to resolve { userId, orgId } from the request.",',
+    );
     lines.push('  );');
     lines.push('}');
   }
@@ -886,11 +886,15 @@ function generateTenantCompanion(options: NormalizedRemixOptions): string {
   lines.push('');
   lines.push(`export async function ${fn}(${key}: string): Promise<string | null> {`);
   lines.push('  const delegate = (database as unknown as {');
-  lines.push(`    userTenantMapping?: { findUnique(args: { where: { ${key}: string } }): Promise<{ tenantId: string } | null> };`);
+  lines.push(
+    `    userTenantMapping?: { findUnique(args: { where: { ${key}: string } }): Promise<{ tenantId: string } | null> };`,
+  );
   lines.push('  }).userTenantMapping;');
   lines.push('  if (!delegate?.findUnique) {');
   lines.push('    throw new Error(');
-  lines.push(`      "Manifest tenant companion: 'database.userTenantMapping' is unavailable. Implement ${fn} to map ${key} to a tenantId for your schema.",`);
+  lines.push(
+    `      "Manifest tenant companion: 'database.userTenantMapping' is unavailable. Implement ${fn} to map ${key} to a tenantId for your schema.",`,
+  );
   lines.push('    );');
   lines.push('  }');
   lines.push(`  const mapping = await delegate.findUnique({ where: { ${key} } });`);
@@ -918,7 +922,8 @@ function generateCompanions(ir: IR, options: NormalizedRemixOptions): Projection
     diagnostics.push({
       severity: 'info',
       code: 'COMPANIONS_DISABLED',
-      message: 'emitCompanions is false — no companion modules emitted (hand-written workflow preserved).',
+      message:
+        'emitCompanions is false — no companion modules emitted (hand-written workflow preserved).',
     });
     return { artifacts, diagnostics };
   }
@@ -968,7 +973,12 @@ function generateCompanions(ir: IR, options: NormalizedRemixOptions): Projection
   //    to the @clerk/remix package and is skipped by `emit`; none imports nothing.
   const spec = authCompanionSpec(options);
   if (spec) {
-    emit('remix.companions.auth', spec.importSpecifier, () => generateAuthCompanion(spec.kind), 'auth');
+    emit(
+      'remix.companions.auth',
+      spec.importSpecifier,
+      () => generateAuthCompanion(spec.kind),
+      'auth',
+    );
   }
 
   // 5. Tenant lookup helper — only when a custom tenantProvider is configured
@@ -991,7 +1001,8 @@ function generateCompanions(ir: IR, options: NormalizedRemixOptions): Projection
  */
 export class RemixProjection implements ProjectionTarget {
   readonly name = 'remix';
-  readonly description = 'Remix v2 and React Router v7 route handlers with loaders, actions, and Response helpers';
+  readonly description =
+    'Remix v2 and React Router v7 route handlers with loaders, actions, and Response helpers';
   readonly surfaces = [
     'remix.list',
     'remix.detail',
@@ -1009,30 +1020,40 @@ export class RemixProjection implements ProjectionTarget {
         if (!request.entity) {
           return {
             artifacts: [],
-            diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "remix.list" requires entity' }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'MISSING_ENTITY',
+                message: 'surface "remix.list" requires entity',
+              },
+            ],
           };
         }
         const opts = normalizeOptions(options);
-        const entity = ir.entities.find(e => e.name === request.entity);
+        const entity = ir.entities.find((e) => e.name === request.entity);
         if (!entity) {
           return {
             artifacts: [],
-            diagnostics: [{
-              severity: 'error',
-              code: 'ENTITY_NOT_FOUND',
-              message: `Entity "${request.entity}" not found in IR. Available entities: ${ir.entities.map(e => e.name).join(', ')}`,
-              entity: request.entity,
-            }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'ENTITY_NOT_FOUND',
+                message: `Entity "${request.entity}" not found in IR. Available entities: ${ir.entities.map((e) => e.name).join(', ')}`,
+                entity: request.entity,
+              },
+            ],
           };
         }
         const code = generateListRouteFile(entity, opts);
         return {
-          artifacts: [{
-            id: `remix.list:${request.entity}`,
-            pathHint: `${opts.routesDir}/entities.${toKebabCase(request.entity)}.tsx`,
-            contentType: 'typescript',
-            code,
-          }],
+          artifacts: [
+            {
+              id: `remix.list:${request.entity}`,
+              pathHint: `${opts.routesDir}/entities.${toKebabCase(request.entity)}.tsx`,
+              contentType: 'typescript',
+              code,
+            },
+          ],
           diagnostics: [],
         };
       }
@@ -1041,30 +1062,40 @@ export class RemixProjection implements ProjectionTarget {
         if (!request.entity) {
           return {
             artifacts: [],
-            diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "remix.detail" requires entity' }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'MISSING_ENTITY',
+                message: 'surface "remix.detail" requires entity',
+              },
+            ],
           };
         }
         const opts = normalizeOptions(options);
-        const entity = ir.entities.find(e => e.name === request.entity);
+        const entity = ir.entities.find((e) => e.name === request.entity);
         if (!entity) {
           return {
             artifacts: [],
-            diagnostics: [{
-              severity: 'error',
-              code: 'ENTITY_NOT_FOUND',
-              message: `Entity "${request.entity}" not found in IR. Available entities: ${ir.entities.map(e => e.name).join(', ')}`,
-              entity: request.entity,
-            }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'ENTITY_NOT_FOUND',
+                message: `Entity "${request.entity}" not found in IR. Available entities: ${ir.entities.map((e) => e.name).join(', ')}`,
+                entity: request.entity,
+              },
+            ],
           };
         }
         const code = generateDetailRouteFile(entity, opts);
         return {
-          artifacts: [{
-            id: `remix.detail:${request.entity}`,
-            pathHint: `${opts.routesDir}/entities.${toKebabCase(request.entity)}.$id.tsx`,
-            contentType: 'typescript',
-            code,
-          }],
+          artifacts: [
+            {
+              id: `remix.detail:${request.entity}`,
+              pathHint: `${opts.routesDir}/entities.${toKebabCase(request.entity)}.$id.tsx`,
+              contentType: 'typescript',
+              code,
+            },
+          ],
           diagnostics: [],
         };
       }
@@ -1073,49 +1104,67 @@ export class RemixProjection implements ProjectionTarget {
         if (!request.entity) {
           return {
             artifacts: [],
-            diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "remix.command" requires entity' }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'MISSING_ENTITY',
+                message: 'surface "remix.command" requires entity',
+              },
+            ],
           };
         }
         if (!request.command) {
           return {
             artifacts: [],
-            diagnostics: [{ severity: 'error', code: 'MISSING_COMMAND', message: 'surface "remix.command" requires command' }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'MISSING_COMMAND',
+                message: 'surface "remix.command" requires command',
+              },
+            ],
           };
         }
         const opts = normalizeOptions(options);
-        const entity = ir.entities.find(e => e.name === request.entity);
+        const entity = ir.entities.find((e) => e.name === request.entity);
         if (!entity) {
           return {
             artifacts: [],
-            diagnostics: [{
-              severity: 'error',
-              code: 'ENTITY_NOT_FOUND',
-              message: `Entity "${request.entity}" not found in IR. Available entities: ${ir.entities.map(e => e.name).join(', ')}`,
-              entity: request.entity,
-            }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'ENTITY_NOT_FOUND',
+                message: `Entity "${request.entity}" not found in IR. Available entities: ${ir.entities.map((e) => e.name).join(', ')}`,
+                entity: request.entity,
+              },
+            ],
           };
         }
-        const entityCommands = ir.commands.filter(c => c.entity === request.entity);
-        const command = entityCommands.find(c => c.name === request.command);
+        const entityCommands = ir.commands.filter((c) => c.entity === request.entity);
+        const command = entityCommands.find((c) => c.name === request.command);
         if (!command) {
           return {
             artifacts: [],
-            diagnostics: [{
-              severity: 'error',
-              code: 'COMMAND_NOT_FOUND',
-              message: `Command "${request.command}" not found on entity "${request.entity}". Available commands: ${entityCommands.map(c => c.name).join(', ')}`,
-              entity: request.entity,
-            }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'COMMAND_NOT_FOUND',
+                message: `Command "${request.command}" not found on entity "${request.entity}". Available commands: ${entityCommands.map((c) => c.name).join(', ')}`,
+                entity: request.entity,
+              },
+            ],
           };
         }
         const code = generateCommandRouteFile(entity, command, opts);
         return {
-          artifacts: [{
-            id: `remix.command:${request.entity}.${request.command}`,
-            pathHint: `${opts.routesDir}/entities.${toKebabCase(request.entity)}.$id.${toKebabCase(request.command)}.tsx`,
-            contentType: 'typescript',
-            code,
-          }],
+          artifacts: [
+            {
+              id: `remix.command:${request.entity}.${request.command}`,
+              pathHint: `${opts.routesDir}/entities.${toKebabCase(request.entity)}.$id.${toKebabCase(request.command)}.tsx`,
+              contentType: 'typescript',
+              code,
+            },
+          ],
           diagnostics: [],
         };
       }
@@ -1123,12 +1172,14 @@ export class RemixProjection implements ProjectionTarget {
       case 'remix.types': {
         const result = generateTypesFile(ir);
         return {
-          artifacts: [{
-            id: 'remix.types',
-            pathHint: 'app/types/manifest-generated.ts',
-            contentType: 'typescript',
-            code: result.code,
-          }],
+          artifacts: [
+            {
+              id: 'remix.types',
+              pathHint: 'app/types/manifest-generated.ts',
+              contentType: 'typescript',
+              code: result.code,
+            },
+          ],
           diagnostics: result.diagnostics,
         };
       }
@@ -1136,12 +1187,14 @@ export class RemixProjection implements ProjectionTarget {
       case 'remix.client': {
         const result = this._generateClient(ir);
         return {
-          artifacts: [{
-            id: 'remix.client',
-            pathHint: 'app/lib/manifest-client.ts',
-            contentType: 'typescript',
-            code: result.code,
-          }],
+          artifacts: [
+            {
+              id: 'remix.client',
+              pathHint: 'app/lib/manifest-client.ts',
+              contentType: 'typescript',
+              code: result.code,
+            },
+          ],
           diagnostics: result.diagnostics,
         };
       }
@@ -1153,7 +1206,13 @@ export class RemixProjection implements ProjectionTarget {
       default:
         return {
           artifacts: [],
-          diagnostics: [{ severity: 'error', code: 'UNKNOWN_SURFACE', message: `Unknown surface: "${request.surface}"` }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'UNKNOWN_SURFACE',
+              message: `Unknown surface: "${request.surface}"`,
+            },
+          ],
         };
     }
   }
@@ -1205,7 +1264,9 @@ export class RemixProjection implements ProjectionTarget {
     lines.push('  result: unknown');
     lines.push('): ManifestActionResult {');
     lines.push('  // Type assertion for runtime result');
-    lines.push('  const r = result as ManifestActionResult | { success?: boolean; data?: unknown; error?: string };');
+    lines.push(
+      '  const r = result as ManifestActionResult | { success?: boolean; data?: unknown; error?: string };',
+    );
     lines.push('');
     lines.push('  if ("success" in r && typeof r.success === "boolean") {');
     lines.push('    return r as ManifestActionResult;');

@@ -1,7 +1,7 @@
 ---
-title: "Manifest: a declarative domain language and runtime"
-sidebarTitle: "Introduction"
-description: "Manifest is a declarative domain modeling language that compiles to IR, letting you define entities, commands, guards, and policies in code."
+title: 'Manifest: a declarative domain language and runtime'
+sidebarTitle: 'Introduction'
+description: 'Manifest is a declarative domain modeling language that compiles to IR, letting you define entities, commands, guards, and policies in code.'
 ---
 
 Manifest is a formal language for expressing domain logic — the rules, constraints, and operations that define how your application's data actually behaves. You write `.manifest` source files that describe entities with typed properties, commands that mutate state, guards that gate execution, policies that enforce authorization, and events that notify downstream systems. The compiler transforms that source into a compact Intermediate Representation (IR), and the `RuntimeEngine` executes the IR deterministically — enforcing every guard and policy in strict order, every time.
@@ -17,14 +17,14 @@ Because the IR is immutable at runtime, all variability enters through the runti
 
 ## Key language constructs
 
-| Construct | What it does |
-|-----------|-------------|
-| **Entity** | Defines a data structure with typed properties, defaults, computed values, and relationships |
-| **Command** | A named business operation with parameters, guards, actions (`mutate`, `emit`, `compute`), and event emissions |
-| **Guard** | A boolean expression evaluated in order; execution halts immediately on the first falsey guard |
-| **Policy** | An authorization rule scoped to an entity action (`read`, `write`, `execute`, `all`) |
-| **Event** | A typed definition with a channel name and payload schema, used for outbox patterns and real-time communication |
-| **Store** | Declares where entity instances persist — `memory` for development, or a database adapter for production |
+| Construct   | What it does                                                                                                    |
+| ----------- | --------------------------------------------------------------------------------------------------------------- |
+| **Entity**  | Defines a data structure with typed properties, defaults, computed values, and relationships                    |
+| **Command** | A named business operation with parameters, guards, actions (`mutate`, `emit`, `compute`), and event emissions  |
+| **Guard**   | A boolean expression evaluated in order; execution halts immediately on the first falsey guard                  |
+| **Policy**  | An authorization rule scoped to an entity action (`read`, `write`, `execute`, `all`)                            |
+| **Event**   | A typed definition with a channel name and payload schema, used for outbox patterns and real-time communication |
+| **Store**   | Declares where entity instances persist — `memory` for development, or a database adapter for production        |
 
 ## A real example
 

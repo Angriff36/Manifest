@@ -24,8 +24,9 @@ governance approach is decided **per phase**, and it only bites at Phase 2
 (command → mutation). Phase 1 (schema) is identical either way.
 
 Two lanes were considered:
+
 - **Runtime delegation** — mutations call the Manifest `RuntimeEngine`. This is
-  how express/nextjs/hono work, but those run in a *Node server you control*.
+  how express/nextjs/hono work, but those run in a _Node server you control_.
 - **Inline codegen** — guards/policies/constraints are rendered as TS directly
   in each Convex function, with no runtime dependency.
 
@@ -41,11 +42,11 @@ constraints faithfully and does not invent new ones.
 
 Surfaces (mirroring `prisma` + `prisma-store` + `nextjs`):
 
-| Surface | Output | Analogous to | Phase |
-|---|---|---|---|
-| `convex.schema` | `convex/schema.ts` (`defineSchema`/`defineTable` + `v.*`) | prisma.schema | **1** |
-| `convex.functions` | `convex/<entity>.ts` (`query` reads + `mutation` writes, inline IR-governance) | nextjs routes | 2 |
-| `convex.crons` + sagas/webhooks | `convex/crons.ts` etc. | nextjs.schedule | 3 |
+| Surface                         | Output                                                                         | Analogous to    | Phase |
+| ------------------------------- | ------------------------------------------------------------------------------ | --------------- | ----- |
+| `convex.schema`                 | `convex/schema.ts` (`defineSchema`/`defineTable` + `v.*`)                      | prisma.schema   | **1** |
+| `convex.functions`              | `convex/<entity>.ts` (`query` reads + `mutation` writes, inline IR-governance) | nextjs routes   | 2     |
+| `convex.crons` + sagas/webhooks | `convex/crons.ts` etc.                                                         | nextjs.schedule | 3     |
 
 Reactions are rendered inline: a governed mutation emits its event row then runs
 the IR's matched reactions (resolve + params from the reaction AST) before
@@ -78,21 +79,21 @@ src/manifest/projections/convex/
 
 ```ts
 // convex/schema.ts  (GENERATED — do not edit)
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { defineSchema, defineTable } from 'convex/server';
+import { v } from 'convex/values';
 
 export default defineSchema({
   recipe: defineTable({
     name: v.string(),
-    status: v.union(v.literal("draft"), v.literal("published")),
+    status: v.union(v.literal('draft'), v.literal('published')),
     servings: v.int64(),
-    price: v.string(),                 // decimal -> lossless string
-    authorId: v.id("user"),            // belongsTo author -> User
+    price: v.string(), // decimal -> lossless string
+    authorId: v.id('user'), // belongsTo author -> User
     tenantId: v.string(),
     deletedAt: v.optional(v.number()),
   })
-    .index("by_tenant", ["tenantId"])
-    .index("by_author", ["authorId"]),
+    .index('by_tenant', ['tenantId'])
+    .index('by_author', ['authorId']),
   // ...
 });
 ```
@@ -105,19 +106,19 @@ Manifest's open type vocabulary. Unknown `type.name` with no override → **hard
 `CONVEX_AMBIGUOUS_NUMBER` diagnostic** (same rationale as Prisma: ambiguous
 between int/float/money).
 
-| IR `type.name` | Convex validator | Note |
-|---|---|---|
-| `string`, `text`, `uuid` | `v.string()` | |
-| `boolean`, `bool` | `v.boolean()` | |
-| `int`, `bigint` | `v.int64()` | bigint — lossless for ids/counts |
-| `float` | `v.number()` | author opted into rounding |
-| `decimal`, `money` | `v.string()` | **lossless**; numeric override available |
-| `date`, `datetime`, `time` | `v.number()` | epoch ms (Convex-idiomatic); override for ISO string |
-| `duration` | `v.number()` | |
-| `json` | `v.any()` | structured override available |
-| `bytes` | `v.bytes()` | |
-| `number` (bare) | — | hard diagnostic |
-| unknown | — | hard diagnostic |
+| IR `type.name`             | Convex validator | Note                                                 |
+| -------------------------- | ---------------- | ---------------------------------------------------- |
+| `string`, `text`, `uuid`   | `v.string()`     |                                                      |
+| `boolean`, `bool`          | `v.boolean()`    |                                                      |
+| `int`, `bigint`            | `v.int64()`      | bigint — lossless for ids/counts                     |
+| `float`                    | `v.number()`     | author opted into rounding                           |
+| `decimal`, `money`         | `v.string()`     | **lossless**; numeric override available             |
+| `date`, `datetime`, `time` | `v.number()`     | epoch ms (Convex-idiomatic); override for ISO string |
+| `duration`                 | `v.number()`     |                                                      |
+| `json`                     | `v.any()`        | structured override available                        |
+| `bytes`                    | `v.bytes()`      |                                                      |
+| `number` (bare)            | —                | hard diagnostic                                      |
+| unknown                    | —                | hard diagnostic                                      |
 
 Override via `typeMappings: { Entity: { prop: "v.number()" } }` — the value is the
 literal validator expression, mirroring Prisma's `typeMappings`.
@@ -161,6 +162,7 @@ exported TS union types per enum are deferred to the types surface in Phase 4.
 ### 3.9 Entity / store filtering
 
 Mirror Prisma exactly:
+
 - `external: true` entities → skipped.
 - Stores with target `memory` / `localStorage` → skipped.
 - Persistent targets (`durable`, `postgres`, `supabase`, and a custom `convex`
@@ -172,6 +174,7 @@ Default: **Convex-idiomatic** pluralized camelCase (e.g. `CateringEvent` →
 `cateringEvents`, `Dish` → `dishes`). This intentionally differs from Prisma's
 verbatim default because Convex convention is plural camelCase table keys, and it
 keeps output diffable against the PoC. Resolution order:
+
 - `tableMappings: { Entity: "physical_name" }` (explicit override, always wins).
 - `naming` convention (reuse `shared/naming` where it fits; Convex needs
   lower-camel-first + pluralize, so a small `convexTableName(entityName)` helper
@@ -186,7 +189,7 @@ matching the Prisma options invariant:
 
 ```ts
 interface ConvexProjectionOptions {
-  output?: string;                 // default "convex/schema.ts"
+  output?: string; // default "convex/schema.ts"
   tableMappings?: Record<EntityName, string>;
   typeMappings?: Record<EntityName, Record<PropertyName, string>>; // literal validator
   indexes?: Record<EntityName, IndexEntry[]>;

@@ -26,7 +26,16 @@ export function validateTutorialJson(data: unknown): {
   const t = data as Record<string, unknown>;
 
   // Required fields
-  for (const field of ['id', 'title', 'description', 'difficulty', 'estimatedMinutes', 'author', 'tags', 'steps']) {
+  for (const field of [
+    'id',
+    'title',
+    'description',
+    'difficulty',
+    'estimatedMinutes',
+    'author',
+    'tags',
+    'steps',
+  ]) {
     if (!(field in t)) {
       errors.push(`Missing required field: "${field}"`);
     }
@@ -52,7 +61,11 @@ export function validateTutorialJson(data: unknown): {
     t.steps.forEach((step: unknown, i: number) => {
       const stepErrors = validateStepShape(step, i);
       errors.push(...stepErrors);
-      if (step && typeof step === 'object' && typeof (step as Record<string, unknown>).id === 'string') {
+      if (
+        step &&
+        typeof step === 'object' &&
+        typeof (step as Record<string, unknown>).id === 'string'
+      ) {
         const stepId = (step as Record<string, unknown>).id as string;
         if (stepIds.has(stepId)) {
           errors.push(`Step ${i}: duplicate step id "${stepId}"`);
@@ -91,7 +104,15 @@ function validateStepShape(step: unknown, index: number): string[] {
   }
   const s = step as Record<string, unknown>;
 
-  for (const field of ['id', 'title', 'instruction', 'starterCode', 'expectedCode', 'hints', 'validation']) {
+  for (const field of [
+    'id',
+    'title',
+    'instruction',
+    'starterCode',
+    'expectedCode',
+    'hints',
+    'validation',
+  ]) {
     if (!(field in s)) {
       errors.push(`Step ${index}: missing required field "${field}"`);
     }
@@ -99,9 +120,12 @@ function validateStepShape(step: unknown, index: number): string[] {
 
   if (typeof s.id !== 'string') errors.push(`Step ${index}: "id" must be a string`);
   if (typeof s.title !== 'string') errors.push(`Step ${index}: "title" must be a string`);
-  if (typeof s.instruction !== 'string') errors.push(`Step ${index}: "instruction" must be a string`);
-  if (typeof s.starterCode !== 'string') errors.push(`Step ${index}: "starterCode" must be a string`);
-  if (typeof s.expectedCode !== 'string') errors.push(`Step ${index}: "expectedCode" must be a string`);
+  if (typeof s.instruction !== 'string')
+    errors.push(`Step ${index}: "instruction" must be a string`);
+  if (typeof s.starterCode !== 'string')
+    errors.push(`Step ${index}: "starterCode" must be a string`);
+  if (typeof s.expectedCode !== 'string')
+    errors.push(`Step ${index}: "expectedCode" must be a string`);
 
   if (!Array.isArray(s.hints)) {
     errors.push(`Step ${index}: "hints" must be an array`);
@@ -152,12 +176,21 @@ function validateRuleShape(rule: unknown, stepIndex: number, ruleIndex: number):
   }
   const r = rule as Record<string, unknown>;
   const validTypes = [
-    'compiles', 'has-entity', 'has-property', 'has-command',
-    'has-guard', 'has-computed', 'has-policy', 'source-contains',
-    'source-matches', 'ir-has',
+    'compiles',
+    'has-entity',
+    'has-property',
+    'has-command',
+    'has-guard',
+    'has-computed',
+    'has-policy',
+    'source-contains',
+    'source-matches',
+    'ir-has',
   ];
   if (typeof r.type !== 'string' || !validTypes.includes(r.type)) {
-    errors.push(`Step ${stepIndex} rule ${ruleIndex}: "type" must be one of: ${validTypes.join(', ')}`);
+    errors.push(
+      `Step ${stepIndex} rule ${ruleIndex}: "type" must be one of: ${validTypes.join(', ')}`,
+    );
   }
   return errors;
 }
@@ -169,7 +202,16 @@ export const TUTORIAL_JSON_SCHEMA = {
   title: 'Manifest Tutorial',
   description: 'A structured tutorial for learning Manifest',
   type: 'object',
-  required: ['id', 'title', 'description', 'difficulty', 'estimatedMinutes', 'author', 'tags', 'steps'],
+  required: [
+    'id',
+    'title',
+    'description',
+    'difficulty',
+    'estimatedMinutes',
+    'author',
+    'tags',
+    'steps',
+  ],
   properties: {
     id: { type: 'string', description: 'Unique identifier' },
     title: { type: 'string' },
@@ -183,7 +225,15 @@ export const TUTORIAL_JSON_SCHEMA = {
       type: 'array',
       items: {
         type: 'object',
-        required: ['id', 'title', 'instruction', 'starterCode', 'expectedCode', 'hints', 'validation'],
+        required: [
+          'id',
+          'title',
+          'instruction',
+          'starterCode',
+          'expectedCode',
+          'hints',
+          'validation',
+        ],
         properties: {
           id: { type: 'string' },
           title: { type: 'string' },
@@ -212,9 +262,16 @@ export const TUTORIAL_JSON_SCHEMA = {
               properties: {
                 type: {
                   enum: [
-                    'compiles', 'has-entity', 'has-property', 'has-command',
-                    'has-guard', 'has-computed', 'has-policy', 'source-contains',
-                    'source-matches', 'ir-has',
+                    'compiles',
+                    'has-entity',
+                    'has-property',
+                    'has-command',
+                    'has-guard',
+                    'has-computed',
+                    'has-policy',
+                    'source-contains',
+                    'source-matches',
+                    'ir-has',
                   ],
                 },
               },

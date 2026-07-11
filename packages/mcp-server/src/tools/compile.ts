@@ -14,16 +14,10 @@ import { sessionStore } from '../state/session-store.js';
 
 export const compileInputSchema = {
   source: z.string().describe('The .manifest source text to compile'),
-  sourcePath: z
-    .string()
-    .optional()
-    .describe('Optional file path for diagnostic messages'),
+  sourcePath: z.string().optional().describe('Optional file path for diagnostic messages'),
 };
 
-export async function handleCompile(args: {
-  source: string;
-  sourcePath?: string;
-}) {
+export async function handleCompile(args: { source: string; sourcePath?: string }) {
   const result = await compileToIR(args.source, {
     useCache: false,
     sourcePath: args.sourcePath,

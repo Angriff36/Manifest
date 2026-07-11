@@ -36,31 +36,37 @@ function makeValidIR(overrides: Record<string, unknown> = {}): object {
 
 function makeIRWithEntity(entityName = 'Order'): object {
   return makeValidIR({
-    entities: [{
-      name: entityName,
-      properties: [
-        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-      ],
-      computedProperties: [],
-      relationships: [],
-      commands: ['createOrder'],
-      constraints: [],
-      policies: [],
-    }],
-    commands: [{
-      name: 'createOrder',
-      entity: entityName,
-      parameters: [],
-      guards: [],
-      actions: [],
-      emits: [],
-    }],
-    policies: [{
-      name: 'orderExecute',
-      entity: entityName,
-      action: 'execute',
-      expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
-    }],
+    entities: [
+      {
+        name: entityName,
+        properties: [
+          { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        ],
+        computedProperties: [],
+        relationships: [],
+        commands: ['createOrder'],
+        constraints: [],
+        policies: [],
+      },
+    ],
+    commands: [
+      {
+        name: 'createOrder',
+        entity: entityName,
+        parameters: [],
+        guards: [],
+        actions: [],
+        emits: [],
+      },
+    ],
+    policies: [
+      {
+        name: 'orderExecute',
+        entity: entityName,
+        action: 'execute',
+        expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+      },
+    ],
   });
 }
 
@@ -92,26 +98,43 @@ async function cleanupTemp(filePath: string): Promise<void> {
 
 function captureOutput() {
   const outputs: string[] = [];
-  const logSpy = vi.spyOn(console, 'log').mockImplementation((...a) => { outputs.push(a.join(' ')); });
-  const errorSpy = vi.spyOn(console, 'error').mockImplementation((...a) => { outputs.push(a.join(' ')); });
-  const warnSpy = vi.spyOn(console, 'warn').mockImplementation((...a) => { outputs.push(a.join(' ')); });
-  const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation((d: any) => { outputs.push(String(d)); return true; });
+  const logSpy = vi.spyOn(console, 'log').mockImplementation((...a) => {
+    outputs.push(a.join(' '));
+  });
+  const errorSpy = vi.spyOn(console, 'error').mockImplementation((...a) => {
+    outputs.push(a.join(' '));
+  });
+  const warnSpy = vi.spyOn(console, 'warn').mockImplementation((...a) => {
+    outputs.push(a.join(' '));
+  });
+  const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation((d: any) => {
+    outputs.push(String(d));
+    return true;
+  });
   return {
     outputs,
-    restore: () => { logSpy.mockRestore(); errorSpy.mockRestore(); warnSpy.mockRestore(); stderrSpy.mockRestore(); },
+    restore: () => {
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+      warnSpy.mockRestore();
+      stderrSpy.mockRestore();
+    },
   };
 }
 
 async function runValidateAI(
   filePath: string,
-  opts: { format?: string; minScore?: number; verbose?: boolean } = {}
+  opts: { format?: string; minScore?: number; verbose?: boolean } = {},
 ): Promise<{ outputs: string[]; exited: boolean }> {
   const { validateAICommand } = await import('./validate-ai.js');
   const capture = captureOutput();
   let exited = false;
 
   const originalExit = process.exit;
-  process.exit = vi.fn().mockImplementation(() => { exited = true; throw new Error('process.exit'); }) as any;
+  process.exit = vi.fn().mockImplementation(() => {
+    exited = true;
+    throw new Error('process.exit');
+  }) as any;
 
   try {
     await validateAICommand(filePath, {
@@ -131,7 +154,7 @@ async function runValidateAI(
 
 async function runValidateAIJson(
   filePath: string,
-  opts: { minScore?: number } = {}
+  opts: { minScore?: number } = {},
 ): Promise<{ result: any; exited: boolean }> {
   const { validateAICommand } = await import('./validate-ai.js');
   let jsonOutput: string | null = null;
@@ -145,7 +168,10 @@ async function runValidateAIJson(
 
   let exited = false;
   const originalExit = process.exit;
-  process.exit = vi.fn().mockImplementation(() => { exited = true; throw new Error('process.exit'); }) as any;
+  process.exit = vi.fn().mockImplementation(() => {
+    exited = true;
+    throw new Error('process.exit');
+  }) as any;
 
   // Suppress other output
   const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -179,7 +205,9 @@ async function runValidateAIJson(
 // Tests: IR JSON Validation
 // ---------------------------------------------------------------------------
 describe('validate-ai – IR JSON validation', () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it('scores 100 for a minimal valid IR', async () => {
     const filePath = await createTempIR(makeValidIR());
@@ -269,29 +297,35 @@ describe('validate-ai – IR JSON validation', () => {
 // Tests: Semantic Checks
 // ---------------------------------------------------------------------------
 describe('validate-ai – semantic checks', () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it('detects commands without policies', async () => {
     const ir = makeValidIR({
-      entities: [{
-        name: 'Order',
-        properties: [
-          { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        ],
-        computedProperties: [],
-        relationships: [],
-        commands: ['createOrder'],
-        constraints: [],
-        policies: [],
-      }],
-      commands: [{
-        name: 'createOrder',
-        entity: 'Order',
-        parameters: [],
-        guards: [],
-        actions: [],
-        emits: [],
-      }],
+      entities: [
+        {
+          name: 'Order',
+          properties: [
+            { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          ],
+          computedProperties: [],
+          relationships: [],
+          commands: ['createOrder'],
+          constraints: [],
+          policies: [],
+        },
+      ],
+      commands: [
+        {
+          name: 'createOrder',
+          entity: 'Order',
+          parameters: [],
+          guards: [],
+          actions: [],
+          emits: [],
+        },
+      ],
       policies: [],
     });
     const filePath = await createTempIR(ir);
@@ -320,31 +354,37 @@ describe('validate-ai – semantic checks', () => {
 
   it('detects orphaned event references', async () => {
     const ir = makeValidIR({
-      entities: [{
-        name: 'Order',
-        properties: [
-          { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        ],
-        computedProperties: [],
-        relationships: [],
-        commands: ['createOrder'],
-        constraints: [],
-        policies: [],
-      }],
-      commands: [{
-        name: 'createOrder',
-        entity: 'Order',
-        parameters: [],
-        guards: [],
-        actions: [],
-        emits: ['orderCreated'],
-      }],
-      policies: [{
-        name: 'orderExecute',
-        entity: 'Order',
-        action: 'execute',
-        expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
-      }],
+      entities: [
+        {
+          name: 'Order',
+          properties: [
+            { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          ],
+          computedProperties: [],
+          relationships: [],
+          commands: ['createOrder'],
+          constraints: [],
+          policies: [],
+        },
+      ],
+      commands: [
+        {
+          name: 'createOrder',
+          entity: 'Order',
+          parameters: [],
+          guards: [],
+          actions: [],
+          emits: ['orderCreated'],
+        },
+      ],
+      policies: [
+        {
+          name: 'orderExecute',
+          entity: 'Order',
+          action: 'execute',
+          expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+        },
+      ],
       events: [],
     });
     const filePath = await createTempIR(ir);
@@ -361,11 +401,13 @@ describe('validate-ai – semantic checks', () => {
 
   it('detects store referencing non-existent entity', async () => {
     const ir = makeValidIR({
-      stores: [{
-        entity: 'NonExistent',
-        target: 'memory',
-        config: {},
-      }],
+      stores: [
+        {
+          entity: 'NonExistent',
+          target: 'memory',
+          config: {},
+        },
+      ],
     });
     const filePath = await createTempIR(ir);
     try {
@@ -380,20 +422,30 @@ describe('validate-ai – semantic checks', () => {
 
   it('detects duplicate constraint codes', async () => {
     const ir = makeValidIR({
-      entities: [{
-        name: 'Order',
-        properties: [
-          { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        ],
-        computedProperties: [],
-        relationships: [],
-        commands: [],
-        constraints: [
-          { name: 'check1', code: 'DUPLICATE_CODE', expression: { kind: 'literal', value: { kind: 'boolean', value: true } } },
-          { name: 'check2', code: 'DUPLICATE_CODE', expression: { kind: 'literal', value: { kind: 'boolean', value: false } } },
-        ],
-        policies: [],
-      }],
+      entities: [
+        {
+          name: 'Order',
+          properties: [
+            { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          ],
+          computedProperties: [],
+          relationships: [],
+          commands: [],
+          constraints: [
+            {
+              name: 'check1',
+              code: 'DUPLICATE_CODE',
+              expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+            },
+            {
+              name: 'check2',
+              code: 'DUPLICATE_CODE',
+              expression: { kind: 'literal', value: { kind: 'boolean', value: false } },
+            },
+          ],
+          policies: [],
+        },
+      ],
     });
     const filePath = await createTempIR(ir);
     try {
@@ -408,19 +460,19 @@ describe('validate-ai – semantic checks', () => {
 
   it('detects relationship targeting non-existent entity', async () => {
     const ir = makeValidIR({
-      entities: [{
-        name: 'Order',
-        properties: [
-          { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        ],
-        computedProperties: [],
-        relationships: [
-          { name: 'items', kind: 'hasMany', target: 'NonExistentItem' },
-        ],
-        commands: [],
-        constraints: [],
-        policies: [],
-      }],
+      entities: [
+        {
+          name: 'Order',
+          properties: [
+            { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          ],
+          computedProperties: [],
+          relationships: [{ name: 'items', kind: 'hasMany', target: 'NonExistentItem' }],
+          commands: [],
+          constraints: [],
+          policies: [],
+        },
+      ],
     });
     const filePath = await createTempIR(ir);
     try {
@@ -439,7 +491,9 @@ describe('validate-ai – semantic checks', () => {
 // Tests: Scoring
 // ---------------------------------------------------------------------------
 describe('validate-ai – scoring', () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it('deducts 25 points per error', async () => {
     const ir = makeValidIR() as any;
@@ -485,7 +539,9 @@ describe('validate-ai – scoring', () => {
 // Tests: Text output
 // ---------------------------------------------------------------------------
 describe('validate-ai – text output', () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it('shows score in text output', async () => {
     const filePath = await createTempIR(makeValidIR());
@@ -515,7 +571,9 @@ describe('validate-ai – text output', () => {
 // Tests: Manifest source compilation
 // ---------------------------------------------------------------------------
 describe('validate-ai – manifest source compilation', () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it('validates a simple manifest source file', async () => {
     const source = `

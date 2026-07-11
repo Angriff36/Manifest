@@ -47,9 +47,15 @@ class FakeTx {
 class FakeTransactionProvider implements TransactionProvider {
   readonly journal: string[] = [];
 
-  get begins(): number { return this.journal.filter(e => e === 'begin').length; }
-  get commits(): number { return this.journal.filter(e => e === 'commit').length; }
-  get rollbacks(): number { return this.journal.filter(e => e === 'rollback').length; }
+  get begins(): number {
+    return this.journal.filter((e) => e === 'begin').length;
+  }
+  get commits(): number {
+    return this.journal.filter((e) => e === 'commit').length;
+  }
+  get rollbacks(): number {
+    return this.journal.filter((e) => e === 'rollback').length;
+  }
 
   async withTransaction<T>(fn: (tx: TransactionHandle) => Promise<T>): Promise<T> {
     const tx = new FakeTx();
@@ -79,10 +85,12 @@ class TxStore implements Store {
   /** Optional read hook to override the version field per attempt (test f). */
   versionOverride?: (base: EntityInstance) => number;
 
-  seed(inst: EntityInstance): void { this.map.set(inst.id, { ...inst }); }
+  seed(inst: EntityInstance): void {
+    this.map.set(inst.id, { ...inst });
+  }
 
   async getAll(): Promise<EntityInstance[]> {
-    return [...this.map.values()].map(v => this.read(v));
+    return [...this.map.values()].map((v) => this.read(v));
   }
   async getById(id: string): Promise<EntityInstance | undefined> {
     const v = this.map.get(id);
@@ -98,26 +106,40 @@ class TxStore implements Store {
     const inst = { ...data, id } as EntityInstance;
     const prev = this.map.get(id);
     this.map.set(id, inst);
-    pushUndo(tx, () => { if (prev) this.map.set(id, prev); else this.map.delete(id); });
+    pushUndo(tx, () => {
+      if (prev) this.map.set(id, prev);
+      else this.map.delete(id);
+    });
     return { ...inst };
   }
-  async update(id: string, data: Partial<EntityInstance>, tx?: TransactionHandle): Promise<EntityInstance | undefined> {
+  async update(
+    id: string,
+    data: Partial<EntityInstance>,
+    tx?: TransactionHandle,
+  ): Promise<EntityInstance | undefined> {
     if (this.failUpdate) throw new Error('update failed (simulated flush error)');
     const existing = this.map.get(id);
     if (!existing) return undefined;
     const prev = { ...existing };
     const next = { ...existing, ...data };
     this.map.set(id, next);
-    pushUndo(tx, () => { this.map.set(id, prev); });
+    pushUndo(tx, () => {
+      this.map.set(id, prev);
+    });
     return { ...next };
   }
   async delete(id: string, tx?: TransactionHandle): Promise<boolean> {
     const prev = this.map.get(id);
     const existed = this.map.delete(id);
-    if (existed) pushUndo(tx, () => { this.map.set(id, prev!); });
+    if (existed)
+      pushUndo(tx, () => {
+        this.map.set(id, prev!);
+      });
     return existed;
   }
-  async clear(): Promise<void> { this.map.clear(); }
+  async clear(): Promise<void> {
+    this.map.clear();
+  }
 }
 
 /** Outbox store that participates in FakeTx and can be forced to throw. */
@@ -127,10 +149,14 @@ class TxOutbox implements OutboxStore {
   async enqueue(newEntries: OutboxEntry[], tx?: unknown): Promise<void> {
     if (this.fail) throw new Error('outbox unavailable');
     const before = this.entries.length;
-    this.entries.push(...newEntries.map(e => ({ ...e })));
-    pushUndo(tx as TransactionHandle, () => { this.entries.length = before; });
+    this.entries.push(...newEntries.map((e) => ({ ...e })));
+    pushUndo(tx as TransactionHandle, () => {
+      this.entries.length = before;
+    });
   }
-  async claim(): Promise<OutboxEntry[]> { return []; }
+  async claim(): Promise<OutboxEntry[]> {
+    return [];
+  }
   async markDelivered(): Promise<void> {}
   async markFailed(): Promise<void> {}
 }
@@ -138,13 +164,20 @@ class TxOutbox implements OutboxStore {
 /** Idempotency store that participates in FakeTx. */
 class TxIdempotency implements IdempotencyStore {
   readonly map = new Map<string, CommandResult>();
-  async has(key: string): Promise<boolean> { return this.map.has(key); }
-  async get(key: string): Promise<CommandResult | undefined> { return this.map.get(key); }
+  async has(key: string): Promise<boolean> {
+    return this.map.has(key);
+  }
+  async get(key: string): Promise<CommandResult | undefined> {
+    return this.map.get(key);
+  }
   async set(key: string, result: CommandResult, tx?: TransactionHandle): Promise<void> {
     const had = this.map.has(key);
     const prev = this.map.get(key);
     this.map.set(key, result);
-    pushUndo(tx, () => { if (had) this.map.set(key, prev!); else this.map.delete(key); });
+    pushUndo(tx, () => {
+      if (had) this.map.set(key, prev!);
+      else this.map.delete(key);
+    });
   }
 }
 
@@ -153,7 +186,7 @@ class TxIdempotency implements IdempotencyStore {
 async function compile(source: string): Promise<IR> {
   const result = await new IRCompiler().compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compile failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compile failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
@@ -168,7 +201,10 @@ function makeRuntime(
   let n = 0;
   const getStore = (name: string): TxStore => {
     let s = stores.get(name);
-    if (!s) { s = new TxStore(); stores.set(name, s); }
+    if (!s) {
+      s = new TxStore();
+      stores.set(name, s);
+    }
     return s;
   };
   return new RuntimeEngine(ir, context, {
@@ -201,17 +237,26 @@ describe('provider mode — success path', () => {
     const outbox = new TxOutbox();
     const idem = new TxIdempotency();
     const seen: string[] = [];
-    const rt = makeRuntime(ir, stores, { tenantId: 't1' }, {
-      transactionProvider: provider,
-      outboxStore: outbox,
-      idempotencyStore: idem,
-    });
-    rt.onEvent(e => seen.push(e.name));
+    const rt = makeRuntime(
+      ir,
+      stores,
+      { tenantId: 't1' },
+      {
+        transactionProvider: provider,
+        outboxStore: outbox,
+        idempotencyStore: idem,
+      },
+    );
+    rt.onEvent((e) => seen.push(e.name));
 
-    const result = await rt.runCommand('create', { balance: 100 }, {
-      entityName: 'Account',
-      idempotencyKey: 'k1',
-    });
+    const result = await rt.runCommand(
+      'create',
+      { balance: 100 },
+      {
+        entityName: 'Account',
+        idempotencyKey: 'k1',
+      },
+    );
 
     expect(result.success).toBe(true);
     // exactly one begin + commit, no rollback
@@ -221,7 +266,7 @@ describe('provider mode — success path', () => {
     expect(accounts).toHaveLength(1);
     expect(accounts[0].balance).toBe(100);
     // outbox + idempotency persisted
-    expect(outbox.entries.map(e => e.event.name)).toEqual(['AccountCreated']);
+    expect(outbox.entries.map((e) => e.event.name)).toEqual(['AccountCreated']);
     expect(idem.map.has('k1')).toBe(true);
     // external listener notified after commit
     expect(seen).toEqual(['AccountCreated']);
@@ -252,15 +297,24 @@ describe('provider mode — mutation/flush failure', () => {
     const outbox = new TxOutbox();
     const idem = new TxIdempotency();
     const seen: string[] = [];
-    const rt = makeRuntime(ir, stores, { tenantId: 't1' }, {
-      transactionProvider: provider,
-      outboxStore: outbox,
-      idempotencyStore: idem,
-    });
-    rt.onEvent(e => seen.push(e.name));
+    const rt = makeRuntime(
+      ir,
+      stores,
+      { tenantId: 't1' },
+      {
+        transactionProvider: provider,
+        outboxStore: outbox,
+        idempotencyStore: idem,
+      },
+    );
+    rt.onEvent((e) => seen.push(e.name));
 
     await expect(
-      rt.runCommand('rename', { label: 'new' }, { entityName: 'Widget', instanceId: 'w1', idempotencyKey: 'k1' }),
+      rt.runCommand(
+        'rename',
+        { label: 'new' },
+        { entityName: 'Widget', instanceId: 'w1', idempotencyKey: 'k1' },
+      ),
     ).rejects.toThrow(/update failed/);
 
     expect(provider.journal).toEqual(['begin', 'rollback']);
@@ -283,17 +337,26 @@ describe('provider mode — outbox enqueue failure', () => {
     outbox.fail = true;
     const idem = new TxIdempotency();
     const seen: string[] = [];
-    const rt = makeRuntime(ir, stores, { tenantId: 't1' }, {
-      transactionProvider: provider,
-      outboxStore: outbox,
-      idempotencyStore: idem,
-    });
-    rt.onEvent(e => seen.push(e.name));
+    const rt = makeRuntime(
+      ir,
+      stores,
+      { tenantId: 't1' },
+      {
+        transactionProvider: provider,
+        outboxStore: outbox,
+        idempotencyStore: idem,
+      },
+    );
+    rt.onEvent((e) => seen.push(e.name));
 
-    const result = await rt.runCommand('create', { balance: 50 }, {
-      entityName: 'Account',
-      idempotencyKey: 'k1',
-    });
+    const result = await rt.runCommand(
+      'create',
+      { balance: 50 },
+      {
+        entityName: 'Account',
+        idempotencyKey: 'k1',
+      },
+    );
 
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/^OUTBOX_ENQUEUE_FAILED/);
@@ -314,13 +377,26 @@ describe('provider mode — idempotency dedup', () => {
     const stores = new Map<string, TxStore>();
     const provider = new FakeTransactionProvider();
     const idem = new TxIdempotency();
-    const rt = makeRuntime(ir, stores, { tenantId: 't1' }, {
-      transactionProvider: provider,
-      idempotencyStore: idem,
-    });
+    const rt = makeRuntime(
+      ir,
+      stores,
+      { tenantId: 't1' },
+      {
+        transactionProvider: provider,
+        idempotencyStore: idem,
+      },
+    );
 
-    const first = await rt.runCommand('create', { balance: 10 }, { entityName: 'Account', idempotencyKey: 'dup' });
-    const second = await rt.runCommand('create', { balance: 10 }, { entityName: 'Account', idempotencyKey: 'dup' });
+    const first = await rt.runCommand(
+      'create',
+      { balance: 10 },
+      { entityName: 'Account', idempotencyKey: 'dup' },
+    );
+    const second = await rt.runCommand(
+      'create',
+      { balance: 10 },
+      { entityName: 'Account', idempotencyKey: 'dup' },
+    );
 
     expect(first.success).toBe(true);
     expect(second).toEqual(first);
@@ -407,10 +483,14 @@ describe('provider mode — retry', () => {
 
     const rt = makeRuntime(ir, stores, { tenantId: 't1' }, { transactionProvider: provider });
 
-    const result = await rt.runCommand('bump', { version: 1, amount: 7 }, {
-      entityName: 'Counter',
-      instanceId: 'c1',
-    });
+    const result = await rt.runCommand(
+      'bump',
+      { version: 1, amount: 7 },
+      {
+        entityName: 'Counter',
+        instanceId: 'c1',
+      },
+    );
 
     expect(result.success).toBe(true);
     expect(provider.begins).toBe(2);
@@ -444,7 +524,7 @@ describe('non-provider mode — unchanged (fail-open outbox, no transaction)', (
     const stores = new Map<string, TxStore>();
     const seen: string[] = [];
     const rt = makeRuntime(ir, stores);
-    rt.onEvent(e => seen.push(e.name));
+    rt.onEvent((e) => seen.push(e.name));
 
     await rt.runCommand('create', { balance: 1 }, { entityName: 'Account' });
     expect(seen).toEqual(['AccountCreated']);

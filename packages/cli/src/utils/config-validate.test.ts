@@ -80,12 +80,22 @@ describe('validateConfig', () => {
             tableMappings: { Order: 'orders' },
             columnMappings: { Order: { createdAt: 'created_at' } },
             precision: { Order: { total: { precision: 14, scale: 2 } } },
-            indexes: { Order: [['customerId', 'createdAt'], { fields: ['status'], name: 'order_status_idx' }] },
+            indexes: {
+              Order: [
+                ['customerId', 'createdAt'],
+                { fields: ['status'], name: 'order_status_idx' },
+              ],
+            },
             typeMappings: { Order: { legacyAmount: 'Decimal' } },
             foreignKeys: {
               Order: {
                 customer: 'customerRef',
-                vendor: { fields: ['vendorId'], references: ['id'], onDelete: 'Cascade', onUpdate: 'NoAction' },
+                vendor: {
+                  fields: ['vendorId'],
+                  references: ['id'],
+                  onDelete: 'Cascade',
+                  onUpdate: 'NoAction',
+                },
               },
             },
             dbAttributes: { Order: { amount: 'Decimal(14, 2)' } },
@@ -137,7 +147,7 @@ describe('validateConfig', () => {
     expect(result.diagnostics.some((d) => d.message.includes('entityToPrismaModel'))).toBe(true);
   });
 
-  it("accepts a global naming default (string shorthand)", async () => {
+  it('accepts a global naming default (string shorthand)', async () => {
     const config: ManifestConfig = {
       naming: 'snake_case',
       projections: { prisma: { options: { provider: 'postgresql' } } },
@@ -463,11 +473,28 @@ describe('validateConfig — prisma multiSchema/relationMode/generator', () => {
               entitySchema: { Client: 'tenant_crm', Event: 'tenant_events' },
             },
             tableMappings: { Event: 'events', OrderLine: 'order_lines' },
-            columnMappings: { Event: { tenantId: 'tenant_id' }, OrderLine: { unitPrice: 'unit_price' } },
+            columnMappings: {
+              Event: { tenantId: 'tenant_id' },
+              OrderLine: { unitPrice: 'unit_price' },
+            },
             precision: { OrderLine: { unitPrice: { precision: 14, scale: 2 } } },
-            indexes: { Event: [['tenantId', 'startsAt'], { fields: ['tenantId', 'eventNumber'], name: 'events_tenant_number_idx' }] },
+            indexes: {
+              Event: [
+                ['tenantId', 'startsAt'],
+                { fields: ['tenantId', 'eventNumber'], name: 'events_tenant_number_idx' },
+              ],
+            },
             typeMappings: { Event: { eventNumber: 'Int' } },
-            foreignKeys: { OrderLine: { order: { fields: ['orderId'], references: ['id'], onDelete: 'Cascade', onUpdate: 'Cascade' } } },
+            foreignKeys: {
+              OrderLine: {
+                order: {
+                  fields: ['orderId'],
+                  references: ['id'],
+                  onDelete: 'Cascade',
+                  onUpdate: 'Cascade',
+                },
+              },
+            },
             dbAttributes: { Event: { id: 'Uuid', startsAt: 'Timestamptz(6)' } },
             fieldAttributes: { Event: { updatedAt: ['@updatedAt'] } },
           },
@@ -503,7 +530,12 @@ describe('validateConfig — prisma multiSchema/relationMode/generator', () => {
 
   it('accepts a top-level output on prisma-store (required by generate --all)', async () => {
     const result = await validateConfig({
-      projections: { 'prisma-store': { output: 'manifest/generated/runtime/', options: { provider: 'postgresql' } } },
+      projections: {
+        'prisma-store': {
+          output: 'manifest/generated/runtime/',
+          options: { provider: 'postgresql' },
+        },
+      },
     });
     expect(result.ok).toBe(true);
     expect(result.diagnostics).toHaveLength(0);

@@ -37,7 +37,7 @@ describe('wire-existing-control action-intent (reject)', () => {
       fileContents: files,
       capabilityId: 'CollectionCase.escalateToLegal',
     });
-    const plan = bundle.plans.find(p => p.capabilityId === 'CollectionCase.escalateToLegal');
+    const plan = bundle.plans.find((p) => p.capabilityId === 'CollectionCase.escalateToLegal');
     expect(plan?.decision).toBe('ambiguous-product-decision');
     expect(plan?.automaticApplicationAllowed).toBe(false);
     expect(plan?.edits ?? []).toHaveLength(0);
@@ -48,7 +48,7 @@ describe('wire-existing-control action-intent (reject)', () => {
       mode: 'one-defect',
       capabilityId: 'CollectionCase.escalateToLegal',
     });
-    expect(result.applied.filter(a => a.applied)).toHaveLength(0);
+    expect(result.applied.filter((a) => a.applied)).toHaveLength(0);
     const src = files.get('apps/app/app/collection-cases/page.tsx')!;
     expect(src).toContain('setCreateDialogOpen(true)');
     expect(src).not.toMatch(/collectionCaseEscalateToLegal/);
@@ -73,9 +73,9 @@ describe('wire-existing-control action-intent (reject)', () => {
       fileContents: files,
       capabilityId: 'CollectionCase.escalateToLegal',
     });
-    expect(bundle.plans.find(p => p.capabilityId === 'CollectionCase.escalateToLegal')?.decision).toBe(
-      'ambiguous-product-decision',
-    );
+    expect(
+      bundle.plans.find((p) => p.capabilityId === 'CollectionCase.escalateToLegal')?.decision,
+    ).toBe('ambiguous-product-decision');
   });
 
   it('3. same entity file is insufficient', async () => {
@@ -98,7 +98,7 @@ describe('wire-existing-control action-intent (reject)', () => {
       capabilityId: 'CollectionCase.escalateToLegal',
     });
     expect(
-      bundle.plans.find(p => p.capabilityId === 'CollectionCase.escalateToLegal')
+      bundle.plans.find((p) => p.capabilityId === 'CollectionCase.escalateToLegal')
         ?.automaticApplicationAllowed,
     ).toBe(false);
   });
@@ -126,7 +126,7 @@ describe('wire-existing-control action-intent (reject)', () => {
       }),
       fileContents: files,
       capabilityId: 'CollectionCase.escalateToLegal',
-    }).plans.find(p => p.capabilityId === 'CollectionCase.escalateToLegal');
+    }).plans.find((p) => p.capabilityId === 'CollectionCase.escalateToLegal');
     expect(plan?.decision).toBe('ambiguous-product-decision');
     expect(plan?.edits ?? []).toHaveLength(0);
   });
@@ -150,7 +150,7 @@ describe('wire-existing-control action-intent (reject)', () => {
       }),
       fileContents: files,
       capabilityId: 'CollectionCase.escalateToLegal',
-    }).plans.find(p => p.capabilityId === 'CollectionCase.escalateToLegal');
+    }).plans.find((p) => p.capabilityId === 'CollectionCase.escalateToLegal');
     expect(plan?.decision).toBe('ambiguous-product-decision');
   });
 
@@ -165,7 +165,7 @@ describe('wire-existing-control action-intent (reject)', () => {
       mode: 'apply',
       capabilityId: 'CollectionCase.escalateToLegal',
     });
-    expect(result.applied.filter(a => a.applied)).toHaveLength(0);
+    expect(result.applied.filter((a) => a.applied)).toHaveLength(0);
     expect(files.get('apps/app/app/collection-cases/page.tsx')).toContain(
       'setCreateDialogOpen(true)',
     );
@@ -196,7 +196,7 @@ describe('wire-existing-control action-intent (reject)', () => {
       }),
       fileContents: files,
       capabilityId: 'CollectionCase.escalateToLegal',
-    }).plans.find(p => p.capabilityId === 'CollectionCase.escalateToLegal');
+    }).plans.find((p) => p.capabilityId === 'CollectionCase.escalateToLegal');
     expect(plan?.decision).toBe('ambiguous-product-decision');
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
@@ -309,7 +309,7 @@ describe('wire-existing-control action-intent (reject)', () => {
       }),
       fileContents: files,
       capabilityId: 'CollectionCase.escalateToLegal',
-    }).plans.find(p => p.capabilityId === 'CollectionCase.escalateToLegal');
+    }).plans.find((p) => p.capabilityId === 'CollectionCase.escalateToLegal');
     expect(plan?.decision).toBe('ambiguous-product-decision');
     expect(plan?.edits ?? []).toHaveLength(0);
   });
@@ -369,6 +369,8 @@ describe('wire-existing-control action-intent (reject)', () => {
       strictCoverage: true,
     });
     expect(verification.ok).toBe(false);
-    expect(verification.message).toMatch(/semantic|unrelated|behavior|identity|new case|intent|label/i);
+    expect(verification.message).toMatch(
+      /semantic|unrelated|behavior|identity|new case|intent|label/i,
+    );
   });
 });

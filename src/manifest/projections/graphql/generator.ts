@@ -166,7 +166,13 @@ function toCamelCase(value: string): string {
 
 function pluralize(name: string): string {
   const lower = name.toLowerCase();
-  if (lower.endsWith('s') || lower.endsWith('sh') || lower.endsWith('ch') || lower.endsWith('x') || lower.endsWith('z')) {
+  if (
+    lower.endsWith('s') ||
+    lower.endsWith('sh') ||
+    lower.endsWith('ch') ||
+    lower.endsWith('x') ||
+    lower.endsWith('z')
+  ) {
     return name + 'es';
   }
   if (lower.endsWith('y') && !['a', 'e', 'i', 'o', 'u'].includes(lower[lower.length - 2])) {
@@ -180,14 +186,20 @@ function pluralize(name: string): string {
  */
 function irValueToString(value: IRValue): string {
   switch (value.kind) {
-    case 'string': return `"${value.value}"`;
-    case 'number': return String(value.value);
-    case 'boolean': return String(value.value);
-    case 'null': return 'null';
-    case 'array': return `[${value.elements.map(irValueToString).join(', ')}]`;
+    case 'string':
+      return `"${value.value}"`;
+    case 'number':
+      return String(value.value);
+    case 'boolean':
+      return String(value.value);
+    case 'null':
+      return 'null';
+    case 'array':
+      return `[${value.elements.map(irValueToString).join(', ')}]`;
     case 'object': {
-      const entries = Object.entries(value.properties)
-        .map(([k, v]) => `${k}: ${irValueToString(v)}`);
+      const entries = Object.entries(value.properties).map(
+        ([k, v]) => `${k}: ${irValueToString(v)}`,
+      );
       return `{${entries.join(', ')}}`;
     }
   }
@@ -248,7 +260,7 @@ function buildAuthDirective(
   // Resolve policy actions from policy names
   const actions = new Set<string>();
   for (const policyName of policyNames) {
-    const policy = allPolicies.find(p => p.name === policyName);
+    const policy = allPolicies.find((p) => p.name === policyName);
     if (policy) {
       actions.add(policy.action);
     }
@@ -275,7 +287,9 @@ function generateEntityType(
   const lines: string[] = [];
 
   // Type description
-  const desc = entity.module ? `${entity.name} entity (module: ${entity.module})` : `${entity.name} entity`;
+  const desc = entity.module
+    ? `${entity.name} entity (module: ${entity.module})`
+    : `${entity.name} entity`;
   lines.push(`"""${escapeDescription(desc)}"""`);
 
   // Type declaration with optional auth directive
@@ -288,9 +302,11 @@ function generateEntityType(
     const descParts: string[] = [];
     if (prop.modifiers.includes('readonly')) descParts.push('Read-only');
     if (prop.modifiers.includes('unique')) descParts.push('Unique');
-    if (prop.defaultValue !== undefined) descParts.push(`Default: ${irValueToString(prop.defaultValue)}`);
+    if (prop.defaultValue !== undefined)
+      descParts.push(`Default: ${irValueToString(prop.defaultValue)}`);
 
-    const fieldDesc = descParts.length > 0 ? `  """${escapeDescription(descParts.join('. '))}"""\n` : '';
+    const fieldDesc =
+      descParts.length > 0 ? `  """${escapeDescription(descParts.join('. '))}"""\n` : '';
     lines.push(`${fieldDesc}  ${prop.name}: ${fieldType}`);
   }
 
@@ -425,7 +441,7 @@ function generateMutationType(
   allPolicies: IRPolicy[],
   options: GraphQLProjectionOptions,
 ): string {
-  const entityCommands = commands.filter(c => c.entity);
+  const entityCommands = commands.filter((c) => c.entity);
   if (entityCommands.length === 0) return '';
 
   const lines: string[] = [];
@@ -442,7 +458,11 @@ function generateMutationType(
     if (options.includeGuardDescriptions !== false && command.guards.length > 0) {
       descParts.push(`Guards: ${command.guards.length} guard(s) evaluated in order`);
     }
-    if (options.includeConstraintDescriptions !== false && command.constraints && command.constraints.length > 0) {
+    if (
+      options.includeConstraintDescriptions !== false &&
+      command.constraints &&
+      command.constraints.length > 0
+    ) {
       descParts.push(`Constraints: ${command.constraints.length} pre-execution constraint(s)`);
     }
 
@@ -522,15 +542,18 @@ function buildGraphQLSchema(
     }
   }
   if (customScalars.size > 0) {
-    const scalarLines = Array.from(customScalars).sort().map(s => `scalar ${s}`);
+    const scalarLines = Array.from(customScalars)
+      .sort()
+      .map((s) => `scalar ${s}`);
     sections.push(scalarLines.join('\n'));
   }
 
   // Auth directive definition (if policies exist and auth directives enabled)
   if (options.includeAuthDirectives !== false) {
-    const hasPolicies = ir.policies.length > 0 ||
-      ir.entities.some(e => e.policies.length > 0) ||
-      ir.commands.some(c => c.policies && c.policies.length > 0);
+    const hasPolicies =
+      ir.policies.length > 0 ||
+      ir.entities.some((e) => e.policies.length > 0) ||
+      ir.commands.some((c) => c.policies && c.policies.length > 0);
 
     if (hasPolicies) {
       sections.push('directive @auth(requires: [String!]!) on OBJECT | FIELD_DEFINITION');
@@ -650,11 +673,15 @@ function buildResolverStubs(
       const pluralName = toCamelCase(pluralize(entity.name));
       const tableName = toCamelCase(entity.name);
 
-      lines.push(`  ${pluralName}: async (_parent: unknown, _args: unknown, context: unknown) => {`);
+      lines.push(
+        `  ${pluralName}: async (_parent: unknown, _args: unknown, context: unknown) => {`,
+      );
       lines.push(`    return database.${tableName}.findMany();`);
       lines.push('  },');
       lines.push('');
-      lines.push(`  ${camelName}: async (_parent: unknown, args: { id: string }, context: unknown) => {`);
+      lines.push(
+        `  ${camelName}: async (_parent: unknown, args: { id: string }, context: unknown) => {`,
+      );
       lines.push(`    return database.${tableName}.findUnique({ where: { id: args.id } });`);
       lines.push('  },');
       lines.push('');
@@ -665,7 +692,7 @@ function buildResolverStubs(
   }
 
   // Mutation resolvers
-  const entityCommands = sortedCommands.filter(c => c.entity);
+  const entityCommands = sortedCommands.filter((c) => c.entity);
   if (entityCommands.length > 0) {
     lines.push('export const mutationResolvers = {');
 
@@ -674,11 +701,15 @@ function buildResolverStubs(
       const hasInput = command.parameters.length > 0;
       const inputType = hasInput ? `{ input: Record<string, unknown> }` : 'unknown';
 
-      lines.push(`  ${mutationName}: async (_parent: unknown, args: ${inputType}, context: unknown) => {`);
+      lines.push(
+        `  ${mutationName}: async (_parent: unknown, args: ${inputType}, context: unknown) => {`,
+      );
       lines.push(`    const runtime = createManifestRuntime(context);`);
 
       if (hasInput) {
-        lines.push(`    return runtime.runCommand('${command.entity}', '${command.name}', args.input);`);
+        lines.push(
+          `    return runtime.runCommand('${command.entity}', '${command.name}', args.input);`,
+        );
       } else {
         lines.push(`    return runtime.runCommand('${command.entity}', '${command.name}', {});`);
       }
@@ -739,7 +770,8 @@ function buildResolverStubs(
  */
 export class GraphQLProjection implements ProjectionTarget {
   readonly name = 'graphql';
-  readonly description = 'GraphQL SDL and resolver stub generation from Manifest IR entities, commands, policies, and events';
+  readonly description =
+    'GraphQL SDL and resolver stub generation from Manifest IR entities, commands, policies, and events';
   readonly surfaces = SURFACES;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
@@ -763,11 +795,13 @@ export class GraphQLProjection implements ProjectionTarget {
         if (options.includeResolverStubs === false) {
           return {
             artifacts: [],
-            diagnostics: [{
-              severity: 'info',
-              code: 'RESOLVERS_DISABLED',
-              message: 'Resolver stub generation is disabled via includeResolverStubs: false.',
-            }],
+            diagnostics: [
+              {
+                severity: 'info',
+                code: 'RESOLVERS_DISABLED',
+                message: 'Resolver stub generation is disabled via includeResolverStubs: false.',
+              },
+            ],
           };
         }
 
@@ -786,11 +820,13 @@ export class GraphQLProjection implements ProjectionTarget {
       default:
         return {
           artifacts: [],
-          diagnostics: [{
-            severity: 'error',
-            code: 'UNKNOWN_SURFACE',
-            message: `Unknown surface: "${request.surface}". Available: graphql.schema, graphql.resolvers`,
-          }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'UNKNOWN_SURFACE',
+              message: `Unknown surface: "${request.surface}". Available: graphql.schema, graphql.resolvers`,
+            },
+          ],
         };
     }
   }

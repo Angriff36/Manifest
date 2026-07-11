@@ -30,7 +30,20 @@ sh(`gh workflow run ${WORKFLOW} -f version=${bump} --repo ${REPO}`);
 await new Promise((r) => setTimeout(r, 6000));
 const runId = execFileSync(
   'gh',
-  ['run', 'list', '--workflow', WORKFLOW, '--repo', REPO, '--limit', '1', '--json', 'databaseId', '--jq', '.[0].databaseId'],
+  [
+    'run',
+    'list',
+    '--workflow',
+    WORKFLOW,
+    '--repo',
+    REPO,
+    '--limit',
+    '1',
+    '--json',
+    'databaseId',
+    '--jq',
+    '.[0].databaseId',
+  ],
   { encoding: 'utf8' },
 ).trim();
 

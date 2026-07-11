@@ -115,10 +115,7 @@ export function findEntity(ir: IR, name: string): IREntity | undefined {
   return ir.entities.find((e) => e.name === name);
 }
 
-export function findRelationship(
-  entity: IREntity,
-  column: string
-): IRRelationship | undefined {
+export function findRelationship(entity: IREntity, column: string): IRRelationship | undefined {
   return entity.relationships.find((r) => r.name === column);
 }
 

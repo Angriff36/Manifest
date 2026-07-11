@@ -1,5 +1,20 @@
 import { DocumentSymbol, SymbolKind, Range } from 'vscode-languageserver';
-import type { ManifestProgram, EntityNode, CommandNode, PolicyNode, ConstraintNode, EnumNode, StoreNode, OutboxEventNode, ModuleNode, PropertyNode, ComputedPropertyNode, RelationshipNode, RoleNode, ReactionNode } from '@angriff36/manifest/types';
+import type {
+  ManifestProgram,
+  EntityNode,
+  CommandNode,
+  PolicyNode,
+  ConstraintNode,
+  EnumNode,
+  StoreNode,
+  OutboxEventNode,
+  ModuleNode,
+  PropertyNode,
+  ComputedPropertyNode,
+  RelationshipNode,
+  RoleNode,
+  ReactionNode,
+} from '@angriff36/manifest/types';
 import { toLspPosition } from '../position-utils.js';
 
 /** Saga AST shape (not yet part of the published @angriff36/manifest types). */
@@ -134,18 +149,30 @@ function computedPropertySymbol(comp: ComputedPropertyNode): DocumentSymbol {
 
 function relationshipSymbol(rel: RelationshipNode): DocumentSymbol {
   const range = makeRange(rel.position, rel.name);
-  return DocumentSymbol.create(rel.name, `${rel.kind} → ${rel.target}`, SymbolKind.Field, range, range);
+  return DocumentSymbol.create(
+    rel.name,
+    `${rel.kind} → ${rel.target}`,
+    SymbolKind.Field,
+    range,
+    range,
+  );
 }
 
 function commandSymbol(cmd: CommandNode): DocumentSymbol {
   const range = makeRange(cmd.position, cmd.name);
-  const paramNames = cmd.parameters.map(p => p.name).join(', ');
+  const paramNames = cmd.parameters.map((p) => p.name).join(', ');
   return DocumentSymbol.create(cmd.name, `(${paramNames})`, SymbolKind.Function, range, range);
 }
 
 function constraintSymbol(constraint: ConstraintNode): DocumentSymbol {
   const range = makeRange(constraint.position, constraint.name);
-  return DocumentSymbol.create(constraint.name, constraint.severity ?? 'block', SymbolKind.Constant, range, range);
+  return DocumentSymbol.create(
+    constraint.name,
+    constraint.severity ?? 'block',
+    SymbolKind.Constant,
+    range,
+    range,
+  );
 }
 
 function policySymbol(policy: PolicyNode): DocumentSymbol {
@@ -155,7 +182,7 @@ function policySymbol(policy: PolicyNode): DocumentSymbol {
 
 function enumSymbol(en: EnumNode): DocumentSymbol {
   const range = makeRange(en.position, en.name);
-  const children = en.values.map(v => {
+  const children = en.values.map((v) => {
     const vRange = makeRange(v.position, v.name);
     return DocumentSymbol.create(v.name, v.label ?? '', SymbolKind.EnumMember, vRange, vRange);
   });
@@ -169,7 +196,13 @@ function storeSymbol(store: StoreNode): DocumentSymbol {
 
 function eventSymbol(event: OutboxEventNode): DocumentSymbol {
   const range = makeRange(event.position, event.name);
-  return DocumentSymbol.create(event.name, `channel: ${event.channel}`, SymbolKind.Event, range, range);
+  return DocumentSymbol.create(
+    event.name,
+    `channel: ${event.channel}`,
+    SymbolKind.Event,
+    range,
+    range,
+  );
 }
 
 function reactionSymbol(reaction: ReactionNode): DocumentSymbol {
@@ -179,15 +212,21 @@ function reactionSymbol(reaction: ReactionNode): DocumentSymbol {
     `→ ${reaction.targetEntity}.${reaction.targetCommand}`,
     SymbolKind.Event,
     range,
-    range
+    range,
   );
 }
 
 function sagaSymbol(saga: SagaNode): DocumentSymbol {
   const range = makeRange(saga.position, saga.name);
-  const children = saga.steps.map(step => {
+  const children = saga.steps.map((step) => {
     const stepRange = makeRange(step.position, step.name);
-    return DocumentSymbol.create(step.name, step.command, SymbolKind.Function, stepRange, stepRange);
+    return DocumentSymbol.create(
+      step.name,
+      step.command,
+      SymbolKind.Function,
+      stepRange,
+      stepRange,
+    );
   });
   return DocumentSymbol.create(saga.name, 'saga', SymbolKind.Class, range, range, children);
 }

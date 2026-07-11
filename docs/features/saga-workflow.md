@@ -52,12 +52,12 @@ The compensation order is strict reverse: if steps 1, 2, 3 completed and step 4 
 
 Events are only emitted when declared in the saga's `emit` array.
 
-| Event | When emitted |
-|-------|-------------|
-| `SagaStarted` | Before the first step executes |
-| `SagaStepCompleted` | After each successful step |
-| `SagaCompleted` | After all steps succeed |
-| `SagaFailed` | After a step fails (and optionally after compensation completes) |
+| Event               | When emitted                                                     |
+| ------------------- | ---------------------------------------------------------------- |
+| `SagaStarted`       | Before the first step executes                                   |
+| `SagaStepCompleted` | After each successful step                                       |
+| `SagaCompleted`     | After all steps succeed                                          |
+| `SagaFailed`        | After a step fails (and optionally after compensation completes) |
 
 Saga events carry `correlationId` and `causationId` for cross-service tracing.
 
@@ -66,14 +66,19 @@ Saga events carry `correlationId` and `causationId` for cross-service tracing.
 The runtime engine exposes saga execution through `runSaga`:
 
 ```typescript
-const result = await runtime.runSaga('ProcessOrder', {
-  chargePayment: { input: { amount: 100 }, instanceId: 'pay-1' },
-  reserveInventory: { input: { quantity: 2 }, instanceId: 'inv-1' },
-  notifyCustomer: { input: { email: 'user@example.com' } },
-}, { correlationId: 'order-123' });
+const result = await runtime.runSaga(
+  'ProcessOrder',
+  {
+    chargePayment: { input: { amount: 100 }, instanceId: 'pay-1' },
+    reserveInventory: { input: { quantity: 2 }, instanceId: 'inv-1' },
+    notifyCustomer: { input: { email: 'user@example.com' } },
+  },
+  { correlationId: 'order-123' },
+);
 ```
 
 `SagaResult` contains:
+
 - `saga: string` — Saga name
 - `success: boolean` — Whether all steps completed
 - `status: 'completed' | 'compensated' | 'aborted'`
@@ -95,10 +100,10 @@ interface IRSaga {
 
 interface IRSagaStep {
   name: string;
-  commandEntity: string;       // Entity on which the forward command is invoked
-  command: string;             // "Entity.command" reference
-  compensate?: string;         // Optional compensating command
-  compensateEntity?: string;   // Optional: target entity for compensation when it differs from the forward step's entity
+  commandEntity: string; // Entity on which the forward command is invoked
+  command: string; // "Entity.command" reference
+  compensate?: string; // Optional compensating command
+  compensateEntity?: string; // Optional: target entity for compensation when it differs from the forward step's entity
 }
 ```
 

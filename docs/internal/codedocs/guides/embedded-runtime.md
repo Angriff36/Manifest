@@ -1,6 +1,6 @@
 ---
-title: "Embedded Runtime"
-description: "Compile Manifest source to IR and run commands directly in application code."
+title: 'Embedded Runtime'
+description: 'Compile Manifest source to IR and run commands directly in application code.'
 ---
 
 > **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
@@ -13,7 +13,6 @@ description: "Compile Manifest source to IR and run commands directly in applica
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 Use the embedded runtime pattern when you want full control over orchestration, HTTP handling, background jobs, or side effects while still preserving Manifest semantics.
 
@@ -71,18 +70,22 @@ import { MemoryOutboxStore } from '@angriff36/manifest/outbox/memory';
 const auditSink = new MemoryAuditSink();
 const outboxStore = new MemoryOutboxStore();
 
-const runtime = new RuntimeEngine(ir, {
-  actorId: 'user-1',
-  tenantId: 'tenant-1',
-  requestId: 'req-1',
-  source: 'route',
-  user: { id: 'user-1', role: 'member' },
-}, {
-  auditSink,
-  outboxStore,
-  generateId: () => crypto.randomUUID(),
-  now: () => Date.now(),
-});
+const runtime = new RuntimeEngine(
+  ir,
+  {
+    actorId: 'user-1',
+    tenantId: 'tenant-1',
+    requestId: 'req-1',
+    source: 'route',
+    user: { id: 'user-1', role: 'member' },
+  },
+  {
+    auditSink,
+    outboxStore,
+    generateId: () => crypto.randomUUID(),
+    now: () => Date.now(),
+  },
+);
 
 await runtime.createInstance('Order', {
   id: 'order-1',
@@ -95,12 +98,16 @@ await runtime.createInstance('Order', {
 ### Execute a command and inspect the result
 
 ```ts
-const result = await runtime.runCommand('submit', {}, {
-  entityName: 'Order',
-  instanceId: 'order-1',
-  correlationId: 'workflow-42',
-  causationId: 'request-req-1',
-});
+const result = await runtime.runCommand(
+  'submit',
+  {},
+  {
+    entityName: 'Order',
+    instanceId: 'order-1',
+    correlationId: 'workflow-42',
+    causationId: 'request-req-1',
+  },
+);
 
 const order = await runtime.getInstance('Order', 'order-1');
 
@@ -154,21 +161,29 @@ async function main() {
   const auditSink = new MemoryAuditSink();
   const outboxStore = new MemoryOutboxStore();
 
-  const runtime = new RuntimeEngine(ir, {
-    actorId: 'user-1',
-    tenantId: 'tenant-1',
-    user: { id: 'user-1', role: 'member' },
-  }, {
-    auditSink,
-    outboxStore,
-  });
+  const runtime = new RuntimeEngine(
+    ir,
+    {
+      actorId: 'user-1',
+      tenantId: 'tenant-1',
+      user: { id: 'user-1', role: 'member' },
+    },
+    {
+      auditSink,
+      outboxStore,
+    },
+  );
 
   await runtime.createInstance('Order', { id: 'order-1', total: 125 });
 
-  const result = await runtime.runCommand('submit', {}, {
-    entityName: 'Order',
-    instanceId: 'order-1',
-  });
+  const result = await runtime.runCommand(
+    'submit',
+    {},
+    {
+      entityName: 'Order',
+      instanceId: 'order-1',
+    },
+  );
 
   console.log({
     success: result.success,

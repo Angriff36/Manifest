@@ -10,9 +10,9 @@
  * package's compiler or runtime for these tests to run.
  */
 
-import { describe, expect, it } from "vitest";
-import type { IR, IREntity, IRStore } from "../../ir";
-import { PrismaProjection } from "./generator.js";
+import { describe, expect, it } from 'vitest';
+import type { IR, IREntity, IRStore } from '../../ir';
+import { PrismaProjection } from './generator.js';
 
 // ---------------------------------------------------------------------------
 // Generic-fixture builders. All names are deliberately abstract.
@@ -20,12 +20,12 @@ import { PrismaProjection } from "./generator.js";
 
 function emptyIR(): IR {
   return {
-    version: "1.0",
+    version: '1.0',
     provenance: {
-      contentHash: "test-fixture-hash",
-      compilerVersion: "test",
-      schemaVersion: "1.0",
-      compiledAt: "2025-01-01T00:00:00.000Z",
+      contentHash: 'test-fixture-hash',
+      compilerVersion: 'test',
+      schemaVersion: '1.0',
+      compiledAt: '2025-01-01T00:00:00.000Z',
     },
     modules: [],
     values: [],
@@ -40,19 +40,19 @@ function emptyIR(): IR {
 
 function widgetEntity(): IREntity {
   return {
-    name: "Widget",
+    name: 'Widget',
     properties: [
       {
-        name: "id",
-        type: { name: "string", nullable: false },
-        modifiers: ["required"],
+        name: 'id',
+        type: { name: 'string', nullable: false },
+        modifiers: ['required'],
       },
       {
-        name: "name",
-        type: { name: "string", nullable: false },
-        modifiers: ["required"],
+        name: 'name',
+        type: { name: 'string', nullable: false },
+        modifiers: ['required'],
       },
-      { name: "qty", type: { name: "int", nullable: false }, modifiers: [] },
+      { name: 'qty', type: { name: 'int', nullable: false }, modifiers: [] },
     ],
     computedProperties: [],
     relationships: [],
@@ -63,29 +63,29 @@ function widgetEntity(): IREntity {
 }
 
 function durableStore(entityName: string): IRStore {
-  return { entity: entityName, target: "durable", config: {} };
+  return { entity: entityName, target: 'durable', config: {} };
 }
 
 function memoryStore(entityName: string): IRStore {
-  return { entity: entityName, target: "memory", config: {} };
+  return { entity: entityName, target: 'memory', config: {} };
 }
 
 /** Helper: a minimal entity with just an `id: string` property. */
 function bareEntity(
   name: string,
   extras: {
-    properties?: IREntity["properties"];
-    relationships?: IREntity["relationships"];
-    key?: IREntity["key"];
-  } = {}
+    properties?: IREntity['properties'];
+    relationships?: IREntity['relationships'];
+    key?: IREntity['key'];
+  } = {},
 ): IREntity {
   return {
     name,
     properties: [
       {
-        name: "id",
-        type: { name: "string", nullable: false },
-        modifiers: ["required"],
+        name: 'id',
+        type: { name: 'string', nullable: false },
+        modifiers: ['required'],
       },
       ...(extras.properties ?? []),
     ],
@@ -102,40 +102,40 @@ function bareEntity(
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("PrismaProjection — projection target metadata", () => {
-  it("declares the expected name, description and surfaces", () => {
+describe('PrismaProjection — projection target metadata', () => {
+  it('declares the expected name, description and surfaces', () => {
     const p = new PrismaProjection();
-    expect(p.name).toBe("prisma");
-    expect(p.surfaces).toEqual(["prisma.schema"]);
+    expect(p.name).toBe('prisma');
+    expect(p.surfaces).toEqual(['prisma.schema']);
     expect(p.description).toMatch(/Prisma/);
     expect(p.description).toMatch(/Manifest IR/);
   });
 
-  it("rejects unknown surfaces with a structured diagnostic", () => {
+  it('rejects unknown surfaces with a structured diagnostic', () => {
     const p = new PrismaProjection();
-    const result = p.generate(emptyIR(), { surface: "prisma.unknown" });
+    const result = p.generate(emptyIR(), { surface: 'prisma.unknown' });
     expect(result.artifacts).toHaveLength(0);
     expect(result.diagnostics).toHaveLength(1);
-    expect(result.diagnostics[0].code).toBe("UNKNOWN_SURFACE");
-    expect(result.diagnostics[0].severity).toBe("error");
+    expect(result.diagnostics[0].code).toBe('UNKNOWN_SURFACE');
+    expect(result.diagnostics[0].severity).toBe('error');
   });
 });
 
-describe("PrismaProjection — generic fixture (Widget)", () => {
-  it("emits a Prisma model for a durable entity: @id id, required name, and a non-nullable non-required qty (NOT NULL — type-driven)", () => {
+describe('PrismaProjection — generic fixture (Widget)', () => {
+  it('emits a Prisma model for a durable entity: @id id, required name, and a non-nullable non-required qty (NOT NULL — type-driven)', () => {
     const ir = emptyIR();
     ir.entities.push(widgetEntity());
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
 
     expect(result.artifacts).toHaveLength(1);
     const artifact = result.artifacts[0];
-    expect(artifact.id).toBe("prisma.schema");
-    expect(artifact.pathHint).toBe("schema.prisma");
-    expect(artifact.contentType).toBe("prisma");
+    expect(artifact.id).toBe('prisma.schema');
+    expect(artifact.pathHint).toBe('schema.prisma');
+    expect(artifact.contentType).toBe('prisma');
 
     const code = artifact.code;
     expect(code).toMatch(/model Widget \{/);
@@ -145,39 +145,39 @@ describe("PrismaProjection — generic fixture (Widget)", () => {
     expect(code).toMatch(/^\s+qty Int$/m);
     expect(code).toMatch(/^\}$/m);
 
-    const errs = result.diagnostics.filter((d) => d.severity === "error");
+    const errs = result.diagnostics.filter((d) => d.severity === 'error');
     expect(errs).toHaveLength(0);
   });
 
-  it("applies tableMappings, columnMappings, precision, indexes, typeMappings through config (NO dotted-string keys)", () => {
+  it('applies tableMappings, columnMappings, precision, indexes, typeMappings through config (NO dotted-string keys)', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "sku",
-          type: { name: "string", nullable: false },
-          modifiers: ["required", "unique"],
+          name: 'sku',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required', 'unique'],
         },
         {
-          name: "qty",
-          type: { name: "number", nullable: false },
-          modifiers: ["required"],
+          name: 'qty',
+          type: { name: 'number', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "price",
-          type: { name: "decimal", nullable: false },
-          modifiers: ["required"],
+          name: 'price',
+          type: { name: 'decimal', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "createdAt",
-          type: { name: "datetime", nullable: false },
-          modifiers: ["required"],
+          name: 'createdAt',
+          type: { name: 'datetime', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -186,29 +186,26 @@ describe("PrismaProjection — generic fixture (Widget)", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        provider: "postgresql",
-        tableMappings: { Widget: "widgets" },
-        columnMappings: { Widget: { createdAt: "created_at" } },
+        provider: 'postgresql',
+        tableMappings: { Widget: 'widgets' },
+        columnMappings: { Widget: { createdAt: 'created_at' } },
         precision: { Widget: { price: { precision: 12, scale: 2 } } },
         indexes: {
-          Widget: [
-            ["sku", "createdAt"],
-            { fields: ["qty"], name: "widget_qty_idx" },
-          ],
+          Widget: [['sku', 'createdAt'], { fields: ['qty'], name: 'widget_qty_idx' }],
         },
-        typeMappings: { Widget: { qty: "Int" } },
+        typeMappings: { Widget: { qty: 'Int' } },
       },
     });
 
     // provider is set → schema artifact + prisma.config.ts companion
     expect(result.artifacts).toHaveLength(2);
     const code = result.artifacts[0].code;
-    expect(result.artifacts[1].id).toBe("prisma.config.ts");
+    expect(result.artifacts[1].id).toBe('prisma.config.ts');
     expect(result.artifacts[1].code).toMatch(/DATABASE_URL/);
     // PrismaConfig (prisma >= 7.8): singular flat `datasource` — the plural
     // nested form typechecks red and was silently ignored by the CLI.
@@ -225,20 +222,18 @@ describe("PrismaProjection — generic fixture (Widget)", () => {
     expect(code).toMatch(/^\s+@@index\(\[sku, createdAt\]\)$/m);
     expect(code).toMatch(/^\s+@@index\(\[qty\], name: "widget_qty_idx"\)$/m);
 
-    expect(
-      result.diagnostics.filter((d) => d.severity === "error")
-    ).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
   });
 
-  it("preserves IR source order — does NOT re-sort entities (Checkpoint 1)", () => {
+  it('preserves IR source order — does NOT re-sort entities (Checkpoint 1)', () => {
     const ir = emptyIR();
     const beta: IREntity = {
-      name: "Beta",
+      name: 'Beta',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -248,12 +243,12 @@ describe("PrismaProjection — generic fixture (Widget)", () => {
       policies: [],
     };
     const alpha: IREntity = {
-      name: "Alpha",
+      name: 'Alpha',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -263,135 +258,135 @@ describe("PrismaProjection — generic fixture (Widget)", () => {
       policies: [],
     };
     ir.entities.push(beta, alpha);
-    ir.stores.push(durableStore("Beta"), durableStore("Alpha"));
+    ir.stores.push(durableStore('Beta'), durableStore('Alpha'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
     const code = result.artifacts[0].code;
-    const betaPos = code.indexOf("model Beta {");
-    const alphaPos = code.indexOf("model Alpha {");
+    const betaPos = code.indexOf('model Beta {');
+    const alphaPos = code.indexOf('model Alpha {');
     expect(betaPos).toBeGreaterThan(-1);
     expect(alphaPos).toBeGreaterThan(-1);
     expect(betaPos).toBeLessThan(alphaPos);
   });
 });
 
-describe("PrismaProjection — type-driven nullability (v3.1)", () => {
+describe('PrismaProjection — type-driven nullability (v3.1)', () => {
   // A scalar column is nullable IFF prop.type.nullable is true. The `required`
   // modifier and the `id` identity no longer drive the `?` suffix.
 
-  it("non-nullable property WITHOUT `required` → NOT NULL (no `?`)", () => {
+  it('non-nullable property WITHOUT `required` → NOT NULL (no `?`)', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Widget", {
+      bareEntity('Widget', {
         properties: [
           {
-            name: "label",
-            type: { name: "string", nullable: false },
+            name: 'label',
+            type: { name: 'string', nullable: false },
             modifiers: [],
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+label String$/m);
     expect(code).not.toMatch(/^\s+label String\?$/m);
   });
 
-  it("explicit `?` type (type.nullable:true) → nullable column", () => {
+  it('explicit `?` type (type.nullable:true) → nullable column', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Widget", {
+      bareEntity('Widget', {
         properties: [
           {
-            name: "nickname",
-            type: { name: "string", nullable: true },
+            name: 'nickname',
+            type: { name: 'string', nullable: true },
             modifiers: [],
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+nickname String\?$/m);
   });
 
-  it("non-nullable property WITH a default → NOT NULL + @default", () => {
+  it('non-nullable property WITH a default → NOT NULL + @default', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Widget", {
+      bareEntity('Widget', {
         properties: [
           {
-            name: "active",
-            type: { name: "boolean", nullable: false },
+            name: 'active',
+            type: { name: 'boolean', nullable: false },
             modifiers: [],
-            defaultValue: { kind: "boolean", value: true },
+            defaultValue: { kind: 'boolean', value: true },
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+active Boolean @default\(true\)$/m);
     expect(code).not.toMatch(/active Boolean\?/);
   });
 
-  it("edge case: `required` + `?` type → the type wins (nullable)", () => {
+  it('edge case: `required` + `?` type → the type wins (nullable)', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Widget", {
+      bareEntity('Widget', {
         properties: [
           {
-            name: "note",
-            type: { name: "string", nullable: true },
-            modifiers: ["required"],
+            name: 'note',
+            type: { name: 'string', nullable: true },
+            modifiers: ['required'],
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+note String\?$/m);
   });
 
-  it("timestamps-injected createdAt/updatedAt (type.nullable:false) → NOT NULL", () => {
+  it('timestamps-injected createdAt/updatedAt (type.nullable:false) → NOT NULL', () => {
     // The ir-compiler injects createdAt/updatedAt as { nullable: false } when an
     // entity declares `timestamps`. The projection must emit them NOT NULL.
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Widget", {
+      bareEntity('Widget', {
         properties: [
           {
-            name: "createdAt",
-            type: { name: "datetime", nullable: false },
-            modifiers: ["readonly"],
+            name: 'createdAt',
+            type: { name: 'datetime', nullable: false },
+            modifiers: ['readonly'],
           },
           {
-            name: "updatedAt",
-            type: { name: "datetime", nullable: false },
-            modifiers: ["readonly"],
+            name: 'updatedAt',
+            type: { name: 'datetime', nullable: false },
+            modifiers: ['readonly'],
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+createdAt DateTime$/m);
     expect(code).toMatch(/^\s+updatedAt DateTime$/m);
@@ -399,7 +394,7 @@ describe("PrismaProjection — type-driven nullability (v3.1)", () => {
   });
 });
 
-describe("PrismaProjection — json column defaults", () => {
+describe('PrismaProjection — json column defaults', () => {
   // Prisma requires Json column defaults as double-quoted JSON strings
   // (@default("{}"), @default("[]"), @default("{ \"a\": 1 }")) — NOT the bare
   // bracket syntax used for scalar lists.
@@ -407,21 +402,21 @@ describe("PrismaProjection — json column defaults", () => {
   it('emits @default("{}") for a json property with an empty-object default', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Doc", {
+      bareEntity('Doc', {
         properties: [
           {
-            name: "meta",
-            type: { name: "json", nullable: false },
+            name: 'meta',
+            type: { name: 'json', nullable: false },
             modifiers: [],
-            defaultValue: { kind: "object", properties: {} },
+            defaultValue: { kind: 'object', properties: {} },
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Doc"));
+    ir.stores.push(durableStore('Doc'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+meta Json @default\("\{\}"\)$/m);
   });
@@ -429,150 +424,144 @@ describe("PrismaProjection — json column defaults", () => {
   it('emits @default("[]") for a json property with an empty-array default', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Doc", {
+      bareEntity('Doc', {
         properties: [
           {
-            name: "meta",
-            type: { name: "json", nullable: false },
+            name: 'meta',
+            type: { name: 'json', nullable: false },
             modifiers: [],
-            defaultValue: { kind: "array", elements: [] },
+            defaultValue: { kind: 'array', elements: [] },
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Doc"));
+    ir.stores.push(durableStore('Doc'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     // Json array default is a quoted JSON string, NOT the bare `[]` scalar-list form.
     expect(code).toMatch(/^\s+meta Json @default\("\[\]"\)$/m);
     expect(code).not.toMatch(/@default\(\[\]\)/);
   });
 
-  it("serializes a non-empty json object default as an escaped JSON string", () => {
+  it('serializes a non-empty json object default as an escaped JSON string', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Doc", {
+      bareEntity('Doc', {
         properties: [
           {
-            name: "meta",
-            type: { name: "json", nullable: false },
+            name: 'meta',
+            type: { name: 'json', nullable: false },
             modifiers: [],
             defaultValue: {
-              kind: "object",
-              properties: { a: { kind: "number", value: 1 } },
+              kind: 'object',
+              properties: { a: { kind: 'number', value: 1 } },
             },
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Doc"));
+    ir.stores.push(durableStore('Doc'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toContain('meta Json @default("{\\"a\\":1}")');
   });
 
-  it("quotes the default on a NULLABLE json column too (capsule `permissions: json? = []` — P1012 repro)", () => {
+  it('quotes the default on a NULLABLE json column too (capsule `permissions: json? = []` — P1012 repro)', () => {
     // Old output `permissions Json? @default([])` failed `prisma validate` with
     // P1012 "The default value of a non-list field cannot be a list." The quoted
     // JSON-string form is required regardless of column nullability.
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Role", {
+      bareEntity('Role', {
         properties: [
           {
-            name: "permissions",
-            type: { name: "json", nullable: true },
+            name: 'permissions',
+            type: { name: 'json', nullable: true },
             modifiers: [],
-            defaultValue: { kind: "array", elements: [] },
+            defaultValue: { kind: 'array', elements: [] },
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Role"));
+    ir.stores.push(durableStore('Role'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+permissions Json\? @default\("\[\]"\)$/m);
     expect(code).not.toMatch(/@default\(\[\]\)/);
   });
 });
 
-describe("PrismaProjection — skipping rules", () => {
-  it("skips entities with store target `memory`", () => {
+describe('PrismaProjection — skipping rules', () => {
+  it('skips entities with store target `memory`', () => {
     const ir = emptyIR();
     ir.entities.push(widgetEntity());
-    ir.stores.push(memoryStore("Widget"));
+    ir.stores.push(memoryStore('Widget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
     expect(result.artifacts[0].code).not.toMatch(/model Widget/);
-    const skip = result.diagnostics.find(
-      (d) => d.code === "PRISMA_SKIPPED_NON_DURABLE"
-    );
+    const skip = result.diagnostics.find((d) => d.code === 'PRISMA_SKIPPED_NON_DURABLE');
     expect(skip).toBeDefined();
-    expect(skip?.entity).toBe("Widget");
+    expect(skip?.entity).toBe('Widget');
   });
 
-  it("skips entities marked `external: true` even when a durable store is declared", () => {
+  it('skips entities marked `external: true` even when a durable store is declared', () => {
     const ir = emptyIR();
     ir.entities.push({ ...widgetEntity(), external: true } as IREntity & {
       external: boolean;
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
     expect(result.artifacts[0].code).not.toMatch(/model Widget/);
-    const skip = result.diagnostics.find(
-      (d) => d.code === "PRISMA_SKIPPED_EXTERNAL"
-    );
+    const skip = result.diagnostics.find((d) => d.code === 'PRISMA_SKIPPED_EXTERNAL');
     expect(skip).toBeDefined();
-    expect(skip?.entity).toBe("Widget");
+    expect(skip?.entity).toBe('Widget');
   });
 
-  it("skips entities with no store declaration", () => {
+  it('skips entities with no store declaration', () => {
     const ir = emptyIR();
     ir.entities.push(widgetEntity());
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
     expect(result.artifacts[0].code).not.toMatch(/model Widget/);
-    const skip = result.diagnostics.find(
-      (d) => d.code === "PRISMA_SKIPPED_NO_STORE"
-    );
+    const skip = result.diagnostics.find((d) => d.code === 'PRISMA_SKIPPED_NO_STORE');
     expect(skip).toBeDefined();
   });
 
-  it("NEVER iterates computedProperties (structural invariant)", () => {
+  it('NEVER iterates computedProperties (structural invariant)', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "price",
-          type: { name: "money", nullable: false },
-          modifiers: ["required"],
+          name: 'price',
+          type: { name: 'money', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [
         {
-          name: "total",
-          type: { name: "money", nullable: false },
-          expression: { kind: "identifier", name: "price" },
-          dependencies: ["price"],
+          name: 'total',
+          type: { name: 'money', nullable: false },
+          expression: { kind: 'identifier', name: 'price' },
+          dependencies: ['price'],
         },
       ],
       relationships: [],
@@ -580,31 +569,31 @@ describe("PrismaProjection — skipping rules", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+price Decimal @db\.Decimal\(12, 2\)$/m);
     expect(code).not.toMatch(/^\s+total /m);
   });
 });
 
-describe("PrismaProjection — `money` / `decimal` types and default precision", () => {
-  it("maps `money` to Prisma `Decimal` with default precision @db.Decimal(12, 2)", () => {
+describe('PrismaProjection — `money` / `decimal` types and default precision', () => {
+  it('maps `money` to Prisma `Decimal` with default precision @db.Decimal(12, 2)', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "unitCost",
-          type: { name: "money", nullable: false },
-          modifiers: ["required"],
+          name: 'unitCost',
+          type: { name: 'money', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -613,32 +602,30 @@ describe("PrismaProjection — `money` / `decimal` types and default precision",
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
-    expect(
-      result.diagnostics.filter((d) => d.severity === "error")
-    ).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     const code = result.artifacts[0].code;
     expect(code).toMatch(/^\s+unitCost Decimal @db\.Decimal\(12, 2\)$/m);
   });
 
-  it("an explicit dbAttributes entry beats the default @db.Decimal (e.g. @db.Money)", () => {
+  it('an explicit dbAttributes entry beats the default @db.Decimal (e.g. @db.Money)', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "unitCost",
-          type: { name: "money", nullable: false },
-          modifiers: ["required"],
+          name: 'unitCost',
+          type: { name: 'money', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -647,34 +634,32 @@ describe("PrismaProjection — `money` / `decimal` types and default precision",
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { dbAttributes: { Widget: { unitCost: "Money" } } },
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { unitCost: 'Money' } } },
     });
-    expect(
-      result.diagnostics.filter((d) => d.severity === "error")
-    ).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     const code = result.artifacts[0].code;
     expect(code).toMatch(/^\s+unitCost Decimal @db\.Money$/m);
     expect(code).not.toMatch(/unitCost Decimal @db\.Decimal/);
   });
 
-  it("an explicit precision entry still beats dbAttributes (both explicit — precision is narrower)", () => {
+  it('an explicit precision entry still beats dbAttributes (both explicit — precision is narrower)', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "unitCost",
-          type: { name: "money", nullable: false },
-          modifiers: ["required"],
+          name: 'unitCost',
+          type: { name: 'money', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -683,12 +668,12 @@ describe("PrismaProjection — `money` / `decimal` types and default precision",
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        dbAttributes: { Widget: { unitCost: "Money" } },
+        dbAttributes: { Widget: { unitCost: 'Money' } },
         precision: { Widget: { unitCost: { precision: 10, scale: 4 } } },
       },
     });
@@ -697,20 +682,20 @@ describe("PrismaProjection — `money` / `decimal` types and default precision",
     expect(code).not.toMatch(/@db\.Money/);
   });
 
-  it("maps `decimal` to Prisma `Decimal` with the same default precision", () => {
+  it('maps `decimal` to Prisma `Decimal` with the same default precision', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "ratio",
-          type: { name: "decimal", nullable: false },
-          modifiers: ["required"],
+          name: 'ratio',
+          type: { name: 'decimal', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -719,28 +704,28 @@ describe("PrismaProjection — `money` / `decimal` types and default precision",
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+ratio Decimal @db\.Decimal\(12, 2\)$/m);
   });
 
-  it("lets the consumer override the default precision per-property without changing the type", () => {
+  it('lets the consumer override the default precision per-property without changing the type', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "fxRate",
-          type: { name: "decimal", nullable: false },
-          modifiers: ["required"],
+          name: 'fxRate',
+          type: { name: 'decimal', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -749,10 +734,10 @@ describe("PrismaProjection — `money` / `decimal` types and default precision",
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
         precision: { Widget: { fxRate: { precision: 18, scale: 8 } } },
       },
@@ -762,20 +747,20 @@ describe("PrismaProjection — `money` / `decimal` types and default precision",
     expect(code).not.toMatch(/@db\.Decimal\(12, 2\)/);
   });
 
-  it("applies default precision to ANY property whose resolved scalar is Decimal", () => {
+  it('applies default precision to ANY property whose resolved scalar is Decimal', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "externalAmount",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'externalAmount',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -784,32 +769,32 @@ describe("PrismaProjection — `money` / `decimal` types and default precision",
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { typeMappings: { Widget: { externalAmount: "Decimal" } } },
+      surface: 'prisma.schema',
+      options: { typeMappings: { Widget: { externalAmount: 'Decimal' } } },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+externalAmount Decimal @db\.Decimal\(12, 2\)$/m);
   });
 });
 
-describe("PrismaProjection — bare `number` is ambiguous (PRISMA_AMBIGUOUS_NUMBER)", () => {
-  it("emits PRISMA_AMBIGUOUS_NUMBER and skips the column for a bare `number` property with no override", () => {
+describe('PrismaProjection — bare `number` is ambiguous (PRISMA_AMBIGUOUS_NUMBER)', () => {
+  it('emits PRISMA_AMBIGUOUS_NUMBER and skips the column for a bare `number` property with no override', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "qty",
-          type: { name: "number", nullable: false },
-          modifiers: ["required"],
+          name: 'qty',
+          type: { name: 'number', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -818,16 +803,16 @@ describe("PrismaProjection — bare `number` is ambiguous (PRISMA_AMBIGUOUS_NUMB
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
 
-    const errs = result.diagnostics.filter((d) => d.severity === "error");
+    const errs = result.diagnostics.filter((d) => d.severity === 'error');
     expect(errs).toHaveLength(1);
-    expect(errs[0].code).toBe("PRISMA_AMBIGUOUS_NUMBER");
-    expect(errs[0].entity).toBe("Widget");
+    expect(errs[0].code).toBe('PRISMA_AMBIGUOUS_NUMBER');
+    expect(errs[0].entity).toBe('Widget');
     expect(errs[0].message).toMatch(/Widget\.qty/);
     expect(errs[0].message).toMatch(/'int'/);
     expect(errs[0].message).toMatch(/'bigint'/);
@@ -841,30 +826,30 @@ describe("PrismaProjection — bare `number` is ambiguous (PRISMA_AMBIGUOUS_NUMB
     expect(code).not.toMatch(/^\s+qty /m);
   });
 
-  it("resolves cleanly when the author picks a precise type (`int`, `float`, `money`)", () => {
+  it('resolves cleanly when the author picks a precise type (`int`, `float`, `money`)', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "qty",
-          type: { name: "int", nullable: false },
-          modifiers: ["required"],
+          name: 'qty',
+          type: { name: 'int', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "temperature",
-          type: { name: "float", nullable: false },
-          modifiers: ["required"],
+          name: 'temperature',
+          type: { name: 'float', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "unitCost",
-          type: { name: "money", nullable: false },
-          modifiers: ["required"],
+          name: 'unitCost',
+          type: { name: 'money', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -873,14 +858,12 @@ describe("PrismaProjection — bare `number` is ambiguous (PRISMA_AMBIGUOUS_NUMB
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
-    expect(
-      result.diagnostics.filter((d) => d.severity === "error")
-    ).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
 
     const code = result.artifacts[0].code;
     expect(code).toMatch(/^\s+qty Int$/m);
@@ -888,20 +871,20 @@ describe("PrismaProjection — bare `number` is ambiguous (PRISMA_AMBIGUOUS_NUMB
     expect(code).toMatch(/^\s+unitCost Decimal @db\.Decimal\(12, 2\)$/m);
   });
 
-  it("still permits bare `number` IF the consumer supplies a typeMappings override (escape hatch)", () => {
+  it('still permits bare `number` IF the consumer supplies a typeMappings override (escape hatch)', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "legacyCount",
-          type: { name: "number", nullable: false },
-          modifiers: ["required"],
+          name: 'legacyCount',
+          type: { name: 'number', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -910,35 +893,33 @@ describe("PrismaProjection — bare `number` is ambiguous (PRISMA_AMBIGUOUS_NUMB
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { typeMappings: { Widget: { legacyCount: "BigInt" } } },
+      surface: 'prisma.schema',
+      options: { typeMappings: { Widget: { legacyCount: 'BigInt' } } },
     });
 
-    expect(
-      result.diagnostics.filter((d) => d.code === "PRISMA_AMBIGUOUS_NUMBER")
-    ).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.code === 'PRISMA_AMBIGUOUS_NUMBER')).toHaveLength(0);
     expect(result.artifacts[0].code).toMatch(/^\s+legacyCount BigInt$/m);
   });
 });
 
-describe("PrismaProjection — diagnostic for unmappable type.name", () => {
-  it("emits PRISMA_UNKNOWN_TYPE when a property type has no default mapping and no override", () => {
+describe('PrismaProjection — diagnostic for unmappable type.name', () => {
+  it('emits PRISMA_UNKNOWN_TYPE when a property type has no default mapping and no override', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "amount",
-          type: { name: "currency", nullable: false },
-          modifiers: ["required"],
+          name: 'amount',
+          type: { name: 'currency', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -947,16 +928,16 @@ describe("PrismaProjection — diagnostic for unmappable type.name", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
 
-    const errs = result.diagnostics.filter((d) => d.severity === "error");
+    const errs = result.diagnostics.filter((d) => d.severity === 'error');
     expect(errs).toHaveLength(1);
-    expect(errs[0].code).toBe("PRISMA_UNKNOWN_TYPE");
-    expect(errs[0].entity).toBe("Widget");
+    expect(errs[0].code).toBe('PRISMA_UNKNOWN_TYPE');
+    expect(errs[0].entity).toBe('Widget');
     expect(errs[0].message).toMatch(/Widget\.amount/);
     expect(errs[0].message).toMatch(/currency/);
     expect(errs[0].message).toMatch(/typeMappings/);
@@ -966,20 +947,20 @@ describe("PrismaProjection — diagnostic for unmappable type.name", () => {
     expect(code).not.toMatch(/^\s+amount /m);
   });
 
-  it("resolves unmappable types when consumer supplies a `typeMappings` override", () => {
+  it('resolves unmappable types when consumer supplies a `typeMappings` override', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "amount",
-          type: { name: "currency", nullable: false },
-          modifiers: ["required"],
+          name: 'amount',
+          type: { name: 'currency', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -988,42 +969,38 @@ describe("PrismaProjection — diagnostic for unmappable type.name", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { typeMappings: { Widget: { amount: "Decimal" } } },
+      surface: 'prisma.schema',
+      options: { typeMappings: { Widget: { amount: 'Decimal' } } },
     });
 
-    expect(
-      result.diagnostics.filter((d) => d.code === "PRISMA_UNKNOWN_TYPE")
-    ).toHaveLength(0);
-    expect(result.artifacts[0].code).toMatch(
-      /^\s+amount Decimal @db\.Decimal\(12, 2\)$/m
-    );
+    expect(result.diagnostics.filter((d) => d.code === 'PRISMA_UNKNOWN_TYPE')).toHaveLength(0);
+    expect(result.artifacts[0].code).toMatch(/^\s+amount Decimal @db\.Decimal\(12, 2\)$/m);
   });
 });
 
-describe("PrismaProjection — app-agnostic invariant", () => {
-  it("emits a usable Prisma schema with ZERO app/domain identifiers in the projection source", () => {
+describe('PrismaProjection — app-agnostic invariant', () => {
+  it('emits a usable Prisma schema with ZERO app/domain identifiers in the projection source', () => {
     const ir = emptyIR();
     ir.entities.push(widgetEntity());
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { provider: "postgresql" },
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql' },
     }).artifacts[0].code;
 
     const forbidden = [
-      "tenantId",
-      "deletedAt",
-      "organization",
-      "userTenantMapping",
-      "auth",
-      "clerk",
-      "supabase_user",
-      "tenant_id",
+      'tenantId',
+      'deletedAt',
+      'organization',
+      'userTenantMapping',
+      'auth',
+      'clerk',
+      'supabase_user',
+      'tenant_id',
     ];
     for (const token of forbidden) {
       expect(code).not.toContain(token);
@@ -1031,425 +1008,392 @@ describe("PrismaProjection — app-agnostic invariant", () => {
   });
 });
 
-describe("PrismaProjection — relationship wiring (Step 3)", () => {
-  it("emits a working one-to-many: hasMany on parent, belongsTo+FK on child", () => {
+describe('PrismaProjection — relationship wiring (Step 3)', () => {
+  it('emits a working one-to-many: hasMany on parent, belongsTo+FK on child', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
-        relationships: [{ name: "books", kind: "hasMany", target: "Book" }],
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
       }),
-      bareEntity("Book", {
-        relationships: [
-          { name: "author", kind: "belongsTo", target: "Author" },
-        ],
-      })
+      bareEntity('Book', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
+      }),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
     const code = result.artifacts[0].code;
 
-    expect(code).toMatch(
-      /model Author \{[\s\S]*?\n\s+books Book\[\][\s\S]*?\n\}/
-    );
+    expect(code).toMatch(/model Author \{[\s\S]*?\n\s+books Book\[\][\s\S]*?\n\}/);
     expect(code).toMatch(/^\s+authorId String$/m);
     expect(code).toMatch(
-      /^\s+author Author @relation\(fields: \[authorId\], references: \[id\]\)$/m
+      /^\s+author Author @relation\(fields: \[authorId\], references: \[id\]\)$/m,
     );
 
-    const authorIdLine = code
-      .split("\n")
-      .find((l) => /^\s+authorId String/.test(l));
+    const authorIdLine = code.split('\n').find((l) => /^\s+authorId String/.test(l));
     expect(authorIdLine).not.toMatch(/@unique/);
 
     expect(
-      result.diagnostics.find((d) => d.code === "PRISMA_RELATION_UNIMPLEMENTED")
+      result.diagnostics.find((d) => d.code === 'PRISMA_RELATION_UNIMPLEMENTED'),
     ).toBeUndefined();
     expect(
-      result.diagnostics.find(
-        (d) => d.code === "PRISMA_RELATION_MISSING_BACKSIDE"
-      )
+      result.diagnostics.find((d) => d.code === 'PRISMA_RELATION_MISSING_BACKSIDE'),
     ).toBeUndefined();
   });
 
-  it("emits a working one-to-one: hasOne on parent, belongsTo+@unique FK on child", () => {
+  it('emits a working one-to-one: hasOne on parent, belongsTo+@unique FK on child', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("User", {
-        relationships: [{ name: "profile", kind: "hasOne", target: "Profile" }],
+      bareEntity('User', {
+        relationships: [{ name: 'profile', kind: 'hasOne', target: 'Profile' }],
       }),
-      bareEntity("Profile", {
-        relationships: [{ name: "user", kind: "belongsTo", target: "User" }],
-      })
+      bareEntity('Profile', {
+        relationships: [{ name: 'user', kind: 'belongsTo', target: 'User' }],
+      }),
     );
-    ir.stores.push(durableStore("User"), durableStore("Profile"));
+    ir.stores.push(durableStore('User'), durableStore('Profile'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+profile Profile\?$/m);
     expect(code).toMatch(/^\s+userId String @unique$/m);
-    expect(code).toMatch(
-      /^\s+user User @relation\(fields: \[userId\], references: \[id\]\)$/m
-    );
+    expect(code).toMatch(/^\s+user User @relation\(fields: \[userId\], references: \[id\]\)$/m);
   });
 
-  it("emits a `ref` relationship like belongsTo, AND warns about missing back-relation", () => {
+  it('emits a `ref` relationship like belongsTo, AND warns about missing back-relation', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Event", {
-        relationships: [{ name: "createdBy", kind: "ref", target: "Actor" }],
+      bareEntity('Event', {
+        relationships: [{ name: 'createdBy', kind: 'ref', target: 'Actor' }],
       }),
-      bareEntity("Actor")
+      bareEntity('Actor'),
     );
-    ir.stores.push(durableStore("Event"), durableStore("Actor"));
+    ir.stores.push(durableStore('Event'), durableStore('Actor'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
     const code = result.artifacts[0].code;
 
     expect(code).toMatch(/^\s+createdById String$/m);
     expect(code).toMatch(
-      /^\s+createdBy Actor @relation\(fields: \[createdById\], references: \[id\]\)$/m
+      /^\s+createdBy Actor @relation\(fields: \[createdById\], references: \[id\]\)$/m,
     );
     const warn = result.diagnostics.find(
-      (d) =>
-        d.code === "PRISMA_RELATION_MISSING_BACKSIDE" && d.entity === "Event"
+      (d) => d.code === 'PRISMA_RELATION_MISSING_BACKSIDE' && d.entity === 'Event',
     );
     expect(warn).toBeDefined();
-    expect(warn?.severity).toBe("warning");
+    expect(warn?.severity).toBe('warning');
   });
 
   it("uses IR's `foreignKey.fields` annotation when present (single-column, backward-compat)", () => {
     // IR foreignKey.fields renames the FK field at .manifest source level.
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
-        relationships: [{ name: "books", kind: "hasMany", target: "Book" }],
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
       }),
-      bareEntity("Book", {
+      bareEntity('Book', {
         relationships: [
           {
-            name: "author",
-            kind: "belongsTo",
-            target: "Author",
-            foreignKey: { fields: ["writerId"] },
+            name: 'author',
+            kind: 'belongsTo',
+            target: 'Author',
+            foreignKey: { fields: ['writerId'] },
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+writerId String$/m);
     expect(code).toMatch(
-      /^\s+author Author @relation\(fields: \[writerId\], references: \[id\]\)$/m
+      /^\s+author Author @relation\(fields: \[writerId\], references: \[id\]\)$/m,
     );
     expect(code).not.toMatch(/^\s+authorId /m);
   });
 
-  it("respects the `foreignKeys` projection-config override (nested-key shape, no dotted strings)", () => {
+  it('respects the `foreignKeys` projection-config override (nested-key shape, no dotted strings)', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
-        relationships: [{ name: "books", kind: "hasMany", target: "Book" }],
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
       }),
-      bareEntity("Book", {
-        relationships: [
-          { name: "author", kind: "belongsTo", target: "Author" },
-        ],
-      })
+      bareEntity('Book', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
+      }),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { foreignKeys: { Book: { author: "writerId" } } },
+      surface: 'prisma.schema',
+      options: { foreignKeys: { Book: { author: 'writerId' } } },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+writerId String$/m);
     expect(code).toMatch(
-      /^\s+author Author @relation\(fields: \[writerId\], references: \[id\]\)$/m
+      /^\s+author Author @relation\(fields: \[writerId\], references: \[id\]\)$/m,
     );
   });
 
   it("config `foreignKeys` wins over IR's `foreignKey.fields` (consumer override is authoritative)", () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
-        relationships: [{ name: "books", kind: "hasMany", target: "Book" }],
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
       }),
-      bareEntity("Book", {
+      bareEntity('Book', {
         relationships: [
           {
-            name: "author",
-            kind: "belongsTo",
-            target: "Author",
-            foreignKey: { fields: ["irFkName"] },
+            name: 'author',
+            kind: 'belongsTo',
+            target: 'Author',
+            foreignKey: { fields: ['irFkName'] },
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { foreignKeys: { Book: { author: "configFkName" } } },
+      surface: 'prisma.schema',
+      options: { foreignKeys: { Book: { author: 'configFkName' } } },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+configFkName String$/m);
     expect(code).not.toMatch(/irFkName/);
   });
 
-  it("FK column accepts `columnMappings` for snake_case @map (FK is a virtual property)", () => {
+  it('FK column accepts `columnMappings` for snake_case @map (FK is a virtual property)', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
-        relationships: [{ name: "books", kind: "hasMany", target: "Book" }],
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
       }),
-      bareEntity("Book", {
-        relationships: [
-          { name: "author", kind: "belongsTo", target: "Author" },
-        ],
-      })
+      bareEntity('Book', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
+      }),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { columnMappings: { Book: { authorId: "author_id" } } },
+      surface: 'prisma.schema',
+      options: { columnMappings: { Book: { authorId: 'author_id' } } },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+authorId String @map\("author_id"\)$/m);
   });
 
-  it("FK type follows the referenced property type (Int target → Int FK)", () => {
+  it('FK type follows the referenced property type (Int target → Int FK)', () => {
     const ir = emptyIR();
     ir.entities.push(
       {
-        name: "Author",
+        name: 'Author',
         properties: [
           {
-            name: "id",
-            type: { name: "int", nullable: false },
-            modifiers: ["required"],
+            name: 'id',
+            type: { name: 'int', nullable: false },
+            modifiers: ['required'],
           },
         ],
         computedProperties: [],
-        relationships: [{ name: "books", kind: "hasMany", target: "Book" }],
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
         commands: [],
         constraints: [],
         policies: [],
       },
-      bareEntity("Book", {
-        relationships: [
-          { name: "author", kind: "belongsTo", target: "Author" },
-        ],
-      })
+      bareEntity('Book', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
+      }),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+authorId Int$/m);
     expect(code).toMatch(/model Author \{[\s\S]*?id Int @id/);
   });
 });
 
-describe("PrismaProjection — relationship diagnostics for unhandleable shapes", () => {
-  it("emits PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED for many-to-many via `through`", () => {
+describe('PrismaProjection — relationship diagnostics for unhandleable shapes', () => {
+  it('emits PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED for many-to-many via `through`', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
+      bareEntity('Author', {
         relationships: [
           {
-            name: "books",
-            kind: "hasMany",
-            target: "Book",
-            through: "AuthorBook",
+            name: 'books',
+            kind: 'hasMany',
+            target: 'Book',
+            through: 'AuthorBook',
           },
         ],
       }),
-      bareEntity("Book"),
-      bareEntity("AuthorBook")
+      bareEntity('Book'),
+      bareEntity('AuthorBook'),
     );
-    ir.stores.push(
-      durableStore("Author"),
-      durableStore("Book"),
-      durableStore("AuthorBook")
-    );
+    ir.stores.push(durableStore('Author'), durableStore('Book'), durableStore('AuthorBook'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
     const code = result.artifacts[0].code;
 
     expect(code).not.toMatch(/^\s+books Book\[\]$/m);
     const through = result.diagnostics.find(
-      (d) => d.code === "PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED"
+      (d) => d.code === 'PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED',
     );
     expect(through).toBeDefined();
-    expect(through?.entity).toBe("Author");
+    expect(through?.entity).toBe('Author');
     expect(through?.message).toMatch(/AuthorBook/);
     expect(through?.message).toMatch(/join entity/);
   });
 
-  it("emits deterministic named @relation on both sides when multiple relations connect the same pair", () => {
+  it('emits deterministic named @relation on both sides when multiple relations connect the same pair', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
+      bareEntity('Author', {
         relationships: [
-          { name: "authoredBooks", kind: "hasMany", target: "Book" },
-          { name: "editedBooks", kind: "hasMany", target: "Book" },
+          { name: 'authoredBooks', kind: 'hasMany', target: 'Book' },
+          { name: 'editedBooks', kind: 'hasMany', target: 'Book' },
         ],
       }),
-      bareEntity("Book", {
+      bareEntity('Book', {
         relationships: [
-          { name: "author", kind: "belongsTo", target: "Author" },
-          { name: "editor", kind: "belongsTo", target: "Author" },
+          { name: 'author', kind: 'belongsTo', target: 'Author' },
+          { name: 'editor', kind: 'belongsTo', target: 'Author' },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
 
     // FK side: name is first @relation arg, paired by declaration order.
     expect(code).toMatch(
-      /author\s+Author\s+@relation\("Book_author", fields: \[authorId\], references: \[id\]\)/
+      /author\s+Author\s+@relation\("Book_author", fields: \[authorId\], references: \[id\]\)/,
     );
     expect(code).toMatch(
-      /editor\s+Author\s+@relation\("Book_editor", fields: \[editorId\], references: \[id\]\)/
+      /editor\s+Author\s+@relation\("Book_editor", fields: \[editorId\], references: \[id\]\)/,
     );
     // Back side: same names, paired authoredBooks↔author, editedBooks↔editor.
-    expect(code).toMatch(
-      /authoredBooks\s+Book\[\]\s+@relation\("Book_author"\)/
-    );
+    expect(code).toMatch(/authoredBooks\s+Book\[\]\s+@relation\("Book_author"\)/);
     expect(code).toMatch(/editedBooks\s+Book\[\]\s+@relation\("Book_editor"\)/);
     // No give-up comment.
     expect(code).not.toMatch(/PRISMA_RELATION_AMBIGUOUS/);
   });
 
-  it("warns PRISMA_RELATION_AMBIGUOUS when a multi-relation back side has no FK to anchor a name", () => {
+  it('warns PRISMA_RELATION_AMBIGUOUS when a multi-relation back side has no FK to anchor a name', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
+      bareEntity('Author', {
         relationships: [
-          { name: "authoredBooks", kind: "hasMany", target: "Book" },
-          { name: "editedBooks", kind: "hasMany", target: "Book" },
+          { name: 'authoredBooks', kind: 'hasMany', target: 'Book' },
+          { name: 'editedBooks', kind: 'hasMany', target: 'Book' },
         ],
       }),
-      bareEntity("Book")
+      bareEntity('Book'),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
 
-    const ambig = result.diagnostics.filter(
-      (d) => d.code === "PRISMA_RELATION_AMBIGUOUS"
-    );
+    const ambig = result.diagnostics.filter((d) => d.code === 'PRISMA_RELATION_AMBIGUOUS');
     expect(ambig.length).toBeGreaterThan(0);
     expect(ambig[0].message).toMatch(/belongsTo/);
   });
 
-  it("emits PRISMA_RELATION_MISSING_BACKSIDE warning when only one side is declared", () => {
+  it('emits PRISMA_RELATION_MISSING_BACKSIDE warning when only one side is declared', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
-        relationships: [{ name: "books", kind: "hasMany", target: "Book" }],
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
       }),
-      bareEntity("Book")
+      bareEntity('Book'),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
-    const warn = result.diagnostics.find(
-      (d) => d.code === "PRISMA_RELATION_MISSING_BACKSIDE"
-    );
+    const warn = result.diagnostics.find((d) => d.code === 'PRISMA_RELATION_MISSING_BACKSIDE');
     expect(warn).toBeDefined();
-    expect(warn?.severity).toBe("warning");
+    expect(warn?.severity).toBe('warning');
     expect(warn?.message).toMatch(/Book/);
     expect(warn?.message).toMatch(/belongsTo|ref/);
   });
 });
 
-describe("PrismaProjection — autoBackRelations", () => {
-  it("auto-emits the inverse hasMany on the target for a one-sided belongsTo", () => {
+describe('PrismaProjection — autoBackRelations', () => {
+  it('auto-emits the inverse hasMany on the target for a one-sided belongsTo', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Post", {
-        relationships: [{ name: "author", kind: "belongsTo", target: "User" }],
+      bareEntity('Post', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }],
       }),
-      bareEntity("User")
+      bareEntity('User'),
     );
-    ir.stores.push(durableStore("Post"), durableStore("User"));
+    ir.stores.push(durableStore('Post'), durableStore('User'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: { autoBackRelations: true },
     });
     const code = result.artifacts[0].code;
     // Forward side present, inverse auto-emitted on User (pluralized, camel).
-    expect(code).toMatch(
-      /author\s+User\s+@relation\(fields: \[authorId\], references: \[id\]\)/
-    );
+    expect(code).toMatch(/author\s+User\s+@relation\(fields: \[authorId\], references: \[id\]\)/);
     expect(code).toMatch(/model User \{[\s\S]*?posts\s+Post\[\][\s\S]*?\}/);
     // No missing-backside warning when auto is on.
     expect(
-      result.diagnostics.find(
-        (d) => d.code === "PRISMA_RELATION_MISSING_BACKSIDE"
-      )
+      result.diagnostics.find((d) => d.code === 'PRISMA_RELATION_MISSING_BACKSIDE'),
     ).toBeUndefined();
   });
 
-  it("does NOT auto-emit (and still warns) when the option is off", () => {
+  it('does NOT auto-emit (and still warns) when the option is off', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Post", {
-        relationships: [{ name: "author", kind: "belongsTo", target: "User" }],
+      bareEntity('Post', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }],
       }),
-      bareEntity("User")
+      bareEntity('User'),
     );
-    ir.stores.push(durableStore("Post"), durableStore("User"));
+    ir.stores.push(durableStore('Post'), durableStore('User'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
     expect(result.artifacts[0].code).not.toMatch(/posts\s+Post\[\]/);
     expect(
-      result.diagnostics.find(
-        (d) => d.code === "PRISMA_RELATION_MISSING_BACKSIDE"
-      )
+      result.diagnostics.find((d) => d.code === 'PRISMA_RELATION_MISSING_BACKSIDE'),
     ).toBeDefined();
   });
 
-  it("does not duplicate an inverse the target already declares", () => {
+  it('does not duplicate an inverse the target already declares', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Post", {
-        relationships: [{ name: "author", kind: "belongsTo", target: "User" }],
+      bareEntity('Post', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }],
       }),
-      bareEntity("User", {
-        relationships: [{ name: "posts", kind: "hasMany", target: "Post" }],
-      })
+      bareEntity('User', {
+        relationships: [{ name: 'posts', kind: 'hasMany', target: 'Post' }],
+      }),
     );
-    ir.stores.push(durableStore("Post"), durableStore("User"));
+    ir.stores.push(durableStore('Post'), durableStore('User'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: { autoBackRelations: true },
     }).artifacts[0].code;
     // Exactly one `posts Post[]` on User (the declared one), no auto duplicate.
@@ -1457,21 +1401,21 @@ describe("PrismaProjection — autoBackRelations", () => {
     expect(matches.length).toBe(1);
   });
 
-  it("auto-emits distinct named inverses for ambiguous multi-relations", () => {
+  it('auto-emits distinct named inverses for ambiguous multi-relations', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Connection", {
+      bareEntity('Connection', {
         relationships: [
-          { name: "fromCard", kind: "belongsTo", target: "Card" },
-          { name: "toCard", kind: "belongsTo", target: "Card" },
+          { name: 'fromCard', kind: 'belongsTo', target: 'Card' },
+          { name: 'toCard', kind: 'belongsTo', target: 'Card' },
         ],
       }),
-      bareEntity("Card")
+      bareEntity('Card'),
     );
-    ir.stores.push(durableStore("Connection"), durableStore("Card"));
+    ir.stores.push(durableStore('Connection'), durableStore('Card'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: { autoBackRelations: true },
     }).artifacts[0].code;
     // Forward sides carry the deterministic names.
@@ -1479,285 +1423,278 @@ describe("PrismaProjection — autoBackRelations", () => {
     expect(code).toMatch(/toCard\s+Card\s+@relation\("Connection_toCard"/);
     // Auto inverses on Card carry matching names and distinct field names.
     expect(code).toMatch(
-      /connectionsFromCard\s+Connection\[\]\s+@relation\("Connection_fromCard"\)/
+      /connectionsFromCard\s+Connection\[\]\s+@relation\("Connection_fromCard"\)/,
     );
-    expect(code).toMatch(
-      /connectionsToCard\s+Connection\[\]\s+@relation\("Connection_toCard"\)/
-    );
+    expect(code).toMatch(/connectionsToCard\s+Connection\[\]\s+@relation\("Connection_toCard"\)/);
   });
 
-  it("names all four fields for a bidirectional belongsTo pair (A→B and B→A)", () => {
+  it('names all four fields for a bidirectional belongsTo pair (A→B and B→A)', () => {
     // VersionedEntity.currentVersion → EntityVersion; EntityVersion.versionedEntity → VersionedEntity.
     // Each belongsTo auto-gains an inverse, so each model carries 2 fields to the other → all need names.
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("VersionedEntity", {
+      bareEntity('VersionedEntity', {
         relationships: [
           {
-            name: "currentVersion",
-            kind: "belongsTo",
-            target: "EntityVersion",
+            name: 'currentVersion',
+            kind: 'belongsTo',
+            target: 'EntityVersion',
           },
         ],
       }),
-      bareEntity("EntityVersion", {
+      bareEntity('EntityVersion', {
         relationships: [
           {
-            name: "versionedEntity",
-            kind: "belongsTo",
-            target: "VersionedEntity",
+            name: 'versionedEntity',
+            kind: 'belongsTo',
+            target: 'VersionedEntity',
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(
-      durableStore("VersionedEntity"),
-      durableStore("EntityVersion")
-    );
+    ir.stores.push(durableStore('VersionedEntity'), durableStore('EntityVersion'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: { autoBackRelations: true },
     }).artifacts[0].code;
     expect(code).toMatch(
-      /currentVersion\s+EntityVersion\s+@relation\("VersionedEntity_currentVersion", fields/
+      /currentVersion\s+EntityVersion\s+@relation\("VersionedEntity_currentVersion", fields/,
     );
     expect(code).toMatch(
-      /versionedEntity\s+VersionedEntity\s+@relation\("EntityVersion_versionedEntity", fields/
+      /versionedEntity\s+VersionedEntity\s+@relation\("EntityVersion_versionedEntity", fields/,
     );
     expect(code).toMatch(
-      /entityVersions\s+EntityVersion\[\]\s+@relation\("EntityVersion_versionedEntity"\)/
+      /entityVersions\s+EntityVersion\[\]\s+@relation\("EntityVersion_versionedEntity"\)/,
     );
     expect(code).toMatch(
-      /versionedEntities\s+VersionedEntity\[\]\s+@relation\("VersionedEntity_currentVersion"\)/
+      /versionedEntities\s+VersionedEntity\[\]\s+@relation\("VersionedEntity_currentVersion"\)/,
     );
   });
 
-  it("emits an optional relation when the FK property type is nullable", () => {
+  it('emits an optional relation when the FK property type is nullable', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Post", {
+      bareEntity('Post', {
         properties: [
           {
-            name: "authorId",
-            type: { name: "string", nullable: true },
+            name: 'authorId',
+            type: { name: 'string', nullable: true },
             modifiers: [],
           },
         ],
-        relationships: [{ name: "author", kind: "belongsTo", target: "User" }],
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }],
       }),
-      bareEntity("User")
+      bareEntity('User'),
     );
-    ir.stores.push(durableStore("Post"), durableStore("User"));
+    ir.stores.push(durableStore('Post'), durableStore('User'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: { autoBackRelations: true },
     }).artifacts[0].code;
     expect(code).toMatch(/author\s+User\?\s+@relation\(fields: \[authorId\]/);
   });
 
-  it("emits a required relation when the FK property type is non-nullable (even without `required`)", () => {
+  it('emits a required relation when the FK property type is non-nullable (even without `required`)', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Post", {
+      bareEntity('Post', {
         // non-nullable type, NO `required` modifier → still a required relation.
         properties: [
           {
-            name: "authorId",
-            type: { name: "string", nullable: false },
+            name: 'authorId',
+            type: { name: 'string', nullable: false },
             modifiers: [],
           },
         ],
-        relationships: [{ name: "author", kind: "belongsTo", target: "User" }],
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }],
       }),
-      bareEntity("User")
+      bareEntity('User'),
     );
-    ir.stores.push(durableStore("Post"), durableStore("User"));
+    ir.stores.push(durableStore('Post'), durableStore('User'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: { autoBackRelations: true },
     }).artifacts[0].code;
     expect(code).toMatch(/author\s+User\s+@relation\(fields: \[authorId\]/);
     expect(code).not.toMatch(/author\s+User\?/);
   });
 
-  it("breaks a self-relation cycle with Restrict under relationMode prisma", () => {
+  it('breaks a self-relation cycle with Restrict under relationMode prisma', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Node", {
+      bareEntity('Node', {
         // nullable FK so the self-relation stays optional (a root node has no parent).
         properties: [
           {
-            name: "parentId",
-            type: { name: "string", nullable: true },
+            name: 'parentId',
+            type: { name: 'string', nullable: true },
             modifiers: [],
           },
         ],
-        relationships: [{ name: "parent", kind: "belongsTo", target: "Node" }],
-      })
+        relationships: [{ name: 'parent', kind: 'belongsTo', target: 'Node' }],
+      }),
     );
-    ir.stores.push(durableStore("Node"));
+    ir.stores.push(durableStore('Node'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { autoBackRelations: true, relationMode: "prisma" },
+      surface: 'prisma.schema',
+      options: { autoBackRelations: true, relationMode: 'prisma' },
     }).artifacts[0].code;
     expect(code).toMatch(
-      /parent\s+Node\?\s+@relation\("Node_parent"[\s\S]*?onDelete: Restrict, onUpdate: Restrict\)/
+      /parent\s+Node\?\s+@relation\("Node_parent"[\s\S]*?onDelete: Restrict, onUpdate: Restrict\)/,
     );
   });
 
-  it("breaks a mutual 2-cycle with NoAction when not in relationMode prisma", () => {
+  it('breaks a mutual 2-cycle with NoAction when not in relationMode prisma', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("A", {
+      bareEntity('A', {
         properties: [
           {
-            name: "bId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'bId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
         ],
-        relationships: [{ name: "b", kind: "belongsTo", target: "B" }],
+        relationships: [{ name: 'b', kind: 'belongsTo', target: 'B' }],
       }),
-      bareEntity("B", {
+      bareEntity('B', {
         properties: [
           {
-            name: "aId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'aId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
         ],
-        relationships: [{ name: "a", kind: "belongsTo", target: "A" }],
-      })
+        relationships: [{ name: 'a', kind: 'belongsTo', target: 'A' }],
+      }),
     );
-    ir.stores.push(durableStore("A"), durableStore("B"));
+    ir.stores.push(durableStore('A'), durableStore('B'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: { autoBackRelations: true },
     }).artifacts[0].code;
     expect(code).toMatch(/onDelete: NoAction, onUpdate: NoAction/);
   });
 
-  it("emits @@unique([id]) when a composite-key model is referenced by a single-id FK", () => {
+  it('emits @@unique([id]) when a composite-key model is referenced by a single-id FK', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Order", {
-        key: ["tenantId", "id"],
+      bareEntity('Order', {
+        key: ['tenantId', 'id'],
         properties: [
           {
-            name: "tenantId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'tenantId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
         ],
       }),
-      bareEntity("Line", {
+      bareEntity('Line', {
         properties: [
           {
-            name: "orderId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'orderId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
         ],
         relationships: [
           {
-            name: "order",
-            kind: "belongsTo",
-            target: "Order",
-            foreignKey: { fields: ["orderId"], references: ["id"] },
+            name: 'order',
+            kind: 'belongsTo',
+            target: 'Order',
+            foreignKey: { fields: ['orderId'], references: ['id'] },
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Order"), durableStore("Line"));
+    ir.stores.push(durableStore('Order'), durableStore('Line'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: { autoBackRelations: true },
     }).artifacts[0].code;
     expect(code).toMatch(
-      /model Order \{[\s\S]*?@@id\(\[tenantId, id\]\)[\s\S]*?@@unique\(\[id\]\)/
+      /model Order \{[\s\S]*?@@id\(\[tenantId, id\]\)[\s\S]*?@@unique\(\[id\]\)/,
     );
   });
 
-  it("does NOT emit @@unique([id]) for a composite-key model referenced only by composite FK", () => {
+  it('does NOT emit @@unique([id]) for a composite-key model referenced only by composite FK', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Order", {
-        key: ["tenantId", "id"],
+      bareEntity('Order', {
+        key: ['tenantId', 'id'],
         properties: [
           {
-            name: "tenantId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'tenantId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
         ],
       }),
-      bareEntity("Line", {
+      bareEntity('Line', {
         properties: [
           {
-            name: "tenantId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'tenantId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "orderId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'orderId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
         ],
         relationships: [
           {
-            name: "order",
-            kind: "belongsTo",
-            target: "Order",
+            name: 'order',
+            kind: 'belongsTo',
+            target: 'Order',
             foreignKey: {
-              fields: ["tenantId", "orderId"],
-              references: ["tenantId", "id"],
+              fields: ['tenantId', 'orderId'],
+              references: ['tenantId', 'id'],
             },
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Order"), durableStore("Line"));
+    ir.stores.push(durableStore('Order'), durableStore('Line'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: { autoBackRelations: true },
     }).artifacts[0].code;
     expect(code).not.toMatch(/@@unique\(\[id\]\)/);
   });
 
-  it("uniquifies an auto inverse field name that collides with a property", () => {
+  it('uniquifies an auto inverse field name that collides with a property', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Post", {
-        relationships: [{ name: "author", kind: "belongsTo", target: "User" }],
+      bareEntity('Post', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }],
       }),
-      bareEntity("User", {
+      bareEntity('User', {
         properties: [
           {
-            name: "posts",
-            type: { name: "string", nullable: false },
+            name: 'posts',
+            type: { name: 'string', nullable: false },
             modifiers: [],
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Post"), durableStore("User"));
+    ir.stores.push(durableStore('Post'), durableStore('User'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: { autoBackRelations: true },
     }).artifacts[0].code;
     // The scalar `posts` property stays; the auto inverse gets a suffixed name.
-    expect(code).toMatch(
-      /model User \{[\s\S]*?posts\s+String[\s\S]*?posts2\s+Post\[\][\s\S]*?\}/
-    );
+    expect(code).toMatch(/model User \{[\s\S]*?posts\s+String[\s\S]*?posts2\s+Post\[\][\s\S]*?\}/);
   });
 });
 
@@ -1765,62 +1702,62 @@ describe("PrismaProjection — autoBackRelations", () => {
 // Phase 3 golden tests: composite PK / FK / referential actions
 // ---------------------------------------------------------------------------
 
-describe("PrismaProjection — composite PK, composite FK, and referential actions (v1.0)", () => {
-  it("REGRESSION: single-column `with` relation emits byte-identical output (no regression)", () => {
+describe('PrismaProjection — composite PK, composite FK, and referential actions (v1.0)', () => {
+  it('REGRESSION: single-column `with` relation emits byte-identical output (no regression)', () => {
     // This is the Phase 3 regression gate. `with authorId` compiles to
     // foreignKey: { fields: ['authorId'] } (references absent). The projection
     // must emit exactly the same output as before: authorId String + @relation
     // with references: [id] defaulted.
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
-        relationships: [{ name: "books", kind: "hasMany", target: "Book" }],
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
       }),
-      bareEntity("Book", {
+      bareEntity('Book', {
         relationships: [
           // foreignKey.references absent → projection defaults to [id]
           {
-            name: "author",
-            kind: "belongsTo",
-            target: "Author",
-            foreignKey: { fields: ["authorId"] },
+            name: 'author',
+            kind: 'belongsTo',
+            target: 'Author',
+            foreignKey: { fields: ['authorId'] },
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
 
     // Exact same output as before the IR shape change.
     expect(code).toMatch(/^\s+authorId String$/m);
     expect(code).toMatch(
-      /^\s+author Author @relation\(fields: \[authorId\], references: \[id\]\)$/m
+      /^\s+author Author @relation\(fields: \[authorId\], references: \[id\]\)$/m,
     );
   });
 
-  it("composite PK entity emits @@id([...]) and suppresses PRISMA_NO_ID_PROPERTY", () => {
+  it('composite PK entity emits @@id([...]) and suppresses PRISMA_NO_ID_PROPERTY', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Order",
-      key: ["tenantId", "orderId"],
+      name: 'Order',
+      key: ['tenantId', 'orderId'],
       properties: [
         {
-          name: "tenantId",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'tenantId',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "orderId",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'orderId',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "amount",
-          type: { name: "int", nullable: false },
-          modifiers: ["required"],
+          name: 'amount',
+          type: { name: 'int', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -1829,10 +1766,10 @@ describe("PrismaProjection — composite PK, composite FK, and referential actio
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Order"));
+    ir.stores.push(durableStore('Order'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
     const code = result.artifacts[0].code;
 
@@ -1841,32 +1778,28 @@ describe("PrismaProjection — composite PK, composite FK, and referential actio
     // No single @id attribute on any field (@@id is fine; standalone @id is not).
     expect(code).not.toMatch(/(?<!@)@id\b/m);
     // PRISMA_NO_ID_PROPERTY must NOT fire when key is set.
-    expect(
-      result.diagnostics.find((d) => d.code === "PRISMA_NO_ID_PROPERTY")
-    ).toBeUndefined();
-    expect(
-      result.diagnostics.filter((d) => d.severity === "error")
-    ).toHaveLength(0);
+    expect(result.diagnostics.find((d) => d.code === 'PRISMA_NO_ID_PROPERTY')).toBeUndefined();
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
   });
 
-  it("composite PK entity whose key includes a property named `id` does NOT emit @id on that column", () => {
+  it('composite PK entity whose key includes a property named `id` does NOT emit @id on that column', () => {
     // Real-world case: entity has key [tenantId, id] — `id` is a composite PK column,
     // not a single-column identity. Emitting both `id String @id` AND `@@id([tenantId, id])`
     // would produce an invalid Prisma schema.
     const ir = emptyIR();
     ir.entities.push({
-      name: "Participant",
-      key: ["tenantId", "id"],
+      name: 'Participant',
+      key: ['tenantId', 'id'],
       properties: [
         {
-          name: "tenantId",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'tenantId',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -1875,10 +1808,10 @@ describe("PrismaProjection — composite PK, composite FK, and referential actio
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Participant"));
+    ir.stores.push(durableStore('Participant'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+@@id\(\[tenantId, id\]\)$/m);
@@ -1887,27 +1820,27 @@ describe("PrismaProjection — composite PK, composite FK, and referential actio
     expect(code).not.toMatch(/(?<!@)@id\b/m);
   });
 
-  it("alternate key (unique [...]) emits @@unique([...]) on the target entity", () => {
+  it('alternate key (unique [...]) emits @@unique([...]) on the target entity', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Organization",
-      key: ["tenantId", "id"],
-      alternateKeys: [["tenantId", "externalId"]],
+      name: 'Organization',
+      key: ['tenantId', 'id'],
+      alternateKeys: [['tenantId', 'externalId']],
       properties: [
         {
-          name: "tenantId",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'tenantId',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "externalId",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'externalId',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -1916,84 +1849,84 @@ describe("PrismaProjection — composite PK, composite FK, and referential actio
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Organization"));
+    ir.stores.push(durableStore('Organization'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+@@id\(\[tenantId, id\]\)$/m);
     expect(code).toMatch(/^\s+@@unique\(\[tenantId, externalId\]\)$/m);
   });
 
-  it("composite FK emits multiple FK column lines and correct fields/references", () => {
+  it('composite FK emits multiple FK column lines and correct fields/references', () => {
     // belongsTo org: Organization fields [orgTenantId, orgId] references [tenantId, id]
     const ir = emptyIR();
     ir.entities.push(
       {
-        name: "Organization",
-        key: ["tenantId", "id"],
+        name: 'Organization',
+        key: ['tenantId', 'id'],
         properties: [
           {
-            name: "tenantId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'tenantId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "id",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'id',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
         ],
         computedProperties: [],
-        relationships: [{ name: "orders", kind: "hasMany", target: "Order" }],
+        relationships: [{ name: 'orders', kind: 'hasMany', target: 'Order' }],
         commands: [],
         constraints: [],
         policies: [],
       },
       {
-        name: "Order",
-        key: ["tenantId", "orderId"],
+        name: 'Order',
+        key: ['tenantId', 'orderId'],
         properties: [
           {
-            name: "tenantId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'tenantId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "orderId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'orderId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
         ],
         computedProperties: [],
         relationships: [
           {
-            name: "org",
-            kind: "belongsTo" as const,
-            target: "Organization",
+            name: 'org',
+            kind: 'belongsTo' as const,
+            target: 'Organization',
             foreignKey: {
-              fields: ["tenantId", "orderId"],
-              references: ["tenantId", "id"],
+              fields: ['tenantId', 'orderId'],
+              references: ['tenantId', 'id'],
             },
           },
         ],
         commands: [],
         constraints: [],
         policies: [],
-      }
+      },
     );
-    ir.stores.push(durableStore("Organization"), durableStore("Order"));
+    ir.stores.push(durableStore('Organization'), durableStore('Order'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
     const code = result.artifacts[0].code;
 
     // FK columns: already declared as entity properties, so NOT re-emitted
     // (fkAlreadyDeclared prevents duplicate lines). The @relation line is always emitted.
     expect(code).toMatch(
-      /^\s+org Organization @relation\(fields: \[tenantId, orderId\], references: \[tenantId, id\]\)$/m
+      /^\s+org Organization @relation\(fields: \[tenantId, orderId\], references: \[tenantId, id\]\)$/m,
     );
 
     // @@id on both entities.
@@ -2001,239 +1934,237 @@ describe("PrismaProjection — composite PK, composite FK, and referential actio
     expect(code).toMatch(/@@id\(\[tenantId, id\]\)/);
   });
 
-  it("composite FK with undeclared columns emits multiple FK column lines", () => {
+  it('composite FK with undeclared columns emits multiple FK column lines', () => {
     // When the FK columns are NOT declared as properties, the projection emits them.
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Parent", {
+      bareEntity('Parent', {
         properties: [
           {
-            name: "tenantId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'tenantId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
         ],
-        relationships: [{ name: "children", kind: "hasMany", target: "Child" }],
+        relationships: [{ name: 'children', kind: 'hasMany', target: 'Child' }],
       }),
-      bareEntity("Child", {
+      bareEntity('Child', {
         relationships: [
           {
-            name: "parent",
-            kind: "belongsTo" as const,
-            target: "Parent",
+            name: 'parent',
+            kind: 'belongsTo' as const,
+            target: 'Parent',
             foreignKey: {
-              fields: ["parentTenantId", "parentId"],
-              references: ["tenantId", "id"],
+              fields: ['parentTenantId', 'parentId'],
+              references: ['tenantId', 'id'],
             },
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Parent"), durableStore("Child"));
+    ir.stores.push(durableStore('Parent'), durableStore('Child'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
 
     // Both FK columns emitted (neither is a declared entity property).
     expect(code).toMatch(/^\s+parentTenantId String$/m);
     expect(code).toMatch(/^\s+parentId String$/m);
     expect(code).toMatch(
-      /^\s+parent Parent @relation\(fields: \[parentTenantId, parentId\], references: \[tenantId, id\]\)$/m
+      /^\s+parent Parent @relation\(fields: \[parentTenantId, parentId\], references: \[tenantId, id\]\)$/m,
     );
   });
 
-  it("non-id references target uses the referenced property type", () => {
+  it('non-id references target uses the referenced property type', () => {
     // belongsTo org: Org references [tenantId, externalId]
     // The FK types should match the Org.externalId type, not default to String blindly.
     const ir = emptyIR();
     ir.entities.push(
       {
-        name: "Org",
-        key: ["tenantId", "id"],
-        alternateKeys: [["tenantId", "externalId"]],
+        name: 'Org',
+        key: ['tenantId', 'id'],
+        alternateKeys: [['tenantId', 'externalId']],
         properties: [
           {
-            name: "tenantId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'tenantId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "id",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'id',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "externalId",
-            type: { name: "int", nullable: false },
-            modifiers: ["required"],
+            name: 'externalId',
+            type: { name: 'int', nullable: false },
+            modifiers: ['required'],
           },
         ],
         computedProperties: [],
-        relationships: [{ name: "items", kind: "hasMany", target: "Item" }],
+        relationships: [{ name: 'items', kind: 'hasMany', target: 'Item' }],
         commands: [],
         constraints: [],
         policies: [],
       },
-      bareEntity("Item", {
+      bareEntity('Item', {
         relationships: [
           {
-            name: "org",
-            kind: "belongsTo" as const,
-            target: "Org",
+            name: 'org',
+            kind: 'belongsTo' as const,
+            target: 'Org',
             foreignKey: {
-              fields: ["orgTenantId", "orgExternalId"],
-              references: ["tenantId", "externalId"],
+              fields: ['orgTenantId', 'orgExternalId'],
+              references: ['tenantId', 'externalId'],
             },
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Org"), durableStore("Item"));
+    ir.stores.push(durableStore('Org'), durableStore('Item'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
 
     // orgTenantId → String (Org.tenantId is string), orgExternalId → Int (Org.externalId is int)
     expect(code).toMatch(/^\s+orgTenantId String$/m);
     expect(code).toMatch(/^\s+orgExternalId Int$/m);
     expect(code).toMatch(
-      /^\s+org Org @relation\(fields: \[orgTenantId, orgExternalId\], references: \[tenantId, externalId\]\)$/m
+      /^\s+org Org @relation\(fields: \[orgTenantId, orgExternalId\], references: \[tenantId, externalId\]\)$/m,
     );
   });
 
-  it("onDelete cascade emits onDelete: Cascade in @relation", () => {
+  it('onDelete cascade emits onDelete: Cascade in @relation', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
-        relationships: [{ name: "books", kind: "hasMany", target: "Book" }],
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
       }),
-      bareEntity("Book", {
+      bareEntity('Book', {
         relationships: [
           {
-            name: "author",
-            kind: "belongsTo" as const,
-            target: "Author",
-            onDelete: "cascade",
+            name: 'author',
+            kind: 'belongsTo' as const,
+            target: 'Author',
+            onDelete: 'cascade',
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(
-      /^\s+author Author @relation\(fields: \[authorId\], references: \[id\], onDelete: Cascade\)$/m
+      /^\s+author Author @relation\(fields: \[authorId\], references: \[id\], onDelete: Cascade\)$/m,
     );
   });
 
-  it("onUpdate restrict emits onUpdate: Restrict in @relation", () => {
+  it('onUpdate restrict emits onUpdate: Restrict in @relation', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
-        relationships: [{ name: "books", kind: "hasMany", target: "Book" }],
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
       }),
-      bareEntity("Book", {
+      bareEntity('Book', {
         relationships: [
           {
-            name: "author",
-            kind: "belongsTo" as const,
-            target: "Author",
-            onUpdate: "restrict",
+            name: 'author',
+            kind: 'belongsTo' as const,
+            target: 'Author',
+            onUpdate: 'restrict',
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(
-      /^\s+author Author @relation\(fields: \[authorId\], references: \[id\], onUpdate: Restrict\)$/m
+      /^\s+author Author @relation\(fields: \[authorId\], references: \[id\], onUpdate: Restrict\)$/m,
     );
   });
 
-  it("both onDelete and onUpdate emit both referential actions", () => {
+  it('both onDelete and onUpdate emit both referential actions', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Parent", {
-        relationships: [{ name: "children", kind: "hasMany", target: "Child" }],
+      bareEntity('Parent', {
+        relationships: [{ name: 'children', kind: 'hasMany', target: 'Child' }],
       }),
-      bareEntity("Child", {
+      bareEntity('Child', {
         relationships: [
           {
-            name: "parent",
-            kind: "belongsTo" as const,
-            target: "Parent",
-            onDelete: "cascade",
-            onUpdate: "noAction",
+            name: 'parent',
+            kind: 'belongsTo' as const,
+            target: 'Parent',
+            onDelete: 'cascade',
+            onUpdate: 'noAction',
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Parent"), durableStore("Child"));
+    ir.stores.push(durableStore('Parent'), durableStore('Child'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(
-      /^\s+parent Parent @relation\(fields: \[parentId\], references: \[id\], onDelete: Cascade, onUpdate: NoAction\)$/m
+      /^\s+parent Parent @relation\(fields: \[parentId\], references: \[id\], onDelete: Cascade, onUpdate: NoAction\)$/m,
     );
   });
 
-  it("absent onDelete/onUpdate emit no referential action attributes (let Prisma default)", () => {
+  it('absent onDelete/onUpdate emit no referential action attributes (let Prisma default)', () => {
     // Critical for Phase 5: relations with no action declared must diff clean
     // against real-schema relations that also have no onDelete/onUpdate.
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
-        relationships: [{ name: "books", kind: "hasMany", target: "Book" }],
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
       }),
-      bareEntity("Book", {
-        relationships: [
-          { name: "author", kind: "belongsTo", target: "Author" },
-        ],
-      })
+      bareEntity('Book', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
+      }),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     // @relation must not contain onDelete or onUpdate when not declared.
     expect(code).toMatch(
-      /^\s+author Author @relation\(fields: \[authorId\], references: \[id\]\)$/m
+      /^\s+author Author @relation\(fields: \[authorId\], references: \[id\]\)$/m,
     );
     expect(code).not.toMatch(/onDelete/);
     expect(code).not.toMatch(/onUpdate/);
   });
 
-  it("setNull and setDefault actions are PascalCased correctly", () => {
+  it('setNull and setDefault actions are PascalCased correctly', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Parent", {
-        relationships: [{ name: "children", kind: "hasMany", target: "Child" }],
+      bareEntity('Parent', {
+        relationships: [{ name: 'children', kind: 'hasMany', target: 'Child' }],
       }),
-      bareEntity("Child", {
+      bareEntity('Child', {
         relationships: [
           {
-            name: "parent",
-            kind: "belongsTo" as const,
-            target: "Parent",
-            onDelete: "setNull",
-            onUpdate: "setDefault",
+            name: 'parent',
+            kind: 'belongsTo' as const,
+            target: 'Parent',
+            onDelete: 'setNull',
+            onUpdate: 'setDefault',
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Parent"), durableStore("Child"));
+    ir.stores.push(durableStore('Parent'), durableStore('Child'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/onDelete: SetNull/);
     expect(code).toMatch(/onUpdate: SetDefault/);
@@ -2244,21 +2175,21 @@ describe("PrismaProjection — composite PK, composite FK, and referential actio
 // dbAttributes conformance tests
 // ---------------------------------------------------------------------------
 
-describe("PrismaProjection — dbAttributes config", () => {
-  it("emits @db.Uuid on a string field via dbAttributes", () => {
+describe('PrismaProjection — dbAttributes config', () => {
+  it('emits @db.Uuid on a string field via dbAttributes', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "externalRef",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'externalRef',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2267,29 +2198,29 @@ describe("PrismaProjection — dbAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { dbAttributes: { Widget: { externalRef: "Uuid" } } },
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { externalRef: 'Uuid' } } },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+externalRef String @db\.Uuid$/m);
   });
 
-  it("auto-derives @db.Uuid for a uuid-typed field on postgresql", () => {
+  it('auto-derives @db.Uuid for a uuid-typed field on postgresql', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "uuid", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'uuid', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "externalRef",
-          type: { name: "uuid", nullable: true },
+          name: 'externalRef',
+          type: { name: 'uuid', nullable: true },
           modifiers: [],
         },
       ],
@@ -2299,11 +2230,11 @@ describe("PrismaProjection — dbAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { provider: "postgresql" },
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql' },
     }).artifacts[0].code;
 
     // uuid maps to String scalar, and the pg-native @db.Uuid is derived — no
@@ -2312,29 +2243,29 @@ describe("PrismaProjection — dbAttributes config", () => {
     expect(code).toMatch(/^\s+externalRef String\? @db\.Uuid$/m);
   });
 
-  it("suppresses the empty-string default on uuid-typed fields (unset-FK sentinel)", () => {
+  it('suppresses the empty-string default on uuid-typed fields (unset-FK sentinel)', () => {
     // `uuid? = ""` is Manifest's "unset FK" sentinel. `''` is not a valid uuid
     // literal — emitting `@default("")` produces `SET DEFAULT ''` DDL that
     // Postgres rejects (22P02), so the store-level default must be suppressed.
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "uuid", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'uuid', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "parentId",
-          type: { name: "uuid", nullable: true },
-          defaultValue: { kind: "string", value: "" },
+          name: 'parentId',
+          type: { name: 'uuid', nullable: true },
+          defaultValue: { kind: 'string', value: '' },
           modifiers: [],
         },
         {
-          name: "label",
-          type: { name: "string", nullable: false },
-          defaultValue: { kind: "string", value: "" },
+          name: 'label',
+          type: { name: 'string', nullable: false },
+          defaultValue: { kind: 'string', value: '' },
           modifiers: [],
         },
       ],
@@ -2344,11 +2275,11 @@ describe("PrismaProjection — dbAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { provider: "postgresql" },
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql' },
     }).artifacts[0].code;
 
     // uuid sentinel: no @default("") — on pg the column is native uuid.
@@ -2358,21 +2289,21 @@ describe("PrismaProjection — dbAttributes config", () => {
     expect(code).toMatch(/^\s+label String @default\(""\)$/m);
     // suppression applies regardless of provider — '' can never be a uuid value.
     const noProvider = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {},
     }).artifacts[0].code;
     expect(noProvider).not.toMatch(/parentId String\? @default/);
   });
 
-  it("auto-derives @db.Uuid for a uuid-typed field on cockroachdb", () => {
+  it('auto-derives @db.Uuid for a uuid-typed field on cockroachdb', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "uuid", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'uuid', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2381,26 +2312,26 @@ describe("PrismaProjection — dbAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { provider: "cockroachdb" },
+      surface: 'prisma.schema',
+      options: { provider: 'cockroachdb' },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+id String @id @db\.Uuid$/m);
   });
 
-  it("does NOT derive @db.Uuid for a uuid field on non-postgres providers", () => {
-    for (const provider of ["mysql", "sqlite", "sqlserver"] as const) {
+  it('does NOT derive @db.Uuid for a uuid field on non-postgres providers', () => {
+    for (const provider of ['mysql', 'sqlite', 'sqlserver'] as const) {
       const ir = emptyIR();
       ir.entities.push({
-        name: "Widget",
+        name: 'Widget',
         properties: [
           {
-            name: "id",
-            type: { name: "uuid", nullable: false },
-            modifiers: ["required"],
+            name: 'id',
+            type: { name: 'uuid', nullable: false },
+            modifiers: ['required'],
           },
         ],
         computedProperties: [],
@@ -2409,10 +2340,10 @@ describe("PrismaProjection — dbAttributes config", () => {
         constraints: [],
         policies: [],
       });
-      ir.stores.push(durableStore("Widget"));
+      ir.stores.push(durableStore('Widget'));
 
       const code = new PrismaProjection().generate(ir, {
-        surface: "prisma.schema",
+        surface: 'prisma.schema',
         options: { provider },
       }).artifacts[0].code;
 
@@ -2421,15 +2352,15 @@ describe("PrismaProjection — dbAttributes config", () => {
     }
   });
 
-  it("does NOT derive @db.Uuid when no provider is set (models-only emit)", () => {
+  it('does NOT derive @db.Uuid when no provider is set (models-only emit)', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "uuid", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'uuid', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2438,12 +2369,12 @@ describe("PrismaProjection — dbAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     // Provider unknown → the projection can't know the DB dialect, so it must
     // not emit a pg-only native type. Consumers wanting it pass provider or dbAttributes.
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {},
     }).artifacts[0].code;
 
@@ -2451,15 +2382,15 @@ describe("PrismaProjection — dbAttributes config", () => {
     expect(code).not.toMatch(/@db\.Uuid/);
   });
 
-  it("lets an explicit dbAttributes override win over the derived @db.Uuid", () => {
+  it('lets an explicit dbAttributes override win over the derived @db.Uuid', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "uuid", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'uuid', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2468,13 +2399,13 @@ describe("PrismaProjection — dbAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        provider: "postgresql",
-        dbAttributes: { Widget: { id: "Uuid(4)" } },
+        provider: 'postgresql',
+        dbAttributes: { Widget: { id: 'Uuid(4)' } },
       },
     }).artifacts[0].code;
 
@@ -2483,20 +2414,20 @@ describe("PrismaProjection — dbAttributes config", () => {
     expect(code).not.toMatch(/@db\.Uuid @db\.Uuid/);
   });
 
-  it("emits @db.Timestamptz(6) on a DateTime field via dbAttributes", () => {
+  it('emits @db.Timestamptz(6) on a DateTime field via dbAttributes', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "createdAt",
-          type: { name: "datetime", nullable: false },
-          modifiers: ["required"],
+          name: 'createdAt',
+          type: { name: 'datetime', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2505,29 +2436,29 @@ describe("PrismaProjection — dbAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { dbAttributes: { Widget: { createdAt: "Timestamptz(6)" } } },
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { createdAt: 'Timestamptz(6)' } } },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+createdAt DateTime @db\.Timestamptz\(6\)$/m);
   });
 
-  it("emits @db.Date on a DateTime field", () => {
+  it('emits @db.Date on a DateTime field', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "bornOn",
-          type: { name: "datetime", nullable: false },
+          name: 'bornOn',
+          type: { name: 'datetime', nullable: false },
           modifiers: [],
         },
       ],
@@ -2537,30 +2468,30 @@ describe("PrismaProjection — dbAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { dbAttributes: { Widget: { bornOn: "Date" } } },
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { bornOn: 'Date' } } },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+bornOn DateTime @db\.Date$/m);
   });
 
-  it("emits @db.SmallInt on an Int field via dbAttributes", () => {
+  it('emits @db.SmallInt on an Int field via dbAttributes', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "priority",
-          type: { name: "int", nullable: false },
-          modifiers: ["required"],
+          name: 'priority',
+          type: { name: 'int', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2569,30 +2500,30 @@ describe("PrismaProjection — dbAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { dbAttributes: { Widget: { priority: "SmallInt" } } },
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { priority: 'SmallInt' } } },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+priority Int @db\.SmallInt$/m);
   });
 
-  it("SKIPS dbAttributes when @db.Decimal was already emitted by precision config (no duplicate @db)", () => {
+  it('SKIPS dbAttributes when @db.Decimal was already emitted by precision config (no duplicate @db)', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "price",
-          type: { name: "decimal", nullable: false },
-          modifiers: ["required"],
+          name: 'price',
+          type: { name: 'decimal', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2601,15 +2532,15 @@ describe("PrismaProjection — dbAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     // Both precision AND dbAttributes target the same field.
     // precision wins → @db.Decimal(12, 2); dbAttributes is skipped.
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
         precision: { Widget: { price: { precision: 12, scale: 2 } } },
-        dbAttributes: { Widget: { price: "Decimal(18, 4)" } },
+        dbAttributes: { Widget: { price: 'Decimal(18, 4)' } },
       },
     }).artifacts[0].code;
 
@@ -2619,20 +2550,20 @@ describe("PrismaProjection — dbAttributes config", () => {
     expect(code).not.toMatch(/@db\.Decimal\(18, 4\)/);
   });
 
-  it("dbAttributes BEATS the auto-emitted default @db.Decimal for decimal/money types (v3.1.1)", () => {
+  it('dbAttributes BEATS the auto-emitted default @db.Decimal for decimal/money types (v3.1.1)', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "cost",
-          type: { name: "money", nullable: false },
-          modifiers: ["required"],
+          name: 'cost',
+          type: { name: 'money', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2641,30 +2572,30 @@ describe("PrismaProjection — dbAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     // An explicit per-field dbAttributes entry must beat the DERIVED default
     // @db.Decimal(12, 2) — otherwise money-typed columns can never be
     // annotated @db.Money/@db.Numeric. (Explicit `precision` still wins over
     // dbAttributes — pinned in the money/decimal describe block.)
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { dbAttributes: { Widget: { cost: "Numeric" } } },
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { cost: 'Numeric' } } },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+cost Decimal @db\.Numeric$/m);
     expect(code).not.toMatch(/cost Decimal @db\.Decimal/);
   });
 
-  it("emits dbAttributes on the id field (not blocked by @id)", () => {
+  it('emits dbAttributes on the id field (not blocked by @id)', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2673,30 +2604,30 @@ describe("PrismaProjection — dbAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { dbAttributes: { Widget: { id: "Uuid" } } },
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { id: 'Uuid' } } },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+id String @id @db\.Uuid$/m);
   });
 
-  it("coexists with @map from columnMappings on the same field", () => {
+  it('coexists with @map from columnMappings on the same field', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "createdAt",
-          type: { name: "datetime", nullable: false },
-          modifiers: ["required"],
+          name: 'createdAt',
+          type: { name: 'datetime', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2705,19 +2636,17 @@ describe("PrismaProjection — dbAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        columnMappings: { Widget: { createdAt: "created_at" } },
-        dbAttributes: { Widget: { createdAt: "Timestamptz(6)" } },
+        columnMappings: { Widget: { createdAt: 'created_at' } },
+        dbAttributes: { Widget: { createdAt: 'Timestamptz(6)' } },
       },
     }).artifacts[0].code;
 
-    expect(code).toMatch(
-      /^\s+createdAt DateTime @map\("created_at"\) @db\.Timestamptz\(6\)$/m
-    );
+    expect(code).toMatch(/^\s+createdAt DateTime @map\("created_at"\) @db\.Timestamptz\(6\)$/m);
   });
 });
 
@@ -2725,21 +2654,21 @@ describe("PrismaProjection — dbAttributes config", () => {
 // fieldAttributes conformance tests
 // ---------------------------------------------------------------------------
 
-describe("PrismaProjection — fieldAttributes config", () => {
-  it("emits @unique from fieldAttributes on a field without modifiers", () => {
+describe('PrismaProjection — fieldAttributes config', () => {
+  it('emits @unique from fieldAttributes on a field without modifiers', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "sku",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'sku',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2748,30 +2677,30 @@ describe("PrismaProjection — fieldAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { fieldAttributes: { Widget: { sku: ["@unique"] } } },
+      surface: 'prisma.schema',
+      options: { fieldAttributes: { Widget: { sku: ['@unique'] } } },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+sku String @unique$/m);
   });
 
-  it("emits @default(now()) from fieldAttributes on a DateTime field", () => {
+  it('emits @default(now()) from fieldAttributes on a DateTime field', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "createdAt",
-          type: { name: "datetime", nullable: false },
-          modifiers: ["required"],
+          name: 'createdAt',
+          type: { name: 'datetime', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2780,32 +2709,32 @@ describe("PrismaProjection — fieldAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        fieldAttributes: { Widget: { createdAt: ["@default(now())"] } },
+        fieldAttributes: { Widget: { createdAt: ['@default(now())'] } },
       },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+createdAt DateTime @default\(now\(\)\)$/m);
   });
 
-  it("emits @updatedAt from fieldAttributes", () => {
+  it('emits @updatedAt from fieldAttributes', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "updatedAt",
-          type: { name: "datetime", nullable: false },
-          modifiers: ["required"],
+          name: 'updatedAt',
+          type: { name: 'datetime', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2814,25 +2743,25 @@ describe("PrismaProjection — fieldAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { fieldAttributes: { Widget: { updatedAt: ["@updatedAt"] } } },
+      surface: 'prisma.schema',
+      options: { fieldAttributes: { Widget: { updatedAt: ['@updatedAt'] } } },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+updatedAt DateTime @updatedAt$/m);
   });
 
-  it("emits @default(dbgenerated(...)) from fieldAttributes", () => {
+  it('emits @default(dbgenerated(...)) from fieldAttributes', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2841,10 +2770,10 @@ describe("PrismaProjection — fieldAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
         fieldAttributes: {
           Widget: { id: ['@default(dbgenerated("gen_random_uuid()"))'] },
@@ -2852,25 +2781,23 @@ describe("PrismaProjection — fieldAttributes config", () => {
       },
     }).artifacts[0].code;
 
-    expect(code).toMatch(
-      /^\s+id String @id @default\(dbgenerated\("gen_random_uuid\(\)"\)\)$/m
-    );
+    expect(code).toMatch(/^\s+id String @id @default\(dbgenerated\("gen_random_uuid\(\)"\)\)$/m);
   });
 
-  it("deduplicates fieldAttributes — does NOT re-add @unique already from modifiers", () => {
+  it('deduplicates fieldAttributes — does NOT re-add @unique already from modifiers', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "sku",
-          type: { name: "string", nullable: false },
-          modifiers: ["required", "unique"],
+          name: 'sku',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required', 'unique'],
         },
       ],
       computedProperties: [],
@@ -2879,36 +2806,36 @@ describe("PrismaProjection — fieldAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     // @unique is already emitted from modifiers; fieldAttributes should NOT duplicate it.
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { fieldAttributes: { Widget: { sku: ["@unique"] } } },
+      surface: 'prisma.schema',
+      options: { fieldAttributes: { Widget: { sku: ['@unique'] } } },
     }).artifacts[0].code;
 
     // Only one @unique
-    const skuLine = code.split("\n").find((l) => /^\s+sku /.test(l));
+    const skuLine = code.split('\n').find((l) => /^\s+sku /.test(l));
     expect(skuLine).toBeDefined();
     const uniqueCount = (skuLine!.match(/@unique/g) ?? []).length;
     expect(uniqueCount).toBe(1);
   });
 
-  it("deduplicates fieldAttributes — does NOT re-add @default already from prop.defaultValue", () => {
+  it('deduplicates fieldAttributes — does NOT re-add @default already from prop.defaultValue', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "active",
-          type: { name: "boolean", nullable: false },
-          modifiers: ["required"],
-          defaultValue: { kind: "boolean", value: true },
+          name: 'active',
+          type: { name: 'boolean', nullable: false },
+          modifiers: ['required'],
+          defaultValue: { kind: 'boolean', value: true },
         },
       ],
       computedProperties: [],
@@ -2917,34 +2844,34 @@ describe("PrismaProjection — fieldAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     // @default(true) already emitted from prop.defaultValue; fieldAttributes should not duplicate.
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { fieldAttributes: { Widget: { active: ["@default(true)"] } } },
+      surface: 'prisma.schema',
+      options: { fieldAttributes: { Widget: { active: ['@default(true)'] } } },
     }).artifacts[0].code;
 
-    const activeLine = code.split("\n").find((l) => /^\s+active /.test(l));
+    const activeLine = code.split('\n').find((l) => /^\s+active /.test(l));
     expect(activeLine).toBeDefined();
     const defaultCount = (activeLine!.match(/@default/g) ?? []).length;
     expect(defaultCount).toBe(1);
   });
 
-  it("emits multiple fieldAttributes on the same field", () => {
+  it('emits multiple fieldAttributes on the same field', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "createdAt",
-          type: { name: "datetime", nullable: false },
-          modifiers: ["required"],
+          name: 'createdAt',
+          type: { name: 'datetime', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2953,20 +2880,18 @@ describe("PrismaProjection — fieldAttributes config", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
         fieldAttributes: {
-          Widget: { createdAt: ["@default(now())", "@updatedAt"] },
+          Widget: { createdAt: ['@default(now())', '@updatedAt'] },
         },
       },
     }).artifacts[0].code;
 
-    expect(code).toMatch(
-      /^\s+createdAt DateTime @default\(now\(\)\) @updatedAt$/m
-    );
+    expect(code).toMatch(/^\s+createdAt DateTime @default\(now\(\)\) @updatedAt$/m);
   });
 });
 
@@ -2974,21 +2899,21 @@ describe("PrismaProjection — fieldAttributes config", () => {
 // dbAttributes + fieldAttributes interaction
 // ---------------------------------------------------------------------------
 
-describe("PrismaProjection — dbAttributes + fieldAttributes together", () => {
-  it("emits both @db.* and field attributes on the same field", () => {
+describe('PrismaProjection — dbAttributes + fieldAttributes together', () => {
+  it('emits both @db.* and field attributes on the same field', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "createdAt",
-          type: { name: "datetime", nullable: false },
-          modifiers: ["required"],
+          name: 'createdAt',
+          type: { name: 'datetime', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -2997,30 +2922,28 @@ describe("PrismaProjection — dbAttributes + fieldAttributes together", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        dbAttributes: { Widget: { createdAt: "Timestamptz(6)" } },
-        fieldAttributes: { Widget: { createdAt: ["@default(now())"] } },
+        dbAttributes: { Widget: { createdAt: 'Timestamptz(6)' } },
+        fieldAttributes: { Widget: { createdAt: ['@default(now())'] } },
       },
     }).artifacts[0].code;
 
-    expect(code).toMatch(
-      /^\s+createdAt DateTime @db\.Timestamptz\(6\) @default\(now\(\)\)$/m
-    );
+    expect(code).toMatch(/^\s+createdAt DateTime @db\.Timestamptz\(6\) @default\(now\(\)\)$/m);
   });
 
-  it("emits @db.Uuid + @default(dbgenerated(...)) together on id field", () => {
+  it('emits @db.Uuid + @default(dbgenerated(...)) together on id field', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -3029,12 +2952,12 @@ describe("PrismaProjection — dbAttributes + fieldAttributes together", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        dbAttributes: { Widget: { id: "Uuid" } },
+        dbAttributes: { Widget: { id: 'Uuid' } },
         fieldAttributes: {
           Widget: { id: ['@default(dbgenerated("gen_random_uuid()"))'] },
         },
@@ -3043,7 +2966,7 @@ describe("PrismaProjection — dbAttributes + fieldAttributes together", () => {
 
     // dbAttributes are emitted before fieldAttributes in the attr list
     expect(code).toMatch(
-      /^\s+id String @id @db\.Uuid @default\(dbgenerated\("gen_random_uuid\(\)"\)\)$/m
+      /^\s+id String @id @db\.Uuid @default\(dbgenerated\("gen_random_uuid\(\)"\)\)$/m,
     );
   });
 });
@@ -3052,134 +2975,128 @@ describe("PrismaProjection — dbAttributes + fieldAttributes together", () => {
 // Snapshot test: procurement-like entity with all features combined
 // ---------------------------------------------------------------------------
 
-describe("PrismaProjection — procurement entity snapshot (dbAttributes + fieldAttributes)", () => {
-  it("generates deterministic schema for a composite-key entity with dbAttributes and fieldAttributes", () => {
+describe('PrismaProjection — procurement entity snapshot (dbAttributes + fieldAttributes)', () => {
+  it('generates deterministic schema for a composite-key entity with dbAttributes and fieldAttributes', () => {
     const ir = emptyIR();
     ir.entities.push(
       {
-        name: "Vendor",
+        name: 'Vendor',
         properties: [
           {
-            name: "id",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'id',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "name",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'name',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "createdAt",
-            type: { name: "datetime", nullable: false },
-            modifiers: ["required"],
+            name: 'createdAt',
+            type: { name: 'datetime', nullable: false },
+            modifiers: ['required'],
           },
         ],
         computedProperties: [],
-        relationships: [
-          { name: "items", kind: "hasMany", target: "ProcurementItem" },
-        ],
+        relationships: [{ name: 'items', kind: 'hasMany', target: 'ProcurementItem' }],
         commands: [],
         constraints: [],
         policies: [],
       },
       {
-        name: "ProcurementItem",
-        key: ["vendorId", "lineNo"],
+        name: 'ProcurementItem',
+        key: ['vendorId', 'lineNo'],
         properties: [
           {
-            name: "vendorId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'vendorId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "lineNo",
-            type: { name: "int", nullable: false },
-            modifiers: ["required"],
+            name: 'lineNo',
+            type: { name: 'int', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "description",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'description',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "unitCost",
-            type: { name: "decimal", nullable: false },
-            modifiers: ["required"],
+            name: 'unitCost',
+            type: { name: 'decimal', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "quantity",
-            type: { name: "int", nullable: false },
-            modifiers: ["required"],
+            name: 'quantity',
+            type: { name: 'int', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "createdAt",
-            type: { name: "datetime", nullable: false },
-            modifiers: ["required"],
+            name: 'createdAt',
+            type: { name: 'datetime', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "updatedAt",
-            type: { name: "datetime", nullable: false },
+            name: 'updatedAt',
+            type: { name: 'datetime', nullable: false },
             modifiers: [],
           },
         ],
         computedProperties: [],
         relationships: [
           {
-            name: "vendor",
-            kind: "belongsTo" as const,
-            target: "Vendor",
-            foreignKey: { fields: ["vendorId"], references: ["id"] },
+            name: 'vendor',
+            kind: 'belongsTo' as const,
+            target: 'Vendor',
+            foreignKey: { fields: ['vendorId'], references: ['id'] },
           },
         ],
         commands: [],
         constraints: [],
         policies: [],
-      }
+      },
     );
-    ir.stores.push(durableStore("Vendor"), durableStore("ProcurementItem"));
+    ir.stores.push(durableStore('Vendor'), durableStore('ProcurementItem'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        provider: "postgresql",
+        provider: 'postgresql',
         tableMappings: {
-          ProcurementItem: "procurement_items",
-          Vendor: "vendors",
+          ProcurementItem: 'procurement_items',
+          Vendor: 'vendors',
         },
         dbAttributes: {
           ProcurementItem: {
-            vendorId: "Uuid",
-            createdAt: "Timestamptz(6)",
-            updatedAt: "Timestamptz(6)",
+            vendorId: 'Uuid',
+            createdAt: 'Timestamptz(6)',
+            updatedAt: 'Timestamptz(6)',
           },
-          Vendor: { id: "Uuid", createdAt: "Timestamptz(6)" },
+          Vendor: { id: 'Uuid', createdAt: 'Timestamptz(6)' },
         },
         fieldAttributes: {
           ProcurementItem: {
-            createdAt: ["@default(now())"],
-            updatedAt: ["@updatedAt"],
+            createdAt: ['@default(now())'],
+            updatedAt: ['@updatedAt'],
           },
-          Vendor: { createdAt: ["@default(now())"] },
+          Vendor: { createdAt: ['@default(now())'] },
         },
         precision: {
           ProcurementItem: { unitCost: { precision: 14, scale: 4 } },
         },
-        indexes: { ProcurementItem: [["description"]] },
+        indexes: { ProcurementItem: [['description']] },
       },
     });
 
-    expect(
-      result.diagnostics.filter((d) => d.severity === "error")
-    ).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     const code = result.artifacts[0].code;
 
     // Vendor: id String @id @db.Uuid
     expect(code).toMatch(/^\s+id String @id @db\.Uuid$/m);
     // Vendor: createdAt DateTime @db.Timestamptz(6) @default(now())
-    expect(code).toMatch(
-      /^\s+createdAt DateTime @db\.Timestamptz\(6\) @default\(now\(\)\)$/m
-    );
+    expect(code).toMatch(/^\s+createdAt DateTime @db\.Timestamptz\(6\) @default\(now\(\)\)$/m);
 
     // ProcurementItem: vendorId String @db.Uuid (FK column, property-declared)
     expect(code).toMatch(/^\s+vendorId String @db\.Uuid$/m);
@@ -3188,19 +3105,15 @@ describe("PrismaProjection — procurement entity snapshot (dbAttributes + field
     // ProcurementItem: unitCost Decimal @db.Decimal(14, 4)  — precision wins, dbAttributes skipped
     expect(code).toMatch(/^\s+unitCost Decimal @db\.Decimal\(14, 4\)$/m);
     // ProcurementItem: createdAt DateTime @db.Timestamptz(6) @default(now())
-    expect(code).toMatch(
-      /^\s+createdAt DateTime @db\.Timestamptz\(6\) @default\(now\(\)\)$/m
-    );
+    expect(code).toMatch(/^\s+createdAt DateTime @db\.Timestamptz\(6\) @default\(now\(\)\)$/m);
     // ProcurementItem: updatedAt DateTime @db.Timestamptz(6) @updatedAt
     // (type.nullable:false + no `required` → NOT NULL under the type-driven rule)
-    expect(code).toMatch(
-      /^\s+updatedAt DateTime @db\.Timestamptz\(6\) @updatedAt$/m
-    );
+    expect(code).toMatch(/^\s+updatedAt DateTime @db\.Timestamptz\(6\) @updatedAt$/m);
     // Composite PK
     expect(code).toMatch(/^\s+@@id\(\[vendorId, lineNo\]\)$/m);
     // Composite FK relation
     expect(code).toMatch(
-      /^\s+vendor Vendor @relation\(fields: \[vendorId\], references: \[id\]\)$/m
+      /^\s+vendor Vendor @relation\(fields: \[vendorId\], references: \[id\]\)$/m,
     );
     // Table mapping
     expect(code).toMatch(/^\s+@@map\("vendors"\)$/m);
@@ -3210,32 +3123,32 @@ describe("PrismaProjection — procurement entity snapshot (dbAttributes + field
 
     // Determinism: run twice, assert identical output
     const result2 = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        provider: "postgresql",
+        provider: 'postgresql',
         tableMappings: {
-          ProcurementItem: "procurement_items",
-          Vendor: "vendors",
+          ProcurementItem: 'procurement_items',
+          Vendor: 'vendors',
         },
         dbAttributes: {
           ProcurementItem: {
-            vendorId: "Uuid",
-            createdAt: "Timestamptz(6)",
-            updatedAt: "Timestamptz(6)",
+            vendorId: 'Uuid',
+            createdAt: 'Timestamptz(6)',
+            updatedAt: 'Timestamptz(6)',
           },
-          Vendor: { id: "Uuid", createdAt: "Timestamptz(6)" },
+          Vendor: { id: 'Uuid', createdAt: 'Timestamptz(6)' },
         },
         fieldAttributes: {
           ProcurementItem: {
-            createdAt: ["@default(now())"],
-            updatedAt: ["@updatedAt"],
+            createdAt: ['@default(now())'],
+            updatedAt: ['@updatedAt'],
           },
-          Vendor: { createdAt: ["@default(now())"] },
+          Vendor: { createdAt: ['@default(now())'] },
         },
         precision: {
           ProcurementItem: { unitCost: { precision: 14, scale: 4 } },
         },
-        indexes: { ProcurementItem: [["description"]] },
+        indexes: { ProcurementItem: [['description']] },
       },
     });
     expect(result.artifacts[0].code).toBe(result2.artifacts[0].code);
@@ -3246,52 +3159,48 @@ describe("PrismaProjection — procurement entity snapshot (dbAttributes + field
 // Regression tests for Capsule-Pro proven bugs
 // ---------------------------------------------------------------------------
 
-describe("PrismaProjection — regression: object-shaped foreignKeys config", () => {
-  it("accepts ForeignKeyConfig objects in foreignKeys (not just strings)", () => {
+describe('PrismaProjection — regression: object-shaped foreignKeys config', () => {
+  it('accepts ForeignKeyConfig objects in foreignKeys (not just strings)', () => {
     // Capsule-Pro passes {fields, references, onDelete} objects instead of plain strings.
     // The emitter must extract fields/references/actions from the object, not stringify it.
     const ir = emptyIR();
     ir.entities.push(
       {
-        name: "Order",
-        key: ["tenantId", "id"],
+        name: 'Order',
+        key: ['tenantId', 'id'],
         properties: [
           {
-            name: "tenantId",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'tenantId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "id",
-            type: { name: "string", nullable: false },
-            modifiers: ["required"],
+            name: 'id',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
           },
         ],
         computedProperties: [],
-        relationships: [
-          { name: "items", kind: "hasMany", target: "OrderItem" },
-        ],
+        relationships: [{ name: 'items', kind: 'hasMany', target: 'OrderItem' }],
         commands: [],
         constraints: [],
         policies: [],
       },
-      bareEntity("OrderItem", {
-        relationships: [
-          { name: "order", kind: "belongsTo" as const, target: "Order" },
-        ],
-      })
+      bareEntity('OrderItem', {
+        relationships: [{ name: 'order', kind: 'belongsTo' as const, target: 'Order' }],
+      }),
     );
-    ir.stores.push(durableStore("Order"), durableStore("OrderItem"));
+    ir.stores.push(durableStore('Order'), durableStore('OrderItem'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
         foreignKeys: {
           OrderItem: {
             order: {
-              fields: ["tenantId", "orderId"],
-              references: ["tenantId", "id"],
-              onDelete: "Cascade",
+              fields: ['tenantId', 'orderId'],
+              references: ['tenantId', 'id'],
+              onDelete: 'Cascade',
             },
           },
         },
@@ -3301,70 +3210,66 @@ describe("PrismaProjection — regression: object-shaped foreignKeys config", ()
     const code = result.artifacts[0].code;
 
     // Must NOT contain [object Object]
-    expect(code).not.toContain("[object Object]");
+    expect(code).not.toContain('[object Object]');
 
     // Must emit proper FK columns and relation line
     expect(code).toMatch(/^\s+tenantId String$/m);
     expect(code).toMatch(/^\s+orderId String$/m);
     expect(code).toMatch(
-      /^\s+order Order @relation\(fields: \[tenantId, orderId\], references: \[tenantId, id\], onDelete: Cascade\)$/m
+      /^\s+order Order @relation\(fields: \[tenantId, orderId\], references: \[tenantId, id\], onDelete: Cascade\)$/m,
     );
 
     // No errors
-    expect(
-      result.diagnostics.filter((d) => d.severity === "error")
-    ).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
   });
 
-  it("object-shaped foreignKeys with single column works like string form", () => {
+  it('object-shaped foreignKeys with single column works like string form', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
-        relationships: [{ name: "books", kind: "hasMany", target: "Book" }],
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
       }),
-      bareEntity("Book", {
-        relationships: [
-          { name: "author", kind: "belongsTo", target: "Author" },
-        ],
-      })
+      bareEntity('Book', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
+      }),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
         foreignKeys: {
-          Book: { author: { fields: ["writerId"] } },
+          Book: { author: { fields: ['writerId'] } },
         },
       },
     }).artifacts[0].code;
 
-    expect(code).not.toContain("[object Object]");
+    expect(code).not.toContain('[object Object]');
     expect(code).toMatch(/^\s+writerId String$/m);
     expect(code).toMatch(
-      /^\s+author Author @relation\(fields: \[writerId\], references: \[id\]\)$/m
+      /^\s+author Author @relation\(fields: \[writerId\], references: \[id\]\)$/m,
     );
   });
 });
 
-describe("PrismaProjection — regression: duplicate @default dedup", () => {
-  it("fieldAttributes @default(now()) overrides IR @default(0) — no duplicate", () => {
+describe('PrismaProjection — regression: duplicate @default dedup', () => {
+  it('fieldAttributes @default(now()) overrides IR @default(0) — no duplicate', () => {
     // When IR has defaultValue: {kind: "number", value: 0} and fieldAttributes
     // supplies @default(now()), only the fieldAttributes version should appear.
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "createdAt",
-          type: { name: "datetime", nullable: false },
-          modifiers: ["required"],
-          defaultValue: { kind: "number", value: 0 },
+          name: 'createdAt',
+          type: { name: 'datetime', nullable: false },
+          modifiers: ['required'],
+          defaultValue: { kind: 'number', value: 0 },
         },
       ],
       computedProperties: [],
@@ -3373,13 +3278,13 @@ describe("PrismaProjection — regression: duplicate @default dedup", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
         fieldAttributes: {
-          Widget: { createdAt: ["@default(now())"] },
+          Widget: { createdAt: ['@default(now())'] },
         },
       },
     });
@@ -3387,11 +3292,8 @@ describe("PrismaProjection — regression: duplicate @default dedup", () => {
     const code = result.artifacts[0].code;
 
     // Count @default occurrences on the createdAt line
-    const createdAtIndex = code.indexOf("createdAt");
-    const createdAtLine = code.substring(
-      createdAtIndex,
-      code.indexOf("\n", createdAtIndex)
-    );
+    const createdAtIndex = code.indexOf('createdAt');
+    const createdAtLine = code.substring(createdAtIndex, code.indexOf('\n', createdAtIndex));
 
     // Must have exactly ONE @default
     const defaultCount = (createdAtLine.match(/@default/g) || []).length;
@@ -3402,20 +3304,20 @@ describe("PrismaProjection — regression: duplicate @default dedup", () => {
     expect(code).toMatch(/^\s+createdAt DateTime @default\(now\(\)\)$/m);
   });
 
-  it("fieldAttributes @unique is suppressed when prop.modifiers already has unique", () => {
+  it('fieldAttributes @unique is suppressed when prop.modifiers already has unique', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "sku",
-          type: { name: "string", nullable: false },
-          modifiers: ["required", "unique"],
+          name: 'sku',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required', 'unique'],
         },
       ],
       computedProperties: [],
@@ -3424,16 +3326,16 @@ describe("PrismaProjection — regression: duplicate @default dedup", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        fieldAttributes: { Widget: { sku: ["@unique"] } },
+        fieldAttributes: { Widget: { sku: ['@unique'] } },
       },
     }).artifacts[0].code;
 
-    const skuLine = code.split("\n").find((l) => /^\s+sku /.test(l));
+    const skuLine = code.split('\n').find((l) => /^\s+sku /.test(l));
     expect(skuLine).toBeDefined();
     // Exactly one @unique
     expect((skuLine!.match(/@unique/g) || []).length).toBe(1);
@@ -3441,21 +3343,21 @@ describe("PrismaProjection — regression: duplicate @default dedup", () => {
 
   // ── Array type emission ──────────────────────────────────────────────
 
-  it("emits String[] for array<string> type", () => {
+  it('emits String[] for array<string> type', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Taggable",
+      name: 'Taggable',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "tags",
+          name: 'tags',
           type: {
-            name: "array",
-            generic: { name: "string", nullable: false },
+            name: 'array',
+            generic: { name: 'string', nullable: false },
             nullable: false,
           },
           modifiers: [],
@@ -3467,30 +3369,30 @@ describe("PrismaProjection — regression: duplicate @default dedup", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Taggable"));
+    ir.stores.push(durableStore('Taggable'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {},
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+tags\s+String\[\]$/m);
   });
 
-  it("emits Int[] for array<int> type", () => {
+  it('emits Int[] for array<int> type', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Scored",
+      name: 'Scored',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "scores",
+          name: 'scores',
           type: {
-            name: "array",
-            generic: { name: "int", nullable: false },
+            name: 'array',
+            generic: { name: 'int', nullable: false },
             nullable: false,
           },
           modifiers: [],
@@ -3502,30 +3404,30 @@ describe("PrismaProjection — regression: duplicate @default dedup", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Scored"));
+    ir.stores.push(durableStore('Scored'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {},
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+scores\s+Int\[\]$/m);
   });
 
-  it("emits Decimal[] for array<decimal> type", () => {
+  it('emits Decimal[] for array<decimal> type', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Priced",
+      name: 'Priced',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "prices",
+          name: 'prices',
           type: {
-            name: "array",
-            generic: { name: "decimal", nullable: false },
+            name: 'array',
+            generic: { name: 'decimal', nullable: false },
             nullable: false,
           },
           modifiers: [],
@@ -3537,34 +3439,34 @@ describe("PrismaProjection — regression: duplicate @default dedup", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Priced"));
+    ir.stores.push(durableStore('Priced'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {},
     }).artifacts[0].code;
     // Decimal[] may get @db.Decimal attribute appended — just check the type portion.
-    const pricesLine = code.split("\n").find((l) => /^\s+prices /.test(l));
+    const pricesLine = code.split('\n').find((l) => /^\s+prices /.test(l));
     expect(pricesLine).toBeDefined();
     expect(pricesLine).toMatch(/^\s+prices\s+Decimal\[\]/);
   });
 
-  it("array field never gets nullable ? suffix", () => {
+  it('array field never gets nullable ? suffix', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Taggable",
+      name: 'Taggable',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         // No 'required' modifier — yet should still NOT get ?
         {
-          name: "tags",
+          name: 'tags',
           type: {
-            name: "array",
-            generic: { name: "string", nullable: false },
+            name: 'array',
+            generic: { name: 'string', nullable: false },
             nullable: false,
           },
           modifiers: [],
@@ -3576,38 +3478,38 @@ describe("PrismaProjection — regression: duplicate @default dedup", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Taggable"));
+    ir.stores.push(durableStore('Taggable'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {},
     }).artifacts[0].code;
-    const tagsLine = code.split("\n").find((l) => /^\s+tags /.test(l));
+    const tagsLine = code.split('\n').find((l) => /^\s+tags /.test(l));
     expect(tagsLine).toBeDefined();
     // Must NOT contain ?
-    expect(tagsLine!.includes("?")).toBe(false);
+    expect(tagsLine!.includes('?')).toBe(false);
     expect(tagsLine).toMatch(/^\s+tags\s+String\[\]$/);
   });
 
-  it("array field emits scalar-list @default when IR has a default value", () => {
+  it('array field emits scalar-list @default when IR has a default value', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Taggable",
+      name: 'Taggable',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "tags",
+          name: 'tags',
           type: {
-            name: "array",
-            generic: { name: "string", nullable: false },
+            name: 'array',
+            generic: { name: 'string', nullable: false },
             nullable: false,
           },
           modifiers: [],
-          defaultValue: { kind: "array", elements: [] },
+          defaultValue: { kind: 'array', elements: [] },
         },
       ],
       computedProperties: [],
@@ -3616,13 +3518,13 @@ describe("PrismaProjection — regression: duplicate @default dedup", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Taggable"));
+    ir.stores.push(durableStore('Taggable'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {},
     }).artifacts[0].code;
-    const tagsLine = code.split("\n").find((l) => /^\s+tags /.test(l));
+    const tagsLine = code.split('\n').find((l) => /^\s+tags /.test(l));
     expect(tagsLine).toBeDefined();
     expect(tagsLine).toMatch(/^\s+tags\s+String\[\]\s+@default\(\[\]\)$/);
   });
@@ -3639,9 +3541,9 @@ function moduleEntity(name: string, moduleName: string | undefined): IREntity {
     module: moduleName,
     properties: [
       {
-        name: "id",
-        type: { name: "string", nullable: false },
-        modifiers: ["required"],
+        name: 'id',
+        type: { name: 'string', nullable: false },
+        modifiers: ['required'],
       },
     ],
     computedProperties: [],
@@ -3652,73 +3554,71 @@ function moduleEntity(name: string, moduleName: string | undefined): IREntity {
   };
 }
 
-describe("PrismaProjection — multi-schema layout (G6)", () => {
-  it("is OFF by default: no @@schema, no schemas list (back-compat)", () => {
+describe('PrismaProjection — multi-schema layout (G6)', () => {
+  it('is OFF by default: no @@schema, no schemas list (back-compat)', () => {
     const ir = emptyIR();
-    ir.entities.push(moduleEntity("User", "auth"));
-    ir.stores.push(durableStore("User"));
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.stores.push(durableStore('User'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { provider: "postgresql" },
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql' },
     }).artifacts[0].code;
 
     expect(code).not.toMatch(/@@schema/);
     expect(code).not.toMatch(/schemas\s*=/);
   });
 
-  it("emits a custom generator block and datasource relationMode from config", () => {
+  it('emits a custom generator block and datasource relationMode from config', () => {
     const ir = emptyIR();
-    ir.entities.push(moduleEntity("User", "auth"));
-    ir.stores.push(durableStore("User"));
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.stores.push(durableStore('User'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        provider: "postgresql",
-        relationMode: "prisma",
+        provider: 'postgresql',
+        relationMode: 'prisma',
         generator: {
-          provider: "prisma-client",
-          output: "../generated",
-          moduleFormat: "esm",
+          provider: 'prisma-client',
+          output: '../generated',
+          moduleFormat: 'esm',
         },
       },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+relationMode = "prisma"$/m);
-    expect(code).toMatch(
-      /generator client \{[\s\S]*?provider = "prisma-client"[\s\S]*?\}/
-    );
+    expect(code).toMatch(/generator client \{[\s\S]*?provider = "prisma-client"[\s\S]*?\}/);
     expect(code).toMatch(/^\s+output = "\.\.\/generated"$/m);
     expect(code).toMatch(/^\s+moduleFormat = "esm"$/m);
     // default generator is not emitted when overridden
     expect(code).not.toMatch(/prisma-client-js/);
   });
 
-  it("defaults the generator to prisma-client-js and omits relationMode when unset", () => {
+  it('defaults the generator to prisma-client-js and omits relationMode when unset', () => {
     const ir = emptyIR();
-    ir.entities.push(moduleEntity("User", "auth"));
-    ir.stores.push(durableStore("User"));
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.stores.push(durableStore('User'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { provider: "postgresql" },
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql' },
     }).artifacts[0].code;
 
     expect(code).toMatch(/provider = "prisma-client-js"/);
     expect(code).not.toMatch(/relationMode/);
   });
 
-  it("derives @@schema from entity.module and lists schemas on the datasource", () => {
+  it('derives @@schema from entity.module and lists schemas on the datasource', () => {
     const ir = emptyIR();
-    ir.entities.push(moduleEntity("User", "auth"));
-    ir.entities.push(moduleEntity("Invoice", "billing"));
-    ir.stores.push(durableStore("User"));
-    ir.stores.push(durableStore("Invoice"));
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.entities.push(moduleEntity('Invoice', 'billing'));
+    ir.stores.push(durableStore('User'));
+    ir.stores.push(durableStore('Invoice'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { provider: "postgresql", multiSchema: { enabled: true } },
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql', multiSchema: { enabled: true } },
     });
     const code = result.artifacts[0].code;
 
@@ -3726,24 +3626,20 @@ describe("PrismaProjection — multi-schema layout (G6)", () => {
     expect(code).toMatch(/^\s+schemas\s+=\s+\["auth", "billing"\]$/m);
     // each model carries its module's @@schema.
     expect(code).toMatch(/model User \{[\s\S]*?@@schema\("auth"\)[\s\S]*?\}/);
-    expect(code).toMatch(
-      /model Invoice \{[\s\S]*?@@schema\("billing"\)[\s\S]*?\}/
-    );
-    expect(
-      result.diagnostics.filter((d) => d.severity === "error")
-    ).toHaveLength(0);
+    expect(code).toMatch(/model Invoice \{[\s\S]*?@@schema\("billing"\)[\s\S]*?\}/);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
   });
 
-  it("entitySchema override takes precedence over the module", () => {
+  it('entitySchema override takes precedence over the module', () => {
     const ir = emptyIR();
-    ir.entities.push(moduleEntity("User", "auth"));
-    ir.stores.push(durableStore("User"));
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.stores.push(durableStore('User'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        provider: "postgresql",
-        multiSchema: { enabled: true, entitySchema: { User: "identity" } },
+        provider: 'postgresql',
+        multiSchema: { enabled: true, entitySchema: { User: 'identity' } },
       },
     }).artifacts[0].code;
 
@@ -3752,16 +3648,16 @@ describe("PrismaProjection — multi-schema layout (G6)", () => {
     expect(code).toMatch(/^\s+schemas\s+=\s+\["identity"\]$/m);
   });
 
-  it("falls back to defaultSchema for a module-less entity", () => {
+  it('falls back to defaultSchema for a module-less entity', () => {
     const ir = emptyIR();
-    ir.entities.push(moduleEntity("Setting", undefined));
-    ir.stores.push(durableStore("Setting"));
+    ir.entities.push(moduleEntity('Setting', undefined));
+    ir.stores.push(durableStore('Setting'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        provider: "postgresql",
-        multiSchema: { enabled: true, defaultSchema: "core" },
+        provider: 'postgresql',
+        multiSchema: { enabled: true, defaultSchema: 'core' },
       },
     }).artifacts[0].code;
 
@@ -3770,29 +3666,29 @@ describe("PrismaProjection — multi-schema layout (G6)", () => {
 
   it('module-less entity defaults to "public" when defaultSchema is unset', () => {
     const ir = emptyIR();
-    ir.entities.push(moduleEntity("Setting", undefined));
-    ir.stores.push(durableStore("Setting"));
+    ir.entities.push(moduleEntity('Setting', undefined));
+    ir.stores.push(durableStore('Setting'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { provider: "postgresql", multiSchema: { enabled: true } },
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql', multiSchema: { enabled: true } },
     }).artifacts[0].code;
 
     expect(code).toMatch(/@@schema\("public"\)/);
   });
 
-  it("preserves explicit schemas order and appends used-but-unlisted schemas", () => {
+  it('preserves explicit schemas order and appends used-but-unlisted schemas', () => {
     const ir = emptyIR();
-    ir.entities.push(moduleEntity("User", "auth")); // listed
-    ir.entities.push(moduleEntity("Audit", "logging")); // NOT listed → appended
-    ir.stores.push(durableStore("User"));
-    ir.stores.push(durableStore("Audit"));
+    ir.entities.push(moduleEntity('User', 'auth')); // listed
+    ir.entities.push(moduleEntity('Audit', 'logging')); // NOT listed → appended
+    ir.stores.push(durableStore('User'));
+    ir.stores.push(durableStore('Audit'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        provider: "postgresql",
-        multiSchema: { enabled: true, schemas: ["public", "auth"] },
+        provider: 'postgresql',
+        multiSchema: { enabled: true, schemas: ['public', 'auth'] },
       },
     }).artifacts[0].code;
 
@@ -3800,70 +3696,66 @@ describe("PrismaProjection — multi-schema layout (G6)", () => {
     expect(code).toMatch(/^\s+schemas\s+=\s+\["public", "auth", "logging"\]$/m);
   });
 
-  it("errors on an unsupported provider and falls back to a flat layout", () => {
+  it('errors on an unsupported provider and falls back to a flat layout', () => {
     const ir = emptyIR();
-    ir.entities.push(moduleEntity("User", "auth"));
-    ir.stores.push(durableStore("User"));
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.stores.push(durableStore('User'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { provider: "mysql", multiSchema: { enabled: true } },
+      surface: 'prisma.schema',
+      options: { provider: 'mysql', multiSchema: { enabled: true } },
     });
     const code = result.artifacts[0].code;
 
     expect(
       result.diagnostics.some(
-        (d) =>
-          d.code === "PRISMA_MULTISCHEMA_UNSUPPORTED_PROVIDER" &&
-          d.severity === "error"
-      )
+        (d) => d.code === 'PRISMA_MULTISCHEMA_UNSUPPORTED_PROVIDER' && d.severity === 'error',
+      ),
     ).toBe(true);
     expect(code).not.toMatch(/@@schema/);
     expect(code).not.toMatch(/schemas\s*=/);
   });
 
-  it("models-only mode (no provider): emits @@schema + info diagnostic, no datasource", () => {
+  it('models-only mode (no provider): emits @@schema + info diagnostic, no datasource', () => {
     const ir = emptyIR();
-    ir.entities.push(moduleEntity("User", "auth"));
-    ir.stores.push(durableStore("User"));
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.stores.push(durableStore('User'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: { multiSchema: { enabled: true } },
     });
     const code = result.artifacts[0].code;
 
     expect(code).toMatch(/@@schema\("auth"\)/);
     expect(code).not.toMatch(/datasource db \{/);
-    const info = result.diagnostics.find(
-      (d) => d.code === "PRISMA_MULTISCHEMA_MODELS_ONLY"
-    );
-    expect(info?.severity).toBe("info");
+    const info = result.diagnostics.find((d) => d.code === 'PRISMA_MULTISCHEMA_MODELS_ONLY');
+    expect(info?.severity).toBe('info');
     expect(info?.message).toMatch(/schemas = \["auth"\]/);
     // models-only → no prisma.config.ts companion (provider unset).
     expect(result.artifacts).toHaveLength(1);
   });
 });
 
-describe("PrismaProjection — naming convention (auto casing)", () => {
+describe('PrismaProjection — naming convention (auto casing)', () => {
   /** Entity with camelCase columns to exercise the convention. */
   function userAccountEntity(): IREntity {
     return {
-      name: "UserAccount",
+      name: 'UserAccount',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "createdAt",
-          type: { name: "datetime", nullable: false },
+          name: 'createdAt',
+          type: { name: 'datetime', nullable: false },
           modifiers: [],
         },
         {
-          name: "displayName",
-          type: { name: "string", nullable: false },
+          name: 'displayName',
+          type: { name: 'string', nullable: false },
           modifiers: [],
         },
       ],
@@ -3878,11 +3770,11 @@ describe("PrismaProjection — naming convention (auto casing)", () => {
   it("naming: 'snake_case' maps camelCase columns and pluralizes the table; identifiers unchanged", () => {
     const ir = emptyIR();
     ir.entities.push(userAccountEntity());
-    ir.stores.push(durableStore("UserAccount"));
+    ir.stores.push(durableStore('UserAccount'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { naming: "snake_case" },
+      surface: 'prisma.schema',
+      options: { naming: 'snake_case' },
     }).artifacts[0].code;
 
     // Prisma field identifier stays camelCase; only @map carries the physical name.
@@ -3894,57 +3786,55 @@ describe("PrismaProjection — naming convention (auto casing)", () => {
     expect(code).toMatch(/^\s+@@map\("user_accounts"\)$/m);
   });
 
-  it("does not @map names that are already in the target case (id stays bare)", () => {
+  it('does not @map names that are already in the target case (id stays bare)', () => {
     const ir = emptyIR();
     ir.entities.push(userAccountEntity());
-    ir.stores.push(durableStore("UserAccount"));
+    ir.stores.push(durableStore('UserAccount'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { naming: "snake_case" },
+      surface: 'prisma.schema',
+      options: { naming: 'snake_case' },
     }).artifacts[0].code;
 
     expect(code).toMatch(/^\s+id String @id$/m);
     expect(code).not.toMatch(/id String @id @map/);
   });
 
-  it("maps default FK columns under the convention (authorId → author_id)", () => {
+  it('maps default FK columns under the convention (authorId → author_id)', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Author", {
-        relationships: [{ name: "books", kind: "hasMany", target: "Book" }],
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
       }),
-      bareEntity("Book", {
-        relationships: [
-          { name: "author", kind: "belongsTo", target: "Author" },
-        ],
-      })
+      bareEntity('Book', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
+      }),
     );
-    ir.stores.push(durableStore("Author"), durableStore("Book"));
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { naming: "snake_case" },
+      surface: 'prisma.schema',
+      options: { naming: 'snake_case' },
     }).artifacts[0].code;
 
     // FK identifier stays authorId; physical column mapped; relation reference unchanged.
     expect(code).toMatch(/^\s+authorId String @map\("author_id"\)$/m);
     expect(code).toMatch(
-      /^\s+author Author @relation\(fields: \[authorId\], references: \[id\]\)$/m
+      /^\s+author Author @relation\(fields: \[authorId\], references: \[id\]\)$/m,
     );
   });
 
-  it("explicit tableMappings / columnMappings override the convention", () => {
+  it('explicit tableMappings / columnMappings override the convention', () => {
     const ir = emptyIR();
     ir.entities.push(userAccountEntity());
-    ir.stores.push(durableStore("UserAccount"));
+    ir.stores.push(durableStore('UserAccount'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
-        naming: "snake_case",
-        tableMappings: { UserAccount: "accounts" },
-        columnMappings: { UserAccount: { createdAt: "inserted_at" } },
+        naming: 'snake_case',
+        tableMappings: { UserAccount: 'accounts' },
+        columnMappings: { UserAccount: { createdAt: 'inserted_at' } },
       },
     }).artifacts[0].code;
 
@@ -3954,17 +3844,17 @@ describe("PrismaProjection — naming convention (auto casing)", () => {
     expect(code).not.toMatch(/created_at/);
   });
 
-  it("pluralizeTables: false casing without pluralization", () => {
+  it('pluralizeTables: false casing without pluralization', () => {
     const ir = emptyIR();
     ir.entities.push(widgetEntity());
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
         naming: {
-          table: "snake_case",
-          column: "snake_case",
+          table: 'snake_case',
+          column: 'snake_case',
           pluralizeTables: false,
         },
       },
@@ -3973,16 +3863,16 @@ describe("PrismaProjection — naming convention (auto casing)", () => {
     expect(code).toMatch(/^\s+@@map\("widget"\)$/m);
   });
 
-  it("no naming option → output identical to default (no @map/@@map added)", () => {
+  it('no naming option → output identical to default (no @map/@@map added)', () => {
     const ir = emptyIR();
     ir.entities.push(userAccountEntity());
-    ir.stores.push(durableStore("UserAccount"));
+    ir.stores.push(durableStore('UserAccount'));
 
     const withoutOption = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     const withEmptyOptions = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {},
     }).artifacts[0].code;
 
@@ -3992,29 +3882,29 @@ describe("PrismaProjection — naming convention (auto casing)", () => {
   });
 });
 
-describe("PrismaProjection — date/time primitive types", () => {
-  it("maps time → DateTime and duration → Float", () => {
+describe('PrismaProjection — date/time primitive types', () => {
+  it('maps time → DateTime and duration → Float', () => {
     const ir = emptyIR();
     ir.entities.push(
-      bareEntity("Gadget", {
+      bareEntity('Gadget', {
         properties: [
           {
-            name: "openAt",
-            type: { name: "time", nullable: false },
-            modifiers: ["required"],
+            name: 'openAt',
+            type: { name: 'time', nullable: false },
+            modifiers: ['required'],
           },
           {
-            name: "span",
-            type: { name: "duration", nullable: false },
-            modifiers: ["required"],
+            name: 'span',
+            type: { name: 'duration', nullable: false },
+            modifiers: ['required'],
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Gadget"));
+    ir.stores.push(durableStore('Gadget'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
 
     expect(result.artifacts).toHaveLength(1);
@@ -4022,42 +3912,42 @@ describe("PrismaProjection — date/time primitive types", () => {
     expect(code).toMatch(/^\s+openAt DateTime$/m);
     expect(code).toMatch(/^\s+span Float$/m);
 
-    const errs = result.diagnostics.filter((d) => d.severity === "error");
+    const errs = result.diagnostics.filter((d) => d.severity === 'error');
     expect(errs).toHaveLength(0);
   });
 });
 
-describe("PrismaProjection — enum types", () => {
+describe('PrismaProjection — enum types', () => {
   function statusEnum() {
     return {
-      name: "Status",
+      name: 'Status',
       values: [
-        { name: "draft" },
-        { name: "published", label: "Published" },
-        { name: "archived", ordinal: 2 },
+        { name: 'draft' },
+        { name: 'published', label: 'Published' },
+        { name: 'archived', ordinal: 2 },
       ],
     };
   }
 
-  it("emits an enum block, types the column as the enum, and emits a BARE @default", () => {
+  it('emits an enum block, types the column as the enum, and emits a BARE @default', () => {
     const ir = emptyIR();
     ir.enums.push(statusEnum());
     ir.entities.push(
-      bareEntity("Article", {
+      bareEntity('Article', {
         properties: [
           {
-            name: "status",
-            type: { name: "Status", nullable: false },
-            modifiers: ["required"],
-            defaultValue: { kind: "string", value: "draft" },
+            name: 'status',
+            type: { name: 'Status', nullable: false },
+            modifiers: ['required'],
+            defaultValue: { kind: 'string', value: 'draft' },
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(durableStore("Article"));
+    ir.stores.push(durableStore('Article'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
     const code = result.artifacts[0].code;
 
@@ -4074,56 +3964,56 @@ describe("PrismaProjection — enum types", () => {
     expect(code).toMatch(/^\s+status Status @default\(draft\)$/m);
     expect(code).not.toMatch(/@default\("draft"\)/);
 
-    const errs = result.diagnostics.filter((d) => d.severity === "error");
+    const errs = result.diagnostics.filter((d) => d.severity === 'error');
     expect(errs).toHaveLength(0);
   });
 
-  it("does NOT emit an enum referenced only by a skipped (memory) entity", () => {
+  it('does NOT emit an enum referenced only by a skipped (memory) entity', () => {
     const ir = emptyIR();
     ir.enums.push({
-      name: "Color",
-      values: [{ name: "red" }, { name: "blue" }],
+      name: 'Color',
+      values: [{ name: 'red' }, { name: 'blue' }],
     });
     ir.entities.push(
-      bareEntity("Palette", {
+      bareEntity('Palette', {
         properties: [
           {
-            name: "color",
-            type: { name: "Color", nullable: false },
-            modifiers: ["required"],
+            name: 'color',
+            type: { name: 'Color', nullable: false },
+            modifiers: ['required'],
           },
         ],
-      })
+      }),
     );
-    ir.stores.push(memoryStore("Palette"));
+    ir.stores.push(memoryStore('Palette'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     });
-    const code = result.artifacts[0]?.code ?? "";
+    const code = result.artifacts[0]?.code ?? '';
     expect(code).not.toMatch(/enum Color/);
   });
 
-  it("places the enum in its module schema under multiSchema and lists it in the datasource", () => {
+  it('places the enum in its module schema under multiSchema and lists it in the datasource', () => {
     const ir = emptyIR();
     ir.enums.push({
-      name: "Stage",
-      module: "sales",
-      values: [{ name: "lead" }, { name: "won" }],
+      name: 'Stage',
+      module: 'sales',
+      values: [{ name: 'lead' }, { name: 'won' }],
     });
     ir.entities.push({
-      name: "Deal",
-      module: "sales",
+      name: 'Deal',
+      module: 'sales',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "stage",
-          type: { name: "Stage", nullable: false },
-          modifiers: ["required"],
+          name: 'stage',
+          type: { name: 'Stage', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -4132,11 +4022,11 @@ describe("PrismaProjection — enum types", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Deal"));
+    ir.stores.push(durableStore('Deal'));
 
     const result = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { provider: "postgresql", multiSchema: { enabled: true } },
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql', multiSchema: { enabled: true } },
     });
     const code = result.artifacts[0].code;
 
@@ -4144,7 +4034,7 @@ describe("PrismaProjection — enum types", () => {
     expect(code).toMatch(/^\s+@@schema\("sales"\)$/m);
     expect(code).toMatch(/schemas\s+= \[[^\]]*"sales"[^\]]*\]/);
 
-    const errs = result.diagnostics.filter((d) => d.severity === "error");
+    const errs = result.diagnostics.filter((d) => d.severity === 'error');
     expect(errs).toHaveLength(0);
   });
 });
@@ -4153,25 +4043,25 @@ describe("PrismaProjection — enum types", () => {
 // IRType.params precision/scale
 // ============================================================================
 
-describe("PrismaProjection — IRType.params precision/scale", () => {
-  it("uses IRType.params precision/scale for decimal when options.precision is absent", () => {
+describe('PrismaProjection — IRType.params precision/scale', () => {
+  it('uses IRType.params precision/scale for decimal when options.precision is absent', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "price",
+          name: 'price',
           type: {
-            name: "decimal",
+            name: 'decimal',
             nullable: false,
             params: { precision: 20, scale: 6 },
           },
-          modifiers: ["required"],
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -4180,33 +4070,33 @@ describe("PrismaProjection — IRType.params precision/scale", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+price Decimal @db\.Decimal\(20, 6\)$/m);
     expect(code).not.toMatch(/@db\.Decimal\(12, 2\)/);
   });
 
-  it("options.precision beats IRType.params (explicit config wins)", () => {
+  it('options.precision beats IRType.params (explicit config wins)', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "price",
+          name: 'price',
           type: {
-            name: "decimal",
+            name: 'decimal',
             nullable: false,
             params: { precision: 20, scale: 6 },
           },
-          modifiers: ["required"],
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -4215,10 +4105,10 @@ describe("PrismaProjection — IRType.params precision/scale", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
       options: {
         precision: { Widget: { price: { precision: 10, scale: 4 } } },
       },
@@ -4227,20 +4117,20 @@ describe("PrismaProjection — IRType.params precision/scale", () => {
     expect(code).not.toMatch(/@db\.Decimal\(20, 6\)/);
   });
 
-  it("falls back to default precision when IRType.params is absent (existing behavior)", () => {
+  it('falls back to default precision when IRType.params is absent (existing behavior)', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "cost",
-          type: { name: "decimal", nullable: false },
-          modifiers: ["required"],
+          name: 'cost',
+          type: { name: 'decimal', nullable: false },
+          modifiers: ['required'],
         },
       ],
       computedProperties: [],
@@ -4249,10 +4139,10 @@ describe("PrismaProjection — IRType.params precision/scale", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+cost Decimal @db\.Decimal\(12, 2\)$/m);
   });
@@ -4262,21 +4152,21 @@ describe("PrismaProjection — IRType.params precision/scale", () => {
 // indexed modifier → @@index
 // ============================================================================
 
-describe("PrismaProjection — indexed modifier emits @@index", () => {
-  it("emits @@index for a property with the indexed modifier", () => {
+describe('PrismaProjection — indexed modifier emits @@index', () => {
+  it('emits @@index for a property with the indexed modifier', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "tenantId",
-          type: { name: "string", nullable: false },
-          modifiers: ["required", "indexed"],
+          name: 'tenantId',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required', 'indexed'],
         },
       ],
       computedProperties: [],
@@ -4285,28 +4175,28 @@ describe("PrismaProjection — indexed modifier emits @@index", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+@@index\(\[tenantId\]\)$/m);
   });
 
-  it("does not duplicate @@index when property already in options.indexes", () => {
+  it('does not duplicate @@index when property already in options.indexes', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "tenantId",
-          type: { name: "string", nullable: false },
-          modifiers: ["required", "indexed"],
+          name: 'tenantId',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required', 'indexed'],
         },
       ],
       computedProperties: [],
@@ -4315,36 +4205,36 @@ describe("PrismaProjection — indexed modifier emits @@index", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
-      options: { indexes: { Widget: [["tenantId"]] } },
+      surface: 'prisma.schema',
+      options: { indexes: { Widget: [['tenantId']] } },
     }).artifacts[0].code;
     // Should appear exactly once
     const matches = code.match(/@@index\(\[tenantId\]\)/g) ?? [];
     expect(matches).toHaveLength(1);
   });
 
-  it("emits @@index for multiple indexed properties", () => {
+  it('emits @@index for multiple indexed properties', () => {
     const ir = emptyIR();
     ir.entities.push({
-      name: "Widget",
+      name: 'Widget',
       properties: [
         {
-          name: "id",
-          type: { name: "string", nullable: false },
-          modifiers: ["required"],
+          name: 'id',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
         },
         {
-          name: "accountId",
-          type: { name: "string", nullable: false },
-          modifiers: ["required", "indexed"],
+          name: 'accountId',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required', 'indexed'],
         },
         {
-          name: "status",
-          type: { name: "string", nullable: false },
-          modifiers: ["indexed"],
+          name: 'status',
+          type: { name: 'string', nullable: false },
+          modifiers: ['indexed'],
         },
       ],
       computedProperties: [],
@@ -4353,10 +4243,10 @@ describe("PrismaProjection — indexed modifier emits @@index", () => {
       constraints: [],
       policies: [],
     });
-    ir.stores.push(durableStore("Widget"));
+    ir.stores.push(durableStore('Widget'));
 
     const code = new PrismaProjection().generate(ir, {
-      surface: "prisma.schema",
+      surface: 'prisma.schema',
     }).artifacts[0].code;
     expect(code).toMatch(/^\s+@@index\(\[accountId\]\)$/m);
     expect(code).toMatch(/^\s+@@index\(\[status\]\)$/m);

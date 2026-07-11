@@ -69,7 +69,7 @@ export class RateLimiter {
     } else {
       // Remove timestamps older than the window
       const cutoff = now - config.windowMs;
-      log.timestamps = log.timestamps.filter(ts => ts > cutoff);
+      log.timestamps = log.timestamps.filter((ts) => ts > cutoff);
     }
 
     const effectiveLimit = config.maxRequests + (config.burstAllowance ?? 0);

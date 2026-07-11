@@ -63,7 +63,9 @@ function asyncCommand(name: string): IRCommand {
 }
 
 /** Parse the emitted vercel.json artifact into its crons array. */
-function vercelCrons(artifacts: { pathHint?: string; code: string }[]): Array<{ path: string; schedule: string }> {
+function vercelCrons(
+  artifacts: { pathHint?: string; code: string }[],
+): Array<{ path: string; schedule: string }> {
   const vercel = artifacts.find((a) => a.pathHint === 'vercel.json');
   expect(vercel, 'a vercel.json artifact is emitted').toBeDefined();
   expect(vercel!.code.endsWith('\n')).toBe(true);
@@ -80,7 +82,9 @@ describe('generateScheduleCronRoutes — cron routes', () => {
     expect(route!.pathHint).toBe('app/api/cron/daily-backup/route.ts');
     expect(route!.code).toContain('runSchedule("dailyBackup")');
     expect(route!.code).toContain('CRON_SECRET');
-    expect(route!.code).toContain('import { createManifestRuntime } from "@/lib/manifest-runtime";');
+    expect(route!.code).toContain(
+      'import { createManifestRuntime } from "@/lib/manifest-runtime";',
+    );
   });
 
   it('threads appDir into both the route pathHint and the vercel.json url', () => {
@@ -100,7 +104,10 @@ describe('generateScheduleCronRoutes — cron routes', () => {
 
   it('registers every cron schedule in the vercel.json crons array', () => {
     const ir = baseIR({
-      schedules: [cronSchedule('dailyBackup', '0 0 * * *'), cronSchedule('morningDigest', '0 9 * * *')],
+      schedules: [
+        cronSchedule('dailyBackup', '0 0 * * *'),
+        cronSchedule('morningDigest', '0 9 * * *'),
+      ],
     });
     const result = generateScheduleCronRoutes(ir, DEFAULT_OPTIONS);
 
@@ -130,14 +137,19 @@ describe('generateScheduleCronRoutes — approval-expiry route', () => {
     expect(route!.code).toContain('expireApprovals()');
 
     const crons = vercelCrons(result.artifacts);
-    expect(crons).toContainEqual({ path: '/api/cron/manifest-approval-expiry', schedule: '*/5 * * * *' });
+    expect(crons).toContainEqual({
+      path: '/api/cron/manifest-approval-expiry',
+      schedule: '*/5 * * * *',
+    });
   });
 
   it('does not emit an approval-expiry route when no approval has a timeout', () => {
     const ir = baseIR({ entities: [entityWithApproval(false)] });
     const result = generateScheduleCronRoutes(ir, DEFAULT_OPTIONS);
 
-    expect(result.artifacts.find((a) => a.id === 'nextjs.schedule.__approval_expiry__')).toBeUndefined();
+    expect(
+      result.artifacts.find((a) => a.id === 'nextjs.schedule.__approval_expiry__'),
+    ).toBeUndefined();
     expect(result.artifacts).toEqual([]);
     expect(result.diagnostics[0].code).toBe('NEXTJS_NO_SCHEDULE_ARTIFACTS');
   });
@@ -151,15 +163,22 @@ describe('generateScheduleCronRoutes — jobs-drain route', () => {
     const route = result.artifacts.find((a) => a.id === 'nextjs.schedule.__jobs_drain__');
     expect(route).toBeDefined();
     expect(route!.pathHint).toBe('app/api/cron/manifest-jobs-drain/route.ts');
-    expect(route!.code).toContain('import { drainJobsOnce } from "@angriff36/manifest/jobs/worker";');
+    expect(route!.code).toContain(
+      'import { drainJobsOnce } from "@angriff36/manifest/jobs/worker";',
+    );
     expect(route!.code).toContain('drainJobsOnce(runtime)');
 
     const crons = vercelCrons(result.artifacts);
-    expect(crons).toContainEqual({ path: '/api/cron/manifest-jobs-drain', schedule: '*/5 * * * *' });
+    expect(crons).toContainEqual({
+      path: '/api/cron/manifest-jobs-drain',
+      schedule: '*/5 * * * *',
+    });
   });
 
   it('does not emit a jobs-drain route when no command is async', () => {
-    const ir = baseIR({ commands: [{ name: 'sync', parameters: [], guards: [], actions: [], emits: [] }] });
+    const ir = baseIR({
+      commands: [{ name: 'sync', parameters: [], guards: [], actions: [], emits: [] }],
+    });
     const result = generateScheduleCronRoutes(ir, DEFAULT_OPTIONS);
     expect(result.artifacts.find((a) => a.id === 'nextjs.schedule.__jobs_drain__')).toBeUndefined();
   });

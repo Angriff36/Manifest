@@ -78,10 +78,10 @@ function delay(
   ms: number,
   signals: AbortSignal[],
   setTimeoutFn: (callback: () => void, ms: number) => unknown,
-  clearTimeoutFn: (handle: unknown) => void
+  clearTimeoutFn: (handle: unknown) => void,
 ): Promise<void> {
-  if (signals.some(s => s.aborted)) return Promise.resolve();
-  return new Promise<void>(resolve => {
+  if (signals.some((s) => s.aborted)) return Promise.resolve();
+  return new Promise<void>((resolve) => {
     let settled = false;
     const onAbort = () => {
       if (settled) return;
@@ -126,7 +126,7 @@ export function runJobWorker(runtime: JobDrainable, opts: JobWorkerOptions = {})
   const controller = new AbortController();
   const signals: AbortSignal[] = [controller.signal];
   if (opts.signal) signals.push(opts.signal);
-  const stopped = () => signals.some(s => s.aborted);
+  const stopped = () => signals.some((s) => s.aborted);
 
   const loop = (async () => {
     while (!stopped()) {

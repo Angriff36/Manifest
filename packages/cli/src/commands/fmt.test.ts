@@ -32,7 +32,7 @@ describe('formatManifestSource', () => {
 
   it('converts tabs to two spaces', () => {
     expect(formatManifestSource('entity Recipe {\n\tproperty title: string\n}\n')).toBe(
-      'entity Recipe {\n  property title: string\n}\n'
+      'entity Recipe {\n  property title: string\n}\n',
     );
   });
 });

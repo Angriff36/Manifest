@@ -123,7 +123,8 @@ export function detectEntitySourceParseHeuristics(input: {
         rawCommandTokenCount,
         parsedCommandCount: input.parsedCommandCount,
       },
-      suggestion: 'Likely parser/scanner mismatch or parse failure inside the entity block. Re-run compile diagnostics and inspect unsupported syntax in this entity.',
+      suggestion:
+        'Likely parser/scanner mismatch or parse failure inside the entity block. Re-run compile diagnostics and inspect unsupported syntax in this entity.',
     });
   }
 
@@ -190,7 +191,9 @@ function collectCandidateArrays(report: unknown): Array<Record<string, unknown>>
 }
 
 function classifyDuplicate(raw: Record<string, unknown>): 'known' | 'suspicious' {
-  const status = pickString(raw, ['classification', 'status', 'disposition', 'action', 'kind'])?.toLowerCase() ?? '';
+  const status =
+    pickString(raw, ['classification', 'status', 'disposition', 'action', 'kind'])?.toLowerCase() ??
+    '';
   const reason = pickString(raw, ['reason', 'note', 'explanation'])?.toLowerCase() ?? '';
   if (
     status.includes('known') ||
@@ -205,7 +208,10 @@ function classifyDuplicate(raw: Record<string, unknown>): 'known' | 'suspicious'
   return 'suspicious';
 }
 
-export function normalizeMergeReportEntries(report: unknown, sourceReport: string): DuplicateReportEntry[] {
+export function normalizeMergeReportEntries(
+  report: unknown,
+  sourceReport: string,
+): DuplicateReportEntry[] {
   const entries: DuplicateReportEntry[] = [];
   for (const item of collectCandidateArrays(report)) {
     const type = pickString(item, ['type', 'duplicateType', 'entryType']) ?? '';
@@ -267,7 +273,10 @@ export interface IRInspectionResult {
   filesScanned: number;
 }
 
-export async function findManifestSourceFiles(cwd: string, srcPattern = '**/*.manifest'): Promise<string[]> {
+export async function findManifestSourceFiles(
+  cwd: string,
+  srcPattern = '**/*.manifest',
+): Promise<string[]> {
   const files = await glob(srcPattern, {
     cwd,
     absolute: true,
@@ -279,14 +288,21 @@ export async function findManifestSourceFiles(cwd: string, srcPattern = '**/*.ma
 type DoctorParserClass = new () => {
   parse(source: string): {
     program: Record<string, unknown>;
-    errors: Array<{ message: string; severity?: string; position?: { line?: number; column?: number } }>;
+    errors: Array<{
+      message: string;
+      severity?: string;
+      position?: { line?: number; column?: number };
+    }>;
   };
 };
 
 type DoctorModuleImporter = (specifier: string) => Promise<unknown>;
 
 const DOCTOR_PARSER_PUBLIC_SPECIFIER = '@angriff36/manifest/parser';
-const DOCTOR_PARSER_SOURCE_SPECIFIER = new URL('../../../../src/manifest/parser.ts', import.meta.url).href;
+const DOCTOR_PARSER_SOURCE_SPECIFIER = new URL(
+  '../../../../src/manifest/parser.ts',
+  import.meta.url,
+).href;
 
 function isModuleNotFoundError(error: unknown): boolean {
   const code = asRecord(error)?.code;
@@ -306,13 +322,21 @@ function parseDoctorParserModule(module: unknown, specifier: string): DoctorPars
   return Parser as unknown as DoctorParserClass;
 }
 
-export async function loadDoctorParserClass(importer: DoctorModuleImporter = (specifier) => import(specifier)): Promise<DoctorParserClass> {
+export async function loadDoctorParserClass(
+  importer: DoctorModuleImporter = (specifier) => import(specifier),
+): Promise<DoctorParserClass> {
   try {
-    return parseDoctorParserModule(await importer(DOCTOR_PARSER_PUBLIC_SPECIFIER), DOCTOR_PARSER_PUBLIC_SPECIFIER);
+    return parseDoctorParserModule(
+      await importer(DOCTOR_PARSER_PUBLIC_SPECIFIER),
+      DOCTOR_PARSER_PUBLIC_SPECIFIER,
+    );
   } catch (error) {
     if (!isModuleNotFoundError(error)) throw error;
     try {
-      return parseDoctorParserModule(await importer(DOCTOR_PARSER_SOURCE_SPECIFIER), DOCTOR_PARSER_SOURCE_SPECIFIER);
+      return parseDoctorParserModule(
+        await importer(DOCTOR_PARSER_SOURCE_SPECIFIER),
+        DOCTOR_PARSER_SOURCE_SPECIFIER,
+      );
     } catch {
       throw error;
     }
@@ -320,13 +344,22 @@ export async function loadDoctorParserClass(importer: DoctorModuleImporter = (sp
 }
 
 function flattenProgramEntities(program: Record<string, unknown>): Array<Record<string, unknown>> {
-  const top = Array.isArray(program.entities) ? (program.entities as Array<Record<string, unknown>>) : [];
-  const modules = Array.isArray(program.modules) ? (program.modules as Array<Record<string, unknown>>) : [];
-  const nested = modules.flatMap((m) => Array.isArray(m.entities) ? (m.entities as Array<Record<string, unknown>>) : []);
+  const top = Array.isArray(program.entities)
+    ? (program.entities as Array<Record<string, unknown>>)
+    : [];
+  const modules = Array.isArray(program.modules)
+    ? (program.modules as Array<Record<string, unknown>>)
+    : [];
+  const nested = modules.flatMap((m) =>
+    Array.isArray(m.entities) ? (m.entities as Array<Record<string, unknown>>) : [],
+  );
   return [...top, ...nested];
 }
 
-function sourceFileLevelPoliciesForEntity(program: Record<string, unknown>, entityName: string): string[] {
+function sourceFileLevelPoliciesForEntity(
+  program: Record<string, unknown>,
+  entityName: string,
+): string[] {
   const collect = (arr: unknown[]) =>
     arr
       .filter((p) => asRecord(p)?.entity === entityName || asRecord(p)?.name)
@@ -364,7 +397,11 @@ function extractSourceEntityDefinition(input: {
   source: string;
   file: string;
   program: Record<string, unknown>;
-  parserErrors: Array<{ message: string; severity?: string; position?: { line?: number; column?: number } }>;
+  parserErrors: Array<{
+    message: string;
+    severity?: string;
+    position?: { line?: number; column?: number };
+  }>;
 }): SourceEntityDefinition | null {
   const entityName = pickString(input.entityNode, ['name']);
   if (!entityName) return null;
@@ -413,17 +450,22 @@ function extractSourceEntityDefinition(input: {
     line: (asRecord(input.entityNode.position)?.line as number | undefined) ?? undefined,
     properties: uniqueSorted(properties),
     commands: uniqueSorted(commands),
-    policies: uniqueSorted([...policies, ...sourceFileLevelPoliciesForEntity(input.program, entityName)]),
+    policies: uniqueSorted([
+      ...policies,
+      ...sourceFileLevelPoliciesForEntity(input.program, entityName),
+    ]),
     emits: uniqueSorted(emits),
     parserHeuristics,
     parserErrors: fileParserErrors,
   };
 }
 
-export async function inspectSourceEntities(options: {
-  cwd?: string;
-  srcPattern?: string;
-} = {}): Promise<SourceInspectionResult> {
+export async function inspectSourceEntities(
+  options: {
+    cwd?: string;
+    srcPattern?: string;
+  } = {},
+): Promise<SourceInspectionResult> {
   const cwd = options.cwd || process.cwd();
   const files = await findManifestSourceFiles(cwd, options.srcPattern || '**/*.manifest');
   const Parser = await loadDoctorParserClass();
@@ -459,16 +501,18 @@ export async function inspectSourceEntities(options: {
   return { entities, filesScanned: files.length, filesWithParseErrors };
 }
 
-export async function discoverIRFiles(options: {
-  cwd?: string;
-  irRoots?: string[];
-} = {}): Promise<string[]> {
+export async function discoverIRFiles(
+  options: {
+    cwd?: string;
+    irRoots?: string[];
+  } = {},
+): Promise<string[]> {
   const cwd = options.cwd || process.cwd();
   const roots = uniqueSorted(
     (options.irRoots && options.irRoots.length > 0
       ? options.irRoots
-      : ['packages/manifest-ir/ir', 'ir'])
-      .map((r) => path.resolve(cwd, r))
+      : ['packages/manifest-ir/ir', 'ir']
+    ).map((r) => path.resolve(cwd, r)),
   );
 
   const files = new Set<string>();
@@ -487,10 +531,12 @@ export async function discoverIRFiles(options: {
   return uniqueSorted(files);
 }
 
-export async function inspectCompiledIR(options: {
-  cwd?: string;
-  irRoots?: string[];
-} = {}): Promise<IRInspectionResult> {
+export async function inspectCompiledIR(
+  options: {
+    cwd?: string;
+    irRoots?: string[];
+  } = {},
+): Promise<IRInspectionResult> {
   const files = await discoverIRFiles(options);
   const entities = new Map<string, IREntityDefinition[]>();
 
@@ -533,9 +579,7 @@ export async function inspectCompiledIR(options: {
       const policies = Array.isArray(entity?.policies)
         ? (entity.policies as unknown[]).filter((p): p is string => typeof p === 'string')
         : [];
-      const events = irEvents
-        .map((e) => strField(e, 'name'))
-        .filter((v): v is string => !!v);
+      const events = irEvents.map((e) => strField(e, 'name')).filter((v): v is string => !!v);
 
       const list = entities.get(entityName) || [];
       list.push({
@@ -560,7 +604,9 @@ export async function inspectCompiledIR(options: {
   return { entities, filesScanned: files.length };
 }
 
-export function mergeSourceEntityDefinitions(defs: SourceEntityDefinition[] | undefined): EntitySurfaceShape & {
+export function mergeSourceEntityDefinitions(
+  defs: SourceEntityDefinition[] | undefined,
+): EntitySurfaceShape & {
   files: Array<{ file: string; line?: number }>;
   parserFindings: DiagnosticFinding[];
   parserErrors: SourceEntityDefinition['parserErrors'];
@@ -590,7 +636,9 @@ export function mergeSourceEntityDefinitions(defs: SourceEntityDefinition[] | un
   };
 }
 
-export function mergeIREntityDefinitions(defs: IREntityDefinition[] | undefined): EntitySurfaceShape & {
+export function mergeIREntityDefinitions(
+  defs: IREntityDefinition[] | undefined,
+): EntitySurfaceShape & {
   files: Array<{ file: string; provenance?: Record<string, unknown> }>;
   policies: string[];
   events: string[];
@@ -642,9 +690,19 @@ export async function inspectRouteSurfaceForCommand(options: {
   cwd?: string;
 }): Promise<{ routeExists: boolean; matches: RouteManifestCommandHit[] }> {
   const files = await findRoutesManifestFiles(options.cwd || process.cwd());
-  interface LooseRouteSource { kind?: string; entity?: string; command?: string; }
-  interface LooseRoute { path?: string; method?: string; source?: LooseRouteSource; }
-  interface LooseRouteManifest { routes?: LooseRoute[]; }
+  interface LooseRouteSource {
+    kind?: string;
+    entity?: string;
+    command?: string;
+  }
+  interface LooseRoute {
+    path?: string;
+    method?: string;
+    source?: LooseRouteSource;
+  }
+  interface LooseRouteManifest {
+    routes?: LooseRoute[];
+  }
 
   const matches: RouteManifestCommandHit[] = [];
   for (const file of files) {
@@ -677,10 +735,12 @@ export async function inspectRouteSurfaceForCommand(options: {
   return { routeExists: matches.length > 0, matches };
 }
 
-export async function readMergeReports(options: {
-  cwd?: string;
-  pattern?: string;
-} = {}): Promise<Array<{ file: string; entries: DuplicateReportEntry[]; parseError?: string }>> {
+export async function readMergeReports(
+  options: {
+    cwd?: string;
+    pattern?: string;
+  } = {},
+): Promise<Array<{ file: string; entries: DuplicateReportEntry[]; parseError?: string }>> {
   const cwd = options.cwd || process.cwd();
   const pattern = options.pattern || '**/*.merge-report.json';
   const files = await glob(pattern, {
@@ -721,7 +781,9 @@ export function formatRelative(cwd: string, filePath: string): string {
  *  - generatedDir/paths whose target dir won't match the app's '@/' import alias
  *    (the stray 'apps/api/src/lib' that no import resolves to)
  */
-export async function inspectConfigHealth(cwd: string = process.cwd()): Promise<DiagnosticFinding[]> {
+export async function inspectConfigHealth(
+  cwd: string = process.cwd(),
+): Promise<DiagnosticFinding[]> {
   const findings: DiagnosticFinding[] = [];
 
   // Load the real config through the CLI loader, not a parallel parser.
@@ -752,7 +814,10 @@ export async function inspectConfigHealth(cwd: string = process.cwd()): Promise<
       const appSegs = segs(appDir);
       let overlap = Math.min(outSegs.length, appSegs.length);
       for (; overlap > 0; overlap--) {
-        if (outSegs.slice(outSegs.length - overlap).join('/') === appSegs.slice(0, overlap).join('/')) break;
+        if (
+          outSegs.slice(outSegs.length - overlap).join('/') === appSegs.slice(0, overlap).join('/')
+        )
+          break;
       }
       if (overlap > 0) {
         findings.push({
@@ -767,11 +832,17 @@ export async function inspectConfigHealth(cwd: string = process.cwd()): Promise<
     // 2. generatedDir default vs a non-src app layout → unresolvable imports.
     if (name === 'nextjs') {
       const hasExplicitPaths = options.paths && typeof options.paths === 'object';
-      const generatedDir = typeof options.generatedDir === 'string' ? options.generatedDir : undefined;
+      const generatedDir =
+        typeof options.generatedDir === 'string' ? options.generatedDir : undefined;
       const effectiveGeneratedDir = generatedDir ?? 'src';
       // appDir without a 'src' segment + default 'src' generatedDir means the
       // client/types land in <output>/src/* while the app imports '@/...'.
-      if (!hasExplicitPaths && effectiveGeneratedDir === 'src' && appDir && !segs(appDir).includes('src')) {
+      if (
+        !hasExplicitPaths &&
+        effectiveGeneratedDir === 'src' &&
+        appDir &&
+        !segs(appDir).includes('src')
+      ) {
         findings.push({
           severity: 'warning',
           code: 'CONFIG_GENERATED_DIR_LAYOUT_MISMATCH',

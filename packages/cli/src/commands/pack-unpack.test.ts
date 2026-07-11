@@ -34,7 +34,8 @@ async function runCli(args: string[]): Promise<{ stdout: string; stderr: string;
   }
 }
 
-const SOURCE = 'entity Counter {\n  property required id: string\n  property count: number = 0\n}\n';
+const SOURCE =
+  'entity Counter {\n  property required id: string\n  property count: number = 0\n}\n';
 
 let tmpDir: string;
 const originalCwd = process.cwd();

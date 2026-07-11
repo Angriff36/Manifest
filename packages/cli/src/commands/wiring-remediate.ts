@@ -71,17 +71,16 @@ export async function wiringRemediateCommand(
   const cwd = process.cwd();
   let fileContents = await loadApplicationSources(roots, cwd);
   if (options.include && options.include.length > 0) {
-    const includes = options.include.map(p => p.toLowerCase());
+    const includes = options.include.map((p) => p.toLowerCase());
     fileContents = new Map(
       [...fileContents.entries()].filter(([file]) =>
-        includes.some(p => file.toLowerCase().includes(p)),
+        includes.some((p) => file.toLowerCase().includes(p)),
       ),
     );
   }
 
   const mode = (options.mode ?? 'plan') as RemediateMode;
-  const shouldWrite =
-    options.write !== false && (mode === 'apply' || mode === 'one-defect');
+  const shouldWrite = options.write !== false && (mode === 'apply' || mode === 'one-defect');
 
   const inspectConfig: WiringInspectConfig = {
     roots,
@@ -113,10 +112,10 @@ export async function wiringRemediateCommand(
     report,
   });
 
-  if (shouldWrite && result.applied.some(a => a.applied)) {
+  if (shouldWrite && result.applied.some((a) => a.applied)) {
     let current = fileContents;
     for (const plan of result.plans) {
-      if (!result.applied.some(a => a.findingId === plan.findingId && a.applied)) continue;
+      if (!result.applied.some((a) => a.findingId === plan.findingId && a.applied)) continue;
       const patch = applyRepairPlan(plan, current);
       if (!patch.ok) continue;
       current = patch.nextContents;
@@ -153,9 +152,7 @@ export async function wiringRemediateCommand(
     for (const u of result.unresolved.slice(0, 5)) {
       if (u.decision === 'ambiguous-product-decision') {
         console.log(
-          chalk.yellow(
-            'Manifest cannot safely determine product placement: ' + u.message,
-          ),
+          chalk.yellow('Manifest cannot safely determine product placement: ' + u.message),
         );
       }
     }

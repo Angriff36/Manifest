@@ -61,7 +61,9 @@ describe('MemoryEventBus', () => {
   it('delivers synchronously (no scheduling) — handler runs before publish resolves', async () => {
     const bus = new MemoryEventBus();
     let delivered = false;
-    await bus.subscribe(() => { delivered = true; });
+    await bus.subscribe(() => {
+      delivered = true;
+    });
 
     const p = bus.publish(msg('o', 'X'));
     // Already delivered on the same tick, before awaiting the returned promise.
@@ -84,7 +86,9 @@ describe('MemoryEventBus', () => {
   it('swallows a handler error so other handlers still receive the message', async () => {
     const bus = new MemoryEventBus();
     const good: string[] = [];
-    await bus.subscribe(() => { throw new Error('bad handler'); });
+    await bus.subscribe(() => {
+      throw new Error('bad handler');
+    });
     await bus.subscribe((m) => good.push(m.originId));
 
     await expect(bus.publish(msg('o'))).resolves.toBeUndefined();
@@ -95,11 +99,17 @@ describe('MemoryEventBus', () => {
     const bus = new MemoryEventBus();
     const order: string[] = [];
     const unsubs: Array<() => Promise<void>> = [];
-    unsubs.push(await bus.subscribe(async () => {
-      order.push('h1');
-      if (unsubs[1]) await unsubs[1](); // remove h2 during delivery
-    }));
-    unsubs.push(await bus.subscribe(() => { order.push('h2'); }));
+    unsubs.push(
+      await bus.subscribe(async () => {
+        order.push('h1');
+        if (unsubs[1]) await unsubs[1](); // remove h2 during delivery
+      }),
+    );
+    unsubs.push(
+      await bus.subscribe(() => {
+        order.push('h2');
+      }),
+    );
 
     await bus.publish(msg('o'));
 
@@ -119,13 +129,19 @@ describe('MemoryEventBus', () => {
     await bus.close();
 
     await bus.publish(msg('after-close')).then(
-      () => { throw new Error('expected publish to reject'); },
+      () => {
+        throw new Error('expected publish to reject');
+      },
       (e: Error) => expect(e.message).toMatch(/publish after close/),
     );
-    await bus.subscribe(() => {}).then(
-      () => { throw new Error('expected subscribe to reject'); },
-      (e: Error) => expect(e.message).toMatch(/subscribe after close/),
-    );
+    await bus
+      .subscribe(() => {})
+      .then(
+        () => {
+          throw new Error('expected subscribe to reject');
+        },
+        (e: Error) => expect(e.message).toMatch(/subscribe after close/),
+      );
     expect(seen).toEqual([]);
   });
 });

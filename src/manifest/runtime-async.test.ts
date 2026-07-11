@@ -44,7 +44,7 @@ async function compileToIR(source: string): Promise<IR> {
   const compiler = new IRCompiler();
   const result = await compiler.compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compilation failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compilation failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
@@ -64,7 +64,7 @@ describe('Async Command Execution', () => {
         generateId: () => `id-${++idCounter}`,
         now: () => 1000000,
         jobQueue,
-      }
+      },
     );
     return { runtime, jobQueue: jobQueue! };
   }
@@ -72,7 +72,7 @@ describe('Async Command Execution', () => {
   describe('IR compilation', () => {
     it('should set async: true on async commands', async () => {
       ir = await compileToIR(ASYNC_MANIFEST);
-      const processOrder = ir.commands.find(c => c.name === 'processOrder');
+      const processOrder = ir.commands.find((c) => c.name === 'processOrder');
       expect(processOrder?.async).toBe(true);
       expect(processOrder?.completionEvent).toBe('processOrderCompleted');
       expect(processOrder?.failureEvent).toBe('processOrderFailed');
@@ -80,7 +80,7 @@ describe('Async Command Execution', () => {
 
     it('should not set async on non-async commands', async () => {
       ir = await compileToIR(ASYNC_MANIFEST);
-      const cancelOrder = ir.commands.find(c => c.name === 'cancelOrder');
+      const cancelOrder = ir.commands.find((c) => c.name === 'cancelOrder');
       expect(cancelOrder?.async).toBeUndefined();
       expect(cancelOrder?.completionEvent).toBeUndefined();
       expect(cancelOrder?.failureEvent).toBeUndefined();
@@ -88,20 +88,20 @@ describe('Async Command Execution', () => {
 
     it('should synthesize completion and failure events', async () => {
       ir = await compileToIR(ASYNC_MANIFEST);
-      const eventNames = ir.events.map(e => e.name);
+      const eventNames = ir.events.map((e) => e.name);
       expect(eventNames).toContain('processOrderCompleted');
       expect(eventNames).toContain('processOrderFailed');
 
-      const completionEvent = ir.events.find(e => e.name === 'processOrderCompleted');
+      const completionEvent = ir.events.find((e) => e.name === 'processOrderCompleted');
       expect(completionEvent?.channel).toBe('jobs.processOrder');
 
-      const failureEvent = ir.events.find(e => e.name === 'processOrderFailed');
+      const failureEvent = ir.events.find((e) => e.name === 'processOrderFailed');
       expect(failureEvent?.channel).toBe('jobs.processOrder');
     });
 
     it('should preserve user-declared events alongside synthesized events', async () => {
       ir = await compileToIR(ASYNC_MANIFEST);
-      const eventNames = ir.events.map(e => e.name);
+      const eventNames = ir.events.map((e) => e.name);
       expect(eventNames).toContain('OrderProcessed');
       expect(eventNames).toContain('processOrderCompleted');
       expect(eventNames).toContain('processOrderFailed');
@@ -122,9 +122,12 @@ describe('Async Command Execution', () => {
       `;
       const compiler = new IRCompiler();
       const result = await compiler.compileToIR(collisionManifest);
-      expect(result.diagnostics.some(d =>
-        d.severity === 'error' && d.message.includes('collides with a user-declared event')
-      )).toBe(true);
+      expect(
+        result.diagnostics.some(
+          (d) =>
+            d.severity === 'error' && d.message.includes('collides with a user-declared event'),
+        ),
+      ).toBe(true);
     });
   });
 
@@ -136,10 +139,14 @@ describe('Async Command Execution', () => {
       const store = runtime.getStore('Order')!;
       await store.create({ id: 'order-1', status: 'pending', total: 0 });
 
-      const result = await runtime.runCommand('processOrder', { amount: 100 }, {
-        entityName: 'Order',
-        instanceId: 'order-1',
-      });
+      const result = await runtime.runCommand(
+        'processOrder',
+        { amount: 100 },
+        {
+          entityName: 'Order',
+          instanceId: 'order-1',
+        },
+      );
 
       expect(result.success).toBe(true);
       expect(result.result).toEqual({
@@ -162,10 +169,14 @@ describe('Async Command Execution', () => {
       const store = runtime.getStore('Order')!;
       await store.create({ id: 'order-2', status: 'shipped', total: 0 });
 
-      const result = await runtime.runCommand('processOrder', { amount: 50 }, {
-        entityName: 'Order',
-        instanceId: 'order-2',
-      });
+      const result = await runtime.runCommand(
+        'processOrder',
+        { amount: 50 },
+        {
+          entityName: 'Order',
+          instanceId: 'order-2',
+        },
+      );
 
       expect(result.success).toBe(false);
       expect(result.guardFailure).toBeDefined();
@@ -182,10 +193,14 @@ describe('Async Command Execution', () => {
       const store = runtime.getStore('Order')!;
       await store.create({ id: 'order-3', status: 'pending', total: 0 });
 
-      const result = await runtime.runCommand('processOrder', { amount: 75 }, {
-        entityName: 'Order',
-        instanceId: 'order-3',
-      });
+      const result = await runtime.runCommand(
+        'processOrder',
+        { amount: 75 },
+        {
+          entityName: 'Order',
+          instanceId: 'order-3',
+        },
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('MISSING_JOB_QUEUE');
@@ -199,10 +214,14 @@ describe('Async Command Execution', () => {
       const store = runtime.getStore('Order')!;
       await store.create({ id: 'order-4', status: 'pending', total: 0 });
 
-      const result = await runtime.runCommand('cancelOrder', {}, {
-        entityName: 'Order',
-        instanceId: 'order-4',
-      });
+      const result = await runtime.runCommand(
+        'cancelOrder',
+        {},
+        {
+          entityName: 'Order',
+          instanceId: 'order-4',
+        },
+      );
 
       expect(result.success).toBe(true);
       // Instance should be mutated immediately
@@ -219,10 +238,14 @@ describe('Async Command Execution', () => {
       await store.create({ id: 'order-5', status: 'pending', total: 0 });
 
       // Enqueue async command
-      await runtime.runCommand('processOrder', { amount: 200 }, {
-        entityName: 'Order',
-        instanceId: 'order-5',
-      });
+      await runtime.runCommand(
+        'processOrder',
+        { amount: 200 },
+        {
+          entityName: 'Order',
+          instanceId: 'order-5',
+        },
+      );
 
       // Verify job was enqueued
       const jobs = jobQueue.getAll();
@@ -242,7 +265,7 @@ describe('Async Command Execution', () => {
 
       // Completion event should be emitted
       const completionEvent = drainResults[0].emittedEvents.find(
-        e => e.name === 'processOrderCompleted'
+        (e) => e.name === 'processOrderCompleted',
       );
       expect(completionEvent).toBeDefined();
       expect(completionEvent?.channel).toBe('jobs.processOrder');
@@ -260,10 +283,14 @@ describe('Async Command Execution', () => {
       await store.create({ id: 'order-6', status: 'pending', total: 0 });
 
       // Enqueue async command
-      await runtime.runCommand('processOrder', { amount: 100 }, {
-        entityName: 'Order',
-        instanceId: 'order-6',
-      });
+      await runtime.runCommand(
+        'processOrder',
+        { amount: 100 },
+        {
+          entityName: 'Order',
+          instanceId: 'order-6',
+        },
+      );
 
       // Mutate the instance so the guard fails during drain
       await store.update('order-6', { status: 'shipped' });
@@ -275,7 +302,7 @@ describe('Async Command Execution', () => {
 
       // Failure event should be emitted
       const failureEvent = drainResults[0].emittedEvents.find(
-        e => e.name === 'processOrderFailed'
+        (e) => e.name === 'processOrderFailed',
       );
       expect(failureEvent).toBeDefined();
       expect(failureEvent?.channel).toBe('jobs.processOrder');

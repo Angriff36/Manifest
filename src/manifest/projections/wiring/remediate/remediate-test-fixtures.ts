@@ -5,21 +5,14 @@
 import { expect } from 'vitest';
 import { compileToIR } from '../../../ir-compiler.js';
 import { buildWiringContract } from '../contract-builder.js';
-import {
-  inspectWiringConsumersSync,
-  fileMapFromRecord,
-} from '../inspect/inspector.js';
+import { inspectWiringConsumersSync, fileMapFromRecord } from '../inspect/inspector.js';
 import type { WiringContract } from '../types.js';
-import {
-  remediateWiringSync,
-  planWiringRepairs,
-  applyRepairPlan,
-} from './index.js';
+import { remediateWiringSync, planWiringRepairs, applyRepairPlan } from './index.js';
 
 export async function contractFrom(source: string): Promise<WiringContract> {
   const { ir, diagnostics } = await compileToIR(source);
-  const errors = diagnostics.filter(d => d.severity === 'error');
-  expect(errors, errors.map(e => e.message).join('\n')).toHaveLength(0);
+  const errors = diagnostics.filter((d) => d.severity === 'error');
+  expect(errors, errors.map((e) => e.message).join('\n')).toHaveLength(0);
   expect(ir).not.toBeNull();
   return buildWiringContract(ir!);
 }
@@ -106,7 +99,7 @@ export function resultToMap(
 ): Map<string, string> {
   let current = new Map(original);
   for (const plan of result.plans) {
-    if (!result.applied.some(a => a.findingId === plan.findingId && a.applied)) continue;
+    if (!result.applied.some((a) => a.findingId === plan.findingId && a.applied)) continue;
     const patch = applyRepairPlan(plan, current);
     if (patch.ok) current = patch.nextContents;
   }

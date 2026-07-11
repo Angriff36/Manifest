@@ -201,14 +201,14 @@ This section specifies how callers supply runtime options to command execution, 
 
 The `runCommand` method MUST accept an options object with these optional fields:
 
-| Field | Type | Purpose |
-|-------|------|---------|
-| `entityName` | `string` | Target entity for the command |
-| `instanceId` | `string` | Target entity instance ID |
-| `overrideRequests` | `OverrideRequest[]` | Override requests for overrideable constraints |
-| `correlationId` | `string` | Caller-supplied correlation ID for workflow event grouping |
-| `causationId` | `string` | Caller-supplied ID linking this command to its trigger |
-| `idempotencyKey` | `string` | Caller-supplied key for command deduplication |
+| Field              | Type                | Purpose                                                    |
+| ------------------ | ------------------- | ---------------------------------------------------------- |
+| `entityName`       | `string`            | Target entity for the command                              |
+| `instanceId`       | `string`            | Target entity instance ID                                  |
+| `overrideRequests` | `OverrideRequest[]` | Override requests for overrideable constraints             |
+| `correlationId`    | `string`            | Caller-supplied correlation ID for workflow event grouping |
+| `causationId`      | `string`            | Caller-supplied ID linking this command to its trigger     |
+| `idempotencyKey`   | `string`            | Caller-supplied key for command deduplication              |
 
 All fields are optional. Zero breaking changes to existing callers.
 
@@ -334,20 +334,20 @@ Every command failure MUST include sufficient information for the caller to iden
 
 ### Implemented Fixtures
 
-| Fixture | Feature | Status |
-|---------|---------|--------|
-| `36-constraint-severity.manifest` | Constraint severity (ok/warn/block) | Implemented |
-| `37-allowed-duplicate-command-names.manifest` | Command name validation | Implemented |
-| `38-state-transitions.manifest` | State transition validation | Implemented |
+| Fixture                                       | Feature                             | Status      |
+| --------------------------------------------- | ----------------------------------- | ----------- |
+| `36-constraint-severity.manifest`             | Constraint severity (ok/warn/block) | Implemented |
+| `37-allowed-duplicate-command-names.manifest` | Command name validation             | Implemented |
+| `38-state-transitions.manifest`               | State transition validation         | Implemented |
 
 ### Required Future Fixtures
 
-| Fixture (proposed name) | Feature | Status |
-|-------------------------|---------|--------|
+| Fixture (proposed name)                  | Feature                                                            | Status          |
+| ---------------------------------------- | ------------------------------------------------------------------ | --------------- |
 | `39-duplicate-constraint-codes.manifest` | Compiler diagnostic on duplicate constraint codes within an entity | **Implemented** |
-| `52-override-allowed.manifest` | Override authorization with OverrideApplied event | **Implemented** |
-| `53-override-denied.manifest` | Override rejection for non-overrideable constraints | **Implemented** |
-| `54-concurrency-conflict.manifest` | Version mismatch returns ConcurrencyConflict | **Implemented** |
+| `52-override-allowed.manifest`           | Override authorization with OverrideApplied event                  | **Implemented** |
+| `53-override-denied.manifest`            | Override rejection for non-overrideable constraints                | **Implemented** |
+| `54-concurrency-conflict.manifest`       | Version mismatch returns ConcurrencyConflict                       | **Implemented** |
 
 Note: Workflow metadata (correlationId, causationId, emitIndex), deterministicMode, and idempotency features require runtime configuration options that cannot be expressed in `.manifest` source files. These features are tested via unit tests with explicit `RuntimeEngine` construction, not conformance fixtures.
 
@@ -357,16 +357,16 @@ Note: Workflow metadata (correlationId, causationId, emitIndex), deterministicMo
 
 This section lists vNext items that are declared in this specification but not yet enforced by conformance fixtures or implementation.
 
-| Item | Spec Reference | Status | Notes |
-|------|---------------|--------|-------|
-| Bounded complexity limits | This document, "Diagnostics" | IMPLEMENTED | `EvaluationLimits` (maxExpressionDepth, maxEvaluationSteps) enforced via `RuntimeOptions.evaluationLimits`. Defaults: 64 depth, 10K steps. Budget tracked across all entry points (`runCommand`, `createInstance`, `updateInstance`, `checkConstraints`, `evaluateComputed`). 8 unit tests added. |
-| Constraint code uniqueness diagnostic | This document, "Constraint Blocks" | IMPLEMENTED | Compiler emits error diagnostic on duplicate constraint codes. Fixture `39-duplicate-constraint-codes` implemented. |
-| Override conformance fixtures | This document, "Override Mechanism" | IMPLEMENTED | Fixtures 52 (override-allowed) and 53 (override-denied) implemented. OverrideApplied event included in CommandResult.emittedEvents per spec. |
-| Concurrency conflict fixture | This document, "Concurrency Controls" | IMPLEMENTED | Fixture 54 (concurrency-conflict-return) implemented. ConcurrencyConflict return path fully wired. |
-| Provenance verification (`requireValidProvenance`) | This document, "Provenance and IR Integrity" | IMPLEMENTED | Runtime enforces `requireValidProvenance` via `verifyIRHash()`, `assertValidProvenance()`, and `RuntimeEngine.create()` factory. 10 unit tests verify valid/tampered/absent hash scenarios. Hash computation uses recursive key-sorting for full content coverage. |
-| Diagnostics completeness | This document, "Diagnostics" | PARTIAL | Guard index and policy name are tested. Transition failure details (property, current, attempted, allowed) and concurrency conflict details format are not explicitly unit-tested for completeness. |
-| Performance guardrails | This document, "Diagnostics" | NOT_IMPLEMENTED | No instrumentation counters for step-count verification. Advisory only. |
-| Compilation caching | This document, "Advisory Guidance" | ADVISORY | No normative requirement. See `docs/guides/complex-workflows.md` for caching patterns. |
+| Item                                               | Spec Reference                               | Status          | Notes                                                                                                                                                                                                                                                                                             |
+| -------------------------------------------------- | -------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bounded complexity limits                          | This document, "Diagnostics"                 | IMPLEMENTED     | `EvaluationLimits` (maxExpressionDepth, maxEvaluationSteps) enforced via `RuntimeOptions.evaluationLimits`. Defaults: 64 depth, 10K steps. Budget tracked across all entry points (`runCommand`, `createInstance`, `updateInstance`, `checkConstraints`, `evaluateComputed`). 8 unit tests added. |
+| Constraint code uniqueness diagnostic              | This document, "Constraint Blocks"           | IMPLEMENTED     | Compiler emits error diagnostic on duplicate constraint codes. Fixture `39-duplicate-constraint-codes` implemented.                                                                                                                                                                               |
+| Override conformance fixtures                      | This document, "Override Mechanism"          | IMPLEMENTED     | Fixtures 52 (override-allowed) and 53 (override-denied) implemented. OverrideApplied event included in CommandResult.emittedEvents per spec.                                                                                                                                                      |
+| Concurrency conflict fixture                       | This document, "Concurrency Controls"        | IMPLEMENTED     | Fixture 54 (concurrency-conflict-return) implemented. ConcurrencyConflict return path fully wired.                                                                                                                                                                                                |
+| Provenance verification (`requireValidProvenance`) | This document, "Provenance and IR Integrity" | IMPLEMENTED     | Runtime enforces `requireValidProvenance` via `verifyIRHash()`, `assertValidProvenance()`, and `RuntimeEngine.create()` factory. 10 unit tests verify valid/tampered/absent hash scenarios. Hash computation uses recursive key-sorting for full content coverage.                                |
+| Diagnostics completeness                           | This document, "Diagnostics"                 | PARTIAL         | Guard index and policy name are tested. Transition failure details (property, current, attempted, allowed) and concurrency conflict details format are not explicitly unit-tested for completeness.                                                                                               |
+| Performance guardrails                             | This document, "Diagnostics"                 | NOT_IMPLEMENTED | No instrumentation counters for step-count verification. Advisory only.                                                                                                                                                                                                                           |
+| Compilation caching                                | This document, "Advisory Guidance"           | ADVISORY        | No normative requirement. See `docs/guides/complex-workflows.md` for caching patterns.                                                                                                                                                                                                            |
 
 ---
 
@@ -395,7 +395,7 @@ For multi-step workflow patterns (saga orchestration, step replay, workflow stat
 
 These patterns are advisory conventions. The normative workflow requirements (event metadata, idempotency, effect boundaries) are defined above in "Workflow Metadata (Normative)".
 
-**What the runtime does NOT do**: The runtime provides workflow *primitives* (correlationId, causationId, emitIndex, IdempotencyStore, deterministicMode) for callers to build replay, saga orchestration, and workflow state machines. The runtime does NOT include a replay engine, event store, state reconstruction, or causality validation — these are the caller's responsibility per the out-of-scope declaration above.
+**What the runtime does NOT do**: The runtime provides workflow _primitives_ (correlationId, causationId, emitIndex, IdempotencyStore, deterministicMode) for callers to build replay, saga orchestration, and workflow state machines. The runtime does NOT include a replay engine, event store, state reconstruction, or causality validation — these are the caller's responsibility per the out-of-scope declaration above.
 
 ### Rollout Strategy
 
@@ -505,23 +505,23 @@ The route manifest (`routes.manifest.json`) MUST conform to this structure:
 
 ### Conformance
 
-| Fixture (proposed name) | Feature | Status |
-|-------------------------|---------|--------|
-| Route manifest determinism | Identical IR produces identical route manifest | **Required** |
-| Manual route merge | Manual routes appear in manifest alongside IR-derived routes | **Required** |
-| Linter correctness | Linter detects hardcoded routes and passes clean code | **Required** |
+| Fixture (proposed name)    | Feature                                                      | Status       |
+| -------------------------- | ------------------------------------------------------------ | ------------ |
+| Route manifest determinism | Identical IR produces identical route manifest               | **Required** |
+| Manual route merge         | Manual routes appear in manifest alongside IR-derived routes | **Required** |
+| Linter correctness         | Linter detects hardcoded routes and passes clean code        | **Required** |
 
 ---
 
 ## Cross-References
 
-| Topic | Authoritative Document |
-|-------|----------------------|
-| IR shape (contract) | `docs/spec/ir/ir-v1.schema.json` |
-| Runtime semantics | `docs/spec/semantics.md` |
-| Built-in identifiers | `docs/spec/builtins.md` |
-| Adapter hooks | `docs/spec/adapters.md` |
-| Conformance rules | `docs/spec/conformance.md` |
-| Documentation authority | `docs/DOCUMENTATION_GOVERNANCE.md` |
-| Compliance tracking | `docs/COMPLIANCE_MATRIX.md` |
-| Route surface boundary | `docs/guides/external-projections.md` |
+| Topic                   | Authoritative Document                |
+| ----------------------- | ------------------------------------- |
+| IR shape (contract)     | `docs/spec/ir/ir-v1.schema.json`      |
+| Runtime semantics       | `docs/spec/semantics.md`              |
+| Built-in identifiers    | `docs/spec/builtins.md`               |
+| Adapter hooks           | `docs/spec/adapters.md`               |
+| Conformance rules       | `docs/spec/conformance.md`            |
+| Documentation authority | `docs/DOCUMENTATION_GOVERNANCE.md`    |
+| Compliance tracking     | `docs/COMPLIANCE_MATRIX.md`           |
+| Route surface boundary  | `docs/guides/external-projections.md` |

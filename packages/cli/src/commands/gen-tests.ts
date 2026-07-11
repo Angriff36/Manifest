@@ -84,9 +84,7 @@ const CONFORMANCE_EXPECTED_DIR = 'src/manifest/conformance/expected';
 async function getNextFixtureNumber(fixturesDir: string): Promise<number> {
   try {
     const files = await glob('*.manifest', { cwd: fixturesDir });
-    const numbers = files
-      .map(f => parseInt(f.split('-')[0], 10))
-      .filter(n => !isNaN(n));
+    const numbers = files.map((f) => parseInt(f.split('-')[0], 10)).filter((n) => !isNaN(n));
     return numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
   } catch {
     return 1;
@@ -109,13 +107,13 @@ function featureToFixtureName(feature: string): string {
  */
 async function buildTestGenerationPrompt(
   options: GenTestsOptions,
-  existingFixtures: string[]
+  existingFixtures: string[],
 ): Promise<string> {
   const category = options.category ?? 'edge-cases';
   const feature = options.feature ?? 'general language features';
   const count = options.count ?? 3;
 
-  const existingFixtureNames = existingFixtures.map(f => f.replace('.manifest', ''));
+  const existingFixtureNames = existingFixtures.map((f) => f.replace('.manifest', ''));
 
   let categoryGuidance = '';
   switch (category) {
@@ -187,7 +185,7 @@ ${categoryGuidance}
 4. **Focused**: Each fixture should test one or two related scenarios, not everything
 
 ## Existing Fixtures (avoid duplicating):
-${existingFixtureNames.length > 0 ? existingFixtureNames.map(n => `  - ${n}`).join('\n') : '  (none)'}
+${existingFixtureNames.length > 0 ? existingFixtureNames.map((n) => `  - ${n}`).join('\n') : '  (none)'}
 
 ## Output Format
 
@@ -219,13 +217,12 @@ Generate ${count} unique test fixtures following the "${category}" category for 
 /**
  * Call Anthropic's Claude API to generate test fixtures.
  */
-async function callAnthropic(
-  prompt: string,
-  options: GenTestsOptions
-): Promise<string> {
+async function callAnthropic(prompt: string, options: GenTestsOptions): Promise<string> {
   const apiKey = options.apiKey ?? process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY environment variable is required. Set it or pass --api-key.');
+    throw new Error(
+      'ANTHROPIC_API_KEY environment variable is required. Set it or pass --api-key.',
+    );
   }
 
   const model = options.model ?? 'claude-3-5-sonnet-20241022';
@@ -258,7 +255,7 @@ async function callAnthropic(
     throw new Error(`Anthropic API error (${response.status}): ${error}`);
   }
 
-  const data = await response.json() as { content: Array<{ type: string; text: string }> };
+  const data = (await response.json()) as { content: Array<{ type: string; text: string }> };
   return data.content?.[0]?.text ?? '';
 }
 
@@ -269,13 +266,13 @@ function parseGeneratedFixtures(output: string): string[] {
   // Split by "---" to get individual fixtures
   const fixtures = output
     .split('---')
-    .map(f => f.trim())
-    .filter(f => f.length > 0);
+    .map((f) => f.trim())
+    .filter((f) => f.length > 0);
 
   // Remove markdown code blocks if present
-  return fixtures.map(f => {
-    const codeMatch = f.match(/```(?:manifest)?\n([\s\S]+?)\n```/) ||
-                      f.match(/```\n([\s\S]+?)\n```/);
+  return fixtures.map((f) => {
+    const codeMatch =
+      f.match(/```(?:manifest)?\n([\s\S]+?)\n```/) || f.match(/```\n([\s\S]+?)\n```/);
     return codeMatch ? codeMatch[1].trim() : f;
   });
 }
@@ -286,15 +283,20 @@ function parseGeneratedFixtures(output: string): string[] {
 async function validateAndCompileFixture(
   source: string,
   _spinner: Ora,
-  _options: GenTestsOptions
+  _options: GenTestsOptions,
 ): Promise<{ ir: unknown; diagnostics?: unknown }> {
   const { compileToIR } = await loadCompiler();
 
   const result = await compileToIR(source, { sourcePath: '<generated>' });
 
-  if (result.diagnostics && result.diagnostics.some((d: { severity: string }) => d.severity === 'error')) {
+  if (
+    result.diagnostics &&
+    result.diagnostics.some((d: { severity: string }) => d.severity === 'error')
+  ) {
     const errors = result.diagnostics.filter((d: { severity: string }) => d.severity === 'error');
-    throw new Error(`Compilation failed: ${errors.map((e: { message: string }) => e.message).join(', ')}`);
+    throw new Error(
+      `Compilation failed: ${errors.map((e: { message: string }) => e.message).join(', ')}`,
+    );
   }
 
   return {
@@ -333,7 +335,7 @@ async function writeFixtureFiles(
   ir: unknown,
   fixturesDir: string,
   expectedDir: string,
-  dryRun: boolean
+  dryRun: boolean,
 ): Promise<void> {
   if (dryRun) {
     console.log(chalk.gray(`\n[Dry run] Would create fixture:`));
@@ -359,9 +361,11 @@ async function writeFixtureFiles(
 
 export async function genTestsCommand(
   source: string | undefined,
-  options: GenTestsOptions = {}
+  options: GenTestsOptions = {},
 ): Promise<void> {
-  const root = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..'));
+  const root = path.resolve(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..'),
+  );
   const fixturesDir = path.resolve(root, options.output ?? CONFORMANCE_FIXTURES_DIR);
   const expectedDir = path.resolve(root, CONFORMANCE_EXPECTED_DIR);
 
@@ -373,7 +377,7 @@ export async function genTestsCommand(
     spinner.info(`Found ${existingFixtures.length} existing fixtures`);
 
     // Determine next fixture number
-    const nextNumber = options.nextNumber ?? await getNextFixtureNumber(fixturesDir);
+    const nextNumber = options.nextNumber ?? (await getNextFixtureNumber(fixturesDir));
     spinner.text = `Starting from fixture number ${nextNumber}`;
 
     // Build the generation prompt
@@ -386,11 +390,15 @@ export async function genTestsCommand(
       if (process.env.ANTHROPIC_API_KEY || options.apiKey) {
         llmOutput = await callAnthropic(prompt, options);
       } else {
-        spinner.warn('No ANTHROPIC_API_KEY found. Please set the environment variable to use LLM generation.');
+        spinner.warn(
+          'No ANTHROPIC_API_KEY found. Please set the environment variable to use LLM generation.',
+        );
         throw new Error('ANTHROPIC_API_KEY is required for test generation');
       }
     } catch (error) {
-      spinner.fail(`LLM generation failed: ${error instanceof Error ? error.message : String(error)}`);
+      spinner.fail(
+        `LLM generation failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
       throw error;
     }
 
@@ -412,10 +420,21 @@ export async function genTestsCommand(
       spinner.text = `Validating fixture ${i + 1}/${fixtures.length}...`;
 
       try {
-        const { ir, diagnostics } = await validateAndCompileFixture(fixtureSource, spinner, options);
+        const { ir, diagnostics } = await validateAndCompileFixture(
+          fixtureSource,
+          spinner,
+          options,
+        );
         const fixtureName = generateFixtureName(fixtureSource, i, nextNumber);
 
-        await writeFixtureFiles(fixtureName, fixtureSource, ir, fixturesDir, expectedDir, options.dryRun ?? false);
+        await writeFixtureFiles(
+          fixtureName,
+          fixtureSource,
+          ir,
+          fixturesDir,
+          expectedDir,
+          options.dryRun ?? false,
+        );
 
         result.fixtures.push({
           name: fixtureName,
@@ -469,9 +488,10 @@ export async function genTestsCommand(
     if (result.failed > 0) {
       process.exit(1);
     }
-
   } catch (error) {
-    spinner.fail(`Test generation failed: ${error instanceof Error ? error.message : String(error)}`);
+    spinner.fail(
+      `Test generation failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     if (options.verbose) {
       console.error(error);
     }

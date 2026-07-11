@@ -73,7 +73,9 @@ describe('express.webhooks — emission', () => {
     const code = projection.generate(ir, { surface: 'express.webhooks' }).artifacts[0].code;
     expect(code).toContain("import { handleWebhookRequest } from '@angriff36/manifest/webhooks';");
     expect(code).toContain("import { createManifestEngine } from './lib/manifest-runtime';");
-    expect(code).toContain("const rawBody = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';");
+    expect(code).toContain(
+      "const rawBody = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';",
+    );
     expect(code).toContain('method: req.method,');
     expect(code).toContain('headers: req.headers,');
     expect(code).toContain('query: req.query as Record<string, string | undefined>,');
@@ -88,7 +90,10 @@ describe('express.webhooks — emission', () => {
   });
 
   it('defers Fastify webhook emission with an info diagnostic (raw-body needs a plugin)', () => {
-    const result = projection.generate(ir, { surface: 'express.webhooks', options: { framework: 'fastify' } });
+    const result = projection.generate(ir, {
+      surface: 'express.webhooks',
+      options: { framework: 'fastify' },
+    });
     expect(result.artifacts).toEqual([]);
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0].code).toBe('EXPRESS_WEBHOOKS_FASTIFY_UNSUPPORTED');

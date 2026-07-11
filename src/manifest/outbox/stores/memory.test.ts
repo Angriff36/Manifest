@@ -33,12 +33,9 @@ describe('MemoryOutboxStore', () => {
 
   describe('enqueue', () => {
     it('appends entries in order', async () => {
-      await store.enqueue([
-        entry({ entryId: 'a' }),
-        entry({ entryId: 'b' }),
-      ]);
+      await store.enqueue([entry({ entryId: 'a' }), entry({ entryId: 'b' })]);
       const all = store.list();
-      expect(all.map(e => e.entryId)).toEqual(['a', 'b']);
+      expect(all.map((e) => e.entryId)).toEqual(['a', 'b']);
     });
 
     it('drops duplicate entryIds (idempotency)', async () => {
@@ -51,7 +48,13 @@ describe('MemoryOutboxStore', () => {
 
     it('generates entryIds when missing', async () => {
       await store.enqueue([
-        { entryId: undefined as unknown as string, enqueuedAt: 0, event: event('X'), status: 'pending', attempts: 0 },
+        {
+          entryId: undefined as unknown as string,
+          enqueuedAt: 0,
+          event: event('X'),
+          status: 'pending',
+          attempts: 0,
+        },
       ]);
       const all = store.list();
       expect(all[0].entryId).toBe('gen-1');
@@ -74,22 +77,22 @@ describe('MemoryOutboxStore', () => {
 
     it('returns pending entries in FIFO order up to batchSize', async () => {
       const claimed = await store.claim(2);
-      expect(claimed.map(e => e.entryId)).toEqual(['a', 'b']);
+      expect(claimed.map((e) => e.entryId)).toEqual(['a', 'b']);
     });
 
     it('never returns an entry already claimed by a concurrent caller', async () => {
       const first = await store.claim(2);
       const second = await store.claim(10);
-      const overlap = first.filter(a => second.some(b => b.entryId === a.entryId));
+      const overlap = first.filter((a) => second.some((b) => b.entryId === a.entryId));
       expect(overlap).toEqual([]);
       // Only the unclaimed remainder appears.
-      expect(second.map(e => e.entryId)).toEqual(['c']);
+      expect(second.map((e) => e.entryId)).toEqual(['c']);
     });
 
     it('increments attempts on claim', async () => {
       const claimed = await store.claim(1);
       expect(claimed[0].attempts).toBe(1);
-      const internal = store.list().find(e => e.entryId === claimed[0].entryId);
+      const internal = store.list().find((e) => e.entryId === claimed[0].entryId);
       expect(internal?.attempts).toBe(1);
     });
 
@@ -101,13 +104,13 @@ describe('MemoryOutboxStore', () => {
     it('does not return delivered entries', async () => {
       await store.markDelivered(['a']);
       const claimed = await store.claim(10);
-      expect(claimed.map(e => e.entryId)).toEqual(['b', 'c']);
+      expect(claimed.map((e) => e.entryId)).toEqual(['b', 'c']);
     });
 
     it('does not return failed entries', async () => {
       await store.markFailed(['a'], 'boom');
       const claimed = await store.claim(10);
-      expect(claimed.map(e => e.entryId)).toEqual(['b', 'c']);
+      expect(claimed.map((e) => e.entryId)).toEqual(['b', 'c']);
     });
   });
 
@@ -151,10 +154,10 @@ describe('MemoryOutboxStore', () => {
     it('allows a re-claim of a previously claimed but undelivered entry', async () => {
       await store.enqueue([entry({ entryId: 'a' })]);
       const first = await store.claim(1);
-      expect(first.map(e => e.entryId)).toEqual(['a']);
+      expect(first.map((e) => e.entryId)).toEqual(['a']);
       store.releaseClaim(['a']);
       const second = await store.claim(1);
-      expect(second.map(e => e.entryId)).toEqual(['a']);
+      expect(second.map((e) => e.entryId)).toEqual(['a']);
       // attempts increment on every claim
       expect(second[0].attempts).toBe(2);
     });

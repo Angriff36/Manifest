@@ -1,6 +1,6 @@
 ---
-title: "Adapters API"
-description: "Public contracts and concrete implementations for stores, audit sinks, and outbox stores."
+title: 'Adapters API'
+description: 'Public contracts and concrete implementations for stores, audit sinks, and outbox stores.'
 ---
 
 > **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
@@ -13,7 +13,6 @@ description: "Public contracts and concrete implementations for stores, audit si
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 ## Import Paths
 
@@ -47,15 +46,15 @@ new PostgresStore<T extends EntityInstance>(
 )
 ```
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `host` | `string` | `localhost` | PostgreSQL host when `connectionString` is omitted. |
-| `port` | `number` | `5432` | PostgreSQL port. |
-| `database` | `string` | `manifest` | Database name. |
-| `user` | `string` | `postgres` | Database user. |
-| `password` | `string` | `""` | Database password. |
-| `connectionString` | `string` | — | Full PostgreSQL connection string. |
-| `tableName` | `string` | `entities` | Backing table name. |
+| Parameter          | Type     | Default     | Description                                         |
+| ------------------ | -------- | ----------- | --------------------------------------------------- |
+| `host`             | `string` | `localhost` | PostgreSQL host when `connectionString` is omitted. |
+| `port`             | `number` | `5432`      | PostgreSQL port.                                    |
+| `database`         | `string` | `manifest`  | Database name.                                      |
+| `user`             | `string` | `postgres`  | Database user.                                      |
+| `password`         | `string` | `""`        | Database password.                                  |
+| `connectionString` | `string` | —           | Full PostgreSQL connection string.                  |
+| `tableName`        | `string` | `entities`  | Backing table name.                                 |
 
 Methods:
 
@@ -78,11 +77,11 @@ new SupabaseStore<T extends EntityInstance>(
 )
 ```
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `url` | `string` | — | Supabase project URL. |
-| `key` | `string` | — | Supabase service or anon key. |
-| `tableName` | `string` | `entities` | Backing table name. |
+| Parameter   | Type     | Default    | Description                   |
+| ----------- | -------- | ---------- | ----------------------------- |
+| `url`       | `string` | —          | Supabase project URL.         |
+| `key`       | `string` | —          | Supabase service or anon key. |
+| `tableName` | `string` | `entities` | Backing table name.           |
 
 Methods:
 
@@ -160,9 +159,9 @@ new PostgresAuditSink(opts: PostgresAuditSinkOptions)
 emit(record: AuditRecord, client?: PoolClient): Promise<void>
 ```
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `pool` | `Pool` | — | Shared `pg` pool. |
+| Parameter   | Type     | Default                  | Description           |
+| ----------- | -------- | ------------------------ | --------------------- |
+| `pool`      | `Pool`   | —                        | Shared `pg` pool.     |
 | `tableName` | `string` | `manifest_audit_records` | Audit table override. |
 
 Example:
@@ -222,9 +221,9 @@ markDelivered(entryIds: string[]): Promise<void>
 markFailed(entryIds: string[], error: string): Promise<void>
 ```
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `pool` | `Pool` | — | Shared `pg` pool. |
+| Parameter   | Type     | Default                   | Description            |
+| ----------- | -------- | ------------------------- | ---------------------- |
+| `pool`      | `Pool`   | —                         | Shared `pg` pool.      |
 | `tableName` | `string` | `manifest_outbox_entries` | Outbox table override. |
 
 ## Combined Example

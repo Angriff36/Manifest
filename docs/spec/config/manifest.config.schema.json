@@ -642,10 +642,22 @@
           "additionalProperties": false,
           "description": "Fine-grained overrides for individual artifact pathHints. When set, takes precedence over generatedDir.",
           "properties": {
-            "typesFile": { "type": "string", "description": "pathHint for ts.types artifact. Default: '${generatedDir}/types/manifest-generated.ts'" },
-            "clientFile": { "type": "string", "description": "pathHint for ts.client artifact. Default: '${generatedDir}/lib/manifest-client.ts'" },
-            "hooksDir": { "type": "string", "description": "Base directory for subscription hooks. Default: '${generatedDir}/hooks'" },
-            "sharedRuntimeFile": { "type": "string", "description": "pathHint for nextjs.sharedRuntime artifact. Default: '${generatedDir}/lib/manifest-shared-runtime.ts'" }
+            "typesFile": {
+              "type": "string",
+              "description": "pathHint for ts.types artifact. Default: '${generatedDir}/types/manifest-generated.ts'"
+            },
+            "clientFile": {
+              "type": "string",
+              "description": "pathHint for ts.client artifact. Default: '${generatedDir}/lib/manifest-client.ts'"
+            },
+            "hooksDir": {
+              "type": "string",
+              "description": "Base directory for subscription hooks. Default: '${generatedDir}/hooks'"
+            },
+            "sharedRuntimeFile": {
+              "type": "string",
+              "description": "pathHint for nextjs.sharedRuntime artifact. Default: '${generatedDir}/lib/manifest-shared-runtime.ts'"
+            }
           }
         },
         "tenantProvider": {
@@ -654,7 +666,10 @@
           "description": "Override the default userTenantMapping.findUnique pattern with a project-supplied tenant lookup helper.",
           "properties": {
             "importPath": { "type": "string", "description": "Module path for the lookup helper." },
-            "functionName": { "type": "string", "description": "Named export to call (e.g. getTenantIdForOrg)." },
+            "functionName": {
+              "type": "string",
+              "description": "Named export to call (e.g. getTenantIdForOrg)."
+            },
             "lookupKey": {
               "type": "string",
               "enum": ["orgId", "userId"],
@@ -720,8 +735,14 @@
               "additionalProperties": false,
               "description": "Import a host-provided fetch wrapper (auth/credentials) instead of the inline apiFetch. Same shape as the react-query projection's fetchAdapter; the named export is aliased to apiFetch so generated call sites are identical.",
               "properties": {
-                "importPath": { "type": "string", "description": "Module to import the adapter from, e.g. '@/lib/api'." },
-                "importName": { "type": "string", "description": "Exported name of the adapter (default: 'apiFetch'). Aliased to apiFetch." }
+                "importPath": {
+                  "type": "string",
+                  "description": "Module to import the adapter from, e.g. '@/lib/api'."
+                },
+                "importName": {
+                  "type": "string",
+                  "description": "Exported name of the adapter (default: 'apiFetch'). Aliased to apiFetch."
+                }
               },
               "required": ["importPath"]
             }
@@ -1069,8 +1090,14 @@
           "description": "Path hint for emitted prisma-store-registry.generated.ts.",
           "default": "prisma-store-registry.generated.ts"
         },
-        "storeImportPath": { "type": "string", "description": "Import path for GenericPrismaStore in the registry artifact." },
-        "metadataImportPath": { "type": "string", "description": "Import path for the metadata module in the registry artifact." },
+        "storeImportPath": {
+          "type": "string",
+          "description": "Import path for GenericPrismaStore in the registry artifact."
+        },
+        "metadataImportPath": {
+          "type": "string",
+          "description": "Import path for the metadata module in the registry artifact."
+        },
         "softDelete": {
           "description": "Per-entity status-based soft-delete. Keyed by entity name; `field` is the IR status property name and `deletedValue` the sentinel meaning deleted. Lets an entity that soft-deletes via a status transition (instead of a deletedAt timestamp) use the generic store.",
           "type": "object",

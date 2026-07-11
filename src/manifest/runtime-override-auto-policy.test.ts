@@ -51,7 +51,7 @@ async function compileToIR(source: string): Promise<IR> {
   const compiler = new IRCompiler();
   const result = await compiler.compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compilation failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compilation failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
@@ -69,13 +69,17 @@ describe('auto-policy constraint override auditing', () => {
     });
 
     // No overrideRequests — the auto-policy path must fire and audit.
-    const result = await runtime.runCommand('submit', {}, {
-      entityName: 'Expense',
-      instanceId: 'exp-1',
-    });
+    const result = await runtime.runCommand(
+      'submit',
+      {},
+      {
+        entityName: 'Expense',
+        instanceId: 'exp-1',
+      },
+    );
 
     expect(result.success).toBe(true);
-    const override = result.emittedEvents.find(e => e.name === 'OverrideApplied');
+    const override = result.emittedEvents.find((e) => e.name === 'OverrideApplied');
     expect(override).toBeDefined();
     expect(override!.payload).toMatchObject({
       constraintCode: 'budgetLimit',
@@ -97,12 +101,16 @@ describe('auto-policy constraint override auditing', () => {
       description: 'Conference travel',
     });
 
-    const result = await runtime.runCommand('submit', {}, {
-      entityName: 'Expense',
-      instanceId: 'exp-2',
-    });
+    const result = await runtime.runCommand(
+      'submit',
+      {},
+      {
+        entityName: 'Expense',
+        instanceId: 'exp-2',
+      },
+    );
 
     expect(result.success).toBe(false);
-    expect(result.emittedEvents.find(e => e.name === 'OverrideApplied')).toBeUndefined();
+    expect(result.emittedEvents.find((e) => e.name === 'OverrideApplied')).toBeUndefined();
   });
 });

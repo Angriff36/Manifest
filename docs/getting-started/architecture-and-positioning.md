@@ -24,16 +24,17 @@ It gives you a **language-level contract** for domain behavior with deterministi
 
 Manifest is NOT competing with NestJS, Express, Fastify, or Hono.
 
-| Backend Framework | Manifest |
-|-------------------|----------|
+| Backend Framework                          | Manifest                               |
+| ------------------------------------------ | -------------------------------------- |
 | HTTP routing, middleware, request/response | Domain rules, guards, policies, events |
-| You write route handlers | You declare commands with guards |
-| Framework owns execution flow | IR defines execution semantics |
-| Convention-over-configuration | Contract-over-convention |
+| You write route handlers                   | You declare commands with guards       |
+| Framework owns execution flow              | IR defines execution semantics         |
+| Convention-over-configuration              | Contract-over-convention               |
 
 **Manifest defines WHAT should happen. Your framework defines HOW to expose it.**
 
 You can use Manifest WITH any backend framework:
+
 - Next.js App Router (via projections)
 - Express/Fastify (via embedded runtime)
 - Hono/Bun (via embedded runtime)
@@ -68,7 +69,7 @@ runtime.onEvent((event) => {
 
 // Wire events to WebSockets
 runtime.onEvent((event) => {
-  wsServer.clients.forEach(client => {
+  wsServer.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify(event));
     }
@@ -154,13 +155,13 @@ See: `docs/guides/embedded-runtime.md` → Request Identity Hardening
 
 Manifest is NOT Prisma, TypeORM, or Drizzle.
 
-| ORM | Manifest |
-|-----|----------|
-| Database schema + type-safe queries | Business rules + execution semantics |
-| `findMany()`, `create()`, `update()` are imperative | Commands are declarative with guards |
-| No built-in authorization | Guards and policies are first-class |
-| No event system | Events are first-class with ordering guarantees |
-| Schema migrations managed by ORM | Migrations owned by your store implementation |
+| ORM                                                 | Manifest                                        |
+| --------------------------------------------------- | ----------------------------------------------- |
+| Database schema + type-safe queries                 | Business rules + execution semantics            |
+| `findMany()`, `create()`, `update()` are imperative | Commands are declarative with guards            |
+| No built-in authorization                           | Guards and policies are first-class             |
+| No event system                                     | Events are first-class with ordering guarantees |
+| Schema migrations managed by ORM                    | Migrations owned by your store implementation   |
 
 **You can use Manifest WITH any ORM:**
 
@@ -191,7 +192,7 @@ const runtime = new RuntimeEngine(
         return new PrismaRecipeStore(prisma);
       }
     },
-  }
+  },
 );
 ```
 
@@ -313,7 +314,7 @@ Most real-world applications use **both** projections AND embedded runtime:
 // Generated Next.js route (reads bypass runtime)
 export async function GET() {
   const recipes = await prisma.recipe.findMany({
-    where: { tenantId, deletedAt: null }
+    where: { tenantId, deletedAt: null },
   });
   return Response.json({ recipes });
 }
@@ -369,15 +370,15 @@ See: `docs/guides/hybrid-integration.md` for detailed examples.
 
 ## Comparison Table
 
-| Need | Solution | Layer |
-|------|----------|-------|
-| Domain rules and guards | Manifest | Semantic |
-| HTTP routing | Next.js/Express/Hono | Framework |
-| Real-time push | Ably/Pusher/WebSockets | Transport |
-| Background jobs | Bull/Temporal/Inngest | Infrastructure |
-| Authentication | Clerk/Auth0/NextAuth | Identity |
-| Database access | Prisma/TypeORM/Drizzle | Persistence |
-| Schema migrations | Prisma Migrate/raw SQL | Persistence |
+| Need                    | Solution               | Layer          |
+| ----------------------- | ---------------------- | -------------- |
+| Domain rules and guards | Manifest               | Semantic       |
+| HTTP routing            | Next.js/Express/Hono   | Framework      |
+| Real-time push          | Ably/Pusher/WebSockets | Transport      |
+| Background jobs         | Bull/Temporal/Inngest  | Infrastructure |
+| Authentication          | Clerk/Auth0/NextAuth   | Identity       |
+| Database access         | Prisma/TypeORM/Drizzle | Persistence    |
+| Schema migrations       | Prisma Migrate/raw SQL | Persistence    |
 
 **Manifest is the semantic layer. You bring your own framework and infrastructure.**
 

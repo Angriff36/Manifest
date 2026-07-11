@@ -1,9 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Skill(planning-with-files)",
-      "Bash(pnpm *)",
-      "Bash(git *)"
-    ]
+    "allow": ["Skill(planning-with-files)", "Bash(pnpm *)", "Bash(git *)"]
   }
 }

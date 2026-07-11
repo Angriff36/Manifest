@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  FILL_PLACEHOLDER,
-  SAMPLE_DATA_ROW_ENTITY,
-  isBlankCell,
-  slugEntity,
-} from './types.js';
+import { FILL_PLACEHOLDER, SAMPLE_DATA_ROW_ENTITY, isBlankCell, slugEntity } from './types.js';
 import { buildSampleDataRowId, toSampleDataRowRecord } from './sample-data-row.js';
 
 describe('seed-pack types', () => {

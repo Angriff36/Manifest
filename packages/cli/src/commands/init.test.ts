@@ -19,10 +19,7 @@ import yaml from 'js-yaml';
 import { createConfigFromAnswers } from './init.js';
 import { saveConfig, loadConfig, getConfig } from '../utils/config.js';
 
-const DEAD_URLS = [
-  'manifest.dev/config.schema.json',
-  'manifest.lang',
-];
+const DEAD_URLS = ['manifest.dev/config.schema.json', 'manifest.lang'];
 
 function assertNoDeadUrl(text: string): void {
   for (const url of DEAD_URLS) {
@@ -75,10 +72,7 @@ describe('written + loaded config carries no dead $schema URL', () => {
     });
     await saveConfig(config, tempDir);
 
-    const written = await fs.readFile(
-      path.join(tempDir, 'manifest.config.yaml'),
-      'utf-8'
-    );
+    const written = await fs.readFile(path.join(tempDir, 'manifest.config.yaml'), 'utf-8');
     assertNoDeadUrl(written);
     expect(written).not.toContain('$schema');
   });

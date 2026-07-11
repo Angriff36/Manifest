@@ -1,6 +1,6 @@
 ---
-title: "Compilation and IR"
-description: "Understand how Manifest source becomes a canonical IR and why that IR is the center of the system."
+title: 'Compilation and IR'
+description: 'Understand how Manifest source becomes a canonical IR and why that IR is the center of the system.'
 ---
 
 > **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
@@ -13,7 +13,6 @@ description: "Understand how Manifest source becomes a canonical IR and why that
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 Compilation is the boundary between Manifest's language syntax and everything that runs after it. The compiler does not just validate source text; it turns the text into a stable intermediate representation that runtime execution, projections, and governance tooling can all consume consistently.
 

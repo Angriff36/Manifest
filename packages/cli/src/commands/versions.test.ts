@@ -40,8 +40,12 @@ interface OutputCapture {
 
 function captureOutput(): OutputCapture {
   const cap: OutputCapture = { out: '', err: '' };
-  console.log = (...args: unknown[]) => { cap.out += args.join(' ') + '\n'; };
-  console.error = (...args: unknown[]) => { cap.err += args.join(' ') + '\n'; };
+  console.log = (...args: unknown[]) => {
+    cap.out += args.join(' ') + '\n';
+  };
+  console.error = (...args: unknown[]) => {
+    cap.err += args.join(' ') + '\n';
+  };
   return cap;
 }
 
@@ -52,7 +56,9 @@ function restoreOutput(): void {
 
 function suppressExit(): { exitCode: number | undefined } {
   const state = { exitCode: undefined as number | undefined };
-  process.exit = ((code?: number) => { state.exitCode = code ?? 0; }) as never;
+  process.exit = ((code?: number) => {
+    state.exitCode = code ?? 0;
+  }) as never;
   return state;
 }
 

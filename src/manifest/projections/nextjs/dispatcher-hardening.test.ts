@@ -60,7 +60,7 @@ describe('default --surface all: dispatcher emitted, concrete commands suppresse
       });
       expect(result.artifacts).toHaveLength(0);
       expect(result.diagnostics).toContainEqual(
-        expect.objectContaining({ code: 'CONCRETE_COMMAND_ROUTES_DISABLED', severity: 'info' })
+        expect.objectContaining({ code: 'CONCRETE_COMMAND_ROUTES_DISABLED', severity: 'info' }),
       );
     }
   });
@@ -103,7 +103,9 @@ describe('dispatcher instanceId extraction (goal step 4)', () => {
     expect(code).toContain('body?.id');
 
     // Inline mode must forward instanceId through the runCommand options bag
-    expect(code).toMatch(/runtime\.runCommand\(command, body, \{[\s\S]*entityName: entity,[\s\S]*instanceId,/);
+    expect(code).toMatch(
+      /runtime\.runCommand\(command, body, \{[\s\S]*entityName: entity,[\s\S]*instanceId,/,
+    );
   });
 
   it('externalExecutor dispatcher extracts instanceId and passes it to the executor call', async () => {
@@ -160,12 +162,13 @@ describe('auth failures map to unauthorizedStatus, not 500 (goal step 4)', () =>
         unauthorizedStatus: 403,
         // Enable auth to test unauthorizedStatus
         authProvider: 'clerk',
-        authImportPath: '@repo/auth/server'
+        authImportPath: '@repo/auth/server',
       },
     }).artifacts[0].code;
 
     // Both the inline auth check AND the catch-block classifier must use 403
-    const matches = code.match(/manifestErrorResponse\(\{ error: "Unauthorized"[^)]*\}, 403\)/g) ?? [];
+    const matches =
+      code.match(/manifestErrorResponse\(\{ error: "Unauthorized"[^)]*\}, 403\)/g) ?? [];
     expect(matches.length).toBeGreaterThanOrEqual(2);
     expect(code).not.toMatch(/manifestErrorResponse\(\{ error: "Unauthorized"[^)]*\}, 401\)/);
   });
@@ -176,7 +179,7 @@ describe('runtime catch-all returns stable Manifest error shape (goal step 4)', 
 
   async function sample() {
     const result = await compileToIR(
-      `entity Recipe { property title: string command create() { emit RecipeCreated } } event RecipeCreated: "recipe.created" { recipeId: string }`
+      `entity Recipe { property title: string command create() { emit RecipeCreated } } event RecipeCreated: "recipe.created" { recipeId: string }`,
     );
     return result.ir!;
   }
@@ -196,7 +199,8 @@ describe('runtime catch-all returns stable Manifest error shape (goal step 4)', 
 
   it('read routes also use the stable Manifest shape', async () => {
     const ir = await sample();
-    const code = target.generate(ir, { surface: 'nextjs.route', entity: 'Recipe' }).artifacts[0].code;
+    const code = target.generate(ir, { surface: 'nextjs.route', entity: 'Recipe' }).artifacts[0]
+      .code;
     expect(code).not.toMatch(/manifestErrorResponse\("Internal server error"/);
     expect(code).toMatch(/diagnostics: \[\{ kind: "runtime_error"/);
   });
@@ -207,14 +211,15 @@ describe('Prisma 7 detail route findFirst vs findUnique (goal step 5)', () => {
 
   async function sample() {
     const result = await compileToIR(
-      `entity Recipe { property id: string property title: string property deletedAt: datetime? }`
+      `entity Recipe { property id: string property title: string property deletedAt: datetime? }`,
     );
     return result.ir!;
   }
 
   it('default detail (tenant + soft-delete off) uses findUnique', async () => {
     const ir = await sample();
-    const code = target.generate(ir, { surface: 'nextjs.detail', entity: 'Recipe' }).artifacts[0].code;
+    const code = target.generate(ir, { surface: 'nextjs.detail', entity: 'Recipe' }).artifacts[0]
+      .code;
 
     expect(code).toContain('database.recipe.findUnique');
     expect(code).not.toContain('database.recipe.findFirst');
@@ -257,7 +262,7 @@ describe('Prisma 7 detail route findFirst vs findUnique (goal step 5)', () => {
     });
     expect(result.artifacts).toHaveLength(0);
     expect(result.diagnostics).toContainEqual(
-      expect.objectContaining({ code: 'READ_ROUTES_DISABLED', severity: 'info' })
+      expect.objectContaining({ code: 'READ_ROUTES_DISABLED', severity: 'info' }),
     );
   });
 });

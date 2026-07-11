@@ -147,7 +147,7 @@ export class PostgresJobQueue implements JobQueue {
   async updateStatus(
     jobId: string,
     status: JobRecord['status'],
-    detail?: { result?: unknown; error?: string }
+    detail?: { result?: unknown; error?: string },
   ): Promise<void> {
     if (detail) {
       const sql = `

@@ -3,11 +3,7 @@ import type { IR } from '../ir.js';
 import { buildSeedTemplate } from './template.js';
 import { fillSeedPack } from './fill.js';
 import { createHeuristicFillProvider } from './fill-providers.js';
-import {
-  applySeedPack,
-  clearSeedPack,
-  createMemorySeedStore,
-} from './apply.js';
+import { applySeedPack, clearSeedPack, createMemorySeedStore } from './apply.js';
 import { SAMPLE_DATA_ROW_ENTITY } from './types.js';
 import type { EntityInstance, Store } from '../runtime-engine.js';
 

@@ -11,7 +11,10 @@ import ora from 'ora';
 import { diffIR } from '@angriff36/manifest/ir-diff';
 import { classifyBreakingChanges } from '@angriff36/manifest/breaking-change';
 import type { IR } from '@angriff36/manifest/ir';
-import type { AcknowledgmentsFile, BreakingChangeReport } from '@angriff36/manifest/breaking-change';
+import type {
+  AcknowledgmentsFile,
+  BreakingChangeReport,
+} from '@angriff36/manifest/breaking-change';
 
 export interface BreakingChangeOptions {
   json?: boolean;
@@ -79,7 +82,7 @@ function printHumanReadableReport(
   if (report.summary.breaking > 0) {
     console.log('');
     console.log(chalk.bold(chalk.red('Breaking Changes')));
-    for (const change of report.classified.filter(c => c.severity === 'breaking')) {
+    for (const change of report.classified.filter((c) => c.severity === 'breaking')) {
       const acked = report.acknowledged.includes(change);
       const marker = acked ? chalk.gray('[ACK]') : chalk.red('[NEW]');
       console.log('  ' + marker + ' ' + change.path);
@@ -93,7 +96,7 @@ function printHumanReadableReport(
   if (report.summary.deprecated > 0) {
     console.log('');
     console.log(chalk.bold(chalk.yellow('Deprecated Changes')));
-    for (const change of report.classified.filter(c => c.severity === 'deprecated')) {
+    for (const change of report.classified.filter((c) => c.severity === 'deprecated')) {
       console.log('  ' + chalk.yellow('[DEP]') + ' ' + change.path);
       console.log('         ' + change.description);
     }
@@ -125,7 +128,11 @@ function printHumanReadableReport(
 
   if (report.unacknowledged.length > 0) {
     console.log('');
-    console.log(chalk.yellow('\n' + report.unacknowledged.length + ' unacknowledged breaking change(s) found.'));
+    console.log(
+      chalk.yellow(
+        '\n' + report.unacknowledged.length + ' unacknowledged breaking change(s) found.',
+      ),
+    );
     console.log(chalk.gray('Add entries to the acknowledgments file to suppress CI failures.'));
   } else if (report.summary.breaking > 0 && report.unacknowledged.length === 0) {
     console.log('');
@@ -140,10 +147,7 @@ export async function breakingChangeCommand(
 ): Promise<BreakingChangeReport> {
   const spinner = createSpinner('Analyzing breaking changes', !options.json);
   try {
-    const [oldIR, newIR] = await Promise.all([
-      loadIRFile(oldIRPath),
-      loadIRFile(newIRPath),
-    ]);
+    const [oldIR, newIR] = await Promise.all([loadIRFile(oldIRPath), loadIRFile(newIRPath)]);
     spinner.stop();
 
     const diffReport = diffIR(oldIR, newIR);
@@ -173,7 +177,9 @@ export async function breakingChangeCommand(
 
     return report;
   } catch (error) {
-    spinner.fail('diff breaking failed: ' + (error instanceof Error ? error.message : String(error)));
+    spinner.fail(
+      'diff breaking failed: ' + (error instanceof Error ? error.message : String(error)),
+    );
     process.exit(1);
   }
 }

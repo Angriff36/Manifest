@@ -47,8 +47,7 @@ function normalizeOptions(raw?: Record<string, unknown>): WiringProjectionOption
 
 export class WiringProjection implements ProjectionTarget {
   readonly name = 'wiring';
-  readonly description =
-    'Product wiring contract + safe command bindings (not a UI generator)';
+  readonly description = 'Product wiring contract + safe command bindings (not a UI generator)';
   readonly surfaces = SURFACES;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {

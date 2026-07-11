@@ -30,10 +30,7 @@ export const BUILTIN_TUTORIALS: Tutorial[] = [
           { text: 'Entity syntax: `entity Name { ... }`' },
           { final: true, text: 'The answer is:\n```\nentity Task {\n}\n```' },
         ],
-        validation: [
-          { type: 'compiles' },
-          { type: 'has-entity', name: 'Task' },
-        ],
+        validation: [{ type: 'compiles' }, { type: 'has-entity', name: 'Task' }],
         unlocks: ['properties', 'types'],
       },
       {
@@ -45,8 +42,11 @@ export const BUILTIN_TUTORIALS: Tutorial[] = [
         expectedCode: 'entity Task {\n  property title: string\n}\n',
         hints: [
           { text: 'Property syntax: `property name: type` - for example `property title: string`' },
-          { text: 'Don\'t forget - properties go INSIDE the curly braces.' },
-          { final: true, text: 'The answer is:\n```\nentity Task {\n  property title: string\n}\n```' },
+          { text: "Don't forget - properties go INSIDE the curly braces." },
+          {
+            final: true,
+            text: 'The answer is:\n```\nentity Task {\n  property title: string\n}\n```',
+          },
         ],
         validation: [
           { type: 'compiles' },
@@ -61,10 +61,14 @@ export const BUILTIN_TUTORIALS: Tutorial[] = [
         instruction:
           'Real entities have multiple properties. Add two more to `Task`: a `status` of type `string`, and a `createdAt` of type `number`. Each property goes on its own line inside the entity block.',
         starterCode: 'entity Task {\n  property title: string\n  // add status and createdAt\n}\n',
-        expectedCode: 'entity Task {\n  property title: string\n  property status: string\n  property createdAt: number\n}\n',
+        expectedCode:
+          'entity Task {\n  property title: string\n  property status: string\n  property createdAt: number\n}\n',
         hints: [
           { text: 'Put each property on its own line using the `property` keyword.' },
-          { final: true, text: 'The answer is:\n```\nentity Task {\n  property title: string\n  property status: string\n  property createdAt: number\n}\n```' },
+          {
+            final: true,
+            text: 'The answer is:\n```\nentity Task {\n  property title: string\n  property status: string\n  property createdAt: number\n}\n```',
+          },
         ],
         validation: [
           { type: 'compiles' },
@@ -91,51 +95,57 @@ export const BUILTIN_TUTORIALS: Tutorial[] = [
         title: 'Define a Command',
         instruction:
           'A **command** is a business operation that can be invoked. Define a command called `completeTask` that takes a `taskId: string` parameter inside the `Task` entity. Commands use the `command` keyword.',
-        starterCode: 'entity Task {\n  property title: string\n  property status: string\n\n  // Define a completeTask command below\n}\n',
-        expectedCode: 'entity Task {\n  property title: string\n  property status: string\n\n  command completeTask(taskId: string) {\n    // actions go here\n  }\n}\n',
+        starterCode:
+          'entity Task {\n  property title: string\n  property status: string\n\n  // Define a completeTask command below\n}\n',
+        expectedCode:
+          'entity Task {\n  property title: string\n  property status: string\n\n  command completeTask(taskId: string) {\n    // actions go here\n  }\n}\n',
         hints: [
           { text: 'Command syntax inside an entity: `command name(param: type) { ... }`' },
           { text: 'The command block can be left empty for now.' },
-          { final: true, text: 'The answer is:\n```\ncommand completeTask(taskId: string) {\n}\n```' },
+          {
+            final: true,
+            text: 'The answer is:\n```\ncommand completeTask(taskId: string) {\n}\n```',
+          },
         ],
-        validation: [
-          { type: 'compiles' },
-          { type: 'has-command', name: 'completeTask' },
-        ],
+        validation: [{ type: 'compiles' }, { type: 'has-command', name: 'completeTask' }],
       },
       {
         id: 'add-guard',
         title: 'Add a Guard',
         instruction:
           'Guards protect commands by checking conditions before the command runs. Add a guard to `completeTask` that ensures the task is not already completed. Guards use the `guard` keyword and a boolean expression.',
-        starterCode: 'entity Task {\n  property title: string\n  property status: string\n\n  command completeTask(taskId: string) {\n    // add a guard here\n  }\n}\n',
-        expectedCode: 'entity Task {\n  property title: string\n  property status: string\n\n  command completeTask(taskId: string) {\n    guard self.status != "completed"\n  }\n}\n',
+        starterCode:
+          'entity Task {\n  property title: string\n  property status: string\n\n  command completeTask(taskId: string) {\n    // add a guard here\n  }\n}\n',
+        expectedCode:
+          'entity Task {\n  property title: string\n  property status: string\n\n  command completeTask(taskId: string) {\n    guard self.status != "completed"\n  }\n}\n',
         hints: [
           { text: 'Guard syntax: `guard expression` where expression is boolean.' },
           { text: 'Inside a command, reference entity properties via `self.status`.' },
-          { final: true, text: 'The answer is:\n```\ncommand completeTask(taskId: string) {\n  guard self.status != "completed"\n}\n```' },
+          {
+            final: true,
+            text: 'The answer is:\n```\ncommand completeTask(taskId: string) {\n  guard self.status != "completed"\n}\n```',
+          },
         ],
-        validation: [
-          { type: 'compiles' },
-          { type: 'has-guard', command: 'completeTask' },
-        ],
+        validation: [{ type: 'compiles' }, { type: 'has-guard', command: 'completeTask' }],
       },
       {
         id: 'add-mutation',
         title: 'Mutate State',
         instruction:
           'Commands **mutate** entity state. Add a `mutate` action to `completeTask` that sets `status` to `"completed"`. The `mutate` keyword assigns a new value to a property.',
-        starterCode: 'entity Task {\n  property title: string\n  property status: string\n\n  command completeTask(taskId: string) {\n    guard self.status != "completed"\n    // add a mutate here\n  }\n}\n',
-        expectedCode: 'entity Task {\n  property title: string\n  property status: string\n\n  command completeTask(taskId: string) {\n    guard self.status != "completed"\n    mutate self.status = "completed"\n  }\n}\n',
+        starterCode:
+          'entity Task {\n  property title: string\n  property status: string\n\n  command completeTask(taskId: string) {\n    guard self.status != "completed"\n    // add a mutate here\n  }\n}\n',
+        expectedCode:
+          'entity Task {\n  property title: string\n  property status: string\n\n  command completeTask(taskId: string) {\n    guard self.status != "completed"\n    mutate self.status = "completed"\n  }\n}\n',
         hints: [
           { text: 'Mutation syntax: `mutate self.property = value`' },
           { text: 'The `mutate` keyword goes after the guard.' },
-          { final: true, text: 'The answer is:\n```\ncommand completeTask(taskId: string) {\n  guard self.status != "completed"\n  mutate self.status = "completed"\n}\n```' },
+          {
+            final: true,
+            text: 'The answer is:\n```\ncommand completeTask(taskId: string) {\n  guard self.status != "completed"\n  mutate self.status = "completed"\n}\n```',
+          },
         ],
-        validation: [
-          { type: 'compiles' },
-          { type: 'source-contains', text: 'mutate' },
-        ],
+        validation: [{ type: 'compiles' }, { type: 'source-contains', text: 'mutate' }],
       },
     ],
   },
@@ -155,10 +165,14 @@ export const BUILTIN_TUTORIALS: Tutorial[] = [
         instruction:
           'Computed properties need inputs. Add `price: number` and `quantity: number` properties to a `LineItem` entity.',
         starterCode: 'entity LineItem {\n  // add price and quantity\n}\n',
-        expectedCode: 'entity LineItem {\n  property price: number\n  property quantity: number\n}\n',
+        expectedCode:
+          'entity LineItem {\n  property price: number\n  property quantity: number\n}\n',
         hints: [
           { text: 'Use the `number` type for numeric properties.' },
-          { final: true, text: 'The answer is:\n```\nentity LineItem {\n  property price: number\n  property quantity: number\n}\n```' },
+          {
+            final: true,
+            text: 'The answer is:\n```\nentity LineItem {\n  property price: number\n  property quantity: number\n}\n```',
+          },
         ],
         validation: [
           { type: 'compiles' },
@@ -172,12 +186,17 @@ export const BUILTIN_TUTORIALS: Tutorial[] = [
         title: 'Add a Computed Property',
         instruction:
           'A **computed** property is automatically derived from other properties. Add a computed property `subtotal: number` to `LineItem` that equals `price * quantity`.',
-        starterCode: 'entity LineItem {\n  property price: number\n  property quantity: number\n  // add a computed property here\n}\n',
-        expectedCode: 'entity LineItem {\n  property price: number\n  property quantity: number\n  computed subtotal: number = price * quantity\n}\n',
+        starterCode:
+          'entity LineItem {\n  property price: number\n  property quantity: number\n  // add a computed property here\n}\n',
+        expectedCode:
+          'entity LineItem {\n  property price: number\n  property quantity: number\n  computed subtotal: number = price * quantity\n}\n',
         hints: [
           { text: 'Computed syntax: `computed name: type = expression`' },
           { text: 'The expression is a normal Manifest expression using other properties.' },
-          { final: true, text: 'The answer is:\n```\nentity LineItem {\n  property price: number\n  property quantity: number\n  computed subtotal: number = price * quantity\n}\n```' },
+          {
+            final: true,
+            text: 'The answer is:\n```\nentity LineItem {\n  property price: number\n  property quantity: number\n  computed subtotal: number = price * quantity\n}\n```',
+          },
         ],
         validation: [
           { type: 'compiles' },

@@ -35,7 +35,8 @@ export default {
       },
     ],
     messages: {
-      hardcodedVersion: 'Hardcoded version "{{version}}" found. Import from "{{importPath}}" instead.',
+      hardcodedVersion:
+        'Hardcoded version "{{version}}" found. Import from "{{importPath}}" instead.',
     },
   },
   create(context) {
@@ -53,9 +54,7 @@ export default {
 
     // Check if file should be excluded
     const shouldExclude = allowPatterns.some((pattern) => {
-      const regex = new RegExp(
-        '^' + pattern.replace(/\*/g, '.*').replace(/\?/g, '.') + '$'
-      );
+      const regex = new RegExp('^' + pattern.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
       return regex.test(path);
     });
 
@@ -77,9 +76,7 @@ export default {
         const source = sourceCode.getText();
 
         // Check for version imports
-        hasVersionImport = versionImportPatterns.some((pattern) =>
-          pattern.test(source)
-        );
+        hasVersionImport = versionImportPatterns.some((pattern) => pattern.test(source));
       },
 
       Literal(node) {

@@ -1,7 +1,7 @@
 ---
-title: "Python Pydantic model projection"
-sidebarTitle: "Pydantic"
-description: "Generate Pydantic v2 BaseModel classes with validators, computed fields, and an async httpx client SDK from Manifest IR — targeting Python 3.10+."
+title: 'Python Pydantic model projection'
+sidebarTitle: 'Pydantic'
+description: 'Generate Pydantic v2 BaseModel classes with validators, computed fields, and an async httpx client SDK from Manifest IR — targeting Python 3.10+.'
 ---
 
 The Pydantic projection generates Python Pydantic v2 model classes from compiled Manifest IR. Use it when you are building a Python backend, data pipeline, or client library and want Manifest entities represented as typed Pydantic models with validation, serialization, and optional async client methods. The projection follows the same compile-time, app-agnostic contract as the [Drizzle projection](/projections/drizzle) but targets Python conventions.
@@ -53,18 +53,18 @@ manifest generate ir/widget.ir.json --projection pydantic --surface pydantic.mod
 
 The projection maps Manifest IR types to Python types:
 
-| Manifest type | Python type |
-|---------------|-------------|
-| `string` | `str` |
-| `int` / `integer` | `int` |
-| `number` / `float` | `float` |
-| `boolean` / `bool` | `bool` |
-| `datetime` | `datetime` |
-| `uuid` | `UUID` |
-| `decimal` | `Decimal` |
-| `email` | `EmailStr` |
-| `array<T>` | `list[T]` |
-| `map<V>` | `dict[str, V]` |
+| Manifest type      | Python type    |
+| ------------------ | -------------- |
+| `string`           | `str`          |
+| `int` / `integer`  | `int`          |
+| `number` / `float` | `float`        |
+| `boolean` / `bool` | `bool`         |
+| `datetime`         | `datetime`     |
+| `uuid`             | `UUID`         |
+| `decimal`          | `Decimal`      |
+| `email`            | `EmailStr`     |
+| `array<T>`         | `list[T]`      |
+| `map<V>`           | `dict[str, V]` |
 
 Optional properties use Python 3.10+ union syntax (`str | None = None`). Enum types generate a `str`-based enum class with string values.
 
@@ -145,5 +145,10 @@ class ManifestClient:
 ## Notes & limitations
 
 <Note>
-Generated code targets Python 3.10+ and uses modern union syntax (`str | None`) rather than `Optional[str]`. The `httpx` package is required for the `pydantic.client` surface and is not included as a dependency of Manifest. Enum classes inherit from `str` for JSON serialization compatibility. Computed properties are generated with `@computed_field` and `@property` decorators; their values are placeholders that must be computed by the Manifest runtime on the server side.
+  Generated code targets Python 3.10+ and uses modern union syntax (`str | None`) rather than
+  `Optional[str]`. The `httpx` package is required for the `pydantic.client` surface and is not
+  included as a dependency of Manifest. Enum classes inherit from `str` for JSON serialization
+  compatibility. Computed properties are generated with `@computed_field` and `@property`
+  decorators; their values are placeholders that must be computed by the Manifest runtime on the
+  server side.
 </Note>

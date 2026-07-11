@@ -1,7 +1,7 @@
 ---
-title: "GraphQL schema projection"
-sidebarTitle: "GraphQL"
-description: "Generate a GraphQL SDL schema and matching resolver stubs from Manifest IR — entity reads become queries, commands become mutations, and events become subscriptions."
+title: 'GraphQL schema projection'
+sidebarTitle: 'GraphQL'
+description: 'Generate a GraphQL SDL schema and matching resolver stubs from Manifest IR — entity reads become queries, commands become mutations, and events become subscriptions.'
 ---
 
 The GraphQL projection generates a GraphQL SDL schema and matching resolver stubs from compiled Manifest IR. Entity reads become queries, commands become mutations, and events become subscriptions. Use it to expose a Manifest domain through a GraphQL server while keeping write semantics routed through the runtime.
@@ -53,7 +53,9 @@ The options object is `GraphQLProjectionOptions` in `graphql/types.ts`. All bool
 ## Notes & limitations
 
 <Warning>
-The resolver stubs are stubs — the query resolvers inline a direct database lookup and the mutation resolvers are scaffolding that you complete against your runtime; they are not a finished server.
+  The resolver stubs are stubs — the query resolvers inline a direct database lookup and the
+  mutation resolvers are scaffolding that you complete against your runtime; they are not a finished
+  server.
 </Warning>
 
 This projection's behavior is taken directly from `src/manifest/projections/graphql/generator.ts` and `types.ts`.

@@ -50,6 +50,7 @@ entity PurchaseOrder {
 Execution gate order: rate-limit → policies → constraints → guards → **approval gate** → actions → emits
 
 When a command has a matching approval declaration:
+
 1. The runtime evaluates each stage's `when` condition to determine required stages
 2. If all required stages are granted, execution proceeds normally
 3. If any required stage is pending, the command returns `{ approvalRequired: ApprovalRequiredInfo }`

@@ -31,7 +31,16 @@ describe('checkDispatcherPresence', () => {
   it('detects the dispatcher under src/app/api/manifest/... (Next.js src/ layout)', async () => {
     const dir = await tempDir();
     try {
-      const target = path.join(dir, 'src', 'app', 'api', 'manifest', '[entity]', 'commands', '[command]');
+      const target = path.join(
+        dir,
+        'src',
+        'app',
+        'api',
+        'manifest',
+        '[entity]',
+        'commands',
+        '[command]',
+      );
       await fs.mkdir(target, { recursive: true });
       await fs.writeFile(path.join(target, 'route.ts'), '');
 

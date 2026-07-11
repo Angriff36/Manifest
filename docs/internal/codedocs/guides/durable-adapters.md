@@ -1,6 +1,6 @@
 ---
-title: "Durable Adapters"
-description: "Wire PostgreSQL-backed storage, audit, and outbox adapters into a Manifest runtime."
+title: 'Durable Adapters'
+description: 'Wire PostgreSQL-backed storage, audit, and outbox adapters into a Manifest runtime.'
 ---
 
 > **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
@@ -13,7 +13,6 @@ description: "Wire PostgreSQL-backed storage, audit, and outbox adapters into a 
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 Use this guide when you want a production-oriented runtime setup with durable state, durable audit records, and an outbox queue for downstream delivery.
 
@@ -50,33 +49,37 @@ const outboxStore = new PostgresOutboxStore({ pool });
 ```ts
 import { RuntimeEngine } from '@angriff36/manifest';
 
-const runtime = new RuntimeEngine(ir, {
-  actorId: 'admin-1',
-  tenantId: 'tenant-1',
-  requestId: 'req-99',
-  source: 'route',
-  user: { id: 'admin-1', role: 'admin' },
-}, {
-  storeProvider: (entityName) => {
-    switch (entityName) {
-      case 'Invoice':
-        return new PostgresStore({
-          connectionString: process.env.DATABASE_URL,
-          tableName: 'invoices',
-        });
-      case 'Customer':
-        return new PostgresStore({
-          connectionString: process.env.DATABASE_URL,
-          tableName: 'customers',
-        });
-      default:
-        return undefined;
-    }
+const runtime = new RuntimeEngine(
+  ir,
+  {
+    actorId: 'admin-1',
+    tenantId: 'tenant-1',
+    requestId: 'req-99',
+    source: 'route',
+    user: { id: 'admin-1', role: 'admin' },
   },
-  auditSink,
-  outboxStore,
-  generateId: () => crypto.randomUUID(),
-});
+  {
+    storeProvider: (entityName) => {
+      switch (entityName) {
+        case 'Invoice':
+          return new PostgresStore({
+            connectionString: process.env.DATABASE_URL,
+            tableName: 'invoices',
+          });
+        case 'Customer':
+          return new PostgresStore({
+            connectionString: process.env.DATABASE_URL,
+            tableName: 'customers',
+          });
+        default:
+          return undefined;
+      }
+    },
+    auditSink,
+    outboxStore,
+    generateId: () => crypto.randomUUID(),
+  },
+);
 ```
 
 </Step>
@@ -84,11 +87,15 @@ const runtime = new RuntimeEngine(ir, {
 ### Execute commands and dispatch outbox work
 
 ```ts
-const result = await runtime.runCommand('approve', { approvedBy: 'admin-1' }, {
-  entityName: 'Invoice',
-  instanceId: 'inv-1',
-  idempotencyKey: 'Invoice:inv-1:approve',
-});
+const result = await runtime.runCommand(
+  'approve',
+  { approvedBy: 'admin-1' },
+  {
+    entityName: 'Invoice',
+    instanceId: 'inv-1',
+    idempotencyKey: 'Invoice:inv-1:approve',
+  },
+);
 
 if (!result.success) {
   console.error(result);
@@ -151,24 +158,33 @@ async function main() {
     throw new Error('Compile failed');
   }
 
-  const runtime = new RuntimeEngine(ir, {
-    actorId: 'admin-1',
-    tenantId: 'tenant-1',
-    user: { id: 'admin-1', role: 'admin' },
-  }, {
-    storeProvider: () => new PostgresStore({
-      connectionString: process.env.DATABASE_URL,
-      tableName: 'invoices',
-    }),
-    auditSink: new PostgresAuditSink({ pool }),
-    outboxStore: new PostgresOutboxStore({ pool }),
-  });
+  const runtime = new RuntimeEngine(
+    ir,
+    {
+      actorId: 'admin-1',
+      tenantId: 'tenant-1',
+      user: { id: 'admin-1', role: 'admin' },
+    },
+    {
+      storeProvider: () =>
+        new PostgresStore({
+          connectionString: process.env.DATABASE_URL,
+          tableName: 'invoices',
+        }),
+      auditSink: new PostgresAuditSink({ pool }),
+      outboxStore: new PostgresOutboxStore({ pool }),
+    },
+  );
 
   await runtime.createInstance('Invoice', { id: 'inv-1' });
-  const result = await runtime.runCommand('approve', {}, {
-    entityName: 'Invoice',
-    instanceId: 'inv-1',
-  });
+  const result = await runtime.runCommand(
+    'approve',
+    {},
+    {
+      entityName: 'Invoice',
+      instanceId: 'inv-1',
+    },
+  );
 
   console.log(result);
 }

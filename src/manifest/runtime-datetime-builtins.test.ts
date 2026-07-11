@@ -38,13 +38,17 @@ store Record in memory
 
 async function setup() {
   const { ir, diagnostics } = await compileToIR(source);
-  expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+  expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   expect(ir).not.toBeNull();
 
-  const engine = new RuntimeEngine(ir!, {}, {
-    now: () => FIXED_NOW,
-    generateId: () => 'test-id-1',
-  });
+  const engine = new RuntimeEngine(
+    ir!,
+    {},
+    {
+      now: () => FIXED_NOW,
+      generateId: () => 'test-id-1',
+    },
+  );
   const instance = await engine.createInstance('Record', { name: 'r1' });
   expect(instance).toBeDefined();
   expect(instance!.createdAt).toBe(FIXED_NOW);

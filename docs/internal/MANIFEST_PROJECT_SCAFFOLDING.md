@@ -13,12 +13,14 @@ Complete guide to scaffolding a full-stack project using Manifest DSL.
 Manifest can generate a complete application structure from declarative `.manifest` files:
 
 **What Manifest generates:**
+
 - IR (Intermediate Representation) - Executable contract
 - API routes (Next.js) - Type-safe handlers with auth
 - TypeScript types - Entity interfaces
 - Client SDKs - Type-safe API clients
 
 **What you provide:**
+
 - Database schema (Prisma)
 - Auth configuration (Clerk/NextAuth/custom)
 - Response helpers
@@ -280,7 +282,7 @@ export function manifestSuccessResponse(data: unknown, status = 200) {
 
 export function manifestErrorResponse(
   message: string | { error?: string; diagnostics?: unknown[] },
-  status = 400
+  status = 400,
 ) {
   const body = typeof message === 'string' ? { error: message } : message;
   return NextResponse.json(body, { status });
@@ -288,10 +290,14 @@ export function manifestErrorResponse(
 
 // Re-export the normalization helper from Manifest
 export { normalizeCommandResult } from '@angriff36/manifest/api-diagnostics';
-export type { RuntimeDiagnostic, NormalizedCommandResult } from '@angriff36/manifest/api-diagnostics';
+export type {
+  RuntimeDiagnostic,
+  NormalizedCommandResult,
+} from '@angriff36/manifest/api-diagnostics';
 ```
 
 **What this provides:**
+
 - `manifestSuccessResponse` - Returns successful API responses
 - `manifestErrorResponse` - Returns error responses with consistent structure
 - `normalizeCommandResult` - Converts runtime `CommandResult` into a consistent API shape with structured diagnostics
@@ -413,7 +419,7 @@ const source = await fs.readFile('manifest/Recipe.manifest', 'utf-8');
 
 // 2. Compile to IR
 const { ir, diagnostics } = await compileToIR(source);
-if (diagnostics.some(d => d.severity === 'error')) {
+if (diagnostics.some((d) => d.severity === 'error')) {
   console.error('Compilation errors:', diagnostics);
   process.exit(1);
 }
@@ -432,11 +438,7 @@ const routeCode = projection.generate(ir, 'Recipe', {
 });
 
 // 5. Write to file
-await fs.writeFile(
-  'app/api/recipes/route.ts',
-  routeCode.artifacts[0].code,
-  'utf-8'
-);
+await fs.writeFile('app/api/recipes/route.ts', routeCode.artifacts[0].code, 'utf-8');
 ```
 
 ---
@@ -547,6 +549,7 @@ Create the missing file or update the import path in the projection options.
 ### Multi-tenancy not working
 
 Ensure:
+
 1. `tenantId` property exists on your entity
 2. `includeTenantFilter: true` in projection options
 3. User-tenant mapping exists in database

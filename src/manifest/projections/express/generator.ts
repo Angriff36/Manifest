@@ -48,7 +48,14 @@ const SURFACE_COMPANIONS = 'express.companions' as const;
 const SURFACE_WEBHOOKS = 'express.webhooks' as const;
 const SURFACE_ALL = 'express.all' as const;
 
-const SURFACES = [SURFACE_ROUTER, SURFACE_ENTITY, SURFACE_TYPES, SURFACE_COMPANIONS, SURFACE_WEBHOOKS, SURFACE_ALL] as const;
+const SURFACES = [
+  SURFACE_ROUTER,
+  SURFACE_ENTITY,
+  SURFACE_TYPES,
+  SURFACE_COMPANIONS,
+  SURFACE_WEBHOOKS,
+  SURFACE_ALL,
+] as const;
 
 /** Package subpath for the runtime webhook handler (owned by src/manifest/webhooks). */
 const WEBHOOKS_IMPORT = '@angriff36/manifest/webhooks';
@@ -199,11 +206,16 @@ function expressionToString(expr: IRExpression): string {
 
 function irValueToJson(value: IRValue): unknown {
   switch (value.kind) {
-    case 'string': return value.value;
-    case 'number': return value.value;
-    case 'boolean': return value.value;
-    case 'null': return null;
-    case 'array': return value.elements.map(irValueToJson);
+    case 'string':
+      return value.value;
+    case 'number':
+      return value.value;
+    case 'boolean':
+      return value.value;
+    case 'null':
+      return null;
+    case 'array':
+      return value.elements.map(irValueToJson);
     case 'object': {
       const obj: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(value.properties)) {
@@ -276,7 +288,7 @@ function generateTypesSurface(
   lines.push(emitHeader(options));
 
   const entities = entityFilter
-    ? ir.entities.filter(e => e.name === entityFilter)
+    ? ir.entities.filter((e) => e.name === entityFilter)
     : [...ir.entities].sort((a, b) => a.name.localeCompare(b.name));
 
   if (entityFilter && entities.length === 0) {
@@ -296,7 +308,7 @@ function generateTypesSurface(
 
   // Command parameter types
   const commands = entityFilter
-    ? ir.commands.filter(c => c.entity === entityFilter)
+    ? ir.commands.filter((c) => c.entity === entityFilter)
     : [...ir.commands].sort((a, b) => {
         const aKey = `${a.entity ?? ''}.${a.name}`;
         const bKey = `${b.entity ?? ''}.${b.name}`;
@@ -327,7 +339,9 @@ function generateCommandComment(
   lines.push(`   * ${toPascalCase(command.name)} command for ${entity.name}.`);
 
   if (command.guards.length > 0) {
-    lines.push(`   * Guards: ${command.guards.length} (evaluated in order, halts on first failure)`);
+    lines.push(
+      `   * Guards: ${command.guards.length} (evaluated in order, halts on first failure)`,
+    );
     for (let i = 0; i < command.guards.length; i++) {
       lines.push(`   *   [${i}] ${expressionToString(command.guards[i])}`);
     }
@@ -337,9 +351,9 @@ function generateCommandComment(
     lines.push(`   * Constraints: ${command.constraints.length}`);
   }
 
-  const entityPolicies = policies.filter(p => p.entity === entity.name);
+  const entityPolicies = policies.filter((p) => p.entity === entity.name);
   if (entityPolicies.length > 0) {
-    lines.push(`   * Policies: ${entityPolicies.map(p => p.name).join(', ')}`);
+    lines.push(`   * Policies: ${entityPolicies.map((p) => p.name).join(', ')}`);
   }
 
   if (command.emits.length > 0) {
@@ -369,7 +383,7 @@ function generateExpressEntityRouter(
 
   // Entity-scoped commands
   const entityCommands = commands
-    .filter(c => c.entity === entity.name)
+    .filter((c) => c.entity === entity.name)
     .sort((a, b) => a.name.localeCompare(b.name));
 
   // GET list route
@@ -379,14 +393,20 @@ function generateExpressEntityRouter(
   if (options.publicReads) {
     lines.push(`  router.get('${contract.listPath(entity.name)}', async (req, res) => {`);
   } else {
-    lines.push(`  router.get('${contract.listPath(entity.name)}', ${options.authMiddlewareName}, async (req, res) => {`);
+    lines.push(
+      `  router.get('${contract.listPath(entity.name)}', ${options.authMiddlewareName}, async (req, res) => {`,
+    );
   }
   lines.push('    try {');
   lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
-  lines.push(`      const result = await runtime.list('${entity.name}'${options.includeTenantContext ? `, { ${options.tenantIdProperty}: req.user?.${options.tenantIdProperty} }` : ''});`);
+  lines.push(
+    `      const result = await runtime.list('${entity.name}'${options.includeTenantContext ? `, { ${options.tenantIdProperty}: req.user?.${options.tenantIdProperty} }` : ''});`,
+  );
   lines.push('      res.json(result);');
   lines.push('    } catch (err) {');
-  lines.push('      res.status(500).json({ error: { code: \'INTERNAL_ERROR\', message: \'Internal server error\' } });');
+  lines.push(
+    "      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });",
+  );
   lines.push('    }');
   lines.push('  });');
   lines.push('');
@@ -396,19 +416,29 @@ function generateExpressEntityRouter(
     lines.push('  /** Get a single ' + entity.name + ' by ID */');
   }
   if (options.publicReads) {
-    lines.push(`  router.get('${contract.detailPath(entity.name, 'colon')}', async (req, res) => {`);
+    lines.push(
+      `  router.get('${contract.detailPath(entity.name, 'colon')}', async (req, res) => {`,
+    );
   } else {
-    lines.push(`  router.get('${contract.detailPath(entity.name, 'colon')}', ${options.authMiddlewareName}, async (req, res) => {`);
+    lines.push(
+      `  router.get('${contract.detailPath(entity.name, 'colon')}', ${options.authMiddlewareName}, async (req, res) => {`,
+    );
   }
   lines.push('    try {');
   lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
-  lines.push(`      const result = await runtime.get('${entity.name}', req.params.id${options.includeTenantContext ? `, { ${options.tenantIdProperty}: req.user?.${options.tenantIdProperty} }` : ''});`);
+  lines.push(
+    `      const result = await runtime.get('${entity.name}', req.params.id${options.includeTenantContext ? `, { ${options.tenantIdProperty}: req.user?.${options.tenantIdProperty} }` : ''});`,
+  );
   lines.push('      if (!result) {');
-  lines.push(`        return res.status(404).json({ error: { code: 'NOT_FOUND', message: '${entity.name} not found' } });`);
+  lines.push(
+    `        return res.status(404).json({ error: { code: 'NOT_FOUND', message: '${entity.name} not found' } });`,
+  );
   lines.push('      }');
   lines.push('      res.json(result);');
   lines.push('    } catch (err) {');
-  lines.push('      res.status(500).json({ error: { code: \'INTERNAL_ERROR\', message: \'Internal server error\' } });');
+  lines.push(
+    "      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });",
+  );
   lines.push('    }');
   lines.push('  });');
 
@@ -420,11 +450,12 @@ function generateExpressEntityRouter(
     }
 
     const commandSegment = toKebabCase(command.name);
-    const schemaName = command.parameters.length > 0
-      ? zodParamsSchemaName(entity.name, command.name)
-      : undefined;
+    const schemaName =
+      command.parameters.length > 0 ? zodParamsSchemaName(entity.name, command.name) : undefined;
 
-    lines.push(`  router.post('${contract.entityBasePath(entity.name)}/${commandSegment}', ${options.authMiddlewareName}, async (req, res) => {`);
+    lines.push(
+      `  router.post('${contract.entityBasePath(entity.name)}/${commandSegment}', ${options.authMiddlewareName}, async (req, res) => {`,
+    );
     lines.push('    try {');
 
     // Validation
@@ -432,7 +463,9 @@ function generateExpressEntityRouter(
       lines.push(`      const parseResult = ${schemaName}.safeParse(req.body);`);
       lines.push('      if (!parseResult.success) {');
       lines.push('        return res.status(400).json({');
-      lines.push("          error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parseResult.error.issues },");
+      lines.push(
+        "          error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parseResult.error.issues },",
+      );
       lines.push('        });');
       lines.push('      }');
       lines.push('      const params = parseResult.data;');
@@ -448,8 +481,10 @@ function generateExpressEntityRouter(
       : ', { user: req.user }';
 
     // Instance ID extraction for non-create commands
-    lines.push("      const instanceId = req.body.instanceId ?? req.body.id;");
-    lines.push(`      const result = await runtime.runCommand('${entity.name}', '${command.name}', {`);
+    lines.push('      const instanceId = req.body.instanceId ?? req.body.id;');
+    lines.push(
+      `      const result = await runtime.runCommand('${entity.name}', '${command.name}', {`,
+    );
     lines.push('        params,');
     lines.push('        instanceId,');
     lines.push(`      }${contextArg});`);
@@ -457,15 +492,19 @@ function generateExpressEntityRouter(
     lines.push('      res.json(result);');
     lines.push('    } catch (err: unknown) {');
     lines.push("      if (err && typeof err === 'object' && 'code' in err) {");
-    lines.push("        const e = err as { code: string; message?: string; status?: number };");
+    lines.push('        const e = err as { code: string; message?: string; status?: number };');
     lines.push("        const status = e.code === 'GUARD_FAILED' ? 403");
     lines.push("          : e.code === 'CONSTRAINT_VIOLATION' ? 422");
     lines.push("          : e.code === 'CONCURRENCY_CONFLICT' ? 409");
     lines.push("          : e.code === 'NOT_FOUND' ? 404");
     lines.push('          : 500;');
-    lines.push("        return res.status(status).json({ error: { code: e.code, message: e.message ?? 'Command failed' } });");
+    lines.push(
+      "        return res.status(status).json({ error: { code: e.code, message: e.message ?? 'Command failed' } });",
+    );
     lines.push('      }');
-    lines.push("      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });");
+    lines.push(
+      "      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });",
+    );
     lines.push('    }');
     lines.push('  });');
   }
@@ -490,7 +529,7 @@ function generateFastifyEntityRouter(
   const hasValidation = !!options.validationImportPath;
 
   const entityCommands = commands
-    .filter(c => c.entity === entity.name)
+    .filter((c) => c.entity === entity.name)
     .sort((a, b) => a.name.localeCompare(b.name));
 
   // GET list route
@@ -498,9 +537,13 @@ function generateFastifyEntityRouter(
     lines.push('  /** List all ' + entity.name + ' entities */');
   }
   const listPreHandler = options.publicReads ? '' : `preHandler: [${options.authMiddlewareName}], `;
-  lines.push(`  fastify.get('${contract.listPath(entity.name)}', { ${listPreHandler}}, async (request, reply) => {`);
+  lines.push(
+    `  fastify.get('${contract.listPath(entity.name)}', { ${listPreHandler}}, async (request, reply) => {`,
+  );
   lines.push(`    const runtime = await ${options.runtimeFactoryName}();`);
-  lines.push(`    const result = await runtime.list('${entity.name}'${options.includeTenantContext ? `, { ${options.tenantIdProperty}: request.user?.${options.tenantIdProperty} }` : ''});`);
+  lines.push(
+    `    const result = await runtime.list('${entity.name}'${options.includeTenantContext ? `, { ${options.tenantIdProperty}: request.user?.${options.tenantIdProperty} }` : ''});`,
+  );
   lines.push('    return result;');
   lines.push('  });');
   lines.push('');
@@ -510,10 +553,14 @@ function generateFastifyEntityRouter(
     lines.push('  /** Get a single ' + entity.name + ' by ID */');
   }
   const getPreHandler = options.publicReads ? '' : `preHandler: [${options.authMiddlewareName}], `;
-  lines.push(`  fastify.get('${contract.detailPath(entity.name, 'colon')}', { ${getPreHandler}}, async (request, reply) => {`);
+  lines.push(
+    `  fastify.get('${contract.detailPath(entity.name, 'colon')}', { ${getPreHandler}}, async (request, reply) => {`,
+  );
   lines.push('    const { id } = request.params as { id: string };');
   lines.push(`    const runtime = await ${options.runtimeFactoryName}();`);
-  lines.push(`    const result = await runtime.get('${entity.name}', id${options.includeTenantContext ? `, { ${options.tenantIdProperty}: request.user?.${options.tenantIdProperty} }` : ''});`);
+  lines.push(
+    `    const result = await runtime.get('${entity.name}', id${options.includeTenantContext ? `, { ${options.tenantIdProperty}: request.user?.${options.tenantIdProperty} }` : ''});`,
+  );
   lines.push('    if (!result) {');
   lines.push(`      reply.code(404);`);
   lines.push(`      return { error: { code: 'NOT_FOUND', message: '${entity.name} not found' } };`);
@@ -529,18 +576,21 @@ function generateFastifyEntityRouter(
     }
 
     const commandSegment = toKebabCase(command.name);
-    const schemaName = command.parameters.length > 0
-      ? zodParamsSchemaName(entity.name, command.name)
-      : undefined;
+    const schemaName =
+      command.parameters.length > 0 ? zodParamsSchemaName(entity.name, command.name) : undefined;
 
-    lines.push(`  fastify.post('${contract.entityBasePath(entity.name)}/${commandSegment}', { preHandler: [${options.authMiddlewareName}] }, async (request, reply) => {`);
+    lines.push(
+      `  fastify.post('${contract.entityBasePath(entity.name)}/${commandSegment}', { preHandler: [${options.authMiddlewareName}] }, async (request, reply) => {`,
+    );
 
     // Validation
     if (hasValidation && schemaName) {
       lines.push(`    const parseResult = ${schemaName}.safeParse(request.body);`);
       lines.push('    if (!parseResult.success) {');
       lines.push('      reply.code(400);');
-      lines.push("      return { error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parseResult.error.issues } };");
+      lines.push(
+        "      return { error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parseResult.error.issues } };",
+      );
       lines.push('    }');
       lines.push('    const params = parseResult.data;');
     } else {
@@ -553,8 +603,12 @@ function generateFastifyEntityRouter(
       ? `, { user: request.user, ${options.tenantIdProperty}: request.user?.${options.tenantIdProperty} }`
       : ', { user: request.user }';
 
-    lines.push("    const instanceId = (request.body as Record<string, unknown>)?.instanceId ?? (request.body as Record<string, unknown>)?.id;");
-    lines.push(`    const result = await runtime.runCommand('${entity.name}', '${command.name}', {`);
+    lines.push(
+      '    const instanceId = (request.body as Record<string, unknown>)?.instanceId ?? (request.body as Record<string, unknown>)?.id;',
+    );
+    lines.push(
+      `    const result = await runtime.runCommand('${entity.name}', '${command.name}', {`,
+    );
     lines.push('      params,');
     lines.push('      instanceId,');
     lines.push(`    }${contextArg});`);
@@ -598,16 +652,16 @@ function generateExpressRouter(
   if (hasValidation) {
     // Import schemas for validation
     const entities = entityFilter
-      ? ir.entities.filter(e => e.name === entityFilter)
+      ? ir.entities.filter((e) => e.name === entityFilter)
       : ir.entities;
     const commands = entityFilter
-      ? ir.commands.filter(c => c.entity === entityFilter)
+      ? ir.commands.filter((c) => c.entity === entityFilter)
       : ir.commands;
 
     const schemaImports: string[] = [];
     for (const command of commands) {
       if (command.parameters.length > 0 && command.entity) {
-        const entity = entities.find(e => e.name === command.entity);
+        const entity = entities.find((e) => e.name === command.entity);
         if (entity) {
           schemaImports.push(zodParamsSchemaName(command.entity, command.name));
         }
@@ -623,7 +677,7 @@ function generateExpressRouter(
 
   // Filter entities
   const entities = entityFilter
-    ? ir.entities.filter(e => e.name === entityFilter)
+    ? ir.entities.filter((e) => e.name === entityFilter)
     : [...ir.entities].sort((a, b) => a.name.localeCompare(b.name));
 
   if (entityFilter && entities.length === 0) {
@@ -642,12 +696,7 @@ function generateExpressRouter(
     lines.push('');
 
     for (const entity of entities) {
-      const entityRoutes = generateExpressEntityRouter(
-        entity,
-        ir.commands,
-        ir.policies,
-        options,
-      );
+      const entityRoutes = generateExpressEntityRouter(entity, ir.commands, ir.policies, options);
       lines.push(entityRoutes);
       lines.push('');
     }
@@ -661,12 +710,7 @@ function generateExpressRouter(
     lines.push('export async function manifestRoutes(fastify: FastifyInstance): Promise<void> {');
 
     for (const entity of entities) {
-      const entityRoutes = generateFastifyEntityRouter(
-        entity,
-        ir.commands,
-        ir.policies,
-        options,
-      );
+      const entityRoutes = generateFastifyEntityRouter(entity, ir.commands, ir.policies, options);
       lines.push(entityRoutes);
       lines.push('');
     }
@@ -721,8 +765,12 @@ function generateRuntimeCompanionModule(ir: IR, options: NormalizedOptions): str
   lines.push('');
   lines.push('/** The runtime surface the generated routes consume. */');
   lines.push('export interface ManifestRuntime {');
-  lines.push('  list(entityName: string, filter?: Record<string, unknown>): Promise<ManifestListResult>;');
-  lines.push('  get(entityName: string, id: string, filter?: Record<string, unknown>): Promise<ManifestInstanceResult>;');
+  lines.push(
+    '  list(entityName: string, filter?: Record<string, unknown>): Promise<ManifestListResult>;',
+  );
+  lines.push(
+    '  get(entityName: string, id: string, filter?: Record<string, unknown>): Promise<ManifestInstanceResult>;',
+  );
   lines.push('  runCommand(');
   lines.push('    entityName: string,');
   lines.push('    commandName: string,');
@@ -780,9 +828,13 @@ function generateExpressAuthStub(options: NormalizedOptions): string {
   if (options.framework === 'fastify') {
     lines.push("import type { FastifyRequest, FastifyReply } from 'fastify';");
     lines.push('');
-    lines.push(`export async function ${name}(_request: FastifyRequest, reply: FastifyReply): Promise<void> {`);
+    lines.push(
+      `export async function ${name}(_request: FastifyRequest, reply: FastifyReply): Promise<void> {`,
+    );
     lines.push('  reply.code(401).send({');
-    lines.push(`    error: { code: 'UNAUTHORIZED', message: 'Auth not configured: implement ${name} in this module.' },`);
+    lines.push(
+      `    error: { code: 'UNAUTHORIZED', message: 'Auth not configured: implement ${name} in this module.' },`,
+    );
     lines.push('  });');
     lines.push('}');
   } else {
@@ -790,7 +842,9 @@ function generateExpressAuthStub(options: NormalizedOptions): string {
     lines.push('');
     lines.push(`export const ${name}: RequestHandler = (_req, res) => {`);
     lines.push('  res.status(401).json({');
-    lines.push(`    error: { code: 'UNAUTHORIZED', message: 'Auth not configured: implement ${name} in this module.' },`);
+    lines.push(
+      `    error: { code: 'UNAUTHORIZED', message: 'Auth not configured: implement ${name} in this module.' },`,
+    );
     lines.push('  });');
     lines.push('};');
   }
@@ -817,12 +871,18 @@ function generateCompanions(ir: IR, options: NormalizedOptions): ProjectionResul
     diagnostics.push({
       severity: 'info',
       code: 'COMPANIONS_DISABLED',
-      message: 'emitCompanions is false — no companion modules emitted (hand-written workflow preserved).',
+      message:
+        'emitCompanions is false — no companion modules emitted (hand-written workflow preserved).',
     });
     return { artifacts, diagnostics };
   }
 
-  const emit = (kind: string, importSpecifier: string, build: () => string, label: string): void => {
+  const emit = (
+    kind: string,
+    importSpecifier: string,
+    build: () => string,
+    label: string,
+  ): void => {
     // Package-ness is independent of the importer directory; probe once.
     const probe = resolveLocalImportPathHint(importSpecifier, {
       framework: 'express',
@@ -849,12 +909,22 @@ function generateCompanions(ir: IR, options: NormalizedOptions): ProjectionResul
     const code = build();
     for (const pathHint of [...pathHints].sort()) {
       const topDir = pathHint.split('/')[0];
-      artifacts.push({ id: `express.companions.${kind}.${topDir}`, pathHint, contentType: 'typescript', code });
+      artifacts.push({
+        id: `express.companions.${kind}.${topDir}`,
+        pathHint,
+        contentType: 'typescript',
+        code,
+      });
     }
   };
 
   // Runtime factory — imported unconditionally by every router.
-  emit('runtime', options.runtimeImportPath, () => generateRuntimeCompanionModule(ir, options), 'runtime factory');
+  emit(
+    'runtime',
+    options.runtimeImportPath,
+    () => generateRuntimeCompanionModule(ir, options),
+    'runtime factory',
+  );
 
   // Auth middleware — imported unconditionally by every router.
   emit('auth', options.authImportPath, () => generateExpressAuthStub(options), 'auth middleware');
@@ -929,7 +999,9 @@ function generateExpressWebhooks(ir: IR, options: NormalizedOptions): Projection
 
   if (options.emitHeader) {
     lines.push('/**');
-    lines.push(` * Auto-generated by Manifest ${options.framework} projection (express.webhooks surface).`);
+    lines.push(
+      ` * Auto-generated by Manifest ${options.framework} projection (express.webhooks surface).`,
+    );
     lines.push(` * Generated at: ${options.generatedAt}`);
     lines.push(' *');
     lines.push(' * Webhooks authenticate via HMAC signature verification (per the IR webhook');
@@ -966,8 +1038,10 @@ function generateExpressWebhooks(ir: IR, options: NormalizedOptions): Projection
     }
     // express.raw captures the exact bytes so HMAC verification sees what the
     // provider signed; requireAuth is intentionally NOT applied.
-    lines.push(`  router.${method}('${webhook.path}', express.raw({ type: '*/*' }), async ${handlerSig} => {`);
-    lines.push('    const rawBody = Buffer.isBuffer(req.body) ? req.body.toString(\'utf8\') : \'\';');
+    lines.push(
+      `  router.${method}('${webhook.path}', express.raw({ type: '*/*' }), async ${handlerSig} => {`,
+    );
+    lines.push("    const rawBody = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';");
     lines.push(`    const runtime = await ${engineFactory}();`);
     lines.push('    const result = await handleWebhookRequest(runtime, {');
     lines.push('      method: req.method,');
@@ -986,7 +1060,14 @@ function generateExpressWebhooks(ir: IR, options: NormalizedOptions): Projection
   lines.push('');
 
   return {
-    artifacts: [{ id: 'express.webhooks', pathHint: 'routes/webhooks.ts', contentType: 'typescript', code: lines.join('\n') }],
+    artifacts: [
+      {
+        id: 'express.webhooks',
+        pathHint: 'routes/webhooks.ts',
+        contentType: 'typescript',
+        code: lines.join('\n'),
+      },
+    ],
     diagnostics,
   };
 }
@@ -1009,7 +1090,8 @@ function generateExpressWebhooks(ir: IR, options: NormalizedOptions): Projection
  */
 export class ExpressProjection implements ProjectionTarget {
   readonly name = 'express';
-  readonly description = 'Express/Fastify route handlers and middleware from IR entities and commands';
+  readonly description =
+    'Express/Fastify route handlers and middleware from IR entities and commands';
   readonly surfaces = SURFACES;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
@@ -1019,14 +1101,16 @@ export class ExpressProjection implements ProjectionTarget {
       case SURFACE_ROUTER: {
         const { code, diagnostics } = generateExpressRouter(ir, options, request.entity);
         return {
-          artifacts: [{
-            id: request.entity ? `express.router.${request.entity}` : 'express.router',
-            pathHint: request.entity
-              ? `routes/${toEntitySegment(request.entity)}.ts`
-              : 'routes/manifest-router.ts',
-            contentType: 'typescript',
-            code,
-          }],
+          artifacts: [
+            {
+              id: request.entity ? `express.router.${request.entity}` : 'express.router',
+              pathHint: request.entity
+                ? `routes/${toEntitySegment(request.entity)}.ts`
+                : 'routes/manifest-router.ts',
+              contentType: 'typescript',
+              code,
+            },
+          ],
           diagnostics,
         };
       }
@@ -1053,12 +1137,14 @@ export class ExpressProjection implements ProjectionTarget {
 
         const { code, diagnostics } = generateExpressRouter(ir, options, request.entity);
         return {
-          artifacts: [{
-            id: `express.entity.${request.entity}`,
-            pathHint: `routes/${toEntitySegment(request.entity)}.ts`,
-            contentType: 'typescript',
-            code,
-          }],
+          artifacts: [
+            {
+              id: `express.entity.${request.entity}`,
+              pathHint: `routes/${toEntitySegment(request.entity)}.ts`,
+              contentType: 'typescript',
+              code,
+            },
+          ],
           diagnostics,
         };
       }
@@ -1066,14 +1152,16 @@ export class ExpressProjection implements ProjectionTarget {
       case SURFACE_TYPES: {
         const { code, diagnostics } = generateTypesSurface(ir, options, request.entity);
         return {
-          artifacts: [{
-            id: request.entity ? `express.types.${request.entity}` : 'express.types',
-            pathHint: request.entity
-              ? `types/${toEntitySegment(request.entity)}.ts`
-              : 'types/manifest-types.ts',
-            contentType: 'typescript',
-            code,
-          }],
+          artifacts: [
+            {
+              id: request.entity ? `express.types.${request.entity}` : 'express.types',
+              pathHint: request.entity
+                ? `types/${toEntitySegment(request.entity)}.ts`
+                : 'types/manifest-types.ts',
+              contentType: 'typescript',
+              code,
+            },
+          ],
           diagnostics,
         };
       }
@@ -1120,11 +1208,13 @@ export class ExpressProjection implements ProjectionTarget {
       default:
         return {
           artifacts: [],
-          diagnostics: [{
-            severity: 'error',
-            code: 'UNKNOWN_SURFACE',
-            message: `Unknown surface: "${request.surface}". Available: ${SURFACES.join(', ')}`,
-          }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'UNKNOWN_SURFACE',
+              message: `Unknown surface: "${request.surface}". Available: ${SURFACES.join(', ')}`,
+            },
+          ],
         };
     }
   }

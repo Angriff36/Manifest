@@ -96,10 +96,7 @@ function evaluateCandidate(
   if (unrelated) return { ok: false, reason: unrelated };
 
   const scopeStart = Math.max(0, candidate.index - 600);
-  const scopeEnd = Math.min(
-    content.length,
-    candidate.index + candidate.controlSource.length + 200,
-  );
+  const scopeEnd = Math.min(content.length, candidate.index + candidate.controlSource.length + 200);
   const scope = content.slice(scopeStart, scopeEnd);
 
   if (!entityEvidenceAtControl(cap.entity, scope, candidate.labelText)) {
@@ -199,12 +196,9 @@ function buildPayloadExpression(
   const segments = cap.entity.match(/[A-Z][a-z0-9]*/g) ?? [];
   const last = segments[segments.length - 1];
   const shortId = last ? `${last[0]!.toLowerCase()}${last.slice(1)}Id` : undefined;
-  for (const p of cap.parameters.filter(x => x.ownership === 'client' && x.required)) {
+  for (const p of cap.parameters.filter((x) => x.ownership === 'client' && x.required)) {
     if (p.name === 'id') continue;
-    if (
-      identity &&
-      (p.name === `${camel}Id` || (shortId !== undefined && p.name === shortId))
-    ) {
+    if (identity && (p.name === `${camel}Id` || (shortId !== undefined && p.name === shortId))) {
       continue;
     }
     if (new RegExp(`\\b${p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(controlSource)) {
@@ -305,4 +299,3 @@ function isReplaceablePriorHandler(handler: string, cap: WiringCommandDescriptor
   }
   return false;
 }
-

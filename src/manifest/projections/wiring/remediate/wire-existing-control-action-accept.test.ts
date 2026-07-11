@@ -11,7 +11,10 @@ import {
   planWiringRepairs,
   applyRepairPlan,
 } from './remediate-test-fixtures.js';
-import { COLLECTION_DOMAIN, NEW_CASE_BUTTON_PAGE } from './wire-existing-control-action.fixtures.js';
+import {
+  COLLECTION_DOMAIN,
+  NEW_CASE_BUTTON_PAGE,
+} from './wire-existing-control-action.fixtures.js';
 import { DISMISS_BUTTON, MILESTONE_DOMAIN } from './wire-existing-control.fixtures.js';
 
 describe('wire-existing-control action-intent (accept)', () => {
@@ -46,7 +49,7 @@ describe('wire-existing-control action-intent (accept)', () => {
       }),
       fileContents: files,
       capabilityId: 'CollectionCase.escalateToLegal',
-    }).plans.find(p => p.repairKind === 'wire-existing-control');
+    }).plans.find((p) => p.repairKind === 'wire-existing-control');
     expect(plan?.automaticApplicationAllowed).toBe(true);
 
     const result = remediateWiringSync({
@@ -55,7 +58,7 @@ describe('wire-existing-control action-intent (accept)', () => {
       mode: 'one-defect',
       capabilityId: 'CollectionCase.escalateToLegal',
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
+    expect(result.applied.some((a) => a.applied)).toBe(true);
     const content = [...applyRepairPlan(plan!, files).nextContents.values()][0]!;
     expect(content).toMatch(/collectionCaseEscalateToLegal/);
     expect(content).toMatch(/caseId/);
@@ -91,7 +94,7 @@ describe('wire-existing-control action-intent (accept)', () => {
       }),
       fileContents: files,
       capabilityId: 'CollectionCase.escalateToLegal',
-    }).plans.find(p => p.repairKind === 'wire-existing-control');
+    }).plans.find((p) => p.repairKind === 'wire-existing-control');
     expect(plan?.automaticApplicationAllowed).toBe(true);
     const patch = applyRepairPlan(plan!, files);
     expect(patch.ok).toBe(true);
@@ -122,13 +125,13 @@ describe('wire-existing-control action-intent (accept)', () => {
       fileContents: files,
       mode: 'one-defect',
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
-    const applied = result.applied.find(a => a.applied)!;
+    expect(result.applied.some((a) => a.applied)).toBe(true);
+    const applied = result.applied.find((a) => a.applied)!;
     expect(applied.findingId).toMatch(/wrong_input_shape|Task\.create/);
     expect(applied.findingId).not.toMatch(/escalateToLegal|CollectionCase/);
     expect(
       applyRepairPlan(
-        result.plans.find(p => p.findingId === applied.findingId)!,
+        result.plans.find((p) => p.findingId === applied.findingId)!,
         files,
       ).nextContents.get('apps/app/app/collection-cases/page.tsx'),
     ).toContain('setCreateDialogOpen(true)');
@@ -145,7 +148,7 @@ describe('wire-existing-control action-intent (accept)', () => {
       mode: 'one-defect',
       capabilityId: 'ActionMilestone.complete',
     });
-    expect(result.applied.filter(a => a.applied)).toHaveLength(0);
+    expect(result.applied.filter((a) => a.applied)).toHaveLength(0);
     expect(files.get('apps/app/app/(mobile-kitchen)/kitchen/mobile/page.tsx')).toContain(
       'setError(null)',
     );

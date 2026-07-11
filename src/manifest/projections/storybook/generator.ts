@@ -9,7 +9,13 @@
  */
 
 import type { IR, IREntity, IRCommand, IRProperty, IRType, IRValue, IRExpression } from '../../ir';
-import type { ProjectionTarget, ProjectionRequest, ProjectionResult, ProjectionArtifact, ProjectionDiagnostic } from '../interface';
+import type {
+  ProjectionTarget,
+  ProjectionRequest,
+  ProjectionResult,
+  ProjectionArtifact,
+  ProjectionDiagnostic,
+} from '../interface';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -84,9 +90,9 @@ function irTypeToControl(type: IRType, ir: IR): ControlConfig {
   if (base) return base;
 
   // Check if it's an enum reference
-  const enumDef = ir.enums.find(e => e.name === type.name);
+  const enumDef = ir.enums.find((e) => e.name === type.name);
   if (enumDef) {
-    return { control: 'select', options: enumDef.values.map(v => v.name) };
+    return { control: 'select', options: enumDef.values.map((v) => v.name) };
   }
 
   // Array types
@@ -109,7 +115,7 @@ function controlToString(config: ControlConfig): string {
     parts.push(`control: { ${inner} }`);
   }
   if (config.options) {
-    parts.push(`options: [${config.options.map(o => `'${o}'`).join(', ')}]`);
+    parts.push(`options: [${config.options.map((o) => `'${o}'`).join(', ')}]`);
   }
   return `{ ${parts.join(', ')} }`;
 }
@@ -120,23 +126,31 @@ function controlToString(config: ControlConfig): string {
 
 function irValueToLiteral(value: IRValue): string {
   switch (value.kind) {
-    case 'string': return JSON.stringify(value.value);
-    case 'number': return String(value.value);
-    case 'boolean': return String(value.value);
-    case 'null': return 'null';
-    case 'array': return '[]';
-    case 'object': return '{}';
-    default: return "''";
+    case 'string':
+      return JSON.stringify(value.value);
+    case 'number':
+      return String(value.value);
+    case 'boolean':
+      return String(value.value);
+    case 'null':
+      return 'null';
+    case 'array':
+      return '[]';
+    case 'object':
+      return '{}';
+    default:
+      return "''";
   }
 }
 
 function defaultValueForType(type: IRType): string {
   const name = type.name;
-  if (name === 'string' || name === 'text' || name === 'uuid' || name === 'email' || name === 'url') return "''";
+  if (name === 'string' || name === 'text' || name === 'uuid' || name === 'email' || name === 'url')
+    return "''";
   if (name === 'number' || name === 'float' || name === 'decimal' || name === 'money') return '0';
   if (name === 'int' || name === 'integer') return '0';
   if (name === 'boolean' || name === 'bool') return 'false';
-  if (name === 'date' || name === 'datetime') return "new Date().toISOString()";
+  if (name === 'date' || name === 'datetime') return 'new Date().toISOString()';
   return "''";
 }
 
@@ -151,7 +165,7 @@ function sampleValueForType(type: IRType, ir: IR): string {
   if (name === 'boolean' || name === 'bool') return 'true';
   if (name === 'date' || name === 'datetime') return "'2025-01-01T00:00:00.000Z'";
   // enum: use first value
-  const enumDef = ir.enums.find(e => e.name === name);
+  const enumDef = ir.enums.find((e) => e.name === name);
   if (enumDef && enumDef.values.length > 0) return `'${enumDef.values[0].name}'`;
   return "'sample'";
 }
@@ -165,7 +179,11 @@ interface GuardArgs {
   fail: Record<string, string>;
 }
 
-function analyzeGuardsForArgs(guards: IRExpression[], parameters: { name: string; type: IRType }[], ir: IR): GuardArgs {
+function analyzeGuardsForArgs(
+  guards: IRExpression[],
+  parameters: { name: string; type: IRType }[],
+  ir: IR,
+): GuardArgs {
   const pass: Record<string, string> = {};
   const fail: Record<string, string> = {};
 
@@ -228,7 +246,9 @@ function generateEntityStory(entity: IREntity, ir: IR, opts: NormalizedOptions):
     if (prop.modifiers.includes('private')) continue;
     const config = irTypeToControl(prop.type, ir);
     const desc = descriptionForProperty(prop);
-    lines.push(`  ${prop.name}: { ${controlToString(config).slice(2, -2)}, description: '${desc}' },`);
+    lines.push(
+      `  ${prop.name}: { ${controlToString(config).slice(2, -2)}, description: '${desc}' },`,
+    );
   }
   // Computed properties — read-only
   for (const comp of entity.computedProperties) {
@@ -243,7 +263,7 @@ function generateEntityStory(entity: IREntity, ir: IR, opts: NormalizedOptions):
   lines.push(`  component: ${componentName},`);
   lines.push('  argTypes,');
   if (entity.constraints.length > 0) {
-    const constraintNames = entity.constraints.map(c => `'${c.name}'`).join(', ');
+    const constraintNames = entity.constraints.map((c) => `'${c.name}'`).join(', ');
     lines.push('  parameters: {');
     lines.push(`    manifest: { entity: '${name}', constraints: [${constraintNames}] },`);
     lines.push('  },');
@@ -259,7 +279,9 @@ function generateEntityStory(entity: IREntity, ir: IR, opts: NormalizedOptions):
   lines.push('  args: {');
   for (const prop of entity.properties) {
     if (prop.modifiers.includes('private')) continue;
-    const val = prop.defaultValue ? irValueToLiteral(prop.defaultValue) : defaultValueForType(prop.type);
+    const val = prop.defaultValue
+      ? irValueToLiteral(prop.defaultValue)
+      : defaultValueForType(prop.type);
     lines.push(`    ${prop.name}: ${val},`);
   }
   lines.push('  },');
@@ -337,7 +359,9 @@ function generateCommandStory(command: IRCommand, ir: IR, opts: NormalizedOption
   for (const param of command.parameters) {
     const config = irTypeToControl(param.type, ir);
     const desc = param.required ? 'required' : 'optional';
-    lines.push(`  ${param.name}: { ${controlToString(config).slice(2, -2)}, description: '${desc}' },`);
+    lines.push(
+      `  ${param.name}: { ${controlToString(config).slice(2, -2)}, description: '${desc}' },`,
+    );
   }
   lines.push('};');
   lines.push('');
@@ -348,9 +372,11 @@ function generateCommandStory(command: IRCommand, ir: IR, opts: NormalizedOption
   lines.push(`  component: ${componentName},`);
   lines.push('  argTypes,');
   if (command.guards.length > 0) {
-    const guardExprs = command.guards.map(g => `'${expressionToString(g)}'`).join(', ');
+    const guardExprs = command.guards.map((g) => `'${expressionToString(g)}'`).join(', ');
     lines.push('  parameters: {');
-    lines.push(`    manifest: { command: '${command.name}', entity: '${entityName}', guards: [${guardExprs}] },`);
+    lines.push(
+      `    manifest: { command: '${command.name}', entity: '${entityName}', guards: [${guardExprs}] },`,
+    );
     lines.push('  },');
   }
   lines.push('};');
@@ -365,7 +391,9 @@ function generateCommandStory(command: IRCommand, ir: IR, opts: NormalizedOption
   lines.push('export const GuardsPass: Story = {');
   lines.push('  args: {');
   for (const param of command.parameters) {
-    lines.push(`    ${param.name}: ${guardArgs.pass[param.name] ?? sampleValueForType(param.type, ir)},`);
+    lines.push(
+      `    ${param.name}: ${guardArgs.pass[param.name] ?? sampleValueForType(param.type, ir)},`,
+    );
   }
   lines.push('  },');
   if (opts.includeGuardScenarios && command.guards.length > 0) {
@@ -382,7 +410,9 @@ function generateCommandStory(command: IRCommand, ir: IR, opts: NormalizedOption
     lines.push('export const GuardFails: Story = {');
     lines.push('  args: {');
     for (const param of command.parameters) {
-      lines.push(`    ${param.name}: ${guardArgs.fail[param.name] ?? defaultValueForType(param.type)},`);
+      lines.push(
+        `    ${param.name}: ${guardArgs.fail[param.name] ?? defaultValueForType(param.type)},`,
+      );
     }
     lines.push('  },');
     lines.push('  play: async ({ canvasElement }) => {');
@@ -441,30 +471,38 @@ export class StorybookProjection implements ProjectionTarget {
       default:
         return {
           artifacts: [],
-          diagnostics: [{
-            severity: 'error',
-            code: 'UNKNOWN_SURFACE',
-            message: `Unknown surface "${request.surface}". Available: ${this.surfaces.join(', ')}`,
-          }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'UNKNOWN_SURFACE',
+              message: `Unknown surface "${request.surface}". Available: ${this.surfaces.join(', ')}`,
+            },
+          ],
         };
     }
   }
 
-  private _generateEntitySurface(ir: IR, request: ProjectionRequest, opts: NormalizedOptions): ProjectionResult {
+  private _generateEntitySurface(
+    ir: IR,
+    request: ProjectionRequest,
+    opts: NormalizedOptions,
+  ): ProjectionResult {
     const artifacts: ProjectionArtifact[] = [];
     const diagnostics: ProjectionDiagnostic[] = [];
 
     if (request.entity) {
-      const entity = ir.entities.find(e => e.name === request.entity);
+      const entity = ir.entities.find((e) => e.name === request.entity);
       if (!entity) {
         return {
           artifacts: [],
-          diagnostics: [{
-            severity: 'error',
-            code: 'ENTITY_NOT_FOUND',
-            message: `Entity "${request.entity}" not found in IR`,
-            entity: request.entity,
-          }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'ENTITY_NOT_FOUND',
+              message: `Entity "${request.entity}" not found in IR`,
+              entity: request.entity,
+            },
+          ],
         };
       }
       artifacts.push(this._entityArtifact(entity, ir, opts));
@@ -477,20 +515,26 @@ export class StorybookProjection implements ProjectionTarget {
     return { artifacts, diagnostics };
   }
 
-  private _generateCommandSurface(ir: IR, request: ProjectionRequest, opts: NormalizedOptions): ProjectionResult {
+  private _generateCommandSurface(
+    ir: IR,
+    request: ProjectionRequest,
+    opts: NormalizedOptions,
+  ): ProjectionResult {
     const artifacts: ProjectionArtifact[] = [];
     const diagnostics: ProjectionDiagnostic[] = [];
 
     if (request.command) {
-      const command = ir.commands.find(c => c.name === request.command);
+      const command = ir.commands.find((c) => c.name === request.command);
       if (!command) {
         return {
           artifacts: [],
-          diagnostics: [{
-            severity: 'error',
-            code: 'COMMAND_NOT_FOUND',
-            message: `Command "${request.command}" not found in IR`,
-          }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'COMMAND_NOT_FOUND',
+              message: `Command "${request.command}" not found in IR`,
+            },
+          ],
         };
       }
       artifacts.push(this._commandArtifact(command, ir, opts));
@@ -503,7 +547,11 @@ export class StorybookProjection implements ProjectionTarget {
     return { artifacts, diagnostics };
   }
 
-  private _generateAllSurface(ir: IR, _request: ProjectionRequest, opts: NormalizedOptions): ProjectionResult {
+  private _generateAllSurface(
+    ir: IR,
+    _request: ProjectionRequest,
+    opts: NormalizedOptions,
+  ): ProjectionResult {
     const artifacts: ProjectionArtifact[] = [];
     const diagnostics: ProjectionDiagnostic[] = [];
 
@@ -526,7 +574,11 @@ export class StorybookProjection implements ProjectionTarget {
     };
   }
 
-  private _commandArtifact(command: IRCommand, ir: IR, opts: NormalizedOptions): ProjectionArtifact {
+  private _commandArtifact(
+    command: IRCommand,
+    ir: IR,
+    opts: NormalizedOptions,
+  ): ProjectionArtifact {
     const entityName = command.entity ?? 'Global';
     return {
       id: `storybook.command.${command.name}`,

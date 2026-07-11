@@ -12,8 +12,19 @@ import type {
   AgentRuntimeOptions,
   BuiltinToolNames,
 } from './types';
-import { toAnthropicTools, toOpenAITools, toVercelAITools, getBuiltinToolNames } from './tool-definitions.js';
-import { listEntities, describeEntity, listCommands, describeCommand, formatExpression } from './introspect.js';
+import {
+  toAnthropicTools,
+  toOpenAITools,
+  toVercelAITools,
+  getBuiltinToolNames,
+} from './tool-definitions.js';
+import {
+  listEntities,
+  describeEntity,
+  listCommands,
+  describeCommand,
+  formatExpression,
+} from './introspect.js';
 import { findMatchingCommands } from './intent-mapper.js';
 
 // ------------------------------------------------------------------------------------------------
@@ -65,7 +76,7 @@ export class AgentRuntime {
 
     // Unknown tool: command not in builtins and not in IR commands
     const commandExists = this.ir.commands.some(
-      (c) => c.name === name || `${c.entity?.toLowerCase()}_${c.name}` === name
+      (c) => c.name === name || `${c.entity?.toLowerCase()}_${c.name}` === name,
     );
     if (!commandExists) {
       return { success: false, code: 'UNKNOWN_TOOL', message: `Unknown tool: ${name}` };
@@ -75,7 +86,10 @@ export class AgentRuntime {
     return this.executeCommand(name, args);
   }
 
-  private async executeBuiltin(name: string, args: Record<string, unknown>): Promise<AgentToolResult> {
+  private async executeBuiltin(
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<AgentToolResult> {
     const tool = this.builtinToolNames[name as keyof BuiltinToolNames];
     if (!tool) {
       return {
@@ -89,14 +103,29 @@ export class AgentRuntime {
       case this.builtinToolNames.LIST_ENTITIES: {
         const module = args.module as string | undefined;
         const entities = listEntities(this.ir).filter((e) => !module || e.module === module);
-        return { success: true, code: 'SUCCESS', message: `${entities.length} entities found`, data: entities };
+        return {
+          success: true,
+          code: 'SUCCESS',
+          message: `${entities.length} entities found`,
+          data: entities,
+        };
       }
 
       case this.builtinToolNames.DESCRIBE_ENTITY: {
         const name_ = args.name as string;
-        if (!name_) return { success: false, code: 'MISSING_ARGUMENT', message: 'Missing required argument: name' };
+        if (!name_)
+          return {
+            success: false,
+            code: 'MISSING_ARGUMENT',
+            message: 'Missing required argument: name',
+          };
         const details = describeEntity(this.ir, name_);
-        if (!details) return { success: false, code: 'ENTITY_NOT_FOUND', message: `Entity not found: ${name_}` };
+        if (!details)
+          return {
+            success: false,
+            code: 'ENTITY_NOT_FOUND',
+            message: `Entity not found: ${name_}`,
+          };
         return { success: true, code: 'SUCCESS', message: `Entity: ${name_}`, data: details };
       }
 
@@ -104,38 +133,77 @@ export class AgentRuntime {
         const entity = args.entity as string | undefined;
         const module = args.module as string | undefined;
         const cmds = listCommands(this.ir, { entity, module });
-        return { success: true, code: 'SUCCESS', message: `${cmds.length} commands found`, data: cmds };
+        return {
+          success: true,
+          code: 'SUCCESS',
+          message: `${cmds.length} commands found`,
+          data: cmds,
+        };
       }
 
       case this.builtinToolNames.DESCRIBE_COMMAND: {
         const name_ = args.name as string;
-        if (!name_) return { success: false, code: 'MISSING_ARGUMENT', message: 'Missing required argument: name' };
+        if (!name_)
+          return {
+            success: false,
+            code: 'MISSING_ARGUMENT',
+            message: 'Missing required argument: name',
+          };
         const details = describeCommand(this.ir, name_);
-        if (!details) return { success: false, code: 'COMMAND_NOT_FOUND', message: `Command not found: ${name_}` };
+        if (!details)
+          return {
+            success: false,
+            code: 'COMMAND_NOT_FOUND',
+            message: `Command not found: ${name_}`,
+          };
         return { success: true, code: 'SUCCESS', message: `Command: ${name_}`, data: details };
       }
 
       case this.builtinToolNames.EXECUTE_COMMAND: {
-        const { command, entityId, parameters = {}, context = {} } = args as {
+        const {
+          command,
+          entityId,
+          parameters = {},
+          context = {},
+        } = args as {
           command?: string;
           entityId?: string;
           parameters?: Record<string, unknown>;
           context?: Record<string, unknown>;
         };
-        if (!command) return { success: false, code: 'MISSING_ARGUMENT', message: 'Missing required argument: command' };
+        if (!command)
+          return {
+            success: false,
+            code: 'MISSING_ARGUMENT',
+            message: 'Missing required argument: command',
+          };
         // runCommand signature: (name, input, options?)
-        const result = await this.engine.runCommand(command, { ...parameters, ...(entityId ? { entityId } : {}) }, {
-          ...(entityId ? { instanceId: entityId } : {}),
-          ...(context ? { causationId: (context as { causationId?: string }).causationId } : {}),
-        });
+        const result = await this.engine.runCommand(
+          command,
+          { ...parameters, ...(entityId ? { entityId } : {}) },
+          {
+            ...(entityId ? { instanceId: entityId } : {}),
+            ...(context ? { causationId: (context as { causationId?: string }).causationId } : {}),
+          },
+        );
         return this.formatResultForLLM(result);
       }
 
       case this.builtinToolNames.GET_INSTANCES: {
         const { entity, limit = 20 } = args as { entity?: string; limit?: number };
-        if (!entity) return { success: false, code: 'MISSING_ARGUMENT', message: 'Missing required argument: entity' };
+        if (!entity)
+          return {
+            success: false,
+            code: 'MISSING_ARGUMENT',
+            message: 'Missing required argument: entity',
+          };
         const instances = await this.engine.getAllInstances(entity);
-        return { success: true, code: 'SUCCESS', message: `${instances.length} instances found`, data: instances.slice(0, limit as number) };
+        return {
+          success: true,
+          code: 'SUCCESS',
+          message: `${instances.length} instances found`,
+          data: instances.slice(0, limit as number),
+        };
       }
 
       case this.builtinToolNames.CHECK_CONSTRAINTS: {
@@ -145,16 +213,43 @@ export class AgentRuntime {
           constraintCodes?: string[];
         };
         if (!entity || !entityId) {
-          return { success: false, code: 'MISSING_ARGUMENT', message: 'Missing required arguments: entity, entityId' };
+          return {
+            success: false,
+            code: 'MISSING_ARGUMENT',
+            message: 'Missing required arguments: entity, entityId',
+          };
         }
         const inst = await this.engine.getInstance(entity, entityId);
-        if (!inst) return { success: false, code: 'INSTANCE_NOT_FOUND', message: `Instance not found: ${entityId}` };
+        if (!inst)
+          return {
+            success: false,
+            code: 'INSTANCE_NOT_FOUND',
+            message: `Instance not found: ${entityId}`,
+          };
         const entityDef = this.ir.entities.find((e) => e.name === entity);
-        if (!entityDef) return { success: false, code: 'ENTITY_NOT_FOUND', message: `Entity not found: ${entity}` };
+        if (!entityDef)
+          return {
+            success: false,
+            code: 'ENTITY_NOT_FOUND',
+            message: `Entity not found: ${entity}`,
+          };
         const constraintOutcomes = (entityDef.constraints ?? [])
-          .filter((c) => !constraintCodes || constraintCodes.length === 0 || constraintCodes.includes(c.code))
-          .map((c) => ({ code: c.code, constraintName: c.name, severity: c.severity ?? 'block', passed: false }));
-        return { success: true, code: 'SUCCESS', message: 'Constraint check complete', data: constraintOutcomes };
+          .filter(
+            (c) =>
+              !constraintCodes || constraintCodes.length === 0 || constraintCodes.includes(c.code),
+          )
+          .map((c) => ({
+            code: c.code,
+            constraintName: c.name,
+            severity: c.severity ?? 'block',
+            passed: false,
+          }));
+        return {
+          success: true,
+          code: 'SUCCESS',
+          message: 'Constraint check complete',
+          data: constraintOutcomes,
+        };
       }
 
       default:
@@ -162,8 +257,15 @@ export class AgentRuntime {
     }
   }
 
-  private async executeCommand(commandName: string, args: Record<string, unknown>): Promise<AgentToolResult> {
-    const { entityId, parameters = {}, context = {} } = args as {
+  private async executeCommand(
+    commandName: string,
+    args: Record<string, unknown>,
+  ): Promise<AgentToolResult> {
+    const {
+      entityId,
+      parameters = {},
+      context = {},
+    } = args as {
       entityId?: string;
       parameters?: Record<string, unknown>;
       context?: Record<string, unknown>;
@@ -171,7 +273,7 @@ export class AgentRuntime {
 
     // Try to resolve the actual command name (may be mangled as entity_command or raw)
     const cmd = this.ir.commands.find(
-      (c) => c.name === commandName || `${c.entity?.toLowerCase()}_${c.name}` === commandName
+      (c) => c.name === commandName || `${c.entity?.toLowerCase()}_${c.name}` === commandName,
     );
     const resolvedName = cmd?.name ?? commandName;
 
@@ -182,7 +284,7 @@ export class AgentRuntime {
       {
         ...(entityId ? { instanceId: entityId } : {}),
         ...(context ? { causationId: (context as { causationId?: string }).causationId } : {}),
-      }
+      },
     );
 
     return this.formatResultForLLM(result);
@@ -266,7 +368,10 @@ export class AgentRuntime {
       };
     }
 
-    if (result.constraintOutcomes && result.constraintOutcomes.some((c) => c.severity === 'block' && !c.passed)) {
+    if (
+      result.constraintOutcomes &&
+      result.constraintOutcomes.some((c) => c.severity === 'block' && !c.passed)
+    ) {
       return {
         success: false,
         code: 'CONSTRAINT_BLOCKED',

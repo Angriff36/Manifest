@@ -1,7 +1,7 @@
 ---
-title: "Mermaid diagram projection"
-sidebarTitle: "Mermaid"
-description: "Generate deterministic Mermaid diagrams from Manifest IR — entity-relationship, state machine, and command sequence diagrams for documentation and design review."
+title: 'Mermaid diagram projection'
+sidebarTitle: 'Mermaid'
+description: 'Generate deterministic Mermaid diagrams from Manifest IR — entity-relationship, state machine, and command sequence diagrams for documentation and design review.'
 ---
 
 The Mermaid projection generates [Mermaid](https://mermaid.js.org) diagrams from compiled Manifest IR. Use it to visualize a domain model — entity relationships, state machines, and command execution flows — for documentation, design review, or onboarding. Diagrams are deterministic: identical IR always yields identical output.
@@ -55,5 +55,10 @@ ER attribute types are mapped by `irTypeToMermaidType`: `string`, `number`, `boo
 ## Notes & limitations
 
 <Note>
-Only the three diagram families above exist — there are no class, flowchart, or gantt outputs. State diagrams require entity `transitions` to be present in the IR; entities without them are silently skipped (with an info diagnostic). Sequence diagrams are emitted only for entity-scoped commands. The CLI merges multiple input files by concatenating their `entities`, `stores`, `events`, `commands`, and `policies`, taking provenance from the first file — it does not deduplicate across files, so overlapping definitions can appear more than once.
+  Only the three diagram families above exist — there are no class, flowchart, or gantt outputs.
+  State diagrams require entity `transitions` to be present in the IR; entities without them are
+  silently skipped (with an info diagnostic). Sequence diagrams are emitted only for entity-scoped
+  commands. The CLI merges multiple input files by concatenating their `entities`, `stores`,
+  `events`, `commands`, and `policies`, taking provenance from the first file — it does not
+  deduplicate across files, so overlapping definitions can appear more than once.
 </Note>

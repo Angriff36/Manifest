@@ -1,7 +1,7 @@
 ---
-title: "Guards and policies: access control"
-description: "Use guards for precondition checks and policies for authorization. Both are boolean expressions evaluated in strict order before any action runs."
-sidebarTitle: "Guards & Policies"
+title: 'Guards and policies: access control'
+description: 'Use guards for precondition checks and policies for authorization. Both are boolean expressions evaluated in strict order before any action runs.'
+sidebarTitle: 'Guards & Policies'
 ---
 
 Manifest separates authorization into two distinct mechanisms: **policies**, which control who is allowed to execute a command at all, and **guards**, which verify that the current state satisfies the preconditions for the command to proceed. Both are evaluated before any action runs, and neither can be bypassed.
@@ -40,9 +40,7 @@ This gives you enough information to explain the failure to the caller without a
 
 ```typescript
 if (result.guardFailure) {
-  console.error(
-    `Guard ${result.guardFailure.index} failed: ${result.guardFailure.expression}`
-  );
+  console.error(`Guard ${result.guardFailure.index} failed: ${result.guardFailure.expression}`);
   for (const r of result.guardFailure.resolved) {
     console.error(`  ${r.expression} => ${r.value}`);
   }
@@ -53,34 +51,36 @@ if (result.guardFailure) {
 
 Guard expressions evaluate in the command's evaluation context. You have access to:
 
-| Binding       | Value |
-|---------------|-------|
-| `self` / `this` | The current entity instance (or `null` when no instance is bound) |
-| `user`        | The current user object, or `null` when unauthenticated |
-| `context`     | The runtime context object |
-| `context.tenantId` | Active tenant ID (if provided by caller) |
-| `context.orgId` | Active organization ID (if provided) |
-| `context.actorId` | Acting user ID (if provided) |
-| `context.requestId` | Caller-supplied request ID |
-| Command params | Named parameters from the command signature |
-| `now()`       | Current time as milliseconds since epoch |
-| `uuid()`      | A new globally unique identifier |
+| Binding             | Value                                                             |
+| ------------------- | ----------------------------------------------------------------- |
+| `self` / `this`     | The current entity instance (or `null` when no instance is bound) |
+| `user`              | The current user object, or `null` when unauthenticated           |
+| `context`           | The runtime context object                                        |
+| `context.tenantId`  | Active tenant ID (if provided by caller)                          |
+| `context.orgId`     | Active organization ID (if provided)                              |
+| `context.actorId`   | Acting user ID (if provided)                                      |
+| `context.requestId` | Caller-supplied request ID                                        |
+| Command params      | Named parameters from the command signature                       |
+| `now()`             | Current time as milliseconds since epoch                          |
+| `uuid()`            | A new globally unique identifier                                  |
 
 <Warning>
-If a guard references `user` and no user is provided to the runtime, the guard correctly fails. This is not a bug — it is the expected behavior. The runtime does not inject a permissive default `user` to make demos work.
+  If a guard references `user` and no user is provided to the runtime, the guard correctly fails.
+  This is not a bug — it is the expected behavior. The runtime does not inject a permissive default
+  `user` to make demos work.
 </Warning>
 
 ### Operators in guard expressions
 
 Guards support the full expression language:
 
-| Category | Operators |
-|----------|-----------|
-| Arithmetic | `+`, `-`, `*`, `/`, `%` |
-| Comparison | `==`, `!=`, `<`, `>`, `<=`, `>=` |
-| Logical | `and`, `or`, `not`, `!` |
-| Membership | `in`, `contains` |
-| Conditional | `? :` (ternary) |
+| Category    | Operators                        |
+| ----------- | -------------------------------- |
+| Arithmetic  | `+`, `-`, `*`, `/`, `%`          |
+| Comparison  | `==`, `!=`, `<`, `>`, `<=`, `>=` |
+| Logical     | `and`, `or`, `not`, `!`          |
+| Membership  | `in`, `contains`                 |
+| Conditional | `? :` (ternary)                  |
 
 `==` uses loose equality (`undefined == null` is `true`). Use `is not` or `!=` for strict inequality.
 
@@ -96,13 +96,13 @@ The expression after the scope keyword is evaluated before any command runs. If 
 
 ### Policy scopes
 
-| Scope     | When enforced |
-|-----------|---------------|
-| `execute` | Before any command execution |
-| `read`    | At the runtime read gate — `getInstance` / `getAllInstances` |
-| `write`   | On entity write operations (not enforced by default runtime) |
-| `all`     | Both command execution and the read gate |
-| `override` | Before authorizing a constraint override (vNext) |
+| Scope      | When enforced                                                |
+| ---------- | ------------------------------------------------------------ |
+| `execute`  | Before any command execution                                 |
+| `read`     | At the runtime read gate — `getInstance` / `getAllInstances` |
+| `write`    | On entity write operations (not enforced by default runtime) |
+| `all`      | Both command execution and the read gate                     |
+| `override` | Before authorizing a constraint override (vNext)             |
 
 The runtime enforces `execute` and `all` scopes before command execution. `read` (and `all`) scopes are **also** enforced at a single central read gate in `getInstance` / `getAllInstances`: a denied read fails closed — `getInstance` returns `undefined` (no existence leak) and `getAllInstances` omits the denied rows. A read policy referencing `self.*` is evaluated per row; a context-only policy is evaluated once per call. The internal execution read path (guards, actions, computed properties) is un-gated, so read policies never change command results. `write` and `delete` scopes are still enforced only at command execution (via `command.policies`), not on the store — they are otherwise available for custom adapter or projection logic.
 
@@ -151,7 +151,9 @@ entity InventoryItem {
 ```
 
 <Note>
-Guards produce a `guardFailure` result; policies produce a `policyDenial` result. Use guards for state-based preconditions and additional per-command role checks; use policies for entity-wide authorization.
+  Guards produce a `guardFailure` result; policies produce a `policyDenial` result. Use guards for
+  state-based preconditions and additional per-command role checks; use policies for entity-wide
+  authorization.
 </Note>
 
 ## Default policies (vNext)
@@ -225,7 +227,9 @@ manifest scan --strict
 The `--strict` flag causes the scanner to exit non-zero when any command lacks policy coverage. This enforces a default-deny posture: every command must explicitly declare who is authorized to run it, or inherit a default policy from its entity.
 
 <Warning>
-A command with no policies is **not blocked** by the runtime — it executes normally. The default-deny enforcement is a static analysis check (via `manifest scan`), not a runtime gate. To enforce it in CI, add `manifest scan --strict` to your pipeline.
+  A command with no policies is **not blocked** by the runtime — it executes normally. The
+  default-deny enforcement is a static analysis check (via `manifest scan`), not a runtime gate. To
+  enforce it in CI, add `manifest scan --strict` to your pipeline.
 </Warning>
 
 ## Roles and permission inheritance

@@ -10,7 +10,14 @@ interface SourceEditorProps {
   errorLines?: Set<number>;
 }
 
-export function SourceEditor({ value, onChange, lang = 'manifest', readOnly, placeholder, errorLines }: SourceEditorProps) {
+export function SourceEditor({
+  value,
+  onChange,
+  lang = 'manifest',
+  readOnly,
+  placeholder,
+  errorLines,
+}: SourceEditorProps) {
   const textRef = useRef<HTMLTextAreaElement>(null);
   const hlRef = useRef<HTMLDivElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
@@ -83,7 +90,7 @@ export function SourceEditor({ value, onChange, lang = 'manifest', readOnly, pla
         <textarea
           ref={textRef}
           value={value}
-          onChange={e => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value)}
           onScroll={sync}
           onKeyDown={onKey}
           readOnly={readOnly}

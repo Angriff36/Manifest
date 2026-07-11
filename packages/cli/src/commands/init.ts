@@ -135,7 +135,7 @@ function showPostInit(answers: InitAnswers, config: ManifestConfig) {
 export async function initCommand(options: InitOptions = {}): Promise<void> {
   try {
     // Check if config already exists
-    if (!options.force && await configExists()) {
+    if (!options.force && (await configExists())) {
       console.log(chalk.yellow('Config file already exists'));
       console.log('');
       console.log('Use --force to overwrite:');
@@ -152,11 +152,14 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
 
     // Show next steps
     showPostInit(answers, config);
-
   } catch (error: unknown) {
     // inquirer sets `isTtyError: true` on the thrown error when there is no
     // TTY. Narrow against that field without committing to `any`.
-    const isTtyError = !!(error && typeof error === 'object' && (error as { isTtyError?: boolean }).isTtyError);
+    const isTtyError = !!(
+      error &&
+      typeof error === 'object' &&
+      (error as { isTtyError?: boolean }).isTtyError
+    );
     if (isTtyError) {
       // Not running in a TTY - use minimal defaults
       console.log(chalk.yellow('Not an interactive terminal - using defaults'));

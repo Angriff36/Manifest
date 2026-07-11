@@ -41,19 +41,19 @@ Note: the IR compiler already stamps auto-timestamps with `type.name: 'datetime'
 
 ### Runtime representation (determinism first)
 
-| Type | Representation | Rationale |
-|---|---|---|
-| `datetime` | number, epoch ms UTC, finite | matches existing `year(ts)`/`month(ts)` builtins |
-| `duration` | number, ms, finite (may be negative) | trivially arithmetic-compatible |
-| `date` | string `"YYYY-MM-DD"`, valid calendar date | lexicographically comparable, no TZ ambiguity |
-| `time` | string `"HH:MM:SS"`, `00:00:00`–`23:59:59` | same; no `24:00:00`, no leap seconds |
+| Type       | Representation                             | Rationale                                        |
+| ---------- | ------------------------------------------ | ------------------------------------------------ |
+| `datetime` | number, epoch ms UTC, finite               | matches existing `year(ts)`/`month(ts)` builtins |
+| `duration` | number, ms, finite (may be negative)       | trivially arithmetic-compatible                  |
+| `date`     | string `"YYYY-MM-DD"`, valid calendar date | lexicographically comparable, no TZ ambiguity    |
+| `time`     | string `"HH:MM:SS"`, `00:00:00`–`23:59:59` | same; no `24:00:00`, no leap seconds             |
 
 ### Write-time validation (new, explicitly specified mechanism)
 
 The runtime engine today has no property type validation; this feature adds one, scoped narrowly:
 
 - **Where it fires**: in the reference runtime's write path (create and update mutations), at the same stage where `encrypted` and auto-timestamp processing occur — after guards, during action application.
-- **What it checks**: `date`/`time` values must match the shapes above *including calendar validity* (`"2026-02-30"` is rejected; month lengths and leap years enforced). `datetime`/`duration` must be finite numbers.
+- **What it checks**: `date`/`time` values must match the shapes above _including calendar validity_ (`"2026-02-30"` is rejected; month lengths and leap years enforced). `datetime`/`duration` must be finite numbers.
 - **Failure shape**: the mutation fails with a constraint-violation-style result, severity `block`, code `E_TYPE_DATE` / `E_TYPE_TIME` / `E_TYPE_DATETIME` / `E_TYPE_DURATION`, carrying the property name and the offending resolved value (house diagnostics rule: explain with specifics).
 - `null` on a nullable property passes; validation applies only to the four new type names (no behavior change for any existing program).
 
@@ -70,12 +70,12 @@ Documented in `docs/spec/builtins.md` under the existing Date section.
 
 ### Projections
 
-| Projection | date | time | datetime | duration |
-|---|---|---|---|---|
-| Prisma | `DateTime @db.Date` | `DateTime @db.Time` | `DateTime` | `Float` |
-| Zod | regex string | regex string | `z.number()` | `z.number()` |
-| JSON Schema | `format: date` | `format: time` | `type: number` | `type: number` |
-| TS generators | `string` | `string` | `number` | `number` |
+| Projection    | date                | time                | datetime       | duration       |
+| ------------- | ------------------- | ------------------- | -------------- | -------------- |
+| Prisma        | `DateTime @db.Date` | `DateTime @db.Time` | `DateTime`     | `Float`        |
+| Zod           | regex string        | regex string        | `z.number()`   | `z.number()`   |
+| JSON Schema   | `format: date`      | `format: time`      | `type: number` | `type: number` |
+| TS generators | `string`            | `string`            | `number`       | `number`       |
 
 `duration` maps to Prisma `Float` (Postgres double precision), not `Int`: ms durations overflow 32-bit `Int` at ~24.8 days, and double precision represents integer ms exactly up to 2^53 — identical to the JS runtime representation. All other projections degrade to their existing `string`/`number` defaults — no special handling required.
 
@@ -120,7 +120,7 @@ property masked notes: string            // bare = redact
 
 - Masking is applied in `getInstance` / `getAllInstances`, **after** `encrypted` decryption (mask operates on plaintext) and after tenant filtering, before returning data. If a property is both `private` and `masked`, `private` wins (the property is excluded entirely, as today).
 - `unmaskWhen` bindings: spec-guaranteed bindings only — `self.*` (the instance being read) and `user.*` / `context.*` from the engine's runtime context. With no user in context, `user.*` resolves undefined → falsy → masked.
-- **Secure by default, diagnostics still explain**: if `unmaskWhen` throws or evaluates falsy, the value stays masked; an evaluation *error* additionally surfaces a diagnostic carrying the expression and resolved values (it never changes the masked outcome — diagnostics explain, never compensate).
+- **Secure by default, diagnostics still explain**: if `unmaskWhen` throws or evaluates falsy, the value stays masked; an evaluation _error_ additionally surfaces a diagnostic carrying the expression and resolved values (it never changes the masked outcome — diagnostics explain, never compensate).
 - `null`/`undefined` pass through unmasked (nothing to leak).
 - Masking is a read-projection transform only: guards, constraints, computed properties, and command actions always see real values. Identical IR + identical context still produce identical execution results.
 

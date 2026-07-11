@@ -6,7 +6,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 
-const SOURCE = 'entity Counter {\n  property required id: string\n  property count: number = 0\n}\n';
+const SOURCE =
+  'entity Counter {\n  property required id: string\n  property count: number = 0\n}\n';
 
 async function findGeneratedFiles(dir: string): Promise<string[]> {
   const out: string[] = [];
@@ -56,12 +57,16 @@ describe('Generate Command - --all (config-driven batch)', () => {
       await compileCommand('src', { output: 'ir/' });
       await generateAllFromConfig({});
 
-      const rel = (await findGeneratedFiles(tempDir)).map(f => path.relative(tempDir, f).replace(/\\/g, '/'));
+      const rel = (await findGeneratedFiles(tempDir)).map((f) =>
+        path.relative(tempDir, f).replace(/\\/g, '/'),
+      );
       // Both projections wrote to their own configured outputs from one call.
-      expect(rel.some(f => f.startsWith('apps/api/'))).toBe(true);
-      expect(rel.some(f => f.startsWith('schemas/'))).toBe(true);
+      expect(rel.some((f) => f.startsWith('apps/api/'))).toBe(true);
+      expect(rel.some((f) => f.startsWith('schemas/'))).toBe(true);
       // No path doubling crept in.
-      expect(rel.some(f => f.includes('apps/api/apps/api') || f.includes('schemas/schemas'))).toBe(false);
+      expect(
+        rel.some((f) => f.includes('apps/api/apps/api') || f.includes('schemas/schemas')),
+      ).toBe(false);
     } finally {
       process.chdir(origCwd);
       await fs.rm(tempDir, { recursive: true, force: true });
@@ -74,7 +79,14 @@ describe('Generate Command - --all (config-driven batch)', () => {
     await fs.writeFile(path.join(tempDir, 'src', 'widget.manifest'), SOURCE, 'utf-8');
     await fs.writeFile(
       path.join(tempDir, 'manifest.config.yaml'),
-      ['src: src/**/*.manifest', 'output: ir/', 'projections:', '  zod:', '    output: schemas/', ''].join('\n'),
+      [
+        'src: src/**/*.manifest',
+        'output: ir/',
+        'projections:',
+        '  zod:',
+        '    output: schemas/',
+        '',
+      ].join('\n'),
       'utf-8',
     );
 
@@ -92,8 +104,10 @@ describe('Generate Command - --all (config-driven batch)', () => {
       // (which would hit the decoy and throw).
       await generateAllFromConfig({ irOverride: 'ir/widget.ir.json' });
 
-      const rel = (await findGeneratedFiles(tempDir)).map(f => path.relative(tempDir, f).replace(/\\/g, '/'));
-      expect(rel.some(f => f.startsWith('schemas/'))).toBe(true);
+      const rel = (await findGeneratedFiles(tempDir)).map((f) =>
+        path.relative(tempDir, f).replace(/\\/g, '/'),
+      );
+      expect(rel.some((f) => f.startsWith('schemas/'))).toBe(true);
     } finally {
       process.chdir(origCwd);
       await fs.rm(tempDir, { recursive: true, force: true });
@@ -122,12 +136,12 @@ describe('Generate Command - appDir/output overlap', () => {
       projectionOptionsFromConfig: { appDir: 'apps/api/app/api' },
     });
 
-    const files = (await findGeneratedFiles(tempDir)).map(f => f.replace(/\\/g, '/'));
+    const files = (await findGeneratedFiles(tempDir)).map((f) => f.replace(/\\/g, '/'));
     expect(files.length).toBeGreaterThan(0);
     // No file may contain the doubled 'apps/api/apps/api' segment.
-    expect(files.some(f => f.includes('apps/api/apps/api'))).toBe(false);
+    expect(files.some((f) => f.includes('apps/api/apps/api'))).toBe(false);
     // Routes land under the single, correct 'apps/api/app/api' prefix.
-    expect(files.some(f => f.includes('apps/api/app/api/'))).toBe(true);
+    expect(files.some((f) => f.includes('apps/api/app/api/'))).toBe(true);
 
     await fs.rm(tempDir, { recursive: true, force: true });
   }, 30000);
@@ -160,9 +174,9 @@ describe('Generate Command - webhook surface', () => {
     await compileCommand(manifestPath, {});
     await generateCommand(irPath, { projection: 'nextjs', surface: 'webhook', output: tempDir });
 
-    const files = (await findGeneratedFiles(tempDir)).map(f => f.replace(/\\/g, '/'));
+    const files = (await findGeneratedFiles(tempDir)).map((f) => f.replace(/\\/g, '/'));
     // appDir default 'app/api' → app root 'app'; served at /webhooks/stripe.
-    const route = files.find(f => f.endsWith('app/webhooks/stripe/route.ts'));
+    const route = files.find((f) => f.endsWith('app/webhooks/stripe/route.ts'));
     expect(route, `webhook route not found in ${JSON.stringify(files)}`).toBeDefined();
     const code = await fs.readFile(route!, 'utf-8');
     expect(code).toContain('handleWebhookRequest');
@@ -183,9 +197,9 @@ describe('Generate Command - webhook surface', () => {
     await compileCommand(manifestPath, {});
     await generateCommand(irPath, { projection: 'nextjs', surface: 'webhook', output: tempDir });
 
-    const files = (await findGeneratedFiles(tempDir)).map(f => f.replace(/\\/g, '/'));
+    const files = (await findGeneratedFiles(tempDir)).map((f) => f.replace(/\\/g, '/'));
     // No webhooks → the webhook surface writes no route files.
-    expect(files.some(f => f.includes('/webhooks/'))).toBe(false);
+    expect(files.some((f) => f.includes('/webhooks/'))).toBe(false);
 
     await fs.rm(tempDir, { recursive: true, force: true });
   }, 30000);
@@ -216,14 +230,24 @@ describe('Generate Command - --check drift mode', () => {
 
     try {
       // Clean: --check must NOT exit non-zero.
-      await generateCommand(irPath, { projection: 'nextjs', surface: 'types', output: tempDir, check: true });
+      await generateCommand(irPath, {
+        projection: 'nextjs',
+        surface: 'types',
+        output: tempDir,
+        check: true,
+      });
       expect(exitMock).not.toHaveBeenCalledWith(1);
 
       // Tamper with a committed file → --check must exit 1.
       const tampered = (await fs.readFile(files[0], 'utf-8')) + '\n// tampered\n';
       await fs.writeFile(files[0], tampered, 'utf-8');
       await expect(
-        generateCommand(irPath, { projection: 'nextjs', surface: 'types', output: tempDir, check: true }),
+        generateCommand(irPath, {
+          projection: 'nextjs',
+          surface: 'types',
+          output: tempDir,
+          check: true,
+        }),
       ).rejects.toThrow('exit');
       expect(exitMock).toHaveBeenCalledWith(1);
     } finally {

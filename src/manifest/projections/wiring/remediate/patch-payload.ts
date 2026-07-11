@@ -40,10 +40,7 @@ export function removeProperty(
   let splice: { start: number; end: number } | undefined;
   const visit = (node: ts.Node) => {
     if (splice) return;
-    if (
-      ts.isCallExpression(node) &&
-      callMatchesCapability(node, content, op.capabilityId)
-    ) {
+    if (ts.isCallExpression(node) && callMatchesCapability(node, content, op.capabilityId)) {
       const obj = findPayloadObjectInCall(node);
       if (!obj) return;
       const prop = findProperty(obj, op.parameter);
@@ -71,10 +68,7 @@ export function addProperty(
   let target: ts.ObjectLiteralExpression | undefined;
   const visit = (node: ts.Node) => {
     if (target) return;
-    if (
-      ts.isCallExpression(node) &&
-      callMatchesCapability(node, content, op.capabilityId)
-    ) {
+    if (ts.isCallExpression(node) && callMatchesCapability(node, content, op.capabilityId)) {
       target = findPayloadObjectInCall(node);
       return;
     }
@@ -90,17 +84,12 @@ export function addProperty(
     const body = content.slice(openBrace + 1, closeBrace);
     if (new RegExp(`\\b${escape(op.parameter)}\\s*:`).test(body)) return content;
     const trimmedBody = body.replace(/\s+$/, '');
-    const needsComma =
-      trimmedBody.trim().length > 0 && !trimmedBody.trimEnd().endsWith(',');
+    const needsComma = trimmedBody.trim().length > 0 && !trimmedBody.trimEnd().endsWith(',');
     const indentMatch = /\n(\s*)\S/.exec(body);
     const indent = indentMatch?.[1] ?? '  ';
     const addition = `${needsComma ? ',' : ''}\n${indent}${op.parameter}: ${op.expression}`;
     return (
-      content.slice(0, openBrace + 1) +
-      trimmedBody +
-      addition +
-      '\n' +
-      content.slice(closeBrace)
+      content.slice(0, openBrace + 1) + trimmedBody + addition + '\n' + content.slice(closeBrace)
     );
   }
 

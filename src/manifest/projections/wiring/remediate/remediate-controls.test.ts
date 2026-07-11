@@ -40,7 +40,7 @@ describe('wiring remediate (controls & safety)', () => {
       fileContents: files,
       capabilityId: 'Task.archive',
     });
-    const plan = bundle.plans.find(p => p.repairKind === 'wire-existing-control');
+    const plan = bundle.plans.find((p) => p.repairKind === 'wire-existing-control');
     expect(plan?.automaticApplicationAllowed).toBe(true);
     const patch = applyRepairPlan(plan!, files);
     expect(patch.ok).toBe(true);
@@ -59,8 +59,8 @@ describe('wiring remediate (controls & safety)', () => {
         }
       `,
     });
-    const cap = contract.capabilities.find(c => c.capabilityId === 'Task.archive')!;
-    const hints = cap.invalidation.map(i => i.queryKeyHint);
+    const cap = contract.capabilities.find((c) => c.capabilityId === 'Task.archive')!;
+    const hints = cap.invalidation.map((i) => i.queryKeyHint);
     const { applyRepairPlan: apply } = await import('./patch-engine.js');
     const plan = {
       findingId: 'inv:Task.archive',
@@ -84,7 +84,7 @@ describe('wiring remediate (controls & safety)', () => {
           operation: {
             type: 'add-invalidation-after-mutation' as const,
             capabilityId: 'Task.archive',
-            queryKeyHints: hints.map(h => JSON.stringify([h])),
+            queryKeyHints: hints.map((h) => JSON.stringify([h])),
             pattern: 'react-query' as const,
           },
         },
@@ -197,7 +197,7 @@ describe('wiring remediate (controls & safety)', () => {
       fileContents: files,
       capabilityId: 'Task.archive',
     });
-    const plan = bundle.plans.find(p => p.capabilityId === 'Task.archive');
+    const plan = bundle.plans.find((p) => p.capabilityId === 'Task.archive');
     expect(plan?.decision).toBe('ambiguous-product-decision');
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
@@ -224,9 +224,9 @@ describe('wiring remediate (controls & safety)', () => {
       autoFixableOnly: true,
     });
     // summary missing with no source → not applied
-    expect(
-      result.applied.filter(a => a.findingId.includes('summary') && a.applied),
-    ).toHaveLength(0);
+    expect(result.applied.filter((a) => a.findingId.includes('summary') && a.applied)).toHaveLength(
+      0,
+    );
   });
 
   it('18. post-repair inspection proves finding resolved', async () => {
@@ -277,7 +277,7 @@ describe('wiring remediate (controls & safety)', () => {
       mode: 'one-defect',
       capabilityId: 'Task.create',
     });
-    expect(result.applied.filter(a => a.applied)).toHaveLength(1);
+    expect(result.applied.filter((a) => a.applied)).toHaveLength(1);
   });
 
   it('20. stale patch plans fail safely when source changed after planning', async () => {
@@ -302,7 +302,7 @@ describe('wiring remediate (controls & safety)', () => {
       config: { roots: ['.'] },
     });
     const bundle = planWiringRepairs({ contract, report, fileContents: files });
-    const plan = bundle.plans.find(p => p.mismatch?.kind === 'wrong_input_shape');
+    const plan = bundle.plans.find((p) => p.mismatch?.kind === 'wrong_input_shape');
     expect(plan).toBeTruthy();
     // Mutate source so fromExpression is gone
     const mutated = fileMapFromRecord({

@@ -19,7 +19,7 @@ ProfilerPage.tsx                      main.cjs IPC handlers
   Tab 1: CompileProfileTab  ------>   'profile-compile'    → IRCompiler with timing
   Tab 2: RuntimeProfileTab  ------>   'profile-runtime'    → RuntimeEngine with timing
   Tab 3: StaticAnalysisTab  ------>   'profile-static'     → IR tree walker
-                                      
+
 FlameChart.tsx (reused)               All use real data from:
 traceBuilder.ts (rewritten)           dist/manifest/ir-compiler.js
                                       dist/manifest/runtime-engine.js
@@ -40,6 +40,7 @@ traceBuilder.ts (rewritten)           dist/manifest/ir-compiler.js
 ## Task 1: Add Three New IPC Handlers to Electron Main Process
 
 **Files:**
+
 - Modify: `tools/manifest-devtools/project/electron/main.cjs` (add 3 IPC handlers)
 
 ### Step 1: Add `profile-compile` IPC handler
@@ -79,8 +80,10 @@ ipcMain.handle('profile-compile', async (_event, { root }) => {
         guards: ir.commands?.reduce((sum, c) => sum + (c.guards?.length || 0), 0) || 0,
         actions: ir.commands?.reduce((sum, c) => sum + (c.actions?.length || 0), 0) || 0,
         constraints: ir.entities?.reduce((sum, e) => sum + (e.constraints?.length || 0), 0) || 0,
-        relationships: ir.entities?.reduce((sum, e) => sum + (e.relationships?.length || 0), 0) || 0,
-        computedProperties: ir.entities?.reduce((sum, e) => sum + (e.computedProperties?.length || 0), 0) || 0,
+        relationships:
+          ir.entities?.reduce((sum, e) => sum + (e.relationships?.length || 0), 0) || 0,
+        computedProperties:
+          ir.entities?.reduce((sum, e) => sum + (e.computedProperties?.length || 0), 0) || 0,
       };
     }
 
@@ -143,7 +146,7 @@ ipcMain.handle('profile-runtime', async (_event, { filePath, commandName, input,
   // Phase 3: Run command
   if (!commandName) {
     // Return available commands if none specified
-    const commands = ir.commands.map(c => ({
+    const commands = ir.commands.map((c) => ({
       name: c.name,
       entity: c.entity || null,
       paramCount: c.parameters.length,
@@ -191,7 +194,12 @@ ipcMain.handle('profile-static', async (_event, { root }) => {
     const source = fs.readFileSync(file.path, 'utf-8');
     const { ir } = await compileSource(source);
     if (!ir) {
-      results.push({ file: file.path, name: file.name, error: 'Compilation failed', analysis: null });
+      results.push({
+        file: file.path,
+        name: file.name,
+        error: 'Compilation failed',
+        analysis: null,
+      });
       continue;
     }
 
@@ -211,11 +219,18 @@ ipcMain.handle('profile-static', async (_event, { root }) => {
         case 'call':
           return 1 + Math.max(exprDepth(expr.callee), ...expr.args.map(exprDepth));
         case 'conditional':
-          return 1 + Math.max(exprDepth(expr.condition), exprDepth(expr.consequent), exprDepth(expr.alternate));
+          return (
+            1 +
+            Math.max(
+              exprDepth(expr.condition),
+              exprDepth(expr.consequent),
+              exprDepth(expr.alternate),
+            )
+          );
         case 'array':
           return 1 + Math.max(0, ...expr.elements.map(exprDepth));
         case 'object':
-          return 1 + Math.max(0, ...expr.properties.map(p => exprDepth(p.value)));
+          return 1 + Math.max(0, ...expr.properties.map((p) => exprDepth(p.value)));
         case 'lambda':
           return 1 + exprDepth(expr.body);
         default:
@@ -236,9 +251,16 @@ ipcMain.handle('profile-static', async (_event, { root }) => {
         case 'unary':
           return 1 + exprNodeCount(expr.operand);
         case 'call':
-          return 1 + exprNodeCount(expr.callee) + expr.args.reduce((s, a) => s + exprNodeCount(a), 0);
+          return (
+            1 + exprNodeCount(expr.callee) + expr.args.reduce((s, a) => s + exprNodeCount(a), 0)
+          );
         case 'conditional':
-          return 1 + exprNodeCount(expr.condition) + exprNodeCount(expr.consequent) + exprNodeCount(expr.alternate);
+          return (
+            1 +
+            exprNodeCount(expr.condition) +
+            exprNodeCount(expr.consequent) +
+            exprNodeCount(expr.alternate)
+          );
         case 'array':
           return 1 + expr.elements.reduce((s, e) => s + exprNodeCount(e), 0);
         case 'object':
@@ -251,14 +273,14 @@ ipcMain.handle('profile-static', async (_event, { root }) => {
     }
 
     // Per-entity analysis
-    const entities = ir.entities.map(entity => {
-      const entityCommands = ir.commands.filter(c => c.entity === entity.name);
-      const entityPolicies = ir.policies.filter(p => p.entity === entity.name);
+    const entities = ir.entities.map((entity) => {
+      const entityCommands = ir.commands.filter((c) => c.entity === entity.name);
+      const entityPolicies = ir.policies.filter((p) => p.entity === entity.name);
 
       // Guard complexity per command
-      const commandAnalysis = entityCommands.map(cmd => {
-        const guardDepths = cmd.guards.map(g => exprDepth(g));
-        const guardNodes = cmd.guards.map(g => exprNodeCount(g));
+      const commandAnalysis = entityCommands.map((cmd) => {
+        const guardDepths = cmd.guards.map((g) => exprDepth(g));
+        const guardNodes = cmd.guards.map((g) => exprNodeCount(g));
         const actionCount = cmd.actions.length;
         const policyRefs = (cmd.policies || []).length;
 
@@ -273,7 +295,12 @@ ipcMain.handle('profile-static', async (_event, { root }) => {
           paramCount: cmd.parameters.length,
           constraintCount: (cmd.constraints || []).length,
           // Complexity score: weighted sum
-          complexityScore: cmd.guards.length * 2 + Math.max(0, ...guardDepths) * 3 + actionCount + policyRefs + (cmd.constraints || []).length * 2,
+          complexityScore:
+            cmd.guards.length * 2 +
+            Math.max(0, ...guardDepths) * 3 +
+            actionCount +
+            policyRefs +
+            (cmd.constraints || []).length * 2,
         };
       });
 
@@ -283,7 +310,7 @@ ipcMain.handle('profile-static', async (_event, { root }) => {
       }, 0);
 
       // Constraint complexity
-      const constraintAnalysis = entity.constraints.map(c => ({
+      const constraintAnalysis = entity.constraints.map((c) => ({
         name: c.name,
         severity: c.severity || 'block',
         depth: exprDepth(c.expression),
@@ -292,7 +319,7 @@ ipcMain.handle('profile-static', async (_event, { root }) => {
       }));
 
       // Computed property dependency chains
-      const computedAnalysis = entity.computedProperties.map(cp => ({
+      const computedAnalysis = entity.computedProperties.map((cp) => ({
         name: cp.name,
         dependencyCount: cp.dependencies.length,
         expressionDepth: exprDepth(cp.expression),
@@ -322,7 +349,7 @@ ipcMain.handle('profile-static', async (_event, { root }) => {
     });
 
     // Policy analysis
-    const policyAnalysis = ir.policies.map(p => ({
+    const policyAnalysis = ir.policies.map((p) => ({
       name: p.name,
       entity: p.entity || '(global)',
       action: p.action,
@@ -332,10 +359,17 @@ ipcMain.handle('profile-static', async (_event, { root }) => {
 
     // Cross-cutting metrics
     const totalGuards = ir.commands.reduce((s, c) => s + c.guards.length, 0);
-    const maxGuardDepth = Math.max(0, ...ir.commands.flatMap(c => c.guards.map(g => exprDepth(g))));
-    const totalExprNodes = ir.commands.reduce((s, c) =>
-      s + c.guards.reduce((gs, g) => gs + exprNodeCount(g), 0) +
-      c.actions.reduce((as, a) => as + exprNodeCount(a.expression), 0), 0);
+    const maxGuardDepth = Math.max(
+      0,
+      ...ir.commands.flatMap((c) => c.guards.map((g) => exprDepth(g))),
+    );
+    const totalExprNodes = ir.commands.reduce(
+      (s, c) =>
+        s +
+        c.guards.reduce((gs, g) => gs + exprNodeCount(g), 0) +
+        c.actions.reduce((as, a) => as + exprNodeCount(a.expression), 0),
+      0,
+    );
 
     results.push({
       file: file.path,
@@ -359,7 +393,10 @@ ipcMain.handle('profile-static', async (_event, { root }) => {
   }
 
   // Sort by complexity descending
-  results.sort((a, b) => (b.analysis?.summary?.totalComplexity || 0) - (a.analysis?.summary?.totalComplexity || 0));
+  results.sort(
+    (a, b) =>
+      (b.analysis?.summary?.totalComplexity || 0) - (a.analysis?.summary?.totalComplexity || 0),
+  );
 
   return { results, filesAnalyzed: results.length };
 });
@@ -376,12 +413,14 @@ let _runtimePromise = null;
 
 function getRuntimeEngine() {
   if (!_runtimePromise) {
-    _runtimePromise = import(pathToFileURL(RUNTIME_PATH).href).then((mod) => {
-      return mod;
-    }).catch((err) => {
-      _runtimePromise = null;
-      throw err;
-    });
+    _runtimePromise = import(pathToFileURL(RUNTIME_PATH).href)
+      .then((mod) => {
+        return mod;
+      })
+      .catch((err) => {
+        _runtimePromise = null;
+        throw err;
+      });
   }
   return _runtimePromise;
 }
@@ -397,6 +436,7 @@ Expected: App launches without errors in the Electron main process console.
 ## Task 2: Add IPC Bridge Methods to Preload and API Layer
 
 **Files:**
+
 - Modify: `tools/manifest-devtools/project/electron/preload.cjs`
 - Modify: `tools/manifest-devtools/project/src/lib/api.ts`
 
@@ -540,7 +580,12 @@ Add to the `Window['electronAPI']` declaration:
 
 ```typescript
 profileCompile: (root: string) => Promise<CompileProfileResult>;
-profileRuntime: (opts: { filePath: string; commandName?: string; input?: Record<string, unknown>; context?: Record<string, unknown> }) => Promise<RuntimeProfileResult>;
+profileRuntime: (opts: {
+  filePath: string;
+  commandName?: string;
+  input?: Record<string, unknown>;
+  context?: Record<string, unknown>;
+}) => Promise<RuntimeProfileResult>;
 profileStatic: (root: string) => Promise<StaticAnalysisResult>;
 ```
 
@@ -570,14 +615,17 @@ export async function profileStatic(): Promise<StaticAnalysisResult> {
 ## Task 3: Rewrite ProfilerPage.tsx with Three Tabs
 
 **Files:**
+
 - Rewrite: `tools/manifest-devtools/project/src/tools/profiler/ProfilerPage.tsx`
 
 Replace the entire file. The new ProfilerPage has:
+
 - Tab bar: "Compile Time" | "Runtime" | "Static Analysis"
 - Each tab renders its own component
 - No more fake SAMPLE_CODE or buildTrace
 
 The tab components are:
+
 1. `CompileProfileTab` — click "Profile" → calls `profileCompile()` → shows per-file timing bars + summary stats
 2. `RuntimeProfileTab` — select file → select command → provide context JSON → run → shows phase timing breakdown
 3. `StaticAnalysisTab` — click "Analyze" → calls `profileStatic()` → shows complexity heatmap per entity/command
@@ -587,9 +635,11 @@ The tab components are:
 ## Task 4: Build CompileProfileTab Component
 
 **Files:**
+
 - Create: `tools/manifest-devtools/project/src/tools/profiler/CompileProfileTab.tsx`
 
 This tab:
+
 1. Has a "Profile All Files" button
 2. Calls `profileCompile()` via IPC
 3. Shows summary stats bar: total compile time, files compiled, total entities/commands/guards
@@ -602,9 +652,11 @@ This tab:
 ## Task 5: Build RuntimeProfileTab Component
 
 **Files:**
+
 - Create: `tools/manifest-devtools/project/src/tools/profiler/RuntimeProfileTab.tsx`
 
 This tab:
+
 1. File selector dropdown (populated from `listFiles()`)
 2. When file selected, calls `profileRuntime({ filePath, commandName: undefined })` to get available commands
 3. Command selector dropdown
@@ -620,9 +672,11 @@ This tab:
 ## Task 6: Build StaticAnalysisTab Component
 
 **Files:**
+
 - Create: `tools/manifest-devtools/project/src/tools/profiler/StaticAnalysisTab.tsx`
 
 This tab:
+
 1. "Analyze All Files" button
 2. Calls `profileStatic()` via IPC
 3. Shows per-file summary cards with complexity scores
@@ -636,6 +690,7 @@ This tab:
 ## Task 7: Delete Old Fake traceBuilder.ts
 
 **Files:**
+
 - Delete or gut: `tools/manifest-devtools/project/src/tools/profiler/traceBuilder.ts`
 
 The old `buildTrace()` function and its fake timing logic are no longer used. Either delete the file entirely or replace it with a utility that converts profiling results into `FlameNode` trees for the FlameChart component.
@@ -684,14 +739,14 @@ Expected: All 630+ tests pass (profiler changes are UI-only, no runtime/compiler
 
 ## Summary of Changes
 
-| File | Action | Description |
-|------|--------|-------------|
-| `electron/main.cjs` | Modify | Add 3 IPC handlers + getRuntimeEngine helper |
-| `electron/preload.cjs` | Modify | Add 3 bridge methods |
-| `src/lib/api.ts` | Modify | Add 3 interfaces + 3 API functions + Window type |
-| `src/tools/profiler/ProfilerPage.tsx` | Rewrite | Tab-based layout, no more fake code |
-| `src/tools/profiler/CompileProfileTab.tsx` | Create | Real compile-time profiling UI |
-| `src/tools/profiler/RuntimeProfileTab.tsx` | Create | Real runtime command profiling UI |
-| `src/tools/profiler/StaticAnalysisTab.tsx` | Create | Real IR complexity analysis UI |
-| `src/tools/profiler/traceBuilder.ts` | Delete/gut | Remove all fake timing code |
-| `src/tools/profiler/FlameChart.tsx` | Keep | Reused as-is for compile-time visualization |
+| File                                       | Action     | Description                                      |
+| ------------------------------------------ | ---------- | ------------------------------------------------ |
+| `electron/main.cjs`                        | Modify     | Add 3 IPC handlers + getRuntimeEngine helper     |
+| `electron/preload.cjs`                     | Modify     | Add 3 bridge methods                             |
+| `src/lib/api.ts`                           | Modify     | Add 3 interfaces + 3 API functions + Window type |
+| `src/tools/profiler/ProfilerPage.tsx`      | Rewrite    | Tab-based layout, no more fake code              |
+| `src/tools/profiler/CompileProfileTab.tsx` | Create     | Real compile-time profiling UI                   |
+| `src/tools/profiler/RuntimeProfileTab.tsx` | Create     | Real runtime command profiling UI                |
+| `src/tools/profiler/StaticAnalysisTab.tsx` | Create     | Real IR complexity analysis UI                   |
+| `src/tools/profiler/traceBuilder.ts`       | Delete/gut | Remove all fake timing code                      |
+| `src/tools/profiler/FlameChart.tsx`        | Keep       | Reused as-is for compile-time visualization      |

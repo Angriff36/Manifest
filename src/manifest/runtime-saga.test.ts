@@ -7,7 +7,7 @@ async function compileToIR(source: string): Promise<IR> {
   const compiler = new IRCompiler();
   const result = await compiler.compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compilation failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compilation failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }
@@ -136,13 +136,13 @@ describe('RuntimeEngine – Saga Orchestration', () => {
       });
 
       expect(result.success).toBe(true);
-      const lifecycleEvents = result.emittedEvents.filter(e =>
-        ['SagaStarted', 'SagaCompleted', 'SagaStepCompleted'].includes(e.name)
+      const lifecycleEvents = result.emittedEvents.filter((e) =>
+        ['SagaStarted', 'SagaCompleted', 'SagaStepCompleted'].includes(e.name),
       );
       // SagaStarted + 3x SagaStepCompleted + SagaCompleted = 5
-      const started = lifecycleEvents.filter(e => e.name === 'SagaStarted');
-      const stepCompleted = lifecycleEvents.filter(e => e.name === 'SagaStepCompleted');
-      const completed = lifecycleEvents.filter(e => e.name === 'SagaCompleted');
+      const started = lifecycleEvents.filter((e) => e.name === 'SagaStarted');
+      const stepCompleted = lifecycleEvents.filter((e) => e.name === 'SagaStepCompleted');
+      const completed = lifecycleEvents.filter((e) => e.name === 'SagaCompleted');
       expect(started).toHaveLength(1);
       expect(stepCompleted).toHaveLength(3);
       expect(completed).toHaveLength(1);
@@ -158,8 +158,8 @@ describe('RuntimeEngine – Saga Orchestration', () => {
         notifyCustomer: { instanceId: 'notif-3' },
       });
 
-      const commandEvents = result.emittedEvents.filter(e =>
-        ['PaymentCharged', 'InventoryReserved', 'NotificationSent'].includes(e.name)
+      const commandEvents = result.emittedEvents.filter((e) =>
+        ['PaymentCharged', 'InventoryReserved', 'NotificationSent'].includes(e.name),
       );
       expect(commandEvents).toHaveLength(3);
     });
@@ -261,21 +261,21 @@ saga ProcessOrder {
       expect(result.failedStep).toBe('reserveInventory');
 
       // chargePayment should have been compensated (refund executed)
-      const chargeStep = result.steps.find(s => s.step === 'chargePayment');
+      const chargeStep = result.steps.find((s) => s.step === 'chargePayment');
       expect(chargeStep).toBeDefined();
       expect(chargeStep!.status).toBe('compensated');
 
       // reserveInventory failed
-      const reserveStep = result.steps.find(s => s.step === 'reserveInventory');
+      const reserveStep = result.steps.find((s) => s.step === 'reserveInventory');
       expect(reserveStep).toBeDefined();
       expect(reserveStep!.status).toBe('failed');
 
       // notifyCustomer was never reached — should not appear or be skipped
-      const notifyStep = result.steps.find(s => s.step === 'notifyCustomer');
+      const notifyStep = result.steps.find((s) => s.step === 'notifyCustomer');
       expect(notifyStep).toBeUndefined();
 
       // SagaFailed event should have been emitted
-      const failedEvent = result.emittedEvents.find(e => e.name === 'SagaFailed');
+      const failedEvent = result.emittedEvents.find((e) => e.name === 'SagaFailed');
       expect(failedEvent).toBeDefined();
     });
   });
@@ -350,12 +350,12 @@ saga AbortOrder {
       expect(result.failedStep).toBe('reserveInventory');
 
       // chargePayment was NOT compensated (abort mode)
-      const chargeStep = result.steps.find(s => s.step === 'chargePayment');
+      const chargeStep = result.steps.find((s) => s.step === 'chargePayment');
       expect(chargeStep).toBeDefined();
       expect(chargeStep!.status).toBe('completed');
 
       // No PaymentRefunded event should appear
-      const refundEvents = result.emittedEvents.filter(e => e.name === 'PaymentRefunded');
+      const refundEvents = result.emittedEvents.filter((e) => e.name === 'PaymentRefunded');
       expect(refundEvents).toHaveLength(0);
     });
   });
@@ -451,7 +451,7 @@ saga ChargeThenReserve {
       expect(result.success).toBe(false);
       expect(result.failedStep).toBe('reserveInventory');
 
-      const chargeStep = result.steps.find(s => s.step === 'chargePayment')!;
+      const chargeStep = result.steps.find((s) => s.step === 'chargePayment')!;
       // Compensation actually ran (its guard saw amount=100), so it reversed state.
       expect(chargeStep.status).toBe('compensated');
       expect(chargeStep.compensation?.success).toBe(true);
@@ -462,7 +462,7 @@ saga ChargeThenReserve {
       expect(payment!.amount).toBe(0);
 
       // PaymentRefunded proves the compensation command really executed.
-      expect(result.emittedEvents.some(e => e.name === 'PaymentRefunded')).toBe(true);
+      expect(result.emittedEvents.some((e) => e.name === 'PaymentRefunded')).toBe(true);
     });
 
     it('reports compensation_failed when the compensation command fails its guard', async () => {
@@ -478,7 +478,7 @@ saga ChargeThenReserve {
       });
 
       expect(result.success).toBe(false);
-      const chargeStep = result.steps.find(s => s.step === 'chargePayment')!;
+      const chargeStep = result.steps.find((s) => s.step === 'chargePayment')!;
       // The compensation FAILED — it must NOT be mislabeled 'compensated'.
       expect(chargeStep.status).toBe('compensation_failed');
 

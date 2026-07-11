@@ -46,7 +46,7 @@ describe('fan-out reactions', () => {
 
   it('compiles a fanOut reaction into IR (parser + compiler)', async () => {
     const { ir, diagnostics } = await compileToIR(source());
-    expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(ir!.reactions).toHaveLength(1);
     expect(ir!.reactions?.[0]?.fanOut).toEqual({
       matchField: 'parentId',
@@ -58,22 +58,46 @@ describe('fan-out reactions', () => {
 
   it('dispatches the command on every matching child (and only those)', async () => {
     const { ir, diagnostics } = await compileToIR(source());
-    expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     const engine = new RuntimeEngine(ir!, {}, { now: () => 1000, generateId: () => 'gen-id' });
 
     await engine.createInstance('Parent', { id: 'p1', status: 'active' } as EntityInstance);
     // three children of p1, one child of p2 (must NOT be touched), one orphan.
-    await engine.createInstance('Child', { id: 'c1', parentId: 'p1', status: 'active' } as EntityInstance);
-    await engine.createInstance('Child', { id: 'c2', parentId: 'p1', status: 'active' } as EntityInstance);
-    await engine.createInstance('Child', { id: 'c3', parentId: 'p1', status: 'active' } as EntityInstance);
-    await engine.createInstance('Child', { id: 'c4', parentId: 'p2', status: 'active' } as EntityInstance);
-    await engine.createInstance('Child', { id: 'c5', parentId: '', status: 'active' } as EntityInstance);
+    await engine.createInstance('Child', {
+      id: 'c1',
+      parentId: 'p1',
+      status: 'active',
+    } as EntityInstance);
+    await engine.createInstance('Child', {
+      id: 'c2',
+      parentId: 'p1',
+      status: 'active',
+    } as EntityInstance);
+    await engine.createInstance('Child', {
+      id: 'c3',
+      parentId: 'p1',
+      status: 'active',
+    } as EntityInstance);
+    await engine.createInstance('Child', {
+      id: 'c4',
+      parentId: 'p2',
+      status: 'active',
+    } as EntityInstance);
+    await engine.createInstance('Child', {
+      id: 'c5',
+      parentId: '',
+      status: 'active',
+    } as EntityInstance);
 
-    const result = await engine.runCommand('deactivate', {}, { entityName: 'Parent', instanceId: 'p1' });
+    const result = await engine.runCommand(
+      'deactivate',
+      {},
+      { entityName: 'Parent', instanceId: 'p1' },
+    );
     expect(result.success).toBe(true);
 
-    const children = await engine.getAllInstances('Child') as EntityInstance[];
-    const statusOf = (id: string): unknown => children.find(c => c.id === id)?.status;
+    const children = (await engine.getAllInstances('Child')) as EntityInstance[];
+    const statusOf = (id: string): unknown => children.find((c) => c.id === id)?.status;
     // every p1 child deactivated (fan-out); p2 child and orphan untouched
     expect(statusOf('c1')).toBe('inactive');
     expect(statusOf('c2')).toBe('inactive');
@@ -104,14 +128,22 @@ describe('fan-out reactions', () => {
         params { reason: "parent deactivated" }
     `;
     const { ir, diagnostics } = await compileToIR(sourceWithReason);
-    expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     const engine = new RuntimeEngine(ir!, {}, { now: () => 1000, generateId: () => 'gen-id' });
     await engine.createInstance('Parent', { id: 'p1', status: 'active' } as EntityInstance);
-    await engine.createInstance('Child', { id: 'c1', parentId: 'p1', reason: '' } as EntityInstance);
+    await engine.createInstance('Child', {
+      id: 'c1',
+      parentId: 'p1',
+      reason: '',
+    } as EntityInstance);
 
-    const result = await engine.runCommand('deactivate', {}, { entityName: 'Parent', instanceId: 'p1' });
+    const result = await engine.runCommand(
+      'deactivate',
+      {},
+      { entityName: 'Parent', instanceId: 'p1' },
+    );
     expect(result.success).toBe(true);
-    const children = await engine.getAllInstances('Child') as EntityInstance[];
-    expect(children.find(c => c.id === 'c1')?.reason).toBe('parent deactivated');
+    const children = (await engine.getAllInstances('Child')) as EntityInstance[];
+    expect(children.find((c) => c.id === 'c1')?.reason).toBe('parent deactivated');
   });
 });

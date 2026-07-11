@@ -80,7 +80,9 @@ describe('manifest build --all', () => {
       const { code, stderr } = await runCli(['build', '--all'], tempDir);
       expect(code, stderr).toBe(0);
 
-      const rel = (await findFiles(tempDir)).map((f) => path.relative(tempDir, f).replace(/\\/g, '/'));
+      const rel = (await findFiles(tempDir)).map((f) =>
+        path.relative(tempDir, f).replace(/\\/g, '/'),
+      );
       // Compile-all wrote the merged IR, and both projections wrote their output.
       expect(rel.some((f) => f.startsWith('ir/') && f.endsWith('.ir.json'))).toBe(true);
       expect(rel.some((f) => f.startsWith('apps/api/'))).toBe(true);

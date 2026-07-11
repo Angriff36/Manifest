@@ -116,7 +116,11 @@ describe('webhook IR compilation', () => {
       secret: 'context.stripeSecret',
     });
     expect(stripe?.idempotencyHeader).toBe('Idempotency-Key');
-    expect(stripe?.transform?.map((t) => t.name)).toEqual(['instanceId', 'amountPaid', 'providerRef']);
+    expect(stripe?.transform?.map((t) => t.name)).toEqual([
+      'instanceId',
+      'amountPaid',
+      'providerRef',
+    ]);
 
     const slack = webhooks.find((w) => w.name === 'SlackInbound');
     expect(slack?.signature).toBeUndefined();
@@ -167,7 +171,12 @@ describe('webhook signature verification', () => {
   it('accepts a valid plain-hex HMAC signature', async () => {
     const { runtime } = await makeRuntime({ withStore: true });
     const body = JSON.stringify({ orderId: 'order-1', amount: 10, ref: 'pi_1' });
-    await runtime.createInstance('Order', { id: 'order-1', status: 'pending', amount: 0, externalRef: '' });
+    await runtime.createInstance('Order', {
+      id: 'order-1',
+      status: 'pending',
+      amount: 0,
+      externalRef: '',
+    });
     const res = await handleWebhookRequest(
       runtime,
       stripeRequest(body, { 'Stripe-Signature': sign(body), 'Idempotency-Key': 'evt_ok' }),
@@ -177,11 +186,19 @@ describe('webhook signature verification', () => {
 
   it('accepts a GitHub-style sha256= prefixed signature', async () => {
     const { runtime } = await makeRuntime({ withStore: true });
-    await runtime.createInstance('Order', { id: 'order-1', status: 'pending', amount: 0, externalRef: '' });
+    await runtime.createInstance('Order', {
+      id: 'order-1',
+      status: 'pending',
+      amount: 0,
+      externalRef: '',
+    });
     const body = JSON.stringify({ orderId: 'order-1', amount: 10, ref: 'pi_1' });
     const res = await handleWebhookRequest(
       runtime,
-      stripeRequest(body, { 'Stripe-Signature': `sha256=${sign(body)}`, 'Idempotency-Key': 'evt_prefix' }),
+      stripeRequest(body, {
+        'Stripe-Signature': `sha256=${sign(body)}`,
+        'Idempotency-Key': 'evt_prefix',
+      }),
     );
     expect(res.status).toBe(200);
   });
@@ -189,7 +206,10 @@ describe('webhook signature verification', () => {
   it('rejects a missing signature header with 401', async () => {
     const { runtime } = await makeRuntime({ withStore: true });
     const body = JSON.stringify({ orderId: 'order-1', amount: 10, ref: 'pi_1' });
-    const res = await handleWebhookRequest(runtime, stripeRequest(body, { 'Idempotency-Key': 'evt_1' }));
+    const res = await handleWebhookRequest(
+      runtime,
+      stripeRequest(body, { 'Idempotency-Key': 'evt_1' }),
+    );
     expect(res.status).toBe(401);
     expect((res.body as { error: string }).error).toContain('Stripe-Signature');
   });
@@ -209,7 +229,10 @@ describe('webhook signature verification', () => {
     const body = JSON.stringify({ orderId: 'order-1', amount: 10, ref: 'pi_1' });
     const res = await handleWebhookRequest(
       runtime,
-      stripeRequest(body, { 'Stripe-Signature': sign(body, 'the-wrong-secret'), 'Idempotency-Key': 'evt_1' }),
+      stripeRequest(body, {
+        'Stripe-Signature': sign(body, 'the-wrong-secret'),
+        'Idempotency-Key': 'evt_1',
+      }),
     );
     expect(res.status).toBe(401);
   });
@@ -231,11 +254,19 @@ describe('webhook signature verification', () => {
     const ir = await compileToIR(SOURCE);
     // Context has NO stripeSecret; the override supplies it instead.
     const runtime = new RuntimeEngine(ir, {}, { idempotencyStore: new MemoryIdempotencyStore() });
-    await runtime.createInstance('Order', { id: 'order-1', status: 'pending', amount: 0, externalRef: '' });
+    await runtime.createInstance('Order', {
+      id: 'order-1',
+      status: 'pending',
+      amount: 0,
+      externalRef: '',
+    });
     const body = JSON.stringify({ orderId: 'order-1', amount: 10, ref: 'pi_1' });
     const res = await handleWebhookRequest(
       runtime,
-      stripeRequest(body, { 'Stripe-Signature': sign(body, 'override-secret'), 'Idempotency-Key': 'evt_ovr' }),
+      stripeRequest(body, {
+        'Stripe-Signature': sign(body, 'override-secret'),
+        'Idempotency-Key': 'evt_ovr',
+      }),
       { resolveSecret: () => 'override-secret' },
     );
     expect(res.status).toBe(200);
@@ -246,7 +277,11 @@ describe('webhook signature verification', () => {
     const stripe = (ir.webhooks ?? []).find((w) => w.name === 'StripePayment');
     // Inject an algorithm the parser/IR would never produce (forward-compat / hand-authored IR).
     (stripe!.signature as { algorithm: string }).algorithm = 'hmac-md5';
-    const runtime = new RuntimeEngine(ir, { stripeSecret: SECRET }, { idempotencyStore: new MemoryIdempotencyStore() });
+    const runtime = new RuntimeEngine(
+      ir,
+      { stripeSecret: SECRET },
+      { idempotencyStore: new MemoryIdempotencyStore() },
+    );
     const body = JSON.stringify({ orderId: 'order-1', amount: 10, ref: 'pi_1' });
     const res = await handleWebhookRequest(
       runtime,
@@ -261,7 +296,10 @@ describe('webhook idempotency', () => {
   it('returns 400 when the idempotency header is missing', async () => {
     const { runtime } = await makeRuntime({ withStore: true });
     const body = JSON.stringify({ orderId: 'order-1', amount: 10, ref: 'pi_1' });
-    const res = await handleWebhookRequest(runtime, stripeRequest(body, { 'Stripe-Signature': sign(body) }));
+    const res = await handleWebhookRequest(
+      runtime,
+      stripeRequest(body, { 'Stripe-Signature': sign(body) }),
+    );
     expect(res.status).toBe(400);
     expect((res.body as { error: string }).error).toContain('Idempotency-Key');
   });
@@ -279,12 +317,20 @@ describe('webhook idempotency', () => {
 
   it('executes the command exactly once across duplicate deliveries', async () => {
     const { runtime, store } = await makeRuntime({ withStore: true });
-    await runtime.createInstance('Order', { id: 'order-1', status: 'pending', amount: 0, externalRef: '' });
+    await runtime.createInstance('Order', {
+      id: 'order-1',
+      status: 'pending',
+      amount: 0,
+      externalRef: '',
+    });
 
     const firstBody = JSON.stringify({ orderId: 'order-1', amount: 4200, ref: 'pi_first' });
     const first = await handleWebhookRequest(
       runtime,
-      stripeRequest(firstBody, { 'Stripe-Signature': sign(firstBody), 'Idempotency-Key': 'evt_dup' }),
+      stripeRequest(firstBody, {
+        'Stripe-Signature': sign(firstBody),
+        'Idempotency-Key': 'evt_dup',
+      }),
     );
     expect(first.status).toBe(200);
 
@@ -292,7 +338,10 @@ describe('webhook idempotency', () => {
     const secondBody = JSON.stringify({ orderId: 'order-1', amount: 9999, ref: 'pi_second' });
     const second = await handleWebhookRequest(
       runtime,
-      stripeRequest(secondBody, { 'Stripe-Signature': sign(secondBody), 'Idempotency-Key': 'evt_dup' }),
+      stripeRequest(secondBody, {
+        'Stripe-Signature': sign(secondBody),
+        'Idempotency-Key': 'evt_dup',
+      }),
     );
     expect(second.status).toBe(200);
 

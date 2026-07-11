@@ -41,7 +41,7 @@ describe('definition', () => {
     const symbols = buildSymbolIndex(program);
 
     // Find "status" on line 2 (1-based) — property has position from parser
-    const statusToken = tokens.find(t => t.value === 'status' && t.type === 'IDENTIFIER');
+    const statusToken = tokens.find((t) => t.value === 'status' && t.type === 'IDENTIFIER');
     if (statusToken) {
       const endCol0 = statusToken.position.column - 1;
       const startCol0 = endCol0 - statusToken.value.length;
@@ -51,7 +51,7 @@ describe('definition', () => {
       });
 
       // Property has a position from the parser, so definition should be found
-      const propSymbol = symbols.find(s => s.name === 'status');
+      const propSymbol = symbols.find((s) => s.name === 'status');
       if (propSymbol?.position) {
         expect(location).not.toBeNull();
         expect(location!.uri).toBe('file:///test.manifest');
@@ -69,9 +69,9 @@ describe('symbol-index', () => {
     const { program } = await compileDocument(source);
     const symbols = buildSymbolIndex(program);
 
-    expect(symbols.find(s => s.name === 'Order' && s.kind === 'entity')).toBeDefined();
-    expect(symbols.find(s => s.name === 'status' && s.kind === 'property')).toBeDefined();
-    expect(symbols.find(s => s.name === 'total' && s.kind === 'property')).toBeDefined();
+    expect(symbols.find((s) => s.name === 'Order' && s.kind === 'entity')).toBeDefined();
+    expect(symbols.find((s) => s.name === 'status' && s.kind === 'property')).toBeDefined();
+    expect(symbols.find((s) => s.name === 'total' && s.kind === 'property')).toBeDefined();
   });
 
   it('indexes enums', async () => {
@@ -82,7 +82,7 @@ describe('symbol-index', () => {
     const { program } = await compileDocument(source);
     const symbols = buildSymbolIndex(program);
 
-    expect(symbols.find(s => s.name === 'Status' && s.kind === 'enum')).toBeDefined();
+    expect(symbols.find((s) => s.name === 'Status' && s.kind === 'enum')).toBeDefined();
   });
 
   it('indexes stores', async () => {
@@ -93,6 +93,6 @@ store Order in memory`;
     const { program } = await compileDocument(source);
     const symbols = buildSymbolIndex(program);
 
-    expect(symbols.find(s => s.name === 'Order' && s.kind === 'store')).toBeDefined();
+    expect(symbols.find((s) => s.name === 'Order' && s.kind === 'store')).toBeDefined();
   });
 });

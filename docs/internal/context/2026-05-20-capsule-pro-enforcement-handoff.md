@@ -1,13 +1,22 @@
 ---
 session: 2026-05-20-capsule-pro-constitution-enforcement
-project: "@angriff36/manifest"
+project: '@angriff36/manifest'
 project_root: C:/projects/manifest
 head_at_save: 08d7f45
 parent_at_session_start: d9ccfed
 status: phases-1-5-done; phase-6-stage-1-done; phase-6-stage-2-deferred
 tests_at_save: 815/815 passing
 typecheck_at_save: clean
-tags: [capsule-pro, constitution-enforcement, runtime-context, projections, registries, audit-suite, contracts]
+tags:
+  [
+    capsule-pro,
+    constitution-enforcement,
+    runtime-context,
+    projections,
+    registries,
+    audit-suite,
+    contracts,
+  ]
 ---
 
 # Capsule-Pro Constitution Enforcement — Session Handoff
@@ -43,22 +52,22 @@ cat docs/plans/2026-05-20-capsule-pro-constitution-enforcement.md  # full plan
 
 ## Phase Status
 
-| Phase | Title | Commits | Status |
-|---|---|---|---|
-| 0 | Spec alignment (constitution mirror + gap matrix) | 2 | ✅ |
-| 1 | Typed RuntimeContext + `requireTenantContext` fail-closed | 4 | ✅ |
-| 2 | `nextjs.dispatcher` surface + DEPRECATED ALIAS for legacy command routes | 3 | ✅ |
-| 3 | IR-derived `commands.json` + `entities.json` registries (CLI: `manifest emit registries`) | 4 | ✅ |
-| 4 | Bypass registry schema + `manifest audit-bypasses` validator | 2 | ✅ |
-| 5 | `manifest audit-constitution` umbrella (5 detectors) | 2 | ✅ |
-| 6 stage 1 | AuditSink + OutboxStore **contracts** wired into RuntimeOptions | 2 | ✅ |
-| 6 stage 2 | Concrete adapters (Memory/Postgres) + runtime emission lifecycle | 0 | ⏸ Deferred |
+| Phase     | Title                                                                                     | Commits | Status     |
+| --------- | ----------------------------------------------------------------------------------------- | ------- | ---------- |
+| 0         | Spec alignment (constitution mirror + gap matrix)                                         | 2       | ✅         |
+| 1         | Typed RuntimeContext + `requireTenantContext` fail-closed                                 | 4       | ✅         |
+| 2         | `nextjs.dispatcher` surface + DEPRECATED ALIAS for legacy command routes                  | 3       | ✅         |
+| 3         | IR-derived `commands.json` + `entities.json` registries (CLI: `manifest emit registries`) | 4       | ✅         |
+| 4         | Bypass registry schema + `manifest audit-bypasses` validator                              | 2       | ✅         |
+| 5         | `manifest audit-constitution` umbrella (5 detectors)                                      | 2       | ✅         |
+| 6 stage 1 | AuditSink + OutboxStore **contracts** wired into RuntimeOptions                           | 2       | ✅         |
+| 6 stage 2 | Concrete adapters (Memory/Postgres) + runtime emission lifecycle                          | 0       | ⏸ Deferred |
 
 ## Key Architectural Decisions
 
 1. **Type widening, not type breaking.** `RuntimeContext` kept its `[key: string]: unknown` index signature so every existing test (including conformance fixtures) passes unchanged. Typed fields layer on top.
 2. **Schema validation lives in the CLI, not the IR core.** Avoids pulling Ajv into `src/manifest/`. The CLI walks up from `import.meta.url` to find shipped `docs/spec/registry/*.schema.json` files. Schemas are added to `package.json#files` so installs work.
-3. **`requireTenantContext` is opt-in, runs before idempotency.** Failure to provide `tenantId` returns `MISSING_TENANT_CONTEXT` *before* idempotency cache reads/writes, so caller can fix tenant context and retry under the same key without seeing a cached failure.
+3. **`requireTenantContext` is opt-in, runs before idempotency.** Failure to provide `tenantId` returns `MISSING_TENANT_CONTEXT` _before_ idempotency cache reads/writes, so caller can fix tenant context and retry under the same key without seeing a cached failure.
 4. **`context.deterministic` honored alongside `options.deterministicMode`.** Options wins when both set (explicit caller intent). Source order: `options.deterministicMode ?? context.deterministic ?? false`.
 5. **Module-level commands surfaced under `__unowned__` sentinel.** IR shape allows commands without an owning entity; the registry classifies these as `infrastructure` so they don't pollute the governed-entity inventory.
 6. **Dispatcher uses route-param destructuring, not hardcoded entity/command names.** A single dynamic `[entity]/commands/[command]/route.ts` resolves both at request time, so the file is 100% generic and the test enforces "no entity/command literals in the generated code".
@@ -67,6 +76,7 @@ cat docs/plans/2026-05-20-capsule-pro-constitution-enforcement.md  # full plan
 ## Files Created This Session
 
 ### Source
+
 - `src/manifest/registry/emit.ts` + `emit.test.ts` — pure-data emitter, 9 tests
 - `src/manifest/runtime-context.test.ts` — type-level assertions, 4 tests
 - `src/manifest/runtime-deterministic-context.test.ts` — 3 tests
@@ -76,6 +86,7 @@ cat docs/plans/2026-05-20-capsule-pro-constitution-enforcement.md  # full plan
 - `src/manifest/outbox/outbox-store.ts` + `outbox-store.test.ts` — contract, 2 tests
 
 ### CLI
+
 - `packages/cli/src/commands/emit-registries.ts` + test — 5 tests
 - `packages/cli/src/commands/audit-bypasses.ts` + test — 8 tests
 - `packages/cli/src/commands/audit-constitution.ts` + test — 12 tests
@@ -87,6 +98,7 @@ cat docs/plans/2026-05-20-capsule-pro-constitution-enforcement.md  # full plan
 - `packages/cli/src/audit/bypass-violations.ts`
 
 ### Spec & docs
+
 - `docs/capsule-pro/constitution.md` (mirror of upstream)
 - `docs/capsule-pro/gap-matrix.md` (status tracker)
 - `docs/spec/registry/README.md`
@@ -97,6 +109,7 @@ cat docs/plans/2026-05-20-capsule-pro-constitution-enforcement.md  # full plan
 - `tasks/todo.md` (phase-level tracker)
 
 ### Files Modified
+
 - `src/manifest/runtime-engine.ts` — `RuntimeContext` typed fields, deterministic source order, `requireTenantContext`, optional `auditSink`/`outboxStore` in `RuntimeOptions`
 - `src/manifest/projections/nextjs/generator.ts` — `nextjs.dispatcher` surface + DEPRECATED ALIAS banner on `nextjs.command`
 - `docs/spec/semantics.md` — Capsule-Pro Constitution Reference + Runtime Context Schema sections
@@ -129,6 +142,7 @@ manifest audit-constitution --only direct-writes,event-fabrication
 ```
 
 Detector finding codes (stable, for CI exemption mapping):
+
 - `DIRECT_WRITE` — `prisma.X.create/update/delete/upsert/*Many` outside runtime
 - `EVENT_FABRICATION_PUBLISH` / `EVENT_FABRICATION_CTOR` / `EVENT_FABRICATION_EMIT_LITERAL`
 - `ROUTE_DRIFT` — concrete command route calls `runCommand` without DEPRECATED ALIAS banner
@@ -153,8 +167,8 @@ These are pre-thought out — drop in and execute:
 - `npm test` must stay ≥815 green (was 757 before this session; 58 new tests added).
 - `npm run typecheck` must stay clean.
 - **No `2>&1`** on Windows bash — creates spurious `nul` files (a `nul` was already in the repo before this session; I avoided creating new ones).
-- Conformance fixtures are *executable semantics*; don't modify them, only add new ones.
-- IR-first: spec changes in `docs/spec/**` *before* code (followed throughout this session).
+- Conformance fixtures are _executable semantics_; don't modify them, only add new ones.
+- IR-first: spec changes in `docs/spec/**` _before_ code (followed throughout this session).
 - House style: explicit > inference; deterministic > convenient; no auto-repair; diagnostics explain, never compensate.
 - Commit cadence: one committable unit per task; no `git add -A`; explicit file lists only.
 

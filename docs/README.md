@@ -78,18 +78,18 @@ See [`reference/`](./reference/README.md):
 
 Which guarantees are statically enforced, runtime-enforced, contract-only, or deferred:
 
-| Guarantee | Where it lives | Enforced |
-|---|---|---|
-| IR schema validity | `spec/ir/ir-v1.schema.json` | **Statically** — `manifest validate`, `manifest check` |
-| Policy / guard / constraint semantics | `spec/semantics.md` | **At runtime** — `RuntimeEngine.runCommand` |
-| Deterministic mode | `spec/adapters.md § Deterministic Mode` | **At runtime** — `ManifestEffectBoundaryError` |
-| `requireTenantContext` fail-closed | `spec/semantics.md § Runtime Context` | **At runtime** — `MISSING_TENANT_CONTEXT` outcome |
-| `AuditSink.emit` exactly-once per command | `spec/adapters.md § Audit Sink` | **At runtime** — fail-open on sink errors |
-| `OutboxStore.enqueue` per emitted-event command | `spec/adapters.md § Outbox Store` | **At runtime** — non-transactional w.r.t. mutation |
-| Canonical dispatcher route presence | — | **Statically** — `manifest integration-check § dispatcher` |
-| Direct-writes / route-drift / event-fabrication detection | `manifest audit-governance` | **Statically** — CI gate |
-| Subpath imports / tarball shape | `package.json` `exports` + `files` | **Statically** — `manifest integration-check § package-shape` |
-| **Transactional outbox** (mutation + enqueue atomicity) | — | **Deferred** — adapters honor a caller-supplied `tx`; `RuntimeEngine` does not open one |
-| **Live Postgres adapter tests** | `src/manifest/{audit,outbox}/.../postgres.live.test.ts` | **Env-gated** — set `MANIFEST_POSTGRES_TEST_URL` |
+| Guarantee                                                 | Where it lives                                          | Enforced                                                                                |
+| --------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| IR schema validity                                        | `spec/ir/ir-v1.schema.json`                             | **Statically** — `manifest validate`, `manifest check`                                  |
+| Policy / guard / constraint semantics                     | `spec/semantics.md`                                     | **At runtime** — `RuntimeEngine.runCommand`                                             |
+| Deterministic mode                                        | `spec/adapters.md § Deterministic Mode`                 | **At runtime** — `ManifestEffectBoundaryError`                                          |
+| `requireTenantContext` fail-closed                        | `spec/semantics.md § Runtime Context`                   | **At runtime** — `MISSING_TENANT_CONTEXT` outcome                                       |
+| `AuditSink.emit` exactly-once per command                 | `spec/adapters.md § Audit Sink`                         | **At runtime** — fail-open on sink errors                                               |
+| `OutboxStore.enqueue` per emitted-event command           | `spec/adapters.md § Outbox Store`                       | **At runtime** — non-transactional w.r.t. mutation                                      |
+| Canonical dispatcher route presence                       | —                                                       | **Statically** — `manifest integration-check § dispatcher`                              |
+| Direct-writes / route-drift / event-fabrication detection | `manifest audit-governance`                             | **Statically** — CI gate                                                                |
+| Subpath imports / tarball shape                           | `package.json` `exports` + `files`                      | **Statically** — `manifest integration-check § package-shape`                           |
+| **Transactional outbox** (mutation + enqueue atomicity)   | —                                                       | **Deferred** — adapters honor a caller-supplied `tx`; `RuntimeEngine` does not open one |
+| **Live Postgres adapter tests**                           | `src/manifest/{audit,outbox}/.../postgres.live.test.ts` | **Env-gated** — set `MANIFEST_POSTGRES_TEST_URL`                                        |
 
 > Internal design history, governance policy, and superseded plans live in [`internal/`](./internal/) and are not part of the product documentation.

@@ -1,6 +1,6 @@
 ---
-title: "Runtime Engine API"
-description: "Constructor options, methods, return types, and import paths for the public runtime surface."
+title: 'Runtime Engine API'
+description: 'Constructor options, methods, return types, and import paths for the public runtime surface.'
 ---
 
 > **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
@@ -13,7 +13,6 @@ description: "Constructor options, methods, return types, and import paths for t
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 Import path:
 
@@ -49,31 +48,31 @@ new RuntimeEngine(
 
 ### `RuntimeContext`
 
-| Field | Type | Default | Description |
-|------|------|---------|-------------|
-| `tenantId` | `string` | — | Active tenant identifier. Required when `requireTenantContext` is enabled. |
-| `orgId` | `string` | — | Optional organization identifier for auth integrations. |
-| `actorId` | `string` | — | Acting user or service principal id. |
-| `requestId` | `string` | — | Correlates logs and emitted diagnostics. |
-| `source` | `string` | — | Origin surface such as `route`, `job`, `cli`, or `workflow`. |
-| `deterministic` | `boolean` | `false` | Ambient deterministic hint. `options.deterministicMode` takes precedence. |
-| `user` | `{ id: string; role?: string; [key: string]: unknown }` | — | Legacy auth object still used by guards and policies. |
+| Field           | Type                                                    | Default | Description                                                                |
+| --------------- | ------------------------------------------------------- | ------- | -------------------------------------------------------------------------- |
+| `tenantId`      | `string`                                                | —       | Active tenant identifier. Required when `requireTenantContext` is enabled. |
+| `orgId`         | `string`                                                | —       | Optional organization identifier for auth integrations.                    |
+| `actorId`       | `string`                                                | —       | Acting user or service principal id.                                       |
+| `requestId`     | `string`                                                | —       | Correlates logs and emitted diagnostics.                                   |
+| `source`        | `string`                                                | —       | Origin surface such as `route`, `job`, `cli`, or `workflow`.               |
+| `deterministic` | `boolean`                                               | `false` | Ambient deterministic hint. `options.deterministicMode` takes precedence.  |
+| `user`          | `{ id: string; role?: string; [key: string]: unknown }` | —       | Legacy auth object still used by guards and policies.                      |
 
 ### `RuntimeOptions`
 
-| Option | Type | Default | Description |
-|------|------|---------|-------------|
-| `generateId` | `() => string` | `crypto.randomUUID` | Generates entity ids and runtime record ids. |
-| `now` | `() => number` | `Date.now` | Supplies timestamps for events, audit, and outbox. |
-| `requireValidProvenance` | `boolean` | `true` in production, otherwise `false` | Enables IR hash verification before execution. |
-| `expectedIRHash` | `string` | IR self hash | Optional explicit hash target for provenance verification. |
-| `storeProvider` | `(entityName: string) => Store \| undefined` | — | Supplies custom per-entity stores. |
-| `idempotencyStore` | `IdempotencyStore` | — | Caches command results by caller-supplied idempotency key. |
-| `deterministicMode` | `boolean` | `false` | Throws on adapter actions `persist`, `publish`, and `effect`. |
-| `evaluationLimits` | `EvaluationLimits` | `{ maxExpressionDepth: 64, maxEvaluationSteps: 10000 }` | Caps recursive or expensive expression evaluation. |
-| `requireTenantContext` | `boolean` | `false` | Fails closed when `context.tenantId` is missing. |
-| `auditSink` | `AuditSink` | — | Emits one `AuditRecord` per `runCommand()` invocation. |
-| `outboxStore` | `OutboxStore` | — | Persists emitted events after successful commands. |
+| Option                   | Type                                         | Default                                                 | Description                                                   |
+| ------------------------ | -------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------- |
+| `generateId`             | `() => string`                               | `crypto.randomUUID`                                     | Generates entity ids and runtime record ids.                  |
+| `now`                    | `() => number`                               | `Date.now`                                              | Supplies timestamps for events, audit, and outbox.            |
+| `requireValidProvenance` | `boolean`                                    | `true` in production, otherwise `false`                 | Enables IR hash verification before execution.                |
+| `expectedIRHash`         | `string`                                     | IR self hash                                            | Optional explicit hash target for provenance verification.    |
+| `storeProvider`          | `(entityName: string) => Store \| undefined` | —                                                       | Supplies custom per-entity stores.                            |
+| `idempotencyStore`       | `IdempotencyStore`                           | —                                                       | Caches command results by caller-supplied idempotency key.    |
+| `deterministicMode`      | `boolean`                                    | `false`                                                 | Throws on adapter actions `persist`, `publish`, and `effect`. |
+| `evaluationLimits`       | `EvaluationLimits`                           | `{ maxExpressionDepth: 64, maxEvaluationSteps: 10000 }` | Caps recursive or expensive expression evaluation.            |
+| `requireTenantContext`   | `boolean`                                    | `false`                                                 | Fails closed when `context.tenantId` is missing.              |
+| `auditSink`              | `AuditSink`                                  | —                                                       | Emits one `AuditRecord` per `runCommand()` invocation.        |
+| `outboxStore`            | `OutboxStore`                                | —                                                       | Persists emitted events after successful commands.            |
 
 ## Public Methods
 
@@ -179,11 +178,15 @@ export interface CommandResult {
 Example:
 
 ```ts
-const result = await runtime.runCommand('publish', {}, {
-  entityName: 'Article',
-  instanceId: 'article-1',
-  idempotencyKey: 'article-1:publish',
-});
+const result = await runtime.runCommand(
+  'publish',
+  {},
+  {
+    entityName: 'Article',
+    instanceId: 'article-1',
+    idempotencyKey: 'article-1:publish',
+  },
+);
 
 if (!result.success) {
   console.error(result.policyDenial ?? result.guardFailure ?? result.error);

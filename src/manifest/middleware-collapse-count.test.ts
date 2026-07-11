@@ -76,16 +76,24 @@ describe('middleware-collapse: count reactions retire hand middleware', () => {
 
   it('represents both count cases as reactions (no hand middleware)', async () => {
     const { ir, diagnostics } = await compileToIR(source());
-    expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     const reactions = ir!.reactions ?? [];
     expect(reactions).toHaveLength(2);
 
-    const shift = reactions.find(r => r.targetCommand === 'syncShiftCount')!;
-    expect(shift.params?.[0].expression).toMatchObject({ kind: 'aggregate', op: 'count', entity: 'ScheduleShift' });
+    const shift = reactions.find((r) => r.targetCommand === 'syncShiftCount')!;
+    expect(shift.params?.[0].expression).toMatchObject({
+      kind: 'aggregate',
+      op: 'count',
+      entity: 'ScheduleShift',
+    });
     expect(shift.params?.[0].expression).toMatchObject({ predicates: [{ field: 'scheduleId' }] });
 
-    const task = reactions.find(r => r.targetCommand === 'syncTaskCount')!;
-    expect(task.params?.[0].expression).toMatchObject({ kind: 'aggregate', op: 'count', entity: 'PrepTask' });
+    const task = reactions.find((r) => r.targetCommand === 'syncTaskCount')!;
+    expect(task.params?.[0].expression).toMatchObject({
+      kind: 'aggregate',
+      op: 'count',
+      entity: 'PrepTask',
+    });
     expect(task.params?.[0].expression).toMatchObject({
       predicates: [{ field: 'stationId' }, { field: 'status' }],
     });
@@ -93,24 +101,48 @@ describe('middleware-collapse: count reactions retire hand middleware', () => {
 
   it('recomputes both parent counts from child events at runtime', async () => {
     const { ir, diagnostics } = await compileToIR(source());
-    expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     const engine = new RuntimeEngine(ir!, {}, { now: () => 1000, generateId: () => 'gen-id' });
 
     await engine.createInstance('Schedule', { id: 'sched-1', shiftCount: 0 } as EntityInstance);
     await engine.createInstance('ScheduleShift', { id: 'sh-1', scheduleId: '' } as EntityInstance);
     await engine.createInstance('ScheduleShift', { id: 'sh-2', scheduleId: '' } as EntityInstance);
     await engine.createInstance('Station', { id: 'st-1', currentTaskCount: 0 } as EntityInstance);
-    await engine.createInstance('PrepTask', { id: 'pt-1', stationId: '', status: 'pending' } as EntityInstance);
-    await engine.createInstance('PrepTask', { id: 'pt-2', stationId: '', status: 'pending' } as EntityInstance);
+    await engine.createInstance('PrepTask', {
+      id: 'pt-1',
+      stationId: '',
+      status: 'pending',
+    } as EntityInstance);
+    await engine.createInstance('PrepTask', {
+      id: 'pt-2',
+      stationId: '',
+      status: 'pending',
+    } as EntityInstance);
 
-    await engine.runCommand('assign', { scheduleId: 'sched-1' }, { entityName: 'ScheduleShift', instanceId: 'sh-1' });
-    await engine.runCommand('assign', { scheduleId: 'sched-1' }, { entityName: 'ScheduleShift', instanceId: 'sh-2' });
-    await engine.runCommand('claim', { stationId: 'st-1' }, { entityName: 'PrepTask', instanceId: 'pt-1' });
-    await engine.runCommand('claim', { stationId: 'st-1' }, { entityName: 'PrepTask', instanceId: 'pt-2' });
+    await engine.runCommand(
+      'assign',
+      { scheduleId: 'sched-1' },
+      { entityName: 'ScheduleShift', instanceId: 'sh-1' },
+    );
+    await engine.runCommand(
+      'assign',
+      { scheduleId: 'sched-1' },
+      { entityName: 'ScheduleShift', instanceId: 'sh-2' },
+    );
+    await engine.runCommand(
+      'claim',
+      { stationId: 'st-1' },
+      { entityName: 'PrepTask', instanceId: 'pt-1' },
+    );
+    await engine.runCommand(
+      'claim',
+      { stationId: 'st-1' },
+      { entityName: 'PrepTask', instanceId: 'pt-2' },
+    );
 
-    const schedules = await engine.getAllInstances('Schedule') as EntityInstance[];
-    const stations = await engine.getAllInstances('Station') as EntityInstance[];
-    expect(schedules.find(s => s.id === 'sched-1')?.shiftCount).toBe(2);       // schedule-shift-count
-    expect(stations.find(s => s.id === 'st-1')?.currentTaskCount).toBe(2);     // prep-task-station-count
+    const schedules = (await engine.getAllInstances('Schedule')) as EntityInstance[];
+    const stations = (await engine.getAllInstances('Station')) as EntityInstance[];
+    expect(schedules.find((s) => s.id === 'sched-1')?.shiftCount).toBe(2); // schedule-shift-count
+    expect(stations.find((s) => s.id === 'st-1')?.currentTaskCount).toBe(2); // prep-task-station-count
   });
 });

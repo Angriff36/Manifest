@@ -60,7 +60,7 @@ async function locateConfigSchema(): Promise<object> {
     }
   }
   throw new Error(
-    'Could not locate docs/spec/config/manifest.config.schema.json. Reinstall @angriff36/manifest or run from a Manifest checkout.'
+    'Could not locate docs/spec/config/manifest.config.schema.json. Reinstall @angriff36/manifest or run from a Manifest checkout.',
   );
 }
 
@@ -110,7 +110,7 @@ function toDiagnostic(error: ErrorObject): ConfigValidationDiagnostic {
  * decides how to surface failures.
  */
 export async function validateConfig(
-  config: ManifestConfig | null | undefined
+  config: ManifestConfig | null | undefined,
 ): Promise<ConfigValidationResult> {
   if (config === null || config === undefined) {
     // A missing config is valid; defaults apply. Surfaced as ok so callers

@@ -21,11 +21,11 @@ Prisma schemas are all **derived views** — convenient output, not language law
 
 ## The three pillars
 
-| Thing | What it is | Where |
-|---|---|---|
-| **IR schema** | The executable contract. Defines the exact shape every compiled program MUST produce. | `docs/spec/ir/ir-v1.schema.json` |
-| **Runtime** | Evaluates IR. Enforces guards, policies, constraints, and event emission in a fixed order. | `src/manifest/runtime-engine.ts` |
-| **Conformance** | Fixture-based proof that compiler + runtime match the spec. If a fixture fails, the spec is violated. | `src/manifest/conformance/**` |
+| Thing           | What it is                                                                                            | Where                            |
+| --------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------- |
+| **IR schema**   | The executable contract. Defines the exact shape every compiled program MUST produce.                 | `docs/spec/ir/ir-v1.schema.json` |
+| **Runtime**     | Evaluates IR. Enforces guards, policies, constraints, and event emission in a fixed order.            | `src/manifest/runtime-engine.ts` |
+| **Conformance** | Fixture-based proof that compiler + runtime match the spec. If a fixture fails, the spec is violated. | `src/manifest/conformance/**`    |
 
 ## Projections are tooling, not law
 
@@ -42,22 +42,23 @@ projection options — never by editing them as if they were source.
 
 ## Folder routing
 
-| I want to… | Go to |
-|---|---|
-| Understand what a language construct means at runtime | `docs/spec/semantics.md` |
-| Change language behavior | Update `docs/spec/**` first, then conformance, then implementation |
-| Add a new IR field | `docs/spec/ir/ir-v1.schema.json` → conformance fixtures → `src/manifest/ir-compiler.ts` |
-| Understand the Prisma projection | `docs/codedocs/api-reference/projections.md`, `mintlify/integration/prisma.mdx` |
-| Read the full doc hierarchy | `docs/README.md` |
-| Understand doc authority tiers | `docs/DOCUMENTATION_GOVERNANCE.md` |
-| Find binding language law | `docs/spec/**` and `src/manifest/conformance/**` |
-| Map consumer repo folders (`.manifest`, IR, generated routes) | `docs/spec/project-layout.md` |
-| Find advisory guidance and patterns | `docs/guides/**`, `docs/tools/**` |
-| Find design history or deferred proposals | `docs/proposals/**`, `docs/archive/**` |
+| I want to…                                                    | Go to                                                                                   |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Understand what a language construct means at runtime         | `docs/spec/semantics.md`                                                                |
+| Change language behavior                                      | Update `docs/spec/**` first, then conformance, then implementation                      |
+| Add a new IR field                                            | `docs/spec/ir/ir-v1.schema.json` → conformance fixtures → `src/manifest/ir-compiler.ts` |
+| Understand the Prisma projection                              | `docs/codedocs/api-reference/projections.md`, `mintlify/integration/prisma.mdx`         |
+| Read the full doc hierarchy                                   | `docs/README.md`                                                                        |
+| Understand doc authority tiers                                | `docs/DOCUMENTATION_GOVERNANCE.md`                                                      |
+| Find binding language law                                     | `docs/spec/**` and `src/manifest/conformance/**`                                        |
+| Map consumer repo folders (`.manifest`, IR, generated routes) | `docs/spec/project-layout.md`                                                           |
+| Find advisory guidance and patterns                           | `docs/guides/**`, `docs/tools/**`                                                       |
+| Find design history or deferred proposals                     | `docs/proposals/**`, `docs/archive/**`                                                  |
 
 ## What "done" means
 
 A change is done when:
+
 - `npm test` — green (includes 1076+ conformance + unit tests)
 - `npm run typecheck` — clean
 - `npm run lint` — clean

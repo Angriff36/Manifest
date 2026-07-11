@@ -1,6 +1,11 @@
 import {
-  EntityNode, PropertyNode, ComputedPropertyNode, RelationshipNode, ConstraintNode,
-  PolicyNode, ManifestProgram
+  EntityNode,
+  PropertyNode,
+  ComputedPropertyNode,
+  RelationshipNode,
+  ConstraintNode,
+  PolicyNode,
+  ManifestProgram,
 } from './types';
 
 /**
@@ -28,7 +33,7 @@ export function expandEntityComposition(
    * the local duplicate-declaration check (cross-file duplicates are validated
    * separately by the multi-compiler).
    */
-  externalEntities?: EntityIndex
+  externalEntities?: EntityIndex,
 ): ManifestProgram {
   // Build index of all entities by name from root and modules
   const entityIndex: EntityIndex = {};
@@ -92,7 +97,7 @@ function validateEntityGraph(
   entityIndex: EntityIndex,
   validated: Set<string>,
   inProgress: Set<string>,
-  emitDiagnostic: (severity: 'error' | 'warning', message: string) => void
+  emitDiagnostic: (severity: 'error' | 'warning', message: string) => void,
 ): void {
   if (validated.has(name)) return;
   if (inProgress.has(name)) {
@@ -138,7 +143,7 @@ function expandComposition(
   entity: EntityNode,
   entityIndex: EntityIndex,
   visited: Set<string>,
-  emitDiagnostic: (severity: 'error' | 'warning', message: string) => void
+  emitDiagnostic: (severity: 'error' | 'warning', message: string) => void,
 ): void {
   if (visited.has(entity.name)) return; // Already expanded or in progress
   visited.add(entity.name);
@@ -162,7 +167,7 @@ function expandComposition(
       inheritedConstraints.push(...parentEntity.constraints);
       inheritedPolicies.push(...parentEntity.policies);
       inheritedCommands.push(...(parentEntity.inheritedCommandNames || []));
-      inheritedCommands.push(...parentEntity.commands.map(c => c.name));
+      inheritedCommands.push(...parentEntity.commands.map((c) => c.name));
     }
   }
 
@@ -178,38 +183,30 @@ function expandComposition(
         inheritedConstraints.push(...mixinEntity.constraints);
         inheritedPolicies.push(...mixinEntity.policies);
         inheritedCommands.push(...(mixinEntity.inheritedCommandNames || []));
-        inheritedCommands.push(...mixinEntity.commands.map(c => c.name));
+        inheritedCommands.push(...mixinEntity.commands.map((c) => c.name));
       }
     }
   }
 
   // Build name sets from own fields (for conflict detection)
-  const ownPropNames = new Set(entity.properties.map(p => p.name));
-  const ownComputedNames = new Set(entity.computedProperties.map(c => c.name));
-  const ownRelNames = new Set(entity.relationships.map(r => r.name));
-  const ownConstraintNames = new Set(entity.constraints.map(c => c.name));
-  const ownPolicyNames = new Set(entity.policies.map(p => p.name));
+  const ownPropNames = new Set(entity.properties.map((p) => p.name));
+  const ownComputedNames = new Set(entity.computedProperties.map((c) => c.name));
+  const ownRelNames = new Set(entity.relationships.map((r) => r.name));
+  const ownConstraintNames = new Set(entity.constraints.map((c) => c.name));
+  const ownPolicyNames = new Set(entity.policies.map((p) => p.name));
 
   // Prepend inherited items that don't collide with own
-  entity.properties.unshift(
-    ...inheritedProps.filter(p => !ownPropNames.has(p.name))
-  );
+  entity.properties.unshift(...inheritedProps.filter((p) => !ownPropNames.has(p.name)));
   entity.computedProperties.unshift(
-    ...inheritedComputed.filter(c => !ownComputedNames.has(c.name))
+    ...inheritedComputed.filter((c) => !ownComputedNames.has(c.name)),
   );
-  entity.relationships.unshift(
-    ...inheritedRelationships.filter(r => !ownRelNames.has(r.name))
-  );
+  entity.relationships.unshift(...inheritedRelationships.filter((r) => !ownRelNames.has(r.name)));
   entity.constraints.unshift(
-    ...inheritedConstraints.filter(c => !ownConstraintNames.has(c.name))
+    ...inheritedConstraints.filter((c) => !ownConstraintNames.has(c.name)),
   );
-  entity.policies.unshift(
-    ...inheritedPolicies.filter(p => !ownPolicyNames.has(p.name))
-  );
+  entity.policies.unshift(...inheritedPolicies.filter((p) => !ownPolicyNames.has(p.name)));
 
   // Build the full list of inherited command names (for IR generation)
-  const ownCommandNames = new Set(entity.commands.map(c => c.name));
-  entity.inheritedCommandNames = inheritedCommands.filter(
-    name => !ownCommandNames.has(name)
-  );
+  const ownCommandNames = new Set(entity.commands.map((c) => c.name));
+  entity.inheritedCommandNames = inheritedCommands.filter((name) => !ownCommandNames.has(name));
 }

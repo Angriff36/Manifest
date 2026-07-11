@@ -32,12 +32,12 @@ export function findProvenDateSource(
 
   const paramStem = dateStem(param);
   const scored = locals
-    .filter(l => l.name !== param)
-    .map(l => ({
+    .filter((l) => l.name !== param)
+    .map((l) => ({
       local: l,
       score: scoreDateLocal(param, paramStem, l.name),
     }))
-    .filter(x => x.score > 0)
+    .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score || a.local.name.localeCompare(b.local.name));
 
   if (scored.length === 0) {
@@ -56,8 +56,7 @@ export function findProvenDateSource(
 function collectDateLocals(content: string): DateLocal[] {
   const out: DateLocal[] = [];
   const seen = new Set<string>();
-  const decl =
-    /\b(?:const|let|var)\s+([A-Za-z_][\w]*)\s*=\s*new\s+Date\s*\(/g;
+  const decl = /\b(?:const|let|var)\s+([A-Za-z_][\w]*)\s*=\s*new\s+Date\s*\(/g;
   let m: RegExpExecArray | null;
   while ((m = decl.exec(content)) !== null) {
     const name = m[1]!;
@@ -117,10 +116,7 @@ function dateStem(name: string): string {
   return name.replace(/(Date|Time|At|On)$/i, '').toLowerCase();
 }
 
-function toProvenExpression(
-  local: DateLocal,
-  preferIso: boolean,
-): ProvenDateSource {
+function toProvenExpression(local: DateLocal, preferIso: boolean): ProvenDateSource {
   if (preferIso && local.isDateObject) {
     return {
       expression: `${local.name}.toISOString()`,

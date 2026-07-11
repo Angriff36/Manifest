@@ -150,11 +150,7 @@ const d = "/other/path";
       const violations = scanFileForRoutes(content, 'src/app.ts', config);
 
       expect(violations).toHaveLength(3);
-      expect(violations.map(v => v.match)).toEqual([
-        '/api/recipes',
-        '/v1/users',
-        '/v2/orders',
-      ]);
+      expect(violations.map((v) => v.match)).toEqual(['/api/recipes', '/v1/users', '/v2/orders']);
     });
 
     it('clean code produces zero violations', () => {

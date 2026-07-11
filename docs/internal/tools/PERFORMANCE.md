@@ -13,23 +13,23 @@ Performance characteristics and optimization strategies for Manifest.
 
 ### Compilation Performance
 
-| Program Size | Compile Time | IR Cache Hit |
-|--------------|--------------|--------------|
-| Small (~10 entities) | ~5ms | <1ms |
-| Medium (~50 entities) | ~15ms | <1ms |
-| Large (~200 entities) | ~50ms | <1ms |
+| Program Size          | Compile Time | IR Cache Hit |
+| --------------------- | ------------ | ------------ |
+| Small (~10 entities)  | ~5ms         | <1ms         |
+| Medium (~50 entities) | ~15ms        | <1ms         |
+| Large (~200 entities) | ~50ms        | <1ms         |
 
 **IR Caching**: Enable IR caching to skip compilation on repeated runs. Subsequent loads are ~100x faster.
 
 ### Runtime Performance
 
-| Operation | Time (Memory Store) | Time (Postgres) |
-|-----------|---------------------|-----------------|
-| Command execution | ~0.1ms | ~5-20ms |
-| Guard evaluation | ~0.01ms/guard | N/A |
-| Constraint check | ~0.02ms/constraint | N/A |
-| Event emission | ~0.05ms/event | ~1-5ms |
-| Query (100 records) | ~1ms | ~10ms |
+| Operation           | Time (Memory Store) | Time (Postgres) |
+| ------------------- | ------------------- | --------------- |
+| Command execution   | ~0.1ms              | ~5-20ms         |
+| Guard evaluation    | ~0.01ms/guard       | N/A             |
+| Constraint check    | ~0.02ms/constraint  | N/A             |
+| Event emission      | ~0.05ms/event       | ~1-5ms          |
+| Query (100 records) | ~1ms                | ~10ms           |
 
 **Note**: Database stores are I/O bound. Times depend on network, query complexity, and indexes.
 
@@ -44,11 +44,12 @@ Skip compilation on repeated runs:
 ```typescript
 const result = await compile(source, {
   cache: true,
-  cacheDir: '.manifest-cache'
+  cacheDir: '.manifest-cache',
 });
 ```
 
 **Benefits**:
+
 - 100x faster on cache hits
 - Lower CPU usage
 - Ideal for development servers
@@ -136,6 +137,7 @@ CREATE INDEX idx_entity_created ON entity (created_at DESC);
 ```
 
 **Query patterns**:
+
 - Filter by `tenantId` (multi-tenancy)
 - Filter by `deletedAt IS NULL` (soft deletes)
 - Sort by `createdAt DESC` (recent first)
@@ -162,24 +164,25 @@ command completeOrder() {
 ### Memory Store
 
 | Entity Count | Memory Usage |
-|--------------|--------------|
-| 100 | ~50KB |
-| 1,000 | ~500KB |
-| 10,000 | ~5MB |
-| 100,000 | ~50MB |
+| ------------ | ------------ |
+| 100          | ~50KB        |
+| 1,000        | ~500KB       |
+| 10,000       | ~5MB         |
+| 100,000      | ~50MB        |
 
 **Guidelines**:
+
 - Use for <10,000 entities per tenant
 - Perfect for development and testing
 - Not suitable for production-scale data
 
 ### IR Size
 
-| Program Size | IR Size (JSON) |
-|--------------|----------------|
-| Small (10 entities) | ~5KB |
-| Medium (50 entities) | ~25KB |
-| Large (200 entities) | ~100KB |
+| Program Size         | IR Size (JSON) |
+| -------------------- | -------------- |
+| Small (10 entities)  | ~5KB           |
+| Medium (50 entities) | ~25KB          |
+| Large (200 entities) | ~100KB         |
 
 **Note**: IR is compact. Most size comes from entity names and property names.
 
@@ -209,7 +212,7 @@ const runtime2 = new RuntimeEngine(ir, { tenantId: 'tenant-2' });
 // These can run in parallel (different instances)
 await Promise.all([
   runtime1.runCommand('create', { title: 'A' }, { entityName: 'Todo' }),
-  runtime2.runCommand('create', { title: 'B' }, { entityName: 'Todo' })
+  runtime2.runCommand('create', { title: 'B' }, { entityName: 'Todo' }),
 ]);
 ```
 
@@ -242,11 +245,12 @@ entity Todo {
 ```typescript
 const runtime = new RuntimeEngine(ir, {
   userId: 'user-123',
-  debug: true
+  debug: true,
 });
 ```
 
 **Logs**:
+
 - Command execution start/end
 - Guard evaluation results
 - Constraint validation results
@@ -274,7 +278,7 @@ console.log({
   rss: Math.round(used.rss / 1024 / 1024) + 'MB',
   heapTotal: Math.round(used.heapTotal / 1024 / 1024) + 'MB',
   heapUsed: Math.round(used.heapUsed / 1024 / 1024) + 'MB',
-  external: Math.round(used.external / 1024 / 1024) + 'MB'
+  external: Math.round(used.external / 1024 / 1024) + 'MB',
 });
 ```
 
@@ -368,7 +372,7 @@ command updateTitle(title: string) {
 
 ```typescript
 const runtime = new RuntimeEngine(ir, {
-  storeProvider: () => new MemoryStore()  // Not for production
+  storeProvider: () => new MemoryStore(), // Not for production
 });
 ```
 
@@ -379,7 +383,7 @@ const runtime = new RuntimeEngine(ir, {
 ### ❌ Don't: Disable IR caching in production
 
 ```typescript
-const result = compile(source, { cache: false });  // Slow
+const result = compile(source, { cache: false }); // Slow
 ```
 
 **Problem**: Recompiling on every request wastes CPU.

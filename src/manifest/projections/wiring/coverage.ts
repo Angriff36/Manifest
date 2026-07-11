@@ -20,9 +20,7 @@ export function parseConsumersRegistry(raw: unknown): WiringConsumersRegistry {
   }
   const obj = raw as Record<string, unknown>;
   if (obj.$schema !== WIRING_CONSUMERS_SCHEMA) {
-    throw new Error(
-      `Wiring consumers registry $schema must be "${WIRING_CONSUMERS_SCHEMA}"`,
-    );
+    throw new Error(`Wiring consumers registry $schema must be "${WIRING_CONSUMERS_SCHEMA}"`);
   }
   if (!Array.isArray(obj.consumers)) {
     throw new Error('Wiring consumers registry requires a consumers array');
@@ -65,7 +63,7 @@ export function validateWiringCoverage(
   contract: WiringContract,
   registry: WiringConsumersRegistry,
 ): WiringCoverageReport {
-  const capabilityIds = new Set(contract.capabilities.map(c => c.capabilityId));
+  const capabilityIds = new Set(contract.capabilities.map((c) => c.capabilityId));
   const byId = new Map<string, WiringConsumerEntry>();
   for (const c of registry.consumers) {
     byId.set(c.capabilityId, c);
@@ -119,15 +117,17 @@ export function validateWiringCoverage(
     }
   }
 
-  findings.sort((a, b) => a.capabilityId.localeCompare(b.capabilityId) || a.status.localeCompare(b.status));
+  findings.sort(
+    (a, b) => a.capabilityId.localeCompare(b.capabilityId) || a.status.localeCompare(b.status),
+  );
 
   const summary = {
     totalCapabilities: contract.capabilities.length,
-    exposed: findings.filter(f => f.status === 'exposed').length,
-    backendOnly: findings.filter(f => f.status === 'backend-only').length,
-    deferred: findings.filter(f => f.status === 'deferred').length,
-    unwired: findings.filter(f => f.status === 'unwired').length,
-    staleConsumers: findings.filter(f => f.status === 'stale-consumer').length,
+    exposed: findings.filter((f) => f.status === 'exposed').length,
+    backendOnly: findings.filter((f) => f.status === 'backend-only').length,
+    deferred: findings.filter((f) => f.status === 'deferred').length,
+    unwired: findings.filter((f) => f.status === 'unwired').length,
+    staleConsumers: findings.filter((f) => f.status === 'stale-consumer').length,
   };
 
   return {

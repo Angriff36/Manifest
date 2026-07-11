@@ -32,7 +32,9 @@ describe('generateGitHubWorkflow', () => {
     const workflow = generateGitHubWorkflow(['20']);
 
     expect(workflow).toContain('conformance-regen:');
-    expect(workflow).toContain("if: github.ref == 'refs/heads/main' && github.event_name == 'push'");
+    expect(workflow).toContain(
+      "if: github.ref == 'refs/heads/main' && github.event_name == 'push'",
+    );
     expect(workflow).toContain('npm run conformance:regen');
   });
 
@@ -129,10 +131,7 @@ describe('initCiCommand', () => {
 
     await initCiCommand('github', { force: true });
 
-    const content = await fs.readFile(
-      path.join(dir, 'manifest-ci.yml'),
-      'utf-8'
-    );
+    const content = await fs.readFile(path.join(dir, 'manifest-ci.yml'), 'utf-8');
     expect(content).toContain('name: Manifest CI');
   });
 

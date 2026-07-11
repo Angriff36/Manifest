@@ -162,9 +162,7 @@ function emitMaterializedView(
         });
       } else {
         const cronExpr = schedule.cron ?? schedule.interval;
-        refreshStatements.push(
-          `-- Scheduled refresh for ${qualifiedViewName} via pg_cron:`,
-        );
+        refreshStatements.push(`-- Scheduled refresh for ${qualifiedViewName} via pg_cron:`);
         refreshStatements.push(
           `SELECT cron.schedule('refresh_${viewName}', '${cronExpr}', ` +
             `'REFRESH MATERIALIZED VIEW ${qualifiedViewName}');`,
@@ -236,7 +234,11 @@ function buildSelectClause(
   return `SELECT\n  ${cols || '*'}`;
 }
 
-function emitIndex(viewName: string, idx: MaterializedViewIndex, schema: string | undefined): string {
+function emitIndex(
+  viewName: string,
+  idx: MaterializedViewIndex,
+  schema: string | undefined,
+): string {
   const method = idx.method ?? 'btree';
   const unique = idx.unique ? 'UNIQUE ' : '';
   const cols = idx.columns.map((c) => `"${c}"`).join(', ');
@@ -288,7 +290,9 @@ export class MaterializedViewsProjection implements ProjectionTarget {
       return { artifacts: artifact ? [artifact] : [], diagnostics: allDiagnostics };
     }
 
-    const artifacts = options.views.map((view) => emitPerViewArtifact(ir, view, options, allDiagnostics));
+    const artifacts = options.views.map((view) =>
+      emitPerViewArtifact(ir, view, options, allDiagnostics),
+    );
     return { artifacts, diagnostics: allDiagnostics };
   }
 }

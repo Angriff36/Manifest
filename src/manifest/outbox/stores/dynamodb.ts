@@ -171,7 +171,7 @@ export class DynamoDBOutboxStore implements OutboxStore {
         };
       });
       await this.client.send(
-        new this.client.TransactWriteCommand({ TransactItems: transactItems })
+        new this.client.TransactWriteCommand({ TransactItems: transactItems }),
       );
     }
   }
@@ -196,7 +196,7 @@ export class DynamoDBOutboxStore implements OutboxStore {
         ExpressionAttributeNames: { '#st': 'status' },
         ExpressionAttributeValues: { ':pending': 'pending' },
         Limit: batchSize,
-      })
+      }),
     );
     const candidates = (scan.Items ?? []) as OutboxItem[];
     if (candidates.length === 0) return [];
@@ -210,8 +210,7 @@ export class DynamoDBOutboxStore implements OutboxStore {
           new this.client.UpdateCommand({
             TableName: this.tableName,
             Key: this.buildKey(item.entry_id),
-            UpdateExpression:
-              'SET #st = :claimed, #att = #att + :one, #cat = :now',
+            UpdateExpression: 'SET #st = :claimed, #att = #att + :one, #cat = :now',
             ConditionExpression: '#st = :pending',
             ExpressionAttributeNames: {
               '#st': 'status',
@@ -225,7 +224,7 @@ export class DynamoDBOutboxStore implements OutboxStore {
               ':now': Date.now(),
             },
             ReturnValues: 'ALL_NEW',
-          })
+          }),
         );
         if (result.Attributes) {
           claimed.push(itemToEntry(result.Attributes as OutboxItem));
@@ -259,7 +258,7 @@ export class DynamoDBOutboxStore implements OutboxStore {
         },
       }));
       await this.client.send(
-        new this.client.TransactWriteCommand({ TransactItems: transactItems })
+        new this.client.TransactWriteCommand({ TransactItems: transactItems }),
       );
     }
   }
@@ -288,7 +287,7 @@ export class DynamoDBOutboxStore implements OutboxStore {
         },
       }));
       await this.client.send(
-        new this.client.TransactWriteCommand({ TransactItems: transactItems })
+        new this.client.TransactWriteCommand({ TransactItems: transactItems }),
       );
     }
   }

@@ -1,6 +1,6 @@
 ---
-title: "Prisma Projection"
-description: "Generate a Prisma schema from compiled Manifest IR. Compile-time only, app-agnostic, with full @relation wiring and structured diagnostics for unhandleable shapes."
+title: 'Prisma Projection'
+description: 'Generate a Prisma schema from compiled Manifest IR. Compile-time only, app-agnostic, with full @relation wiring and structured diagnostics for unhandleable shapes.'
 ---
 
 > **HAND-CURATED GUIDE.** Unlike most files under `docs/codedocs/`, this guide
@@ -125,12 +125,12 @@ Any property whose **resolved** Prisma scalar is `Decimal` (either via the defau
 
 `emitRelationship()` in `generator.ts` consumes one `IRRelationship` and emits the appropriate Prisma field(s). The four handled cases:
 
-| IR kind | Emitted lines | Notes |
-| --- | --- | --- |
-| `hasMany name: T` | `name T[]` | Parent side of 1:N |
-| `hasOne name: T` | `name T?` | Parent side of 1:1 |
-| `belongsTo name: T` | `nameId <fkType>` + `name T @relation(fields: [nameId], references: [id])` | Child side; FK type = target's `id` Prisma type |
-| `ref name: T` | same as `belongsTo` | v0.9.1+: warns on missing back-relation too (was silently exempt pre-v0.9.1) |
+| IR kind             | Emitted lines                                                              | Notes                                                                        |
+| ------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `hasMany name: T`   | `name T[]`                                                                 | Parent side of 1:N                                                           |
+| `hasOne name: T`    | `name T?`                                                                  | Parent side of 1:1                                                           |
+| `belongsTo name: T` | `nameId <fkType>` + `name T @relation(fields: [nameId], references: [id])` | Child side; FK type = target's `id` Prisma type                              |
+| `ref name: T`       | same as `belongsTo`                                                        | v0.9.1+: warns on missing back-relation too (was silently exempt pre-v0.9.1) |
 
 **1:1 vs 1:N detection** is done by inspecting the opposite side. The helper `findOppositeRelations(fromEntity, rel, ir)` finds all relationships on the target entity that point back at the source entity. If any opposite is `kind: 'hasOne'`, the FK is marked `@unique` (1:1); otherwise the FK is plain (1:N).
 
@@ -176,11 +176,13 @@ manifest generate <ir> -p <projection> -s <surface> -o <output>
 ```
 
 Internally (`packages/cli/src/commands/generate.ts`):
+
 - If `--projection nextjs`: existing CLI-specific multi-surface orchestration (route/command/dispatcher/types/client/all fan-out).
 - Else: calls `dispatch({ ir, projectionName, surface, options })` from `packages/cli/src/projections/dispatch.ts`. The dispatch helper calls `registerCliExtraProjections()` (idempotent), looks up the projection by name via `getProjection(name)` from the core registry, and invokes `projection.generate(...)`. No name special-casing in the dispatch path.
 - **Error-diag propagation (v0.9.1+):** after the dispatch returns, the CLI filters `result.diagnostics` for `severity: 'error'`. If any are present, the CLI throws with the list of diagnostic codes; the outer `try/catch` in `generateCommand` increments `errorCount` and the process exits non-zero. Pre-v0.9.1 the generic dispatch path treated all diagnostics as log-only, so a projection that returned errors (UNKNOWN_SURFACE, PRISMA_UNKNOWN_TYPE, PRISMA_AMBIGUOUS_NUMBER, …) still exited 0 — CI couldn't detect generation failure. A spawn-the-binary regression test lives at `packages/cli/src/commands/generate.dispatch.test.ts`.
 
 `packages/cli/src/projections/register-extras.ts` is the single source of truth for which projections the CLI ships beyond the core builtins. Adding a future projection packaged as its own workspace:
+
 1. Add the workspace dep to `packages/cli/package.json` (as `link:` or `workspace:` per the project's convention).
 2. Import its `ProjectionTarget` in `register-extras.ts`.
 3. Register it inside `registerCliExtraProjections()`.
@@ -192,6 +194,7 @@ Core's `src/manifest/projections/builtins.ts` is never touched.
 There is no longer a separate package for the Prisma projection. Source lives at `src/manifest/projections/prisma/` and is included in the main package's `tsconfig.lib.json` glob (`src/manifest/**/*`). The built dist lands at `dist/manifest/projections/prisma/*.js`, which the main package's `exports` map exposes at `./projections/prisma`.
 
 Consumers needing programmatic access import via either of:
+
 ```ts
 import { PrismaProjection } from '@angriff36/manifest/projections/prisma';
 import { PrismaProjection } from '@angriff36/manifest/projections';

@@ -9,6 +9,7 @@ As a developer building applications with Manifest, I want to persist entity dat
 **Implementation Date:** 2026-02-05
 
 Per `docs/spec/adapters.md`:
+
 - Memory store: Implemented ✅
 - localStorage: Implemented ✅
 - PostgreSQL: Implemented ✅ (in `src/manifest/stores.node.ts`)
@@ -37,6 +38,7 @@ Per `docs/spec/adapters.md`:
 **Implementation Location:** `src/manifest/stores.node.ts`
 
 **Key Features:**
+
 - `PostgresStore<T>`: Full PostgreSQL adapter with connection pooling
 - `SupabaseStore<T>`: Supabase adapter with client integration
 - Both implement the `Store<T>` interface
@@ -44,6 +46,7 @@ Per `docs/spec/adapters.md`:
 - GIN indexing for efficient JSON queries in PostgreSQL
 
 **Browser vs Server-Side:**
+
 - Browser runtime: Only supports `memory` and `localStorage` (security restriction)
 - Server-side: Use `storeProvider` option to inject PostgresStore or SupabaseStore
 
@@ -58,9 +61,9 @@ const runtime = new RuntimeEngine(ir, context, {
     // Use PostgreSQL for all entities
     return new PostgresStore({
       connectionString: process.env.DATABASE_URL,
-      tableName: entityName.toLowerCase()
+      tableName: entityName.toLowerCase(),
     });
-  }
+  },
 });
 ```
 

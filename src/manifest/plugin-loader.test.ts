@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  satisfiesSemVerRange,
-  validatePluginShape,
-} from './plugin-loader';
+import { satisfiesSemVerRange, validatePluginShape } from './plugin-loader';
 import type { ManifestPlugin } from './plugin-api';
 
 describe('plugin-loader', () => {
@@ -106,25 +103,39 @@ describe('plugin-loader', () => {
     });
 
     it('rejects missing manifest.name', () => {
-      const { errors } = validatePluginShape({
-        manifest: { version: '1.0.0', pluginApiVersion: '1', manifestVersion: '>=1.0.0' },
-      }, 'test-module');
+      const { errors } = validatePluginShape(
+        {
+          manifest: { version: '1.0.0', pluginApiVersion: '1', manifestVersion: '>=1.0.0' },
+        },
+        'test-module',
+      );
       expect(errors).toHaveLength(1);
       expect(errors[0]).toContain('manifest.name is missing');
     });
 
     it('rejects missing manifest.version', () => {
-      const { errors } = validatePluginShape({
-        manifest: { name: 'test', pluginApiVersion: '1', manifestVersion: '>=1.0.0' },
-      }, 'test-module');
+      const { errors } = validatePluginShape(
+        {
+          manifest: { name: 'test', pluginApiVersion: '1', manifestVersion: '>=1.0.0' },
+        },
+        'test-module',
+      );
       expect(errors).toHaveLength(1);
       expect(errors[0]).toContain('manifest.version is missing');
     });
 
     it('rejects wrong pluginApiVersion', () => {
-      const { errors } = validatePluginShape({
-        manifest: { name: 'test', version: '1.0.0', pluginApiVersion: '2', manifestVersion: '>=1.0.0' },
-      }, 'test-module');
+      const { errors } = validatePluginShape(
+        {
+          manifest: {
+            name: 'test',
+            version: '1.0.0',
+            pluginApiVersion: '2',
+            manifestVersion: '>=1.0.0',
+          },
+        },
+        'test-module',
+      );
       expect(errors).toHaveLength(1);
       expect(errors[0]).toContain('pluginApiVersion is "2"');
     });

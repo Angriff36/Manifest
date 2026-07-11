@@ -42,10 +42,7 @@ interface UnpackOptions {
 /**
  * `manifest pack` — convert a JSON IR file to a binary `.mir` file.
  */
-export async function packCommand(
-  input: string,
-  options: PackOptions = {}
-): Promise<void> {
+export async function packCommand(input: string, options: PackOptions = {}): Promise<void> {
   const resolvedInput = path.resolve(process.cwd(), input);
 
   let raw: string;
@@ -78,21 +75,28 @@ export async function packCommand(
 
   const stats = compareSizes(ir as Parameters<typeof compareSizes>[0]);
 
-  console.log(chalk.green(`Packed ${path.relative(process.cwd(), resolvedInput)} → ${path.relative(process.cwd(), outputPath)}`));
+  console.log(
+    chalk.green(
+      `Packed ${path.relative(process.cwd(), resolvedInput)} → ${path.relative(process.cwd(), outputPath)}`,
+    ),
+  );
   console.log(chalk.gray(`  JSON:  ${stats.jsonBytes} bytes`));
-  console.log(chalk.gray(`  Binary: ${stats.binaryBytes} bytes (${stats.savingsPercent}% smaller)`));
+  console.log(
+    chalk.gray(`  Binary: ${stats.binaryBytes} bytes (${stats.savingsPercent}% smaller)`),
+  );
   if (!outputPath.endsWith(MIR_EXTENSION)) {
-    console.log(chalk.yellow(`  Note: output does not end in ${MIR_EXTENSION} — consider renaming for consistency`));
+    console.log(
+      chalk.yellow(
+        `  Note: output does not end in ${MIR_EXTENSION} — consider renaming for consistency`,
+      ),
+    );
   }
 }
 
 /**
  * `manifest unpack` — convert a binary `.mir` file back to JSON.
  */
-export async function unpackCommand(
-  input: string,
-  options: UnpackOptions = {}
-): Promise<void> {
+export async function unpackCommand(input: string, options: UnpackOptions = {}): Promise<void> {
   const resolvedInput = path.resolve(process.cwd(), input);
 
   let buf: Uint8Array;
@@ -124,14 +128,16 @@ export async function unpackCommand(
     : deriveJsonPath(resolvedInput);
 
   const indent = options.pretty === false ? undefined : 2;
-  const json = indent !== undefined
-    ? JSON.stringify(ir, null, indent)
-    : JSON.stringify(ir);
+  const json = indent !== undefined ? JSON.stringify(ir, null, indent) : JSON.stringify(ir);
 
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
   await fs.writeFile(outputPath, json, 'utf-8');
 
-  console.log(chalk.green(`Unpacked ${path.relative(process.cwd(), resolvedInput)} → ${path.relative(process.cwd(), outputPath)}`));
+  console.log(
+    chalk.green(
+      `Unpacked ${path.relative(process.cwd(), resolvedInput)} → ${path.relative(process.cwd(), outputPath)}`,
+    ),
+  );
   console.log(chalk.gray(`  Format version: ${info.formatVersion}`));
   console.log(chalk.gray(`  Payload:        ${info.payloadSize} bytes`));
   console.log(chalk.gray(`  Total:          ${info.totalSize} bytes`));

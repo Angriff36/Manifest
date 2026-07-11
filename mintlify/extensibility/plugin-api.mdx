@@ -1,7 +1,7 @@
 ---
-title: "Plugin API for extending Manifest tooling and runtime"
-sidebarTitle: "Plugin API"
-description: "Extend Manifest with projections, store adapters, audit sinks, expression builtins, and CLI commands through a stable plugin contract that never touches language semantics."
+title: 'Plugin API for extending Manifest tooling and runtime'
+sidebarTitle: 'Plugin API'
+description: 'Extend Manifest with projections, store adapters, audit sinks, expression builtins, and CLI commands through a stable plugin contract that never touches language semantics.'
 ---
 
 The Plugin API is a stable contract for extending Manifest tooling and runtime without touching language semantics. Plugins are declared in `manifest.config.yaml`, loaded by the plugin loader, and may contribute projections, store adapters, audit sinks, expression builtins, and CLI commands. It is verified against `src/manifest/plugin-api.ts` and `src/manifest/plugin-loader.ts`.
@@ -30,7 +30,12 @@ export default definePlugin({
     },
   ],
   builtins: [
-    { name: 'slugify', purity: 'pure', arity: 1, fn: (s) => String(s).toLowerCase().replace(/\s+/g, '-') },
+    {
+      name: 'slugify',
+      purity: 'pure',
+      arity: 1,
+      fn: (s) => String(s).toLowerCase().replace(/\s+/g, '-'),
+    },
   ],
 });
 ```
@@ -87,7 +92,8 @@ You can inspect declared plugins with the [`manifest plugins list`](/cli/command
 ## Notes and limitations
 
 <Note>
-The API has no IR-mutation hook by design: plugins extend tooling and runtime, never language semantics.
+  The API has no IR-mutation hook by design: plugins extend tooling and runtime, never language
+  semantics.
 </Note>
 
 The store provider only resolves a store when a `scheme` argument is supplied; without a scheme it returns `undefined`. The SemVer matcher is intentionally minimal and recognizes only the forms listed above. Version incompatibility is non-fatal (warn-and-skip), as are projection registration failures and duplicate builtin/sink registrations, so a partially-loaded plugin set is possible — inspect the returned `diagnostics` to detect skipped contributions.

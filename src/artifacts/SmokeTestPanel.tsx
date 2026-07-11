@@ -25,13 +25,15 @@ export function SmokeTestPanel({ clientCode, ast, disabled }: SmokeTestPanelProp
         total: 1,
         passed: 0,
         failed: 1,
-        results: [{
-          name: 'Test Runner',
-          passed: false,
-          error: (err as Error).message || String(err),
-          duration: 0
-        }],
-        duration: 0
+        results: [
+          {
+            name: 'Test Runner',
+            passed: false,
+            error: (err as Error).message || String(err),
+            duration: 0,
+          },
+        ],
+        duration: 0,
       });
     } finally {
       setRunning(false);
@@ -59,9 +61,13 @@ export function SmokeTestPanel({ clientCode, ast, disabled }: SmokeTestPanelProp
       {report && (
         <div className="p-3 space-y-3">
           <div className="flex items-center gap-4 text-sm">
-            <div className={`flex items-center gap-1 ${report.failed === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            <div
+              className={`flex items-center gap-1 ${report.failed === 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+            >
               {report.failed === 0 ? <CheckCircle size={14} /> : <XCircle size={14} />}
-              <span>{report.passed}/{report.total} passed</span>
+              <span>
+                {report.passed}/{report.total} passed
+              </span>
             </div>
             <div className="flex items-center gap-1 text-gray-500">
               <Clock size={14} />

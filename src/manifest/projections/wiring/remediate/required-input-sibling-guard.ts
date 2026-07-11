@@ -30,13 +30,7 @@ export function proveSiblingFalsyGuard(options: {
   /** When true, a missing/unproven guard makes the repair unsafe. */
   required: boolean;
 }): SiblingGuardProof | { reject: string } | undefined {
-  const {
-    sf,
-    targetCall,
-    sourceExpression,
-    qualifyingSiblingCalls,
-    required,
-  } = options;
+  const { sf, targetCall, sourceExpression, qualifyingSiblingCalls, required } = options;
 
   const targetFn = enclosingFunction(targetCall);
   if (!targetFn) {
@@ -165,11 +159,7 @@ export function insertEarlyReturnGuard(
   capabilityId: string,
   sourceExpression: string,
   statement: string,
-  callMatches: (
-    node: ts.CallExpression,
-    content: string,
-    capabilityId: string,
-  ) => boolean,
+  callMatches: (node: ts.CallExpression, content: string, capabilityId: string) => boolean,
   parseSource: (fileName: string, content: string) => ts.SourceFile,
 ): string | null {
   const sf = parseSource(fileName, content);

@@ -17,13 +17,7 @@
  * for validator method generation.
  */
 
-import type {
-  IR,
-  IREntity,
-  IRCommand,
-  IRType,
-  IREnum,
-} from '../../ir';
+import type { IR, IREntity, IRCommand, IRType, IREnum } from '../../ir';
 import type {
   ProjectionTarget,
   ProjectionRequest,
@@ -279,7 +273,12 @@ function generateEntityModel(
     lines.push(`  }`);
     lines.push('');
     lines.push(`  @override`);
-    lines.push(`  int get hashCode => Object.hash(id, ${entity.properties.filter(p => p.name !== 'id').map(p => camelCase(p.name)).join(', ')});`);
+    lines.push(
+      `  int get hashCode => Object.hash(id, ${entity.properties
+        .filter((p) => p.name !== 'id')
+        .map((p) => camelCase(p.name))
+        .join(', ')});`,
+    );
   }
 
   // Computed property getters
@@ -291,7 +290,9 @@ function generateEntityModel(
       lines.push(`  /// Computed: ${cp.name}`);
       lines.push(`  ${dartType}${nullable} get ${camelCase(cp.name)} {`);
       lines.push(`    // Expression: ${expressionToDart(cp.expression)}`);
-      lines.push(`    throw UnimplementedError('Computed property ${cp.name} must be evaluated by the server');`);
+      lines.push(
+        `    throw UnimplementedError('Computed property ${cp.name} must be evaluated by the server');`,
+      );
       lines.push(`  }`);
     }
   }
@@ -308,13 +309,17 @@ function generateEntityModel(
       if (chain.includes('.min(')) {
         const match = chain.match(/\.min\((\d+)\)/);
         if (match) {
-          lines.push(`      if (${fieldName}! < ${match[1]}) return '${propName} must be >= ${match[1]}';`);
+          lines.push(
+            `      if (${fieldName}! < ${match[1]}) return '${propName} must be >= ${match[1]}';`,
+          );
         }
       }
       if (chain.includes('.max(')) {
         const match = chain.match(/\.max\((\d+)\)/);
         if (match) {
-          lines.push(`      if (${fieldName}! > ${match[1]}) return '${propName} must be <= ${match[1]}';`);
+          lines.push(
+            `      if (${fieldName}! > ${match[1]}) return '${propName} must be <= ${match[1]}';`,
+          );
         }
       }
       lines.push(`    }`);
@@ -326,13 +331,17 @@ function generateEntityModel(
       if (chain.includes('.min(')) {
         const match = chain.match(/\.min\((\d+)\)/);
         if (match) {
-          lines.push(`      if (${fieldName}!.length < ${match[1]}) return '${propName} must be at least ${match[1]} characters';`);
+          lines.push(
+            `      if (${fieldName}!.length < ${match[1]}) return '${propName} must be at least ${match[1]} characters';`,
+          );
         }
       }
       if (chain.includes('.max(')) {
         const match = chain.match(/\.max\((\d+)\)/);
         if (match) {
-          lines.push(`      if (${fieldName}!.length > ${match[1]}) return '${propName} must be at most ${match[1]} characters';`);
+          lines.push(
+            `      if (${fieldName}!.length > ${match[1]}) return '${propName} must be at most ${match[1]} characters';`,
+          );
         }
       }
       lines.push(`    }`);
@@ -343,7 +352,9 @@ function generateEntityModel(
       const regexMatch = chain.match(/\.regex\(\/(.+?)\/\)/);
       if (regexMatch) {
         lines.push(`    if (${fieldName} != null) {`);
-        lines.push(`      if (!RegExp(r'${regexMatch[1]}').hasMatch(${fieldName}!)) return '${propName} format is invalid';`);
+        lines.push(
+          `      if (!RegExp(r'${regexMatch[1]}').hasMatch(${fieldName}!)) return '${propName} format is invalid';`,
+        );
         lines.push(`    }`);
       }
     }
@@ -512,7 +523,9 @@ function generateCommandModel(
     lines.push('');
     lines.push(`  factory ${name}Return.fromJson(Map<String, dynamic> json) {`);
     lines.push(`    return ${name}Return(`);
-    lines.push(`      value: ${generateJsonParse('value', command.returns, dartType, diagnostics)},`);
+    lines.push(
+      `      value: ${generateJsonParse('value', command.returns, dartType, diagnostics)},`,
+    );
     lines.push(`    );`);
     lines.push(`  }`);
     lines.push('');
@@ -595,7 +608,9 @@ function generateClient(
     lines.push(`  Future<List<${name}>> list${name}s() async {`);
     lines.push(`    final response = await _dio.get('/api/${snakeCase(entity.name)}s');`);
     lines.push(`    final List<dynamic> data = response.data as List<dynamic>;`);
-    lines.push(`    return data.map((json) => ${name}.fromJson(json as Map<String, dynamic>)).toList();`);
+    lines.push(
+      `    return data.map((json) => ${name}.fromJson(json as Map<String, dynamic>)).toList();`,
+    );
     lines.push(`  }`);
 
     // get method
@@ -636,7 +651,9 @@ function generateClient(
       lines.push(`  ${returnType} ${camelCase(command.name)}(${name}Params params) async {`);
       if (command.entity) {
         lines.push(`    final response = await _dio.post(`);
-        lines.push(`      '/api/${snakeCase(command.entity)}s/\${params.id ?? ""}/${snakeCase(command.name)}',`);
+        lines.push(
+          `      '/api/${snakeCase(command.entity)}s/\${params.id ?? ""}/${snakeCase(command.name)}',`,
+        );
         lines.push(`      data: params.toJson(),`);
         lines.push(`    );`);
       } else {
@@ -651,9 +668,13 @@ function generateClient(
     } else {
       lines.push(`  ${returnType} ${camelCase(command.name)}() async {`);
       if (command.entity) {
-        lines.push(`    final response = await _dio.post('/api/${snakeCase(command.entity)}s/${snakeCase(command.name)}');`);
+        lines.push(
+          `    final response = await _dio.post('/api/${snakeCase(command.entity)}s/${snakeCase(command.name)}');`,
+        );
       } else {
-        lines.push(`    final response = await _dio.post('/api/commands/${snakeCase(command.name)}');`);
+        lines.push(
+          `    final response = await _dio.post('/api/commands/${snakeCase(command.name)}');`,
+        );
       }
       if (hasReturn) {
         lines.push(`    return ${name}Return.fromJson(response.data as Map<String, dynamic>);`);
@@ -715,7 +736,9 @@ function generateProviders(
       // Family provider for single
       lines.push('');
       lines.push(`/// Async provider for a single ${name} by id.`);
-      lines.push(`final ${nameLower}Provider = FutureProvider.family<${name}, String>((ref, id) async {`);
+      lines.push(
+        `final ${nameLower}Provider = FutureProvider.family<${name}, String>((ref, id) async {`,
+      );
       lines.push(`  final client = ref.watch(${className.toLowerCase()}Provider);`);
       lines.push(`  return client.get${name}(id);`);
       lines.push(`});`);
@@ -794,7 +817,9 @@ function generateProviders(
       lines.push(`  }`);
       lines.push(`}`);
       lines.push('');
-      lines.push(`final ${nameLower}ListNotifierProvider = ChangeNotifierProvider<${name}ListNotifier>((ref) {`);
+      lines.push(
+        `final ${nameLower}ListNotifierProvider = ChangeNotifierProvider<${name}ListNotifier>((ref) {`,
+      );
       lines.push(`  final client = ref.watch(${className.toLowerCase()}Provider);`);
       lines.push(`  return ${name}ListNotifier(client);`);
       lines.push(`});`);
@@ -904,7 +929,10 @@ function generateHeader(opts: ReturnType<typeof normalizeOptions>): string[] {
   ];
 }
 
-function generateImports(opts: ReturnType<typeof normalizeOptions>, includeProviders: boolean): string[] {
+function generateImports(
+  opts: ReturnType<typeof normalizeOptions>,
+  includeProviders: boolean,
+): string[] {
   const lines: string[] = [];
   lines.push(`import 'dart:typed_data';`);
   lines.push(`import 'package:dio/dio.dart';`);
@@ -927,7 +955,8 @@ function generateImports(opts: ReturnType<typeof normalizeOptions>, includeProvi
 
 export class DartProjection implements ProjectionTarget {
   readonly name = 'dart';
-  readonly description = 'Dart/Flutter model classes with fromJson/toJson and state management hooks';
+  readonly description =
+    'Dart/Flutter model classes with fromJson/toJson and state management hooks';
   readonly surfaces = [
     'dart.entity',
     'dart.command',
@@ -957,11 +986,13 @@ export class DartProjection implements ProjectionTarget {
       default:
         return {
           artifacts: [],
-          diagnostics: [{
-            severity: 'error',
-            code: 'DART_UNKNOWN_SURFACE',
-            message: `Unknown surface "${request.surface}". Expected one of: ${this.surfaces.join(', ')}`,
-          }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'DART_UNKNOWN_SURFACE',
+              message: `Unknown surface "${request.surface}". Expected one of: ${this.surfaces.join(', ')}`,
+            },
+          ],
         };
     }
   }
@@ -973,18 +1004,20 @@ export class DartProjection implements ProjectionTarget {
     diagnostics: ProjectionDiagnostic[],
   ): ProjectionResult {
     const entities = request.entity
-      ? ir.entities.filter(e => e.name === request.entity)
+      ? ir.entities.filter((e) => e.name === request.entity)
       : ir.entities;
 
     if (request.entity && entities.length === 0) {
       return {
         artifacts: [],
-        diagnostics: [{
-          severity: 'error',
-          code: 'DART_ENTITY_NOT_FOUND',
-          message: `Entity "${request.entity}" not found in IR`,
-          entity: request.entity,
-        }],
+        diagnostics: [
+          {
+            severity: 'error',
+            code: 'DART_ENTITY_NOT_FOUND',
+            message: `Entity "${request.entity}" not found in IR`,
+            entity: request.entity,
+          },
+        ],
       };
     }
 
@@ -1012,17 +1045,19 @@ export class DartProjection implements ProjectionTarget {
     diagnostics: ProjectionDiagnostic[],
   ): ProjectionResult {
     const commands = request.command
-      ? ir.commands.filter(c => c.name === request.command)
+      ? ir.commands.filter((c) => c.name === request.command)
       : ir.commands;
 
     if (request.command && commands.length === 0) {
       return {
         artifacts: [],
-        diagnostics: [{
-          severity: 'error',
-          code: 'DART_COMMAND_NOT_FOUND',
-          message: `Command "${request.command}" not found in IR`,
-        }],
+        diagnostics: [
+          {
+            severity: 'error',
+            code: 'DART_COMMAND_NOT_FOUND',
+            message: `Command "${request.command}" not found in IR`,
+          },
+        ],
       };
     }
 
@@ -1075,12 +1110,14 @@ export class DartProjection implements ProjectionTarget {
     }
 
     return {
-      artifacts: [{
-        id: 'dart.models',
-        pathHint: 'lib/models/manifest_models.dart',
-        contentType: 'dart',
-        code: allLines.join('\n'),
-      }],
+      artifacts: [
+        {
+          id: 'dart.models',
+          pathHint: 'lib/models/manifest_models.dart',
+          contentType: 'dart',
+          code: allLines.join('\n'),
+        },
+      ],
       diagnostics,
     };
   }
@@ -1096,12 +1133,14 @@ export class DartProjection implements ProjectionTarget {
     allLines.push(...generateClient(ir, opts, diagnostics));
 
     return {
-      artifacts: [{
-        id: 'dart.client',
-        pathHint: 'lib/client/manifest_client.dart',
-        contentType: 'dart',
-        code: allLines.join('\n'),
-      }],
+      artifacts: [
+        {
+          id: 'dart.client',
+          pathHint: 'lib/client/manifest_client.dart',
+          contentType: 'dart',
+          code: allLines.join('\n'),
+        },
+      ],
       diagnostics,
     };
   }
@@ -1117,12 +1156,14 @@ export class DartProjection implements ProjectionTarget {
     allLines.push(...generateProviders(ir, opts, diagnostics));
 
     return {
-      artifacts: [{
-        id: 'dart.providers',
-        pathHint: 'lib/providers/manifest_providers.dart',
-        contentType: 'dart',
-        code: allLines.join('\n'),
-      }],
+      artifacts: [
+        {
+          id: 'dart.providers',
+          pathHint: 'lib/providers/manifest_providers.dart',
+          contentType: 'dart',
+          code: allLines.join('\n'),
+        },
+      ],
       diagnostics,
     };
   }

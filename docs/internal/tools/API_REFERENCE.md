@@ -24,7 +24,7 @@ const { ir, diagnostics } = await compileToIR(`
   }
 `);
 
-if (diagnostics.some(d => d.severity === 'error')) {
+if (diagnostics.some((d) => d.severity === 'error')) {
   console.error('Errors:', diagnostics);
   process.exit(1);
 }
@@ -33,13 +33,15 @@ console.log('IR:', ir);
 ```
 
 **Parameters:**
+
 - `source`: Manifest source code
 
 **Returns:**
+
 ```typescript
 interface CompileResult {
-  ir?: IR;                              // Compiled IR if successful
-  diagnostics: Diagnostic[];            // Compilation errors/warnings
+  ir?: IR; // Compiled IR if successful
+  diagnostics: Diagnostic[]; // Compilation errors/warnings
 }
 ```
 
@@ -59,6 +61,7 @@ constructor(
 ```
 
 **Parameters:**
+
 - `ir`: Compiled IR from `compileToIR()`
 - `context.userId`: User identifier for authorization
 - `context.tenantId`: Tenant identifier for multi-tenancy
@@ -70,9 +73,13 @@ constructor(
 Executes a command on an entity.
 
 ```typescript
-const result = await runtime.runCommand('create', {
-  title: 'Learn Manifest'
-}, { entityName: 'Todo' });
+const result = await runtime.runCommand(
+  'create',
+  {
+    title: 'Learn Manifest',
+  },
+  { entityName: 'Todo' },
+);
 
 if (result.success) {
   console.log('Created:', result.result);
@@ -89,33 +96,36 @@ if (result.success) {
 ```
 
 **Returns:**
+
 ```typescript
 interface CommandResult {
-  success: boolean;                     // True if command succeeded
-  result?: unknown;                     // Command result value
-  error?: string;                       // Error message (if failed)
-  guardFailure?: GuardFailure;          // Guard failure details (if guard failed)
-  policyDenial?: PolicyDenial;          // Policy denial details (if policy denied)
-  constraintOutcomes?: ConstraintOutcome[];  // Constraint evaluation results
-  emittedEvents: EmittedEvent[];        // Events emitted during execution
+  success: boolean; // True if command succeeded
+  result?: unknown; // Command result value
+  error?: string; // Error message (if failed)
+  guardFailure?: GuardFailure; // Guard failure details (if guard failed)
+  policyDenial?: PolicyDenial; // Policy denial details (if policy denied)
+  constraintOutcomes?: ConstraintOutcome[]; // Constraint evaluation results
+  emittedEvents: EmittedEvent[]; // Events emitted during execution
 }
 
 interface GuardFailure {
-  index: number;                        // 1-based guard index
-  expression: IRExpression;             // Guard expression AST
-  formatted: string;                    // Human-readable expression
-  resolved?: Array<{                    // Resolved values for debugging
+  index: number; // 1-based guard index
+  expression: IRExpression; // Guard expression AST
+  formatted: string; // Human-readable expression
+  resolved?: Array<{
+    // Resolved values for debugging
     expression: string;
     value: unknown;
   }>;
 }
 
 interface PolicyDenial {
-  policyName: string;                   // Name of denying policy
-  expression: IRExpression;             // Policy expression AST
-  formatted: string;                    // Human-readable expression
-  message?: string;                     // Optional policy message
-  resolved?: Array<{                    // Resolved values for debugging
+  policyName: string; // Name of denying policy
+  expression: IRExpression; // Policy expression AST
+  formatted: string; // Human-readable expression
+  message?: string; // Optional policy message
+  resolved?: Array<{
+    // Resolved values for debugging
     expression: string;
     value: unknown;
   }>;
@@ -123,6 +133,7 @@ interface PolicyDenial {
 ```
 
 **For API responses**, use the normalization helper:
+
 ```typescript
 import { normalizeCommandResult } from '@angriff36/manifest/api-diagnostics';
 
@@ -163,14 +174,14 @@ Intermediate Representation - compiled Manifest program.
 
 ```typescript
 interface IR {
-  version: string;                      // IR schema version
-  contentHash: string;                  // Hash of source content
-  irHash: string;                       // Hash of IR structure
-  compilerVersion: string;              // Compiler version
-  schemaVersion: string;                // Schema version
-  compiledAt: string;                   // ISO timestamp
-  entities: Entity[];                   // Entity definitions
-  modules?: Module[];                   // Module definitions (optional)
+  version: string; // IR schema version
+  contentHash: string; // Hash of source content
+  irHash: string; // Hash of IR structure
+  compilerVersion: string; // Compiler version
+  schemaVersion: string; // Schema version
+  compiledAt: string; // ISO timestamp
+  entities: Entity[]; // Entity definitions
+  modules?: Module[]; // Module definitions (optional)
 }
 ```
 
@@ -180,14 +191,14 @@ Entity definition from IR.
 
 ```typescript
 interface Entity {
-  name: string;                         // Entity name
-  properties: Property[];               // Entity properties
-  commands?: Command[];                 // Entity commands
-  policies?: Policy[];                  // Authorization policies
-  constraints?: Constraint[];           // Entity-level constraints
-  computed?: ComputedProperty[];        // Computed properties
-  relationships?: Relationship[];       // Entity relationships
-  metadata?: Record<string, unknown>;   // Custom metadata
+  name: string; // Entity name
+  properties: Property[]; // Entity properties
+  commands?: Command[]; // Entity commands
+  policies?: Policy[]; // Authorization policies
+  constraints?: Constraint[]; // Entity-level constraints
+  computed?: ComputedProperty[]; // Computed properties
+  relationships?: Relationship[]; // Entity relationships
+  metadata?: Record<string, unknown>; // Custom metadata
 }
 ```
 
@@ -197,15 +208,16 @@ Entity property definition.
 
 ```typescript
 interface Property {
-  name: string;                         // Property name
-  type: PropertyType;                   // Property type
-  optional?: boolean;                   // Is optional
-  default?: unknown;                    // Default value
-  constraints?: Constraint[];           // Property-level constraints
+  name: string; // Property name
+  type: PropertyType; // Property type
+  optional?: boolean; // Is optional
+  default?: unknown; // Default value
+  constraints?: Constraint[]; // Property-level constraints
 }
 ```
 
 **Property Types:**
+
 - `string`
 - `number`
 - `boolean`
@@ -221,13 +233,13 @@ Command definition.
 
 ```typescript
 interface Command {
-  name: string;                         // Command name
-  parameters?: Parameter[];             // Command parameters
-  guards?: Guard[];                     // Guard expressions
-  mutations?: Mutation[];               // State mutations
-  actions?: Action[];                   // Side effects
-  emits?: EventEmit[];                  // Event emissions
-  constraints?: Constraint[];           // Command-level constraints
+  name: string; // Command name
+  parameters?: Parameter[]; // Command parameters
+  guards?: Guard[]; // Guard expressions
+  mutations?: Mutation[]; // State mutations
+  actions?: Action[]; // Side effects
+  emits?: EventEmit[]; // Event emissions
+  constraints?: Constraint[]; // Command-level constraints
   metadata?: Record<string, unknown>;
 }
 ```
@@ -238,10 +250,10 @@ Authorization policy.
 
 ```typescript
 interface Policy {
-  name: string;                         // Policy name
-  scope: 'read' | 'execute' | 'all';    // Policy scope
-  effect: 'allow' | 'deny';             // Allow or deny
-  condition: string;                    // Boolean expression
+  name: string; // Policy name
+  scope: 'read' | 'execute' | 'all'; // Policy scope
+  effect: 'allow' | 'deny'; // Allow or deny
+  condition: string; // Boolean expression
 }
 ```
 
@@ -251,8 +263,8 @@ Guard expression.
 
 ```typescript
 interface Guard {
-  expression: string;                   // Guard expression
-  description?: string;                 // Human-readable description
+  expression: string; // Guard expression
+  description?: string; // Human-readable description
 }
 ```
 
@@ -262,10 +274,10 @@ Validation constraint.
 
 ```typescript
 interface Constraint {
-  name: string;                         // Constraint name
-  expression: string;                   // Constraint expression
-  severity: 'ok' | 'warn' | 'block';    // Severity level
-  message?: string;                     // Error message
+  name: string; // Constraint name
+  expression: string; // Constraint expression
+  severity: 'ok' | 'warn' | 'block'; // Severity level
+  message?: string; // Error message
 }
 ```
 
@@ -275,8 +287,8 @@ Side effect action.
 
 ```typescript
 interface Action {
-  kind: 'persist' | 'publish' | 'effect';  // Action kind
-  expression: string;                   // Action expression
+  kind: 'persist' | 'publish' | 'effect'; // Action kind
+  expression: string; // Action expression
   options?: Record<string, unknown>;
 }
 ```
@@ -287,9 +299,9 @@ Event emission definition.
 
 ```typescript
 interface EventEmit {
-  name: string;                         // Event name
-  channel?: string;                     // Event channel (default: 'default')
-  payload: Record<string, string>;      // Payload mapping
+  name: string; // Event name
+  channel?: string; // Event channel (default: 'default')
+  payload: Record<string, string>; // Payload mapping
 }
 ```
 
@@ -299,11 +311,11 @@ Emitted event instance.
 
 ```typescript
 interface Event {
-  id: string;                           // Event ID
-  name: string;                         // Event name
-  channel: string;                      // Event channel
-  payload: Record<string, unknown>;     // Event payload
-  timestamp: string;                    // ISO timestamp
+  id: string; // Event ID
+  name: string; // Event name
+  channel: string; // Event channel
+  payload: Record<string, unknown>; // Event payload
+  timestamp: string; // ISO timestamp
   metadata?: Record<string, unknown>;
 }
 ```
@@ -315,9 +327,10 @@ Error or warning diagnostic.
 ```typescript
 interface Diagnostic {
   severity: 'error' | 'warning' | 'info';
-  code: string;                         // Error code
-  message: string;                      // Human-readable message
-  source?: {                            // Source location
+  code: string; // Error code
+  message: string; // Human-readable message
+  source?: {
+    // Source location
     file?: string;
     line?: number;
     column?: number;
@@ -374,7 +387,7 @@ import { PostgresStore } from '@angriff36/manifest/node';
 
 const store = new PostgresStore<Todo>({
   connectionString: process.env.DATABASE_URL,
-  tableName: 'todos'
+  tableName: 'todos',
 });
 ```
 
@@ -388,7 +401,7 @@ import { SupabaseStore } from '@angriff36/manifest/node';
 const store = new SupabaseStore<Todo>({
   url: process.env.SUPABASE_URL,
   key: process.env.SUPABASE_ANON_KEY,
-  tableName: 'todos'
+  tableName: 'todos',
 });
 ```
 
@@ -402,14 +415,10 @@ Projection target for platform-specific code generation.
 
 ```typescript
 interface ProjectionTarget {
-  readonly name: string;                // Target identifier (e.g., "nextjs")
-  readonly description: string;         // Human-readable description
+  readonly name: string; // Target identifier (e.g., "nextjs")
+  readonly description: string; // Human-readable description
 
-  generateRoute(
-    ir: IR,
-    entityName: string,
-    options?: Record<string, unknown>
-  ): string;
+  generateRoute(ir: IR, entityName: string, options?: Record<string, unknown>): string;
 
   generateTypes?(ir: IR): string;
   generateClient?(ir: IR): string;
@@ -457,6 +466,7 @@ Per `docs/spec/builtins.md`:
 ### Property Access
 
 Member access (`.`) is supported for accessing object properties:
+
 - `self.title` - Entity property
 - `user.id` - User property
 - `items.length` - Array length (works via JavaScript member access)

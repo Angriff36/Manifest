@@ -24,7 +24,7 @@ import { COLLECTION_DOMAIN } from './wire-existing-control-action.fixtures.js';
 import { MILESTONE_DOMAIN } from './wire-existing-control.fixtures.js';
 
 function planFor(capabilityId: string, files: Map<string, string>, domain: string) {
-  return contractFrom(domain).then(contract => {
+  return contractFrom(domain).then((contract) => {
     const report = inspectWiringConsumersSync({
       contract,
       fileContents: files,
@@ -37,7 +37,7 @@ function planFor(capabilityId: string, files: Map<string, string>, domain: strin
         report,
         fileContents: files,
         capabilityId,
-      }).plans.find(p => p.capabilityId === capabilityId),
+      }).plans.find((p) => p.capabilityId === capabilityId),
     };
   });
 }
@@ -63,15 +63,19 @@ describe('wire-existing-control preflight (reject before patch)', () => {
       mode: 'one-defect',
       capabilityId: 'Event.confirm',
     });
-    expect(result.applied.filter(a => a.applied)).toHaveLength(0);
+    expect(result.applied.filter((a) => a.applied)).toHaveLength(0);
     expect(result.attemptedPatches ?? 0).toBe(0);
-    expect(files.get(
-      'apps/app/app/(authenticated)/(sales)/crm/scoring/components/scoring-rules-client.tsx',
-    )).toBe(before);
+    expect(
+      files.get(
+        'apps/app/app/(authenticated)/(sales)/crm/scoring/components/scoring-rules-client.tsx',
+      ),
+    ).toBe(before);
     expect(before).not.toMatch(/eventConfirm/);
-    expect(result.applied.every(a => !/Repair incomplete|Binding .* not present/i.test(a.skippedReason ?? ''))).toBe(
-      true,
-    );
+    expect(
+      result.applied.every(
+        (a) => !/Repair incomplete|Binding .* not present/i.test(a.skippedReason ?? ''),
+      ),
+    ).toBe(true);
   });
 
   it('1. nonexistent generated binding blocks the plan before editing', async () => {
@@ -238,8 +242,8 @@ describe('wire-existing-control preflight (reject before patch)', () => {
       fileContents: files,
       mode: 'one-defect',
     });
-    expect(result.applied.some(a => a.applied)).toBe(true);
-    const applied = result.applied.find(a => a.applied)!;
+    expect(result.applied.some((a) => a.applied)).toBe(true);
+    const applied = result.applied.find((a) => a.applied)!;
     expect(applied.findingId).toMatch(/wrong_input_shape|Task\.create/);
     expect(applied.findingId).not.toMatch(/Event\.confirm/);
     expect(result.attemptedPatches ?? 1).toBeGreaterThanOrEqual(1);
@@ -273,7 +277,7 @@ describe('wire-existing-control preflight (reject before patch)', () => {
     const patch = applyRepairPlan(plan!, files);
     expect(patch.ok).toBe(true);
     expect(patch.editsApplied).toBeGreaterThan(0);
-    const content = [...patch.nextContents.values()].find(c => c.includes('Confirm event'))!;
+    const content = [...patch.nextContents.values()].find((c) => c.includes('Confirm event'))!;
     expect(content).toMatch(/eventConfirm/);
     expect(content).toMatch(/eventId/);
     expect(content).toMatch(/userId/);
@@ -282,9 +286,11 @@ describe('wire-existing-control preflight (reject before patch)', () => {
   it('CollectionCase / ActionMilestone prior safety still holds', async () => {
     const collection = await contractFrom(COLLECTION_DOMAIN);
     const milestone = await contractFrom(MILESTONE_DOMAIN);
-    expect(collection.capabilities.some(c => c.capabilityId === 'CollectionCase.escalateToLegal')).toBe(
+    expect(
+      collection.capabilities.some((c) => c.capabilityId === 'CollectionCase.escalateToLegal'),
+    ).toBe(true);
+    expect(milestone.capabilities.some((c) => c.capabilityId === 'ActionMilestone.complete')).toBe(
       true,
     );
-    expect(milestone.capabilities.some(c => c.capabilityId === 'ActionMilestone.complete')).toBe(true);
   });
 });

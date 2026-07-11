@@ -14,10 +14,7 @@ import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
 import type { IR } from '@angriff36/manifest/ir';
-import type {
-  IRVersionIndex,
-  IRVersionMeta,
-} from '@angriff36/manifest/ir-version-store';
+import type { IRVersionIndex, IRVersionMeta } from '@angriff36/manifest/ir-version-store';
 
 // ============================================================================
 // Dynamic imports (lazy-loaded to match vitest alias resolution)
@@ -111,11 +108,7 @@ async function loadVersionIR(storeRoot: string, versionNumber: number): Promise<
   return JSON.parse(raw) as IR;
 }
 
-async function saveVersionFiles(
-  storeRoot: string,
-  ir: IR,
-  meta: IRVersionMeta,
-): Promise<void> {
+async function saveVersionFiles(storeRoot: string, ir: IR, meta: IRVersionMeta): Promise<void> {
   const versionDir = path.join(storeRoot, `v${meta.versionNumber}`);
   await ensureDir(versionDir);
   await fs.writeFile(path.join(versionDir, 'ir.json'), JSON.stringify(ir, null, 2), 'utf-8');
@@ -190,7 +183,7 @@ export async function versionsShowCommand(
     return;
   }
 
-  const meta = index.versions.find(v => v.versionNumber === versionNum)!;
+  const meta = index.versions.find((v) => v.versionNumber === versionNum)!;
 
   if (options.json) {
     const ir = await loadVersionIR(storeRoot, versionNum);
@@ -388,11 +381,17 @@ export async function versionsDiffCommand(
     return;
   }
   if (s.entitiesAdded + s.entitiesRemoved + s.entitiesChanged > 0)
-    console.log(tableLine('Entities', `+${s.entitiesAdded} -${s.entitiesRemoved} ~${s.entitiesChanged}`));
+    console.log(
+      tableLine('Entities', `+${s.entitiesAdded} -${s.entitiesRemoved} ~${s.entitiesChanged}`),
+    );
   if (s.commandsAdded + s.commandsRemoved + s.commandsChanged > 0)
-    console.log(tableLine('Commands', `+${s.commandsAdded} -${s.commandsRemoved} ~${s.commandsChanged}`));
+    console.log(
+      tableLine('Commands', `+${s.commandsAdded} -${s.commandsRemoved} ~${s.commandsChanged}`),
+    );
   if (s.policiesAdded + s.policiesRemoved + s.policiesChanged > 0)
-    console.log(tableLine('Policies', `+${s.policiesAdded} -${s.policiesRemoved} ~${s.policiesChanged}`));
+    console.log(
+      tableLine('Policies', `+${s.policiesAdded} -${s.policiesRemoved} ~${s.policiesChanged}`),
+    );
   if (s.eventsAdded + s.eventsRemoved + s.eventsChanged > 0)
     console.log(tableLine('Events', `+${s.eventsAdded} -${s.eventsRemoved} ~${s.eventsChanged}`));
   if (s.storesAdded + s.storesRemoved + s.storesChanged > 0)
@@ -426,11 +425,12 @@ export async function versionsChangelogCommand(
     return;
   }
 
-  const fromNum = vs.resolveVersionRef(index, from) ?? index.versions[index.versions.length - 2].versionNumber;
+  const fromNum =
+    vs.resolveVersionRef(index, from) ?? index.versions[index.versions.length - 2].versionNumber;
   const toNum = vs.resolveVersionRef(index, to) ?? index.currentVersionNumber;
 
-  const fromMeta = index.versions.find(v => v.versionNumber === fromNum)!;
-  const toMeta = index.versions.find(v => v.versionNumber === toNum)!;
+  const fromMeta = index.versions.find((v) => v.versionNumber === fromNum)!;
+  const toMeta = index.versions.find((v) => v.versionNumber === toNum)!;
 
   const spinner = createSpinner(`Generating changelog v${fromNum} → v${toNum}`, !options.json);
   const [oldIR, newIR] = await Promise.all([
@@ -573,15 +573,23 @@ export async function versionsVerifyCommand(
   const versionsToCheck = options.all
     ? index.versions
     : version
-      ? [index.versions.find(v => v.versionNumber === vs.resolveVersionRef(index, version))].filter(Boolean) as IRVersionMeta[]
-      : [index.versions[index.versions.length - 1]].filter(Boolean) as IRVersionMeta[];
+      ? ([
+          index.versions.find((v) => v.versionNumber === vs.resolveVersionRef(index, version)),
+        ].filter(Boolean) as IRVersionMeta[])
+      : ([index.versions[index.versions.length - 1]].filter(Boolean) as IRVersionMeta[]);
 
   if (versionsToCheck.length === 0) {
     console.log(chalk.yellow('No versions to verify.'));
     return;
   }
 
-  const results: Array<{ versionNumber: number; tag?: string; valid: boolean; storedIrHash: string; computedIrHash: string }> = [];
+  const results: Array<{
+    versionNumber: number;
+    tag?: string;
+    valid: boolean;
+    storedIrHash: string;
+    computedIrHash: string;
+  }> = [];
 
   for (const meta of versionsToCheck) {
     const ir = await loadVersionIR(storeRoot, meta.versionNumber);

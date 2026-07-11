@@ -144,13 +144,27 @@ describe('PostgresOutboxStore — claim', () => {
     const claimed = await store.claim(5);
     expect(claimed).toEqual([
       { entryId: 'a', enqueuedAt: 100, event: event('A'), status: 'pending', attempts: 1 },
-      { entryId: 'b', enqueuedAt: 200, event: event('B'), status: 'pending', attempts: 2, lastError: 'oops' },
+      {
+        entryId: 'b',
+        enqueuedAt: 200,
+        event: event('B'),
+        status: 'pending',
+        attempts: 2,
+        lastError: 'oops',
+      },
     ]);
   });
 
   it('coerces enqueued_at returned as string (pg int8 default) to number', async () => {
     const { pool } = makeFakePool([
-      { entry_id: 'a', enqueued_at: '100', event: event('A'), status: 'pending', attempts: 0, last_error: null },
+      {
+        entry_id: 'a',
+        enqueued_at: '100',
+        event: event('A'),
+        status: 'pending',
+        attempts: 0,
+        last_error: null,
+      },
     ]);
     const store = new PostgresOutboxStore({ pool });
     const claimed = await store.claim(1);

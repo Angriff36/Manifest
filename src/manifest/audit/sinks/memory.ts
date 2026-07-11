@@ -61,7 +61,7 @@ export class MemoryAuditSink implements AuditSink {
    * returned array does not affect internal state.
    */
   list(): AuditRecord[] {
-    return this.records.map(r => ({ ...r }));
+    return this.records.map((r) => ({ ...r }));
   }
 
   /** Number of records currently stored. */
@@ -74,7 +74,7 @@ export class MemoryAuditSink implements AuditSink {
    * O(n) — acceptable for test scenarios where MemoryAuditSink is used.
    */
   findByRecordId(recordId: string): AuditRecord | undefined {
-    const found = this.records.find(r => r.recordId === recordId);
+    const found = this.records.find((r) => r.recordId === recordId);
     return found ? { ...found } : undefined;
   }
 

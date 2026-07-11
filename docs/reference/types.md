@@ -1,5 +1,5 @@
 ---
-title: "Types"
+title: 'Types'
 description: "A grouped inventory of Manifest's exported TypeScript types and the source definitions they come from."
 ---
 
@@ -13,7 +13,6 @@ description: "A grouped inventory of Manifest's exported TypeScript types and th
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 Manifest exports a large TypeScript surface across the root runtime, compiler, IR, adapters, and route projection modules. This page groups the most important definitions and shows the actual shapes that package consumers build against.
 

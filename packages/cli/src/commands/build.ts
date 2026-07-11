@@ -24,7 +24,6 @@ interface BuildOptions {
   projectionOptionsFromConfig?: Record<string, unknown>;
 }
 
-
 /**
  * Build command handler
  *
@@ -32,7 +31,7 @@ interface BuildOptions {
  */
 export async function buildCommand(
   source: string | undefined,
-  options: BuildOptions
+  options: BuildOptions,
 ): Promise<void> {
   const spinner = ora('Manifest build workflow').start();
 
@@ -76,7 +75,6 @@ export async function buildCommand(
     console.log(`  Projection: ${options.projection}`);
     console.log(`  Surface:    ${options.surface}`);
     console.log('');
-
   } catch (error: unknown) {
     spinner.fail(`Build failed: ${error instanceof Error ? error.message : String(error)}`);
     console.error(error);

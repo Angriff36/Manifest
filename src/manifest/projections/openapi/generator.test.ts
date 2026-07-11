@@ -204,7 +204,9 @@ describe('OpenApiProjection', () => {
 
       const listOp = spec.paths['/api/recipe/list'].get;
       expect(listOp.responses['200'].content['application/json'].schema.type).toBe('array');
-      expect(listOp.responses['200'].content['application/json'].schema.items.$ref).toBe('#/components/schemas/Recipe');
+      expect(listOp.responses['200'].content['application/json'].schema.items.$ref).toBe(
+        '#/components/schemas/Recipe',
+      );
     });
 
     it('includes id parameter in detail route', async () => {
@@ -312,19 +314,21 @@ describe('OpenApiProjection', () => {
 
     it('warns about commands without entities', async () => {
       const ir = makeMinimalIR({
-        commands: [{
-          name: 'orphanCommand',
-          module: undefined,
-          entity: undefined,
-          parameters: [],
-          guards: [],
-          actions: [],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'orphanCommand',
+            module: undefined,
+            entity: undefined,
+            parameters: [],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
       });
 
       const specResult = projection.generate(ir, { surface: 'openapi.spec' });
-      expect(specResult.diagnostics.some(d => d.code === 'COMMAND_NO_ENTITY')).toBe(true);
+      expect(specResult.diagnostics.some((d) => d.code === 'COMMAND_NO_ENTITY')).toBe(true);
     });
   });
 
@@ -509,30 +513,52 @@ describe('OpenApiProjection', () => {
 
     it('includes 422 and 409 responses for entity operations', () => {
       const ir = makeMinimalIR({
-        entities: [{
-          name: 'Recipe',
-          properties: [
-            { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-            { name: 'status', type: { name: 'string', nullable: false }, defaultValue: { kind: 'string', value: 'draft' }, modifiers: [] },
-          ],
-          computedProperties: [],
-          relationships: [],
-          commands: ['publish'],
-          constraints: [],
-          policies: [],
-        }],
-        commands: [{
-          name: 'publish',
-          entity: 'Recipe',
-          parameters: [],
-          guards: [
-            { kind: 'binary', operator: '==', left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'status' }, right: { kind: 'literal', value: { kind: 'string', value: 'draft' } } },
-          ],
-          actions: [
-            { kind: 'mutate', target: 'self.status', expression: { kind: 'literal', value: { kind: 'string', value: 'published' } } },
-          ],
-          emits: [],
-        }],
+        entities: [
+          {
+            name: 'Recipe',
+            properties: [
+              { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+              {
+                name: 'status',
+                type: { name: 'string', nullable: false },
+                defaultValue: { kind: 'string', value: 'draft' },
+                modifiers: [],
+              },
+            ],
+            computedProperties: [],
+            relationships: [],
+            commands: ['publish'],
+            constraints: [],
+            policies: [],
+          },
+        ],
+        commands: [
+          {
+            name: 'publish',
+            entity: 'Recipe',
+            parameters: [],
+            guards: [
+              {
+                kind: 'binary',
+                operator: '==',
+                left: {
+                  kind: 'member',
+                  object: { kind: 'identifier', name: 'self' },
+                  property: 'status',
+                },
+                right: { kind: 'literal', value: { kind: 'string', value: 'draft' } },
+              },
+            ],
+            actions: [
+              {
+                kind: 'mutate',
+                target: 'self.status',
+                expression: { kind: 'literal', value: { kind: 'string', value: 'published' } },
+              },
+            ],
+            emits: [],
+          },
+        ],
       });
 
       const specResult = projection.generate(ir, { surface: 'openapi.spec' });
@@ -540,11 +566,13 @@ describe('OpenApiProjection', () => {
 
       const postOp = spec.paths['/api/recipe/publish'].post;
       expect(postOp.responses['422']).toBeDefined();
-      expect(postOp.responses['422'].content['application/json'].schema.$ref)
-        .toBe('#/components/schemas/ConstraintErrorResponse');
+      expect(postOp.responses['422'].content['application/json'].schema.$ref).toBe(
+        '#/components/schemas/ConstraintErrorResponse',
+      );
       expect(postOp.responses['409']).toBeDefined();
-      expect(postOp.responses['409'].content['application/json'].schema.$ref)
-        .toBe('#/components/schemas/GuardFailureResponse');
+      expect(postOp.responses['409'].content['application/json'].schema.$ref).toBe(
+        '#/components/schemas/GuardFailureResponse',
+      );
     });
 
     it('includes 401, 403, 500 error responses', async () => {
@@ -759,16 +787,22 @@ describe('OpenApiProjection', () => {
             policies: [],
           },
         ],
-        commands: [{
-          name: 'publish',
-          entity: 'Recipe',
-          parameters: [],
-          guards: [],
-          actions: [
-            { kind: 'mutate', target: 'self.status', expression: { kind: 'literal', value: { kind: 'string', value: 'published' } } },
-          ],
-          emits: [],
-        }],
+        commands: [
+          {
+            name: 'publish',
+            entity: 'Recipe',
+            parameters: [],
+            guards: [],
+            actions: [
+              {
+                kind: 'mutate',
+                target: 'self.status',
+                expression: { kind: 'literal', value: { kind: 'string', value: 'published' } },
+              },
+            ],
+            emits: [],
+          },
+        ],
       });
 
       const result1 = projection.generate(ir, { surface: 'openapi.spec' });
@@ -789,8 +823,8 @@ describe('OpenApiProjection', () => {
       const spec = parseSpec(specResult);
 
       const pathKeys = Object.keys(spec.paths);
-      const alphaIdx = pathKeys.findIndex(k => k.includes('alpha'));
-      const zebraIdx = pathKeys.findIndex(k => k.includes('zebra'));
+      const alphaIdx = pathKeys.findIndex((k) => k.includes('alpha'));
+      const zebraIdx = pathKeys.findIndex((k) => k.includes('zebra'));
       expect(alphaIdx).toBeLessThan(zebraIdx);
     });
   });
@@ -869,9 +903,13 @@ describe('OpenApiProjection', () => {
           {
             name: 'Address',
             properties: [
-              { name: 'street', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-              { name: 'city',   type: { name: 'string', nullable: false }, modifiers: ['required'] },
-              { name: 'zip',    type: { name: 'string', nullable: false }, modifiers: [] },
+              {
+                name: 'street',
+                type: { name: 'string', nullable: false },
+                modifiers: ['required'],
+              },
+              { name: 'city', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+              { name: 'zip', type: { name: 'string', nullable: false }, modifiers: [] },
             ],
           },
         ],
@@ -879,7 +917,7 @@ describe('OpenApiProjection', () => {
           {
             name: 'Customer',
             properties: [
-              { name: 'id',      type: { name: 'string',  nullable: false }, modifiers: ['required'] },
+              { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
               { name: 'address', type: { name: 'Address', nullable: false }, modifiers: [] },
             ],
             computedProperties: [],
@@ -911,7 +949,11 @@ describe('OpenApiProjection', () => {
           {
             name: 'Address',
             properties: [
-              { name: 'street', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+              {
+                name: 'street',
+                type: { name: 'string', nullable: false },
+                modifiers: ['required'],
+              },
             ],
           },
         ],
@@ -919,7 +961,7 @@ describe('OpenApiProjection', () => {
           {
             name: 'Customer',
             properties: [
-              { name: 'id',      type: { name: 'string',  nullable: false }, modifiers: ['required'] },
+              { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
               { name: 'address', type: { name: 'Address', nullable: false }, modifiers: [] },
             ],
             computedProperties: [],
@@ -944,17 +986,20 @@ describe('OpenApiProjection', () => {
     it('emits no diagnostic warnings for value object types', () => {
       const ir = makeMinimalIR({
         values: [
-          { name: 'Point', properties: [
-            { name: 'x', type: { name: 'number', nullable: false }, modifiers: [] },
-            { name: 'y', type: { name: 'number', nullable: false }, modifiers: [] },
-          ] },
+          {
+            name: 'Point',
+            properties: [
+              { name: 'x', type: { name: 'number', nullable: false }, modifiers: [] },
+              { name: 'y', type: { name: 'number', nullable: false }, modifiers: [] },
+            ],
+          },
         ],
         entities: [
           {
             name: 'Shape',
             properties: [
-              { name: 'id',     type: { name: 'string', nullable: false }, modifiers: ['required'] },
-              { name: 'origin', type: { name: 'Point',  nullable: false }, modifiers: [] },
+              { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+              { name: 'origin', type: { name: 'Point', nullable: false }, modifiers: [] },
             ],
             computedProperties: [],
             relationships: [],
@@ -967,7 +1012,7 @@ describe('OpenApiProjection', () => {
 
       const result = projection.generate(ir, { surface: 'openapi.spec' });
       // No warnings emitted for known value object types
-      expect(result.diagnostics.filter(d => d.severity === 'warning')).toHaveLength(0);
+      expect(result.diagnostics.filter((d) => d.severity === 'warning')).toHaveLength(0);
     });
   });
 

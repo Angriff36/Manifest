@@ -1,27 +1,28 @@
 ---
-title: "Event sourcing patterns with Manifest"
-description: "There is no built-in event-sourced store class. This guide shows how to approximate event sourcing, read models, and CQRS using the primitives Manifest actually ships: emitted events, the in-memory event log, event subscriptions, the outbox, and the audit sink."
-sidebarTitle: "Event sourcing"
+title: 'Event sourcing patterns with Manifest'
+description: 'There is no built-in event-sourced store class. This guide shows how to approximate event sourcing, read models, and CQRS using the primitives Manifest actually ships: emitted events, the in-memory event log, event subscriptions, the outbox, and the audit sink.'
+sidebarTitle: 'Event sourcing'
 ---
 
 <Warning>
 Manifest does **not** ship a built-in event-sourced store. There is no `EventSourcedStore` class and no `runtime.queryReadModel(...)` method — earlier drafts of this page documented APIs that do not exist. The `BuiltinStoreTarget` set has no `event-sourced` target.
 
-This page is a **pattern guide**: it shows how to build event-sourcing-style behavior on top of the primitives Manifest *does* provide. Everything below maps to real, exported APIs.
+This page is a **pattern guide**: it shows how to build event-sourcing-style behavior on top of the primitives Manifest _does_ provide. Everything below maps to real, exported APIs.
+
 </Warning>
 
 ## What actually exists
 
 Manifest is event-aware at the command level. Every command can `emit` events, and the runtime gives you several ways to observe and durably deliver them:
 
-| Primitive | API | Purpose |
-|-----------|-----|---------|
-| Emitted events | `CommandResult.emittedEvents` | Events produced by a single `runCommand` call |
-| In-memory event log | `runtime.getEventLog()` / `runtime.clearEventLog()` | Append-only log of every event the engine has emitted this session |
-| Event firehose | `runtime.onEvent(listener)` | Subscribe to **all** emitted events; returns an unsubscribe function |
-| Per-entity subscription | `runtime.subscribe(entityName, listener)` | Receive only events whose `subject.entity` matches; returns an unsubscribe function |
-| Outbox | `@angriff36/manifest/outbox` (`MemoryOutboxStore`, `PostgresOutboxStore`) | Durable, at-least-once event delivery to downstream consumers |
-| Audit sink | `@angriff36/manifest/audit` | One `AuditRecord` per command for compliance/observability |
+| Primitive               | API                                                                       | Purpose                                                                             |
+| ----------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Emitted events          | `CommandResult.emittedEvents`                                             | Events produced by a single `runCommand` call                                       |
+| In-memory event log     | `runtime.getEventLog()` / `runtime.clearEventLog()`                       | Append-only log of every event the engine has emitted this session                  |
+| Event firehose          | `runtime.onEvent(listener)`                                               | Subscribe to **all** emitted events; returns an unsubscribe function                |
+| Per-entity subscription | `runtime.subscribe(entityName, listener)`                                 | Receive only events whose `subject.entity` matches; returns an unsubscribe function |
+| Outbox                  | `@angriff36/manifest/outbox` (`MemoryOutboxStore`, `PostgresOutboxStore`) | Durable, at-least-once event delivery to downstream consumers                       |
+| Audit sink              | `@angriff36/manifest/audit`                                               | One `AuditRecord` per command for compliance/observability                          |
 
 The `getEventLog()` log is **in-process and ephemeral** — it lives on the engine instance and is not persisted. For durable history use the outbox or audit sink, or persist events yourself in a listener.
 
@@ -59,7 +60,7 @@ const stop = runtime.onEvent(async (event) => {
   await myEventLog.append({
     name: event.name,
     channel: event.channel,
-    subject: event.subject,    // { entity, id } when entity-scoped
+    subject: event.subject, // { entity, id } when entity-scoped
     payload: event.payload,
     occurredAt: Date.now(),
   });
@@ -104,7 +105,9 @@ const completed = await db.orderSummary.findMany({ where: { status: 'completed' 
 ```
 
 <Warning>
-Read models built this way are **eventually consistent**. Immediately after a command completes, your projection may not yet reflect the change. For strongly consistent reads, query the source entity through the runtime or its store.
+  Read models built this way are **eventually consistent**. Immediately after a command completes,
+  your projection may not yet reflect the change. For strongly consistent reads, query the source
+  entity through the runtime or its store.
 </Warning>
 
 ## Pattern: durable delivery with the outbox
@@ -127,7 +130,7 @@ A dispatcher worker then `claim()`s pending entries, delivers them, and calls `m
 
 ## Pattern: durable audit history
 
-If your goal is a compliance-grade, append-only record of *what commands ran* (rather than a replayable state log), use the audit sink — it writes exactly one `AuditRecord` per `runCommand`, including denials and errors. See the [Audit Sink](/adapters/audit-sink) page.
+If your goal is a compliance-grade, append-only record of _what commands ran_ (rather than a replayable state log), use the audit sink — it writes exactly one `AuditRecord` per `runCommand`, including denials and errors. See the [Audit Sink](/adapters/audit-sink) page.
 
 ## CQRS, assembled from real primitives
 

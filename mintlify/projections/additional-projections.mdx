@@ -1,7 +1,7 @@
 ---
-title: "Additional projections"
-sidebarTitle: "More projections"
-description: "Kysely, Terraform, materialized views, analytics, Elasticsearch, Storybook, and Python Client SDK projections for specialized infrastructure and tooling targets."
+title: 'Additional projections'
+sidebarTitle: 'More projections'
+description: 'Kysely, Terraform, materialized views, analytics, Elasticsearch, Storybook, and Python Client SDK projections for specialized infrastructure and tooling targets.'
 ---
 
 Beyond the primary framework and ORM projections, Manifest ships several specialized projections for infrastructure, analytics, search, and developer tooling targets. Each follows the same `ProjectionTarget` interface and deterministic output contract.
@@ -70,13 +70,15 @@ const projection = getProjection('materialized-views');
 const result = projection.generate(ir, {
   surface: 'materialized-views.ddl',
   options: {
-    views: [{
-      name: 'order_summary',
-      source: 'Order',
-      strategy: 'scheduled',
-      schedule: { cron: '0 * * * *' },
-      columns: [{ expression: 'SUM(total)', alias: 'revenue' }],
-    }],
+    views: [
+      {
+        name: 'order_summary',
+        source: 'Order',
+        strategy: 'scheduled',
+        schedule: { cron: '0 * * * *' },
+        columns: [{ expression: 'SUM(total)', alias: 'revenue' }],
+      },
+    ],
   },
 });
 ```

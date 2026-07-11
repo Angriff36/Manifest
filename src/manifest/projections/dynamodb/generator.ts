@@ -38,11 +38,7 @@ import type {
 export const SURFACE_CLOUDFORMATION = 'dynamodb.cloudformation' as const;
 export const SURFACE_CDK = 'dynamodb.cdk' as const;
 export const SURFACE_TERRAFORM = 'dynamodb.terraform' as const;
-export const SURFACES = [
-  SURFACE_CLOUDFORMATION,
-  SURFACE_CDK,
-  SURFACE_TERRAFORM,
-] as const;
+export const SURFACES = [SURFACE_CLOUDFORMATION, SURFACE_CDK, SURFACE_TERRAFORM] as const;
 
 export interface DynamoDBProjectionOptions {
   /**
@@ -71,7 +67,7 @@ function getDynamoDBStores(ir: IR): IRStore[] {
 
 function hasSingleTableConfig(ir: IR): boolean {
   return (ir.stores ?? []).some(
-    (s) => isDynamoDBTarget(s.target) && (s.config?.singleTable as unknown) === true
+    (s) => isDynamoDBTarget(s.target) && (s.config?.singleTable as unknown) === true,
   );
 }
 

@@ -17,7 +17,7 @@ import { compileToIR } from '../../ir-compiler';
 import { NextJsProjection } from './generator';
 
 function expectNoCompileErrors(result: Awaited<ReturnType<typeof compileToIR>>) {
-  expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+  expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   expect(result.ir).not.toBeNull();
 }
 
@@ -44,7 +44,10 @@ describe('NextJsProjection', () => {
       const result = await compileToIR(source);
       expectNoCompileErrors(result);
 
-      const routeResult = projection.generate(result.ir!, { surface: 'nextjs.route', entity: 'Recipe' });
+      const routeResult = projection.generate(result.ir!, {
+        surface: 'nextjs.route',
+        entity: 'Recipe',
+      });
 
       const code = firstCode(routeResult);
 
@@ -76,8 +79,11 @@ describe('NextJsProjection', () => {
       expectNoCompileErrors(result);
 
       const seg = (opts?: Record<string, unknown>) =>
-        projection.generate(result.ir!, { surface: 'nextjs.route', entity: 'PrepTask', options: opts })
-          .artifacts[0].pathHint;
+        projection.generate(result.ir!, {
+          surface: 'nextjs.route',
+          entity: 'PrepTask',
+          options: opts,
+        }).artifacts[0].pathHint;
 
       // Default (legacy): flattened lowercase, no word boundaries.
       expect(seg()).toContain('/preptask/list/route.ts');
@@ -86,8 +92,9 @@ describe('NextJsProjection', () => {
       expect(seg({ routeCasing: 'preserve' })).toContain('/PrepTask/list/route.ts');
 
       // Explicit routeSegments still wins over casing.
-      expect(seg({ routeCasing: 'kebab-case', routeSegments: { PrepTask: 'kitchen/prep-tasks' } }))
-        .toContain('/kitchen/prep-tasks/list/route.ts');
+      expect(
+        seg({ routeCasing: 'kebab-case', routeSegments: { PrepTask: 'kitchen/prep-tasks' } }),
+      ).toContain('/kitchen/prep-tasks/list/route.ts');
     });
 
     it('routeSegments accepts a multi-segment domain path (no post-process remap needed)', async () => {
@@ -113,7 +120,10 @@ describe('NextJsProjection', () => {
 
       expectNoCompileErrors(result);
 
-      const routeResult = projection.generate(result.ir!, { surface: 'nextjs.route', entity: 'NonExistent' });
+      const routeResult = projection.generate(result.ir!, {
+        surface: 'nextjs.route',
+        entity: 'NonExistent',
+      });
 
       expect(routeResult.artifacts).toHaveLength(0);
       expect(routeResult.diagnostics).toHaveLength(1);
@@ -303,7 +313,10 @@ describe('NextJsProjection', () => {
       const result = await compileToIR(source);
       expectNoCompileErrors(result);
 
-      const detailResult = projection.generate(result.ir!, { surface: 'nextjs.detail', entity: 'Recipe' });
+      const detailResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'Recipe',
+      });
 
       const code = firstCode(detailResult);
 
@@ -349,7 +362,10 @@ describe('NextJsProjection', () => {
       const result = await compileToIR(source);
       expect(result.ir).not.toBeNull();
 
-      const detailResult = projection.generate(result.ir!, { surface: 'nextjs.detail', entity: 'Recipe' });
+      const detailResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'Recipe',
+      });
 
       expect(detailResult.artifacts[0].id).toBe('nextjs.detail:Recipe');
       expect(detailResult.artifacts[0].pathHint).toContain('recipe/[id]/route.ts');
@@ -361,7 +377,10 @@ describe('NextJsProjection', () => {
 
       expectNoCompileErrors(result);
 
-      const detailResult = projection.generate(result.ir!, { surface: 'nextjs.detail', entity: 'NonExistent' });
+      const detailResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'NonExistent',
+      });
 
       expect(detailResult.artifacts).toHaveLength(0);
       expect(detailResult.diagnostics).toHaveLength(1);
@@ -555,7 +574,11 @@ describe('NextJsProjection', () => {
       expect(result.ir).not.toBeNull();
 
       const code = firstCode(
-        projection.generate(result.ir!, { surface: 'nextjs.route', entity: 'BankAccount', options: { includeSoftDeleteFilter: false } })
+        projection.generate(result.ir!, {
+          surface: 'nextjs.route',
+          entity: 'BankAccount',
+          options: { includeSoftDeleteFilter: false },
+        }),
       );
 
       // No deletedAt column → must NOT emit the soft-delete filter, even when
@@ -576,7 +599,7 @@ describe('NextJsProjection', () => {
       expect(result.ir).not.toBeNull();
 
       const code = firstCode(
-        projection.generate(result.ir!, { surface: 'nextjs.route', entity: 'Menu' })
+        projection.generate(result.ir!, { surface: 'nextjs.route', entity: 'Menu' }),
       );
 
       // No createdAt column → orderBy must reference the always-present id,
@@ -597,7 +620,11 @@ describe('NextJsProjection', () => {
       expect(result.ir).not.toBeNull();
 
       const code = firstCode(
-        projection.generate(result.ir!, { surface: 'nextjs.detail', entity: 'Invoice', options: { includeSoftDeleteFilter: false, includeTenantFilter: false } })
+        projection.generate(result.ir!, {
+          surface: 'nextjs.detail',
+          entity: 'Invoice',
+          options: { includeSoftDeleteFilter: false, includeTenantFilter: false },
+        }),
       );
 
       expect(code).not.toContain('deletedAt');
@@ -682,7 +709,10 @@ describe('NextJsProjection', () => {
       expect(dflt).not.toContain(': array');
 
       const iso = firstCode(
-        projection.generate(result.ir!, { surface: 'ts.types', options: { dateSerialization: 'iso-string' } }),
+        projection.generate(result.ir!, {
+          surface: 'ts.types',
+          options: { dateSerialization: 'iso-string' },
+        }),
       );
       expect(iso).toContain('occurredAt: string;');
       expect(iso).not.toContain(': Date;');
@@ -720,27 +750,50 @@ describe('NextJsProjection', () => {
 
     it('derives the client type import from a configured types artifact path', async () => {
       const result = await compileToIR(`entity Recipe { property id: string }`);
-      const code = firstCode(projection.generate(result.ir!, { surface: 'ts.client', options: { paths: { typesFile: 'src/generated/domain.ts' } } }));
+      const code = firstCode(
+        projection.generate(result.ir!, {
+          surface: 'ts.client',
+          options: { paths: { typesFile: 'src/generated/domain.ts' } },
+        }),
+      );
       expect(code).toContain("import type { Recipe } from '../generated/domain';");
     });
 
     it('emits ts.types and ts.client artifacts that compile together', async () => {
-      const result = await compileToIR(`entity Asset { property id: uuid property metadata: json property createdAt: timestamp property content: bytes }`);
+      const result = await compileToIR(
+        `entity Asset { property id: uuid property metadata: json property createdAt: timestamp property content: bytes }`,
+      );
       const dir = await fs.mkdtemp(join(tmpdir(), 'manifest-generated-ts-'));
-      const options = { paths: { typesFile: 'src/types/manifest-generated.ts', clientFile: 'src/lib/manifest-client.ts' } };
+      const options = {
+        paths: {
+          typesFile: 'src/types/manifest-generated.ts',
+          clientFile: 'src/lib/manifest-client.ts',
+        },
+      };
       const types = projection.generate(result.ir!, { surface: 'ts.types', options }).artifacts[0];
-      const client = projection.generate(result.ir!, { surface: 'ts.client', options }).artifacts[0];
+      const client = projection.generate(result.ir!, { surface: 'ts.client', options })
+        .artifacts[0];
       for (const artifact of [types, client]) {
         const target = join(dir, artifact.pathHint!);
         await fs.mkdir(dirname(target), { recursive: true });
         await fs.writeFile(target, artifact.code, 'utf8');
       }
       const program = ts.createProgram([join(dir, types.pathHint!), join(dir, client.pathHint!)], {
-        strict: true, noEmit: true, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
-        moduleResolution: ts.ModuleResolutionKind.Bundler, lib: ['lib.es2022.d.ts', 'lib.dom.d.ts'],
-        baseUrl: dir, paths: { '@/*': ['src/*'] }, skipLibCheck: true,
+        strict: true,
+        noEmit: true,
+        target: ts.ScriptTarget.ES2022,
+        module: ts.ModuleKind.ESNext,
+        moduleResolution: ts.ModuleResolutionKind.Bundler,
+        lib: ['lib.es2022.d.ts', 'lib.dom.d.ts'],
+        baseUrl: dir,
+        paths: { '@/*': ['src/*'] },
+        skipLibCheck: true,
       });
-      expect(ts.getPreEmitDiagnostics(program).map(d => ts.flattenDiagnosticMessageText(d.messageText, '\n'))).toEqual([]);
+      expect(
+        ts
+          .getPreEmitDiagnostics(program)
+          .map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n')),
+      ).toEqual([]);
     });
   });
 
@@ -834,7 +887,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
-        options: { includeTenantFilter: false,  concreteCommandRoutes: { enabled: true } },
+        options: { includeTenantFilter: false, concreteCommandRoutes: { enabled: true } },
       });
 
       const code = firstCode(commandResult);
@@ -876,7 +929,9 @@ describe('NextJsProjection', () => {
       expect(commandResult.diagnostics).toHaveLength(1);
       expect(commandResult.diagnostics[0].severity).toBe('error');
       expect(commandResult.diagnostics[0].code).toBe('COMMAND_NOT_FOUND');
-      expect(commandResult.diagnostics[0].message).toContain('Command "nonExistentCommand" not found');
+      expect(commandResult.diagnostics[0].message).toContain(
+        'Command "nonExistentCommand" not found',
+      );
     });
 
     it('returns error diagnostic if entity not provided', async () => {
@@ -917,7 +972,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
-        options: { runtimeImportPath: '@myapp/runtime',  concreteCommandRoutes: { enabled: true } },
+        options: { runtimeImportPath: '@myapp/runtime', concreteCommandRoutes: { enabled: true } },
       });
 
       expect(firstCode(commandResult)).toContain('from "@myapp/runtime"');
@@ -931,7 +986,11 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
-        options: { authProvider: 'clerk', authImportPath: '@repo/auth/server', concreteCommandRoutes: { enabled: true } },
+        options: {
+          authProvider: 'clerk',
+          authImportPath: '@repo/auth/server',
+          concreteCommandRoutes: { enabled: true },
+        },
       });
       expect(firstCode(clerkResult)).toContain('from "@repo/auth/server"');
 
@@ -939,7 +998,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
-        options: { authProvider: 'none',  concreteCommandRoutes: { enabled: true } },
+        options: { authProvider: 'none', concreteCommandRoutes: { enabled: true } },
       });
       expect(firstCode(noAuthResult)).toContain('Auth disabled');
     });
@@ -1016,7 +1075,7 @@ describe('NextJsProjection', () => {
 
     async function realtimeIR() {
       const result = await compileToIR(realtimeSource);
-      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       expect(result.ir).not.toBeNull();
       return result.ir!;
     }
@@ -1063,7 +1122,10 @@ describe('NextJsProjection', () => {
 
     it('nextjs.subscriptionHook emits a typed EventSource hook with backoff', async () => {
       const ir = await realtimeIR();
-      const result = projection.generate(ir, { surface: 'nextjs.subscriptionHook', entity: 'Order' });
+      const result = projection.generate(ir, {
+        surface: 'nextjs.subscriptionHook',
+        entity: 'Order',
+      });
 
       expect(result.artifacts).toHaveLength(1);
       expect(result.artifacts[0].id).toBe('nextjs.subscriptionHook:Order');
@@ -1084,7 +1146,10 @@ describe('NextJsProjection', () => {
 
     it('nextjs.subscriptionHook emits nothing for a non-realtime entity', async () => {
       const ir = await realtimeIR();
-      const result = projection.generate(ir, { surface: 'nextjs.subscriptionHook', entity: 'Plain' });
+      const result = projection.generate(ir, {
+        surface: 'nextjs.subscriptionHook',
+        entity: 'Plain',
+      });
       expect(result.artifacts).toHaveLength(0);
       expect(result.diagnostics[0].code).toBe('REALTIME_NOT_ENABLED');
     });
@@ -1439,7 +1504,10 @@ describe('emitted sharedRuntime bridges cross-instance events over a shared bus'
 
     type Engine = {
       onEvent: (listener: (event: unknown) => void) => () => void;
-      runCommand: (command: string, input: Record<string, unknown>) => Promise<{ success: boolean }>;
+      runCommand: (
+        command: string,
+        input: Record<string, unknown>,
+      ) => Promise<{ success: boolean }>;
     };
 
     const sharedMod = load(sharedPath) as { getSharedRuntime: () => Promise<Engine> };

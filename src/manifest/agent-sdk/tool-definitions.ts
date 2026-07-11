@@ -21,7 +21,11 @@ import { irParametersToJsonSchema } from './json-schema.js';
  * Snake strategy: "Order.placeOrder" → "order_place_order"
  * Dot strategy: "Order.placeOrder" → "Order.placeOrder" (no change)
  */
-export function mangleToolName(entity: string | undefined, command: string, strategy: 'snake' | 'dot'): string {
+export function mangleToolName(
+  entity: string | undefined,
+  command: string,
+  strategy: 'snake' | 'dot',
+): string {
   if (strategy === 'dot') return `${entity ?? ''}${entity ? '.' : ''}${command}`;
   // snake: entity is lowercased, command is preserved as-is
   return `${entity ? entity.toLowerCase() + '_' : ''}${command}`;
@@ -49,7 +53,9 @@ function commandDescription(cmd: IRCommand, opts: ToolDefinitionOptions, _ir: IR
   const parts: string[] = [];
   if (cmd.entity) parts.push(`Entity: ${cmd.entity}`);
   if (cmd.module) parts.push(`Module: ${cmd.module}`);
-  parts.push(`Parameters: ${cmd.parameters.map((p) => `${p.name}: ${p.type.name}${p.required ? '' : '?'}`).join(', ') || 'none'}`);
+  parts.push(
+    `Parameters: ${cmd.parameters.map((p) => `${p.name}: ${p.type.name}${p.required ? '' : '?'}`).join(', ') || 'none'}`,
+  );
   if (opts.includeGuardHints && cmd.guards.length > 0) {
     parts.push(`Guards: ${cmd.guards.length}`);
   }
@@ -62,7 +68,11 @@ function commandDescription(cmd: IRCommand, opts: ToolDefinitionOptions, _ir: IR
   return parts.join(' | ');
 }
 
-export function commandToAnthropicTool(cmd: IRCommand, opts: ToolDefinitionOptions, ir: IR): AnthropicTool {
+export function commandToAnthropicTool(
+  cmd: IRCommand,
+  opts: ToolDefinitionOptions,
+  ir: IR,
+): AnthropicTool {
   return {
     name: mangleToolName(cmd.entity, cmd.name, opts.toolNameStrategy ?? 'snake'),
     description: commandDescription(cmd, opts, ir),
@@ -70,7 +80,11 @@ export function commandToAnthropicTool(cmd: IRCommand, opts: ToolDefinitionOptio
   };
 }
 
-export function commandToOpenAITool(cmd: IRCommand, opts: ToolDefinitionOptions, ir: IR): OpenAITool {
+export function commandToOpenAITool(
+  cmd: IRCommand,
+  opts: ToolDefinitionOptions,
+  ir: IR,
+): OpenAITool {
   return {
     type: 'function',
     function: {
@@ -81,7 +95,11 @@ export function commandToOpenAITool(cmd: IRCommand, opts: ToolDefinitionOptions,
   };
 }
 
-export function commandToVercelTool(cmd: IRCommand, opts: ToolDefinitionOptions, ir: IR): { name: string; description: string; parameters: ReturnType<typeof irParametersToJsonSchema> } {
+export function commandToVercelTool(
+  cmd: IRCommand,
+  opts: ToolDefinitionOptions,
+  ir: IR,
+): { name: string; description: string; parameters: ReturnType<typeof irParametersToJsonSchema> } {
   const name = mangleToolName(cmd.entity, cmd.name, opts.toolNameStrategy ?? 'snake');
   return {
     name,
@@ -121,7 +139,11 @@ function builtinDescribeEntitySchema(): AnthropicTool['input_schema'] {
     type: 'object',
     properties: {
       name: { type: 'string', description: 'Name of the entity to describe' },
-      includeSchema: { type: 'boolean', description: 'Include property type schemas', default: false },
+      includeSchema: {
+        type: 'boolean',
+        description: 'Include property type schemas',
+        default: false,
+      },
     },
     required: ['name'],
     additionalProperties: false,
@@ -144,7 +166,11 @@ function builtinDescribeCommandSchema(): AnthropicTool['input_schema'] {
     type: 'object',
     properties: {
       name: { type: 'string', description: 'Name of the command to describe' },
-      includeExpressions: { type: 'boolean', description: 'Include guard/action expressions', default: false },
+      includeExpressions: {
+        type: 'boolean',
+        description: 'Include guard/action expressions',
+        default: false,
+      },
     },
     required: ['name'],
     additionalProperties: false,
@@ -156,9 +182,20 @@ function builtinExecuteCommandSchema(): AnthropicTool['input_schema'] {
     type: 'object',
     properties: {
       command: { type: 'string', description: 'Name of the command to execute' },
-      entityId: { type: 'string', description: 'ID of the entity instance to act on (if entity-scoped)' },
-      parameters: { type: 'object', description: 'Command parameters as key-value pairs', additionalProperties: true },
-      context: { type: 'object', description: 'Runtime context overrides', additionalProperties: true },
+      entityId: {
+        type: 'string',
+        description: 'ID of the entity instance to act on (if entity-scoped)',
+      },
+      parameters: {
+        type: 'object',
+        description: 'Command parameters as key-value pairs',
+        additionalProperties: true,
+      },
+      context: {
+        type: 'object',
+        description: 'Runtime context overrides',
+        additionalProperties: true,
+      },
     },
     required: ['command'],
     additionalProperties: false,
@@ -183,7 +220,11 @@ function builtinCheckConstraintsSchema(): AnthropicTool['input_schema'] {
     properties: {
       entity: { type: 'string', description: 'Name of the entity' },
       entityId: { type: 'string', description: 'ID of the entity instance to check' },
-      constraintCodes: { type: 'array', items: { type: 'string' }, description: 'Specific constraint codes to check (if empty, checks all)' },
+      constraintCodes: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Specific constraint codes to check (if empty, checks all)',
+      },
     },
     required: ['entity', 'entityId'],
     additionalProperties: false,
@@ -196,7 +237,11 @@ function builtinCheckConstraintsVercelSchema(): AnthropicTool['input_schema'] {
     properties: {
       entity: { type: 'string', description: 'Name of the entity' },
       entityId: { type: 'string', description: 'ID of the entity instance to check' },
-      constraintCodes: { type: 'array', items: { type: 'string' }, description: 'Specific constraint codes to check (if empty, checks all)' },
+      constraintCodes: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Specific constraint codes to check (if empty, checks all)',
+      },
     },
     required: ['entity', 'entityId'],
     additionalProperties: false,
@@ -228,37 +273,138 @@ function builtinGetInstancesVercelSchema(): AnthropicTool['input_schema'] {
 
 function getBuiltinsAnthropic(prefix: string, _strategy: 'snake' | 'dot'): AnthropicTool[] {
   return [
-    { name: `${prefix}_list_entities`, description: 'List all entities defined in the Manifest program', input_schema: builtinListEntitiesSchema(prefix) },
-    { name: `${prefix}_describe_entity`, description: 'Get detailed information about a specific entity', input_schema: builtinDescribeEntitySchema() },
-    { name: `${prefix}_list_commands`, description: 'List all commands, optionally filtered by entity or module', input_schema: builtinListCommandsSchema(prefix) },
-    { name: `${prefix}_describe_command`, description: 'Get detailed information about a specific command including parameters and guards', input_schema: builtinDescribeCommandSchema() },
-    { name: `${prefix}_execute_command`, description: 'Execute a Manifest command on an entity instance', input_schema: builtinExecuteCommandSchema() },
-    { name: `${prefix}_get_instances`, description: 'Get entity instances from the runtime store', input_schema: builtinGetInstancesSchema() },
-    { name: `${prefix}_check_constraints`, description: 'Check constraint outcomes for a specific entity instance', input_schema: builtinCheckConstraintsSchema() },
+    {
+      name: `${prefix}_list_entities`,
+      description: 'List all entities defined in the Manifest program',
+      input_schema: builtinListEntitiesSchema(prefix),
+    },
+    {
+      name: `${prefix}_describe_entity`,
+      description: 'Get detailed information about a specific entity',
+      input_schema: builtinDescribeEntitySchema(),
+    },
+    {
+      name: `${prefix}_list_commands`,
+      description: 'List all commands, optionally filtered by entity or module',
+      input_schema: builtinListCommandsSchema(prefix),
+    },
+    {
+      name: `${prefix}_describe_command`,
+      description:
+        'Get detailed information about a specific command including parameters and guards',
+      input_schema: builtinDescribeCommandSchema(),
+    },
+    {
+      name: `${prefix}_execute_command`,
+      description: 'Execute a Manifest command on an entity instance',
+      input_schema: builtinExecuteCommandSchema(),
+    },
+    {
+      name: `${prefix}_get_instances`,
+      description: 'Get entity instances from the runtime store',
+      input_schema: builtinGetInstancesSchema(),
+    },
+    {
+      name: `${prefix}_check_constraints`,
+      description: 'Check constraint outcomes for a specific entity instance',
+      input_schema: builtinCheckConstraintsSchema(),
+    },
   ];
 }
 
 function getBuiltinsOpenAI(prefix: string): OpenAITool[] {
   return [
-    { type: 'function', function: { name: `${prefix}_list_entities`, description: 'List all entities defined in the Manifest program', parameters: builtinListEntitiesSchema(prefix) } },
-    { type: 'function', function: { name: `${prefix}_describe_entity`, description: 'Get detailed information about a specific entity', parameters: builtinDescribeEntitySchema() } },
-    { type: 'function', function: { name: `${prefix}_list_commands`, description: 'List all commands, optionally filtered by entity or module', parameters: builtinListCommandsSchema(prefix) } },
-    { type: 'function', function: { name: `${prefix}_describe_command`, description: 'Get detailed information about a specific command including parameters and guards', parameters: builtinDescribeCommandSchema() } },
-    { type: 'function', function: { name: `${prefix}_execute_command`, description: 'Execute a Manifest command on an entity instance', parameters: builtinExecuteCommandSchema() } },
-    { type: 'function', function: { name: `${prefix}_get_instances`, description: 'Get entity instances from the runtime store', parameters: builtinGetInstancesSchema() } },
-    { type: 'function', function: { name: `${prefix}_check_constraints`, description: 'Check constraint outcomes for a specific entity instance', parameters: builtinCheckConstraintsSchema() } },
+    {
+      type: 'function',
+      function: {
+        name: `${prefix}_list_entities`,
+        description: 'List all entities defined in the Manifest program',
+        parameters: builtinListEntitiesSchema(prefix),
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: `${prefix}_describe_entity`,
+        description: 'Get detailed information about a specific entity',
+        parameters: builtinDescribeEntitySchema(),
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: `${prefix}_list_commands`,
+        description: 'List all commands, optionally filtered by entity or module',
+        parameters: builtinListCommandsSchema(prefix),
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: `${prefix}_describe_command`,
+        description:
+          'Get detailed information about a specific command including parameters and guards',
+        parameters: builtinDescribeCommandSchema(),
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: `${prefix}_execute_command`,
+        description: 'Execute a Manifest command on an entity instance',
+        parameters: builtinExecuteCommandSchema(),
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: `${prefix}_get_instances`,
+        description: 'Get entity instances from the runtime store',
+        parameters: builtinGetInstancesSchema(),
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: `${prefix}_check_constraints`,
+        description: 'Check constraint outcomes for a specific entity instance',
+        parameters: builtinCheckConstraintsSchema(),
+      },
+    },
   ];
 }
 
 function getBuiltinsVercel(prefix: string): VercelAITools {
   return {
-    [`${prefix}_list_entities`]: { description: 'List all entities defined in the Manifest program', parameters: builtinListEntitiesSchema(prefix) },
-    [`${prefix}_describe_entity`]: { description: 'Get detailed information about a specific entity', parameters: builtinDescribeEntitySchema() },
-    [`${prefix}_list_commands`]: { description: 'List all commands, optionally filtered by entity or module', parameters: builtinListCommandsVercelSchema(prefix) },
-    [`${prefix}_describe_command`]: { description: 'Get detailed information about a specific command including parameters and guards', parameters: builtinDescribeCommandSchema() },
-    [`${prefix}_execute_command`]: { description: 'Execute a Manifest command on an entity instance', parameters: builtinExecuteCommandSchema() },
-    [`${prefix}_get_instances`]: { description: 'Get entity instances from the runtime store', parameters: builtinGetInstancesVercelSchema() },
-    [`${prefix}_check_constraints`]: { description: 'Check constraint outcomes for a specific entity instance', parameters: builtinCheckConstraintsVercelSchema() },
+    [`${prefix}_list_entities`]: {
+      description: 'List all entities defined in the Manifest program',
+      parameters: builtinListEntitiesSchema(prefix),
+    },
+    [`${prefix}_describe_entity`]: {
+      description: 'Get detailed information about a specific entity',
+      parameters: builtinDescribeEntitySchema(),
+    },
+    [`${prefix}_list_commands`]: {
+      description: 'List all commands, optionally filtered by entity or module',
+      parameters: builtinListCommandsVercelSchema(prefix),
+    },
+    [`${prefix}_describe_command`]: {
+      description:
+        'Get detailed information about a specific command including parameters and guards',
+      parameters: builtinDescribeCommandSchema(),
+    },
+    [`${prefix}_execute_command`]: {
+      description: 'Execute a Manifest command on an entity instance',
+      parameters: builtinExecuteCommandSchema(),
+    },
+    [`${prefix}_get_instances`]: {
+      description: 'Get entity instances from the runtime store',
+      parameters: builtinGetInstancesVercelSchema(),
+    },
+    [`${prefix}_check_constraints`]: {
+      description: 'Check constraint outcomes for a specific entity instance',
+      parameters: builtinCheckConstraintsVercelSchema(),
+    },
   };
 }
 
@@ -270,7 +416,12 @@ function getBuiltinsVercel(prefix: string): VercelAITools {
  * Generate Anthropic tool_use format tools from IR.
  */
 export function toAnthropicTools(ir: IR, opts: ToolDefinitionOptions = {}): AnthropicTool[] {
-  const { toolNameStrategy = 'snake', builtinPrefix = 'manifest', includeBuiltins = true, commandFilter } = opts;
+  const {
+    toolNameStrategy = 'snake',
+    builtinPrefix = 'manifest',
+    includeBuiltins = true,
+    commandFilter,
+  } = opts;
 
   const tools: AnthropicTool[] = [];
 

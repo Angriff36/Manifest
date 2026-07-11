@@ -50,7 +50,9 @@ export function formatAjvDiagnostic(error: ErrorObject): ValidationDiagnostic {
         suggestion: `Set "${field}" to the exact value ${JSON.stringify(params.allowedValue)}.`,
       };
     case 'enum': {
-      const allowed = ((params.allowedValues as unknown[]) ?? []).map(v => JSON.stringify(v)).join(', ');
+      const allowed = ((params.allowedValues as unknown[]) ?? [])
+        .map((v) => JSON.stringify(v))
+        .join(', ');
       return {
         code: 'SCHEMA_ENUM',
         message: `${field} must be one of: ${allowed}`,

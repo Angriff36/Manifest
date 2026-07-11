@@ -132,7 +132,7 @@ export const existingCommandAvailableDetector: Detector = {
         if (fns.length === 0) continue;
         const calls = extractRunCommandCalls(src, file);
         const dispatched = new Set(
-          calls.filter((c) => !c.dynamic && c.commandId).map((c) => c.commandId!)
+          calls.filter((c) => !c.dynamic && c.commandId).map((c) => c.commandId!),
         );
         for (const fn of fns) {
           const fnTokens = tokenize(fn.name);

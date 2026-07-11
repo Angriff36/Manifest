@@ -16,14 +16,15 @@ Zero trial-and-error debugging of configuration issues. Every contract mismatch,
 
 **Measurable outcomes**:
 
-| Metric | Target |
-|--------|--------|
-| 500 errors from config issues | **0** (scanner catches all) |
-| 403 errors from missing policies | **0** (defaults + scanner) |
-| Time from "add entity" to "working API" | **< 5 minutes** |
-| Files touched to add a new command | **1** (the manifest file) |
+| Metric                                  | Target                      |
+| --------------------------------------- | --------------------------- |
+| 500 errors from config issues           | **0** (scanner catches all) |
+| 403 errors from missing policies        | **0** (defaults + scanner)  |
+| Time from "add entity" to "working API" | **< 5 minutes**             |
+| Files touched to add a new command      | **1** (the manifest file)   |
 
 **The test**: A developer who has never used Manifest can:
+
 1. Read one 2-minute README
 2. Define an entity in a `.manifest` file
 3. Run `manifest scan` → see what's missing
@@ -57,12 +58,12 @@ Manifest requires too much manual coordination between multiple files. This RFC 
 
 A simple request to create an inventory item resulted in a 500 error that required fixing **8 files across 3 packages**:
 
-| Issue | Error | Root Cause |
-|-------|-------|------------|
-| Store target | "Unsupported storage target 'PrismaInventoryItemStore'" | Manifest said `PrismaInventoryItemStore`, but runtime doesn't recognize it |
-| Missing property | 500 | Manifest `create` command missing `itemNumber` param that Prisma requires |
-| Missing policy | 403 | `create` command had no policy defined |
-| Missing context | 403 | Route didn't pass `user.role` to runtime |
+| Issue            | Error                                                   | Root Cause                                                                 |
+| ---------------- | ------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Store target     | "Unsupported storage target 'PrismaInventoryItemStore'" | Manifest said `PrismaInventoryItemStore`, but runtime doesn't recognize it |
+| Missing property | 500                                                     | Manifest `create` command missing `itemNumber` param that Prisma requires  |
+| Missing policy   | 403                                                     | `create` command had no policy defined                                     |
+| Missing context  | 403                                                     | Route didn't pass `user.role` to runtime                                   |
 
 Each issue was discovered through trial-and-error, not upfront validation.
 
@@ -90,9 +91,9 @@ These changes modify the Manifest language and would be added to `docs/spec/sema
 // Entity-level defaults
 entity InventoryItem {
   default policy execute: user.role in ["kitchen_staff", "kitchen_lead", "manager", "admin"]
-  
+
   command consume(...) { ... }  // Inherits default
-  
+
   command adjust(...) {
     // Override: managers only
     policy execute: user.role in ["kitchen_lead", "manager", "admin"]
@@ -122,26 +123,26 @@ Valid targets: `memory`, `localStorage`, `prisma`, `supabase`
 `manifest.config.ts` at project root:
 
 ```typescript
-import { InventoryItemPrismaStore } from './stores'
+import { InventoryItemPrismaStore } from './stores';
 
 export default {
   // Map entities to store implementations
   stores: {
     InventoryItem: {
       implementation: InventoryItemPrismaStore,
-      prismaModel: 'InventoryItem',  // For scanner validation
+      prismaModel: 'InventoryItem', // For scanner validation
     },
   },
-  
+
   // Auto-resolve user context
   resolveUser: async (auth: { authUserId: string; orgId: string }) => {
-    const tenantId = await getTenantIdForOrg(auth.orgId)
+    const tenantId = await getTenantIdForOrg(auth.orgId);
     const user = await db.user.findFirst({
-      where: { authUserId: auth.authUserId, tenantId }
-    })
-    return { id: user.id, role: user.role, tenantId }
-  }
-}
+      where: { authUserId: auth.authUserId, tenantId },
+    });
+    return { id: user.id, role: user.role, tenantId };
+  },
+};
 ```
 
 #### 2.2 Scanner CLI
@@ -168,6 +169,7 @@ $ npx manifest scan
 ```
 
 **Scanner checks**:
+
 - Policy coverage (every command has policy)
 - Property alignment (manifest vs Prisma schema)
 - Store consistency (target vs implementation)
@@ -196,12 +198,12 @@ Browser-based dev tool:
 
 ## Separation of Concerns
 
-| Layer | Location | Purpose |
-|-------|----------|---------|
-| **Language Semantics** | `docs/spec/semantics.md` | What Manifest *is*: execution order, IR guarantees, policy model |
-| **Conformance Tests** | `docs/spec/conformance.md` | Executable evidence that implementation matches spec |
-| **Integration Patterns** | `specs/ergonomics/` (this doc) | How host apps integrate safely with Manifest |
-| **Tooling** | `specs/ergonomics/` | Scanner, DevTools, config helpers |
+| Layer                    | Location                       | Purpose                                                          |
+| ------------------------ | ------------------------------ | ---------------------------------------------------------------- |
+| **Language Semantics**   | `docs/spec/semantics.md`       | What Manifest _is_: execution order, IR guarantees, policy model |
+| **Conformance Tests**    | `docs/spec/conformance.md`     | Executable evidence that implementation matches spec             |
+| **Integration Patterns** | `specs/ergonomics/` (this doc) | How host apps integrate safely with Manifest                     |
+| **Tooling**              | `specs/ergonomics/`            | Scanner, DevTools, config helpers                                |
 
 **Key principle**: Don't put integration/tooling in `docs/spec/`. That folder is constitutional.
 
@@ -210,22 +212,26 @@ Browser-based dev tool:
 ## Implementation Phases
 
 ### Phase 1: Scanner CLI
+
 - `packages/cli/src/commands/scan.ts`
 - Policy coverage scanner
 - Prisma alignment scanner
 - Clear error messages with suggested fixes
 
 ### Phase 2: Config File
+
 - `manifest.config.ts` schema
 - Store binding configuration
 - `resolveUser` auto-injection
 
 ### Phase 3: Language Changes
+
 - Default policy syntax in parser
 - Update `docs/spec/semantics.md`
 - Add conformance fixtures
 
 ### Phase 4: DevTools UI
+
 - Browser dashboard
 - Real-time issue detection
 - Execution viewer
@@ -234,12 +240,12 @@ Browser-based dev tool:
 
 ## Success Metrics
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Config errors caught at runtime | 100% | <5% |
-| Missing policy errors | Common | Zero (defaults + scanner) |
-| Route boilerplate lines | ~15 per route | ~3 per route |
-| Issues detected before deploy | ~20% | >90% |
+| Metric                          | Before        | After                     |
+| ------------------------------- | ------------- | ------------------------- |
+| Config errors caught at runtime | 100%          | <5%                       |
+| Missing policy errors           | Common        | Zero (defaults + scanner) |
+| Route boilerplate lines         | ~15 per route | ~3 per route              |
+| Issues detected before deploy   | ~20%          | >90%                      |
 
 ---
 
@@ -268,18 +274,20 @@ This RFC is accepted when:
 ### Store Target Error
 
 **Before**:
+
 ```
 Error: Unsupported storage target 'PrismaInventoryItemStore' for entity 'InventoryItem'
 ```
 
 **After**:
+
 ```
 manifest scan:
 
   inventory-rules.manifest:273
     Store target 'PrismaInventoryItemStore' is not recognized.
     Built-in targets: memory, localStorage, prisma, supabase
-    
+
     If using a custom store, bind it in manifest.config.ts:
       stores: { InventoryItem: { implementation: PrismaInventoryItemStore } }
 ```
@@ -287,20 +295,22 @@ manifest scan:
 ### Missing Policy Error
 
 **Before**:
+
 ```
 POST /api/kitchen/inventory/commands/create 403 (Forbidden)
 ```
 
 **After**:
+
 ```
 manifest scan:
 
   inventory-rules.manifest:246
     Command 'InventoryItem.create' has no policy.
-    
+
     Add a policy:
       policy ManagersCanCreate execute: user.role in ["manager", "admin"]
-    
+
     Or set entity defaults:
       default policy execute: user.authenticated
 ```
@@ -308,19 +318,21 @@ manifest scan:
 ### Property Mismatch Error
 
 **Before**:
+
 ```
 Error: InventoryItemPrismaStore.create: missing itemNumber
 ```
 
 **After**:
+
 ```
 manifest scan:
 
   inventory-rules.manifest:7
     Property 'itemNumber' not found in Prisma model 'InventoryItem'.
-    
+
     Prisma properties: id, item_number, name, category, unitCost, ...
-    
+
     Did you mean 'item_number'? Consider:
       1. Rename manifest property to match Prisma: 'item_number'
       2. Or add mapping in manifest.config.ts:

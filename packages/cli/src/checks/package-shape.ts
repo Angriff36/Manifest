@@ -135,7 +135,9 @@ const EXPECTED_EXPORTS_BY_SUBPATH: Record<string, string[]> = {
  * sync with the published library surface. The only intentional omission here
  * is `./package.json` because JSON import semantics differ by host.
  */
-export async function getPackageShapeSubpaths(packageRoot: string): Promise<PublicSubpathExpectation[]> {
+export async function getPackageShapeSubpaths(
+  packageRoot: string,
+): Promise<PublicSubpathExpectation[]> {
   const packageJsonPath = path.join(packageRoot, 'package.json');
   const raw = await fs.readFile(packageJsonPath, 'utf8');
   const pkg = JSON.parse(raw) as { name?: string; exports?: Record<string, unknown> };
@@ -147,8 +149,8 @@ export async function getPackageShapeSubpaths(packageRoot: string): Promise<Publ
   }
 
   return Object.keys(pkg.exports)
-    .filter(key => !IGNORED_EXPORT_KEYS.has(key))
-    .map<PublicSubpathExpectation>(key => {
+    .filter((key) => !IGNORED_EXPORT_KEYS.has(key))
+    .map<PublicSubpathExpectation>((key) => {
       const subpath = key === '.' ? pkg.name! : `${pkg.name!}/${key.slice(2)}`;
       return {
         subpath,
@@ -170,17 +172,29 @@ const REQUIRED_TARBALL_ENTRIES = [
 
 /** Tarball entry GLOBS — at least one matching file must be present. */
 const REQUIRED_TARBALL_GLOBS: Array<{ label: string; matches: (file: string) => boolean }> = [
-  { label: 'dist/manifest/runtime-engine.js', matches: f => f === 'dist/manifest/runtime-engine.js' },
-  { label: 'dist/manifest/audit/sinks/memory.js', matches: f => f === 'dist/manifest/audit/sinks/memory.js' },
-  { label: 'dist/manifest/outbox/stores/memory.js', matches: f => f === 'dist/manifest/outbox/stores/memory.js' },
-  { label: 'packages/cli/dist/index.js', matches: f => f === 'packages/cli/dist/index.js' },
+  {
+    label: 'dist/manifest/runtime-engine.js',
+    matches: (f) => f === 'dist/manifest/runtime-engine.js',
+  },
+  {
+    label: 'dist/manifest/audit/sinks/memory.js',
+    matches: (f) => f === 'dist/manifest/audit/sinks/memory.js',
+  },
+  {
+    label: 'dist/manifest/outbox/stores/memory.js',
+    matches: (f) => f === 'dist/manifest/outbox/stores/memory.js',
+  },
+  { label: 'packages/cli/dist/index.js', matches: (f) => f === 'packages/cli/dist/index.js' },
 ];
 
-async function importSubpath(subpath: string, expectedExports: string[]): Promise<SubpathImportResult> {
+async function importSubpath(
+  subpath: string,
+  expectedExports: string[],
+): Promise<SubpathImportResult> {
   try {
     const mod = await import(subpath);
     const exports = Object.keys(mod);
-    const missing = expectedExports.filter(name => !(name in mod));
+    const missing = expectedExports.filter((name) => !(name in mod));
     if (missing.length > 0) {
       return {
         subpath,
@@ -237,7 +251,7 @@ function validateEntries(files: string[]): { ok: boolean; missing: string[] } {
  */
 async function runPnpmPack(cwd: string): Promise<TarballContentResult> {
   const dir = mkdtempSync(path.join(tmpdir(), 'manifest-pack-'));
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     let stdout = '';
     let stderr = '';
     let child;
@@ -253,9 +267,13 @@ async function runPnpmPack(cwd: string): Promise<TarballContentResult> {
       });
       return;
     }
-    child.stdout.on('data', c => { stdout += String(c); });
-    child.stderr.on('data', c => { stderr += String(c); });
-    child.on('error', err => {
+    child.stdout.on('data', (c) => {
+      stdout += String(c);
+    });
+    child.stderr.on('data', (c) => {
+      stderr += String(c);
+    });
+    child.on('error', (err) => {
       resolve({
         ran: false,
         packer: 'pnpm',
@@ -264,7 +282,7 @@ async function runPnpmPack(cwd: string): Promise<TarballContentResult> {
         error: `Could not invoke pnpm: ${err.message}`,
       });
     });
-    child.on('close', async code => {
+    child.on('close', async (code) => {
       if (code !== 0) {
         resolve({
           ran: true,
@@ -278,7 +296,7 @@ async function runPnpmPack(cwd: string): Promise<TarballContentResult> {
       }
       try {
         const entries = await fs.readdir(dir);
-        const tgz = entries.find(f => f.endsWith('.tgz'));
+        const tgz = entries.find((f) => f.endsWith('.tgz'));
         if (!tgz) {
           resolve({
             ran: true,
@@ -322,7 +340,7 @@ async function runPnpmPack(cwd: string): Promise<TarballContentResult> {
  * pnpm-managed `node_modules`.
  */
 async function runNpmPackDryRun(cwd: string): Promise<TarballContentResult> {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     let stdout = '';
     let stderr = '';
     let child;
@@ -338,9 +356,13 @@ async function runNpmPackDryRun(cwd: string): Promise<TarballContentResult> {
       });
       return;
     }
-    child.stdout.on('data', chunk => { stdout += String(chunk); });
-    child.stderr.on('data', chunk => { stderr += String(chunk); });
-    child.on('error', err => {
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on('error', (err) => {
       resolve({
         ran: false,
         packer: 'npm',
@@ -349,7 +371,7 @@ async function runNpmPackDryRun(cwd: string): Promise<TarballContentResult> {
         error: `Could not invoke npm: ${err.message}`,
       });
     });
-    child.on('close', code => {
+    child.on('close', (code) => {
       if (code !== 0) {
         resolve({
           ran: true,
@@ -364,7 +386,7 @@ async function runNpmPackDryRun(cwd: string): Promise<TarballContentResult> {
       try {
         const parsed = JSON.parse(stdout);
         const entries: Array<{ path: string }> = parsed?.[0]?.files ?? [];
-        const files = entries.map(e => e.path).sort();
+        const files = entries.map((e) => e.path).sort();
         const { ok, missing } = validateEntries(files);
         resolve({ ran: true, ok, packer: 'npm', files, missingExpectedEntries: missing });
       } catch (e) {
@@ -399,22 +421,26 @@ async function listTarball(tgzPath: string): Promise<string[]> {
     const child = spawn('tar', ['-tzf', file], { shell: true, cwd: dir });
     let stdout = '';
     let stderr = '';
-    child.stdout.on('data', c => { stdout += String(c); });
-    child.stderr.on('data', c => { stderr += String(c); });
+    child.stdout.on('data', (c) => {
+      stdout += String(c);
+    });
+    child.stderr.on('data', (c) => {
+      stderr += String(c);
+    });
     child.on('error', reject);
-    child.on('close', code => {
+    child.on('close', (code) => {
       if (code !== 0) {
         reject(new Error(`tar -tzf exited ${code}: ${stderr.trim()}`));
         return;
       }
       const files = stdout
         .split(/\r?\n/)
-        .map(line => line.trim())
-        .filter(line => line.length > 0)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
         // Skip directory entries (trailing slash).
-        .filter(line => !line.endsWith('/'))
+        .filter((line) => !line.endsWith('/'))
         // Strip leading `package/` so paths match what npm pack --dry-run would have emitted.
-        .map(line => line.replace(/^package\//, ''))
+        .map((line) => line.replace(/^package\//, ''))
         .sort();
       resolve(files);
     });
@@ -450,11 +476,9 @@ export async function checkPackageShape(opts: PackageShapeOptions): Promise<Pack
   // failure too — silently green-painting when `npm pack` couldn't run
   // would defeat the whole point of pre-publish verification. The only
   // way to skip the tarball check is explicit `skipTarball: true`.
-  const tarballOk = tarballSkipped
-    ? true
-    : (tarball.ran && tarball.ok === true);
+  const tarballOk = tarballSkipped ? true : tarball.ran && tarball.ok === true;
 
-  const ok = subpathImports.every(r => r.ok) && tarballOk;
+  const ok = subpathImports.every((r) => r.ok) && tarballOk;
 
   return { ok, tarballSkipped, subpathImports, tarball };
 }

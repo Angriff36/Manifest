@@ -4,14 +4,14 @@ sidebarTitle: 'Projections'
 description: 'Projections are a code-generation tool that reads compiled Manifest IR and emits Next.js routes, TypeScript types, and a client SDK for your application.'
 ---
 
-A **projection** reads your compiled Intermediate Representation (IR) and emits platform-specific artifacts. Projections are tooling — they do not redefine runtime semantics. Adding or changing a projection never changes what a Manifest program *means*; it only changes what code gets generated from it.
+A **projection** reads your compiled Intermediate Representation (IR) and emits platform-specific artifacts. Projections are tooling — they do not redefine runtime semantics. Adding or changing a projection never changes what a Manifest program _means_; it only changes what code gets generated from it.
 
 ## Available projections
 
-| Projection | CLI identifier | What it generates | Guide |
-| --- | --- | --- | --- |
-| Next.js | `nextjs` | App Router routes, dispatcher, TS types, client SDK | [Next.js projection](/integration/nextjs) |
-| Prisma  | `prisma` | A `schema.prisma` file (models, relations, indexes) | [Prisma projection](/integration/prisma) |
+| Projection | CLI identifier | What it generates                                   | Guide                                     |
+| ---------- | -------------- | --------------------------------------------------- | ----------------------------------------- |
+| Next.js    | `nextjs`       | App Router routes, dispatcher, TS types, client SDK | [Next.js projection](/integration/nextjs) |
+| Prisma     | `prisma`       | A `schema.prisma` file (models, relations, indexes) | [Prisma projection](/integration/prisma)  |
 
 Projections share a single contract — `ProjectionTarget.generate(ir, request)` returns one or more `ProjectionArtifact`s plus structured diagnostics. The CLI's `--projection` flag selects which projection runs; dispatch is generic (the registry resolves the name), so adding a new projection means registering it, not editing a hardcoded dispatch branch.
 
@@ -19,18 +19,18 @@ Projections share a single contract — `ProjectionTarget.generate(ir, request)`
 
 The Next.js projection ships four surfaces:
 
-| Surface | CLI identifier | What it generates |
-| --- | --- | --- |
-| Entity read routes | `nextjs.route` | Next.js App Router GET handlers using direct database queries |
-| Command routes | `nextjs.command` | POST/PUT/DELETE handlers that call `RuntimeEngine.runCommand` |
-| TypeScript types | `ts.types` | `interface` declarations derived from your IR entity definitions |
-| Client SDK | `ts.client` | Typed fetch wrappers for calling your routes from browser or server-client code |
+| Surface            | CLI identifier   | What it generates                                                               |
+| ------------------ | ---------------- | ------------------------------------------------------------------------------- |
+| Entity read routes | `nextjs.route`   | Next.js App Router GET handlers using direct database queries                   |
+| Command routes     | `nextjs.command` | POST/PUT/DELETE handlers that call `RuntimeEngine.runCommand`                   |
+| TypeScript types   | `ts.types`       | `interface` declarations derived from your IR entity definitions                |
+| Client SDK         | `ts.client`      | Typed fetch wrappers for calling your routes from browser or server-client code |
 
 The Prisma projection ships a single surface:
 
-| Surface | CLI identifier | What it generates |
-| --- | --- | --- |
-| Schema | `prisma.schema` | One `schema.prisma` file with models, `@relation` wiring, `@db.Decimal` precision, and projection-config-driven `@map`/`@@map`/`@@index` |
+| Surface | CLI identifier  | What it generates                                                                                                                        |
+| ------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Schema  | `prisma.schema` | One `schema.prisma` file with models, `@relation` wiring, `@db.Decimal` precision, and projection-config-driven `@map`/`@@map`/`@@index` |
 
 ## Reads vs. writes
 
@@ -40,7 +40,8 @@ This is the most important rule for projections:
 - **Write routes (`nextjs.command`) MUST use `RuntimeEngine.runCommand`.** Bypassing `runCommand` for mutations bypasses guard evaluation, policy checks, constraint validation, and event emission. The spec requires these to run in a fixed order on every mutation.
 
 <Warning>
-  Never replace `RuntimeEngine.runCommand` with direct database writes in a command route. Doing so silently strips all semantic enforcement from that operation.
+  Never replace `RuntimeEngine.runCommand` with direct database writes in a command route. Doing so
+  silently strips all semantic enforcement from that operation.
 </Warning>
 
 ## Using the projection CLI
@@ -62,7 +63,8 @@ manifest generate ir/recipe.ir.json --auth clerk --output app/api/
 ```
 
 <Note>
-  The CLI uses `tsx` and is intended for development-time scaffolding. For production build pipelines, call the projection functions directly in your build scripts.
+  The CLI uses `tsx` and is intended for development-time scaffolding. For production build
+  pipelines, call the projection functions directly in your build scripts.
 </Note>
 
 ## Using the projection API programmatically
@@ -77,7 +79,7 @@ import fs from 'fs/promises';
 const source = await fs.readFile('recipe.manifest', 'utf-8');
 const { ir, diagnostics } = await compileToIR(source);
 
-if (diagnostics.some(d => d.severity === 'error')) {
+if (diagnostics.some((d) => d.severity === 'error')) {
   for (const d of diagnostics) console.error(d.message);
   process.exit(1);
 }
@@ -103,16 +105,16 @@ Pass an options object as the third argument to `generateRoute` to customize the
 
 ```typescript
 const result = projection.generateRoute(ir, 'Recipe', {
-  authProvider: 'clerk',          // 'clerk' | 'nextauth' | 'custom' | 'none'
-  authImportPath: '@/lib/auth',   // custom import path for auth utilities
+  authProvider: 'clerk', // 'clerk' | 'nextauth' | 'custom' | 'none'
+  authImportPath: '@/lib/auth', // custom import path for auth utilities
   databaseImportPath: '@/lib/database',
   responseImportPath: '@/lib/manifest-response',
-  includeTenantFilter: true,      // include `where: { tenantId }` in queries
-  includeSoftDeleteFilter: true,  // include `where: { deletedAt: null }`
-  tenantIdProperty: 'tenantId',   // property name for tenant isolation
+  includeTenantFilter: true, // include `where: { tenantId }` in queries
+  includeSoftDeleteFilter: true, // include `where: { deletedAt: null }`
+  tenantIdProperty: 'tenantId', // property name for tenant isolation
   deletedAtProperty: 'deletedAt', // property name for soft-delete timestamps
-  appDir: 'app/api',              // output directory prefix
-  strictMode: true,               // emit TypeScript strict-mode compatible code
+  appDir: 'app/api', // output directory prefix
+  strictMode: true, // emit TypeScript strict-mode compatible code
 });
 ```
 
@@ -182,12 +184,12 @@ const result = projection.generateRoute(ir, 'Recipe', {
 
 Projections handle transport concerns: authentication, HTTP conventions, response shaping, and read-path strategy. They do not own runtime responsibilities.
 
-| Projection owns | Runtime owns |
-| --- | --- |
-| Reading IR and emitting code | Building the evaluation context |
-| Configuring auth and database imports | Enforcing policies |
-| Choosing the read-path strategy | Evaluating guards in order |
-| Adapting to framework conventions | Executing actions |
-| | Emitting declared events |
+| Projection owns                       | Runtime owns                    |
+| ------------------------------------- | ------------------------------- |
+| Reading IR and emitting code          | Building the evaluation context |
+| Configuring auth and database imports | Enforcing policies              |
+| Choosing the read-path strategy       | Evaluating guards in order      |
+| Adapting to framework conventions     | Executing actions               |
+|                                       | Emitting declared events        |
 
 Projections are tooling. They cannot introduce new language semantics — only the runtime and its specification can define how Manifest programs behave. If you find a mismatch between what a generated route does and what the Manifest spec requires, the generated code is wrong, not the spec.

@@ -217,13 +217,20 @@ function byName<T extends { name: string }>(items: T[]): Map<string, T> {
 function serializeIRValue(v: IRValue | undefined): string {
   if (!v) return '';
   switch (v.kind) {
-    case 'string': return `"${v.value}"`;
-    case 'number': return String(v.value);
-    case 'boolean': return String(v.value);
-    case 'null': return 'null';
-    case 'array': return `[${v.elements.map(serializeIRValue).join(', ')}]`;
+    case 'string':
+      return `"${v.value}"`;
+    case 'number':
+      return String(v.value);
+    case 'boolean':
+      return String(v.value);
+    case 'null':
+      return 'null';
+    case 'array':
+      return `[${v.elements.map(serializeIRValue).join(', ')}]`;
     case 'object': {
-      const entries = Object.entries(v.properties).map(([k, val]) => `${k}: ${serializeIRValue(val)}`);
+      const entries = Object.entries(v.properties).map(
+        ([k, val]) => `${k}: ${serializeIRValue(val)}`,
+      );
       return `{${entries.join(', ')}}`;
     }
   }
@@ -270,16 +277,28 @@ function diffProperties(oldProps: IRProperty[], newProps: IRProperty[]): Propert
 
     const typeChanged = serializeIRType(old.type) !== serializeIRType(prop.type);
     const modifiersChanged = !modifiersEqual(old.modifiers, prop.modifiers);
-    const defaultChanged = serializeIRValue(old.defaultValue) !== serializeIRValue(prop.defaultValue);
+    const defaultChanged =
+      serializeIRValue(old.defaultValue) !== serializeIRValue(prop.defaultValue);
 
     if (typeChanged || modifiersChanged || defaultChanged) {
       result.push({
         name,
         change: 'changed',
         details: {
-          ...(typeChanged ? { type: { from: serializeIRType(old.type), to: serializeIRType(prop.type) } } : {}),
-          ...(modifiersChanged ? { modifiers: { from: [...old.modifiers], to: [...prop.modifiers] } } : {}),
-          ...(defaultChanged ? { defaultValue: { from: serializeIRValue(old.defaultValue), to: serializeIRValue(prop.defaultValue) } } : {}),
+          ...(typeChanged
+            ? { type: { from: serializeIRType(old.type), to: serializeIRType(prop.type) } }
+            : {}),
+          ...(modifiersChanged
+            ? { modifiers: { from: [...old.modifiers], to: [...prop.modifiers] } }
+            : {}),
+          ...(defaultChanged
+            ? {
+                defaultValue: {
+                  from: serializeIRValue(old.defaultValue),
+                  to: serializeIRValue(prop.defaultValue),
+                },
+              }
+            : {}),
         },
       });
     }
@@ -292,7 +311,10 @@ function diffProperties(oldProps: IRProperty[], newProps: IRProperty[]): Propert
 // Computed property diffing
 // ============================================================================
 
-function diffComputedProperties(oldProps: IRComputedProperty[], newProps: IRComputedProperty[]): ComputedPropertyDiff[] {
+function diffComputedProperties(
+  oldProps: IRComputedProperty[],
+  newProps: IRComputedProperty[],
+): ComputedPropertyDiff[] {
   const result: ComputedPropertyDiff[] = [];
   const oldMap = byName(oldProps);
   const newMap = byName(newProps);
@@ -311,7 +333,9 @@ function diffComputedProperties(oldProps: IRComputedProperty[], newProps: IRComp
     }
 
     const typeChanged = serializeIRType(old.type) !== serializeIRType(prop.type);
-    const depsChanged = JSON.stringify([...old.dependencies].sort()) !== JSON.stringify([...prop.dependencies].sort());
+    const depsChanged =
+      JSON.stringify([...old.dependencies].sort()) !==
+      JSON.stringify([...prop.dependencies].sort());
     // Expression comparison via JSON serialization (structural equality)
     const exprChanged = JSON.stringify(old.expression) !== JSON.stringify(prop.expression);
 
@@ -320,9 +344,13 @@ function diffComputedProperties(oldProps: IRComputedProperty[], newProps: IRComp
         name,
         change: 'changed',
         details: {
-          ...(typeChanged ? { type: { from: serializeIRType(old.type), to: serializeIRType(prop.type) } } : {}),
+          ...(typeChanged
+            ? { type: { from: serializeIRType(old.type), to: serializeIRType(prop.type) } }
+            : {}),
           ...(exprChanged ? { expression: { from: '[changed]', to: '[changed]' } } : {}),
-          ...(depsChanged ? { dependencies: { from: old.dependencies, to: prop.dependencies } } : {}),
+          ...(depsChanged
+            ? { dependencies: { from: old.dependencies, to: prop.dependencies } }
+            : {}),
         },
       });
     }
@@ -335,7 +363,10 @@ function diffComputedProperties(oldProps: IRComputedProperty[], newProps: IRComp
 // Relationship diffing
 // ============================================================================
 
-function diffRelationships(oldRels: IRRelationship[], newRels: IRRelationship[]): RelationshipDiff[] {
+function diffRelationships(
+  oldRels: IRRelationship[],
+  newRels: IRRelationship[],
+): RelationshipDiff[] {
   const result: RelationshipDiff[] = [];
   const oldMap = byName(oldRels);
   const newMap = byName(newRels);
@@ -360,7 +391,14 @@ function diffRelationships(oldRels: IRRelationship[], newRels: IRRelationship[])
     const onDeleteChanged = old.onDelete !== rel.onDelete;
     const onUpdateChanged = old.onUpdate !== rel.onUpdate;
 
-    if (kindChanged || targetChanged || fkChanged || throughChanged || onDeleteChanged || onUpdateChanged) {
+    if (
+      kindChanged ||
+      targetChanged ||
+      fkChanged ||
+      throughChanged ||
+      onDeleteChanged ||
+      onUpdateChanged
+    ) {
       result.push({
         name,
         change: 'changed',
@@ -383,7 +421,10 @@ function diffRelationships(oldRels: IRRelationship[], newRels: IRRelationship[])
 // Constraint diffing
 // ============================================================================
 
-function diffConstraints(oldConstraints: IRConstraint[], newConstraints: IRConstraint[]): ConstraintDiff[] {
+function diffConstraints(
+  oldConstraints: IRConstraint[],
+  newConstraints: IRConstraint[],
+): ConstraintDiff[] {
   const result: ConstraintDiff[] = [];
   const oldMap = byName(oldConstraints);
   const newMap = byName(newConstraints);
@@ -410,7 +451,9 @@ function diffConstraints(oldConstraints: IRConstraint[], newConstraints: IRConst
         name,
         change: 'changed',
         details: {
-          ...(severityChanged ? { severity: { from: old.severity ?? 'block', to: c.severity ?? 'block' } } : {}),
+          ...(severityChanged
+            ? { severity: { from: old.severity ?? 'block', to: c.severity ?? 'block' } }
+            : {}),
           ...(messageChanged ? { message: { from: old.message, to: c.message } } : {}),
         },
       });
@@ -436,10 +479,16 @@ function diffEntities(oldIR: IR, newIR: IR): EntityDiff[] {
         name,
         change: 'removed',
         module: { from: entity.module, to: undefined },
-        properties: entity.properties.map(p => ({ name: p.name, change: 'removed' as const })),
-        computedProperties: entity.computedProperties.map(p => ({ name: p.name, change: 'removed' as const })),
-        relationships: entity.relationships.map(r => ({ name: r.name, change: 'removed' as const })),
-        constraints: entity.constraints.map(c => ({ name: c.name, change: 'removed' as const })),
+        properties: entity.properties.map((p) => ({ name: p.name, change: 'removed' as const })),
+        computedProperties: entity.computedProperties.map((p) => ({
+          name: p.name,
+          change: 'removed' as const,
+        })),
+        relationships: entity.relationships.map((r) => ({
+          name: r.name,
+          change: 'removed' as const,
+        })),
+        constraints: entity.constraints.map((c) => ({ name: c.name, change: 'removed' as const })),
         commands: [...entity.commands],
         policies: [...entity.policies],
         versionProperty: { from: entity.versionProperty, to: undefined },
@@ -455,10 +504,16 @@ function diffEntities(oldIR: IR, newIR: IR): EntityDiff[] {
         name,
         change: 'added',
         module: { from: undefined, to: entity.module },
-        properties: entity.properties.map(p => ({ name: p.name, change: 'added' as const })),
-        computedProperties: entity.computedProperties.map(p => ({ name: p.name, change: 'added' as const })),
-        relationships: entity.relationships.map(r => ({ name: r.name, change: 'added' as const })),
-        constraints: entity.constraints.map(c => ({ name: c.name, change: 'added' as const })),
+        properties: entity.properties.map((p) => ({ name: p.name, change: 'added' as const })),
+        computedProperties: entity.computedProperties.map((p) => ({
+          name: p.name,
+          change: 'added' as const,
+        })),
+        relationships: entity.relationships.map((r) => ({
+          name: r.name,
+          change: 'added' as const,
+        })),
+        constraints: entity.constraints.map((c) => ({ name: c.name, change: 'added' as const })),
         commands: [...entity.commands],
         policies: [...entity.policies],
         versionProperty: { from: undefined, to: entity.versionProperty },
@@ -470,18 +525,27 @@ function diffEntities(oldIR: IR, newIR: IR): EntityDiff[] {
     const versionPropertyChanged = old.versionProperty !== entity.versionProperty;
 
     const properties = diffProperties(old.properties, entity.properties);
-    const computedProperties = diffComputedProperties(old.computedProperties, entity.computedProperties);
+    const computedProperties = diffComputedProperties(
+      old.computedProperties,
+      entity.computedProperties,
+    );
     const relationships = diffRelationships(old.relationships, entity.relationships);
     const constraints = diffConstraints(old.constraints, entity.constraints);
 
     const commandsDiff = diffStringArrays(old.commands, entity.commands);
     const policiesDiff = diffStringArrays(old.policies, entity.policies);
 
-    const hasChanges = moduleChanged || versionPropertyChanged ||
-      properties.length > 0 || computedProperties.length > 0 ||
-      relationships.length > 0 || constraints.length > 0 ||
-      commandsDiff.added.length > 0 || commandsDiff.removed.length > 0 ||
-      policiesDiff.added.length > 0 || policiesDiff.removed.length > 0;
+    const hasChanges =
+      moduleChanged ||
+      versionPropertyChanged ||
+      properties.length > 0 ||
+      computedProperties.length > 0 ||
+      relationships.length > 0 ||
+      constraints.length > 0 ||
+      commandsDiff.added.length > 0 ||
+      commandsDiff.removed.length > 0 ||
+      policiesDiff.added.length > 0 ||
+      policiesDiff.removed.length > 0;
 
     if (hasChanges) {
       result.push({
@@ -494,7 +558,9 @@ function diffEntities(oldIR: IR, newIR: IR): EntityDiff[] {
         constraints,
         commands: [...commandsDiff.added, ...commandsDiff.removed],
         policies: [...policiesDiff.added, ...policiesDiff.removed],
-        ...(versionPropertyChanged ? { versionProperty: { from: old.versionProperty, to: entity.versionProperty } } : {}),
+        ...(versionPropertyChanged
+          ? { versionProperty: { from: old.versionProperty, to: entity.versionProperty } }
+          : {}),
       });
     }
   }
@@ -526,17 +592,26 @@ function diffCommands(oldCommands: IRCommand[], newCommands: IRCommand[]): Comma
 
     const entityChanged = old.entity !== cmd.entity;
     const paramsDiff = diffStringArrays(
-      old.parameters.map(p => `${p.name}:${serializeIRType(p.type)}`),
-      cmd.parameters.map(p => `${p.name}:${serializeIRType(p.type)}`),
+      old.parameters.map((p) => `${p.name}:${serializeIRType(p.type)}`),
+      cmd.parameters.map((p) => `${p.name}:${serializeIRType(p.type)}`),
     );
     const guardsChanged = JSON.stringify(old.guards) !== JSON.stringify(cmd.guards);
     const actionsChanged = JSON.stringify(old.actions) !== JSON.stringify(cmd.actions);
-    const emitsChanged = JSON.stringify([...old.emits].sort()) !== JSON.stringify([...cmd.emits].sort());
-    const returnsChanged = serializeIRType(old.returns ?? { name: 'void', nullable: false }) !==
+    const emitsChanged =
+      JSON.stringify([...old.emits].sort()) !== JSON.stringify([...cmd.emits].sort());
+    const returnsChanged =
+      serializeIRType(old.returns ?? { name: 'void', nullable: false }) !==
       serializeIRType(cmd.returns ?? { name: 'void', nullable: false });
 
-    if (entityChanged || paramsDiff.added.length > 0 || paramsDiff.removed.length > 0 ||
-      guardsChanged || actionsChanged || emitsChanged || returnsChanged) {
+    if (
+      entityChanged ||
+      paramsDiff.added.length > 0 ||
+      paramsDiff.removed.length > 0 ||
+      guardsChanged ||
+      actionsChanged ||
+      emitsChanged ||
+      returnsChanged
+    ) {
       result.push({
         name,
         change: 'changed',
@@ -604,8 +679,8 @@ function diffPolicies(oldPolicies: IRPolicy[], newPolicies: IRPolicy[]): PolicyD
 
 function diffStores(oldStores: IRStore[], newStores: IRStore[]): StoreDiff[] {
   const result: StoreDiff[] = [];
-  const oldMap = byName(oldStores.map(s => ({ ...s, name: s.entity })));
-  const newMap = byName(newStores.map(s => ({ ...s, name: s.entity })));
+  const oldMap = byName(oldStores.map((s) => ({ ...s, name: s.entity })));
+  const newMap = byName(newStores.map((s) => ({ ...s, name: s.entity })));
 
   for (const [entity] of oldMap) {
     if (!newMap.has(entity)) {
@@ -722,11 +797,17 @@ function diffModules(oldModules: IR['modules'], newModules: IR['modules']): Modu
     const eventsDiff = diffStringArrays(old.events, mod.events);
     const policiesDiff = diffStringArrays(old.policies, mod.policies);
 
-    const hasChanges = entitiesDiff.added.length > 0 || entitiesDiff.removed.length > 0 ||
-      commandsDiff.added.length > 0 || commandsDiff.removed.length > 0 ||
-      storesDiff.added.length > 0 || storesDiff.removed.length > 0 ||
-      eventsDiff.added.length > 0 || eventsDiff.removed.length > 0 ||
-      policiesDiff.added.length > 0 || policiesDiff.removed.length > 0;
+    const hasChanges =
+      entitiesDiff.added.length > 0 ||
+      entitiesDiff.removed.length > 0 ||
+      commandsDiff.added.length > 0 ||
+      commandsDiff.removed.length > 0 ||
+      storesDiff.added.length > 0 ||
+      storesDiff.removed.length > 0 ||
+      eventsDiff.added.length > 0 ||
+      eventsDiff.removed.length > 0 ||
+      policiesDiff.added.length > 0 ||
+      policiesDiff.removed.length > 0;
 
     if (hasChanges) {
       result.push({
@@ -748,12 +829,15 @@ function diffModules(oldModules: IR['modules'], newModules: IR['modules']): Modu
 // String array diffing helper
 // ============================================================================
 
-function diffStringArrays(oldArr: string[], newArr: string[]): { added: string[]; removed: string[] } {
+function diffStringArrays(
+  oldArr: string[],
+  newArr: string[],
+): { added: string[]; removed: string[] } {
   const oldSet = new Set(oldArr);
   const newSet = new Set(newArr);
   return {
-    added: newArr.filter(v => !oldSet.has(v)).sort(),
-    removed: oldArr.filter(v => !newSet.has(v)).sort(),
+    added: newArr.filter((v) => !oldSet.has(v)).sort(),
+    removed: oldArr.filter((v) => !newSet.has(v)).sort(),
   };
 }
 
@@ -772,39 +856,63 @@ export function diffIR(oldIR: IR, newIR: IR): IRDiffReport {
   const eventDiffs = diffEvents(oldIR.events, newIR.events);
   const moduleDiffs = diffModules(oldIR.modules, newIR.modules);
 
-  const entitiesAdded = entityDiffs.filter(d => d.change === 'added').length;
-  const entitiesRemoved = entityDiffs.filter(d => d.change === 'removed').length;
-  const entitiesChanged = entityDiffs.filter(d => d.change === 'changed').length;
-  const commandsAdded = commandDiffs.filter(d => d.change === 'added').length;
-  const commandsRemoved = commandDiffs.filter(d => d.change === 'removed').length;
-  const commandsChanged = commandDiffs.filter(d => d.change === 'changed').length;
-  const policiesAdded = policyDiffs.filter(d => d.change === 'added').length;
-  const policiesRemoved = policyDiffs.filter(d => d.change === 'removed').length;
-  const policiesChanged = policyDiffs.filter(d => d.change === 'changed').length;
-  const eventsAdded = eventDiffs.filter(d => d.change === 'added').length;
-  const eventsRemoved = eventDiffs.filter(d => d.change === 'removed').length;
-  const eventsChanged = eventDiffs.filter(d => d.change === 'changed').length;
-  const storesAdded = storeDiffs.filter(d => d.change === 'added').length;
-  const storesRemoved = storeDiffs.filter(d => d.change === 'removed').length;
-  const storesChanged = storeDiffs.filter(d => d.change === 'changed').length;
-  const modulesAdded = moduleDiffs.filter(d => d.change === 'added').length;
-  const modulesRemoved = moduleDiffs.filter(d => d.change === 'removed').length;
+  const entitiesAdded = entityDiffs.filter((d) => d.change === 'added').length;
+  const entitiesRemoved = entityDiffs.filter((d) => d.change === 'removed').length;
+  const entitiesChanged = entityDiffs.filter((d) => d.change === 'changed').length;
+  const commandsAdded = commandDiffs.filter((d) => d.change === 'added').length;
+  const commandsRemoved = commandDiffs.filter((d) => d.change === 'removed').length;
+  const commandsChanged = commandDiffs.filter((d) => d.change === 'changed').length;
+  const policiesAdded = policyDiffs.filter((d) => d.change === 'added').length;
+  const policiesRemoved = policyDiffs.filter((d) => d.change === 'removed').length;
+  const policiesChanged = policyDiffs.filter((d) => d.change === 'changed').length;
+  const eventsAdded = eventDiffs.filter((d) => d.change === 'added').length;
+  const eventsRemoved = eventDiffs.filter((d) => d.change === 'removed').length;
+  const eventsChanged = eventDiffs.filter((d) => d.change === 'changed').length;
+  const storesAdded = storeDiffs.filter((d) => d.change === 'added').length;
+  const storesRemoved = storeDiffs.filter((d) => d.change === 'removed').length;
+  const storesChanged = storeDiffs.filter((d) => d.change === 'changed').length;
+  const modulesAdded = moduleDiffs.filter((d) => d.change === 'added').length;
+  const modulesRemoved = moduleDiffs.filter((d) => d.change === 'removed').length;
 
-  const hasChanges = entitiesAdded + entitiesRemoved + entitiesChanged +
-    commandsAdded + commandsRemoved + commandsChanged +
-    policiesAdded + policiesRemoved + policiesChanged +
-    eventsAdded + eventsRemoved + eventsChanged +
-    storesAdded + storesRemoved + storesChanged +
-    modulesAdded + modulesRemoved > 0;
+  const hasChanges =
+    entitiesAdded +
+      entitiesRemoved +
+      entitiesChanged +
+      commandsAdded +
+      commandsRemoved +
+      commandsChanged +
+      policiesAdded +
+      policiesRemoved +
+      policiesChanged +
+      eventsAdded +
+      eventsRemoved +
+      eventsChanged +
+      storesAdded +
+      storesRemoved +
+      storesChanged +
+      modulesAdded +
+      modulesRemoved >
+    0;
 
   return {
     summary: {
-      entitiesAdded, entitiesRemoved, entitiesChanged,
-      commandsAdded, commandsRemoved, commandsChanged,
-      policiesAdded, policiesRemoved, policiesChanged,
-      eventsAdded, eventsRemoved, eventsChanged,
-      storesAdded, storesRemoved, storesChanged,
-      modulesAdded, modulesRemoved,
+      entitiesAdded,
+      entitiesRemoved,
+      entitiesChanged,
+      commandsAdded,
+      commandsRemoved,
+      commandsChanged,
+      policiesAdded,
+      policiesRemoved,
+      policiesChanged,
+      eventsAdded,
+      eventsRemoved,
+      eventsChanged,
+      storesAdded,
+      storesRemoved,
+      storesChanged,
+      modulesAdded,
+      modulesRemoved,
       hasChanges,
     },
     modules: moduleDiffs,
@@ -826,55 +934,82 @@ export function diffIR(oldIR: IR, newIR: IR): IRDiffReport {
  */
 function irTypeToSql(type: IRType): string {
   const nullable = type.nullable ? '' : ' NOT NULL';
-  const base = type.name === 'array' && type.generic
-    ? 'JSONB'  // Arrays stored as JSONB
-    : sqlScalarForTypeName(type.name);
+  const base =
+    type.name === 'array' && type.generic
+      ? 'JSONB' // Arrays stored as JSONB
+      : sqlScalarForTypeName(type.name);
   return `${base}${nullable}`;
 }
 
 function sqlScalarForTypeName(name: string): string {
   switch (name) {
-    case 'string': return 'TEXT';
-    case 'boolean': return 'BOOLEAN';
-    case 'int': return 'INTEGER';
-    case 'bigint': return 'BIGINT';
-    case 'float': return 'DOUBLE PRECISION';
+    case 'string':
+      return 'TEXT';
+    case 'boolean':
+      return 'BOOLEAN';
+    case 'int':
+      return 'INTEGER';
+    case 'bigint':
+      return 'BIGINT';
+    case 'float':
+      return 'DOUBLE PRECISION';
     case 'decimal':
-    case 'money': return 'DECIMAL(12,2)';
-    case 'date': return 'DATE';
-    case 'datetime': return 'TIMESTAMPTZ';
-    case 'json': return 'JSONB';
-    case 'uuid': return 'UUID';
-    case 'text': return 'TEXT';
-    case 'bytes': return 'BYTEA';
-    default: return 'TEXT';
+    case 'money':
+      return 'DECIMAL(12,2)';
+    case 'date':
+      return 'DATE';
+    case 'datetime':
+      return 'TIMESTAMPTZ';
+    case 'json':
+      return 'JSONB';
+    case 'uuid':
+      return 'UUID';
+    case 'text':
+      return 'TEXT';
+    case 'bytes':
+      return 'BYTEA';
+    default:
+      return 'TEXT';
   }
 }
 
 function irTypeToPrisma(type: IRType): string {
-  const base = type.name === 'array' && type.generic
-    ? `${irScalarToPrisma(type.generic.name)}[]`
-    : irScalarToPrisma(type.name);
+  const base =
+    type.name === 'array' && type.generic
+      ? `${irScalarToPrisma(type.generic.name)}[]`
+      : irScalarToPrisma(type.name);
   const nullable = type.nullable ? '?' : '';
   return `${base}${nullable}`;
 }
 
 function irScalarToPrisma(name: string): string {
   switch (name) {
-    case 'string': return 'String';
-    case 'boolean': return 'Boolean';
-    case 'int': return 'Int';
-    case 'bigint': return 'BigInt';
-    case 'float': return 'Float';
+    case 'string':
+      return 'String';
+    case 'boolean':
+      return 'Boolean';
+    case 'int':
+      return 'Int';
+    case 'bigint':
+      return 'BigInt';
+    case 'float':
+      return 'Float';
     case 'decimal':
-    case 'money': return 'Decimal';
+    case 'money':
+      return 'Decimal';
     case 'date':
-    case 'datetime': return 'DateTime';
-    case 'json': return 'Json';
-    case 'uuid': return 'String';
-    case 'text': return 'String';
-    case 'bytes': return 'Bytes';
-    default: return 'String';
+    case 'datetime':
+      return 'DateTime';
+    case 'json':
+      return 'Json';
+    case 'uuid':
+      return 'String';
+    case 'text':
+      return 'String';
+    case 'bytes':
+      return 'Bytes';
+    default:
+      return 'String';
   }
 }
 
@@ -897,8 +1032,8 @@ export function generateMigration(diff: IRDiffReport, _oldIR: IR, newIR: IR): Mi
 
     if (entityDiff.change === 'added') {
       sql.push(`-- Create table for entity: ${entityDiff.name}`);
-      const newEntity = newIR.entities.find(e => e.name === entityDiff.name)!;
-      const columns = newEntity.properties.map(p => {
+      const newEntity = newIR.entities.find((e) => e.name === entityDiff.name)!;
+      const columns = newEntity.properties.map((p) => {
         const colDef = `  ${p.name} ${irTypeToSql(p.type)}`;
         const isUnique = p.modifiers.includes('unique');
         const extra = [];
@@ -923,38 +1058,41 @@ export function generateMigration(diff: IRDiffReport, _oldIR: IR, newIR: IR): Mi
       }
       prisma.push('}');
       summary.push(`Added entity '${entityDiff.name}' (new table '${tableName}')`);
-
     } else if (entityDiff.change === 'removed') {
       warnings.push(`DROPPING TABLE '${tableName}' — all data will be lost!`);
       sql.push(`-- Drop table for removed entity: ${entityDiff.name}`);
       sql.push(`DROP TABLE IF EXISTS "${tableName}";`);
       prisma.push(`// Remove model: ${entityDiff.name}`);
       summary.push(`Removed entity '${entityDiff.name}' (drops table '${tableName}')`);
-
     } else if (entityDiff.change === 'changed') {
       sql.push(`-- Alter table for entity: ${entityDiff.name}`);
       prisma.push(`// Alter model: ${entityDiff.name}`);
 
       for (const propDiff of entityDiff.properties) {
         if (propDiff.change === 'added') {
-          const newProp = newIR.entities.find(e => e.name === entityDiff.name)!
-            .properties.find(p => p.name === propDiff.name)!;
+          const newProp = newIR.entities
+            .find((e) => e.name === entityDiff.name)!
+            .properties.find((p) => p.name === propDiff.name)!;
           const colType = irTypeToSql(newProp.type);
           sql.push(`ALTER TABLE "${tableName}" ADD COLUMN "${propDiff.name}" ${colType};`);
           prisma.push(`// Add field: ${propDiff.name} ${irTypeToPrisma(newProp.type)}`);
           summary.push(`Added property '${entityDiff.name}.${propDiff.name}'`);
-
         } else if (propDiff.change === 'removed') {
           warnings.push(`DROPPING COLUMN '${tableName}.${propDiff.name}' — data will be lost!`);
           sql.push(`ALTER TABLE "${tableName}" DROP COLUMN IF EXISTS "${propDiff.name}";`);
           prisma.push(`// Remove field: ${propDiff.name}`);
           summary.push(`Removed property '${entityDiff.name}.${propDiff.name}'`);
-
         } else if (propDiff.change === 'changed' && propDiff.details) {
           if (propDiff.details.type) {
-            sql.push(`ALTER TABLE "${tableName}" ALTER COLUMN "${propDiff.name}" TYPE ${propDiff.details.type.to};`);
-            prisma.push(`// Change field type: ${propDiff.name} from ${propDiff.details.type.from} to ${propDiff.details.type.to}`);
-            summary.push(`Changed type of '${entityDiff.name}.${propDiff.name}' from ${propDiff.details.type.from} to ${propDiff.details.type.to}`);
+            sql.push(
+              `ALTER TABLE "${tableName}" ALTER COLUMN "${propDiff.name}" TYPE ${propDiff.details.type.to};`,
+            );
+            prisma.push(
+              `// Change field type: ${propDiff.name} from ${propDiff.details.type.from} to ${propDiff.details.type.to}`,
+            );
+            summary.push(
+              `Changed type of '${entityDiff.name}.${propDiff.name}' from ${propDiff.details.type.from} to ${propDiff.details.type.to}`,
+            );
           }
           if (propDiff.details.modifiers) {
             const oldUnique = propDiff.details.modifiers.from.includes('unique');
@@ -962,7 +1100,9 @@ export function generateMigration(diff: IRDiffReport, _oldIR: IR, newIR: IR): Mi
             if (!oldUnique && newUnique) {
               sql.push(`ALTER TABLE "${tableName}" ADD UNIQUE ("${propDiff.name}");`);
             } else if (oldUnique && !newUnique) {
-              sql.push(`ALTER TABLE "${tableName}" DROP CONSTRAINT IF EXISTS "${tableName}_${propDiff.name}_key";`);
+              sql.push(
+                `ALTER TABLE "${tableName}" DROP CONSTRAINT IF EXISTS "${tableName}_${propDiff.name}_key";`,
+              );
             }
           }
         }

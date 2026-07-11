@@ -1,7 +1,7 @@
 ---
-title: "Constraint built-ins: regex, range, and boundary checks"
-sidebarTitle: "Constraint built-ins"
-description: "Validate string formats and numeric ranges declaratively with the matches, between, min, max, and length built-ins inside Manifest constraints and guards."
+title: 'Constraint built-ins: regex, range, and boundary checks'
+sidebarTitle: 'Constraint built-ins'
+description: 'Validate string formats and numeric ranges declaratively with the matches, between, min, max, and length built-ins inside Manifest constraints and guards.'
 ---
 
 Manifest ships built-in functions for the two most common validation needs — matching a string against a pattern and bounding a number or length — so you can express format and range rules declaratively inside constraints and command guards rather than writing custom comparison logic. These built-ins return booleans (or numbers) and slot into the existing constraint and guard evaluation paths unchanged. For how constraints attach to entities and commands and how severity works, see [Entities](/language/entities).
@@ -32,7 +32,10 @@ Regex constraints are validated in two places. At **compile time**, when the cal
 A `matches` constraint with a literal pattern is the natural source for a Zod `.regex()` refinement and a database `CHECK` constraint in projections that consume the IR's constraint expressions.
 
 <Note>
-The runtime uses the JavaScript `RegExp` engine, so pattern syntax and semantics are exactly those of ECMAScript regular expressions, with no flags applied. A non-string value or non-string pattern makes `matches` return `false` — so a constraint over a null or non-string field registers as a failed match rather than being skipped.
+  The runtime uses the JavaScript `RegExp` engine, so pattern syntax and semantics are exactly those
+  of ECMAScript regular expressions, with no flags applied. A non-string value or non-string pattern
+  makes `matches` return `false` — so a constraint over a null or non-string field registers as a
+  failed match rather than being skipped.
 </Note>
 
 ## Range and boundary checks
@@ -86,5 +89,11 @@ The semantics are:
 In a guard, a falsey result halts command execution in order, consistent with Manifest's strict guard semantics. In a constraint, the result drives the constraint's configured outcome. A static analysis module also extracts numeric range and length bounds from these expressions and exposes converters for SQL `CHECK`, Zod chains, and OpenAPI `minimum`/`maximum`/`minLength`/`maxLength`.
 
 <Warning>
-Note the difference in shape: `between` returns a **boolean**, while `min` and `max` return a **number**. The fixture uses `min(self.quantity, 0)` and `max(self.discount, 100)` as constraint expressions whose numeric result the checker evaluates, whereas `length(...)` is paired with an explicit comparison operator. `between` returns `false` for any non-numeric operand, so a constraint over a null field registers as a failure rather than being skipped. "Compile-time constant folding" refers to the static bound extraction used for projection, not to rewriting of the runtime expression.
+  Note the difference in shape: `between` returns a **boolean**, while `min` and `max` return a
+  **number**. The fixture uses `min(self.quantity, 0)` and `max(self.discount, 100)` as constraint
+  expressions whose numeric result the checker evaluates, whereas `length(...)` is paired with an
+  explicit comparison operator. `between` returns `false` for any non-numeric operand, so a
+  constraint over a null field registers as a failure rather than being skipped. "Compile-time
+  constant folding" refers to the static bound extraction used for projection, not to rewriting of
+  the runtime expression.
 </Warning>

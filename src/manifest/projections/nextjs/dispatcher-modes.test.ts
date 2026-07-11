@@ -134,7 +134,7 @@ describe('nextjs.dispatcher executionMode', () => {
 
     expect(result.artifacts).toHaveLength(0);
     expect(result.diagnostics).toContainEqual(
-      expect.objectContaining({ code: 'DISPATCHER_DISABLED', severity: 'info' })
+      expect.objectContaining({ code: 'DISPATCHER_DISABLED', severity: 'info' }),
     );
   });
 });
@@ -171,7 +171,7 @@ describe('nextjs.command concreteCommandRoutes config', () => {
     });
     expect(result.artifacts).toHaveLength(0);
     expect(result.diagnostics).toContainEqual(
-      expect.objectContaining({ code: 'CONCRETE_COMMAND_ROUTES_DISABLED', severity: 'info' })
+      expect.objectContaining({ code: 'CONCRETE_COMMAND_ROUTES_DISABLED', severity: 'info' }),
     );
   });
 
@@ -210,7 +210,7 @@ describe('nextjs.command concreteCommandRoutes config', () => {
 
     expect(result.artifacts).toHaveLength(0);
     expect(result.diagnostics).toContainEqual(
-      expect.objectContaining({ code: 'CONCRETE_COMMAND_ROUTES_DISABLED', severity: 'info' })
+      expect.objectContaining({ code: 'CONCRETE_COMMAND_ROUTES_DISABLED', severity: 'info' }),
     );
   });
 

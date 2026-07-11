@@ -1,7 +1,7 @@
 ---
-title: "Connect Manifest to your database with custom stores"
-description: "Implement the Store interface and provide it via storeProvider to persist entity state in any database — Postgres, Prisma, Drizzle, or your own backend."
-sidebarTitle: "Custom Stores"
+title: 'Connect Manifest to your database with custom stores'
+description: 'Implement the Store interface and provide it via storeProvider to persist entity state in any database — Postgres, Prisma, Drizzle, or your own backend.'
+sidebarTitle: 'Custom Stores'
 ---
 
 By default, `RuntimeEngine` stores entity state in memory. That works for tests and local development, but production applications need durable storage. Manifest exposes the `Store` interface and a `storeProvider` hook so you can plug in any backend without changing your domain model.
@@ -23,34 +23,40 @@ interface Store<T extends EntityInstance = EntityInstance> {
 
 Each method maps directly to a runtime operation:
 
-| Method | When the runtime calls it |
-|--------|--------------------------|
-| `getAll` | Hydrating entity collections |
-| `getById` | Loading an instance before a command runs |
-| `create` | Persisting a new entity instance |
-| `update` | Writing state mutations after a command succeeds |
-| `delete` | Removing an instance |
-| `clear` | Resetting all instances (typically in tests) |
+| Method    | When the runtime calls it                        |
+| --------- | ------------------------------------------------ |
+| `getAll`  | Hydrating entity collections                     |
+| `getById` | Loading an instance before a command runs        |
+| `create`  | Persisting a new entity instance                 |
+| `update`  | Writing state mutations after a command succeeds |
+| `delete`  | Removing an instance                             |
+| `clear`   | Resetting all instances (typically in tests)     |
 
 ## Wiring in a custom store
 
-Pass a `storeProvider` function in `RuntimeOptions` when you construct `RuntimeEngine`. The function receives the entity name and returns either your store or `undefined` (which falls back to the configured default for that entity).
+Pass a `storeProvider` function in `RuntimeOptions` when you construct
+`RuntimeEngine`. The function receives the entity name and returns either your
+store or `undefined`. `undefined` uses built-in behavior only for `memory` and
+browser `localStorage`; durable and custom targets fail instead of falling back
+to memory.
 
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';
 import { MyCustomStore } from './my-custom-store';
 
-const runtime = new RuntimeEngine(ir, {
-  userId: 'user-123',
-  tenantId: 'tenant-456',
-  storeProvider: (entityName) => {
-    if (entityName === 'Recipe') {
-      return new MyCustomStore({ /* config */ });
-    }
-    return undefined; // use default memory store for other entities
-  }
-});
+const runtime = new RuntimeEngine(
+  ir,
+  { actorId: 'user-123', tenantId: 'tenant-456' },
+  {
+    storeProvider: (entityName) =>
+      entityName === 'Recipe' ? new MyCustomStore({/* config */}) : undefined,
+  },
+);
 ```
+
+Generated runtime companions can load the same bindings from
+`manifest.config.ts` through `runtimeConfigImport`. See the
+[complete PostgreSQL setup](/language/stores#complete-generated-companion-postgresql-setup).
 
 ## Complete example: Prisma store
 
@@ -63,7 +69,7 @@ import type { PrismaClient } from '@prisma/client';
 export class PrismaStore<T extends EntityInstance> implements Store<T> {
   constructor(
     private readonly prisma: PrismaClient,
-    private readonly model: string
+    private readonly model: string,
   ) {}
 
   private get delegate(): any {
@@ -115,32 +121,37 @@ import { PrismaStore } from './prisma-store';
 
 const prisma = new PrismaClient();
 
-const runtime = new RuntimeEngine(ir, {
-  userId: session.userId,
-  tenantId: session.tenantId,
-  storeProvider: (entityName) => {
-    switch (entityName) {
-      case 'Recipe':   return new PrismaStore(prisma, 'recipe');
-      case 'Order':    return new PrismaStore(prisma, 'order');
-      default:         return undefined;
-    }
-  }
-});
+const runtime = new RuntimeEngine(
+  ir,
+  { actorId: session.userId, tenantId: session.tenantId },
+  {
+    storeProvider: (entityName) => {
+      switch (entityName) {
+        case 'Recipe':
+          return new PrismaStore(prisma, 'recipe');
+        case 'Order':
+          return new PrismaStore(prisma, 'order');
+        default:
+          return undefined;
+      }
+    },
+  },
+);
 ```
 
 ## Built-in storage targets
 
 The runtime ships with first-party support for the following targets:
 
-| Target | Notes |
-|--------|-------|
-| `memory` | Default. In-process; state is lost on restart. |
-| `postgres` | Server-side only. Uses `pg`. Import from `@angriff36/manifest/stores`. |
-| `supabase` | Server-side only. Requires the optional `@supabase/supabase-js` peer dependency. Import from `@angriff36/manifest/stores`. |
-| `localStorage` | Browser only. |
-| `dynamodb` | AWS DynamoDB. Single-table design with composite keys. See [DynamoDB adapter](/adapters/dynamodb). |
-| `redis` | Redis hash-based storage with pub/sub events. See [Redis adapter](/adapters/redis). |
-| `turso` | Turso / libSQL edge database. See [Turso adapter](/adapters/turso). |
+| Target          | Notes                                                                                                                                                                                                                                                                                    |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memory`        | Default. In-process; state is lost on restart.                                                                                                                                                                                                                                           |
+| `postgres`      | Server-side only. Uses `pg`. Import from `@angriff36/manifest/stores`.                                                                                                                                                                                                                   |
+| `supabase`      | Server-side only. Requires the optional `@supabase/supabase-js` peer dependency. Import from `@angriff36/manifest/stores`.                                                                                                                                                               |
+| `localStorage`  | Browser only.                                                                                                                                                                                                                                                                            |
+| `dynamodb`      | AWS DynamoDB. Single-table design with composite keys. See [DynamoDB adapter](/adapters/dynamodb).                                                                                                                                                                                       |
+| `redis`         | Redis hash-based storage with pub/sub events. See [Redis adapter](/adapters/redis).                                                                                                                                                                                                      |
+| `turso`         | Turso / libSQL edge database. See [Turso adapter](/adapters/turso).                                                                                                                                                                                                                      |
 | `event-sourced` | Not a working runtime target. `store X in eventSourced` parses and records the target in IR, but no store class backs it — there is no snapshotting, replay, or auto-instantiation. See [Event-sourced store](/adapters/event-sourced-store) for patterns using real shipped primitives. |
 
 ## Unsupported targets throw — there is no silent fallback
@@ -149,6 +160,7 @@ The runtime ships with first-party support for the following targets:
 If you pass an unsupported storage target (for example `postgres` in a browser environment), the runtime throws a clear error identifying the unsupported target and entity. It does **not** silently fall back to memory storage.
 
 This behavior is required by the Manifest conformance spec. Always verify your target at startup and surface configuration errors early.
+
 </Warning>
 
 ## Practical guidance

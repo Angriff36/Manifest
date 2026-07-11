@@ -39,29 +39,55 @@ function intervalArg(durationMs: number): string {
   return `{ seconds: ${Math.max(1, Math.round(durationMs / 1000))} }`;
 }
 
-export function generateCrons(ir: IR, rawOptions: Record<string, unknown> | undefined): OrchestrationResult {
+export function generateCrons(
+  ir: IR,
+  rawOptions: Record<string, unknown> | undefined,
+): OrchestrationResult {
   void normalizeOptions(rawOptions);
   const diagnostics: ProjectionDiagnostic[] = [];
   const lines: string[] = [];
 
   for (const sched of (ir.schedules ?? []) as IRSchedule[]) {
-    const ref = sched.entityName ? mutationRef(sched.entityName, sched.commandName) : `api.mutations.${sched.commandName}`;
-    const paramsObj = `{${(sched.params ?? []).map(p => {
-      const { code, unresolved } = renderExpression(p.expression, { selfVar: 'args' });
-      if (unresolved.length) diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_SCHEDULE_PARAM', message: `schedule '${sched.name}' param '${p.name}' unresolved; omitted.` });
-      return unresolved.length ? null : ` ${p.name}: ${code}`;
-    }).filter(Boolean).join(',')} }`;
+    const ref = sched.entityName
+      ? mutationRef(sched.entityName, sched.commandName)
+      : `api.mutations.${sched.commandName}`;
+    const paramsObj = `{${(sched.params ?? [])
+      .map((p) => {
+        const { code, unresolved } = renderExpression(p.expression, { selfVar: 'args' });
+        if (unresolved.length)
+          diagnostics.push({
+            severity: 'warning',
+            code: 'CONVEX_UNRESOLVED_SCHEDULE_PARAM',
+            message: `schedule '${sched.name}' param '${p.name}' unresolved; omitted.`,
+          });
+        return unresolved.length ? null : ` ${p.name}: ${code}`;
+      })
+      .filter(Boolean)
+      .join(',')} }`;
     const t = sched.trigger;
     if (t.kind === 'cron' && t.cron) {
-      lines.push(`crons.cron(${JSON.stringify(sched.name)}, ${JSON.stringify(t.cron)}, ${ref}, ${paramsObj});`);
+      lines.push(
+        `crons.cron(${JSON.stringify(sched.name)}, ${JSON.stringify(t.cron)}, ${ref}, ${paramsObj});`,
+      );
     } else if (t.durationMs) {
-      lines.push(`crons.interval(${JSON.stringify(sched.name)}, ${intervalArg(t.durationMs)}, ${ref}, ${paramsObj});`);
+      lines.push(
+        `crons.interval(${JSON.stringify(sched.name)}, ${intervalArg(t.durationMs)}, ${ref}, ${paramsObj});`,
+      );
     } else {
-      diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_TRIGGER', message: `schedule '${sched.name}' has no cron/duration; skipped.` });
+      diagnostics.push({
+        severity: 'warning',
+        code: 'CONVEX_UNRESOLVED_TRIGGER',
+        message: `schedule '${sched.name}' has no cron/duration; skipped.`,
+      });
     }
   }
 
-  if (lines.length === 0) diagnostics.push({ severity: 'info', code: 'CONVEX_NO_SCHEDULES', message: 'No schedules declared; emitted an empty crons file.' });
+  if (lines.length === 0)
+    diagnostics.push({
+      severity: 'info',
+      code: 'CONVEX_NO_SCHEDULES',
+      message: 'No schedules declared; emitted an empty crons file.',
+    });
 
   const code =
     `${HEADER}\n// ${lines.length} cron job(s).\n\n` +
@@ -85,9 +111,9 @@ export function generateCrons(ir: IR, rawOptions: Record<string, unknown> | unde
  */
 function secretToEnvVar(contextPath: string): string {
   const parts = contextPath.split('.');
-  const segments = (parts[0] === 'context' || parts[0] === 'user') ? parts.slice(1) : parts;
+  const segments = parts[0] === 'context' || parts[0] === 'user' ? parts.slice(1) : parts;
   return segments
-    .map(s => s.replace(/([a-z])([A-Z])/g, '$1_$2'))
+    .map((s) => s.replace(/([a-z])([A-Z])/g, '$1_$2'))
     .join('_')
     .toUpperCase();
 }
@@ -140,13 +166,16 @@ const HMAC_HELPERS =
   `  return crypto.subtle.verify("HMAC", cryptoKey, sigBytes, new TextEncoder().encode(rawBody));\n` +
   `}`;
 
-export function generateHttp(ir: IR, rawOptions: Record<string, unknown> | undefined): OrchestrationResult {
+export function generateHttp(
+  ir: IR,
+  rawOptions: Record<string, unknown> | undefined,
+): OrchestrationResult {
   const options = normalizeOptions(rawOptions);
   const diagnostics: ProjectionDiagnostic[] = [];
 
   const webhooks = (ir.webhooks ?? []) as IRWebhook[];
-  const hasSignature = webhooks.some(w => !!w.signature);
-  const hasIdempotency = webhooks.some(w => !!w.idempotencyHeader);
+  const hasSignature = webhooks.some((w) => !!w.signature);
+  const hasIdempotency = webhooks.some((w) => !!w.idempotencyHeader);
 
   // --- Per-route code blocks ---
   const routes: string[] = [];
@@ -204,9 +233,16 @@ export function generateHttp(ir: IR, rawOptions: Record<string, unknown> | undef
     // 4. Transform + dispatch.
     const transformEntries: string[] = [];
     for (const t of wh.transform ?? []) {
-      const { code, unresolved } = renderExpression(t.expression, { selfVar: 'body', globals: ['body', ...DEFAULT_GLOBALS] });
+      const { code, unresolved } = renderExpression(t.expression, {
+        selfVar: 'body',
+        globals: ['body', ...DEFAULT_GLOBALS],
+      });
       if (unresolved.length) {
-        diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_WEBHOOK_PARAM', message: `webhook '${wh.name}' param '${t.name}' unresolved; omitted.` });
+        diagnostics.push({
+          severity: 'warning',
+          code: 'CONVEX_UNRESOLVED_WEBHOOK_PARAM',
+          message: `webhook '${wh.name}' param '${t.name}' unresolved; omitted.`,
+        });
         continue;
       }
       transformEntries.push(`${t.name}: ${code}`);
@@ -218,23 +254,26 @@ export function generateHttp(ir: IR, rawOptions: Record<string, unknown> | undef
 
     routes.push(
       `http.route({\n` +
-      `  path: ${JSON.stringify(wh.path)},\n` +
-      `  method: ${JSON.stringify(method)},\n` +
-      `  handler: httpAction(async (ctx, request) => {\n` +
-      `${bodyLines.join('\n')}\n` +
-      `  }),\n` +
-      `});`,
+        `  path: ${JSON.stringify(wh.path)},\n` +
+        `  method: ${JSON.stringify(method)},\n` +
+        `  handler: httpAction(async (ctx, request) => {\n` +
+        `${bodyLines.join('\n')}\n` +
+        `  }),\n` +
+        `});`,
     );
   }
 
   if (routes.length === 0) {
-    diagnostics.push({ severity: 'info', code: 'CONVEX_NO_WEBHOOKS', message: 'No webhooks declared; emitted an empty http router.' });
+    diagnostics.push({
+      severity: 'info',
+      code: 'CONVEX_NO_WEBHOOKS',
+      message: 'No webhooks declared; emitted an empty http router.',
+    });
   }
 
   // --- Idempotency mutation (exported so Convex registers it as internal.http._checkIdempotencyKey) ---
   const idempotencyMutation = hasIdempotency
-    ? (
-      `/** Atomic idempotency check-and-set. Returns true if the key is new, false if already seen. */\n` +
+    ? `/** Atomic idempotency check-and-set. Returns true if the key is new, false if already seen. */\n` +
       `export const _checkIdempotencyKey = internalMutation({\n` +
       `  args: { key: v.string(), webhookName: v.string() },\n` +
       `  handler: async (ctx, { key, webhookName }) => {\n` +
@@ -247,7 +286,6 @@ export function generateHttp(ir: IR, rawOptions: Record<string, unknown> | undef
       `    return true;\n` +
       `  },\n` +
       `});`
-    )
     : '';
 
   // --- Imports ---
@@ -275,14 +313,19 @@ export function generateHttp(ir: IR, rawOptions: Record<string, unknown> | undef
 // Sagas → orchestrator actions
 // ---------------------------------------------------------------------------
 
-export function generateSagas(ir: IR, _rawOptions: Record<string, unknown> | undefined): OrchestrationResult {
+export function generateSagas(
+  ir: IR,
+  _rawOptions: Record<string, unknown> | undefined,
+): OrchestrationResult {
   const diagnostics: ProjectionDiagnostic[] = [];
   const blocks: string[] = [];
 
   for (const saga of (ir.sagas ?? []) as IRSaga[]) {
     const forward: string[] = [];
     saga.steps.forEach((step, i) => {
-      forward.push(`      await ctx.runMutation(${mutationRef(step.commandEntity, step.command)}, input as any);`);
+      forward.push(
+        `      await ctx.runMutation(${mutationRef(step.commandEntity, step.command)}, input as any);`,
+      );
       forward.push(`      completed.push(${i});`);
     });
 
@@ -292,29 +335,36 @@ export function generateSagas(ir: IR, _rawOptions: Record<string, unknown> | und
       for (let i = saga.steps.length - 1; i >= 0; i--) {
         const step = saga.steps[i];
         if (!step.compensate || !step.compensateEntity) continue;
-        comp.push(`      if (completed.includes(${i})) await ctx.runMutation(${mutationRef(step.compensateEntity, step.compensate)}, input as any);`);
+        comp.push(
+          `      if (completed.includes(${i})) await ctx.runMutation(${mutationRef(step.compensateEntity, step.compensate)}, input as any);`,
+        );
       }
     }
 
     blocks.push(
       `export const ${saga.name} = action({\n` +
-      `  args: { input: v.any() },\n` +
-      `  handler: async (ctx, { input }) => {\n` +
-      `    const completed: number[] = [];\n` +
-      `    try {\n` +
-      `${forward.join('\n')}\n` +
-      `      return { ok: true, completed };\n` +
-      `    } catch (err) {\n` +
-      (comp.length
-        ? `      // compensate completed steps in reverse\n${comp.join('\n')}\n`
-        : `      // onFailure: ${saga.onFailure} — no compensation\n`) +
-      `      throw err;\n` +
-      `    }\n` +
-      `  },\n});`,
+        `  args: { input: v.any() },\n` +
+        `  handler: async (ctx, { input }) => {\n` +
+        `    const completed: number[] = [];\n` +
+        `    try {\n` +
+        `${forward.join('\n')}\n` +
+        `      return { ok: true, completed };\n` +
+        `    } catch (err) {\n` +
+        (comp.length
+          ? `      // compensate completed steps in reverse\n${comp.join('\n')}\n`
+          : `      // onFailure: ${saga.onFailure} — no compensation\n`) +
+        `      throw err;\n` +
+        `    }\n` +
+        `  },\n});`,
     );
   }
 
-  if (blocks.length === 0) diagnostics.push({ severity: 'info', code: 'CONVEX_NO_SAGAS', message: 'No sagas declared; emitted an empty sagas file.' });
+  if (blocks.length === 0)
+    diagnostics.push({
+      severity: 'info',
+      code: 'CONVEX_NO_SAGAS',
+      message: 'No sagas declared; emitted an empty sagas file.',
+    });
 
   const code =
     `${HEADER}\n// ${blocks.length} saga orchestrator(s).\n\n` +

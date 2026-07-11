@@ -11,9 +11,9 @@ hand-write the runtime factory, response helpers, drain loops, and worker wiring
 on one contract.
 
 <Note>
-This release contains **breaking changes** to generated output (zod schema names,
-the routes projection's default paths, hono/express `basePath`, and the react-query
-command envelope). See [Breaking changes](#breaking-changes) before upgrading.
+  This release contains **breaking changes** to generated output (zod schema names, the routes
+  projection's default paths, hono/express `basePath`, and the react-query command envelope). See
+  [Breaking changes](#breaking-changes) before upgrading.
 </Note>
 
 ## Docs are now gated against the compiler
@@ -125,9 +125,9 @@ rather than a silent single-instance fallback (`--surface realtime`). See
 ## Breaking changes
 
 <Warning>
-These change the shape of **generated code**. Regenerate all surfaces together
-(`manifest generate --all` or `manifest build --all`) so routes, clients, and
-schemas stay on the same contract, and review the diff before committing.
+  These change the shape of **generated code**. Regenerate all surfaces together (`manifest generate
+  --all` or `manifest build --all`) so routes, clients, and schemas stay on the same contract, and
+  review the diff before committing.
 </Warning>
 
 - **Zod schema names are entity-prefixed.** The zod projection now emits `${Entity}${Command}ParamsSchema` (e.g. `RecipeCreateParamsSchema`) instead of the un-prefixed `${Command}ParamsSchema` (e.g. `CreateParamsSchema`). Update any code importing the old names. This is what lets hono/express imports resolve against the emitted schemas.

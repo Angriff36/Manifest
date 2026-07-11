@@ -19,22 +19,26 @@ Before the patterns, here's how to configure the runtime features used throughou
 import { RuntimeEngine } from '@angriff36/manifest';
 import type { EvaluationLimits, IdempotencyStore } from '@angriff36/manifest';
 
-const engine = new RuntimeEngine(ir, {}, {
-  // Workflow metadata: callers supply correlationId/causationId per command
-  // (not configured here — passed per runCommand call)
+const engine = new RuntimeEngine(
+  ir,
+  {},
+  {
+    // Workflow metadata: callers supply correlationId/causationId per command
+    // (not configured here — passed per runCommand call)
 
-  // Bounded complexity: protect against runaway expressions
-  evaluationLimits: {
-    maxExpressionDepth: 64,    // default 64
-    maxEvaluationSteps: 10_000, // default 10,000
+    // Bounded complexity: protect against runaway expressions
+    evaluationLimits: {
+      maxExpressionDepth: 64, // default 64
+      maxEvaluationSteps: 10_000, // default 10,000
+    },
+
+    // Idempotency: prevent duplicate command execution
+    idempotencyStore: myIdempotencyStore,
+
+    // Deterministic mode: block adapter side effects (for testing/replay)
+    deterministicMode: false,
   },
-
-  // Idempotency: prevent duplicate command execution
-  idempotencyStore: myIdempotencyStore,
-
-  // Deterministic mode: block adapter side effects (for testing/replay)
-  deterministicMode: false,
-});
+);
 ```
 
 ---
@@ -86,7 +90,11 @@ entity InventoryItem {
 ### Implementation: Correlated Event Prep
 
 ```typescript
-import { createInventoryRuntime, createPrepListRuntime, createStationRuntime } from '@capsule/manifest-adapters';
+import {
+  createInventoryRuntime,
+  createPrepListRuntime,
+  createStationRuntime,
+} from '@capsule/manifest-adapters';
 import { createPrismaStoreProvider } from '@capsule/manifest-adapters/prisma-store';
 import * as Sentry from '@sentry/nextjs';
 
@@ -99,7 +107,7 @@ interface EventPrepContext {
 
 export async function prepareEventInventory(
   ctx: EventPrepContext,
-  items: Array<{ inventoryItemId: string; quantity: number }>
+  items: Array<{ inventoryItemId: string; quantity: number }>,
 ) {
   const storeProvider = createPrismaStoreProvider(ctx.tenantId);
   const inventoryRuntime = createInventoryRuntime({
@@ -114,36 +122,38 @@ export async function prepareEventInventory(
   try {
     // Step 1: Reserve each inventory item, all correlated to this event prep
     for (const item of items) {
-      const result = await inventoryRuntime.runCommand('reserve', {
-        quantity: item.quantity,
-        eventId: ctx.eventId,
-      }, {
-        entityName: 'InventoryItem',
-        instanceId: item.inventoryItemId,
-        correlationId: ctx.correlationId,
-        causationId: `event-prep-${ctx.eventId}`,
-      });
+      const result = await inventoryRuntime.runCommand(
+        'reserve',
+        {
+          quantity: item.quantity,
+          eventId: ctx.eventId,
+        },
+        {
+          entityName: 'InventoryItem',
+          instanceId: item.inventoryItemId,
+          correlationId: ctx.correlationId,
+          causationId: `event-prep-${ctx.eventId}`,
+        },
+      );
 
       if (!result.success) {
         // Check if it's a warning (below par) vs a block (stockout)
         const blockingOutcomes = result.constraintOutcomes?.filter(
-          c => c.severity === 'block' && !c.passed
+          (c) => c.severity === 'block' && !c.passed,
         );
 
         if (blockingOutcomes?.length) {
-          throw new Error(
-            `Cannot reserve ${item.inventoryItemId}: ${blockingOutcomes[0].message}`
-          );
+          throw new Error(`Cannot reserve ${item.inventoryItemId}: ${blockingOutcomes[0].message}`);
         }
 
         // Warn-only constraints: log but continue
         const warnings = result.constraintOutcomes?.filter(
-          c => c.severity === 'warn' && !c.passed
+          (c) => c.severity === 'warn' && !c.passed,
         );
         if (warnings?.length) {
           Sentry.addBreadcrumb({
             category: 'inventory',
-            message: `Warning: ${warnings.map(w => w.message).join(', ')}`,
+            message: `Warning: ${warnings.map((w) => w.message).join(', ')}`,
             level: 'warning',
             data: { inventoryItemId: item.inventoryItemId, correlationId: ctx.correlationId },
           });
@@ -160,19 +170,22 @@ export async function prepareEventInventory(
     }
 
     return { success: true, reservations: reservationResults };
-
   } catch (error) {
     // Compensation: release all completed reservations
     for (const itemId of completedReservations) {
-      const original = items.find(i => i.inventoryItemId === itemId)!;
-      await inventoryRuntime.runCommand('releaseReservation', {
-        quantity: original.quantity,
-      }, {
-        entityName: 'InventoryItem',
-        instanceId: itemId,
-        correlationId: ctx.correlationId,
-        causationId: `compensation-${ctx.eventId}`,
-      });
+      const original = items.find((i) => i.inventoryItemId === itemId)!;
+      await inventoryRuntime.runCommand(
+        'releaseReservation',
+        {
+          quantity: original.quantity,
+        },
+        {
+          entityName: 'InventoryItem',
+          instanceId: itemId,
+          correlationId: ctx.correlationId,
+          causationId: `compensation-${ctx.eventId}`,
+        },
+      );
     }
 
     return { success: false, error: (error as Error).message };
@@ -187,15 +200,13 @@ After the workflow runs, every emitted event carries the same `correlationId`. A
 ```typescript
 // All events from this prep workflow share the same correlationId
 const allEvents = inventoryRuntime.getEventLog();
-const workflowEvents = allEvents.filter(
-  e => e.correlationId === correlationId
-);
+const workflowEvents = allEvents.filter((e) => e.correlationId === correlationId);
 
 // Events are ordered by emitIndex within each command invocation
 // Cross-command ordering uses the event timestamp
 const timeline = workflowEvents
   .sort((a, b) => a.timestamp - b.timestamp)
-  .map(e => ({
+  .map((e) => ({
     name: e.name,
     emitIndex: e.emitIndex,
     correlationId: e.correlationId,
@@ -310,22 +321,30 @@ export async function claimPrepTask(
 ) {
   const idempotencyStore = new MemoryIdempotencyStore();
 
-  const engine = new RuntimeEngine(ir, {}, {
-    storeProvider: createPrismaStoreProvider(tenantId),
-    idempotencyStore,
-    evaluationLimits: { maxExpressionDepth: 32, maxEvaluationSteps: 5_000 },
-  });
+  const engine = new RuntimeEngine(
+    ir,
+    {},
+    {
+      storeProvider: createPrismaStoreProvider(tenantId),
+      idempotencyStore,
+      evaluationLimits: { maxExpressionDepth: 32, maxEvaluationSteps: 5_000 },
+    },
+  );
 
   // Idempotency key: same user claiming same task = same result
   const idempotencyKey = `claim-${tenantId}-${taskId}-${userId}`;
 
-  const result = await engine.runCommand('claim', { userId }, {
-    entityName: 'PrepTask',
-    instanceId: taskId,
-    correlationId: `event-${eventId}`,
-    causationId: `user-action-${userId}`,
-    idempotencyKey,
-  });
+  const result = await engine.runCommand(
+    'claim',
+    { userId },
+    {
+      entityName: 'PrepTask',
+      instanceId: taskId,
+      correlationId: `event-${eventId}`,
+      causationId: `user-action-${userId}`,
+      idempotencyKey,
+    },
+  );
 
   if (!result.success) {
     // The transition rules enforce the state machine.
@@ -335,24 +354,28 @@ export async function claimPrepTask(
     return {
       success: false,
       error: result.error,
-      warnings: result.constraintOutcomes?.filter(c => c.severity === 'warn' && !c.passed),
+      warnings: result.constraintOutcomes?.filter((c) => c.severity === 'warn' && !c.passed),
     };
   }
 
   // Second call with same idempotencyKey returns the cached result without re-executing
-  const duplicate = await engine.runCommand('claim', { userId }, {
-    entityName: 'PrepTask',
-    instanceId: taskId,
-    correlationId: `event-${eventId}`,
-    causationId: `user-action-${userId}`,
-    idempotencyKey,
-  });
+  const duplicate = await engine.runCommand(
+    'claim',
+    { userId },
+    {
+      entityName: 'PrepTask',
+      instanceId: taskId,
+      correlationId: `event-${eventId}`,
+      causationId: `user-action-${userId}`,
+      idempotencyKey,
+    },
+  );
   // duplicate === result (cached, no re-execution)
 
   return {
     success: true,
     events: result.emittedEvents,
-    warnings: result.constraintOutcomes?.filter(c => c.severity === 'warn' && !c.passed),
+    warnings: result.constraintOutcomes?.filter((c) => c.severity === 'warn' && !c.passed),
   };
 }
 ```
@@ -410,12 +433,16 @@ export async function executeEventDay(ctx: EventExecutionContext) {
     });
 
     for (const task of tasks) {
-      const startResult = await prepRuntime.runCommand('start', {}, {
-        entityName: 'PrepTask',
-        instanceId: task.id,
-        correlationId,
-        causationId: `event-day-start-${ctx.eventId}`,
-      });
+      const startResult = await prepRuntime.runCommand(
+        'start',
+        {},
+        {
+          entityName: 'PrepTask',
+          instanceId: task.id,
+          correlationId,
+          causationId: `event-day-start-${ctx.eventId}`,
+        },
+      );
 
       if (startResult.success) {
         completedSteps.push({ domain: 'prep', action: 'start', entityId: task.id });
@@ -430,15 +457,19 @@ export async function executeEventDay(ctx: EventExecutionContext) {
       });
 
       for (const ingredient of ingredients) {
-        const consumeResult = await inventoryRuntime.runCommand('consume', {
-          quantity: ingredient.quantity,
-          eventId: ctx.eventId,
-        }, {
-          entityName: 'InventoryItem',
-          instanceId: ingredient.inventoryItemId,
-          correlationId,
-          causationId: `prep-task-${task.id}`, // traces back to which task
-        });
+        const consumeResult = await inventoryRuntime.runCommand(
+          'consume',
+          {
+            quantity: ingredient.quantity,
+            eventId: ctx.eventId,
+          },
+          {
+            entityName: 'InventoryItem',
+            instanceId: ingredient.inventoryItemId,
+            correlationId,
+            causationId: `prep-task-${task.id}`, // traces back to which task
+          },
+        );
 
         if (consumeResult.success) {
           completedSteps.push({
@@ -454,19 +485,23 @@ export async function executeEventDay(ctx: EventExecutionContext) {
     for (const task of tasks) {
       if (!task.stationId) continue;
 
-      const assignResult = await stationRuntime.runCommand('assignTask', {
-        taskId: task.id,
-      }, {
-        entityName: 'Station',
-        instanceId: task.stationId,
-        correlationId,
-        causationId: `prep-task-${task.id}`,
-      });
+      const assignResult = await stationRuntime.runCommand(
+        'assignTask',
+        {
+          taskId: task.id,
+        },
+        {
+          entityName: 'Station',
+          instanceId: task.stationId,
+          correlationId,
+          causationId: `prep-task-${task.id}`,
+        },
+      );
 
       if (!assignResult.success) {
         // Station at capacity — log warning but don't fail the whole workflow
         const blocking = assignResult.constraintOutcomes?.filter(
-          c => c.severity === 'block' && !c.passed
+          (c) => c.severity === 'block' && !c.passed,
         );
         Sentry.captureMessage(`Station ${task.stationId} at capacity`, {
           level: 'warning',
@@ -476,7 +511,6 @@ export async function executeEventDay(ctx: EventExecutionContext) {
     }
 
     return { success: true, correlationId, stepsCompleted: completedSteps.length };
-
   } catch (error) {
     Sentry.captureException(error, {
       extra: { correlationId, completedSteps },
@@ -496,7 +530,7 @@ const allEvents = [
   ...prepRuntime.getEventLog(),
   ...inventoryRuntime.getEventLog(),
   ...stationRuntime.getEventLog(),
-].filter(e => e.correlationId === correlationId);
+].filter((e) => e.correlationId === correlationId);
 
 // Build causal tree
 const byCausation = new Map<string, typeof allEvents>();
@@ -533,7 +567,12 @@ import { RuntimeEngine, ManifestEffectBoundaryError } from '@angriff36/manifest'
 interface RecordedCommand {
   commandName: string;
   input: Record<string, unknown>;
-  options: { entityName?: string; instanceId?: string; correlationId?: string; causationId?: string };
+  options: {
+    entityName?: string;
+    instanceId?: string;
+    correlationId?: string;
+    causationId?: string;
+  };
   expectedEvents: Array<{ name: string; emitIndex: number }>;
 }
 
@@ -542,19 +581,19 @@ export async function replayAndVerify(
   recordedCommands: RecordedCommand[],
 ): Promise<{ verified: boolean; mismatches: string[] }> {
   // Deterministic mode: persist/publish/effect actions throw instead of no-oping
-  const engine = new RuntimeEngine(ir, {}, {
-    deterministicMode: true,
-    evaluationLimits: { maxExpressionDepth: 32, maxEvaluationSteps: 5_000 },
-  });
+  const engine = new RuntimeEngine(
+    ir,
+    {},
+    {
+      deterministicMode: true,
+      evaluationLimits: { maxExpressionDepth: 32, maxEvaluationSteps: 5_000 },
+    },
+  );
 
   const mismatches: string[] = [];
 
   for (const recorded of recordedCommands) {
-    const result = await engine.runCommand(
-      recorded.commandName,
-      recorded.input,
-      recorded.options,
-    );
+    const result = await engine.runCommand(recorded.commandName, recorded.input, recorded.options);
 
     if (!result.success) {
       mismatches.push(`Command ${recorded.commandName} failed: ${result.error}`);
@@ -568,21 +607,21 @@ export async function replayAndVerify(
 
       if (!actual) {
         mismatches.push(
-          `Command ${recorded.commandName}: expected event ${expected.name} at index ${i}, got nothing`
+          `Command ${recorded.commandName}: expected event ${expected.name} at index ${i}, got nothing`,
         );
         continue;
       }
 
       if (actual.name !== expected.name) {
         mismatches.push(
-          `Command ${recorded.commandName}: expected event ${expected.name}, got ${actual.name}`
+          `Command ${recorded.commandName}: expected event ${expected.name}, got ${actual.name}`,
         );
       }
 
       if (actual.emitIndex !== expected.emitIndex) {
         mismatches.push(
           `Command ${recorded.commandName}: emitIndex mismatch for ${expected.name}: ` +
-          `expected ${expected.emitIndex}, got ${actual.emitIndex}`
+            `expected ${expected.emitIndex}, got ${actual.emitIndex}`,
         );
       }
     }
@@ -630,7 +669,12 @@ Inventory commands use three constraint severity levels to give operators flexib
 ### Implementation: Handling Severity Levels
 
 ```typescript
-import { createInventoryRuntime, getWarningConstraints, getBlockingConstraints, canProceedWithConstraints } from '@capsule/manifest-adapters';
+import {
+  createInventoryRuntime,
+  getWarningConstraints,
+  getBlockingConstraints,
+  canProceedWithConstraints,
+} from '@capsule/manifest-adapters';
 
 export async function restockInventoryItem(
   tenantId: string,
@@ -644,12 +688,16 @@ export async function restockInventoryItem(
     storeProvider: createPrismaStoreProvider(tenantId),
   });
 
-  const result = await runtime.runCommand('restock', {
-    quantity,
-  }, {
-    entityName: 'InventoryItem',
-    instanceId: itemId,
-  });
+  const result = await runtime.runCommand(
+    'restock',
+    {
+      quantity,
+    },
+    {
+      entityName: 'InventoryItem',
+      instanceId: itemId,
+    },
+  );
 
   // Separate concerns by severity
   const warnings = getWarningConstraints(result.constraintOutcomes ?? []);
@@ -659,7 +707,7 @@ export async function restockInventoryItem(
     // Hard failure — cannot proceed
     return {
       success: false,
-      blockers: blockers.map(b => ({
+      blockers: blockers.map((b) => ({
         code: b.code,
         message: b.message,
         details: b.details,
@@ -671,7 +719,7 @@ export async function restockInventoryItem(
     // Soft warning — succeeded but operator should know
     return {
       success: true,
-      warnings: warnings.map(w => ({
+      warnings: warnings.map((w) => ({
         code: w.code,
         message: w.message,
       })),
@@ -703,23 +751,27 @@ export async function reserveWithManagerOverride(
     storeProvider: createPrismaStoreProvider(tenantId),
   });
 
-  const result = await runtime.runCommand('reserve', {
-    quantity,
-    eventId,
-  }, {
-    entityName: 'InventoryItem',
-    instanceId: itemId,
-    overrideRequests: [
-      {
-        constraintCode: 'blockStockout',
-        reason: overrideReason,
-        authorizedBy: managerId,
-      },
-    ],
-  });
+  const result = await runtime.runCommand(
+    'reserve',
+    {
+      quantity,
+      eventId,
+    },
+    {
+      entityName: 'InventoryItem',
+      instanceId: itemId,
+      overrideRequests: [
+        {
+          constraintCode: 'blockStockout',
+          reason: overrideReason,
+          authorizedBy: managerId,
+        },
+      ],
+    },
+  );
 
   // If override succeeds, the result includes an OverrideApplied event
-  const overrideEvent = result.emittedEvents.find(e => e.name === 'OverrideApplied');
+  const overrideEvent = result.emittedEvents.find((e) => e.name === 'OverrideApplied');
   if (overrideEvent) {
     // Audit trail: who overrode what, when, and why
     // {
@@ -751,31 +803,43 @@ When evaluating complex computed properties or deeply nested constraints (e.g., 
 import { RuntimeEngine, EvaluationBudgetExceededError } from '@angriff36/manifest';
 
 // Tight limits for user-facing operations (fast failure on bad data)
-const kitchenEngine = new RuntimeEngine(ir, {}, {
-  evaluationLimits: {
-    maxExpressionDepth: 32,
-    maxEvaluationSteps: 2_000,
+const kitchenEngine = new RuntimeEngine(
+  ir,
+  {},
+  {
+    evaluationLimits: {
+      maxExpressionDepth: 32,
+      maxEvaluationSteps: 2_000,
+    },
+    storeProvider: createPrismaStoreProvider(tenantId),
   },
-  storeProvider: createPrismaStoreProvider(tenantId),
-});
+);
 
 // Generous limits for batch operations (admin, reporting)
-const batchEngine = new RuntimeEngine(ir, {}, {
-  evaluationLimits: {
-    maxExpressionDepth: 64,
-    maxEvaluationSteps: 50_000,
+const batchEngine = new RuntimeEngine(
+  ir,
+  {},
+  {
+    evaluationLimits: {
+      maxExpressionDepth: 64,
+      maxEvaluationSteps: 50_000,
+    },
+    storeProvider: createPrismaStoreProvider(tenantId),
   },
-  storeProvider: createPrismaStoreProvider(tenantId),
-});
+);
 
 // When limits are hit, runCommand returns a failure (not a thrown exception)
-const result = await kitchenEngine.runCommand('reserve', {
-  quantity: 100,
-  eventId: 'evt-99',
-}, {
-  entityName: 'InventoryItem',
-  instanceId: 'item-01',
-});
+const result = await kitchenEngine.runCommand(
+  'reserve',
+  {
+    quantity: 100,
+    eventId: 'evt-99',
+  },
+  {
+    entityName: 'InventoryItem',
+    instanceId: 'item-01',
+  },
+);
 
 if (!result.success && result.error?.includes('Evaluation budget exceeded')) {
   // Budget error: expression was too complex
@@ -832,11 +896,15 @@ const assignResult = await stationRuntime.runCommand('assignTask', input, {
 
 ```typescript
 // Same key = same result, no re-execution
-await runtime.runCommand('claim', { userId }, {
-  entityName: 'PrepTask',
-  instanceId: taskId,
-  idempotencyKey: `claim-${taskId}-${userId}`,
-});
+await runtime.runCommand(
+  'claim',
+  { userId },
+  {
+    entityName: 'PrepTask',
+    instanceId: taskId,
+    idempotencyKey: `claim-${taskId}-${userId}`,
+  },
+);
 ```
 
 ### 4. Use Sentry Spans for Observability
@@ -845,10 +913,14 @@ await runtime.runCommand('claim', { userId }, {
 import * as Sentry from '@sentry/nextjs';
 
 const result = await Sentry.startSpan(
-  { name: 'manifest.runCommand', op: 'manifest', attributes: { command: 'claim', entity: 'PrepTask' } },
+  {
+    name: 'manifest.runCommand',
+    op: 'manifest',
+    attributes: { command: 'claim', entity: 'PrepTask' },
+  },
   async () => {
     return runtime.runCommand('claim', { userId }, { entityName: 'PrepTask', instanceId: taskId });
-  }
+  },
 );
 ```
 
@@ -863,7 +935,7 @@ await prisma.$transaction(async (tx) => {
   // Store events in outbox within same transaction
   if (result.emittedEvents.length > 0) {
     await tx.outbox.createMany({
-      data: result.emittedEvents.map(event => ({
+      data: result.emittedEvents.map((event) => ({
         tenantId,
         eventName: event.name,
         channel: event.channel,

@@ -37,7 +37,7 @@ entity Task {
 describe('trusted command parameters (runtime)', () => {
   it('9-10. strips spoofed client actor and injects trusted actor', async () => {
     const { ir, diagnostics } = await compileToIR(SOURCE);
-    expect(diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     expect(ir).not.toBeNull();
 
     const engine = new RuntimeEngine(ir!, { actorId: 'trusted-user-1' });

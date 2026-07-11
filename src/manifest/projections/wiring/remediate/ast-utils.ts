@@ -11,9 +11,8 @@ export function fingerprintSnippet(snippet: string): string {
 }
 
 export function parseSource(fileName: string, content: string): ts.SourceFile {
-  const kind = fileName.endsWith('.tsx') || fileName.endsWith('.jsx')
-    ? ts.ScriptKind.TSX
-    : ts.ScriptKind.TS;
+  const kind =
+    fileName.endsWith('.tsx') || fileName.endsWith('.jsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
   return ts.createSourceFile(fileName, content, ts.ScriptTarget.Latest, true, kind);
 }
 
@@ -180,12 +179,7 @@ function sliceExpression(content: string, start: number): string {
     }
     if (ch === '[') depthBracket++;
     if (ch === ']') depthBracket--;
-    if (
-      (ch === ',' || ch === '}') &&
-      depthParen === 0 &&
-      depthBrace === 0 &&
-      depthBracket === 0
-    ) {
+    if ((ch === ',' || ch === '}') && depthParen === 0 && depthBrace === 0 && depthBracket === 0) {
       break;
     }
     i++;
@@ -223,7 +217,7 @@ export function ensureNamedImports(
     }
   }
 
-  const missing = names.filter(n => !existing.has(n));
+  const missing = names.filter((n) => !existing.has(n));
   if (missing.length === 0) return content;
 
   if (targetImport) {
@@ -274,26 +268,25 @@ export function transformCapabilityPayload(
   content: string,
   fileName: string,
   capabilityId: string,
-  mutate: (obj: ts.ObjectLiteralExpression, factory: ts.NodeFactory) => ts.ObjectLiteralExpression | undefined,
+  mutate: (
+    obj: ts.ObjectLiteralExpression,
+    factory: ts.NodeFactory,
+  ) => ts.ObjectLiteralExpression | undefined,
 ): string {
   const sf = parseSource(fileName, content);
-  const transformer: ts.TransformerFactory<ts.SourceFile> = context => {
-    const visit: ts.Visitor = node => {
+  const transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
+    const visit: ts.Visitor = (node) => {
       if (ts.isCallExpression(node) && callMatchesCapability(node, content, capabilityId)) {
-        const args = node.arguments.map(arg => {
+        const args = node.arguments.map((arg) => {
           if (!ts.isObjectLiteralExpression(arg)) return arg;
           // runManifestCommand body nesting
           const body = findProperty(arg, 'body');
           if (body?.initializer && ts.isObjectLiteralExpression(body.initializer)) {
             const nextBody = mutate(body.initializer, context.factory);
             if (!nextBody) return arg;
-            const nextProps = arg.properties.map(p => {
+            const nextProps = arg.properties.map((p) => {
               if (p === body) {
-                return context.factory.updatePropertyAssignment(
-                  body,
-                  body.name,
-                  nextBody,
-                );
+                return context.factory.updatePropertyAssignment(body, body.name, nextBody);
               }
               return p;
             });
@@ -311,7 +304,7 @@ export function transformCapabilityPayload(
       }
       return ts.visitEachChild(node, visit, context);
     };
-    return node => ts.visitNode(node, visit) as ts.SourceFile;
+    return (node) => ts.visitNode(node, visit) as ts.SourceFile;
   };
 
   const result = ts.transform(sf, [transformer]);

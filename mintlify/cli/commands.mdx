@@ -1,7 +1,7 @@
 ---
-title: "Manifest CLI command reference"
-sidebarTitle: "Commands"
-description: "Full syntax, options, and usage examples for every Manifest CLI command: manifest init, compile, generate, build, and validate — with flags and defaults."
+title: 'Manifest CLI command reference'
+sidebarTitle: 'Commands'
+description: 'Full syntax, options, and usage examples for every Manifest CLI command: manifest init, compile, generate, build, and validate — with flags and defaults.'
 ---
 
 Every command reads `manifest.config.yaml` from your project root when it exists. CLI flags always take precedence over config values. Run any command with `--help` to see its options inline.
@@ -18,28 +18,32 @@ manifest init
 
 ### Questions asked
 
-| Prompt | Default |
-|---|---|
-| Where are your `.manifest` files? | `**/*.manifest` |
-| Where should IR output go? | `ir/` |
-| Will you be generating code from IR? | No |
-| What projection target? | `nextjs` |
-| Where should generated code be written? | `app/api` |
+| Prompt                                  | Default         |
+| --------------------------------------- | --------------- |
+| Where are your `.manifest` files?       | `**/*.manifest` |
+| Where should IR output go?              | `ir/`           |
+| Will you be generating code from IR?    | No              |
+| What projection target?                 | `nextjs`        |
+| Where should generated code be written? | `app/api`       |
 
 If the target is `nextjs` or `remix`, the generated code output defaults to `app/api`. For any other target it defaults to `generated`.
 
 ### Options
 
 <ParamField path="-f, --force" type="boolean" default="false">
-  Overwrite an existing `manifest.config.yaml` (or CI workflow file when `--ci` is used). The interactive setup requires a TTY; in non-interactive shells it writes a minimal config with defaults.
+  Overwrite an existing `manifest.config.yaml` (or CI workflow file when `--ci` is used). The
+  interactive setup requires a TTY; in non-interactive shells it writes a minimal config with
+  defaults.
 </ParamField>
 
 <ParamField path="--ci" type="string">
-  Generate a CI workflow for the given provider (currently `github`) instead of running the interactive config setup. See [CI/CD](/cli/ci-cd).
+  Generate a CI workflow for the given provider (currently `github`) instead of running the
+  interactive config setup. See [CI/CD](/cli/ci-cd).
 </ParamField>
 
 <ParamField path="--node-versions" type="string">
-  Comma-separated Node.js versions for the generated CI matrix (default: `18,20,22`). Only meaningful with `--ci`.
+  Comma-separated Node.js versions for the generated CI matrix (default: `18,20,22`). Only
+  meaningful with `--ci`.
 </ParamField>
 
 ### Examples
@@ -53,7 +57,8 @@ manifest init --force
 ```
 
 <Warning>
-`manifest init --force` requires an interactive terminal. In headless or non-TTY environments the command writes a minimal default config instead of prompting.
+  `manifest init --force` requires an interactive terminal. In headless or non-TTY environments the
+  command writes a minimal default config instead of prompting.
 </Warning>
 
 ---
@@ -71,15 +76,21 @@ manifest compile [source] [options]
 ### Options
 
 <ParamField path="-o, --output" type="string">
-  Output directory or file path. The flag itself has **no default** — when omitted, the CLI falls back to the config's `output` field if a config file is present, and otherwise writes alongside the source / to stdout depending on the input. (The `ir/` value is the documented config-level fallback, not a flag default.) When the output is a directory, each source file produces a matching `.ir.json` file inside it.
+  Output directory or file path. The flag itself has **no default** — when omitted, the CLI falls
+  back to the config's `output` field if a config file is present, and otherwise writes alongside
+  the source / to stdout depending on the input. (The `ir/` value is the documented config-level
+  fallback, not a flag default.) When the output is a directory, each source file produces a
+  matching `.ir.json` file inside it.
 </ParamField>
 
 <ParamField path="-g, --glob" type="string">
-  Glob pattern to select multiple source files. Use this when you pass a directory as `source` and want a non-default pattern, or when you want to specify patterns without a config file.
+  Glob pattern to select multiple source files. Use this when you pass a directory as `source` and
+  want a non-default pattern, or when you want to specify patterns without a config file.
 </ParamField>
 
 <ParamField path="-d, --diagnostics" type="boolean" default="false">
-  Print compiler diagnostics (errors, warnings, and informational messages) to the console after each file is compiled.
+  Print compiler diagnostics (errors, warnings, and informational messages) to the console after
+  each file is compiled.
 </ParamField>
 
 <ParamField path="--pretty" type="boolean" default="true">
@@ -87,19 +98,27 @@ manifest compile [source] [options]
 </ParamField>
 
 <ParamField path="--merge" type="boolean" default="false">
-  Merge multiple source files into a single IR, resolving `use` declarations across files. Produces one combined IR rather than one `.ir.json` per source.
+  Merge multiple source files into a single IR, resolving `use` declarations across files. Produces
+  one combined IR rather than one `.ir.json` per source.
 </ParamField>
 
 <ParamField path="--entry" type="string...">
-  Entry file(s) for merge compilation (repeatable). The merge starts from these files and follows their `use` declarations. Auto-detected when omitted. Only meaningful together with `--merge`.
+  Entry file(s) for merge compilation (repeatable). The merge starts from these files and follows
+  their `use` declarations. Auto-detected when omitted. Only meaningful together with `--merge`.
 </ParamField>
 
 <Note>
-**Idempotent output.** When an output `.ir.json` already exists and was produced from byte-identical source (matching `provenance.contentHash`), the compiler reuses the prior `provenance.compiledAt` (recomputing `irHash` against it) so re-compiling unchanged source is byte-identical — no spurious git diff. A fresh `compiledAt` lands only when the source actually changes. Applies to single-file and `--merge` compilation.
+  **Idempotent output.** When an output `.ir.json` already exists and was produced from
+  byte-identical source (matching `provenance.contentHash`), the compiler reuses the prior
+  `provenance.compiledAt` (recomputing `irHash` against it) so re-compiling unchanged source is
+  byte-identical — no spurious git diff. A fresh `compiledAt` lands only when the source actually
+  changes. Applies to single-file and `--merge` compilation.
 </Note>
 
 <Tip>
-**Duplicate event names** produce a compile warning (shown with `--diagnostics` and in the LSP): two declarations of the same event name collide in the event registry, so one shadows the other. Rename one.
+  **Duplicate event names** produce a compile warning (shown with `--diagnostics` and in the LSP):
+  two declarations of the same event name collide in the event registry, so one shadows the other.
+  Rename one.
 </Tip>
 
 ### Examples
@@ -134,15 +153,21 @@ manifest generate <ir> [options]
 ### Options
 
 <ParamField path="-p, --projection" type="string" default="nextjs">
-  Projection to use for code generation. Accepts **any registered projection name** — dispatch is generic via the projection registry, so this is not a fixed list. Registered projections include `nextjs`, `routes`, `prisma`, `prisma-store`, `zod`, `drizzle`, `convex`, `openapi`, `kysely`, `graphql`, `react-query`, `express`, `hono`, `mermaid`, `json-schema`, `storybook`, `sveltekit`, `pydantic`, `dynamodb`, `dart`, `terraform`, `elasticsearch`, `analytics`, `materialized-views`, and more. Adding a new projection means registering it, not editing the CLI.
+  Projection to use for code generation. Accepts **any registered projection name** — dispatch is
+  generic via the projection registry, so this is not a fixed list. Registered projections include
+  `nextjs`, `routes`, `prisma`, `prisma-store`, `zod`, `drizzle`, `convex`, `openapi`, `kysely`,
+  `graphql`, `react-query`, `express`, `hono`, `mermaid`, `json-schema`, `storybook`, `sveltekit`,
+  `pydantic`, `dynamodb`, `dart`, `terraform`, `elasticsearch`, `analytics`, `materialized-views`,
+  and more. Adding a new projection means registering it, not editing the CLI.
 </ParamField>
 
 <ParamField path="-s, --surface" type="string" default="all">
   Which surface(s) to generate. Valid surface names are projection-specific; pass `all` to emit every surface the projection declares.
 
-  **nextjs** (default): `route` (GET list handlers) · `detail` (GET detail handlers) · `command` (POST handlers) · `dispatcher` (canonical write surface) · `types` (TS interfaces) · `client` (typed fetch SDK) · `all` (everything except concrete per-command routes, which are opt-in)
+**nextjs** (default): `route` (GET list handlers) · `detail` (GET detail handlers) · `command` (POST handlers) · `dispatcher` (canonical write surface) · `types` (TS interfaces) · `client` (typed fetch SDK) · `all` (everything except concrete per-command routes, which are opt-in)
 
-  For other projections the CLI default `all` resolves to the projection's declared surface set (e.g. the `prisma` projection emits a single `schema.prisma` artifact). An unknown surface name is reported as a diagnostic, not silently ignored.
+For other projections the CLI default `all` resolves to the projection's declared surface set (e.g. the `prisma` projection emits a single `schema.prisma` artifact). An unknown surface name is reported as a diagnostic, not silently ignored.
+
 </ParamField>
 
 <ParamField path="-o, --output" type="string">
@@ -150,23 +175,34 @@ manifest generate <ir> [options]
 </ParamField>
 
 <ParamField path="--auth" type="string">
-  *(nextjs only)* Auth provider name or import path (e.g. `clerk` or `@repo/auth/server`). Falls back to `projections.nextjs.options.authImportPath`, then `authProvider`, then the `authProvider` default of `none` (no auth wrapper).
+  *(nextjs only)* Auth provider name or import path (e.g. `clerk` or `@repo/auth/server`). Falls
+  back to `projections.nextjs.options.authImportPath`, then `authProvider`, then the `authProvider`
+  default of `none` (no auth wrapper).
 </ParamField>
 
 <ParamField path="--database" type="string">
-  *(nextjs only)* Database import path used in generated files (e.g. `@/lib/database` or `@repo/database`). Falls back to `projections.nextjs.options.databaseImportPath`, then defaults to `@/lib/database`.
+  *(nextjs only)* Database import path used in generated files (e.g. `@/lib/database` or
+  `@repo/database`). Falls back to `projections.nextjs.options.databaseImportPath`, then defaults to
+  `@/lib/database`.
 </ParamField>
 
 <ParamField path="--runtime" type="string">
-  *(nextjs only)* Runtime import path (e.g. `@/lib/manifest-runtime` or `@repo/manifest/runtime`). Falls back to `projections.nextjs.options.runtimeImportPath`, then defaults to `@/lib/manifest-runtime`.
+  *(nextjs only)* Runtime import path (e.g. `@/lib/manifest-runtime` or `@repo/manifest/runtime`).
+  Falls back to `projections.nextjs.options.runtimeImportPath`, then defaults to
+  `@/lib/manifest-runtime`.
 </ParamField>
 
 <ParamField path="--response" type="string">
-  *(nextjs only)* Response helpers import path (e.g. `@/lib/manifest-response` or `@repo/manifest/response`). Falls back to `projections.nextjs.options.responseImportPath`, then defaults to `@/lib/manifest-response`.
+  *(nextjs only)* Response helpers import path (e.g. `@/lib/manifest-response` or
+  `@repo/manifest/response`). Falls back to `projections.nextjs.options.responseImportPath`, then
+  defaults to `@/lib/manifest-response`.
 </ParamField>
 
 <ParamField path="--check" type="boolean" default="false">
-  Drift mode: regenerate code in memory and compare it to the committed files **without writing anything**. Exits non-zero and lists the drifted files (a missing file or any byte difference counts as drift). Use it in CI to assert that committed code equals freshly generated code — the codegen analogue of `prettier --check`. See [CI/CD](/cli/ci-cd).
+  Drift mode: regenerate code in memory and compare it to the committed files **without writing
+  anything**. Exits non-zero and lists the drifted files (a missing file or any byte difference
+  counts as drift). Use it in CI to assert that committed code equals freshly generated code — the
+  codegen analogue of `prettier --check`. See [CI/CD](/cli/ci-cd).
 </ParamField>
 
 #### Examples
@@ -230,19 +266,25 @@ manifest build [source] [options]
 ### Options
 
 <ParamField path="-p, --projection" type="string" default="nextjs">
-  Projection name for the generate stage. Accepts any registered projection (e.g. `nextjs`, `prisma`, `zod`, `drizzle`, `convex`, `openapi`, `kysely`, …) — see [`manifest generate`](#manifest-generate-ir) for the full list.
+  Projection name for the generate stage. Accepts any registered projection (e.g. `nextjs`,
+  `prisma`, `zod`, `drizzle`, `convex`, `openapi`, `kysely`, …) — see [`manifest
+  generate`](#manifest-generate-ir) for the full list.
 </ParamField>
 
 <ParamField path="-s, --surface" type="string" default="all">
-  Surface(s) to generate. Same values as `manifest generate` — projection-specific, with `all` emitting every declared surface (nextjs: `route`, `detail`, `command`, `dispatcher`, `types`, `client`).
+  Surface(s) to generate. Same values as `manifest generate` — projection-specific, with `all`
+  emitting every declared surface (nextjs: `route`, `detail`, `command`, `dispatcher`, `types`,
+  `client`).
 </ParamField>
 
 <ParamField path="--ir-output" type="string">
-  Directory to write compiled IR files. Falls back to the config `output` field, then defaults to `ir/`.
+  Directory to write compiled IR files. Falls back to the config `output` field, then defaults to
+  `ir/`.
 </ParamField>
 
 <ParamField path="--code-output" type="string">
-  Directory to write generated code files. Falls back to `projections.nextjs.output` in config, then defaults to `generated/`.
+  Directory to write generated code files. Falls back to `projections.nextjs.output` in config, then
+  defaults to `generated/`.
 </ParamField>
 
 <ParamField path="-g, --glob" type="string">
@@ -353,7 +395,8 @@ for (const ir of inputIRs) {
 ```
 
 <Note>
-`values` is required by the IR v1 schema even when empty. Any merge path that does not initialize and populate `values` can produce nonconformant merged IR and break downstream tooling.
+  `values` is required by the IR v1 schema even when empty. Any merge path that does not initialize
+  and populate `values` can produce nonconformant merged IR and break downstream tooling.
 </Note>
 
 ### Examples
@@ -381,7 +424,8 @@ manifest validate [ir] [options]
 ### Options
 
 <ParamField path="--schema" type="string">
-  Path to a custom JSON schema file. When omitted, the CLI uses the IR v1 schema bundled with the installed package automatically.
+  Path to a custom JSON schema file. When omitted, the CLI uses the IR v1 schema bundled with the
+  installed package automatically.
 </ParamField>
 
 <ParamField path="--strict" type="boolean" default="false">
@@ -405,7 +449,8 @@ manifest validate ir/ --schema custom-schema.json
 ```
 
 <Note>
-The bundled schema path is resolved relative to the installed package, so `manifest validate` works correctly whether you run it from inside the Manifest repo or from a consumer project.
+  The bundled schema path is resolved relative to the installed package, so `manifest validate`
+  works correctly whether you run it from inside the Manifest repo or from a consumer project.
 </Note>
 
 ---
@@ -492,7 +537,10 @@ manifest config inspect --json
 ```
 
 <Tip>
-Commit the inspect output as a snapshot under VCS (e.g. `.manifest/effective-config.snapshot.json`) and gate CI on `git diff --exit-code` against it. Drift in either Manifest defaults or your local config will then surface as a diff before it changes emitted code.
+  Commit the inspect output as a snapshot under VCS (e.g.
+  `.manifest/effective-config.snapshot.json`) and gate CI on `git diff --exit-code` against it.
+  Drift in either Manifest defaults or your local config will then surface as a diff before it
+  changes emitted code.
 </Tip>
 
 ---
@@ -565,11 +613,11 @@ manifest validate-ai [source] [options]
 
 Every diagnostic carries a `category`: `schema`, `compile`, `semantic`, `structural`, or `domain`. The **`domain`** category surfaces compile-time domain- and reaction-wiring checks against the IR with coded diagnostics (each includes a fix suggestion):
 
-| Code | Severity | Meaning |
-|---|---|---|
-| `DOMAIN_UNWIRED_FK` | error | A `{parent}Id`-style foreign key with no `belongsTo`/`ref` and no command that sets it from `self.id`. |
-| `DOMAIN_ORPHAN_CREATE` | error | A child entity with no command or reaction that wires its parent FK. |
-| `REACTION_UNWIRED` | error | A reaction whose event is never emitted by a command, or whose payload references can't be satisfied by emitter params, `payload._subject`, or create-result properties. |
+| Code                   | Severity | Meaning                                                                                                                                                                  |
+| ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DOMAIN_UNWIRED_FK`    | error    | A `{parent}Id`-style foreign key with no `belongsTo`/`ref` and no command that sets it from `self.id`.                                                                   |
+| `DOMAIN_ORPHAN_CREATE` | error    | A child entity with no command or reaction that wires its parent FK.                                                                                                     |
+| `REACTION_UNWIRED`     | error    | A reaction whose event is never emitted by a command, or whose payload references can't be satisfied by emitter params, `payload._subject`, or create-result properties. |
 
 Non-error domain findings are reported as `DOMAIN_COMPLETENESS` / `REACTION_COMPLETENESS`. These checks mirror the compiler's domain-completeness semantics (see `docs/spec/semantics.md`) — a half-wired model fails validation.
 
@@ -711,17 +759,27 @@ manifest diff <subcommand> [options]
 Compares source-manifest parse output against precompiled IR for a single entity.
 
 <ParamField path="--json" type="boolean" />
-<ParamField path="--src" type="string">Source glob pattern.</ParamField>
-<ParamField path="--ir-root" type="string">One or more IR root paths.</ParamField>
+<ParamField path="--src" type="string">
+  Source glob pattern.
+</ParamField>
+<ParamField path="--ir-root" type="string">
+  One or more IR root paths.
+</ParamField>
 
 ### `manifest diff ir-vs-ir <oldIR> <newIR>`
 
 Compares two IR JSON files and produces a diff report, optionally rendering migration SQL or Prisma steps.
 
 <ParamField path="--json" type="boolean" />
-<ParamField path="--sql" type="boolean">Render the diff as migration SQL.</ParamField>
-<ParamField path="--prisma" type="boolean">Render the diff as Prisma migration steps.</ParamField>
-<ParamField path="-o, --output" type="string">Output path.</ParamField>
+<ParamField path="--sql" type="boolean">
+  Render the diff as migration SQL.
+</ParamField>
+<ParamField path="--prisma" type="boolean">
+  Render the diff as Prisma migration steps.
+</ParamField>
+<ParamField path="-o, --output" type="string">
+  Output path.
+</ParamField>
 
 ```bash
 manifest diff ir-vs-ir old.ir.json new.ir.json --sql
@@ -801,7 +859,9 @@ manifest migrate [options]
 </ParamField>
 
 <ParamField path="--json" type="boolean" />
-<ParamField path="-o, --output" type="string">Output path.</ParamField>
+<ParamField path="-o, --output" type="string">
+  Output path.
+</ParamField>
 
 ### Examples
 

@@ -61,7 +61,7 @@ describeLive('PostgresJobQueue (live database)', () => {
   it('enqueue + drainPending returns the job once and flips it to running', async () => {
     await queue.enqueue(job('a', 1));
     const first = await queue.drainPending();
-    expect(first.map(j => j.jobId)).toEqual(['a']);
+    expect(first.map((j) => j.jobId)).toEqual(['a']);
     expect(first[0].status).toBe('running');
 
     // The row is now 'running', so a second drain returns nothing.
@@ -77,7 +77,7 @@ describeLive('PostgresJobQueue (live database)', () => {
     await queue.enqueue(job('a', 100));
     await queue.enqueue(job('b', 200));
     const drained = await queue.drainPending();
-    expect(drained.map(j => j.jobId)).toEqual(['a', 'b', 'c']);
+    expect(drained.map((j) => j.jobId)).toEqual(['a', 'b', 'c']);
   });
 
   it('preserves the full JobRecord across enqueue/drain', async () => {
@@ -113,9 +113,9 @@ describeLive('PostgresJobQueue (live database)', () => {
     }
 
     const [batchA, batchB] = await Promise.all([queue.drainPending(), queue.drainPending()]);
-    const idsA = batchA.map(j => j.jobId);
-    const idsB = batchB.map(j => j.jobId);
-    const overlap = idsA.filter(id => idsB.includes(id));
+    const idsA = batchA.map((j) => j.jobId);
+    const idsB = batchB.map((j) => j.jobId);
+    const overlap = idsA.filter((id) => idsB.includes(id));
     expect(overlap).toEqual([]);
     // Together they cover all 20.
     expect(new Set([...idsA, ...idsB]).size).toBe(20);
@@ -128,17 +128,14 @@ describeLive('PostgresJobQueue (live database)', () => {
     await queue.updateStatus('a', 'completed', { result: { ok: true } });
     let { rows } = await pool.query(
       `SELECT status, result, error FROM ${TABLE} WHERE job_id = $1`,
-      ['a']
+      ['a'],
     );
     expect(rows[0].status).toBe('completed');
     expect(rows[0].result).toEqual({ ok: true });
     expect(rows[0].error).toBeNull();
 
     await queue.updateStatus('a', 'failed', { error: 'boom' });
-    ({ rows } = await pool.query(
-      `SELECT status, error FROM ${TABLE} WHERE job_id = $1`,
-      ['a']
-    ));
+    ({ rows } = await pool.query(`SELECT status, error FROM ${TABLE} WHERE job_id = $1`, ['a']));
     expect(rows[0].status).toBe('failed');
     expect(rows[0].error).toBe('boom');
   });
@@ -149,7 +146,7 @@ describeLive('PostgresJobQueue (live database)', () => {
     await queue.enqueue({ ...job('dup', 999), commandName: 'changed' });
     const { rows } = await pool.query(
       `SELECT command_name, enqueued_at FROM ${TABLE} WHERE job_id = $1`,
-      ['dup']
+      ['dup'],
     );
     expect(rows).toHaveLength(1);
     expect(rows[0].command_name).toBe('processOrder');

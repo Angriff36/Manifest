@@ -21,7 +21,7 @@ async function compile(source: string): Promise<IR> {
   const compiler = new IRCompiler();
   const result = await compiler.compileToIR(source);
   if (!result.ir) {
-    throw new Error(`Compile failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Compile failed: ${result.diagnostics.map((d) => d.message).join(', ')}`);
   }
   return result.ir;
 }

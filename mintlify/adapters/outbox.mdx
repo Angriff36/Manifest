@@ -1,7 +1,7 @@
 ---
-title: "Durable event delivery with the Manifest outbox"
-description: "Use OutboxStore to persist emitted events for at-least-once delivery. Covers the enqueue/claim/markDelivered lifecycle, crash recovery, and known limitations."
-sidebarTitle: "Outbox Store"
+title: 'Durable event delivery with the Manifest outbox'
+description: 'Use OutboxStore to persist emitted events for at-least-once delivery. Covers the enqueue/claim/markDelivered lifecycle, crash recovery, and known limitations.'
+sidebarTitle: 'Outbox Store'
 ---
 
 When a command emits one or more events, you often need to deliver those events to downstream consumers reliably — even if your process crashes immediately after the command succeeds. The `OutboxStore` adapter gives you a durable queue for emitted events that a background worker can drain with at-least-once delivery guarantees.
@@ -76,6 +76,7 @@ interface OutboxEntry {
 The outbox provides **at-least-once** delivery, not exactly-once. Your consumers **must be idempotent**.
 
 A worker that delivers an event and then crashes before calling `markDelivered` will redeliver the same entry after stale-claim recovery. Use `entryId` — or a domain-level idempotency key — as a dedup token in every consumer.
+
 </Warning>
 
 The three reasons duplication can occur:
@@ -109,7 +110,9 @@ const outboxStore = new PostgresOutboxStore(pool);
 `PostgresOutboxStore` uses `SELECT … FOR UPDATE SKIP LOCKED` combined with a `claimed_at IS NULL` filter so concurrent workers receive disjoint batches. Apply the schema before first use:
 
 <Tip>
-The schema file is included in the published package at `node_modules/@angriff36/manifest/src/manifest/outbox/stores/postgres.sql`. Run it against your database once during deployment.
+  The schema file is included in the published package at
+  `node_modules/@angriff36/manifest/src/manifest/outbox/stores/postgres.sql`. Run it against your
+  database once during deployment.
 </Tip>
 
 ## Wiring in an outbox store
@@ -126,13 +129,13 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const runtime = new RuntimeEngine(ir, {
   userId: session.userId,
   tenantId: session.tenantId,
-  outboxStore: new PostgresOutboxStore(pool)
+  outboxStore: new PostgresOutboxStore(pool),
 });
 
 // After a successful command, entries are automatically enqueued.
 const result = await runtime.runCommand('placeOrder', input, {
   entityName: 'Order',
-  instanceId: orderId
+  instanceId: orderId,
 });
 ```
 
@@ -175,7 +178,10 @@ await outboxStore.releaseStaleClaims(staleEntryIds);
 ```
 
 <Warning>
-Only release claims when you are certain the original worker is no longer running. Releasing a claim held by a live worker produces a second delivery. The `attempts` counter increments on every successful claim, so you can use it to bound retries and dead-letter entries that exceed a threshold.
+  Only release claims when you are certain the original worker is no longer running. Releasing a
+  claim held by a live worker produces a second delivery. The `attempts` counter increments on every
+  successful claim, so you can use it to bound retries and dead-letter entries that exceed a
+  threshold.
 </Warning>
 
 ## Transaction boundary
@@ -198,17 +204,18 @@ const runtime = new RuntimeEngine(ir, context, {
   transactionProvider: new PostgresTransactionProvider({ pool }),
 });
 ```
+
 </Note>
 
 **Adapter-level alternative:** `PostgresOutboxStore.enqueue(entries, tx)` also accepts a caller-supplied `PoolClient`. If you open your own transaction and pass the same client to both a `PostgresStore` write and `PostgresOutboxStore.enqueue(entries, sameClient)`, you get atomicity without a provider. Use this when you already manage transactions yourself.
 
 ## Import paths
 
-| What | Import path |
-|------|-------------|
-| `OutboxStore` interface and `OutboxEntry` type | `@angriff36/manifest/outbox` |
-| `MemoryOutboxStore` | `@angriff36/manifest/outbox/memory` |
-| `PostgresOutboxStore` | `@angriff36/manifest/outbox/postgres` |
+| What                                           | Import path                           |
+| ---------------------------------------------- | ------------------------------------- |
+| `OutboxStore` interface and `OutboxEntry` type | `@angriff36/manifest/outbox`          |
+| `MemoryOutboxStore`                            | `@angriff36/manifest/outbox/memory`   |
+| `PostgresOutboxStore`                          | `@angriff36/manifest/outbox/postgres` |
 
 ## Failure policy: fail-open
 

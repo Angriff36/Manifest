@@ -24,6 +24,7 @@ Instead of a hardcoded `TinyAppPanel`, the unified `RuntimePanel` provides:
 8. **Inline MemoryStore** - for browser demo (allows Supabase/Postgres manifests to work)
 
 This unified approach works for ANY manifest, including:
+
 - `17-tiny-app.manifest` fixture
 - `20-blog-app.manifest` fixture
 - Any custom manifest

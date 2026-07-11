@@ -10,7 +10,7 @@
 4. `docs/spec/adapters.md` (adapter hooks / missing behavior)
 5. `docs/spec/conformance.md` + `src/manifest/conformance/*` (executable
    evidence)
-6. `docs\spec\manifest-vnext.md"` (Constraints) 
+6. `docs\spec\manifest-vnext.md"` (Constraints)
 7. `docs\spec\README.md"`
 
 If any implementation behavior differs, it must be called out as
@@ -48,7 +48,7 @@ Determinism over convenience.
 Identical IR + identical runtime context must produce identical results.
 
 Explicitness over inference.
-Guards MUST reference spec-guaranteed bindings (self.*, this.*, user.*, context.*).
+Guards MUST reference spec-guaranteed bindings (self._, this._, user._, context._).
 No reliance on identifier hoisting or implicit scope.
 
 Runtime context is mandatory input.
@@ -85,7 +85,6 @@ code as an instrument.
 
 If behavior changes, the **spec changes first**, then **tests**, then
 **implementation**.
-
 
 ## Non-negotiables
 

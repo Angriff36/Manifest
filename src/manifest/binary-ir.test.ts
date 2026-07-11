@@ -19,7 +19,7 @@ import {
 import type { IR } from './ir.js';
 
 function makeSampleIR(): IR {
-  const t = (name: string) => ({ name, nullable: false } as const);
+  const t = (name: string) => ({ name, nullable: false }) as const;
   return {
     version: '1.0',
     provenance: {
@@ -29,7 +29,15 @@ function makeSampleIR(): IR {
       compiledAt: '2025-01-01T00:00:00.000Z',
     },
     modules: [
-      { name: 'core', entities: ['User'], enums: [], commands: [], stores: [], events: [], policies: [] },
+      {
+        name: 'core',
+        entities: ['User'],
+        enums: [],
+        commands: [],
+        stores: [],
+        events: [],
+        policies: [],
+      },
     ],
     values: [],
     entities: [

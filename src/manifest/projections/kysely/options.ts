@@ -63,9 +63,12 @@ export interface KyselyProjectionOptions {
   output?: string;
 }
 
-export const KYSELY_PROJECTION_DEFAULTS: Required<Pick<KyselyProjectionOptions,
-  'dialect' | 'emitFactory' | 'databaseInterfaceName' | 'factoryFunctionName' | 'output'
->> = {
+export const KYSELY_PROJECTION_DEFAULTS: Required<
+  Pick<
+    KyselyProjectionOptions,
+    'dialect' | 'emitFactory' | 'databaseInterfaceName' | 'factoryFunctionName' | 'output'
+  >
+> = {
   dialect: 'postgresql',
   emitFactory: true,
   databaseInterfaceName: 'DB',
@@ -76,7 +79,9 @@ export const KYSELY_PROJECTION_DEFAULTS: Required<Pick<KyselyProjectionOptions,
 /**
  * Normalize a raw `request.options` bag into a fully-typed options object.
  */
-export function normalizeOptions(raw: Record<string, unknown> | undefined): KyselyProjectionOptions {
+export function normalizeOptions(
+  raw: Record<string, unknown> | undefined,
+): KyselyProjectionOptions {
   const input = (raw ?? {}) as Partial<KyselyProjectionOptions>;
   return {
     dialect: input.dialect ?? KYSELY_PROJECTION_DEFAULTS.dialect,
@@ -84,8 +89,10 @@ export function normalizeOptions(raw: Record<string, unknown> | undefined): Kyse
     columnMappings: input.columnMappings ?? {},
     typeMappings: input.typeMappings ?? {},
     emitFactory: input.emitFactory ?? KYSELY_PROJECTION_DEFAULTS.emitFactory,
-    databaseInterfaceName: input.databaseInterfaceName ?? KYSELY_PROJECTION_DEFAULTS.databaseInterfaceName,
-    factoryFunctionName: input.factoryFunctionName ?? KYSELY_PROJECTION_DEFAULTS.factoryFunctionName,
+    databaseInterfaceName:
+      input.databaseInterfaceName ?? KYSELY_PROJECTION_DEFAULTS.databaseInterfaceName,
+    factoryFunctionName:
+      input.factoryFunctionName ?? KYSELY_PROJECTION_DEFAULTS.factoryFunctionName,
     output: input.output ?? KYSELY_PROJECTION_DEFAULTS.output,
   };
 }

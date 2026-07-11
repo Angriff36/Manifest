@@ -1,13 +1,15 @@
 ---
-title: "Governance & audit commands"
-sidebarTitle: "Governance & audit"
+title: 'Governance & audit commands'
+sidebarTitle: 'Governance & audit'
 description: "Reference for enforce-surface, integration-check, audit-governance, audit-bypasses, scan, doctor, and emit — Manifest's static enforcement layer (v0.6.0+) for downstream apps."
 ---
 
 The governance commands are the static enforcement layer that sits beside the runtime. They check that an application codebase only writes through registered Manifest commands, that emitted routes match the canonical dispatcher, that bypasses are registered, and that the package integrates correctly end-to-end. None of these commands execute a Manifest program — they read the registries, the IR, and your source tree.
 
 <Note>
-  These commands were introduced and stabilized across **v0.6.0** and **v0.6.1**. `enforce-surface` is the strictest registry-vs-app check; `integration-check` is the recommended pre-deploy umbrella for downstream consumers.
+  These commands were introduced and stabilized across **v0.6.0** and **v0.6.1**. `enforce-surface`
+  is the strictest registry-vs-app check; `integration-check` is the recommended pre-deploy umbrella
+  for downstream consumers.
 </Note>
 
 ---
@@ -23,37 +25,37 @@ manifest enforce-surface --root <path> --commands-registry <path> [options]
 ### Required options
 
 <ParamField path="--root" type="string" required>
-Repository or application root to scan.
+  Repository or application root to scan.
 </ParamField>
 
 <ParamField path="--commands-registry" type="string" required>
-Path to `commands.json` emitted from Manifest IR (see `manifest emit registries`).
+  Path to `commands.json` emitted from Manifest IR (see `manifest emit registries`).
 </ParamField>
 
 ### Optional flags
 
 <ParamField path="--entities-registry" type="string">
-Path to `entities.json` emitted from Manifest IR.
+  Path to `entities.json` emitted from Manifest IR.
 </ParamField>
 
 <ParamField path="--bypass-registry" type="string">
-Path to `bypasses.json` listing approved exceptions.
+  Path to `bypasses.json` listing approved exceptions.
 </ParamField>
 
 <ParamField path="--include" type="glob...">
-Additional include globs (repeatable). Honored as of v0.6.1.
+  Additional include globs (repeatable). Honored as of v0.6.1.
 </ParamField>
 
 <ParamField path="--exclude" type="glob...">
-Exclude globs — generated files, build output, fixtures, etc.
+  Exclude globs — generated files, build output, fixtures, etc.
 </ParamField>
 
 <ParamField path="--strict" type="boolean" default="false">
-Exit non-zero on any error finding.
+  Exit non-zero on any error finding.
 </ParamField>
 
 <ParamField path="-f, --format" type="string" default="text">
-Output format: `text` or `json`.
+  Output format: `text` or `json`.
 </ParamField>
 
 ### Example
@@ -68,7 +70,8 @@ manifest enforce-surface \
 ```
 
 <Tip>
-As of v0.6.1, `enforce-surface` honors `--include`/`--exclude` correctly and scans `.js` and `.jsx` in addition to TypeScript.
+  As of v0.6.1, `enforce-surface` honors `--include`/`--exclude` correctly and scans `.js` and
+  `.jsx` in addition to TypeScript.
 </Tip>
 
 ---
@@ -84,39 +87,39 @@ manifest integration-check [options]
 ### Options
 
 <ParamField path="--root" type="string">
-Downstream repo root (defaults to cwd).
+  Downstream repo root (defaults to cwd).
 </ParamField>
 
 <ParamField path="--commands-registry" type="string">
-Path to a commands registry JSON.
+  Path to a commands registry JSON.
 </ParamField>
 
 <ParamField path="--bypass-registry" type="string">
-Path to a bypass registry JSON.
+  Path to a bypass registry JSON.
 </ParamField>
 
 <ParamField path="--format" type="string" default="text">
-Output format: `text` or `json`.
+  Output format: `text` or `json`.
 </ParamField>
 
 <ParamField path="--strict" type="boolean" default="false">
-Treat warnings as failures.
+  Treat warnings as failures.
 </ParamField>
 
 <ParamField path="--skip-runtime-smoke" type="boolean" default="false">
-Skip the in-memory `RuntimeEngine` smoke test.
+  Skip the in-memory `RuntimeEngine` smoke test.
 </ParamField>
 
 <ParamField path="--skip-package-shape" type="boolean" default="false">
-Skip the package-shape check.
+  Skip the package-shape check.
 </ParamField>
 
 <ParamField path="--skip-tarball" type="boolean" default="false">
-Skip the `npm pack --dry-run` sub-step in package-shape.
+  Skip the `npm pack --dry-run` sub-step in package-shape.
 </ParamField>
 
 <ParamField path="--package-root" type="string">
-Override the `@angriff36/manifest` package root for the package-shape check.
+  Override the `@angriff36/manifest` package root for the package-shape check.
 </ParamField>
 
 ### Example
@@ -141,38 +144,38 @@ manifest audit-governance [options]
 
 ### Detectors
 
-| Detector             | Catches                                                              |
-| -------------------- | -------------------------------------------------------------------- |
-| `direct-writes`      | Direct database writes that bypass `RuntimeEngine.runCommand`        |
-| `event-fabrication`  | Manually constructed event payloads that should come from `emit`     |
-| `route-drift`        | Routes that don't match the canonical dispatcher pattern             |
-| `missing-tests`      | Registered commands that have no test coverage                       |
-| `bypass-violations`  | Bypass entries that no longer match their referenced files           |
+| Detector            | Catches                                                          |
+| ------------------- | ---------------------------------------------------------------- |
+| `direct-writes`     | Direct database writes that bypass `RuntimeEngine.runCommand`    |
+| `event-fabrication` | Manually constructed event payloads that should come from `emit` |
+| `route-drift`       | Routes that don't match the canonical dispatcher pattern         |
+| `missing-tests`     | Registered commands that have no test coverage                   |
+| `bypass-violations` | Bypass entries that no longer match their referenced files       |
 
 ### Options
 
 <ParamField path="-r, --root" type="string" default=".">
-Root directory to audit.
+  Root directory to audit.
 </ParamField>
 
 <ParamField path="--only" type="string">
-Comma-separated detector names to run (default: all five).
+  Comma-separated detector names to run (default: all five).
 </ParamField>
 
 <ParamField path="--commands-registry" type="string">
-Path to `commands.json` (enables the `missing-tests` detector).
+  Path to `commands.json` (enables the `missing-tests` detector).
 </ParamField>
 
 <ParamField path="--bypass-registry" type="string">
-Path to `bypasses.json` (enables the `bypass-violations` detector).
+  Path to `bypasses.json` (enables the `bypass-violations` detector).
 </ParamField>
 
 <ParamField path="--strict" type="boolean" default="false">
-Exit non-zero on any error finding.
+  Exit non-zero on any error finding.
 </ParamField>
 
 <ParamField path="-f, --format" type="string" default="text">
-Output format: `text` or `json`.
+  Output format: `text` or `json`.
 </ParamField>
 
 ### Example
@@ -192,7 +195,8 @@ manifest audit-governance \
 ```
 
 <Note>
-`manifest audit-constitution` is a deprecated alias for `audit-governance`. It still works but emits a deprecation warning. Switch to `audit-governance` in new scripts.
+  `manifest audit-constitution` is a deprecated alias for `audit-governance`. It still works but
+  emits a deprecation warning. Switch to `audit-governance` in new scripts.
 </Note>
 
 ---
@@ -208,19 +212,19 @@ manifest audit-bypasses --registry <path> [options]
 ### Options
 
 <ParamField path="--registry" type="string">
-Path to bypass registry JSON file.
+  Path to bypass registry JSON file.
 </ParamField>
 
 <ParamField path="-r, --root" type="string" default=".">
-Root directory used to resolve bypass paths.
+  Root directory used to resolve bypass paths.
 </ParamField>
 
 <ParamField path="--strict-expiry" type="boolean" default="false">
-Treat expired `reviewBy` dates as errors instead of warnings.
+  Treat expired `reviewBy` dates as errors instead of warnings.
 </ParamField>
 
 <ParamField path="-f, --format" type="string" default="text">
-Output format: `text` or `json`.
+  Output format: `text` or `json`.
 </ParamField>
 
 ### Example
@@ -233,12 +237,12 @@ manifest audit-bypasses --registry manifest-registry/bypasses.json --strict-expi
 
 ## `manifest scan [source]`
 
-Scan `.manifest` source files for configuration issues *before* runtime. The primary goal: "If scan passes, the code works."
+Scan `.manifest` source files for configuration issues _before_ runtime. The primary goal: "If scan passes, the code works."
 
 Checks include:
 
-* **Policy coverage** — every command has at least one policy
-* **Store consistency** — all `store` targets are recognized
+- **Policy coverage** — every command has at least one policy
+- **Store consistency** — all `store` targets are recognized
 
 ```bash
 manifest scan [source] [options]
@@ -247,15 +251,15 @@ manifest scan [source] [options]
 ### Options
 
 <ParamField path="-g, --glob" type="string" default="**/*.manifest">
-Glob pattern for manifest files.
+  Glob pattern for manifest files.
 </ParamField>
 
 <ParamField path="-f, --format" type="string" default="text">
-Output format: `text` or `json`.
+  Output format: `text` or `json`.
 </ParamField>
 
 <ParamField path="--strict" type="boolean" default="false">
-Fail on warnings.
+  Fail on warnings.
 </ParamField>
 
 ### Example
@@ -278,27 +282,27 @@ manifest doctor [options]
 ### Options
 
 <ParamField path="--entity" type="string">
-Optional entity to focus the diagnosis on.
+  Optional entity to focus the diagnosis on.
 </ParamField>
 
 <ParamField path="--command" type="string">
-Optional command to focus the diagnosis on.
+  Optional command to focus the diagnosis on.
 </ParamField>
 
 <ParamField path="--route" type="string">
-Optional route path for route-surface correlation.
+  Optional route path for route-surface correlation.
 </ParamField>
 
 <ParamField path="--json" type="boolean" default="false">
-Output JSON instead of text.
+  Output JSON instead of text.
 </ParamField>
 
 <ParamField path="--src" type="string">
-Source manifest glob pattern.
+  Source manifest glob pattern.
 </ParamField>
 
 <ParamField path="--ir-root" type="path...">
-Compiled IR root directory or directories.
+  Compiled IR root directory or directories.
 </ParamField>
 
 ### Example
@@ -313,8 +317,8 @@ manifest doctor --entity Recipe --command publish
 
 Audit generated or hand-written routes for Manifest boundary compliance:
 
-* Writes should execute via `runtime.runCommand`
-* Direct reads should include the expected tenant, location, and soft-delete filters
+- Writes should execute via `runtime.runCommand`
+- Direct reads should include the expected tenant, location, and soft-delete filters
 
 ```bash
 manifest audit-routes [options]
@@ -323,35 +327,35 @@ manifest audit-routes [options]
 ### Options
 
 <ParamField path="-r, --root" type="string" default=".">
-Root directory to audit.
+  Root directory to audit.
 </ParamField>
 
 <ParamField path="-f, --format" type="string" default="text">
-Output format: `text` or `json`.
+  Output format: `text` or `json`.
 </ParamField>
 
 <ParamField path="--strict" type="boolean" default="false">
-Fail on warnings and enforce ownership rules as errors.
+  Fail on warnings and enforce ownership rules as errors.
 </ParamField>
 
 <ParamField path="--tenant-field" type="string" default="tenantId">
-Tenant scope field name.
+  Tenant scope field name.
 </ParamField>
 
 <ParamField path="--deleted-field" type="string" default="deletedAt">
-Soft-delete field name.
+  Soft-delete field name.
 </ParamField>
 
 <ParamField path="--location-field" type="string" default="locationId">
-Location scope field name.
+  Location scope field name.
 </ParamField>
 
 <ParamField path="--commands-manifest" type="string">
-Path to commands manifest JSON (enables ownership rules).
+  Path to commands manifest JSON (enables ownership rules).
 </ParamField>
 
 <ParamField path="--exemptions" type="string">
-Path to exemptions registry JSON.
+  Path to exemptions registry JSON.
 </ParamField>
 
 ---
@@ -367,23 +371,23 @@ manifest emit registries [options]
 ### Options
 
 <ParamField path="--ir" type="string">
-Path to a compiled IR JSON file.
+  Path to a compiled IR JSON file.
 </ParamField>
 
 <ParamField path="--source" type="string">
-Path to a `.manifest` source file to compile and emit from.
+  Path to a `.manifest` source file to compile and emit from.
 </ParamField>
 
 <ParamField path="--out" type="string" default="manifest-registry">
-Output directory for the emitted registries.
+  Output directory for the emitted registries.
 </ParamField>
 
 <ParamField path="--no-validate" type="boolean">
-Skip JSON-schema validation of the emitted output.
+  Skip JSON-schema validation of the emitted output.
 </ParamField>
 
 <ParamField path="--no-pretty" type="boolean">
-Emit compact JSON (no indentation).
+  Emit compact JSON (no indentation).
 </ParamField>
 
 ### Example

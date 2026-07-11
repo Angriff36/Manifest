@@ -31,7 +31,9 @@ let builtinsRegistered = false;
  */
 export function registerProjection(projection: ProjectionTarget): void {
   if (projections.has(projection.name)) {
-    throw new Error(`Projection "${projection.name}" is already registered. Projection names must be unique.`);
+    throw new Error(
+      `Projection "${projection.name}" is already registered. Projection names must be unique.`,
+    );
   }
   projections.set(projection.name, projection);
 }

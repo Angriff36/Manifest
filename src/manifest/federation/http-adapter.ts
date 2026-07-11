@@ -13,12 +13,7 @@
  * @module federation/http-adapter
  */
 
-import type {
-  ServiceDescriptor,
-  ExposedEntity,
-  ExposedCommand,
-  TypedClientAdapter,
-} from './types';
+import type { ServiceDescriptor, ExposedEntity, ExposedCommand, TypedClientAdapter } from './types';
 import { buildBridgeHeaders } from './client.js';
 import type { PolicyBridgeHeaders } from './types';
 
@@ -31,8 +26,16 @@ export function generateHttpAdapter(descriptor: ServiceDescriptor): TypedClientA
   return {
     serviceId: descriptor.serviceId,
     source,
-    create(baseUrl: string, options?: { authToken?: string; timeoutMs?: number }): Record<string, (...args: unknown[]) => Promise<unknown>> {
-      const client = createRuntimeClient(descriptor, baseUrl, options?.authToken, options?.timeoutMs ?? 30000);
+    create(
+      baseUrl: string,
+      options?: { authToken?: string; timeoutMs?: number },
+    ): Record<string, (...args: unknown[]) => Promise<unknown>> {
+      const client = createRuntimeClient(
+        descriptor,
+        baseUrl,
+        options?.authToken,
+        options?.timeoutMs ?? 30000,
+      );
       return client;
     },
   };
@@ -78,7 +81,9 @@ export function renderAdapterSource(descriptor: ServiceDescriptor): string {
 
   // Group commands by entity
   for (const entity of descriptor.entities) {
-    lines.push(`// ── Entity: ${entity.name}${entity.module ? ` (module: ${entity.module})` : ''} ──`);
+    lines.push(
+      `// ── Entity: ${entity.name}${entity.module ? ` (module: ${entity.module})` : ''} ──`,
+    );
     for (const cmd of entity.commands) {
       const methodName = toMethodName(entity.name, cmd.name);
       lines.push(...renderCommandMethod(methodName, entity, cmd));
@@ -91,14 +96,20 @@ export function renderAdapterSource(descriptor: ServiceDescriptor): string {
   lines.push(`export class ${className} {`);
   lines.push(`  constructor(`);
   lines.push(`    private baseUrl: string,`);
-  lines.push(`    private options: { authToken?: string; timeoutMs?: number; fetchImpl?: typeof fetch } = {}`);
+  lines.push(
+    `    private options: { authToken?: string; timeoutMs?: number; fetchImpl?: typeof fetch } = {}`,
+  );
   lines.push(`  ) {}`);
   lines.push(``);
   for (const entity of descriptor.entities) {
     for (const cmd of entity.commands) {
       const methodName = toMethodName(entity.name, cmd.name);
-      lines.push(`  ${methodName}(input: Record<string, unknown>, bridge: BridgeHeaders): Promise<FederationResult> {`);
-      lines.push(`    return invokeCommand(this, "${entity.name}", "${cmd.name}", input, bridge, ${cmd.idempotent});`);
+      lines.push(
+        `  ${methodName}(input: Record<string, unknown>, bridge: BridgeHeaders): Promise<FederationResult> {`,
+      );
+      lines.push(
+        `    return invokeCommand(this, "${entity.name}", "${cmd.name}", input, bridge, ${cmd.idempotent});`,
+      );
       lines.push(`  }`);
     }
   }
@@ -107,7 +118,9 @@ export function renderAdapterSource(descriptor: ServiceDescriptor): string {
 
   // Shared invoke helper
   lines.push(`async function invokeCommand(`);
-  lines.push(`  client: { baseUrl: string; options: { authToken?: string; timeoutMs?: number; fetchImpl?: typeof fetch } },`);
+  lines.push(
+    `  client: { baseUrl: string; options: { authToken?: string; timeoutMs?: number; fetchImpl?: typeof fetch } },`,
+  );
   lines.push(`  entity: string,`);
   lines.push(`  command: string,`);
   lines.push(`  input: Record<string, unknown>,`);
@@ -116,23 +129,35 @@ export function renderAdapterSource(descriptor: ServiceDescriptor): string {
   lines.push(`): Promise<FederationResult> {`);
   lines.push(`  const fetchImpl = client.options.fetchImpl ?? globalThis.fetch;`);
   lines.push(`  const controller = new AbortController();`);
-  lines.push(`  const timeout = setTimeout(() => controller.abort(), client.options.timeoutMs ?? 30000);`);
+  lines.push(
+    `  const timeout = setTimeout(() => controller.abort(), client.options.timeoutMs ?? 30000);`,
+  );
   lines.push(`  const headers: Record<string, string> = { "Content-Type": "application/json" };`);
   lines.push(`  if (bridge.actorId) headers["X-Manifest-Actor"] = bridge.actorId;`);
   lines.push(`  if (bridge.tenantId) headers["X-Manifest-Tenant"] = bridge.tenantId;`);
   lines.push(`  if (bridge.orgId) headers["X-Manifest-Org"] = bridge.orgId;`);
-  lines.push(`  if (bridge.actorRoles?.length) headers["X-Manifest-Roles"] = bridge.actorRoles.join(",");`);
+  lines.push(
+    `  if (bridge.actorRoles?.length) headers["X-Manifest-Roles"] = bridge.actorRoles.join(",");`,
+  );
   lines.push(`  if (bridge.requestId) headers["X-Request-Id"] = bridge.requestId;`);
   lines.push(`  if (bridge.correlationId) headers["X-Correlation-Id"] = bridge.correlationId;`);
-  lines.push(`  if (client.options.authToken) headers["Authorization"] = \`Bearer \${client.options.authToken}\`;`);
+  lines.push(
+    `  if (client.options.authToken) headers["Authorization"] = \`Bearer \${client.options.authToken}\`;`,
+  );
   lines.push(`  try {`);
-  lines.push(`    const url = \`\${client.baseUrl}/__manifest/federation/\${encodeURIComponent(entity)}/\${encodeURIComponent(command)}\`;`);
-  lines.push(`    const res = await fetchImpl(url, { method: "POST", headers, body: JSON.stringify({ input }), signal: controller.signal });`);
+  lines.push(
+    `    const url = \`\${client.baseUrl}/__manifest/federation/\${encodeURIComponent(entity)}/\${encodeURIComponent(command)}\`;`,
+  );
+  lines.push(
+    `    const res = await fetchImpl(url, { method: "POST", headers, body: JSON.stringify({ input }), signal: controller.signal });`,
+  );
   lines.push(`    clearTimeout(timeout);`);
   lines.push(`    return await res.json() as FederationResult;`);
   lines.push(`  } catch (err) {`);
   lines.push(`    clearTimeout(timeout);`);
-  lines.push(`    return { success: false, error: err instanceof Error ? err.message : String(err), emittedEvents: [], handledBy: "${descriptor.serviceId}", respondedAt: Date.now() };`);
+  lines.push(
+    `    return { success: false, error: err instanceof Error ? err.message : String(err), emittedEvents: [], handledBy: "${descriptor.serviceId}", respondedAt: Date.now() };`,
+  );
   lines.push(`  }`);
   lines.push(`}`);
   lines.push(``);
@@ -140,7 +165,11 @@ export function renderAdapterSource(descriptor: ServiceDescriptor): string {
   return lines.join('\n');
 }
 
-function renderCommandMethod(methodName: string, entity: ExposedEntity, cmd: ExposedCommand): string[] {
+function renderCommandMethod(
+  methodName: string,
+  entity: ExposedEntity,
+  cmd: ExposedCommand,
+): string[] {
   const lines: string[] = [];
   lines.push(`/**`);
   lines.push(` * ${cmd.description ?? `Invoke ${entity.name}.${cmd.name} on the remote service.`}`);
@@ -152,11 +181,15 @@ function renderCommandMethod(methodName: string, entity: ExposedEntity, cmd: Exp
   }
   lines.push(` */`);
   lines.push(`export function ${methodName}(`);
-  lines.push(`  client: { baseUrl: string; options: { authToken?: string; timeoutMs?: number; fetchImpl?: typeof fetch } },`);
+  lines.push(
+    `  client: { baseUrl: string; options: { authToken?: string; timeoutMs?: number; fetchImpl?: typeof fetch } },`,
+  );
   lines.push(`  input: Record<string, unknown>,`);
   lines.push(`  bridge: BridgeHeaders`);
   lines.push(`): Promise<FederationResult> {`);
-  lines.push(`  return invokeCommand(client, "${entity.name}", "${cmd.name}", input, bridge, ${cmd.idempotent});`);
+  lines.push(
+    `  return invokeCommand(client, "${entity.name}", "${cmd.name}", input, bridge, ${cmd.idempotent});`,
+  );
   lines.push(`}`);
   return lines;
 }
@@ -165,7 +198,7 @@ function createRuntimeClient(
   descriptor: ServiceDescriptor,
   baseUrl: string,
   authToken: string | undefined,
-  timeoutMs: number
+  timeoutMs: number,
 ): Record<string, (...args: unknown[]) => Promise<unknown>> {
   const client: Record<string, (...args: unknown[]) => Promise<unknown>> = {};
   for (const entity of descriptor.entities) {
@@ -213,8 +246,12 @@ function createRuntimeClient(
  * Example: ("Order", "CreateOrder") → "orderCreateOrder"
  */
 function toMethodName(entityName: string, commandName: string): string {
-  return entityName.charAt(0).toLowerCase() + entityName.slice(1) +
-    commandName.charAt(0).toUpperCase() + commandName.slice(1);
+  return (
+    entityName.charAt(0).toLowerCase() +
+    entityName.slice(1) +
+    commandName.charAt(0).toUpperCase() +
+    commandName.slice(1)
+  );
 }
 
 /**

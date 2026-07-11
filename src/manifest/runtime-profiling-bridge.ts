@@ -1,4 +1,9 @@
-import type { ExecutionPhase, CommandProfile, PhaseMetadata, ProfilingOptions } from './profiling.js';
+import type {
+  ExecutionPhase,
+  CommandProfile,
+  PhaseMetadata,
+  ProfilingOptions,
+} from './profiling.js';
 import { ProfileCollector } from './profiling.js';
 
 /**
@@ -48,7 +53,11 @@ export class RuntimeProfilingBridge {
     this.pendingMetadata = undefined;
   }
 
-  async trackPhase<T>(phase: ExecutionPhase, fn: () => Promise<T>, metadata?: PhaseMetadata): Promise<T> {
+  async trackPhase<T>(
+    phase: ExecutionPhase,
+    fn: () => Promise<T>,
+    metadata?: PhaseMetadata,
+  ): Promise<T> {
     if (!this.collector) return fn();
     this.startPhase(phase, metadata);
     try {

@@ -12,11 +12,7 @@
  */
 
 import type { IR, IRExpression, IRType, IRValue } from '../../ir';
-import type {
-  ProjectionTarget,
-  ProjectionRequest,
-  ProjectionResult,
-} from '../interface';
+import type { ProjectionTarget, ProjectionRequest, ProjectionResult } from '../interface';
 import type {
   LlmContextProjectionOptions,
   ManifestContext,
@@ -100,7 +96,7 @@ function irValueToJson(v: IRValue): unknown {
       return v.elements.map(irValueToJson);
     case 'object':
       return Object.fromEntries(
-        Object.entries(v.properties).map(([k, val]) => [k, irValueToJson(val)])
+        Object.entries(v.properties).map(([k, val]) => [k, irValueToJson(val)]),
       );
   }
 }
@@ -120,10 +116,7 @@ function buildMeta(ir: IR): ManifestContextMeta {
 }
 
 function buildDomainSummary(ir: IR): DomainSummary {
-  const allConstraints = ir.entities.reduce(
-    (sum, e) => sum + e.constraints.length,
-    0
-  );
+  const allConstraints = ir.entities.reduce((sum, e) => sum + e.constraints.length, 0);
   return {
     entityCount: ir.entities.length,
     commandCount: ir.commands.length,
@@ -138,9 +131,7 @@ function buildDomainSummary(ir: IR): DomainSummary {
 
 function buildEntityContexts(ir: IR, includeExpressions: boolean): EntityContext[] {
   return ir.entities.map((entity) => {
-    const entityCommands = ir.commands
-      .filter((c) => c.entity === entity.name)
-      .map((c) => c.name);
+    const entityCommands = ir.commands.filter((c) => c.entity === entity.name).map((c) => c.name);
 
     return {
       name: entity.name,
@@ -192,9 +183,7 @@ function buildCommandContexts(ir: IR, includeExpressions: boolean): CommandConte
       required: p.required && p.defaultValue === undefined,
       defaultValue: p.defaultValue !== undefined ? irValueToJson(p.defaultValue) : undefined,
     })),
-    guards: cmd.guards.map((g) =>
-      includeExpressions ? formatExpression(g) : '[omitted]'
-    ),
+    guards: cmd.guards.map((g) => (includeExpressions ? formatExpression(g) : '[omitted]')),
     constraints: (cmd.constraints ?? []).map((c) => ({
       name: c.name,
       code: c.code,
@@ -296,7 +285,7 @@ function buildStores(ir: IR): StoreContext[] {
 
 function buildManifestContext(
   ir: IR,
-  opts: Required<LlmContextProjectionOptions>
+  opts: Required<LlmContextProjectionOptions>,
 ): ManifestContext {
   const ctx: ManifestContext = {
     $schema: 'manifest-context/v1',
@@ -338,9 +327,7 @@ const DEFAULT_OPTIONS: Required<LlmContextProjectionOptions> = {
   emitHeader: true,
 };
 
-function resolveOptions(
-  request: ProjectionRequest
-): Required<LlmContextProjectionOptions> {
+function resolveOptions(request: ProjectionRequest): Required<LlmContextProjectionOptions> {
   return { ...DEFAULT_OPTIONS, ...(request.options as LlmContextProjectionOptions) };
 }
 
@@ -348,11 +335,7 @@ export class LlmContextProjection implements ProjectionTarget {
   readonly name = 'llm-context';
   readonly description =
     'Structured manifest-context.json for LLM context injection — entities, commands, policies, constraints, and relationships in one document.';
-  readonly surfaces = [
-    'llm-context.full',
-    'llm-context.summary',
-    'llm-context.ir',
-  ] as const;
+  readonly surfaces = ['llm-context.full', 'llm-context.summary', 'llm-context.ir'] as const;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const { surface } = request;
@@ -378,10 +361,7 @@ export class LlmContextProjection implements ProjectionTarget {
     }
   }
 
-  private generateFull(
-    ir: IR,
-    opts: Required<LlmContextProjectionOptions>
-  ): ProjectionResult {
+  private generateFull(ir: IR, opts: Required<LlmContextProjectionOptions>): ProjectionResult {
     const ctx = buildManifestContext(ir, opts);
     const code = JSON.stringify(ctx, null, 2);
 
@@ -398,10 +378,7 @@ export class LlmContextProjection implements ProjectionTarget {
     };
   }
 
-  private generateSummary(
-    ir: IR,
-    opts: Required<LlmContextProjectionOptions>
-  ): ProjectionResult {
+  private generateSummary(ir: IR, opts: Required<LlmContextProjectionOptions>): ProjectionResult {
     // Summary mode: no raw IR, no expressions
     const summaryOpts: Required<LlmContextProjectionOptions> = {
       ...opts,
@@ -424,10 +401,7 @@ export class LlmContextProjection implements ProjectionTarget {
     };
   }
 
-  private generateIR(
-    ir: IR,
-    _opts: Required<LlmContextProjectionOptions>
-  ): ProjectionResult {
+  private generateIR(ir: IR, _opts: Required<LlmContextProjectionOptions>): ProjectionResult {
     const code = JSON.stringify(ir, null, 2);
 
     return {

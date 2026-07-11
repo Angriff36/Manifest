@@ -41,7 +41,9 @@ async function compileToIR(source: string): Promise<IR> {
 
 describe('plugin runtime composition', () => {
   it('loads the fixture plugin and reports its contributions', async () => {
-    const registries = await loadPlugins([{ module: FIXTURE_PLUGIN }], { manifestVersion: '1.0.0' });
+    const registries = await loadPlugins([{ module: FIXTURE_PLUGIN }], {
+      manifestVersion: '1.0.0',
+    });
 
     expect(registries.loadedPlugins).toHaveLength(1);
     expect(registries.loadedPlugins[0].manifest.name).toBe('manifest-plugin-fixture');
@@ -53,10 +55,14 @@ describe('plugin runtime composition', () => {
   });
 
   it('wires the plugin builtin and store scheme into a RuntimeEngine', async () => {
-    const registries = await loadPlugins([{ module: FIXTURE_PLUGIN }], { manifestVersion: '1.0.0' });
+    const registries = await loadPlugins([{ module: FIXTURE_PLUGIN }], {
+      manifestVersion: '1.0.0',
+    });
     const ir = await compileToIR(GADGET_SOURCE);
 
-    const runtimeOptions = await pluginRegistriesToRuntimeOptions(registries, { stores: ir.stores });
+    const runtimeOptions = await pluginRegistriesToRuntimeOptions(registries, {
+      stores: ir.stores,
+    });
     expect(runtimeOptions.customBuiltins?.has('double')).toBe(true);
     expect(typeof runtimeOptions.storeProvider).toBe('function');
     expect(runtimeOptions.auditSink).toBeDefined();
@@ -75,7 +81,9 @@ describe('plugin runtime composition', () => {
   });
 
   it('omits storeProvider when no store schemes are supplied', async () => {
-    const registries = await loadPlugins([{ module: FIXTURE_PLUGIN }], { manifestVersion: '1.0.0' });
+    const registries = await loadPlugins([{ module: FIXTURE_PLUGIN }], {
+      manifestVersion: '1.0.0',
+    });
     const runtimeOptions = await pluginRegistriesToRuntimeOptions(registries);
     expect(runtimeOptions.storeProvider).toBeUndefined();
     // Builtins still compose without any IR context.
@@ -83,9 +91,7 @@ describe('plugin runtime composition', () => {
   });
 
   it('degrades gracefully when a declaration fails to load', async () => {
-    const missing = fileURLToPath(
-      new URL('./__fixtures__/does-not-exist.mjs', import.meta.url),
-    );
+    const missing = fileURLToPath(new URL('./__fixtures__/does-not-exist.mjs', import.meta.url));
     const registries = await loadPlugins([{ module: missing }], { manifestVersion: '1.0.0' });
 
     expect(registries.loadedPlugins).toHaveLength(0);

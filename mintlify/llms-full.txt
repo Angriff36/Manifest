@@ -1628,16 +1628,18 @@ class PostgresOrderStore implements Store<Order> {
   }
 }
 
-const runtime = new RuntimeEngine(ir, {
-  user: { id: "user-1", role: "admin" },
-  storeProvider: (entityName) => {
-    if (entityName === "Order") return new PostgresOrderStore();
-    return undefined; // fall back to memory store
+const runtime = new RuntimeEngine(
+  ir,
+  { user: { id: "user-1", role: "admin" } },
+  {
+    storeProvider: (entityName) =>
+      entityName === "Order" ? new PostgresOrderStore() : undefined,
   },
-});
+);
 ```
 
-When `storeProvider` returns `undefined` for an entity, the runtime falls back to an in-memory store for that entity.
+Returning `undefined` uses a built-in store only for `memory` and browser
+`localStorage`. Durable targets fail rather than falling back to memory.
 
 
 See [Custom Stores](/adapters/custom-stores) for the full `Store` interface contract and a guide to implementing production-ready adapters.
@@ -1645,7 +1647,8 @@ See [Custom Stores](/adapters/custom-stores) for the full `Store` interface cont
 
 ## Store and `localStorage`
 
-The `localStorage` target is available for browser environments. Like `postgres` and `supabase`, it requires an adapter. The runtime does not bundle a `localStorage` implementation — you supply one via `storeProvider`.
+The `localStorage` target is available for browser environments and is
+auto-instantiated by the runtime. It does not require `storeProvider`.
 
 ```manifest
 store Preferences in localStorage
@@ -3313,22 +3316,22 @@ Each method maps directly to a runtime operation:
 
 ## Wiring in a custom store
 
-Pass a `storeProvider` function in `RuntimeOptions` when you construct `RuntimeEngine`. The function receives the entity name and returns either your store or `undefined` (which falls back to the configured default for that entity).
+Pass a `storeProvider` function in `RuntimeOptions` when you construct
+`RuntimeEngine`. `undefined` uses built-in behavior only for `memory` and
+browser `localStorage`; durable targets fail instead of falling back to memory.
 
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';
 import { MyCustomStore } from './my-custom-store';
 
-const runtime = new RuntimeEngine(ir, {
-  userId: 'user-123',
-  tenantId: 'tenant-456',
-  storeProvider: (entityName) => {
-    if (entityName === 'Recipe') {
-      return new MyCustomStore({ /* config */ });
-    }
-    return undefined; // use default memory store for other entities
-  }
-});
+const runtime = new RuntimeEngine(
+  ir,
+  { actorId: 'user-123', tenantId: 'tenant-456' },
+  {
+    storeProvider: (entityName) =>
+      entityName === 'Recipe' ? new MyCustomStore({ /* config */ }) : undefined,
+  },
+);
 ```
 
 ## Complete example: Prisma store
@@ -5251,7 +5254,7 @@ Manifest is an IR-first domain-specific language for encoding business rules, au
       userId: 'user-123',
       storeProvider: (entityName) => {
         if (entityName === 'Recipe') return new MyRecipeStore();
-        return undefined; // fall back to in-memory store
+        return undefined; // only built-in targets resolve without a provider
       }
     });
     ```
@@ -5691,7 +5694,8 @@ The issues below cover the most common problems reported when working with Manif
     });
     ```
 
-    The `storeProvider` callback receives the entity name and must return a `Store` instance or `undefined` (to use the default memory store for that entity).
+    Returning `undefined` uses built-in behavior only for `memory` and browser
+    `localStorage`; durable targets fail until configured.
   </Accordion>
 
   <Accordion title='manifest validate reports "Missing required field: metadata" or "Schema not found"'>
@@ -5739,4 +5743,3 @@ The issues below cover the most common problems reported when working with Manif
 
 
   If your issue is not listed here, check the [FAQ](/faq) for answers about Manifest's design and semantics. To report a new issue, open a GitHub issue and include your `.manifest` source, the compiled IR, and any diagnostic output.
-

@@ -15,8 +15,12 @@ import { RuntimeEngine } from './runtime-engine';
 
 const FIXED_NOW = 1_700_000_000_000;
 
-function propOf(ir: NonNullable<Awaited<ReturnType<typeof compileToIR>>['ir']>, entity: string, name: string) {
-  return ir.entities.find(e => e.name === entity)!.properties.find(p => p.name === name)!;
+function propOf(
+  ir: NonNullable<Awaited<ReturnType<typeof compileToIR>>['ir']>,
+  entity: string,
+  name: string,
+) {
+  return ir.entities.find((e) => e.name === entity)!.properties.find((p) => p.name === name)!;
 }
 
 describe('now()/autoNow property defaults', () => {
@@ -27,7 +31,7 @@ describe('now()/autoNow property defaults', () => {
   command create(id: string) { mutate id = id }
 }
 store N in memory`);
-    expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     const p = propOf(ir!, 'N', 'createdAt');
     expect(p.autoNow).toBe(true);
     expect(p.defaultValue).toBeUndefined();
@@ -61,7 +65,9 @@ store N in memory`);
   property token: string = uuid()
 }
 store N in memory`);
-    const warn = diagnostics.find(d => d.severity === 'warning' && /not a supported default/.test(d.message));
+    const warn = diagnostics.find(
+      (d) => d.severity === 'warning' && /not a supported default/.test(d.message),
+    );
     expect(warn).toBeDefined();
     expect(warn!.message).toContain('token');
   });
@@ -73,7 +79,7 @@ store N in memory`);
   command create(id: string) { mutate id = id }
 }
 store N in memory`);
-    expect(diagnostics.filter(d => d.severity === 'warning')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'warning')).toEqual([]);
     expect(propOf(ir!, 'N', 'idx').defaultValue).toEqual({ kind: 'number', value: -1 });
   });
 });
@@ -86,7 +92,9 @@ describe('create command leaves a guaranteed-null field unset', () => {
   command create(id: string) { mutate id = id }
 }
 store Ticket in memory`);
-    const warn = diagnostics.find(d => d.severity === 'warning' && /never sets non-null field 'openedAt'/.test(d.message));
+    const warn = diagnostics.find(
+      (d) => d.severity === 'warning' && /never sets non-null field 'openedAt'/.test(d.message),
+    );
     expect(warn).toBeDefined();
   });
 
@@ -97,7 +105,7 @@ store Ticket in memory`);
   command create(id: string) { mutate id = id }
 }
 store Ticket in memory`);
-    expect(diagnostics.filter(d => /openedAt/.test(d.message))).toEqual([]);
+    expect(diagnostics.filter((d) => /openedAt/.test(d.message))).toEqual([]);
   });
 
   it('does NOT warn when the create command sets the field via mutate', async () => {
@@ -107,7 +115,7 @@ store Ticket in memory`);
   command create(id: string, openedAt: datetime) { mutate id = id mutate openedAt = openedAt }
 }
 store Ticket in memory`);
-    expect(diagnostics.filter(d => /openedAt/.test(d.message))).toEqual([]);
+    expect(diagnostics.filter((d) => /openedAt/.test(d.message))).toEqual([]);
   });
 
   it('does NOT warn on string/number/boolean fields (runtime zero-fills them non-null)', async () => {
@@ -119,7 +127,7 @@ store Ticket in memory`);
   command create(id: string) { mutate id = id }
 }
 store Ticket in memory`);
-    expect(diagnostics.filter(d => d.severity === 'warning')).toEqual([]);
+    expect(diagnostics.filter((d) => d.severity === 'warning')).toEqual([]);
   });
 });
 
@@ -131,7 +139,9 @@ describe('duplicate event names', () => {
 event Thing: "a.thing" {}
 event Thing: "b.thing" {}
 store A in memory`);
-    const warn = diagnostics.find(d => d.severity === 'warning' && /Duplicate event name 'Thing'/.test(d.message));
+    const warn = diagnostics.find(
+      (d) => d.severity === 'warning' && /Duplicate event name 'Thing'/.test(d.message),
+    );
     expect(warn).toBeDefined();
   });
 
@@ -142,6 +152,6 @@ store A in memory`);
 event One: "a.one" {}
 event Two: "a.two" {}
 store A in memory`);
-    expect(diagnostics.filter(d => /Duplicate event name/.test(d.message))).toEqual([]);
+    expect(diagnostics.filter((d) => /Duplicate event name/.test(d.message))).toEqual([]);
   });
 });

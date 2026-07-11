@@ -40,13 +40,13 @@ output: ir/
   console.log(yamlContent);
   console.log('Quick start:');
   console.log("  1. echo 'entity User { name: string }' > User.manifest");
-  console.log("  2. npm run build:lib  # Build the compiler");
-  console.log("  3. npm run manifest:compile User.manifest");
+  console.log('  2. npm run build:lib  # Build the compiler');
+  console.log('  3. npm run manifest:compile User.manifest');
   console.log('');
   console.log('Edit manifest.config.yaml to customize paths.');
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Init failed:', err.message);
   process.exit(1);
 });

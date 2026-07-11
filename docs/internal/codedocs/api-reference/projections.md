@@ -1,6 +1,6 @@
 ---
-title: "Projections and Registries API"
-description: "Public projection classes, route types, and registry emission APIs."
+title: 'Projections and Registries API'
+description: 'Public projection classes, route types, and registry emission APIs.'
 ---
 
 > **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
@@ -13,7 +13,6 @@ description: "Public projection classes, route types, and registry emission APIs
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.
-
 
 ## Import Paths
 
@@ -44,8 +43,8 @@ Source: `src/manifest/projections/nextjs/generator.ts`
 
 ```ts
 class NextJsProjection {
-  readonly name = 'nextjs'
-  readonly description: string
+  readonly name = 'nextjs';
+  readonly description: string;
   readonly surfaces = [
     'nextjs.route',
     'nextjs.detail',
@@ -53,9 +52,9 @@ class NextJsProjection {
     'nextjs.dispatcher',
     'ts.types',
     'ts.client',
-  ]
+  ];
 
-  generate(ir: IR, request: ProjectionRequest): ProjectionResult
+  generate(ir: IR, request: ProjectionRequest): ProjectionResult;
 }
 ```
 
@@ -93,23 +92,23 @@ Source: `src/manifest/projections/routes/generator.ts`
 
 ```ts
 class RoutesProjection {
-  readonly name = 'routes'
-  readonly description: string
-  readonly surfaces = ['routes.manifest', 'routes.ts']
+  readonly name = 'routes';
+  readonly description: string;
+  readonly surfaces = ['routes.manifest', 'routes.ts'];
 
-  generate(ir: IR, request: ProjectionRequest): ProjectionResult
+  generate(ir: IR, request: ProjectionRequest): ProjectionResult;
 }
 ```
 
 ### `RoutesProjectionOptions`
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `basePath` | `string` | `"/api"` | Prefix applied to all derived routes. |
-| `includeAuth` | `boolean` | `true` | Whether emitted entries include auth expectations. |
-| `includeTenant` | `boolean` | `true` | Whether emitted entries include tenant expectations. |
-| `manualRoutes` | `ManualRouteDeclaration[]` | `[]` | Extra transport routes to merge into the manifest. |
-| `generatedAt` | `string` | `new Date().toISOString()` | Optional deterministic timestamp override. |
+| Option          | Type                       | Default                    | Description                                          |
+| --------------- | -------------------------- | -------------------------- | ---------------------------------------------------- |
+| `basePath`      | `string`                   | `"/api"`                   | Prefix applied to all derived routes.                |
+| `includeAuth`   | `boolean`                  | `true`                     | Whether emitted entries include auth expectations.   |
+| `includeTenant` | `boolean`                  | `true`                     | Whether emitted entries include tenant expectations. |
+| `manualRoutes`  | `ManualRouteDeclaration[]` | `[]`                       | Extra transport routes to merge into the manifest.   |
+| `generatedAt`   | `string`                   | `new Date().toISOString()` | Optional deterministic timestamp override.           |
 
 ### Route Types
 
@@ -149,11 +148,13 @@ const projection = new RoutesProjection();
 const manifest = projection.generate(ir, {
   surface: 'routes.manifest',
   options: {
-    manualRoutes: [{
-      id: 'health',
-      path: '/api/health',
-      method: 'GET',
-    }],
+    manualRoutes: [
+      {
+        id: 'health',
+        path: '/api/health',
+        method: 'GET',
+      },
+    ],
   },
 });
 ```
@@ -163,12 +164,12 @@ const manifest = projection.generate(ir, {
 Source: `src/manifest/registry/emit.ts`
 
 ```ts
-const UNOWNED_ENTITY_NAME = '__unowned__'
+const UNOWNED_ENTITY_NAME = '__unowned__';
 
 function emitRegistries(ir: IR): {
   commands: CommandRegistry;
   entities: EntityRegistry;
-}
+};
 ```
 
 Registry types:

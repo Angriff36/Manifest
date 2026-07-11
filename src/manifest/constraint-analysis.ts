@@ -104,20 +104,28 @@ function extractBinaryRange(expr: IRExpression): NumericRange | undefined {
   // Property on left, literal on right: self.price > 0
   if (leftPath && rightNum !== undefined) {
     switch (operator) {
-      case '>':  return { min: rightNum + 1, propertyPath: leftPath };  // exclusive > becomes >= min+epsilon
-      case '>=': return { min: rightNum, propertyPath: leftPath };
-      case '<':  return { max: rightNum - 1, propertyPath: leftPath };
-      case '<=': return { max: rightNum, propertyPath: leftPath };
+      case '>':
+        return { min: rightNum + 1, propertyPath: leftPath }; // exclusive > becomes >= min+epsilon
+      case '>=':
+        return { min: rightNum, propertyPath: leftPath };
+      case '<':
+        return { max: rightNum - 1, propertyPath: leftPath };
+      case '<=':
+        return { max: rightNum, propertyPath: leftPath };
     }
   }
 
   // Literal on left, property on right: 0 < self.price
   if (rightPath && leftNum !== undefined) {
     switch (operator) {
-      case '<':  return { min: leftNum + 1, propertyPath: rightPath };
-      case '<=': return { min: leftNum, propertyPath: rightPath };
-      case '>':  return { max: leftNum - 1, propertyPath: rightPath };
-      case '>=': return { max: leftNum, propertyPath: rightPath };
+      case '<':
+        return { min: leftNum + 1, propertyPath: rightPath };
+      case '<=':
+        return { min: leftNum, propertyPath: rightPath };
+      case '>':
+        return { max: leftNum - 1, propertyPath: rightPath };
+      case '>=':
+        return { max: leftNum, propertyPath: rightPath };
     }
   }
 
@@ -151,10 +159,12 @@ export function analyzeConstraintExpression(expression: IRExpression): {
   const patternConstraints: PatternConstraint[] = [];
 
   // Handle `between(self.prop, min, max)` calls
-  if (expression.kind === 'call' &&
-      expression.callee.kind === 'identifier' &&
-      expression.callee.name === 'between' &&
-      expression.args.length === 3) {
+  if (
+    expression.kind === 'call' &&
+    expression.callee.kind === 'identifier' &&
+    expression.callee.name === 'between' &&
+    expression.args.length === 3
+  ) {
     const propPath = formatPropertyPath(expression.args[0]);
     const low = extractLiteralNumber(expression.args[1]);
     const high = extractLiteralNumber(expression.args[2]);
@@ -165,10 +175,12 @@ export function analyzeConstraintExpression(expression: IRExpression): {
   }
 
   // Handle `matches(self.prop, "pattern")` calls
-  if (expression.kind === 'call' &&
-      expression.callee.kind === 'identifier' &&
-      expression.callee.name === 'matches' &&
-      expression.args.length === 2) {
+  if (
+    expression.kind === 'call' &&
+    expression.callee.kind === 'identifier' &&
+    expression.callee.name === 'matches' &&
+    expression.args.length === 2
+  ) {
     const propPath = formatPropertyPath(expression.args[0]);
     const pattern = extractLiteralString(expression.args[1]);
     if (propPath && pattern !== undefined) {
@@ -178,10 +190,12 @@ export function analyzeConstraintExpression(expression: IRExpression): {
   }
 
   // Handle `min(self.prop, minVal)` as lower bound
-  if (expression.kind === 'call' &&
-      expression.callee.kind === 'identifier' &&
-      expression.callee.name === 'min' &&
-      expression.args.length >= 2) {
+  if (
+    expression.kind === 'call' &&
+    expression.callee.kind === 'identifier' &&
+    expression.callee.name === 'min' &&
+    expression.args.length >= 2
+  ) {
     const propPath = formatPropertyPath(expression.args[0]);
     const minVal = extractLiteralNumber(expression.args[1]);
     if (propPath && minVal !== undefined) {
@@ -191,10 +205,12 @@ export function analyzeConstraintExpression(expression: IRExpression): {
   }
 
   // Handle `max(self.prop, maxVal)` as upper bound
-  if (expression.kind === 'call' &&
-      expression.callee.kind === 'identifier' &&
-      expression.callee.name === 'max' &&
-      expression.args.length >= 2) {
+  if (
+    expression.kind === 'call' &&
+    expression.callee.kind === 'identifier' &&
+    expression.callee.name === 'max' &&
+    expression.args.length >= 2
+  ) {
     const propPath = formatPropertyPath(expression.args[0]);
     const maxVal = extractLiteralNumber(expression.args[1]);
     if (propPath && maxVal !== undefined) {
@@ -208,7 +224,11 @@ export function analyzeConstraintExpression(expression: IRExpression): {
     const { operator, left, right } = expression;
 
     // `length(self.prop) >= N` or `length(self.prop) > N`
-    if (left.kind === 'call' && left.callee.kind === 'identifier' && left.callee.name === 'length') {
+    if (
+      left.kind === 'call' &&
+      left.callee.kind === 'identifier' &&
+      left.callee.name === 'length'
+    ) {
       const propPath = formatPropertyPath(left.args[0]);
       const rightNum = extractLiteralNumber(right);
       if (propPath && rightNum !== undefined) {
@@ -226,7 +246,11 @@ export function analyzeConstraintExpression(expression: IRExpression): {
     }
 
     // `N >= length(self.prop)` → length <= N
-    if (right.kind === 'call' && right.callee.kind === 'identifier' && right.callee.name === 'length') {
+    if (
+      right.kind === 'call' &&
+      right.callee.kind === 'identifier' &&
+      right.callee.name === 'length'
+    ) {
       const propPath = formatPropertyPath(right.args[0]);
       const leftNum = extractLiteralNumber(left);
       if (propPath && leftNum !== undefined) {
@@ -264,7 +288,9 @@ export function analyzeConstraints(constraints: IRConstraint[]): ConstraintAnaly
   const allPatterns: PatternConstraint[] = [];
 
   for (const constraint of constraints) {
-    const { numericRanges, lengthConstraints, patternConstraints } = analyzeConstraintExpression(constraint.expression);
+    const { numericRanges, lengthConstraints, patternConstraints } = analyzeConstraintExpression(
+      constraint.expression,
+    );
 
     for (const range of numericRanges) {
       const key = range.propertyPath;
@@ -288,10 +314,16 @@ export function analyzeConstraints(constraints: IRConstraint[]): ConstraintAnaly
       if (existing) {
         // Merge: take tighter bounds
         if (lc.minLength !== undefined) {
-          existing.minLength = existing.minLength !== undefined ? Math.max(existing.minLength, lc.minLength) : lc.minLength;
+          existing.minLength =
+            existing.minLength !== undefined
+              ? Math.max(existing.minLength, lc.minLength)
+              : lc.minLength;
         }
         if (lc.maxLength !== undefined) {
-          existing.maxLength = existing.maxLength !== undefined ? Math.min(existing.maxLength, lc.maxLength) : lc.maxLength;
+          existing.maxLength =
+            existing.maxLength !== undefined
+              ? Math.min(existing.maxLength, lc.maxLength)
+              : lc.maxLength;
         }
       } else {
         allLengths.set(key, { ...lc });
@@ -318,7 +350,10 @@ export function analyzeConstraints(constraints: IRConstraint[]): ConstraintAnaly
  * @param column - The SQL column name (defaults to property path stripped of "self.")
  * @returns SQL CHECK expression or undefined if no bounds
  */
-export function numericRangeToCheckConstraint(range: NumericRange, column?: string): string | undefined {
+export function numericRangeToCheckConstraint(
+  range: NumericRange,
+  column?: string,
+): string | undefined {
   const col = column ?? range.propertyPath.replace(/^self\./, '');
   const conditions: string[] = [];
 
@@ -339,7 +374,10 @@ export function numericRangeToCheckConstraint(range: NumericRange, column?: stri
  * @param column - The SQL column name
  * @returns SQL CHECK expression or undefined if no bounds
  */
-export function lengthConstraintToCheckConstraint(lc: LengthConstraint, column?: string): string | undefined {
+export function lengthConstraintToCheckConstraint(
+  lc: LengthConstraint,
+  column?: string,
+): string | undefined {
   const col = column ?? lc.propertyPath.replace(/^self\./, '');
   const conditions: string[] = [];
 

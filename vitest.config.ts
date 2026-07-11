@@ -3,7 +3,12 @@ import path from 'path';
 
 export default defineConfig({
   test: {
-    include: ['src/**/*.test.ts', 'packages/cli/**/*.test.ts', 'packages/mcp-server/**/*.test.ts', 'packages/lsp-server/**/*.test.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'packages/cli/**/*.test.ts',
+      'packages/mcp-server/**/*.test.ts',
+      'packages/lsp-server/**/*.test.ts',
+    ],
     environment: 'node',
     setupFiles: ['./test-setup.ts'],
     deps: {

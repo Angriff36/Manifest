@@ -81,11 +81,11 @@ function gitListFiles(ref: string, pattern: string): string[] {
     // Match against the glob pattern (simple: ends with .manifest)
     const suffix = '.manifest';
     if (pattern === '**/*.manifest' || pattern === '*.manifest') {
-      return allFiles.filter(f => f.endsWith(suffix));
+      return allFiles.filter((f) => f.endsWith(suffix));
     }
     // For custom patterns, do a basic directory prefix match
     const prefix = pattern.replace(/\*\*\/\*\.manifest$/, '').replace(/\*\.manifest$/, '');
-    return allFiles.filter(f => f.endsWith(suffix) && f.startsWith(prefix));
+    return allFiles.filter((f) => f.endsWith(suffix) && f.startsWith(prefix));
   } catch {
     return [];
   }
@@ -152,13 +152,14 @@ async function compileAtRef(
     }
   }
 
-  const errors = allDiagnostics.filter(d => d.severity === 'error');
+  const errors = allDiagnostics.filter((d) => d.severity === 'error');
   if (!lastIR) {
     return {
       ir: null,
-      error: errors.length > 0
-        ? `Compilation failed at ref '${ref}': ${errors[0].message}`
-        : `No valid IR produced at ref '${ref}'`,
+      error:
+        errors.length > 0
+          ? `Compilation failed at ref '${ref}': ${errors[0].message}`
+          : `No valid IR produced at ref '${ref}'`,
     };
   }
 
@@ -198,10 +199,9 @@ function generateMarkdown(
   // --- Breaking Changes ---
   if (breakingReport.summary.breaking > 0) {
     const items: string[] = [];
-    for (const change of breakingReport.classified.filter(c => c.severity === 'breaking')) {
-      const impact = change.consumerImpact.length > 0
-        ? ` (impacts: ${change.consumerImpact.join(', ')})`
-        : '';
+    for (const change of breakingReport.classified.filter((c) => c.severity === 'breaking')) {
+      const impact =
+        change.consumerImpact.length > 0 ? ` (impacts: ${change.consumerImpact.join(', ')})` : '';
       items.push(`**BREAKING**: ${change.description} — \`${change.path}\`${impact}`);
     }
     sections.push({ heading: 'Breaking Changes', items });
@@ -211,43 +211,43 @@ function generateMarkdown(
   const added: string[] = [];
 
   // New entities
-  for (const entity of diffReport.entities.filter(e => e.change === 'added')) {
+  for (const entity of diffReport.entities.filter((e) => e.change === 'added')) {
     added.push(`New entity \`${entity.name}\``);
   }
 
   // New commands
-  for (const cmd of diffReport.commands.filter(c => c.change === 'added')) {
+  for (const cmd of diffReport.commands.filter((c) => c.change === 'added')) {
     const entityNote = cmd.details?.entity?.to ? ` on \`${cmd.details.entity.to}\`` : '';
     added.push(`New command \`${cmd.name}\`${entityNote}`);
   }
 
   // New policies
-  for (const pol of diffReport.policies.filter(p => p.change === 'added')) {
+  for (const pol of diffReport.policies.filter((p) => p.change === 'added')) {
     added.push(`New policy \`${pol.name}\``);
   }
 
   // New events
-  for (const evt of diffReport.events.filter(e => e.change === 'added')) {
+  for (const evt of diffReport.events.filter((e) => e.change === 'added')) {
     added.push(`New event \`${evt.name}\``);
   }
 
   // New stores
-  for (const store of diffReport.stores.filter(s => s.change === 'added')) {
+  for (const store of diffReport.stores.filter((s) => s.change === 'added')) {
     added.push(`New store for \`${store.entity}\``);
   }
 
   // New properties on existing entities
-  for (const entity of diffReport.entities.filter(e => e.change === 'changed')) {
-    for (const prop of entity.properties.filter(p => p.change === 'added')) {
+  for (const entity of diffReport.entities.filter((e) => e.change === 'changed')) {
+    for (const prop of entity.properties.filter((p) => p.change === 'added')) {
       added.push(`New property \`${entity.name}.${prop.name}\``);
     }
-    for (const cp of entity.computedProperties.filter(c => c.change === 'added')) {
+    for (const cp of entity.computedProperties.filter((c) => c.change === 'added')) {
       added.push(`New computed property \`${entity.name}.${cp.name}\``);
     }
-    for (const rel of entity.relationships.filter(r => r.change === 'added')) {
+    for (const rel of entity.relationships.filter((r) => r.change === 'added')) {
       added.push(`New relationship \`${entity.name}.${rel.name}\``);
     }
-    for (const con of entity.constraints.filter(c => c.change === 'added')) {
+    for (const con of entity.constraints.filter((c) => c.change === 'added')) {
       added.push(`New constraint \`${entity.name}.${con.name}\``);
     }
   }
@@ -259,41 +259,43 @@ function generateMarkdown(
   // --- Changed ---
   const changed: string[] = [];
 
-  for (const entity of diffReport.entities.filter(e => e.change === 'changed')) {
-    for (const prop of entity.properties.filter(p => p.change === 'changed')) {
+  for (const entity of diffReport.entities.filter((e) => e.change === 'changed')) {
+    for (const prop of entity.properties.filter((p) => p.change === 'changed')) {
       const details: string[] = [];
       if (prop.details?.type) {
         details.push(`type: \`${prop.details.type.from}\` → \`${prop.details.type.to}\``);
       }
       if (prop.details?.modifiers) {
-        details.push(`modifiers: [${prop.details.modifiers.from.join(', ')}] → [${prop.details.modifiers.to.join(', ')}]`);
+        details.push(
+          `modifiers: [${prop.details.modifiers.from.join(', ')}] → [${prop.details.modifiers.to.join(', ')}]`,
+        );
       }
       const detailStr = details.length > 0 ? ` (${details.join('; ')})` : '';
       changed.push(`Modified property \`${entity.name}.${prop.name}\`${detailStr}`);
     }
-    for (const cp of entity.computedProperties.filter(c => c.change === 'changed')) {
+    for (const cp of entity.computedProperties.filter((c) => c.change === 'changed')) {
       changed.push(`Modified computed property \`${entity.name}.${cp.name}\``);
     }
-    for (const rel of entity.relationships.filter(r => r.change === 'changed')) {
+    for (const rel of entity.relationships.filter((r) => r.change === 'changed')) {
       const kindDetail = rel.details?.kind
         ? ` (kind: \`${rel.details.kind.from}\` → \`${rel.details.kind.to}\`)`
         : '';
       changed.push(`Modified relationship \`${entity.name}.${rel.name}\`${kindDetail}`);
     }
-    for (const con of entity.constraints.filter(c => c.change === 'changed')) {
+    for (const con of entity.constraints.filter((c) => c.change === 'changed')) {
       changed.push(`Modified constraint \`${entity.name}.${con.name}\``);
     }
   }
 
-  for (const cmd of diffReport.commands.filter(c => c.change === 'changed')) {
+  for (const cmd of diffReport.commands.filter((c) => c.change === 'changed')) {
     changed.push(`Modified command \`${cmd.name}\``);
   }
 
-  for (const pol of diffReport.policies.filter(p => p.change === 'changed')) {
+  for (const pol of diffReport.policies.filter((p) => p.change === 'changed')) {
     changed.push(`Modified policy \`${pol.name}\``);
   }
 
-  for (const evt of diffReport.events.filter(e => e.change === 'changed')) {
+  for (const evt of diffReport.events.filter((e) => e.change === 'changed')) {
     changed.push(`Modified event \`${evt.name}\``);
   }
 
@@ -304,7 +306,7 @@ function generateMarkdown(
   // --- Deprecated ---
   if (breakingReport.summary.deprecated > 0) {
     const items: string[] = [];
-    for (const change of breakingReport.classified.filter(c => c.severity === 'deprecated')) {
+    for (const change of breakingReport.classified.filter((c) => c.severity === 'deprecated')) {
       items.push(`${change.description} — \`${change.path}\``);
     }
     sections.push({ heading: 'Deprecated', items });
@@ -313,35 +315,35 @@ function generateMarkdown(
   // --- Removed ---
   const removed: string[] = [];
 
-  for (const entity of diffReport.entities.filter(e => e.change === 'removed')) {
+  for (const entity of diffReport.entities.filter((e) => e.change === 'removed')) {
     removed.push(`Removed entity \`${entity.name}\``);
   }
 
-  for (const cmd of diffReport.commands.filter(c => c.change === 'removed')) {
+  for (const cmd of diffReport.commands.filter((c) => c.change === 'removed')) {
     removed.push(`Removed command \`${cmd.name}\``);
   }
 
-  for (const pol of diffReport.policies.filter(p => p.change === 'removed')) {
+  for (const pol of diffReport.policies.filter((p) => p.change === 'removed')) {
     removed.push(`Removed policy \`${pol.name}\``);
   }
 
-  for (const evt of diffReport.events.filter(e => e.change === 'removed')) {
+  for (const evt of diffReport.events.filter((e) => e.change === 'removed')) {
     removed.push(`Removed event \`${evt.name}\``);
   }
 
-  for (const store of diffReport.stores.filter(s => s.change === 'removed')) {
+  for (const store of diffReport.stores.filter((s) => s.change === 'removed')) {
     removed.push(`Removed store for \`${store.entity}\``);
   }
 
   // Removed properties on existing entities
-  for (const entity of diffReport.entities.filter(e => e.change === 'changed')) {
-    for (const prop of entity.properties.filter(p => p.change === 'removed')) {
+  for (const entity of diffReport.entities.filter((e) => e.change === 'changed')) {
+    for (const prop of entity.properties.filter((p) => p.change === 'removed')) {
       removed.push(`Removed property \`${entity.name}.${prop.name}\``);
     }
-    for (const cp of entity.computedProperties.filter(c => c.change === 'removed')) {
+    for (const cp of entity.computedProperties.filter((c) => c.change === 'removed')) {
       removed.push(`Removed computed property \`${entity.name}.${cp.name}\``);
     }
-    for (const rel of entity.relationships.filter(r => r.change === 'removed')) {
+    for (const rel of entity.relationships.filter((r) => r.change === 'removed')) {
       removed.push(`Removed relationship \`${entity.name}.${rel.name}\``);
     }
   }
@@ -417,13 +419,17 @@ export async function changelogCommand(
 
     // JSON output
     if (options.json) {
-      const jsonOutput = JSON.stringify({
-        fromRef,
-        toRef,
-        date: new Date().toISOString().slice(0, 10),
-        diff: diffReport,
-        breaking: breakingReport,
-      }, null, 2);
+      const jsonOutput = JSON.stringify(
+        {
+          fromRef,
+          toRef,
+          date: new Date().toISOString().slice(0, 10),
+          diff: diffReport,
+          breaking: breakingReport,
+        },
+        null,
+        2,
+      );
 
       if (options.output) {
         await fs.writeFile(options.output, jsonOutput, 'utf-8');
@@ -435,13 +441,7 @@ export async function changelogCommand(
     }
 
     // Markdown output
-    const markdown = generateMarkdown(
-      fromRef,
-      toRef,
-      diffReport,
-      breakingReport,
-      options.title,
-    );
+    const markdown = generateMarkdown(fromRef, toRef, diffReport, breakingReport, options.title);
 
     if (options.output) {
       await fs.writeFile(options.output, markdown, 'utf-8');
@@ -450,7 +450,9 @@ export async function changelogCommand(
       console.log(markdown);
     }
   } catch (error) {
-    spinner.fail(`Changelog generation failed: ${error instanceof Error ? error.message : String(error)}`);
+    spinner.fail(
+      `Changelog generation failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exit(1);
   }
 }

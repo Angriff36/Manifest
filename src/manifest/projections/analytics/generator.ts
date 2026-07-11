@@ -13,12 +13,7 @@
  * be consumed by any provider's schema validation tooling.
  */
 
-import type {
-  IR,
-  IRCommand,
-  IREvent,
-  IRType,
-} from '../../ir';
+import type { IR, IRCommand, IREvent, IRType } from '../../ir';
 import type {
   ProjectionTarget,
   ProjectionRequest,
@@ -26,10 +21,7 @@ import type {
   ProjectionDiagnostic,
   ProjectionArtifact,
 } from '../interface';
-import type {
-  AnalyticsProjectionOptions,
-  AnalyticsProvider,
-} from './types';
+import type { AnalyticsProjectionOptions, AnalyticsProvider } from './types';
 
 // ============================================================================
 // Surface constants
@@ -38,11 +30,7 @@ import type {
 export const SURFACE_TRACKING_PLAN = 'analytics.tracking-plan' as const;
 export const SURFACE_EVENTS = 'analytics.events' as const;
 export const SURFACE_HANDLERS = 'analytics.handlers' as const;
-export const SURFACES = [
-  SURFACE_TRACKING_PLAN,
-  SURFACE_EVENTS,
-  SURFACE_HANDLERS,
-] as const;
+export const SURFACES = [SURFACE_TRACKING_PLAN, SURFACE_EVENTS, SURFACE_HANDLERS] as const;
 
 // ============================================================================
 // Provider configuration
@@ -414,7 +402,7 @@ function namespaceEvent(name: string, namespace: string): string {
 function toPascalCase(name: string): string {
   return name
     .split(/[\s_-]+/)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join('')
     .replace(/[^a-zA-Z0-9]/g, '');
 }
@@ -444,14 +432,14 @@ function generateTrackingPlan(
       irVersion: ir.version,
       contentHash: ir.provenance.contentHash,
     },
-    events: events.map(evt => ({
+    events: events.map((evt) => ({
       name: evt.name,
       description: evt.description,
       entity: evt.entity,
       command: evt.command,
       channel: evt.channel,
       properties: Object.fromEntries(
-        evt.properties.map(p => [
+        evt.properties.map((p) => [
           p.name,
           {
             ...irTypeToJsonSchema(p.type),
@@ -622,12 +610,7 @@ function generateHandlers(
       const cmds = commandsByEntity.get(entity.name) ?? [];
       if (cmds.length === 0) continue;
 
-      const code = generateEntityHandlerFile(
-        entity.name,
-        cmds,
-        commandEvents,
-        opts,
-      );
+      const code = generateEntityHandlerFile(entity.name, cmds, commandEvents, opts);
 
       artifacts.push({
         id: `analytics.handlers.${entity.name}`,
@@ -682,7 +665,7 @@ function generateEntityHandlerFile(
     lines.push(` * Analytics tracking for command '${cmd.name}' on ${entityName}.`);
     lines.push(` * Call this AFTER successful command execution.`);
     if (events.length > 0) {
-      lines.push(` * Emits: ${events.map(e => e.name).join(', ')}`);
+      lines.push(` * Emits: ${events.map((e) => e.name).join(', ')}`);
     }
     lines.push(` */`);
     lines.push(`export function track${toPascalCase(cmd.name)}(`);
@@ -713,7 +696,7 @@ function generateEntityHandlerFile(
           if (includedProps.has(prop.name)) continue;
           if (prop.name === 'entityId' || prop.name === 'id') continue;
           // Check if this property name maps to a command param
-          const paramMatch = cmd.parameters.find(p => p.name === prop.name);
+          const paramMatch = cmd.parameters.find((p) => p.name === prop.name);
           if (paramMatch) {
             lines.push(`      ${prop.name}: params[${JSON.stringify(prop.name)}] as never,`);
           } else {

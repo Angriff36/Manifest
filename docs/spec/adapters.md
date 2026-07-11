@@ -9,23 +9,29 @@ Applies to: `@angriff36/manifest@0.5.0+`
 This document defines adapter hooks for storage targets and action kinds. Adapters are extensions, not core language features, unless stated otherwise.
 
 ## Storage Targets
+
 A conforming runtime MUST support:
+
 - `memory`
 
 A conforming runtime MAY support:
+
 - `localStorage`
 - `postgres`
 - `supabase`
 - **Custom stores** (via `storeProvider` hook)
 
 ### Default Behavior
+
 - If a store target is not supported, the runtime MUST emit a diagnostic and MUST NOT silently fall back.
 - A runtime MAY fall back to `memory` semantics only when explicitly configured (implementation-defined).
 
 ### Diagnostics
+
 - A diagnostic MUST be observable to the caller (e.g., thrown error, returned error object, emitted event, or explicit log entry) and MUST identify the unsupported target and entity.
 
 ### Nonconformance
+
 - ~~The IR runtime currently supports `memory` and `localStorage` only and falls back to `memory` for other targets without emitting diagnostics.~~
 - **RESOLVED (2026-02-05)**: Runtime now throws clear errors for unsupported storage targets (`postgres`, `supabase` in browser) at runtime-engine.ts:312-323.
 - **RESOLVED (2026-02-05)**: PostgresStore and SupabaseStore are fully implemented in `src/manifest/stores.node.ts`. Server-side applications can use these stores via the `storeProvider` option in RuntimeOptions.
@@ -56,21 +62,22 @@ interface Store<T extends EntityInstance = EntityInstance> {
 import { RuntimeEngine } from '@angriff36/manifest';
 import { MyCustomStore } from './my-custom-store';
 
-const runtime = new RuntimeEngine(ir, {
-  userId: 'user-123',
-  tenantId: 'tenant-456',
-  storeProvider: (entityName) => {
-    if (entityName === 'Recipe') {
-      return new MyCustomStore({ /* config */ });
-    }
-    return undefined; // Use default memory store
-  }
-});
+const runtime = new RuntimeEngine(
+  ir,
+  { actorId: 'user-123', tenantId: 'tenant-456' },
+  {
+    storeProvider: (entityName) => {
+      if (entityName === 'Recipe') return new MyCustomStore({/* config */});
+      return undefined; // only built-in targets can resolve without this provider
+    },
+  },
+);
 ```
 
 ### Implementation Examples
 
 See [guides/implementing-custom-stores.md](../guides/implementing-custom-stores.md) for complete examples:
+
 - PrismaStore with transactional outbox
 - TypeORM integration
 - Drizzle integration
@@ -81,38 +88,48 @@ See [guides/implementing-custom-stores.md](../guides/implementing-custom-stores.
 For transactional outbox patterns, stores MAY support event collection via the `eventCollector` option. See [guides/transactional-outbox-pattern.md](../guides/transactional-outbox.md) for details.
 
 ## Projection Adapters (e.g., Next.js)
+
 - Projection adapters generate framework-specific outputs from IR (for example routes and templates).
 - They are framework glue, not business logic.
 - Projection outputs MUST remain aligned with IR/runtime semantics and MUST NOT redefine language meaning.
 
 See also:
+
 - `semantics.md` (Generated Artifacts / Generated Projections)
 - `../patterns/usage-patterns.md`
 - `../patterns/embedded-runtime-pattern.md`
 
 ## Action Adapters
+
 The following actions are adapter hooks:
+
 - `persist`
 - `publish`
 - `effect`
 
 ### Default Behavior (vNext — fail-closed)
+
 Each adapter action has real, distinct semantics (see `semantics.md` § "Actions"). Missing configuration is a fault, not a silent no-op:
+
 - `persist`: flushes the command's pending working-copy patch to the store via `store.update(..., activeTx)` and clears the patch. Needs no adapter — it uses the entity's store. Under a `TransactionProvider` it joins the command transaction (atomic-on-failure); without one it is an immediate, non-reversible write. Multiple `persist` actions per command are permitted, each flushing only the deltas since the previous flush.
 - `publish`: external delivery of the NAMED event. Requires `RuntimeOptions.outboxStore`; when absent the action **fails closed** with a `MISSING_OUTBOX_STORE` command error (returns `{ success: false }`, persists nothing). When configured, the event is delivered in-process AND durably enqueued by the command's post-success `enqueueOutbox` pass (threading the active transaction).
 - `effect`: invokes `RuntimeOptions.effectHandler` with `{ name?, value, commandName, entityName?, instanceId?, context }`; the handler's resolved value becomes the action result. When absent the action **fails closed** with a `MISSING_EFFECT_HANDLER` command error.
 
 ### Optional Adapter Contracts
+
 - `RuntimeOptions.effectHandler`: host side-effect dispatcher for `effect` actions.
 - `RuntimeOptions.outboxStore`: durable delivery target for `publish` actions (and all command-emitted events). See § "Outbox Store".
 
 Adapters MUST be deterministic with respect to a deterministic runtime configuration when used in conformance tests.
 
 ### Deterministic Mode Exception (vNext)
+
 When `RuntimeOptions.deterministicMode` is `true` (or `context.deterministic` is `true`), `persist`, `publish`, and `effect` throw a hard error (`ManifestEffectBoundaryError`) **before** any evaluation or fail-closed check. This enforces the effect boundary contract: adapter actions in a deterministic context are programming errors, not runtime domain failures. See `semantics.md` for the normative command execution order.
 
 ### IdempotencyStore (vNext)
+
 A conforming runtime MAY accept an `IdempotencyStore` via `RuntimeOptions`. The `IdempotencyStore` interface provides:
+
 - `has(key: string): Promise<boolean>` — check if a key exists
 - `set(key: string, result: CommandResult): Promise<void>` — store a result
 - `get(key: string): Promise<CommandResult | undefined>` — retrieve a cached result
@@ -120,7 +137,8 @@ A conforming runtime MAY accept an `IdempotencyStore` via `RuntimeOptions`. The 
 When configured, the runtime MUST require a caller-provided `idempotencyKey` in command options. Both successful and failed `CommandResult` values are cached. The idempotency check runs before any command evaluation (see `semantics.md` for placement in the execution order).
 
 ### Nonconformance
-- ~~The IR runtime treats `persist`, `publish`, and `effect` as no-ops.~~ *(Superseded 2026-07-06, Wave-2 Item 3.)*
+
+- ~~The IR runtime treats `persist`, `publish`, and `effect` as no-ops.~~ _(Superseded 2026-07-06, Wave-2 Item 3.)_
 - **CURRENT BEHAVIOR (2026-07-06)**: adapter actions are fail-closed, not no-ops. `persist` flushes the working-copy buffer; `publish` requires `outboxStore` (else `MISSING_OUTBOX_STORE`); `effect` requires `effectHandler` (else `MISSING_EFFECT_HANDLER`). All three throw `ManifestEffectBoundaryError` in deterministic mode. Implemented in `runtime-engine.ts` `executeAction`.
 
 ## Canonical Dispatcher (Transport Boundary)
@@ -338,13 +356,18 @@ interface JobRecord {
 interface JobQueue {
   enqueue(job: JobRecord): Promise<void>;
   drainPending(): Promise<JobRecord[]>;
-  updateStatus(jobId: string, status: JobRecord['status'], detail?: { result?: unknown; error?: string }): Promise<void>;
+  updateStatus(
+    jobId: string,
+    status: JobRecord['status'],
+    detail?: { result?: unknown; error?: string },
+  ): Promise<void>;
 }
 ```
 
 ### Wire-in
 
 Pass a `JobQueue` implementation via `RuntimeOptions.jobQueue`. The runtime calls:
+
 - `enqueue()` when an async command passes fail-fast validation
 - `drainPending()` from `RuntimeEngine.drainJobs()` to pick up pending work
 - `updateStatus()` after each job completes or fails
@@ -356,6 +379,7 @@ Pass a `JobQueue` implementation via `RuntimeOptions.jobQueue`. The runtime call
 ### Production Implementations
 
 Production deployments should provide a durable `JobQueue` backed by a database (e.g. PostgreSQL) or message broker. The adapter must:
+
 - Persist jobs durably across process restarts
 - Support concurrent workers (claim semantics, similar to `OutboxStore`)
 - Handle idempotent delivery (jobs should not execute twice)
@@ -363,6 +387,7 @@ Production deployments should provide a durable `JobQueue` backed by a database 
 ### Deterministic Testing
 
 The `drainJobs()` method on `RuntimeEngine` is the primary testing surface. It:
+
 1. Calls `jobQueue.drainPending()` to get all pending jobs
 2. Executes each job via the internal command execution pipeline with `context.source = 'job'`
 3. Emits synthesized completion (`{commandName}Completed`) or failure (`{commandName}Failed`) events
@@ -408,4 +433,3 @@ Publishing happens **after** the command's effects are final, so `EventBus.publi
 ### First-Party Implementations
 
 - `MemoryEventBus` (`src/manifest/events/event-bus.ts`) — synchronous in-process fan-out; `subscribe` resolves immediately and `publish` delivers to all handlers on the same tick. Single-process only (two engines sharing one instance), for tests and single-node use. A cross-process `RedisEventBus` (`@angriff36/manifest/events/redis`) implements the same contract for real multi-instance deployments.
-

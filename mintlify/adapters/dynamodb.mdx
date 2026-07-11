@@ -1,7 +1,7 @@
 ---
-title: "DynamoDB store adapter"
-sidebarTitle: "DynamoDB"
-description: "Persist Manifest entity state in DynamoDB with single-table design, composite keys, optimistic locking, and a transactional outbox — plus CloudFormation, CDK, and Terraform infrastructure projections."
+title: 'DynamoDB store adapter'
+sidebarTitle: 'DynamoDB'
+description: 'Persist Manifest entity state in DynamoDB with single-table design, composite keys, optimistic locking, and a transactional outbox — plus CloudFormation, CDK, and Terraform infrastructure projections.'
 ---
 
 The DynamoDB store adapter persists Manifest entity state in AWS DynamoDB using the `Store<T>` interface. Use it when your deployment target is AWS and you need a fully managed, low-latency key-value store. The adapter supports single-table design patterns, composite primary keys, optimistic locking, and a dedicated transactional outbox store for durable event delivery.
@@ -18,7 +18,7 @@ const store = new DynamoDBStore<Order>({
   region: 'us-east-1',
   partitionKeyName: 'pk',
   sortKeyName: 'sk',
-  entityPrefix: 'Order',  // single-table design prefix
+  entityPrefix: 'Order', // single-table design prefix
 });
 ```
 
@@ -62,7 +62,12 @@ A `DynamoDBOutboxStore` exists in the source tree — it implements the `OutboxS
 For durable at-least-once event delivery on AWS today, use one of the **exported** outbox stores: `PostgresOutboxStore` (`@angriff36/manifest/outbox/postgres`) or `RedisOutboxStore` (`@angriff36/manifest/outbox/redis`).
 
 <Note>
-Unlike the doc's older example, the source `DynamoDBOutboxStore` constructor takes a single options object whose `client` field is **required** — it does not accept a `region`. The `client` is an initialized AWS SDK document client that also carries the command constructors (`TransactWriteCommand`, `ScanCommand`, `UpdateCommand`), matching the convention used by `DynamoDBStore`. This shape is documented here for reference only; the store is not importable from the package until it is exported.
+  Unlike the doc's older example, the source `DynamoDBOutboxStore` constructor takes a single
+  options object whose `client` field is **required** — it does not accept a `region`. The `client`
+  is an initialized AWS SDK document client that also carries the command constructors
+  (`TransactWriteCommand`, `ScanCommand`, `UpdateCommand`), matching the convention used by
+  `DynamoDBStore`. This shape is documented here for reference only; the store is not importable
+  from the package until it is exported.
 </Note>
 
 ## Infrastructure projections
@@ -90,32 +95,35 @@ import { DynamoDBStore } from '@angriff36/manifest/stores';
 import { PostgresOutboxStore } from '@angriff36/manifest/outbox/postgres';
 import { Pool } from 'pg';
 
-const runtime = new RuntimeEngine(ir, {
-  userId: session.userId,
-  tenantId: session.tenantId,
-  storeProvider: (entityName) => {
-    if (entityName === 'Order') {
-      return new DynamoDBStore({ tableName: 'manifest-data', region: 'us-east-1' });
-    }
-    return undefined;
+const runtime = new RuntimeEngine(
+  ir,
+  { actorId: session.userId, tenantId: session.tenantId },
+  {
+    storeProvider: (entityName) =>
+      entityName === 'Order'
+        ? new DynamoDBStore({ tableName: 'manifest-data', region: 'us-east-1' })
+        : undefined,
+    // The DynamoDB outbox store is not yet an exported subpath; use an exported
+    // outbox store (Postgres or Redis) for durable delivery today.
+    outboxStore: new PostgresOutboxStore(new Pool({ connectionString: process.env.DATABASE_URL })),
   },
-  // The DynamoDB outbox store is not yet an exported subpath; use an exported
-  // outbox store (Postgres or Redis) for durable delivery today.
-  outboxStore: new PostgresOutboxStore(new Pool({ connectionString: process.env.DATABASE_URL })),
-});
+);
 ```
 
 ## Import paths
 
-| What | Import path |
-|------|-------------|
-| `DynamoDBStore` class | `@angriff36/manifest/stores` |
-| `buildDynamoDBKey` helper | `@angriff36/manifest/stores` |
-| `DynamoDBOutboxStore` | not exported (source-only) — use `@angriff36/manifest/outbox/postgres` or `/outbox/redis` |
-| `DynamoDBProjection` | `@angriff36/manifest/projections` |
+| What                      | Import path                                                                               |
+| ------------------------- | ----------------------------------------------------------------------------------------- |
+| `DynamoDBStore` class     | `@angriff36/manifest/stores`                                                              |
+| `buildDynamoDBKey` helper | `@angriff36/manifest/stores`                                                              |
+| `DynamoDBOutboxStore`     | not exported (source-only) — use `@angriff36/manifest/outbox/postgres` or `/outbox/redis` |
+| `DynamoDBProjection`      | `@angriff36/manifest/projections`                                                         |
 
 ## Notes & limitations
 
 <Note>
-The `@aws-sdk/client-dynamodb` and `@aws-sdk/lib-dynamodb` packages are optional peer dependencies loaded via dynamic import. If they are not installed, the constructor throws a clear error: "DynamoDBStore requires '@aws-sdk/client-dynamodb' and '@aws-sdk/lib-dynamodb' to be installed." The `clear()` method uses Scan + BatchWrite in groups of 25 (DynamoDB batch limit).
+  The `@aws-sdk/client-dynamodb` and `@aws-sdk/lib-dynamodb` packages are optional peer dependencies
+  loaded via dynamic import. If they are not installed, the constructor throws a clear error:
+  "DynamoDBStore requires '@aws-sdk/client-dynamodb' and '@aws-sdk/lib-dynamodb' to be installed."
+  The `clear()` method uses Scan + BatchWrite in groups of 25 (DynamoDB batch limit).
 </Note>

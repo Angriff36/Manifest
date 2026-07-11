@@ -55,7 +55,11 @@ function validateDocument(doc: TextDocument): void {
       pendingValidation.delete(uri);
       const result = analyze(uri, doc.getText());
       const compilerDiagnostics = toDiagnostics(result.errors);
-      const semanticDiagnostics = getSemanticDiagnostics(result.program, doc.getText(), semanticSettings);
+      const semanticDiagnostics = getSemanticDiagnostics(
+        result.program,
+        doc.getText(),
+        semanticSettings,
+      );
       connection.sendDiagnostics({
         uri,
         diagnostics: [...compilerDiagnostics, ...semanticDiagnostics],
@@ -66,8 +70,7 @@ function validateDocument(doc: TextDocument): void {
 
 connection.onDidChangeConfiguration((change) => {
   const manifest = change.settings?.manifest as
-    | { semanticDiagnostics?: Partial<SemanticDiagnosticSettings> }
-    | undefined;
+    { semanticDiagnostics?: Partial<SemanticDiagnosticSettings> } | undefined;
   semanticSettings = {
     enabled: manifest?.semanticDiagnostics?.enabled ?? true,
     projectionHints: manifest?.semanticDiagnostics?.projectionHints ?? true,

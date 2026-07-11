@@ -1,7 +1,7 @@
 ---
-title: "Configure Manifest with manifest.config.yaml"
-sidebarTitle: "Configuration"
-description: "Full reference for manifest.config.yaml: source globs, IR output, projection options (nextjs, routes, prisma, prisma-store), env mapping, hooks, plugins, naming convention, auth providers, and monorepo import paths."
+title: 'Configure Manifest with manifest.config.yaml'
+sidebarTitle: 'Configuration'
+description: 'Full reference for manifest.config.yaml: source globs, IR output, projection options (nextjs, routes, prisma, prisma-store), env mapping, hooks, plugins, naming convention, auth providers, and monorepo import paths.'
 ---
 
 `manifest.config.yaml` is the project-level config file that the CLI loads from your project root before executing any command. You create it by running `manifest init` or by writing it by hand. Every field is optional — the CLI falls back to built-in defaults for any field you omit.
@@ -16,6 +16,47 @@ The CLI searches for a config file in the following order, using the first one i
 4. `.manifestrc.yml`
 
 All four files live at your project root (the directory where you run `manifest` commands).
+
+Runtime bindings that contain JavaScript values—store classes, store instances,
+factories, and `resolveUser`—belong in `manifest.config.ts` or
+`manifest.config.js`. A TypeScript config may also contain a `build` block; its
+build values override YAML.
+
+## Durable storage for generated runtime companions
+
+`DATABASE_URL` only supplies connection details. It does not tell Manifest
+which entity uses which adapter or table. Put those bindings in
+`manifest.config.ts`:
+
+```ts
+import { defineConfig } from '@angriff36/manifest/config';
+import { PostgresStore } from '@angriff36/manifest/stores';
+
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) throw new Error('DATABASE_URL is required');
+
+export default defineConfig({
+  stores: {
+    Customer: { implementation: new PostgresStore({ connectionString, tableName: 'customers' }) },
+    Invoice: { implementation: new PostgresStore({ connectionString, tableName: 'invoices' }) },
+  },
+});
+```
+
+Then point the Next.js runtime companion at that file:
+
+```yaml
+projections:
+  nextjs:
+    output: generated
+    options:
+      # Relative to the emitted lib/manifest-runtime.ts file.
+      runtimeConfigImport: '../manifest.config'
+```
+
+Only `memory` and browser `localStorage` work without this binding. Generated
+runtimes containing `postgres`, `supabase`, `durable`, or custom stores fail
+clearly when `runtimeConfigImport` is absent. See [Stores](/language/stores#complete-generated-companion-postgresql-setup) for the full source-to-runtime example.
 
 ## Option priority
 
@@ -32,135 +73,148 @@ You can always override a config value for a single run without modifying the fi
 <ParamField path="$schema" type="string">
   Optional pointer to the config JSON Schema for editor IntelliSense. Manifest does **not** publish a resolvable schema URL, and `manifest config validate` loads the schema bundled with the package — it never fetches a URL. For autocomplete without a dead link, map the bundled schema in `.vscode/settings.json`:
 
-  ```jsonc
-  {
-    "yaml.schemas": {
-      "./node_modules/@angriff36/manifest/docs/spec/config/manifest.config.schema.json": ["manifest.config.yaml", ".manifestrc.yaml"]
-    }
-  }
-  ```
+```jsonc
+{
+  "yaml.schemas": {
+    "./node_modules/@angriff36/manifest/docs/spec/config/manifest.config.schema.json": [
+      "manifest.config.yaml",
+      ".manifestrc.yaml",
+    ],
+  },
+}
+```
 
-  If you do set `$schema`, point it at a real local path — never a public URL Manifest doesn't host.
+If you do set `$schema`, point it at a real local path — never a public URL Manifest doesn't host.
+
 </ParamField>
 
 <ParamField path="src" type="string" default="**/*.manifest">
   Glob pattern that selects your `.manifest` source files. Used by `manifest compile` and `manifest build` when no `source` argument is passed on the command line.
 
-  ```yaml
-  src: modules/**/*.manifest
-  ```
+```yaml
+src: modules/**/*.manifest
+```
+
 </ParamField>
 
 <ParamField path="output" type="string" default="ir/">
   Directory where compiled IR JSON files are written. Used by `manifest compile` as the default `--output` value, and by `manifest build` as the default `--ir-output` value.
 
-  ```yaml
-  output: ir/
-  ```
+```yaml
+output: ir/
+```
+
 </ParamField>
 
 <ParamField path="naming" type="string | object">
   Global identifier-casing convention inherited by projections that map IR names to physical database names (currently the Prisma projection). Opt-in; omit to emit IR names verbatim. A per-projection `projections.<name>.options.naming` overrides this default.
 
-  The string shorthand `snake_case` expands to `{ table: snake_case, column: snake_case, pluralizeTables: true }` — e.g. `createdAt` → `@map("created_at")`, `Widget` → `@@map("widgets")`. The object form tunes each axis (`table`: `snake_case` | `camelCase` | `PascalCase` | `preserve`; `column`: `snake_case` | `camelCase` | `preserve`; `pluralizeTables`: boolean, default `true`).
+The string shorthand `snake_case` expands to `{ table: snake_case, column: snake_case, pluralizeTables: true }` — e.g. `createdAt` → `@map("created_at")`, `Widget` → `@@map("widgets")`. The object form tunes each axis (`table`: `snake_case` | `camelCase` | `PascalCase` | `preserve`; `column`: `snake_case` | `camelCase` | `preserve`; `pluralizeTables`: boolean, default `true`).
 
-  ```yaml
-  naming: snake_case
-  # or:
-  naming:
-    table: snake_case
-    column: snake_case
-    pluralizeTables: true
-  ```
+```yaml
+naming: snake_case
+# or:
+naming:
+  table: snake_case
+  column: snake_case
+  pluralizeTables: true
+```
 
-  Only `@map`/`@@map` attributes are added — Prisma model names and field identifiers stay as the IR name, so relations and indexes are unaffected. Explicit `tableMappings`/`columnMappings` always win and are the escape hatch for irregular plurals.
+Only `@map`/`@@map` attributes are added — Prisma model names and field identifiers stay as the IR name, so relations and indexes are unaffected. Explicit `tableMappings`/`columnMappings` always win and are the escape hatch for irregular plurals.
+
 </ParamField>
 
 <ParamField path="prismaSchema" type="string">
   Path to your Prisma schema file, used by property alignment checks. When omitted, the CLI searches `prisma/schema.prisma`, `schema.prisma`, and `db/schema.prisma` in that order.
 
-  ```yaml
-  prismaSchema: prisma/schema.prisma
-  ```
+```yaml
+prismaSchema: prisma/schema.prisma
+```
+
 </ParamField>
 
 <ParamField path="hooks" type="object">
   Git pre-commit hook settings consumed by `manifest install-hooks`. When present, `install-hooks` wires a pre-commit hook (via the chosen provider) that can run `manifest fmt` and `manifest validate`.
 
-  <ParamField path="hooks.skipInCi" type="boolean" default="true">
-    Skip running the generated hook in CI environments.
-  </ParamField>
-  <ParamField path="hooks.provider" type="string" default="husky">
-    Git hook manager the pre-commit hook is installed into. Accepted values: `husky`, `simple-git-hooks`.
-  </ParamField>
-  <ParamField path="hooks.runFmt" type="boolean" default="true">
-    Run `manifest fmt` from the generated pre-commit hook.
-  </ParamField>
-  <ParamField path="hooks.runValidate" type="boolean" default="true">
-    Run `manifest validate` from the generated pre-commit hook.
-  </ParamField>
+<ParamField path="hooks.skipInCi" type="boolean" default="true">
+  Skip running the generated hook in CI environments.
+</ParamField>
+<ParamField path="hooks.provider" type="string" default="husky">
+  Git hook manager the pre-commit hook is installed into. Accepted values: `husky`,
+  `simple-git-hooks`.
+</ParamField>
+<ParamField path="hooks.runFmt" type="boolean" default="true">
+  Run `manifest fmt` from the generated pre-commit hook.
+</ParamField>
+<ParamField path="hooks.runValidate" type="boolean" default="true">
+  Run `manifest validate` from the generated pre-commit hook.
+</ParamField>
 
-  ```yaml
-  hooks:
-    provider: husky
-    skipInCi: true
-    runFmt: true
-    runValidate: true
-  ```
+```yaml
+hooks:
+  provider: husky
+  skipInCi: true
+  runFmt: true
+  runValidate: true
+```
+
 </ParamField>
 
 <ParamField path="plugins" type="array">
   Third-party plugin declarations. At CLI startup any declared plugins are loaded and the CLI commands they contribute are registered, so they appear in `manifest --help` and are dispatchable; `manifest plugins list` reports their real load status and diagnostics. Loading is conditional — a project with no `plugins` declared loads nothing. A plugin that fails to load surfaces a diagnostic and is skipped; it never bricks the CLI. For runtime use (custom store adapters, expression builtins, audit sinks), compose the loaded registries into your runtime options with `pluginRegistriesToRuntimeOptions` from `@angriff36/manifest/plugin-loader` — see [Plugin API](/extensibility/plugin-api). Each entry requires a `module`; `options` and `enabled` are optional.
 
-  <ParamField path="plugins[].module" type="string" required>
-    npm package name or relative file path to the plugin module.
-  </ParamField>
-  <ParamField path="plugins[].options" type="object">
-    Plugin-specific options forwarded to the plugin's `onLoad` hook and to its store-adapter and audit-sink factories.
-  </ParamField>
-  <ParamField path="plugins[].enabled" type="boolean" default="true">
-    Whether the plugin is active.
-  </ParamField>
+<ParamField path="plugins[].module" type="string" required>
+  npm package name or relative file path to the plugin module.
+</ParamField>
+<ParamField path="plugins[].options" type="object">
+  Plugin-specific options forwarded to the plugin's `onLoad` hook and to its store-adapter and
+  audit-sink factories.
+</ParamField>
+<ParamField path="plugins[].enabled" type="boolean" default="true">
+  Whether the plugin is active.
+</ParamField>
 
-  ```yaml
-  plugins:
-    - module: "@my-org/manifest-plugin-audit"
-      enabled: true
-      options:
-        level: strict
-    - module: "./local-plugins/naming-lint.js"
-  ```
+```yaml
+plugins:
+  - module: '@my-org/manifest-plugin-audit'
+    enabled: true
+    options:
+      level: strict
+  - module: './local-plugins/naming-lint.js'
+```
+
 </ParamField>
 
 <ParamField path="env" type="object">
   Structured environment-variable mapping for **preflight validation** — grouped definitions of the variables your stores, auth, adapters, and custom settings require. Consumed by `manifest preflight` to check the environment and to generate `.env.example`.
 
-  This is distinct from the `env(VAR)` **expression syntax** described under [Environment variable mapping](#environment-variable-mapping) below: `env()` inlines a value at config-load time, whereas this `env` block *declares* variables and their metadata so preflight can validate them.
+This is distinct from the `env(VAR)` **expression syntax** described under [Environment variable mapping](#environment-variable-mapping) below: `env()` inlines a value at config-load time, whereas this `env` block _declares_ variables and their metadata so preflight can validate them.
 
-  The block has four optional groups — `stores`, `auth`, `adapters`, `custom` — each a map of an arbitrary key to an `EnvVarDefinition`. Each definition requires `name` and may set `description`, `required` (default `true`), `default`, and `example`.
+The block has four optional groups — `stores`, `auth`, `adapters`, `custom` — each a map of an arbitrary key to an `EnvVarDefinition`. Each definition requires `name` and may set `description`, `required` (default `true`), `default`, and `example`.
 
-  ```yaml
-  env:
-    stores:
-      primaryDb:
-        name: DATABASE_URL
-        description: Postgres connection string
-        required: true
-        example: postgres://user:pass@localhost:5432/app
-    auth:
-      clerk:
-        name: CLERK_SECRET_KEY
-        required: true
-    adapters:
-      outbox:
-        name: OUTBOX_TABLE
-        required: false
-        default: manifest_outbox
-    custom:
-      region:
-        name: AWS_REGION
-        default: us-east-1
-  ```
+```yaml
+env:
+  stores:
+    primaryDb:
+      name: DATABASE_URL
+      description: Postgres connection string
+      required: true
+      example: postgres://user:pass@localhost:5432/app
+  auth:
+    clerk:
+      name: CLERK_SECRET_KEY
+      required: true
+  adapters:
+    outbox:
+      name: OUTBOX_TABLE
+      required: false
+      default: manifest_outbox
+  custom:
+    region:
+      name: AWS_REGION
+      default: us-east-1
+```
+
 </ParamField>
 
 ## `projections`
@@ -172,11 +226,12 @@ The `projections` block configures code generation per target. Each key matches 
 <ParamField path="projections.nextjs.output" type="string" default="generated/">
   Directory where the Next.js projection writes generated route files. Used by `manifest generate` and `manifest build` as the default `--output` / `--code-output` value.
 
-  ```yaml
-  projections:
-    nextjs:
-      output: app/api/
-  ```
+```yaml
+projections:
+  nextjs:
+    output: app/api/
+```
+
 </ParamField>
 
 ### `projections.nextjs.options`
@@ -186,99 +241,111 @@ These options control the import paths and filtering behavior written into gener
 <ParamField path="projections.nextjs.options.authProvider" type="string" default="none">
   Auth provider name. Used when `authImportPath` is not set. Accepted values: `clerk`, `nextauth`, `custom`, `none`. Defaults to `none` so a basic entity generates runnable code with no auth wrapper — opt into a provider explicitly.
 
-  ```yaml
-  options:
-    authProvider: clerk
-  ```
+```yaml
+options:
+  authProvider: clerk
+```
+
 </ParamField>
 
 <ParamField path="projections.nextjs.options.authImportPath" type="string">
   Import path for your auth helper. When set, this takes precedence over `authProvider`. Can be a local alias (`@/lib/auth`) or a workspace package (`@repo/auth/server`).
 
-  ```yaml
-  options:
-    authImportPath: "@repo/auth/server"
-  ```
+```yaml
+options:
+  authImportPath: '@repo/auth/server'
+```
+
 </ParamField>
 
 <ParamField path="projections.nextjs.options.databaseImportPath" type="string" default="@/lib/database">
   Import path for your database client, injected into generated route files.
 
-  ```yaml
-  options:
-    databaseImportPath: "@repo/database"
-  ```
+```yaml
+options:
+  databaseImportPath: '@repo/database'
+```
+
 </ParamField>
 
 <ParamField path="projections.nextjs.options.runtimeImportPath" type="string" default="@/lib/manifest-runtime">
   Import path for the Manifest runtime helper, injected into generated route files.
 
-  ```yaml
-  options:
-    runtimeImportPath: "@repo/manifest/runtime"
-  ```
+```yaml
+options:
+  runtimeImportPath: '@repo/manifest/runtime'
+```
+
 </ParamField>
 
 <ParamField path="projections.nextjs.options.responseImportPath" type="string" default="@/lib/manifest-response">
   Import path for the Manifest response helper, injected into generated route files.
 
-  ```yaml
-  options:
-    responseImportPath: "@repo/manifest/response"
-  ```
+```yaml
+options:
+  responseImportPath: '@repo/manifest/response'
+```
+
 </ParamField>
 
 <ParamField path="projections.nextjs.options.includeTenantFilter" type="boolean" default="false">
   When `true`, generated read routes include a `WHERE tenantId = <tenant>` filter and POST handlers resolve a `tenantId` before executing. Defaults to `false` (single-tenant). Set to `true` for multi-tenant applications.
 
-  ```yaml
-  options:
-    includeTenantFilter: true
-  ```
+```yaml
+options:
+  includeTenantFilter: true
+```
+
 </ParamField>
 
 <ParamField path="projections.nextjs.options.includeSoftDeleteFilter" type="boolean" default="false">
   When `true`, generated read routes include a `WHERE deletedAt IS NULL` filter. Defaults to `false`. Set to `true` if your data model uses soft deletes.
 
-  ```yaml
-  options:
-    includeSoftDeleteFilter: true
-  ```
+```yaml
+options:
+  includeSoftDeleteFilter: true
+```
+
 </ParamField>
 
 <ParamField path="projections.nextjs.options.tenantIdProperty" type="string" default="tenantId">
   Property name used for tenant scoping in generated filters.
 
-  ```yaml
-  options:
-    tenantIdProperty: tenantId
-  ```
+```yaml
+options:
+  tenantIdProperty: tenantId
+```
+
 </ParamField>
 
 <ParamField path="projections.nextjs.options.deletedAtProperty" type="string" default="deletedAt">
   Property name used for soft-delete filtering in generated queries.
 
-  ```yaml
-  options:
-    deletedAtProperty: deletedAt
-  ```
+```yaml
+options:
+  deletedAtProperty: deletedAt
+```
+
 </ParamField>
 
 <ParamField path="projections.nextjs.options.appDir" type="string" default="app/api">
   App Router base directory. Every generated route's `pathHint` is relative to this. The default `app/api` suits a standard (non-monorepo) Next.js project. For a monorepo, set this to e.g. `apps/api/app/api`.
 
-  ```yaml
-  options:
-    appDir: apps/api/app/api
-  ```
+```yaml
+options:
+  appDir: apps/api/app/api
+```
+
 </ParamField>
 
 <ParamField path="projections.nextjs.options.strictMode" type="boolean" default="true">
-  Whether generated TypeScript is written to be strict-mode friendly. Leave on unless you have a specific compatibility reason to disable it.
+  Whether generated TypeScript is written to be strict-mode friendly. Leave on unless you have a
+  specific compatibility reason to disable it.
 </ParamField>
 
 <ParamField path="projections.nextjs.options.includeComments" type="boolean" default="true">
-  Whether to emit explanatory comments above generated handlers. Set `false` to slim generated files.
+  Whether to emit explanatory comments above generated handlers. Set `false` to slim generated
+  files.
 </ParamField>
 
 <ParamField path="projections.nextjs.options.indentSize" type="integer" default="2">
@@ -306,9 +373,9 @@ projections:
   nextjs:
     options:
       tenantProvider:
-        importPath: "@my-app/data"
-        functionName: "getTenantIdForOrg"
-        lookupKey: "orgId"
+        importPath: '@my-app/data'
+        functionName: 'getTenantIdForOrg'
+        lookupKey: 'orgId'
 ```
 
 ### `projections.nextjs.options.dispatcher`
@@ -316,46 +383,81 @@ projections:
 The dispatcher is the canonical Manifest write surface at `POST /api/manifest/[entity]/commands/[command]`. Two execution modes are supported, and either can be selected from config alone — no projection-source edits required.
 
 <ParamField path="projections.nextjs.options.dispatcher.enabled" type="boolean" default="true">
-  When `false`, the `nextjs.dispatcher` surface emits no artifact and the CLI surfaces an info-diagnostic.
+  When `false`, the `nextjs.dispatcher` surface emits no artifact and the CLI surfaces an
+  info-diagnostic.
 </ParamField>
 
 <ParamField path="projections.nextjs.options.dispatcher.executionMode" type="string" default="inline">
   Where command execution happens.
 
-  - `inline` (default, back-compat): handler calls `createManifestRuntime(...)` then `runtime.runCommand(...)` per request.
-  - `externalExecutor`: handler imports the configured executor and delegates — **no `createManifestRuntime` or `runtime.runCommand` appears in the emitted code.**
-</ParamField>
+- `inline` (default, back-compat): handler calls `createManifestRuntime(...)` then `runtime.runCommand(...)` per request.
+- `externalExecutor`: handler imports the configured executor and delegates — **no `createManifestRuntime` or `runtime.runCommand` appears in the emitted code.**
+  </ParamField>
 
-<ParamField path="projections.nextjs.options.dispatcher.executorImportPath" type="string" default="@/lib/manifest-executor">
+<ParamField
+  path="projections.nextjs.options.dispatcher.executorImportPath"
+  type="string"
+  default="@/lib/manifest-executor"
+>
   Module path for the external executor. Only used when `executionMode` is `externalExecutor`.
 </ParamField>
 
-<ParamField path="projections.nextjs.options.dispatcher.executorImportName" type="string" default="executeManifestCommand">
+<ParamField
+  path="projections.nextjs.options.dispatcher.executorImportName"
+  type="string"
+  default="executeManifestCommand"
+>
   Named export to call on the external executor module.
 </ParamField>
 
-<ParamField path="projections.nextjs.options.dispatcher.deriveInstanceId" type="boolean" default="true">
-  When `true` (default), the dispatcher extracts an `instanceId` from `body.instanceId` or `body.id` and forwards it to `runCommand` (inline mode) or the configured executor (`externalExecutor` mode). Non-create commands (release, archive, update, …) need this to address the target instance; create commands ignore it harmlessly. Override to `false` only with strong reason.
+<ParamField
+  path="projections.nextjs.options.dispatcher.deriveInstanceId"
+  type="boolean"
+  default="true"
+>
+  When `true` (default), the dispatcher extracts an `instanceId` from `body.instanceId` or `body.id`
+  and forwards it to `runCommand` (inline mode) or the configured executor (`externalExecutor`
+  mode). Non-create commands (release, archive, update, …) need this to address the target instance;
+  create commands ignore it harmlessly. Override to `false` only with strong reason.
 </ParamField>
 
-<ParamField path="projections.nextjs.options.dispatcher.path" type="string" default="/manifest/[entity]/commands/[command]/route.ts">
-  Dispatcher route path relative to `appDir`. Override only for non-canonical prefixes (e.g. `/api/v1/manifest/...`).
+<ParamField
+  path="projections.nextjs.options.dispatcher.path"
+  type="string"
+  default="/manifest/[entity]/commands/[command]/route.ts"
+>
+  Dispatcher route path relative to `appDir`. Override only for non-canonical prefixes (e.g.
+  `/api/v1/manifest/...`).
 </ParamField>
 
 <ParamField path="projections.nextjs.options.unauthorizedStatus" type="integer" default="401">
-  HTTP status returned when the auth helper rejects the request OR when it throws (invalid/expired token). Must be in the 400–499 range. Auth failures MUST NEVER surface as 500. Override only if you standardise on 403 to avoid user-existence leak.
+  HTTP status returned when the auth helper rejects the request OR when it throws (invalid/expired
+  token). Must be in the 400–499 range. Auth failures MUST NEVER surface as 500. Override only if
+  you standardise on 403 to avoid user-existence leak.
 </ParamField>
 
 ### `projections.nextjs.options.concreteCommandRoutes`
 
 Policy for the deprecated per-command "concrete" routes (the `nextjs.command` surface). As of v0.7.x these are **opt-in** — the canonical dispatcher is the only write surface by default.
 
-<ParamField path="projections.nextjs.options.concreteCommandRoutes.enabled" type="boolean" default="false">
-  **Default false (opt-in).** When `false`, `nextjs.command` artifacts are suppressed entirely and `manifest generate --surface all` does not emit them. Opt in only if you still need per-command routes for legacy callers.
+<ParamField
+  path="projections.nextjs.options.concreteCommandRoutes.enabled"
+  type="boolean"
+  default="false"
+>
+  **Default false (opt-in).** When `false`, `nextjs.command` artifacts are suppressed entirely and
+  `manifest generate --surface all` does not emit them. Opt in only if you still need per-command
+  routes for legacy callers.
 </ParamField>
 
-<ParamField path="projections.nextjs.options.concreteCommandRoutes.legacyAliasesOnly" type="boolean" default="true">
-  When `true` (default) and `enabled` is `true`, generated concrete routes carry the `DEPRECATED ALIAS` banner pointing callers at the dispatcher. Set `false` only if you intentionally treat per-command routes as a first-class surface.
+<ParamField
+  path="projections.nextjs.options.concreteCommandRoutes.legacyAliasesOnly"
+  type="boolean"
+  default="true"
+>
+  When `true` (default) and `enabled` is `true`, generated concrete routes carry the `DEPRECATED
+  ALIAS` banner pointing callers at the dispatcher. Set `false` only if you intentionally treat
+  per-command routes as a first-class surface.
 </ParamField>
 
 ### `projections.nextjs.options.readRoutes`
@@ -366,8 +468,13 @@ Policy for direct database read routes (`nextjs.route` for list, `nextjs.detail`
   When `false`, both list and detail read routes are suppressed (info diagnostic only).
 </ParamField>
 
-<ParamField path="projections.nextjs.options.readRoutes.directDbReads" type="boolean" default="true">
-  When `false`, read route handlers are emitted but contain no inline Prisma call — useful for projects that route reads through a separate query layer.
+<ParamField
+  path="projections.nextjs.options.readRoutes.directDbReads"
+  type="boolean"
+  default="true"
+>
+  When `false`, read route handlers are emitted but contain no inline Prisma call — useful for
+  projects that route reads through a separate query layer.
 </ParamField>
 
 <Note>
@@ -385,28 +492,37 @@ Configuration for the Prisma schema projection (emits `schema.prisma`). All opti
 <ParamField path="projections.prisma.options" type="object">
   Per-entity overrides for the emitted schema. Keys include `provider` (emits a datasource block plus a `prisma.config.ts` companion; one of `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`), `urlEnvVar` (default `DATABASE_URL`), `tableMappings`, `columnMappings`, `precision`, `indexes`, `typeMappings`, `foreignKeys`, `dbAttributes`, `fieldAttributes`, and a projection-local `naming` (see the top-level [`naming`](#param-naming) field — explicit `tableMappings`/`columnMappings` always win).
 
-  ```yaml
-  projections:
-    prisma:
-      output: prisma/schema.prisma
-      options:
-        provider: postgresql
-        urlEnvVar: DATABASE_URL
-        naming: snake_case
-        tableMappings:
-          OrderLine: order_lines
-  ```
+```yaml
+projections:
+  prisma:
+    output: prisma/schema.prisma
+    options:
+      provider: postgresql
+      urlEnvVar: DATABASE_URL
+      naming: snake_case
+      tableMappings:
+        OrderLine: order_lines
+```
+
 </ParamField>
 
 ### `projections.prisma-store`
 
 Configuration for the Prisma store metadata/registry projection (`GenericPrismaStore`). It emits a model-metadata module and a store-registry module, and extends every `projections.prisma.options` key for consistent naming with `schema.prisma` emission.
 
-<ParamField path="projections.prisma-store.options.metadataOutput" type="string" default="prisma-model-metadata.generated.ts">
+<ParamField
+  path="projections.prisma-store.options.metadataOutput"
+  type="string"
+  default="prisma-model-metadata.generated.ts"
+>
   Path hint for the emitted `prisma-model-metadata.generated.ts`.
 </ParamField>
 
-<ParamField path="projections.prisma-store.options.registryOutput" type="string" default="prisma-store-registry.generated.ts">
+<ParamField
+  path="projections.prisma-store.options.registryOutput"
+  type="string"
+  default="prisma-store-registry.generated.ts"
+>
   Path hint for the emitted `prisma-store-registry.generated.ts`.
 </ParamField>
 
@@ -441,7 +557,7 @@ Use `executionMode: externalExecutor` when your app owns Manifest runtime constr
 
 ```ts
 // apps/api/lib/manifest-executor.ts
-import { createManifestRuntime } from "./manifest-runtime";
+import { createManifestRuntime } from './manifest-runtime';
 
 export interface ManifestExecutorCall {
   entityName: string;
@@ -475,8 +591,8 @@ projections:
     options:
       dispatcher:
         executionMode: externalExecutor
-        executorImportPath: "@my-app/manifest-executor"
-        executorImportName: "executeManifestCommand"
+        executorImportPath: '@my-app/manifest-executor'
+        executorImportName: 'executeManifestCommand'
 ```
 
 **Step 3.** Regenerate. The dispatcher route now imports your executor and delegates to it — no `createManifestRuntime` or `runtime.runCommand` in the emitted code.
@@ -517,19 +633,19 @@ projections:
   nextjs:
     output: apps/api/app/api/
     options:
-      authImportPath: "@repo/auth/server"
-      databaseImportPath: "@repo/database"
-      runtimeImportPath: "@repo/manifest/runtime"
-      responseImportPath: "@repo/manifest/response"
+      authImportPath: '@repo/auth/server'
+      databaseImportPath: '@repo/database'
+      runtimeImportPath: '@repo/manifest/runtime'
+      responseImportPath: '@repo/manifest/response'
 ```
 
 Generated routes will then import from those workspace packages:
 
 ```typescript
-import { auth } from "@repo/auth/server";
-import { database } from "@repo/database";
-import { createRuntime } from "@repo/manifest/runtime";
-import { manifestSuccessResponse, manifestErrorResponse } from "@repo/manifest/response";
+import { auth } from '@repo/auth/server';
+import { database } from '@repo/database';
+import { createRuntime } from '@repo/manifest/runtime';
+import { manifestSuccessResponse, manifestErrorResponse } from '@repo/manifest/response';
 ```
 
 ## Complete example
@@ -551,7 +667,7 @@ hooks:
   runValidate: true
 
 plugins:
-  - module: "@my-org/manifest-plugin-audit"
+  - module: '@my-org/manifest-plugin-audit'
     enabled: true
 
 env:
@@ -570,10 +686,10 @@ projections:
     output: app/api/
     options:
       authProvider: clerk
-      authImportPath: "@/lib/auth"
-      databaseImportPath: "@/lib/database"
-      runtimeImportPath: "@/lib/manifest-runtime"
-      responseImportPath: "@/lib/manifest-response"
+      authImportPath: '@/lib/auth'
+      databaseImportPath: '@/lib/database'
+      runtimeImportPath: '@/lib/manifest-runtime'
+      responseImportPath: '@/lib/manifest-response'
       includeTenantFilter: true
       includeSoftDeleteFilter: true
       tenantIdProperty: tenantId
@@ -601,10 +717,10 @@ projections:
     output: apps/api/app/api/
     options:
       authProvider: clerk
-      authImportPath: "@repo/auth/server"
-      databaseImportPath: "@repo/database"
-      runtimeImportPath: "@repo/manifest/runtime"
-      responseImportPath: "@repo/manifest/response"
+      authImportPath: '@repo/auth/server'
+      databaseImportPath: '@repo/database'
+      runtimeImportPath: '@repo/manifest/runtime'
+      responseImportPath: '@repo/manifest/response'
       includeTenantFilter: true
       includeSoftDeleteFilter: false
       tenantIdProperty: tenantId
@@ -612,7 +728,9 @@ projections:
 ```
 
 <Tip>
-After editing `manifest.config.yaml`, run `manifest build` with no flags to confirm the CLI picks up your changes. The build summary printed at the end shows the resolved `ir-output` and `code-output` paths.
+  After editing `manifest.config.yaml`, run `manifest build` with no flags to confirm the CLI picks
+  up your changes. The build summary printed at the end shows the resolved `ir-output` and
+  `code-output` paths.
 </Tip>
 
 ## Environment variable mapping
@@ -623,8 +741,8 @@ Store connection strings and sensitive configuration can be injected via environ
 projections:
   nextjs:
     options:
-      databaseImportPath: "@/lib/database"
-      runtimeImportPath: "@/lib/manifest-runtime"
+      databaseImportPath: '@/lib/database'
+      runtimeImportPath: '@/lib/manifest-runtime'
 
 stores:
   postgres:
@@ -639,9 +757,9 @@ stores:
 
 ### `env()` syntax
 
-| Expression | Behavior |
-|------------|----------|
-| `env(VAR_NAME)` | Read `VAR_NAME` from the environment. Throws if unset. |
+| Expression                 | Behavior                                                                  |
+| -------------------------- | ------------------------------------------------------------------------- |
+| `env(VAR_NAME)`            | Read `VAR_NAME` from the environment. Throws if unset.                    |
 | `env(VAR_NAME, "default")` | Read `VAR_NAME` from the environment. Falls back to `"default"` if unset. |
 
 Environment variable resolution happens at config load time, before any command executes. This means:
@@ -664,7 +782,6 @@ stores:
     url: env(DATABASE_URL)
 
 ---
-
 # manifest.config.staging.yaml (overlay)
 stores:
   postgres:
@@ -682,5 +799,6 @@ MANIFEST_ENV=staging manifest build
 ```
 
 <Note>
-Overlays are merged shallowly — an overlay's `stores.postgres` replaces the base `stores.postgres` entirely. For deep merging, provide the full structure in the overlay.
+  Overlays are merged shallowly — an overlay's `stores.postgres` replaces the base `stores.postgres`
+  entirely. For deep merging, provide the full structure in the overlay.
 </Note>

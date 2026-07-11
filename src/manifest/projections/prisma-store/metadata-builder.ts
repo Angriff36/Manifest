@@ -35,7 +35,7 @@ function resolveSchemaName(entity: IREntity, options: PrismaStoreProjectionOptio
 }
 
 function enumNames(ir: IR): Set<string> {
-  return new Set((ir.enums ?? []).map(e => e.name));
+  return new Set((ir.enums ?? []).map((e) => e.name));
 }
 
 function fieldHasDefault(
@@ -45,12 +45,16 @@ function fieldHasDefault(
 ): boolean {
   if (prop.defaultValue) return true;
   const fieldAttrs = options.fieldAttributes?.[entity.name]?.[prop.name];
-  return fieldAttrs?.some(fa => /^@default\b/.test(fa)) ?? false;
+  return fieldAttrs?.some((fa) => /^@default\b/.test(fa)) ?? false;
 }
 
-function fieldIsUpdatedAt(entity: IREntity, prop: IRProperty, options: PrismaStoreProjectionOptions): boolean {
+function fieldIsUpdatedAt(
+  entity: IREntity,
+  prop: IRProperty,
+  options: PrismaStoreProjectionOptions,
+): boolean {
   const fieldAttrs = options.fieldAttributes?.[entity.name]?.[prop.name];
-  return fieldAttrs?.some(fa => fa === '@updatedAt' || fa.startsWith('@updatedAt(')) ?? false;
+  return fieldAttrs?.some((fa) => fa === '@updatedAt' || fa.startsWith('@updatedAt(')) ?? false;
 }
 
 function buildFieldMeta(
@@ -63,9 +67,11 @@ function buildFieldMeta(
 ): PrismaFieldMeta | null {
   const isArray = prop.type.name === 'array' && prop.type.generic;
   const effectiveTypeName = isArray ? prop.type.generic!.name : prop.type.name;
-  const isValueObject = ir.values?.some(v => v.name === effectiveTypeName);
+  const isValueObject = ir.values?.some((v) => v.name === effectiveTypeName);
   const typeOverrides = isValueObject ? undefined : options.typeMappings?.[entity.name];
-  const scalar = isValueObject ? 'Json' : resolvePrismaScalar(effectiveTypeName, typeOverrides, prop.name);
+  const scalar = isValueObject
+    ? 'Json'
+    : resolvePrismaScalar(effectiveTypeName, typeOverrides, prop.name);
 
   if (!scalar) {
     diagnostics.push({
@@ -100,11 +106,9 @@ function buildFieldMeta(
 
 function resolvePkFields(entity: IREntity, options: PrismaStoreProjectionOptions): string[] {
   if (entity.key && entity.key.length > 0) {
-    return entity.key.map(k =>
-      resolvePhysicalColumn(entity.name, k, options),
-    );
+    return entity.key.map((k) => resolvePhysicalColumn(entity.name, k, options));
   }
-  const idProp = entity.properties.find(p => p.name === 'id');
+  const idProp = entity.properties.find((p) => p.name === 'id');
   if (idProp) {
     return [resolvePhysicalColumn(entity.name, 'id', options)];
   }
@@ -122,8 +126,8 @@ export function buildPrismaModelMetadata(
     const pkFields = resolvePkFields(entity, options);
     const whereAccessor = pkFields.length > 1 ? pkFields.join('_') : pkFields[0];
     const tableOverride = options.tableMappings?.[entity.name];
-    const dbName = tableOverride
-      ?? (options.naming ? resolveTableName(entity.name, options.naming) : null);
+    const dbName =
+      tableOverride ?? (options.naming ? resolveTableName(entity.name, options.naming) : null);
     const dbNameDiffers = dbName !== null && dbName !== entity.name;
 
     const fields: PrismaFieldMeta[] = [];
@@ -133,7 +137,7 @@ export function buildPrismaModelMetadata(
     }
 
     const hasDeletedAt = fields.some(
-      f => f.irName === 'deletedAt' || f.name === 'deletedAt' || f.name === 'deleted_at',
+      (f) => f.irName === 'deletedAt' || f.name === 'deletedAt' || f.name === 'deleted_at',
     );
 
     // Status-based soft-delete (opt-in per entity): resolve the configured IR
@@ -141,7 +145,9 @@ export function buildPrismaModelMetadata(
     let softDeleteStatus: { column: string; deletedValue: string } | undefined;
     const softCfg = options.softDelete?.[entity.name];
     if (softCfg) {
-      const statusField = fields.find(f => f.irName === softCfg.field || f.name === softCfg.field);
+      const statusField = fields.find(
+        (f) => f.irName === softCfg.field || f.name === softCfg.field,
+      );
       if (statusField) {
         softDeleteStatus = { column: statusField.name, deletedValue: softCfg.deletedValue };
       } else {

@@ -45,7 +45,7 @@ describe('nextjs.dispatcher surface', () => {
     expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     expect(result.artifacts).toHaveLength(1);
     expect(result.artifacts[0].pathHint).toBe(
-      'app/api/manifest/[entity]/commands/[command]/route.ts'
+      'app/api/manifest/[entity]/commands/[command]/route.ts',
     );
     expect(result.artifacts[0].id).toBe('nextjs.dispatcher');
     expect(result.artifacts[0].contentType).toBe('typescript');
@@ -59,7 +59,9 @@ describe('nextjs.dispatcher surface', () => {
     // Next.js 15 App Router: dynamic route params are async (Promise).
     // The handler MUST type ctx.params as Promise<{entity,command}> and
     // MUST await ctx.params before reading entity/command.
-    expect(code).toMatch(/params:\s*Promise<\s*\{\s*entity:\s*string;\s*command:\s*string\s*\}\s*>/);
+    expect(code).toMatch(
+      /params:\s*Promise<\s*\{\s*entity:\s*string;\s*command:\s*string\s*\}\s*>/,
+    );
     expect(code).toMatch(/await\s+ctx\.params/);
     expect(code).toMatch(/entity,\s*command/);
   });

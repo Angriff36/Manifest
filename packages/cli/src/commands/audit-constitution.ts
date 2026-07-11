@@ -25,7 +25,7 @@ export type AuditConstitutionResult = AuditGovernanceResult;
  * Forwards to the canonical implementation without modification.
  */
 export async function auditConstitutionCommand(
-  options: AuditConstitutionOptions = {}
+  options: AuditConstitutionOptions = {},
 ): Promise<AuditConstitutionResult> {
   return auditGovernanceCommand(options);
 }

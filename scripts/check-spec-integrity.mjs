@@ -105,12 +105,8 @@ async function main() {
     process.exit(2);
   }
 
-  const headerResults = await Promise.all(
-    files.map((f) => checkHeaders(path.join(ROOT, f)))
-  );
-  const linkResults = await Promise.all(
-    files.map((f) => checkLinks(path.join(ROOT, f)))
-  );
+  const headerResults = await Promise.all(files.map((f) => checkHeaders(path.join(ROOT, f))));
+  const linkResults = await Promise.all(files.map((f) => checkLinks(path.join(ROOT, f))));
 
   const headerFailures = headerResults.filter(Boolean);
   const linkFailures = linkResults.filter(Boolean);
@@ -119,14 +115,14 @@ async function main() {
 
   if (totalFailed === 0) {
     console.log(
-      `check-spec-integrity: OK (${files.length} spec file(s) checked — headers and links clean)`
+      `check-spec-integrity: OK (${files.length} spec file(s) checked — headers and links clean)`,
     );
     return;
   }
 
   if (headerFailures.length > 0) {
     console.error(
-      `\ncheck-spec-integrity: ${headerFailures.length} file(s) missing required headers`
+      `\ncheck-spec-integrity: ${headerFailures.length} file(s) missing required headers`,
     );
     for (const f of headerFailures) {
       console.error(`  ${f.file}: missing — ${f.missing.join(', ')}`);
@@ -134,9 +130,7 @@ async function main() {
   }
 
   if (linkFailures.length > 0) {
-    console.error(
-      `\ncheck-spec-integrity: ${linkFailures.length} file(s) with broken links`
-    );
+    console.error(`\ncheck-spec-integrity: ${linkFailures.length} file(s) with broken links`);
     for (const f of linkFailures) {
       for (const b of f.broken) {
         console.error(`  ${f.file} line ${b.line}: ${b.target}`);

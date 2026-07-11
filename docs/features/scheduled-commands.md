@@ -29,11 +29,11 @@ schedule <name> every <count> <unit> run [Entity.]<commandName>([args])
 
 ## Trigger Types
 
-| Type | Syntax | Description |
-|------|--------|-------------|
-| `cron` | `cron "0 0 * * *"` | Standard 5-field cron expression (minute hour day month weekday) |
-| `interval` | `interval "5m"` | Duration string: `5m` (minutes), `1h` (hours), `1d` (days) |
-| `every` | `every 1 weeks` | Count + unit: `1 weeks`, `30 minutes`, `6 hours` |
+| Type       | Syntax             | Description                                                      |
+| ---------- | ------------------ | ---------------------------------------------------------------- |
+| `cron`     | `cron "0 0 * * *"` | Standard 5-field cron expression (minute hour day month weekday) |
+| `interval` | `interval "5m"`    | Duration string: `5m` (minutes), `1h` (hours), `1d` (days)       |
+| `every`    | `every 1 weeks`    | Count + unit: `1 weeks`, `30 minutes`, `6 hours`                 |
 
 ## Entity-Bound vs Global Schedules
 

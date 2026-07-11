@@ -17,10 +17,10 @@ import { RuntimeEngine, EntityInstance } from './runtime-engine';
 async function makeEngine(
   source: string,
   context: Record<string, unknown> = {},
-  seed: (engine: RuntimeEngine) => Promise<void> = async () => {}
+  seed: (engine: RuntimeEngine) => Promise<void> = async () => {},
 ) {
   const { ir, diagnostics } = await compileToIR(source);
-  expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+  expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   const engine = new RuntimeEngine(ir!, context);
   await seed(engine);
   return engine;
@@ -77,7 +77,7 @@ store Doc in memory
 describe('Runtime read-policy gate', () => {
   describe('context-only read policy', () => {
     it('allowed context returns the row on getInstance and getAllInstances', async () => {
-      const engine = await makeEngine(contextOnlySource, { user: { role: 'admin' } }, async e => {
+      const engine = await makeEngine(contextOnlySource, { user: { role: 'admin' } }, async (e) => {
         await e.createInstance('Doc', { id: 'd1', title: 'A' } as EntityInstance);
         await e.createInstance('Doc', { id: 'd2', title: 'B' } as EntityInstance);
       });
@@ -86,35 +86,51 @@ describe('Runtime read-policy gate', () => {
     });
 
     it('denied single read returns undefined (no existence leak)', async () => {
-      const engine = await makeEngine(contextOnlySource, { user: { role: 'viewer' } }, async e => {
-        await e.createInstance('Doc', { id: 'd1', title: 'A' } as EntityInstance);
-      });
+      const engine = await makeEngine(
+        contextOnlySource,
+        { user: { role: 'viewer' } },
+        async (e) => {
+          await e.createInstance('Doc', { id: 'd1', title: 'A' } as EntityInstance);
+        },
+      );
       expect(await engine.getInstance('Doc', 'd1')).toBeUndefined();
     });
 
     it('denied getAllInstances short-circuits to an empty list', async () => {
-      const engine = await makeEngine(contextOnlySource, { user: { role: 'viewer' } }, async e => {
-        await e.createInstance('Doc', { id: 'd1', title: 'A' } as EntityInstance);
-        await e.createInstance('Doc', { id: 'd2', title: 'B' } as EntityInstance);
-      });
+      const engine = await makeEngine(
+        contextOnlySource,
+        { user: { role: 'viewer' } },
+        async (e) => {
+          await e.createInstance('Doc', { id: 'd1', title: 'A' } as EntityInstance);
+          await e.createInstance('Doc', { id: 'd2', title: 'B' } as EntityInstance);
+        },
+      );
       expect(await engine.getAllInstances('Doc')).toEqual([]);
     });
   });
 
   describe('row-level (self.*) read policy', () => {
     it('omits denied rows from getAllInstances and keeps allowed rows', async () => {
-      const engine = await makeEngine(rowLevelSource, { user: { id: 'u1' } }, async e => {
+      const engine = await makeEngine(rowLevelSource, { user: { id: 'u1' } }, async (e) => {
         await e.createInstance('Doc', { id: 'd1', ownerId: 'u1', title: 'mine' } as EntityInstance);
-        await e.createInstance('Doc', { id: 'd2', ownerId: 'u2', title: 'theirs' } as EntityInstance);
+        await e.createInstance('Doc', {
+          id: 'd2',
+          ownerId: 'u2',
+          title: 'theirs',
+        } as EntityInstance);
       });
       const all = await engine.getAllInstances('Doc');
-      expect(all.map(r => r.id)).toEqual(['d1']);
+      expect(all.map((r) => r.id)).toEqual(['d1']);
     });
 
     it('denies a single read of a non-owned row, allows an owned row', async () => {
-      const engine = await makeEngine(rowLevelSource, { user: { id: 'u1' } }, async e => {
+      const engine = await makeEngine(rowLevelSource, { user: { id: 'u1' } }, async (e) => {
         await e.createInstance('Doc', { id: 'd1', ownerId: 'u1', title: 'mine' } as EntityInstance);
-        await e.createInstance('Doc', { id: 'd2', ownerId: 'u2', title: 'theirs' } as EntityInstance);
+        await e.createInstance('Doc', {
+          id: 'd2',
+          ownerId: 'u2',
+          title: 'theirs',
+        } as EntityInstance);
       });
       expect((await engine.getInstance('Doc', 'd1'))?.id).toBe('d1');
       expect(await engine.getInstance('Doc', 'd2')).toBeUndefined();
@@ -123,7 +139,7 @@ describe('Runtime read-policy gate', () => {
 
   describe('commands are unaffected by a deny-all read policy', () => {
     it('runs the command (raw read path is un-gated) even while reads are denied', async () => {
-      const engine = await makeEngine(commandSource, { user: { role: 'viewer' } }, async e => {
+      const engine = await makeEngine(commandSource, { user: { role: 'viewer' } }, async (e) => {
         await e.createInstance('Doc', { id: 'd1', count: 0 } as EntityInstance);
       });
       // The deny-all read policy gates the public read surface...
@@ -136,7 +152,7 @@ describe('Runtime read-policy gate', () => {
 
   describe('no read policies', () => {
     it('returns all rows unchanged when no read policy exists', async () => {
-      const engine = await makeEngine(noPolicySource, {}, async e => {
+      const engine = await makeEngine(noPolicySource, {}, async (e) => {
         await e.createInstance('Doc', { id: 'd1', title: 'A' } as EntityInstance);
         await e.createInstance('Doc', { id: 'd2', title: 'B' } as EntityInstance);
       });

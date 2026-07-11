@@ -43,7 +43,7 @@ export function Playground() {
   }, []);
 
   const toggleRuntime = useCallback(() => {
-    setRuntimeOpen(prev => !prev);
+    setRuntimeOpen((prev) => !prev);
   }, []);
 
   return (
@@ -74,10 +74,7 @@ export function Playground() {
               errorLines={errorLines}
             />
           </div>
-          <DiagnosticsList
-            diagnostics={compiled.diagnostics}
-            errors={compiled.errors}
-          />
+          <DiagnosticsList diagnostics={compiled.diagnostics} errors={compiled.errors} />
         </div>
 
         {/* Output pane */}

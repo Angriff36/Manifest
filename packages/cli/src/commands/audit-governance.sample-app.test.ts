@@ -40,7 +40,7 @@ describe('audit-governance vs. generic sample app', () => {
         'route-drift',
         'missing-tests',
         'bypass-violations',
-      ])
+      ]),
     );
   });
 

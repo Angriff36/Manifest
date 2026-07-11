@@ -13,7 +13,9 @@ import {
  * Capture stdout/stderr around a function call. Helpful for asserting CLI
  * output without parsing chalk colour codes — we strip them via a regex.
  */
-async function captureOutput<T>(fn: () => Promise<T>): Promise<{ stdout: string; stderr: string; result: T }> {
+async function captureOutput<T>(
+  fn: () => Promise<T>,
+): Promise<{ stdout: string; stderr: string; result: T }> {
   const stdout: string[] = [];
   const stderr: string[] = [];
   const logSpy = vi.spyOn(console, 'log').mockImplementation((...args) => {
@@ -77,7 +79,7 @@ describe('manifest config validate', () => {
   it('reports OK for a valid config', async () => {
     await fs.writeFile(
       path.join(tempDir, 'manifest.config.yaml'),
-      `src: src/**/*.manifest\noutput: ir/\nprojections:\n  nextjs:\n    options:\n      authProvider: nextauth\n`
+      `src: src/**/*.manifest\noutput: ir/\nprojections:\n  nextjs:\n    options:\n      authProvider: nextauth\n`,
     );
     const { stdout } = await captureOutput(() => configValidateCommand());
     expect(stdout).toContain('Config is valid');
@@ -87,7 +89,7 @@ describe('manifest config validate', () => {
   it('reports diagnostics and sets non-zero exit for an invalid enum', async () => {
     await fs.writeFile(
       path.join(tempDir, 'manifest.config.yaml'),
-      `projections:\n  nextjs:\n    options:\n      authProvider: not-a-real-provider\n`
+      `projections:\n  nextjs:\n    options:\n      authProvider: not-a-real-provider\n`,
     );
     const { stderr } = await captureOutput(() => configValidateCommand());
     expect(stderr).toContain('authProvider');
@@ -98,7 +100,7 @@ describe('manifest config validate', () => {
   it('reports unknown-property violations with the offending key', async () => {
     await fs.writeFile(
       path.join(tempDir, 'manifest.config.yaml'),
-      `projections:\n  nextjs:\n    options:\n      unknownThing: 42\n`
+      `projections:\n  nextjs:\n    options:\n      unknownThing: 42\n`,
     );
     const { stderr } = await captureOutput(() => configValidateCommand());
     expect(stderr).toMatch(/unknown property "unknownThing"/);
@@ -108,7 +110,7 @@ describe('manifest config validate', () => {
   it('--json emits structured output and the same non-zero exit on failure', async () => {
     await fs.writeFile(
       path.join(tempDir, 'manifest.config.yaml'),
-      `projections:\n  nextjs:\n    options:\n      authProvider: bogus\n`
+      `projections:\n  nextjs:\n    options:\n      authProvider: bogus\n`,
     );
     const { stdout } = await captureOutput(() => configValidateCommand({ json: true }));
     const parsed = JSON.parse(stdout.trim());
@@ -164,7 +166,7 @@ describe('manifest config inspect (print-effective)', () => {
   it('reflects user overrides under defaults', async () => {
     await fs.writeFile(
       path.join(tempDir, 'manifest.config.yaml'),
-      `projections:\n  nextjs:\n    options:\n      authProvider: nextauth\n      appDir: app/api\n      dispatcher:\n        executionMode: externalExecutor\n        executorImportPath: '@my-app/exec'\n`
+      `projections:\n  nextjs:\n    options:\n      authProvider: nextauth\n      appDir: app/api\n      dispatcher:\n        executionMode: externalExecutor\n        executorImportPath: '@my-app/exec'\n`,
     );
     const { stdout } = await captureOutput(() => configInspectCommand({ json: true }));
     const parsed = JSON.parse(stdout.trim());
@@ -176,7 +178,9 @@ describe('manifest config inspect (print-effective)', () => {
     expect(parsed.projections.nextjs.options.dispatcher.executorImportPath).toBe('@my-app/exec');
 
     // unspecified dispatcher keys fall through to defaults
-    expect(parsed.projections.nextjs.options.dispatcher.executorImportName).toBe('executeManifestCommand');
+    expect(parsed.projections.nextjs.options.dispatcher.executorImportName).toBe(
+      'executeManifestCommand',
+    );
     // deriveInstanceId default flipped to true (goal step 4: extract for non-create)
     expect(parsed.projections.nextjs.options.dispatcher.deriveInstanceId).toBe(true);
 
@@ -187,7 +191,7 @@ describe('manifest config inspect (print-effective)', () => {
   it('output is stable for CI snapshots', async () => {
     await fs.writeFile(
       path.join(tempDir, 'manifest.config.yaml'),
-      `output: my-ir/\nprojections:\n  nextjs:\n    output: my-generated/\n    options:\n      strictMode: false\n`
+      `output: my-ir/\nprojections:\n  nextjs:\n    output: my-generated/\n    options:\n      strictMode: false\n`,
     );
     const a = await captureOutput(() => configInspectCommand({ json: true }));
     const b = await captureOutput(() => configInspectCommand({ json: true }));

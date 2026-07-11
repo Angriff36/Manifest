@@ -162,7 +162,9 @@ interface ConstraintTestCase {
 }
 
 interface ResultsFile {
-  testCases: Array<CommandTestCase | ComputedTestCase | CreateTestCase | PersistenceTestCase | ConstraintTestCase>;
+  testCases: Array<
+    CommandTestCase | ComputedTestCase | CreateTestCase | PersistenceTestCase | ConstraintTestCase
+  >;
 }
 
 function loadExpectedResults(name: string): ResultsFile | null {
@@ -222,10 +224,12 @@ function normalizeResult(result: CommandResult): Partial<CommandResult> {
 }
 
 describe('Manifest Conformance Tests', () => {
-  const fixtures = readdirSync(FIXTURES_DIR).filter(f => f.endsWith('.manifest')).sort();
+  const fixtures = readdirSync(FIXTURES_DIR)
+    .filter((f) => f.endsWith('.manifest'))
+    .sort();
 
   describe('IR Compilation', () => {
-    fixtures.forEach(fixtureName => {
+    fixtures.forEach((fixtureName) => {
       const expectedDiagnostics = loadExpectedDiagnostics(fixtureName);
 
       // If this fixture has a diagnostics file, it's a diagnostic test (expected to fail)
@@ -237,7 +241,7 @@ describe('Manifest Conformance Tests', () => {
           if (expectedDiagnostics.shouldFail) {
             // Compilation should fail
             expect(ir).toBeNull();
-            expect(diagnostics.filter(d => d.severity === 'error').length).toBeGreaterThan(0);
+            expect(diagnostics.filter((d) => d.severity === 'error').length).toBeGreaterThan(0);
           }
 
           // Verify each expected diagnostic is present with exact matching
@@ -261,7 +265,7 @@ describe('Manifest Conformance Tests', () => {
           const source = loadFixture(fixtureName);
           const { ir, diagnostics } = await compileToIR(source);
 
-          expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+          expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
           expect(ir).not.toBeNull();
 
           const expectedIR = loadExpectedIR(fixtureName);
@@ -277,7 +281,7 @@ describe('Manifest Conformance Tests', () => {
   });
 
   describe('Runtime Behavior', () => {
-    fixtures.forEach(fixtureName => {
+    fixtures.forEach((fixtureName) => {
       const results = loadExpectedResults(fixtureName);
       if (!results) return;
 
@@ -300,7 +304,7 @@ describe('Manifest Conformance Tests', () => {
               if (tc.setup?.createInstance) {
                 await engine.createInstance(
                   tc.setup.createInstance.entity,
-                  tc.setup.createInstance.data as EntityInstance
+                  tc.setup.createInstance.data as EntityInstance,
                 );
               }
               if (tc.setup?.createInstances) {
@@ -320,11 +324,7 @@ describe('Manifest Conformance Tests', () => {
                 await engine.runCommand(tc.command.name, tc.command.input, runOpts);
               }
 
-              const result = await engine.runCommand(
-                tc.command.name,
-                tc.command.input,
-                runOpts
-              );
+              const result = await engine.runCommand(tc.command.name, tc.command.input, runOpts);
 
               const normalizedResult = normalizeResult(result);
               expect(normalizedResult.success).toBe(tc.expectedResult.success);
@@ -341,14 +341,20 @@ describe('Manifest Conformance Tests', () => {
                 expect(normalizedResult.guardFailure).toBeDefined();
                 expect(normalizedResult.guardFailure?.index).toBe(tc.expectedGuardFailure.index);
                 // Check that the formatted expression contains the expected expression
-                expect(normalizedResult.guardFailure?.formatted).toContain(tc.expectedGuardFailure.expression);
+                expect(normalizedResult.guardFailure?.formatted).toContain(
+                  tc.expectedGuardFailure.expression,
+                );
               }
 
               if (tc.expectedPolicyDenial) {
                 expect(normalizedResult.policyDenial).toBeDefined();
-                expect(normalizedResult.policyDenial?.policyName).toBe(tc.expectedPolicyDenial.policyName);
+                expect(normalizedResult.policyDenial?.policyName).toBe(
+                  tc.expectedPolicyDenial.policyName,
+                );
                 // Check that the formatted expression contains the expected expression
-                expect(normalizedResult.policyDenial?.formatted).toContain(tc.expectedPolicyDenial.expression);
+                expect(normalizedResult.policyDenial?.formatted).toContain(
+                  tc.expectedPolicyDenial.expression,
+                );
                 // Verify resolved values are present for diagnostics
                 expect(normalizedResult.policyDenial?.resolved).toBeDefined();
                 expect(Array.isArray(normalizedResult.policyDenial?.resolved)).toBe(true);
@@ -356,18 +362,30 @@ describe('Manifest Conformance Tests', () => {
 
               if (tc.expectedConcurrencyConflict) {
                 expect(normalizedResult.concurrencyConflict).toBeDefined();
-                expect(normalizedResult.concurrencyConflict?.entityType).toBe(tc.expectedConcurrencyConflict.entityType);
-                expect(normalizedResult.concurrencyConflict?.entityId).toBe(tc.expectedConcurrencyConflict.entityId);
-                expect(normalizedResult.concurrencyConflict?.expectedVersion).toBe(tc.expectedConcurrencyConflict.expectedVersion);
-                expect(normalizedResult.concurrencyConflict?.actualVersion).toBe(tc.expectedConcurrencyConflict.actualVersion);
-                expect(normalizedResult.concurrencyConflict?.conflictCode).toBe(tc.expectedConcurrencyConflict.conflictCode);
+                expect(normalizedResult.concurrencyConflict?.entityType).toBe(
+                  tc.expectedConcurrencyConflict.entityType,
+                );
+                expect(normalizedResult.concurrencyConflict?.entityId).toBe(
+                  tc.expectedConcurrencyConflict.entityId,
+                );
+                expect(normalizedResult.concurrencyConflict?.expectedVersion).toBe(
+                  tc.expectedConcurrencyConflict.expectedVersion,
+                );
+                expect(normalizedResult.concurrencyConflict?.actualVersion).toBe(
+                  tc.expectedConcurrencyConflict.actualVersion,
+                );
+                expect(normalizedResult.concurrencyConflict?.conflictCode).toBe(
+                  tc.expectedConcurrencyConflict.conflictCode,
+                );
               }
 
               if (tc.expectedResult.result !== undefined) {
                 expect(normalizedResult.result).toBe(tc.expectedResult.result);
               }
 
-              expect(normalizedResult.emittedEvents?.length).toBe(tc.expectedResult.emittedEvents.length);
+              expect(normalizedResult.emittedEvents?.length).toBe(
+                tc.expectedResult.emittedEvents.length,
+              );
 
               tc.expectedResult.emittedEvents.forEach((expectedEvent, i) => {
                 const actualEvent = normalizedResult.emittedEvents![i];
@@ -381,7 +399,10 @@ describe('Manifest Conformance Tests', () => {
               });
 
               if (tc.expectedInstanceState && tc.command.entityName && tc.command.instanceId) {
-                const instance = await engine.getInstance(tc.command.entityName, tc.command.instanceId);
+                const instance = await engine.getInstance(
+                  tc.command.entityName,
+                  tc.command.instanceId,
+                );
                 expect(instance).toEqual(tc.expectedInstanceState);
               }
             });
@@ -394,13 +415,14 @@ describe('Manifest Conformance Tests', () => {
               const { ir } = await compileToIR(source);
               expect(ir).not.toBeNull();
 
-              const context = (testCase as unknown as { context?: Record<string, unknown> }).context ?? {};
+              const context =
+                (testCase as unknown as { context?: Record<string, unknown> }).context ?? {};
               const engine = new RuntimeEngine(ir!, context, createDeterministicOptions());
 
               if (tc.setup.createInstance) {
                 await engine.createInstance(
                   tc.setup.createInstance.entity,
-                  tc.setup.createInstance.data as EntityInstance
+                  tc.setup.createInstance.data as EntityInstance,
                 );
               }
               if (tc.setup.createInstances) {
@@ -412,14 +434,19 @@ describe('Manifest Conformance Tests', () => {
               const value = await engine.evaluateComputed(
                 tc.computedProperty.entity,
                 tc.computedProperty.instanceId,
-                tc.computedProperty.property
+                tc.computedProperty.property,
               );
 
               expect(value).toBe(tc.expectedValue);
             });
           }
 
-          if ('createInstance' in testCase && !('command' in testCase) && !('computedProperty' in testCase) && !('persistenceTest' in testCase)) {
+          if (
+            'createInstance' in testCase &&
+            !('command' in testCase) &&
+            !('computedProperty' in testCase) &&
+            !('persistenceTest' in testCase)
+          ) {
             const tc = testCase as CreateTestCase;
             it(tc.name, async () => {
               const source = loadFixture(fixtureName);
@@ -430,7 +457,7 @@ describe('Manifest Conformance Tests', () => {
 
               const instance = await engine.createInstance(
                 tc.createInstance.entity,
-                tc.createInstance.data as EntityInstance
+                tc.createInstance.data as EntityInstance,
               );
 
               expect(instance).toEqual(tc.expectedInstance);
@@ -447,7 +474,7 @@ describe('Manifest Conformance Tests', () => {
               const engine1 = new RuntimeEngine(ir!, {}, createDeterministicOptions());
               await engine1.createInstance(
                 tc.persistenceTest.entity,
-                tc.persistenceTest.createData as EntityInstance
+                tc.persistenceTest.createData as EntityInstance,
               );
 
               const serialized = await engine1.serialize();
@@ -457,7 +484,7 @@ describe('Manifest Conformance Tests', () => {
 
               const restored = await engine2.getInstance(
                 tc.persistenceTest.entity,
-                tc.persistenceTest.createData.id as string
+                tc.persistenceTest.createData.id as string,
               );
 
               expect(restored).toEqual(tc.persistenceTest.expectedAfterRestore);
@@ -505,12 +532,20 @@ describe('Manifest Conformance Tests', () => {
       const { ir } = await compileToIR(source);
       const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
 
-      await engine.createInstance('Task', { id: 'task-1', title: 'Test', completed: true } as EntityInstance);
+      await engine.createInstance('Task', {
+        id: 'task-1',
+        title: 'Test',
+        completed: true,
+      } as EntityInstance);
 
-      const result = await engine.runCommand('complete', {}, {
-        entityName: 'Task',
-        instanceId: 'task-1',
-      });
+      const result = await engine.runCommand(
+        'complete',
+        {},
+        {
+          entityName: 'Task',
+          instanceId: 'task-1',
+        },
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("Guard condition failed for command 'complete'");
@@ -519,14 +554,22 @@ describe('Manifest Conformance Tests', () => {
     it('policy denial message is stable', async () => {
       const source = loadFixture('06-policy-denial.manifest');
       const { ir } = await compileToIR(source);
-      const engine = new RuntimeEngine(ir!, { user: { id: 'user-1', role: 'user' } }, createDeterministicOptions());
+      const engine = new RuntimeEngine(
+        ir!,
+        { user: { id: 'user-1', role: 'user' } },
+        createDeterministicOptions(),
+      );
 
       await engine.createInstance('Document', { id: 'doc-1', title: 'Test' } as EntityInstance);
 
-      const result = await engine.runCommand('makePublic', {}, {
-        entityName: 'Document',
-        instanceId: 'doc-1',
-      });
+      const result = await engine.runCommand(
+        'makePublic',
+        {},
+        {
+          entityName: 'Document',
+          instanceId: 'doc-1',
+        },
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Only administrators can execute commands');
@@ -553,10 +596,14 @@ describe('Manifest Conformance Tests', () => {
 
       await engine.createInstance('Counter', { id: 'counter-1', value: 0 } as EntityInstance);
 
-      const result = await engine.runCommand('increment', {}, {
-        entityName: 'Counter',
-        instanceId: 'counter-1',
-      });
+      const result = await engine.runCommand(
+        'increment',
+        {},
+        {
+          entityName: 'Counter',
+          instanceId: 'counter-1',
+        },
+      );
 
       expect(result.emittedEvents[0].timestamp).toBe(DETERMINISTIC_TIMESTAMP);
     });
@@ -566,8 +613,14 @@ describe('Manifest Conformance Tests', () => {
       const { ir } = await compileToIR(source);
       const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
 
-      const instance1 = await engine.createInstance('Product', { id: '', name: 'Product 1' } as unknown as EntityInstance);
-      const instance2 = await engine.createInstance('Product', { id: '', name: 'Product 2' } as unknown as EntityInstance);
+      const instance1 = await engine.createInstance('Product', {
+        id: '',
+        name: 'Product 1',
+      } as unknown as EntityInstance);
+      const instance2 = await engine.createInstance('Product', {
+        id: '',
+        name: 'Product 2',
+      } as unknown as EntityInstance);
 
       expect(instance1?.id).toBe('test-id-1');
       expect(instance2?.id).toBe('test-id-2');

@@ -13,10 +13,7 @@ import {
   generateHttpAdapter,
   renderAdapterSource,
 } from './index';
-import type {
-  ServiceDescriptor,
-  FederationTransport,
-} from './types';
+import type { ServiceDescriptor, FederationTransport } from './types';
 import type { IR } from '../ir';
 
 // ─── Test Fixtures ───────────────────────────────────────────────────────
@@ -86,7 +83,11 @@ function makeMinimalIR(): IR {
       },
     ],
     policies: [
-      { name: 'authenticated', action: 'execute', expression: { kind: 'literal', value: true } as any },
+      {
+        name: 'authenticated',
+        action: 'execute',
+        expression: { kind: 'literal', value: true } as any,
+      },
     ],
   };
 }
@@ -148,7 +149,12 @@ describe('FederationRegistry', () => {
     const desc = makeDescriptor();
     desc.health = { reachable: true, lastCheckedAt: Date.now() };
     registry.register(desc);
-    registry.register(makeDescriptor({ serviceId: 'down', health: { reachable: false, lastCheckedAt: Date.now() } }));
+    registry.register(
+      makeDescriptor({
+        serviceId: 'down',
+        health: { reachable: false, lastCheckedAt: Date.now() },
+      }),
+    );
     expect(registry.getReachable()).toHaveLength(1);
   });
 
@@ -194,9 +200,19 @@ describe('FederationClient', () => {
     const registry = new FederationRegistry({ healthCheckIntervalMs: 0 });
     registry.register(makeDescriptor());
 
-    const client = new FederationClient(registry, {}, {
-      invoke: async () => ({ success: false, error: '', emittedEvents: [], handledBy: 'orders', respondedAt: Date.now() }),
-    });
+    const client = new FederationClient(
+      registry,
+      {},
+      {
+        invoke: async () => ({
+          success: false,
+          error: '',
+          emittedEvents: [],
+          handledBy: 'orders',
+          respondedAt: Date.now(),
+        }),
+      },
+    );
     const res = await client.invoke({
       serviceId: 'orders',
       entity: 'Order',
@@ -236,11 +252,7 @@ describe('FederationClient', () => {
       },
     };
 
-    const client = new FederationClient(
-      registry,
-      { maxRetries: 3, retryDelayMs: 1 },
-      transport
-    );
+    const client = new FederationClient(registry, { maxRetries: 3, retryDelayMs: 1 }, transport);
 
     const res = await client.invoke({
       serviceId: 'orders',
@@ -272,11 +284,7 @@ describe('FederationClient', () => {
       },
     };
 
-    const client = new FederationClient(
-      registry,
-      { maxRetries: 3, retryDelayMs: 1 },
-      transport
-    );
+    const client = new FederationClient(registry, { maxRetries: 3, retryDelayMs: 1 }, transport);
 
     await client.invoke({
       serviceId: 'orders',
@@ -401,17 +409,51 @@ describe('ensureCorrelationId', () => {
 
 describe('isTransientFailure', () => {
   it('returns true for network errors', () => {
-    expect(isTransientFailure({ success: false, error: 'ECONNREFUSED', emittedEvents: [], handledBy: 's', respondedAt: 0 })).toBe(true);
-    expect(isTransientFailure({ success: false, error: 'fetch failed', emittedEvents: [], handledBy: 's', respondedAt: 0 })).toBe(true);
-    expect(isTransientFailure({ success: false, error: 'request timeout', emittedEvents: [], handledBy: 's', respondedAt: 0 })).toBe(true);
+    expect(
+      isTransientFailure({
+        success: false,
+        error: 'ECONNREFUSED',
+        emittedEvents: [],
+        handledBy: 's',
+        respondedAt: 0,
+      }),
+    ).toBe(true);
+    expect(
+      isTransientFailure({
+        success: false,
+        error: 'fetch failed',
+        emittedEvents: [],
+        handledBy: 's',
+        respondedAt: 0,
+      }),
+    ).toBe(true);
+    expect(
+      isTransientFailure({
+        success: false,
+        error: 'request timeout',
+        emittedEvents: [],
+        handledBy: 's',
+        respondedAt: 0,
+      }),
+    ).toBe(true);
   });
 
   it('returns false for successful responses', () => {
-    expect(isTransientFailure({ success: true, emittedEvents: [], handledBy: 's', respondedAt: 0 })).toBe(false);
+    expect(
+      isTransientFailure({ success: true, emittedEvents: [], handledBy: 's', respondedAt: 0 }),
+    ).toBe(false);
   });
 
   it('returns false for application-level errors', () => {
-    expect(isTransientFailure({ success: false, error: 'Policy denied', emittedEvents: [], handledBy: 's', respondedAt: 0 })).toBe(false);
+    expect(
+      isTransientFailure({
+        success: false,
+        error: 'Policy denied',
+        emittedEvents: [],
+        handledBy: 's',
+        respondedAt: 0,
+      }),
+    ).toBe(false);
   });
 });
 
@@ -459,7 +501,9 @@ describe('buildDescriptor', () => {
 
   it('marks emit/effect actions as non-idempotent', () => {
     const ir = makeMinimalIR();
-    ir.commands[0].actions = [{ kind: 'emit', expression: { kind: 'literal', value: null } as any }];
+    ir.commands[0].actions = [
+      { kind: 'emit', expression: { kind: 'literal', value: null } as any },
+    ];
     const desc = buildDescriptor('orders', ir, { endpoint: 'https://x.test' });
     const createOrder = desc.entities[0].commands.find((c) => c.name === 'createOrder')!;
     expect(createOrder.idempotent).toBe(false);
@@ -498,14 +542,23 @@ describe('generateHttpAdapter', () => {
     const adapter = generateHttpAdapter(desc);
     const mockFetch = vi.fn(async () => ({
       ok: true,
-      json: async () => ({ success: true, result: { id: '1' }, emittedEvents: [], handledBy: 'orders', respondedAt: 0 }),
+      json: async () => ({
+        success: true,
+        result: { id: '1' },
+        emittedEvents: [],
+        handledBy: 'orders',
+        respondedAt: 0,
+      }),
     }));
     // Override global fetch for the test
     const originalFetch = globalThis.fetch;
     (globalThis as any).fetch = mockFetch;
     try {
       const client = adapter.create('https://orders.test', { authToken: 'tok' });
-      const result = await (client as any).orderCreateOrder({ x: 1 }, { actorId: 'u-1', tenantId: 't-1' });
+      const result = await (client as any).orderCreateOrder(
+        { x: 1 },
+        { actorId: 'u-1', tenantId: 't-1' },
+      );
       expect(mockFetch).toHaveBeenCalled();
       expect(result.success).toBe(true);
     } finally {

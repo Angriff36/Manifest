@@ -21,7 +21,7 @@ export function buildRateLimitScopeKey(
   scope: IRRateLimit['scope'],
   context: Record<string, unknown>,
   tenantValue: string | undefined,
-  keyPrefix = ''
+  keyPrefix = '',
 ): string | null {
   const prefix = keyPrefix ? `${keyPrefix}:` : '';
   switch (scope) {
@@ -47,7 +47,7 @@ export function checkRateLimitGate(
   context: Record<string, unknown>,
   tenantValue: string | undefined,
   now: number,
-  keyPrefix = ''
+  keyPrefix = '',
 ): { allowed: true } | { allowed: false; denial: NonNullable<CommandResult['rateLimitDenial']> } {
   const scopeKey = buildRateLimitScopeKey(config.scope, context, tenantValue, keyPrefix);
   if (!scopeKey) {
@@ -106,7 +106,7 @@ export async function executeWithRetry(
   options: {
     sleep?: (ms: number) => Promise<void>;
     retryJitter?: (delayMs: number) => number;
-  } = {}
+  } = {},
 ): Promise<CommandResult> {
   const config = toRetryConfig(retry);
   const { delaysMs } = computeRetryDelays(config);
@@ -133,9 +133,11 @@ export async function executeWithRetry(
       };
     }
 
-    if (result.policyDenial || result.guardFailure || result.constraintOutcomes?.some(
-      o => !o.passed && !o.overridden && o.severity === 'block'
-    )) {
+    if (
+      result.policyDenial ||
+      result.guardFailure ||
+      result.constraintOutcomes?.some((o) => !o.passed && !o.overridden && o.severity === 'block')
+    ) {
       return result;
     }
 
@@ -154,9 +156,7 @@ export async function executeWithRetry(
     }
 
     const delay = delaysMs[attempt - 1] ?? 0;
-    const jittered = retry.jitter
-      ? applyJitter(delay, options.retryJitter ?? ((d) => d))
-      : delay;
+    const jittered = retry.jitter ? applyJitter(delay, options.retryJitter ?? ((d) => d)) : delay;
     delaysApplied.push(jittered);
     await sleep(jittered);
   }

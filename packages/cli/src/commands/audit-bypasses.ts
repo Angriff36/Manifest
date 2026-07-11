@@ -94,7 +94,7 @@ function isoDateInPast(value: string, today: Date = new Date()): boolean {
 }
 
 export async function auditBypassesCommand(
-  options: AuditBypassesOptions = {}
+  options: AuditBypassesOptions = {},
 ): Promise<AuditBypassesResult> {
   const findings: BypassFinding[] = [];
 

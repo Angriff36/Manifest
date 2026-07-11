@@ -37,11 +37,13 @@ Downstream integration examples live under `docs/integrations/` and are
 not authoritative for Manifest semantics.
 
 ## Runtime Model
+
 - A runtime hosts an IR program plus execution state (stores, context, event log).
 - A runtime evaluates IRExpressions against an evaluation context, producing a value or undefined.
 - A runtime MAY expose a context object containing `user` and arbitrary fields.
 
 ## Runtime Context Schema
+
 - The runtime context object MAY carry the following typed fields. None are required by the IR itself; downstream consumers MAY require subsets via runtime options:
   - `tenantId: string` — active tenant identifier
   - `orgId: string` — active organization identifier (e.g. Clerk `orgId`)
@@ -55,10 +57,12 @@ not authoritative for Manifest semantics.
 - The runtime context object remains open (additional ad-hoc keys MAY be present). The typed fields are a minimum contract, not an exhaustive shape.
 
 ## Modules
+
 - IR modules are a logical grouping only.
 - Module membership does not change runtime behavior.
 
 ## Entities
+
 - Entities define structured data and behavior. The runtime MUST support:
   - properties (IRProperty)
   - computedProperties (IRComputedProperty)
@@ -68,12 +72,14 @@ not authoritative for Manifest semantics.
   - policies (IRPolicy references by name)
 
 ### Properties
+
 - Each property has a type, optional defaultValue, and modifiers.
 - Modifiers are declarative. The runtime enforces the subset listed under "Modifier enforcement" below; the remaining modifiers (`indexed`, `optional`, `searchable`) are projection hints with no independent runtime behavior.
 - When creating an instance, if a property is omitted from the provided data, the runtime MUST apply the property's defaultValue if present, or the type's default value if no defaultValue is specified.
 - If a property is explicitly provided (even with an empty string `""`), that value is used and defaults do not apply.
 
 #### Modifier enforcement (runtime)
+
 - `required`: creating an instance MUST fail closed when a property carrying the `required` modifier has no value from any source — it is absent from the provided data, has no `defaultValue`, is not `autoNow`, is not an auto-managed field (`id`, the tenant property, `versionProperty`/`versionAtProperty`, `createdAt`/`updatedAt` when `timestamps` is set, composite-key columns, relationship foreign keys), and is not written by the creating command's actions. The failure is a blocking constraint outcome with code `E_REQUIRED`. A zero-filled type default (e.g. `""`, `0`, `false`) does NOT satisfy an explicit `required` modifier.
 - `readonly`: once an instance exists, an update that changes a `readonly` property to a different value MUST be rejected (the update returns no instance; through a command it fails with `E_READONLY`). Writing a `readonly` property while the creating command runs is allowed, as is an update that writes the property's current value (a no-op).
 - `unique`: on create and on update, if a property carrying the `unique` modifier is set to a non-null value already held by another instance, the write MUST be rejected (blocking outcome / rejection with code `E_UNIQUE`). Uniqueness is evaluated by scanning existing instances within the active tenant scope — a full scan; a runtime MAY delegate to a store-level uniqueness constraint where the adapter supports it. Null/undefined values are not uniqueness-checked.
@@ -82,9 +88,11 @@ not authoritative for Manifest semantics.
 ### Property Default Type Compatibility
 
 A property literal default MUST be compatible with its declared type. The compiler MUST reject incompatible pairs (for example, `property metadata: string? = {}`) instead of emitting IR that downstream projections cannot type safely. `null` is valid only for nullable types; object and array literals are valid only for compatible composite, JSON, or `any` types.
+
 - `encrypted` and `masked` are enforced as described in their own sections.
 
 ### Computed Properties
+
 - A computed property MUST be derived by evaluating its expression in a context containing:
   - `self` and `this` bound to the entity instance
   - the instance's fields
@@ -93,6 +101,7 @@ A property literal default MUST be compatible with its declared type. The compil
 - The runtime MUST prevent infinite recursion. If a dependency cycle is detected, the computed value MUST evaluate to `undefined`.
 
 ### Relationships
+
 - Relationships define connections between entities. A conforming runtime MUST support relationship traversal in expressions.
 - Relationship kinds:
   - `hasMany`: One-to-many; returns an array of related instances (may be empty)
@@ -101,24 +110,28 @@ A property literal default MUST be compatible with its declared type. The compil
   - `ref`: Simple reference; returns a single related instance or `null`
 
 #### Relationship Traversal in Expressions
+
 - When a member expression references a relationship (e.g., `self.author` or `post.comments`), the runtime MUST resolve the relationship by:
   1. Identifying the relationship metadata on the current entity
   2. Looking up related instance(s) from the store using the foreign key or inverse relationship
   3. Returning the resolved instance(s) or `null`/`[]` for empty relationships
 
 #### Relationship Resolution Rules
+
 - For `belongsTo` and `ref`: The foreign key property on the source instance contains the ID of the target instance. The runtime MUST look up the target instance by that ID.
 - For `hasOne`: The inverse `belongsTo` relationship on the target entity is used. The runtime MUST query the target entity where the foreign key equals the current instance's ID.
 - For `hasMany`: The inverse `belongsTo` relationship on the target entity is used. The runtime MUST query all target instances where the foreign key equals the current instance's ID.
 - Composite foreign keys (`foreignKey.fields` with more than one column) ARE resolved by the reference runtime. The runtime MUST pair each local FK column with the target column it references (via `foreignKey.references`; absent/mismatched, the target entity's declared `key` columns are paired positionally, else the local field names are assumed to match) and select the target row where every paired column is equal. This picks the exact row even when several targets share a first-column value. When any local FK column is unset, the relationship resolves to `null`/`[]`.
 
 #### Relationship Constraints
+
 - Relationship resolution is synchronous within the current store context.
 - Circular relationships MUST be handled gracefully; runtime MAY prevent infinite recursion.
 - Accessing a relationship on a non-existent instance returns `null` for `hasOne`/`belongsTo`/`ref` or `[]` for `hasMany`.
 - If the target entity or instance does not exist, the relationship returns `null` or `[]`.
 
 #### Entity Concurrency (vNext)
+
 - Entities MAY define optimistic concurrency controls via `versionProperty` and `versionAtProperty`.
 - `versionProperty`: Name of a numeric field that increments on each update (e.g., "version")
 - `versionAtProperty`: Name of a timestamp field that tracks when the version was last updated (e.g., "versionAt")
@@ -134,6 +147,7 @@ A property literal default MUST be compatible with its declared type. The compil
 - Commands receiving a `ConcurrencyConflict` MUST NOT apply mutations and SHOULD surface the conflict to the caller.
 
 #### Composite Keys (vNext)
+
 - An entity MAY declare `key`: an ordered list of property names forming its primary identity (e.g. `key [region, code]`). When present, the runtime's identity for an instance is the ordered tuple of those property values, encoded deterministically into a single canonical key string (each component percent-encodes `%` and the `|` separator, then components are joined with `|`). All identity-bearing operations — create, get, update, delete, relationship resolution, and the command working copy — key off this composite identity. When `key` is absent the identity is the `id` property, unchanged.
 - On create, the runtime persists the instance under its composite identity string (assigned to `id`), so a composite-key entity is addressable by that string via `getInstance`/`updateInstance`/`deleteInstance` and `runCommand`'s `instanceId`. A composite-key entity is not required to declare a separate `id` property.
 - Two instances differing in any key component are distinct, even if they share another column's value; this makes per-tenant/region reuse of a code safe when the discriminator is part of `key`.
@@ -141,6 +155,7 @@ A property literal default MUST be compatible with its declared type. The compil
 - `alternateKeys` remain projection-level unique constraints; the runtime does not enforce alternate-key uniqueness in this version.
 
 #### State Transitions (vNext)
+
 - Entities MAY define `transitions`: an array of `IRTransition` objects specifying allowed state changes.
 - Each `IRTransition` has: `property` (the field name), `from` (current value), `to` (array of allowed new values).
 - When a command mutates a property that has transition rules:
@@ -151,15 +166,18 @@ A property literal default MUST be compatible with its declared type. The compil
 - Transition validation occurs before entity constraint validation.
 
 ### Constraints
+
 - Constraints are boolean expressions. A runtime MAY enforce them when mutating properties or creating instances.
 
 #### Constraint Severity (vNext)
+
 - Each constraint has a `severity` field: `ok`, `warn`, or `block` (default: `block`).
 - `ok` constraints are informational only; their outcome is always `passed` regardless of expression result.
 - `warn` constraints produce a `ConstraintOutcome` with `passed` based on expression evaluation but do not halt execution.
 - `block` constraints produce a `ConstraintOutcome` with `passed` based on expression evaluation and halt execution on failure.
 
 #### Constraint Polarity: `failWhen` (vNext)
+
 - The optional `failWhen` field on `IRConstraint` controls expression polarity.
 - `failWhen: false` (default — positive polarity): a **falsy** expression result is a violation (`passed = !!expr`).
 - `failWhen: true` (negative polarity): a **truthy** expression result is a violation (`passed = !expr`). Write expressions as "condition that signals a problem."
@@ -167,11 +185,13 @@ A property literal default MUST be compatible with its declared type. The compil
 - Runtimes MUST read only the `failWhen` field; they MUST NOT inspect constraint names for polarity.
 
 #### Constraint Codes (vNext)
+
 - Each constraint has a `code` field that provides a stable identifier for overrides and auditing.
 - The `code` defaults to the constraint `name` if not specified.
 - `code` MUST be unique within the scope of an entity for proper override matching.
 
 #### Constraint Evaluation (vNext)
+
 - When evaluated, constraints produce a `ConstraintOutcome` containing:
   - `code`: Stable constraint identifier
   - `constraintName`: Human-readable constraint name
@@ -197,7 +217,7 @@ Four primitive type names with fixed runtime representations:
 
 **Write-time validation.** On create and update mutations in the reference runtime, properties of these four types are validated after guards, alongside entity constraints. A malformed value produces a blocking constraint outcome with code `E_TYPE_DATE`, `E_TYPE_TIME`, `E_TYPE_DATETIME`, or `E_TYPE_DURATION`, carrying the property name and offending value. `null`/`undefined` always passes this validation (nullability is enforced separately). Validation applies only to these four type names — no behavior change for any existing program.
 
-**Generated defaults.** Code generators emit `""` as the default for non-nullable `date`/`time` properties — an intentionally invalid sentinel; the reference runtime's write-time validation blocks it (generated standalone code performs no date/time validation itself). Generated defaults for `datetime`/`duration` are `0` — a *valid* value (epoch / zero duration), not a sentinel. Deterministic "today" defaults are impossible by design.
+**Generated defaults.** Code generators emit `""` as the default for non-nullable `date`/`time` properties — an intentionally invalid sentinel; the reference runtime's write-time validation blocks it (generated standalone code performs no date/time validation itself). Generated defaults for `datetime`/`duration` are `0` — a _valid_ value (epoch / zero duration), not a sentinel. Deterministic "today" defaults are impossible by design.
 
 ## Property Masking
 
@@ -237,7 +257,7 @@ Examples: `partial(0, 4)` on `"123-45-6789"` → `"*******6789"`; `email` on `"a
 - Masking is applied in `getInstance` / `getAllInstances`, **after** `encrypted` decryption (masking operates on plaintext) and after tenant filtering, before returning data.
 - A `private` property is excluded entirely from `getInstance` / `getAllInstances` results, whether or not it also carries `masked` (`private` wins over `masked`). Execution paths (guards, constraints, computed properties, relationship resolution, command actions) use the internal raw read path and still observe the real value.
 - `unmaskWhen` bindings are the spec-guaranteed bindings only: `self.*` / `this.*` (the instance being read, real values) and `user.*` / `context.*` from the engine's runtime context. With no user in context, `user.*` resolves undefined → falsy → masked.
-- **Secure by default; diagnostics explain, never compensate**: if `unmaskWhen` evaluates falsy, the value stays masked. If `unmaskWhen` *throws*, the value stays masked AND the runtime surfaces a diagnostic carrying the expression and resolved values — the diagnostic never changes the masked outcome.
+- **Secure by default; diagnostics explain, never compensate**: if `unmaskWhen` evaluates falsy, the value stays masked. If `unmaskWhen` _throws_, the value stays masked AND the runtime surfaces a diagnostic carrying the expression and resolved values — the diagnostic never changes the masked outcome.
 - Masking is a read-projection transform only: guards, constraints, computed properties, relationship resolution in expressions, and command actions always see real values. Identical IR + identical runtime context still produce identical execution results.
 
 ### Scope boundaries (v2.3.0 limitations, not guarantees)
@@ -248,37 +268,43 @@ Examples: `partial(0, 4)` on `"123-45-6789"` → `"*******6789"`; `email` on `"a
 4. Write-back hazard: the runtime does not detect a masked placeholder (e.g. `"***"`) being round-tripped into an update. Clients must not write masked reads back.
 
 ## Stores
+
 - Stores define persistence targets for entities.
 - A runtime MUST support at least `memory` stores.
 - Other targets (`localStorage`, `postgres`, `supabase`) are adapters (see `adapters.md`).
 - When creating an instance via a store, omitted properties receive their default values as specified in the Properties section.
 
 ## Policies
+
 - Policies are boolean expressions with an action scope.
 - The default runtime behavior is:
   - Policies with action `execute` or `all` MUST be checked for command execution.
   - Policies with action `read` (or `all`) ARE enforced at the runtime read gate: a single central boundary in `getInstance` / `getAllInstances`, above masking. Denied reads fail closed — `getInstance` returns `undefined` (indistinguishable from not-found, no existence leak) and `getAllInstances` omits denied rows. Read policies are evaluated in IR declaration order, with the row bound as `self` / `this` and `user` / `context` from the runtime context; a policy that references `self.*` is evaluated per row, a context-only policy (no `self` / `this`) once per `getAllInstances` call (deny ⇒ empty result without scanning rows). Policy-level `rateLimit` and thrown-expression fail-closed semantics match the command policy gate. An entity-scoped read policy (declared with an `entity`) gates that entity; an unscoped `read`/`all` policy is a global read gate.
   - Policies with action `write` or `delete` are enforced only at command execution (via `command.policies`); there is no separate write/delete data-mutation gate on the store.
-  - The internal execution read path (guards, actions, computed properties, relationship resolution) uses the raw, un-gated read and always sees all rows — the read gate is a projection of the *external* read surface only, so it never changes command execution results (determinism preserved).
+  - The internal execution read path (guards, actions, computed properties, relationship resolution) uses the raw, un-gated read and always sees all rows — the read gate is a projection of the _external_ read surface only, so it never changes command execution results (determinism preserved).
   - Policies with action `override` MUST be checked when authorizing constraint overrides (vNext).
 - A policy with an `entity` applies only to commands bound to that entity.
 
 ### Default Policies (vNext)
+
 - Entities MAY define `defaultPolicies` — an array of policy names that apply to all commands bound to that entity unless overridden at the command level.
 - Default policies provide entity-level authorization baseline, reducing boilerplate for common authorization patterns.
 
 #### Inheritance Rules
+
 - When an entity defines `defaultPolicies`, those policies are implicitly applied to every command bound to that entity.
 - A command MAY override default policies by declaring its own `policies` array. When command-level policies are declared, default policies are NOT merged — the command's explicit policies replace the defaults entirely.
 - If a command declares no policies and the entity has no `defaultPolicies`, the command has no policy protection (scanner SHOULD warn).
 
 #### Evaluation Order
+
 - When evaluating policies for a command:
   1. If the command has explicit policies declared, evaluate only those policies.
   2. If the command has no explicit policies but the entity has `defaultPolicies`, evaluate the entity's default policies.
   3. If neither command nor entity has policies, no policy check is performed (scanner SHOULD warn about missing policy coverage).
 
 #### Override Semantics
+
 - Default policies are a compile-time convenience, not a runtime construct.
 - The IR compiler MUST expand entity `defaultPolicies` into each command's effective policy list during transformation.
 - The runtime evaluates the command's expanded policy list exactly as if the policies were declared directly on the command.
@@ -287,6 +313,7 @@ Examples: `partial(0, 4)` on `"123-45-6789"` → `"*******6789"`; `email` on `"a
   - Scanner tools can detect inherited vs. declared policies by comparing source AST to IR output.
 
 #### IR Representation
+
 - `IREntity.defaultPolicies`: Array of policy name strings (references to policies in `IR.policies`).
 - `IRCommand.policies`: Array of policy name strings (explicitly declared or expanded from entity defaults).
 - When compiling, if a command has no declared policies and the entity has `defaultPolicies`, the compiler MUST copy the entity's `defaultPolicies` into the command's `policies` array.
@@ -317,12 +344,14 @@ entity Task {
 ```
 
 In this example:
+
 - `complete` inherits the default policy (`RequireAuth`)
 - `reassign` also inherits `RequireAuth` and adds its own guard for role checks
 - The IR for `complete` will include the inherited default policy name in its `policies` array
 - The IR for `reassign` will include the same inherited default policy name in its `policies` array
 
 ## Commands
+
 - The IR root `commands` array is the authoritative command definition list.
 - `IREntity.commands` is a list of command names that reference definitions in the root `commands` array.
 - A command referenced by an entity MUST have its `entity` field equal to that entity's name.
@@ -346,19 +375,20 @@ In this example:
   - A parameter absent from the input that declares no `defaultValue` and is `required` MUST fail closed with a `parameterFailure` on the CommandResult (code `MISSING_REQUIRED_PARAMETER`) before rate-limit, policy, constraint, or guard evaluation.
   - A parameter present in the input (including `null`) is used as-is; an explicit `undefined` is treated as absent.
 - On execution, a runtime MUST:
-  1) Build an evaluation context containing `self`, `this`, input parameters (with parameter defaults already applied), and runtime context.
-  2) If the command declares `rateLimit`, evaluate the rate-limit gate for the configured scope (`user`, `tenant`, or `global`). If denied, execution MUST stop with a `rateLimitDenial` on the CommandResult.
-  3) Evaluate applicable policies (see Policies). Policy-level `rateLimit` gates run before each policy expression. If any policy fails (expression or rate limit), execution MUST stop with a denial.
-  4) Evaluate command-level constraints (see Command Constraints). If any `block` constraint fails without an authorized override, execution MUST stop.
-  5) Evaluate guards in order; if any guard is falsey, execution MUST stop with a guard failure.
-  6) Execute actions in order.
-  7) Emit declared events in order.
-  8) Return a CommandResult with success status, emitted events, and the last action result.
+  1. Build an evaluation context containing `self`, `this`, input parameters (with parameter defaults already applied), and runtime context.
+  2. If the command declares `rateLimit`, evaluate the rate-limit gate for the configured scope (`user`, `tenant`, or `global`). If denied, execution MUST stop with a `rateLimitDenial` on the CommandResult.
+  3. Evaluate applicable policies (see Policies). Policy-level `rateLimit` gates run before each policy expression. If any policy fails (expression or rate limit), execution MUST stop with a denial.
+  4. Evaluate command-level constraints (see Command Constraints). If any `block` constraint fails without an authorized override, execution MUST stop.
+  5. Evaluate guards in order; if any guard is falsey, execution MUST stop with a guard failure.
+  6. Execute actions in order.
+  7. Emit declared events in order.
+  8. Return a CommandResult with success status, emitted events, and the last action result.
 - Commands may declare a `retry` policy. When present, the runtime wraps execution and retries a failed attempt whose error code appears in the command's `retryOn` list. The runtime derives that code from the failed `CommandResult`: a concurrency conflict yields `CONCURRENCY_CONFLICT`; a structured (`CODE: message`) error surfaces its leading `CODE` verbatim (so a command that fails with `SUPPLIER_UNAVAILABLE: …` is retryable when `retryOn` lists `SUPPLIER_UNAVAILABLE`); an unstructured error mentioning `TIMEOUT` falls back to `TIMEOUT`. Policy denials, guard failures, and blocking constraint outcomes MUST NOT be retried.
 - `schedule` declarations compile to IR `schedules`. Runtimes expose `getSchedules()` and `runSchedule(name)`. The `RuntimeEngine` itself has no timer, so adapters decide when to invoke schedules; the reference package ships an optional worker (`startScheduleWorker` / `runSchedulesOnce` from `@angriff36/manifest/schedule-worker`) that evaluates cron and interval/every triggers on a tick loop and, when the IR declares approvals, sweeps approval expiry. Cron is matched in UTC to the minute (day-of-month and day-of-week follow the standard OR rule when both are restricted).
 - Entity `extends` and `mixin` composition is resolved at compile time. Precedence on name collision: own > later mixin > earlier mixin > parent. Cycles and unknown parents are compile errors.
 
 ### Command Constraints (vNext)
+
 - Commands may define a `constraints` array for pre-execution validation.
 - Command constraints are evaluated after policies but before guards.
 - Command constraints use the same constraint schema as entity constraints (code, severity, overrideable, etc.).
@@ -366,6 +396,7 @@ In this example:
 - A command with failing `block` constraints MUST NOT execute unless an override is authorized.
 
 ### Override Mechanism (vNext)
+
 - Constraints may be marked `overrideable: true` to allow authorized bypass.
 - An `overridePolicyRef` may be specified to reference the policy that authorizes overrides.
 - To override a constraint, the runtime receives an `OverrideRequest` containing:
@@ -384,18 +415,21 @@ In this example:
 - Constraints NOT marked `overrideable` MAY NOT be overridden; override attempts MUST be rejected.
 
 ### Generated Artifacts
+
 Generated code MUST conform to the same semantics as the IR runtime:
 
 - **Server code**: MUST enforce policies (action `execute` or `all`) before executing commands
 - **Client code**: Commands MUST return the last action result (not void)
 
 Generated server endpoints SHALL:
+
 1. Check applicable policies for the entity/command
 2. Check guards in order
 3. Execute the command
 4. Return the result with success status
 
 Generated client command methods SHALL:
+
 1. Check applicable policies (if entity has policies)
 2. Check guards in order
 3. Execute actions in order
@@ -403,21 +437,26 @@ Generated client command methods SHALL:
 5. Return the last action result
 
 ### Generated Projections
+
 - Projections are generated views/outputs derived from IR, not semantic authority.
 - Runtime meaning remains anchored in IR semantics.
 - Projections MUST NOT diverge from IR semantics.
 
 Brief source alignment:
+
 - `README.md`: "Projections are tooling, not runtime semantics."
 - `docs/guides/usage-patterns.md`: "Projections are tooling, not language semantics."
 
 See also:
+
 - `../patterns/usage-patterns.md`
 - `../patterns/embedded-runtime-pattern.md`
 - `adapters.md`
 
 ## Actions
+
 Actions execute in declaration order. Kinds:
+
 - `mutate`: evaluate the expression and, if the command is bound to an instance, assign the result to `target` on the working copy (batched; see § "Batched Persistence"). Returns the value. With no bound instance, no storage effect. The only kind that writes entity state.
 - `compute`: evaluate the expression and, if the action names a binding (`compute <name> = <expr>`), bind `<name>` into the command's evaluation scope for subsequent actions, emits, and event payloads. `compute` MUST NOT mutate entity state. Returns the value. A `compute` binding is command-scoped: it is available to later actions and to event payload expressions within the same command execution, and is discarded when the command returns. It is never persisted and never appears in `getInstance`/`getAllInstances`.
 - `emit`: emit the **named** IR event `target` into the in-process event log and local listeners (consumable by reactions/sagas), with the same event shape as `command.emits`. The optional expression supplies the payload. The compiler MUST reject an `emit` action whose `target` is missing or does not match a declared event (`EMIT_ACTION_UNKNOWN_EVENT`).
@@ -430,6 +469,7 @@ Adapter actions (`publish`, `effect`, `persist`) enforce the effect boundary: in
 Action-emitted events (`emit`/`publish` actions) interleave with `command.emits` (which fire after the action loop) in a single per-command emit sequence: `emitIndex` is a shared, monotonic per-command counter, so ordering is deterministic across both sources. Action-emitted events participate in `CommandResult.emittedEvents`, reaction dispatch, and the outbound event-bus bridge exactly like command-declared events.
 
 ### `persist` action
+
 A `persist` action explicitly flushes the command's pending working-copy changes to the store at its point in the action sequence, then clears the pending change set (the working copy is retained). `persist` does not open, commit, or close a transaction and does not finalize the command.
 
 - Under a `TransactionProvider`, the flush threads the active transaction handle: the write joins the command's transaction and is durably committed only when that transaction commits. A subsequent failing action rolls the whole transaction back, undoing the `persist` (atomic-on-failure preserved).
@@ -438,11 +478,13 @@ A `persist` action explicitly flushes the command's pending working-copy changes
 - `persist` is an adapter action: in deterministic mode it throws `ManifestEffectBoundaryError` and performs no write.
 
 ### Deterministic Mode (vNext)
+
 - When `deterministicMode` is `true`, a conforming runtime MUST throw `ManifestEffectBoundaryError` for `persist`, `publish`, and `effect` action kinds instead of the default no-op behavior.
 - This enforces the effect boundary contract: adapter actions in a deterministic context are programming errors, not runtime domain failures.
 - See `adapters.md` for the normative exception to default no-op behavior.
 
 ## Events
+
 - Commands declare `emits` as a list of event names.
 - When a command emits an event, the runtime MUST log an EmittedEvent with:
   - `name`: the emitted event name
@@ -451,6 +493,7 @@ A `persist` action explicitly flushes the command's pending working-copy changes
   - `timestamp`: the runtime time source
 
 ### Event Workflow Metadata (vNext)
+
 - A conforming runtime MUST attach `emitIndex` (zero-based per-command emission index) to emitted events. `emitIndex` resets to 0 at the start of each `runCommand` invocation.
 - If `correlationId` or `causationId` are provided in command options, the runtime MUST propagate them to emitted events.
 - `emitIndex` is a per-command counter only. It is NOT a global sequence. Cross-command ordering is the caller's responsibility.
@@ -495,9 +538,10 @@ To fan events out across instances, wire an `EventBus` into `RuntimeOptions.even
   - **At-least-once, non-blocking.** Publishing occurs after the command's effects are final; a publish failure is logged (`[Manifest Runtime] EventBus.publish failed`) and does **not** fail the command. Subscribers MUST be idempotent.
 - **Inbound (explicit).** `connectEventBus(): Promise<() => Promise<void>>` subscribes the engine to the bus and re-dispatches every **remote** message's events to this engine's local `onEvent`/`subscribe` listeners, so an SSE surface backed by engine B observes events emitted by a command on engine A. Messages whose `originId` equals this engine's own id are **skipped** — an engine never re-delivers its own outbound events, so a local listener is notified exactly once. The subscription is not active until `connectEventBus` is awaited; the returned function unsubscribes. Calling `connectEventBus` again while already connected returns the existing unsubscribe without opening a second subscription. `hasEventBus()` reports whether a bus is configured.
 
-The bus carries only command-emitted events (the in-process stream described above). Saga *lifecycle* events (`SagaStarted`/`SagaCompleted`/`SagaAborted`) are emitted by the orchestrator outside any `runCommand` batch and are **not** published to the bus; the per-step command events they bracket are.
+The bus carries only command-emitted events (the in-process stream described above). Saga _lifecycle_ events (`SagaStarted`/`SagaCompleted`/`SagaAborted`) are emitted by the orchestrator outside any `runCommand` batch and are **not** published to the bus; the per-step command events they bracket are.
 
 ### Idempotency (vNext)
+
 - A conforming runtime MAY support an `IdempotencyStore` for command deduplication.
 - When configured, the runtime MUST require a caller-provided `idempotencyKey` in command options. If no key is provided, the runtime MUST return an error.
 - If the key exists in the store, the runtime MUST return the cached `CommandResult` without re-executing the command.
@@ -510,6 +554,7 @@ The bus carries only command-emitted events (the in-process stream described abo
 Reactions declare event-driven command dispatch within the Manifest governance boundary.
 
 ### Syntax
+
 ```
 on <EventName> run <EntityType>.<commandName>
   resolve <expression>
@@ -517,6 +562,7 @@ on <EventName> run <EntityType>.<commandName>
 ```
 
 ### Compilation
+
 - Each reaction declaration compiles to an `IRReactionRule` node in the IR `reactions` array.
 - `event`: The triggering event name (MUST reference a declared event).
 - `targetEntity`: Entity type to invoke the command on.
@@ -525,6 +571,7 @@ on <EventName> run <EntityType>.<commandName>
 - `params`: Optional array of `{name, expression}` mappings from event payload to command input.
 
 ### Runtime Semantics
+
 - After a command emits events (step 6 in command execution), the runtime MUST evaluate all reaction rules whose `event` matches each emitted event name.
 - Matching reactions are evaluated in **declaration order** (order in the IR `reactions` array).
 - For each matching reaction:
@@ -538,6 +585,7 @@ on <EventName> run <EntityType>.<commandName>
 - The `correlationId` from the triggering command MUST propagate to all reaction-triggered commands. Each reaction-triggered command receives the triggering event's name as its `causationId`.
 
 ### Determinism
+
 - Given identical IR + identical runtime context + identical input, reactions MUST produce identical results in identical order.
 - Reaction evaluation order is fixed by IR declaration order. No priority or weighting.
 
@@ -546,6 +594,7 @@ on <EventName> run <EntityType>.<commandName>
 Webhooks declare inbound HTTP endpoints that dispatch a command when an external system sends a request. The reference runtime materializes them via `handleWebhookRequest(runtime, request, options?)` (`src/manifest/webhooks`) — the executable contract every projected webhook route binds to. All processing is **fail-closed**: an unauthenticated, malformed, or under-configured request is rejected, never coerced into a command execution.
 
 ### Syntax
+
 ```
 webhook <name> "<path>" run [Entity.]<command>
   [method: "POST"]
@@ -555,6 +604,7 @@ webhook <name> "<path>" run [Entity.]<command>
 ```
 
 ### Compilation
+
 - Each webhook declaration compiles to an `IRWebhook` node in the IR `webhooks` array (top level or module scope; NOT inside an entity body).
 - `path`: matched verbatim against the request path.
 - `method`: optional; when absent the runtime treats the method as POST.
@@ -564,6 +614,7 @@ webhook <name> "<path>" run [Entity.]<command>
 - `transform`: optional `{name, expression}` mappings; each expression is evaluated against the parsed request body.
 
 ### Request handling (normative)
+
 A conforming runtime MUST process an inbound request in this order, returning at the first failing step:
 
 1. **Match.** Select the webhook whose `path` equals the request path and whose method (default POST) equals the request method (compared case-insensitively). If no webhook has that path, the runtime MUST respond `404`. If the path exists only under other methods, the runtime MUST respond `405`.
@@ -581,6 +632,7 @@ A conforming runtime MUST process an inbound request in this order, returning at
 5. **Dispatch.** Derive `instanceId` from the command input (`input.instanceId`, then `input.id`, else undefined — mirroring the generated dispatcher), then invoke `runCommand(command, input, {entityName, instanceId, idempotencyKey})`. A successful result responds `200` with `{ data, events, diagnostics }`. A failed result responds `{ error, diagnostics }` at a status derived from the failure: policy denial `403`, guard failure `422`, blocking constraint `422`, concurrency conflict `409`, approval required `409`, otherwise `400`.
 
 ### Determinism
+
 Given identical IR + identical runtime context + identical request bytes, webhook handling MUST produce an identical response. The handler reads no wall clock; signature verification, JSON parsing, and comparison are pure functions of the request.
 
 ## User-Facing Boundary
@@ -687,6 +739,7 @@ Only `onTimeout: "cancel"` is supported. `escalate` is **not implemented** — t
 Migration: change `on_timeout: "escalate"` to `on_timeout: "cancel"` — the runtime already produced identical behavior (setting `status: "expired"`) for both values.
 
 ## Expressions
+
 - Literal, identifier, member access, unary, binary, call, conditional, array, object, and lambda expressions are supported.
 - The following operators MUST be supported by the default runtime:
   - Binary: `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `>`, `<=`, `>=`, `and`, `or`, `in`, `contains`
@@ -703,6 +756,7 @@ Migration: change `on_timeout: "escalate"` to `on_timeout: "cancel"` — the run
 Commands may be declared with the `async` modifier to defer action execution to a background worker queue.
 
 ### Syntax
+
 ```manifest
 async command processOrder(amount: number) {
   guard self.status == "pending"
@@ -713,12 +767,15 @@ async command processOrder(amount: number) {
 ```
 
 ### IR Representation
+
 When a command has `async: true`, the IR compiler adds:
+
 - `async: true` on the `IRCommand`
 - `completionEvent: "{commandName}Completed"` — auto-derived name
 - `failureEvent: "{commandName}Failed"` — auto-derived name
 
 Two synthesized `IREvent` entries are appended to `ir.events`:
+
 - `{commandName}Completed` on channel `jobs.{commandName}` with payload: `jobId: string`, `result: any`, `completedAt: number`
 - `{commandName}Failed` on channel `jobs.{commandName}` with payload: `jobId: string`, `error: string`, `failedAt: number`
 
@@ -734,26 +791,30 @@ When an async command is invoked (and `context.source !== 'job'`):
 4. **No emitted events**: The immediate return has an empty `emittedEvents` array.
 
 When `context.source === 'job'` (re-entry from the job worker):
+
 - The async branch is bypassed; the full command body executes (policies → guards → actions → emits → return).
 
 ### Job Lifecycle
+
 - `pending` → enqueued, awaiting worker pickup
 - `running` → worker is executing the command body
 - `completed` → actions succeeded; `{commandName}Completed` event emitted
 - `failed` → actions failed; `{commandName}Failed` event emitted
 
 ### Missing JobQueue
+
 If `RuntimeOptions.jobQueue` is not configured and an async command is invoked, the runtime returns `{ success: false, error: 'MISSING_JOB_QUEUE: ...' }`.
 
 ### Deterministic Testing
+
 The `drainJobs()` method on `RuntimeEngine` drains all pending jobs synchronously in FIFO order, executing each via `_executeCommandInternal` with `context.source = 'job'`. This enables deterministic conformance testing without real worker infrastructure.
 
 ### Determinism
+
 - Job IDs are generated via `RuntimeOptions.generateId()` (deterministic in tests)
 - Timestamps use `RuntimeOptions.now()` (deterministic in tests)
 - Jobs drain in FIFO enqueue order
 
 ## Nonconformance
+
 There are no known nonconformances. All implementations conform to this specification.
-
-

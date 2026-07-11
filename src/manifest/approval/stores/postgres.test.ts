@@ -72,10 +72,13 @@ describe('PostgresApprovalStore — save', () => {
   it('serializes required_stages and grants as JSON', async () => {
     const { pool, queries } = makeFakePool();
     const store = new PostgresApprovalStore({ pool });
-    await store.save('k1', state({
-      requiredStages: ['manager', 'director'],
-      grants: [{ stage: 'manager', by: 'alice', at: 5 }],
-    }));
+    await store.save(
+      'k1',
+      state({
+        requiredStages: ['manager', 'director'],
+        grants: [{ stage: 'manager', by: 'alice', at: 5 }],
+      }),
+    );
     expect(queries[0].params[6]).toBe(JSON.stringify(['manager', 'director']));
     expect(queries[0].params[7]).toBe(JSON.stringify([{ stage: 'manager', by: 'alice', at: 5 }]));
   });
@@ -96,10 +99,12 @@ describe('PostgresApprovalStore — load', () => {
   });
 
   it('maps a row back to ApprovalRequestState', async () => {
-    const { pool } = makeFakePool([row({
-      expires_at: 9000,
-      grants: [{ stage: 'manager', by: 'alice', at: 5 }],
-    })]);
+    const { pool } = makeFakePool([
+      row({
+        expires_at: 9000,
+        grants: [{ stage: 'manager', by: 'alice', at: 5 }],
+      }),
+    ]);
     const store = new PostgresApprovalStore({ pool });
     const loaded = await store.load('PurchaseOrder:po-1:submitApproval');
     expect(loaded).toBeDefined();

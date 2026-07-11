@@ -84,9 +84,10 @@ export class WasmExpressionEvaluator {
     try {
       let bytes: ArrayBuffer | null = null;
       if (this.options.wasmBytes) {
-        bytes = typeof this.options.wasmBytes === 'function'
-          ? await this.options.wasmBytes()
-          : this.options.wasmBytes;
+        bytes =
+          typeof this.options.wasmBytes === 'function'
+            ? await this.options.wasmBytes()
+            : this.options.wasmBytes;
       } else {
         bytes = await loadDefaultWasmBytes();
       }
@@ -176,7 +177,7 @@ export class WasmExpressionEvaluator {
       const ctxJson = serializeContext(context);
       const resultPtr = this.module!.evalExpr(
         this.module!.__pin(this.module!.__newString(exprJson)),
-        this.module!.__pin(this.module!.__newString(ctxJson))
+        this.module!.__pin(this.module!.__newString(ctxJson)),
       );
       const resultJson = this.module!.__getString(resultPtr);
       return deserializeResult(resultJson);
@@ -199,7 +200,7 @@ export class WasmExpressionEvaluator {
   async evaluateConstraint(
     expr: IRExpression,
     context: Record<string, unknown>,
-    constraintName: string
+    constraintName: string,
   ): Promise<boolean> {
     if (!this.isReady()) {
       if (this.options.strict) {
@@ -213,7 +214,7 @@ export class WasmExpressionEvaluator {
       const result = this.module!.evalConstraint(
         this.module!.__pin(this.module!.__newString(exprJson)),
         this.module!.__pin(this.module!.__newString(ctxJson)),
-        this.module!.__pin(this.module!.__newString(constraintName))
+        this.module!.__pin(this.module!.__newString(constraintName)),
       );
       const strResult = this.module!.__getString(result);
       return strResult === 'pass';
@@ -230,7 +231,10 @@ export class WasmExpressionEvaluator {
   // TypeScript Fallback (delegates to runtime-engine)
   // ============================================================================
 
-  private async fallbackEvaluate(expr: IRExpression, context: Record<string, unknown>): Promise<unknown> {
+  private async fallbackEvaluate(
+    expr: IRExpression,
+    context: Record<string, unknown>,
+  ): Promise<unknown> {
     const { RuntimeEngine } = await import('../runtime-engine.js');
     const dummyIR = createDummyIR();
     const engine = new RuntimeEngine(dummyIR, {});
@@ -240,7 +244,7 @@ export class WasmExpressionEvaluator {
   private async fallbackConstraint(
     expr: IRExpression,
     context: Record<string, unknown>,
-    constraintName: string
+    constraintName: string,
   ): Promise<boolean> {
     const result = await this.fallbackEvaluate(expr, context);
     const negative = constraintName.startsWith('severity');

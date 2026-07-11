@@ -12,11 +12,7 @@ import type { WiringConsumersRegistry } from '../types.js';
 export const WIRING_INSPECT_REPORT_SCHEMA = 'manifest-wiring-inspect/v1' as const;
 
 /** How a consumer was proven (or why it was not). */
-export type ConsumerProofLevel =
-  | 'proven'
-  | 'ambiguous'
-  | 'override'
-  | 'none';
+export type ConsumerProofLevel = 'proven' | 'ambiguous' | 'override' | 'none';
 
 /** Trace form that attributed a capability to application code. */
 export type ConsumerTraceVia =
@@ -29,12 +25,7 @@ export type ConsumerTraceVia =
 
 /** Coverage classification for one capability after automatic inspection. */
 export type InspectCoverageStatus =
-  | 'consumed'
-  | 'unwired'
-  | 'backend-only'
-  | 'deferred'
-  | 'stale-consumer'
-  | 'ambiguous';
+  'consumed' | 'unwired' | 'backend-only' | 'deferred' | 'stale-consumer' | 'ambiguous';
 
 /** Human-readable product-reality bucket. */
 export type ProductRealityBucket =
@@ -121,11 +112,7 @@ export interface WiringInspectConfig {
    */
   strictCoverage?: boolean;
   /** Fail CI on these defect classes (defaults applied by inspector). */
-  failOn?: Array<
-    | 'stale-consumer'
-    | 'contract-mismatch'
-    | 'unwired'
-  >;
+  failOn?: Array<'stale-consumer' | 'contract-mismatch' | 'unwired'>;
 }
 
 export interface WiringInspectReport {

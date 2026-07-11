@@ -1,7 +1,7 @@
 ---
-title: "Entities: data structures and behavior"
-description: "Define typed data structures with properties, computed values, relationships, constraints, concurrency controls, and state transitions in the Manifest language."
-sidebarTitle: "Entities"
+title: 'Entities: data structures and behavior'
+description: 'Define typed data structures with properties, computed values, relationships, constraints, concurrency controls, and state transitions in the Manifest language.'
+sidebarTitle: 'Entities'
 ---
 
 An entity is the primary building block in Manifest. It combines a typed data schema with behavioral constraints, commands, and computed properties into a single declaration. The compiler turns entities into IR that the runtime can instantiate, query, and mutate.
@@ -40,17 +40,17 @@ Every property has a type. Supported types are `string`, `number`, `boolean`, an
 
 Place modifiers between the `property` keyword and the name:
 
-| Modifier     | Meaning |
-|--------------|---------|
-| `required`   | The caller must supply a value. The runtime rejects a create (`E_REQUIRED`) when the property has no supplied value, `defaultValue`, `autoNow`, auto-managed field, or creating-command action; a zero-filled type default does not satisfy it. |
-| `optional`   | Explicitly marks the property as not required. Equivalent to the default behavior. |
-| `readonly`   | Immutable after creation. The runtime rejects an update that changes the value (`E_READONLY`); writes during the creating command and same-value writes are allowed. |
-| `unique`     | Values must be unique within the entity collection. The runtime rejects a create/update whose non-null value another instance already holds (`E_UNIQUE`, scanned within the active tenant scope); adapters may additionally emit a database unique constraint. |
-| `encrypted`  | Declares the property for field-level encryption. The runtime encrypts at store-write boundaries and decrypts on read. Requires an `EncryptionProvider` in runtime options. |
+| Modifier     | Meaning                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `required`   | The caller must supply a value. The runtime rejects a create (`E_REQUIRED`) when the property has no supplied value, `defaultValue`, `autoNow`, auto-managed field, or creating-command action; a zero-filled type default does not satisfy it.                                                                                                                         |
+| `optional`   | Explicitly marks the property as not required. Equivalent to the default behavior.                                                                                                                                                                                                                                                                                      |
+| `readonly`   | Immutable after creation. The runtime rejects an update that changes the value (`E_READONLY`); writes during the creating command and same-value writes are allowed.                                                                                                                                                                                                    |
+| `unique`     | Values must be unique within the entity collection. The runtime rejects a create/update whose non-null value another instance already holds (`E_UNIQUE`, scanned within the active tenant scope); adapters may additionally emit a database unique constraint.                                                                                                          |
+| `encrypted`  | Declares the property for field-level encryption. The runtime encrypts at store-write boundaries and decrypts on read. Requires an `EncryptionProvider` in runtime options.                                                                                                                                                                                             |
 | `masked`     | Applies dynamic data masking to the property value on read. Write `masked` alone for the default `redact` strategy, or `masked(strategy, ...numbers)` to pick a strategy with optional numeric parameters. Strategies are exactly: `redact`, `partial`, `email`, `phone`, `last4`. Add a trailing `unmask when <expr>` clause to bypass masking for authorized readers. |
-| `searchable` | Declares the property for full-text search indexing (string-only). Adds a `search(text, query)` built-in with AND-semantics whole-word matching. Projections emit platform-specific full-text indexes (e.g., Prisma `@@fulltext`, Drizzle GIN tsvector). |
-| `private`    | Prevents inclusion in public API projections. The property is omitted from generated client types and API response shapes, and the reference runtime strips every `private` property (with or without `masked`) from `getInstance`/`getAllInstances`. Execution paths (guards, constraints, computed properties) use the raw read path and still see the real value. |
-| `indexed`    | Signals to adapters that the property should be indexed for faster lookups. Projections emit platform-specific index declarations. |
+| `searchable` | Declares the property for full-text search indexing (string-only). Adds a `search(text, query)` built-in with AND-semantics whole-word matching. Projections emit platform-specific full-text indexes (e.g., Prisma `@@fulltext`, Drizzle GIN tsvector).                                                                                                                |
+| `private`    | Prevents inclusion in public API projections. The property is omitted from generated client types and API response shapes, and the reference runtime strips every `private` property (with or without `masked`) from `getInstance`/`getAllInstances`. Execution paths (guards, constraints, computed properties) use the raw read path and still see the real value.    |
+| `indexed`    | Signals to adapters that the property should be indexed for faster lookups. Projections emit platform-specific index declarations.                                                                                                                                                                                                                                      |
 
 ```manifest
 entity User {
@@ -74,19 +74,20 @@ entity Task {
 ```
 
 <Note>
-Defaults apply only when the property is **omitted** from the creation payload. An empty string `""` counts as a provided value and overrides the default.
+  Defaults apply only when the property is **omitted** from the creation payload. An empty string
+  `""` counts as a provided value and overrides the default.
 </Note>
 
 ## Relationships
 
 Relationships declare connections between entities. The runtime resolves them synchronously from the current store context.
 
-| Keyword     | Cardinality | Returns |
-|-------------|-------------|---------|
-| `hasMany`   | One-to-many | Array of related instances (never `null`; empty array when none) |
-| `hasOne`    | One-to-one  | Single related instance or `null` |
-| `belongsTo` | Many-to-one | Single related instance or `null` |
-| `ref`       | Simple reference | Single related instance or `null` |
+| Keyword     | Cardinality      | Returns                                                          |
+| ----------- | ---------------- | ---------------------------------------------------------------- |
+| `hasMany`   | One-to-many      | Array of related instances (never `null`; empty array when none) |
+| `hasOne`    | One-to-one       | Single related instance or `null`                                |
+| `belongsTo` | Many-to-one      | Single related instance or `null`                                |
+| `ref`       | Simple reference | Single related instance or `null`                                |
 
 ```manifest
 entity Author {
@@ -105,7 +106,8 @@ entity Book {
 For `belongsTo` and `ref`, the foreign key property on the source instance holds the target ID. For `hasMany` and `hasOne`, the runtime queries the target entity for instances whose foreign key matches the current instance's ID.
 
 <Tip>
-Accessing a relationship on a non-existent instance returns `null` for singular relationships and `[]` for `hasMany`. Circular relationships are handled gracefully.
+  Accessing a relationship on a non-existent instance returns `null` for singular relationships and
+  `[]` for `hasMany`. Circular relationships are handled gracefully.
 </Tip>
 
 ## Constraints
@@ -126,11 +128,11 @@ entity Product {
 
 Each constraint has a severity that controls what happens when it evaluates to `false`:
 
-| Severity | Behavior |
-|----------|----------|
+| Severity | Behavior                                                                                                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ok`     | Informational only. Does not halt execution. The runtime forces `passed = true` — an `ok` constraint never appears as a failure. The expression is still evaluated for observability. |
-| `warn`   | Produces a `ConstraintOutcome` with the real result but does **not** halt execution. |
-| `block`  | Halts execution when the expression evaluates to `false` (default). |
+| `warn`   | Produces a `ConstraintOutcome` with the real result but does **not** halt execution.                                                                                                  |
+| `block`  | Halts execution when the expression evaluates to `false` (default).                                                                                                                   |
 
 ```manifest
 entity Task {
@@ -325,7 +327,9 @@ entity Document {
 ```
 
 <Note>
-Transition validation runs **before** entity constraint validation. If the current value has no matching `from` rule, the transition is unconstrained from that state. Properties not mentioned in any transition rule are always unconstrained.
+  Transition validation runs **before** entity constraint validation. If the current value has no
+  matching `from` rule, the transition is unconstrained from that state. Properties not mentioned in
+  any transition rule are always unconstrained.
 </Note>
 
 ## Default policies (vNext)
@@ -379,7 +383,9 @@ entity Order {
 The runtime enriches resolved relationship instances with `_entity` metadata, enabling arbitrary-depth chaining (e.g., `self.order.customer.address.city`). When a relationship resolves to `null` (missing or nonexistent target), any member access on it evaluates to `null`, which typically causes the constraint to fail.
 
 <Note>
-Cross-entity constraints work because the runtime resolves relationships synchronously from the current store context. No parser or IR compiler changes are needed -- the existing infrastructure handles nested member access syntax and compilation.
+  Cross-entity constraints work because the runtime resolves relationships synchronously from the
+  current store context. No parser or IR compiler changes are needed -- the existing infrastructure
+  handles nested member access syntax and compilation.
 </Note>
 
 ## Pagination

@@ -193,7 +193,7 @@ function syntheticMismatch(file: string) {
 describe('expand-partial-to-full-body remediation', () => {
   it('1. detects partial literal against full-update contract', async () => {
     const contract = await contractFrom(DISH_DOMAIN);
-    const cap = contract.capabilities.find(c => c.capabilityId === 'Dish.update')!;
+    const cap = contract.capabilities.find((c) => c.capabilityId === 'Dish.update')!;
     const { partial, missing } = isPartialLiteralAgainstFullContract(
       ['id', 'presentationImageUrl'],
       cap,
@@ -205,7 +205,7 @@ describe('expand-partial-to-full-body remediation', () => {
 
   it('2. discovers existing exact full-body pattern', async () => {
     const contract = await contractFrom(DISH_DOMAIN);
-    const cap = contract.capabilities.find(c => c.capabilityId === 'Dish.update')!;
+    const cap = contract.capabilities.find((c) => c.capabilityId === 'Dish.update')!;
     const files = fixtureFiles();
     const pattern = findUniqueFullBodyPattern(cap, files);
     expect(pattern?.builderName).toBe('dishUpdateBody');
@@ -223,7 +223,7 @@ describe('expand-partial-to-full-body remediation', () => {
     // Prefer inspect-found mismatch; fall back to synthetic for planner unit path.
     const mismatch =
       report.mismatches.find(
-        m =>
+        (m) =>
           m.capabilityId === 'Dish.update' &&
           m.kind === 'missing_required_input' &&
           m.source.file.includes('actions-manifest-v2'),
@@ -231,7 +231,7 @@ describe('expand-partial-to-full-body remediation', () => {
 
     const plan = tryPlanExpandPartialToFullBody(
       mismatch,
-      contract.capabilities.find(c => c.capabilityId === 'Dish.update')!,
+      contract.capabilities.find((c) => c.capabilityId === 'Dish.update')!,
       [],
       files.get(SERVER_FILE)!,
       SERVER_FILE,
@@ -293,7 +293,7 @@ export const updateDish = async (dishId: string) => {
     });
     const plan = tryPlanExpandPartialToFullBody(
       syntheticMismatch(SERVER_FILE),
-      contract.capabilities.find(c => c.capabilityId === 'Dish.update')!,
+      contract.capabilities.find((c) => c.capabilityId === 'Dish.update')!,
       [],
       files.get(SERVER_FILE)!,
       SERVER_FILE,
@@ -305,7 +305,7 @@ export const updateDish = async (dishId: string) => {
 
   it('6. rejects wrong-entity full-body helpers', async () => {
     const contract = await contractFrom(DISH_DOMAIN);
-    const cap = contract.capabilities.find(c => c.capabilityId === 'Dish.update')!;
+    const cap = contract.capabilities.find((c) => c.capabilityId === 'Dish.update')!;
     const files = fileMapFromRecord({
       [BUILDER_FILE]: `
 const loadEventUpdateFields = async () => null;
@@ -329,7 +329,7 @@ await runManifestCommand({ entity: "Event", command: "update", body: eventUpdate
 
   it('7. rejects same-name incompatible helpers', async () => {
     const contract = await contractFrom(DISH_DOMAIN);
-    const cap = contract.capabilities.find(c => c.capabilityId === 'Dish.update')!;
+    const cap = contract.capabilities.find((c) => c.capabilityId === 'Dish.update')!;
     const files = fileMapFromRecord({
       [BUILDER_FILE]: `
 const dishUpdateBody = (current: any) => ({ name: current.name });
@@ -362,7 +362,7 @@ await runManifestCommand({ entity: "Dish", command: "update", body: dishUpdateBo
     });
     const plan = tryPlanExpandPartialToFullBody(
       syntheticMismatch(SERVER_FILE),
-      contract.capabilities.find(c => c.capabilityId === 'Dish.update')!,
+      contract.capabilities.find((c) => c.capabilityId === 'Dish.update')!,
       [],
       files.get(SERVER_FILE)!,
       SERVER_FILE,
@@ -374,7 +374,7 @@ await runManifestCommand({ entity: "Dish", command: "update", body: dishUpdateBo
 
   it('9. multiple equal-confidence full-body patterns → ambiguous', async () => {
     const contract = await contractFrom(DISH_DOMAIN);
-    const cap = contract.capabilities.find(c => c.capabilityId === 'Dish.update')!;
+    const cap = contract.capabilities.find((c) => c.capabilityId === 'Dish.update')!;
     const body = (name: string) => `
 const ${name} = (current: any) => ({
   name: current.name,
@@ -402,7 +402,7 @@ await runManifestCommand({ entity: "Dish", command: "update", body: ${name}(row)
     const files = fixtureFiles();
     const plan = tryPlanExpandPartialToFullBody(
       syntheticMismatch(SERVER_FILE),
-      contract.capabilities.find(c => c.capabilityId === 'Dish.update')!,
+      contract.capabilities.find((c) => c.capabilityId === 'Dish.update')!,
       [],
       files.get(SERVER_FILE)!,
       SERVER_FILE,
@@ -419,7 +419,7 @@ await runManifestCommand({ entity: "Dish", command: "update", body: ${name}(row)
       config: { roots: ['apps/app'] },
     });
     const serverMissing = after.mismatches.filter(
-      m =>
+      (m) =>
         m.capabilityId === 'Dish.update' &&
         m.kind === 'missing_required_input' &&
         m.source.file.includes('actions-manifest-v2'),
@@ -438,7 +438,7 @@ await runManifestCommand({ entity: "Dish", command: "update", body: ${name}(row)
     const original = files.get(SERVER_FILE)!;
     const plan = tryPlanExpandPartialToFullBody(
       syntheticMismatch(SERVER_FILE),
-      contract.capabilities.find(c => c.capabilityId === 'Dish.update')!,
+      contract.capabilities.find((c) => c.capabilityId === 'Dish.update')!,
       [],
       original,
       SERVER_FILE,
@@ -452,13 +452,7 @@ await runManifestCommand({ entity: "Dish", command: "update", body: ${name}(row)
     // Simulate a failed verify: leave files unchanged when verify says no
     const broken = new Map(files);
     // Still partial — verify against expand plan should not resolve
-    const verify = verifyRepair(
-      plan,
-      contract,
-      broken,
-      { roots: ['apps/app'] },
-      before.mismatches,
-    );
+    const verify = verifyRepair(plan, contract, broken, { roots: ['apps/app'] }, before.mismatches);
     expect(verify.ok).toBe(false);
     expect(files.get(SERVER_FILE)).toBe(original);
   });
@@ -484,7 +478,7 @@ export async function other(dishId: string) {
     // Plan both sites; apply only the first selectable expand plan
     const planA = tryPlanExpandPartialToFullBody(
       syntheticMismatch(SERVER_FILE),
-      contract.capabilities.find(c => c.capabilityId === 'Dish.update')!,
+      contract.capabilities.find((c) => c.capabilityId === 'Dish.update')!,
       [],
       files.get(SERVER_FILE)!,
       SERVER_FILE,
@@ -492,7 +486,7 @@ export async function other(dishId: string) {
     )!;
     const planB = tryPlanExpandPartialToFullBody(
       syntheticMismatch(other),
-      contract.capabilities.find(c => c.capabilityId === 'Dish.update')!,
+      contract.capabilities.find((c) => c.capabilityId === 'Dish.update')!,
       [],
       files.get(other)!,
       other,
@@ -529,7 +523,7 @@ export async function other(dishId: string) {
       } as any,
     });
     // If inspect-driven one-defect finds nothing (no UI reachability), apply one plan manually
-    const appliedCount = result.applied.filter(a => a.applied).length;
+    const appliedCount = result.applied.filter((a) => a.applied).length;
     if (appliedCount === 0) {
       const patch = applyRepairPlan(planA, files);
       expect(patch.ok).toBe(true);
@@ -557,14 +551,12 @@ export async function other(dishId: string) {
       config: { roots: ['apps/app'] },
     });
     const mismatch = report.mismatches.find(
-      m =>
-        m.capabilityId === 'Dish.update' &&
-        m.source.file.includes('update-photo-control'),
+      (m) => m.capabilityId === 'Dish.update' && m.source.file.includes('update-photo-control'),
     );
     expect(mismatch).toBeTruthy();
     const plan = tryPlanExpandPartialToFullBody(
       mismatch!,
-      contract.capabilities.find(c => c.capabilityId === 'Dish.update')!,
+      contract.capabilities.find((c) => c.capabilityId === 'Dish.update')!,
       [],
       files.get(CLIENT_FILE)!,
       CLIENT_FILE,

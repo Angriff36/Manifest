@@ -16,9 +16,7 @@ export type PropertyName = string;
  * One index entry. Plain `string[]` means a composite index on those columns;
  * the object form lets the consumer supply a Drizzle index name.
  */
-export type IndexEntry =
-  | string[]
-  | { fields: string[]; name?: string };
+export type IndexEntry = string[] | { fields: string[]; name?: string };
 
 /**
  * Structured foreign-key config for the `foreignKeys` option.
@@ -95,7 +93,9 @@ export interface DrizzleProjectionOptions {
   output?: string;
 }
 
-export const DRIZZLE_PROJECTION_DEFAULTS: Required<Pick<DrizzleProjectionOptions, 'output' | 'dialect' | 'schemaExportName'>> = {
+export const DRIZZLE_PROJECTION_DEFAULTS: Required<
+  Pick<DrizzleProjectionOptions, 'output' | 'dialect' | 'schemaExportName'>
+> = {
   output: 'schema.ts',
   dialect: 'postgresql',
   schemaExportName: 'schema',
@@ -104,7 +104,9 @@ export const DRIZZLE_PROJECTION_DEFAULTS: Required<Pick<DrizzleProjectionOptions
 /**
  * Normalize a raw `request.options` bag into a fully-typed options object.
  */
-export function normalizeOptions(raw: Record<string, unknown> | undefined): DrizzleProjectionOptions {
+export function normalizeOptions(
+  raw: Record<string, unknown> | undefined,
+): DrizzleProjectionOptions {
   const input = (raw ?? {}) as Partial<DrizzleProjectionOptions>;
   return {
     dialect: input.dialect ?? DRIZZLE_PROJECTION_DEFAULTS.dialect,

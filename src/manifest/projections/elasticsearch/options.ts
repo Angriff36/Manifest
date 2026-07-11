@@ -13,11 +13,7 @@
  * specific entities into indexing (e.g. `store Order in elasticsearch searchable: true`).
  */
 
-import type {
-  ElasticsearchIndexDefinition,
-  ESIngestPipeline,
-  ESIndexerConfig,
-} from './types.js';
+import type { ElasticsearchIndexDefinition, ESIngestPipeline, ESIndexerConfig } from './types.js';
 
 export interface ElasticsearchProjectionOptions {
   /**
@@ -61,10 +57,7 @@ export interface ElasticsearchProjectionOptions {
  * Defaults for the Elasticsearch projection.
  */
 export const ELASTICSEARCH_PROJECTION_DEFAULTS: Required<
-  Pick<
-    ElasticsearchProjectionOptions,
-    'emitSingleFile' | 'output' | 'indexNamePrefix'
-  >
+  Pick<ElasticsearchProjectionOptions, 'emitSingleFile' | 'output' | 'indexNamePrefix'>
 > = {
   emitSingleFile: true,
   output: 'elasticsearch-mappings.json',

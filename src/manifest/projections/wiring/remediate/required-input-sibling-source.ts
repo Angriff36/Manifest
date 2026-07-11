@@ -53,21 +53,13 @@ export function collectSiblingParamBindings(
   const visit = (node: ts.Node) => {
     if (node === call) return;
     if (ts.isCallExpression(node)) {
-      collectParamFromCallArgs(
-        node,
-        sf,
-        call,
-        paramName,
-        targetIdentity,
-        targetEntity,
-        hits,
-      );
+      collectParamFromCallArgs(node, sf, call, paramName, targetIdentity, targetEntity, hits);
     }
     ts.forEachChild(node, visit);
   };
   visit(outermost);
 
-  const exprs = new Set(hits.map(h => h.expression));
+  const exprs = new Set(hits.map((h) => h.expression));
   if (exprs.size === 0) return [];
 
   for (const expression of [...exprs].sort()) {
@@ -84,9 +76,7 @@ export function collectSiblingParamBindings(
     });
   }
 
-  return hits.filter(h =>
-    expressionRootInScope(h.expression, scopes, sf, call.getStart(sf)),
-  );
+  return hits.filter((h) => expressionRootInScope(h.expression, scopes, sf, call.getStart(sf)));
 }
 
 function collectParamFromCallArgs(
@@ -114,11 +104,7 @@ function collectParamFromCallArgs(
   }
 }
 
-function callBelongsToEntity(
-  node: ts.CallExpression,
-  sf: ts.SourceFile,
-  entity: string,
-): boolean {
+function callBelongsToEntity(node: ts.CallExpression, sf: ts.SourceFile, entity: string): boolean {
   const text = node.expression.getText(sf);
   const camelPrefix = `${entity[0]!.toLowerCase()}${entity.slice(1)}`;
   if (text === camelPrefix || text.endsWith(`.${camelPrefix}`)) return true;
@@ -162,10 +148,7 @@ function callBelongsToEntity(
   return false;
 }
 
-function extractIdentityExpression(
-  call: ts.CallExpression,
-  sf: ts.SourceFile,
-): string | undefined {
+function extractIdentityExpression(call: ts.CallExpression, sf: ts.SourceFile): string | undefined {
   for (const arg of call.arguments) {
     if (!ts.isObjectLiteralExpression(arg)) continue;
     const id = identityFromObjectLiteral(arg, sf);
@@ -275,11 +258,7 @@ function bindingTypeInScope(
       }
       if (ts.isObjectBindingPattern(p.name)) {
         for (const el of p.name.elements) {
-          if (
-            ts.isBindingElement(el) &&
-            ts.isIdentifier(el.name) &&
-            el.name.text === name
-          ) {
+          if (ts.isBindingElement(el) && ts.isIdentifier(el.name) && el.name.text === name) {
             // Only inline object types prove a property type. Named props types
             // (e.g. TaskCardProps) are opaque — do not treat them as the value type.
             if (p.type && ts.isTypeLiteralNode(p.type)) {
@@ -337,11 +316,7 @@ function bindingNameInScope(
       if (ts.isIdentifier(p.name) && p.name.text === name) return true;
       if (ts.isObjectBindingPattern(p.name)) {
         for (const el of p.name.elements) {
-          if (
-            ts.isBindingElement(el) &&
-            ts.isIdentifier(el.name) &&
-            el.name.text === name
-          ) {
+          if (ts.isBindingElement(el) && ts.isIdentifier(el.name) && el.name.text === name) {
             return true;
           }
         }

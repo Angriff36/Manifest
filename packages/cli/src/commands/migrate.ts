@@ -51,7 +51,10 @@ async function loadIRFile(path: string): Promise<IR> {
  * Check if migrations are reversible by analyzing the diff.
  * Returns warnings for potentially destructive operations.
  */
-function checkReversibility(diffReport: Awaited<ReturnType<typeof diffIR>>, migration: Awaited<ReturnType<typeof generateMigration>>): string[] {
+function checkReversibility(
+  diffReport: Awaited<ReturnType<typeof diffIR>>,
+  migration: Awaited<ReturnType<typeof generateMigration>>,
+): string[] {
   const warnings: string[] = [];
 
   // Check for table drops (not reversible)
@@ -66,7 +69,9 @@ function checkReversibility(diffReport: Awaited<ReturnType<typeof diffIR>>, migr
     if (entity.change === 'changed') {
       for (const prop of entity.properties) {
         if (prop.change === 'removed') {
-          warnings.push(`Dropping column '${entity.name}.${prop.name}' will lose data — this is NOT reversible`);
+          warnings.push(
+            `Dropping column '${entity.name}.${prop.name}' will lose data — this is NOT reversible`,
+          );
         }
       }
     }
@@ -76,8 +81,14 @@ function checkReversibility(diffReport: Awaited<ReturnType<typeof diffIR>>, migr
   for (const entity of diffReport.entities) {
     if (entity.change === 'added') {
       for (const prop of entity.properties) {
-        if (prop.change === 'added' && !prop.details?.defaultValue && !prop.details?.modifiers?.to?.includes('optional')) {
-          warnings.push(`Adding required column '${entity.name}.${prop.name}' without default may fail on existing rows`);
+        if (
+          prop.change === 'added' &&
+          !prop.details?.defaultValue &&
+          !prop.details?.modifiers?.to?.includes('optional')
+        ) {
+          warnings.push(
+            `Adding required column '${entity.name}.${prop.name}' without default may fail on existing rows`,
+          );
         }
       }
     }
@@ -119,23 +130,27 @@ function formatMigrationPlan(
 
   if (breakingReport.unacknowledged.length > 0) {
     lines.push('');
-    lines.push(chalk.red('Blocking: ' + breakingReport.unacknowledged.length + ' unacknowledged breaking change(s)'));
+    lines.push(
+      chalk.red(
+        'Blocking: ' + breakingReport.unacknowledged.length + ' unacknowledged breaking change(s)',
+      ),
+    );
     lines.push('Use --force to override (not recommended).');
   }
 
   return lines;
 }
 
-export async function migrateCommand(
-  options: MigrateOptions = {},
-): Promise<void> {
+export async function migrateCommand(options: MigrateOptions = {}): Promise<void> {
   const spinner = createSpinner('Analyzing migration', !options.json);
 
   try {
     // Require either oldIR and newIR, or current IR for comparison
     if (!options.oldIR || !options.newIR) {
       spinner.fail('Both --old-ir and --new-ir are required');
-      console.log(chalk.yellow('Usage: manifest migrate --old-ir <path> --new-ir <path> [options]'));
+      console.log(
+        chalk.yellow('Usage: manifest migrate --old-ir <path> --new-ir <path> [options]'),
+      );
       process.exit(1);
     }
 
@@ -151,9 +166,8 @@ export async function migrateCommand(
     const breakingReport = classifyBreakingChanges(diffReport);
 
     // Check reversibility
-    const reversibilityWarnings = options.checkReversibility !== false
-      ? checkReversibility(diffReport, migration)
-      : [];
+    const reversibilityWarnings =
+      options.checkReversibility !== false ? checkReversibility(diffReport, migration) : [];
 
     // Output handling
     if (options.json) {
@@ -204,10 +218,14 @@ export async function migrateCommand(
     }
 
     if (s.entitiesAdded + s.entitiesRemoved + s.entitiesChanged > 0) {
-      console.log(tableLine('Entities', `+${s.entitiesAdded} -${s.entitiesRemoved} ~${s.entitiesChanged}`));
+      console.log(
+        tableLine('Entities', `+${s.entitiesAdded} -${s.entitiesRemoved} ~${s.entitiesChanged}`),
+      );
     }
     if (s.commandsAdded + s.commandsRemoved + s.commandsChanged > 0) {
-      console.log(tableLine('Commands', `+${s.commandsAdded} -${s.commandsRemoved} ~${s.commandsChanged}`));
+      console.log(
+        tableLine('Commands', `+${s.commandsAdded} -${s.commandsRemoved} ~${s.commandsChanged}`),
+      );
     }
     if (s.storesAdded + s.storesRemoved + s.storesChanged > 0) {
       console.log(tableLine('Stores', `+${s.storesAdded} -${s.storesRemoved} ~${s.storesChanged}`));
@@ -220,7 +238,13 @@ export async function migrateCommand(
     } else {
       console.log(chalk.red('  ' + breakingReport.summary.breaking + ' breaking change(s)'));
       if (breakingReport.unacknowledged.length > 0) {
-        console.log(chalk.red('  ' + breakingReport.unacknowledged.length + ' unacknowledged (blocking unless --force)'));
+        console.log(
+          chalk.red(
+            '  ' +
+              breakingReport.unacknowledged.length +
+              ' unacknowledged (blocking unless --force)',
+          ),
+        );
       }
     }
 
@@ -309,7 +333,6 @@ export async function migrateCommand(
     console.log('  1. Review the migration plan above');
     console.log('  2. Run with --preview to see SQL');
     console.log('  3. Run without --dry-run to apply');
-
   } catch (error) {
     spinner.fail('migrate failed: ' + (error instanceof Error ? error.message : String(error)));
     process.exit(1);

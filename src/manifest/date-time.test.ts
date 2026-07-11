@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  isValidDateString, isValidTimeString,
-  dateOf, timeOf, datetimeOf,
-} from './date-time';
+import { isValidDateString, isValidTimeString, dateOf, timeOf, datetimeOf } from './date-time';
 
 describe('isValidDateString', () => {
   it('accepts valid calendar dates', () => {

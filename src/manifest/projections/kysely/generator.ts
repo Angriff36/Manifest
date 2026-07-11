@@ -99,10 +99,10 @@ function emitPropertyColumn(
   const isArray = prop.type.name === 'array' && prop.type.generic;
   const effectiveTypeName = isArray ? prop.type.generic!.name : prop.type.name;
 
-  const isValueObject = ir.values?.some(v => v.name === effectiveTypeName);
+  const isValueObject = ir.values?.some((v) => v.name === effectiveTypeName);
   const typeOverrides = isValueObject ? undefined : options.typeMappings?.[entity.name];
-  const hasOverride = typeOverrides !== undefined
-    && Object.prototype.hasOwnProperty.call(typeOverrides, prop.name);
+  const hasOverride =
+    typeOverrides !== undefined && Object.prototype.hasOwnProperty.call(typeOverrides, prop.name);
 
   const colType = isValueObject
     ? { tsType: 'unknown' }
@@ -143,13 +143,13 @@ function emitPropertyColumn(
   // modifier contribute.
   const isNullable = isArray
     ? prop.type.nullable
-    : (prop.type.nullable || !prop.modifiers.includes('required'));
+    : prop.type.nullable || !prop.modifiers.includes('required');
 
   // Determine if this column should use Generated<T>
   // Generated<T> is used for columns with database-side defaults:
   // - id columns (auto-generated IDs)
   // - columns with defaultValue
-  const useGenerated = isId || (prop.defaultValue !== undefined);
+  const useGenerated = isId || prop.defaultValue !== undefined;
 
   // Determine if this column should use ColumnType for select/insert/update transforms
   const useColumnType = colType.columnType === true;
@@ -218,7 +218,8 @@ function emitTableInterface(
         const targetEntity = ir.entities.find((e) => e.name === rel.target);
         const targetIdProp = targetEntity?.properties.find((p) => p.name === 'id');
         const fkTsType = targetIdProp
-          ? resolveKyselyColumnType(targetIdProp.type.name, undefined, targetIdProp.name)?.tsType ?? 'string'
+          ? (resolveKyselyColumnType(targetIdProp.type.name, undefined, targetIdProp.name)
+              ?.tsType ?? 'string')
           : 'string';
 
         const refNullable = targetIdProp?.type.nullable ?? false;
@@ -316,7 +317,11 @@ export class KyselyProjection implements ProjectionTarget {
     const dbMappings: string[] = [];
 
     for (const entity of toEmit) {
-      const { interfaceCode, tableName, diagnostics: tableDiags } = emitTableInterface(entity, ir, options);
+      const {
+        interfaceCode,
+        tableName,
+        diagnostics: tableDiags,
+      } = emitTableInterface(entity, ir, options);
       diagnostics.push(...tableDiags);
       if (interfaceCode) {
         tableInterfaces.push(interfaceCode);
@@ -333,9 +338,8 @@ export class KyselyProjection implements ProjectionTarget {
     );
     const needsColumnType = toEmit.some((entity) =>
       entity.properties.some((p) => {
-        const effectiveTypeName = p.type.name === 'array' && p.type.generic
-          ? p.type.generic.name
-          : p.type.name;
+        const effectiveTypeName =
+          p.type.name === 'array' && p.type.generic ? p.type.generic.name : p.type.name;
         return effectiveTypeName === 'date' || effectiveTypeName === 'datetime';
       }),
     );
@@ -366,9 +370,13 @@ export class KyselyProjection implements ProjectionTarget {
     const codeParts: string[] = [header.join('\n')];
 
     if (tableInterfaces.length > 0) {
-      codeParts.push('// ============================================================================');
+      codeParts.push(
+        '// ============================================================================',
+      );
       codeParts.push('// Table interfaces');
-      codeParts.push('// ============================================================================');
+      codeParts.push(
+        '// ============================================================================',
+      );
       codeParts.push('');
       codeParts.push(tableInterfaces.join('\n\n'));
       codeParts.push('');
@@ -376,9 +384,13 @@ export class KyselyProjection implements ProjectionTarget {
 
     // Database interface
     if (dbMappings.length > 0) {
-      codeParts.push('// ============================================================================');
+      codeParts.push(
+        '// ============================================================================',
+      );
       codeParts.push('// Database interface');
-      codeParts.push('// ============================================================================');
+      codeParts.push(
+        '// ============================================================================',
+      );
       codeParts.push('');
       codeParts.push(`export interface ${options.databaseInterfaceName} {`);
       codeParts.push(dbMappings.join('\n'));
@@ -388,13 +400,19 @@ export class KyselyProjection implements ProjectionTarget {
 
     // Factory function
     if (options.emitFactory && toEmit.length > 0) {
-      codeParts.push('// ============================================================================');
+      codeParts.push(
+        '// ============================================================================',
+      );
       codeParts.push('// Kysely instance factory');
-      codeParts.push('// ============================================================================');
+      codeParts.push(
+        '// ============================================================================',
+      );
       codeParts.push('');
       const cls = dialectClassName(dialect);
       const configType = dialectConfigTypeName(dialect);
-      codeParts.push(`export function ${options.factoryFunctionName}(config: ${configType}): Kysely<${options.databaseInterfaceName}> {`);
+      codeParts.push(
+        `export function ${options.factoryFunctionName}(config: ${configType}): Kysely<${options.databaseInterfaceName}> {`,
+      );
       codeParts.push(`  return new Kysely<${options.databaseInterfaceName}>({`);
       codeParts.push(`    dialect: new ${cls}(config),`);
       codeParts.push(`  });`);

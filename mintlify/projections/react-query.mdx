@@ -1,7 +1,7 @@
 ---
-title: "React Query hooks projection"
-sidebarTitle: "React Query"
-description: "Generate typed TanStack Query hooks and a QueryClient provider from Manifest IR, with automatic cache invalidation against your generated API surfaces."
+title: 'React Query hooks projection'
+sidebarTitle: 'React Query'
+description: 'Generate typed TanStack Query hooks and a QueryClient provider from Manifest IR, with automatic cache invalidation against your generated API surfaces.'
 ---
 
 The React Query projection generates typed [TanStack Query](https://tanstack.com/query) hooks and a `QueryClient` provider from compiled Manifest IR. Reach for it when you are building a React front end against the [Next.js](/integration/nextjs), [Express](/projections/express), or [Hono](/projections/hono) API surfaces and want deterministic, typed data-fetching hooks with automatic cache invalidation rather than hand-written `useQuery`/`useMutation` calls.
@@ -52,7 +52,9 @@ Two further options keep the hooks aligned with the route surface they call:
 - `dateSerialization` (default `'date'`, or `'iso-string'`) controls whether `date`/`datetime` props in the inlined types are `Date` or `string`. Non-breaking.
 
 <Warning>
-`routeCasing` **must match the [Next.js projection's](/integration/nextjs) `routeCasing`** so the hooks call the routes that actually exist. `'lowercase'` flattens `PrepTask` → `preptask`; `'kebab-case'` → `prep-task`, etc.
+  `routeCasing` **must match the [Next.js projection's](/integration/nextjs) `routeCasing`** so the
+  hooks call the routes that actually exist. `'lowercase'` flattens `PrepTask` → `preptask`;
+  `'kebab-case'` → `prep-task`, etc.
 </Warning>
 
 ```ts
@@ -65,7 +67,12 @@ const result = projection.generate(ir, {
 ## Notes & limitations
 
 <Warning>
-Two declared options are currently inert. `optimisticUpdates` is accepted and normalized but is never read during generation — the generated mutation hooks use a cache-invalidation strategy (`invalidateQueries`) only, with no optimistic update helpers emitted, despite the module's header comment mentioning them. `typesImportPath` is likewise accepted but unused; entity and command-input types are inlined directly into the hooks file rather than imported, so the hooks module is fully self-contained.
+  Two declared options are currently inert. `optimisticUpdates` is accepted and normalized but is
+  never read during generation — the generated mutation hooks use a cache-invalidation strategy
+  (`invalidateQueries`) only, with no optimistic update helpers emitted, despite the module's header
+  comment mentioning them. `typesImportPath` is likewise accepted but unused; entity and
+  command-input types are inlined directly into the hooks file rather than imported, so the hooks
+  module is fully self-contained.
 </Warning>
 
 There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only; to emit React Query hooks, invoke the projection programmatically through `getProjection('react-query')` as shown above.

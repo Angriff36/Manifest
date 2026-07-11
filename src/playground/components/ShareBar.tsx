@@ -13,7 +13,15 @@ interface ShareBarProps {
   onToggleRuntime: () => void;
 }
 
-export function ShareBar({ source, onSelectExample, compileMs, hasErrors, errorCount, runtimeOpen, onToggleRuntime }: ShareBarProps) {
+export function ShareBar({
+  source,
+  onSelectExample,
+  compileMs,
+  hasErrors,
+  errorCount,
+  runtimeOpen,
+  onToggleRuntime,
+}: ShareBarProps) {
   const [copied, setCopied] = useState(false);
   const [exOpen, setExOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -77,9 +85,7 @@ export function ShareBar({ source, onSelectExample, compileMs, hasErrors, errorC
           <button
             onClick={onToggleRuntime}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors ${
-              runtimeOpen
-                ? 'bg-sky-600 text-white'
-                : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+              runtimeOpen ? 'bg-sky-600 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
             }`}
           >
             <Terminal size={13} />
@@ -92,14 +98,20 @@ export function ShareBar({ source, onSelectExample, compileMs, hasErrors, errorC
             >
               <BookOpen size={13} />
               Examples
-              <ChevronDown size={12} className={`transition-transform ${exOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                size={12}
+                className={`transition-transform ${exOpen ? 'rotate-180' : ''}`}
+              />
             </button>
             {exOpen && (
               <div className="absolute right-0 top-full mt-1 w-72 bg-gray-800 rounded-lg shadow-xl border border-gray-700 overflow-hidden z-50">
                 {examples.map((ex, i) => (
                   <button
                     key={i}
-                    onClick={() => { onSelectExample(ex.code); setExOpen(false); }}
+                    onClick={() => {
+                      onSelectExample(ex.code);
+                      setExOpen(false);
+                    }}
                     className="w-full px-3 py-2.5 text-left hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-0"
                   >
                     <div className="font-medium text-white text-xs">{ex.name}</div>

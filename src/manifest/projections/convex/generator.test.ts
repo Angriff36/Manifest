@@ -62,7 +62,12 @@ function entity(
   } as IREntity;
 }
 
-function prop(name: string, typeName: string, modifiers: IRProperty['modifiers'] = [], nullable = false): IRProperty {
+function prop(
+  name: string,
+  typeName: string,
+  modifiers: IRProperty['modifiers'] = [],
+  nullable = false,
+): IRProperty {
   return { name, type: { name: typeName, nullable }, modifiers };
 }
 
@@ -108,7 +113,7 @@ describe('ConvexProjection — emission scaffolding', () => {
 
   it('warns and emits an empty schema when there are no persistent entities', () => {
     const res = generate(emptyIR());
-    expect(res.diagnostics.some(d => d.code === 'CONVEX_EMPTY_SCHEMA')).toBe(true);
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_EMPTY_SCHEMA')).toBe(true);
     expect(res.artifacts[0].code).toContain('export default defineSchema({');
   });
 
@@ -150,8 +155,12 @@ describe('ConvexProjection — type mapping', () => {
   });
 
   it('lets a per-property typeMappings override opt back into lossless transport', () => {
-    expect(oneFieldSchema('money', { typeMappings: { T: { f: 'v.string()' } } })).toContain('f: v.string()');
-    expect(oneFieldSchema('bigint', { typeMappings: { T: { f: 'v.int64()' } } })).toContain('f: v.int64()');
+    expect(oneFieldSchema('money', { typeMappings: { T: { f: 'v.string()' } } })).toContain(
+      'f: v.string()',
+    );
+    expect(oneFieldSchema('bigint', { typeMappings: { T: { f: 'v.int64()' } } })).toContain(
+      'f: v.int64()',
+    );
   });
 
   it('maps temporal types to v.number() (epoch ms)', () => {
@@ -169,7 +178,7 @@ describe('ConvexProjection — type mapping', () => {
     ir.entities = [entity('T', { properties: [prop('f', 'number', ['required'])] })];
     ir.stores = [durableStore('T')];
     const res = generate(ir);
-    expect(res.diagnostics.some(d => d.code === 'CONVEX_AMBIGUOUS_NUMBER')).toBe(true);
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_AMBIGUOUS_NUMBER')).toBe(true);
   });
 
   it('hard-errors on unknown type with no override', () => {
@@ -177,7 +186,7 @@ describe('ConvexProjection — type mapping', () => {
     ir.entities = [entity('T', { properties: [prop('f', 'mystery', ['required'])] })];
     ir.stores = [durableStore('T')];
     const res = generate(ir);
-    expect(res.diagnostics.some(d => d.code === 'CONVEX_UNKNOWN_TYPE')).toBe(true);
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_UNKNOWN_TYPE')).toBe(true);
   });
 
   it('honors a per-property typeMappings override', () => {
@@ -187,9 +196,17 @@ describe('ConvexProjection — type mapping', () => {
 
   it('wraps array<T> in v.array(...)', () => {
     const ir = emptyIR();
-    ir.entities = [entity('T', {
-      properties: [{ name: 'tags', type: { name: 'array', nullable: false, generic: { name: 'string', nullable: false } }, modifiers: ['required'] }],
-    })];
+    ir.entities = [
+      entity('T', {
+        properties: [
+          {
+            name: 'tags',
+            type: { name: 'array', nullable: false, generic: { name: 'string', nullable: false } },
+            modifiers: ['required'],
+          },
+        ],
+      }),
+    ];
     ir.stores = [durableStore('T')];
     expect(schemaCode(ir)).toContain('tags: v.array(v.string())');
   });
@@ -202,7 +219,9 @@ describe('ConvexProjection — type mapping', () => {
 describe('ConvexProjection — modifiers and identity', () => {
   it('wraps non-required fields in v.optional()', () => {
     const ir = emptyIR();
-    ir.entities = [entity('T', { properties: [prop('a', 'string', ['required']), prop('b', 'string', [])] })];
+    ir.entities = [
+      entity('T', { properties: [prop('a', 'string', ['required']), prop('b', 'string', [])] }),
+    ];
     ir.stores = [durableStore('T')];
     const code = schemaCode(ir);
     expect(code).toContain('a: v.string()');
@@ -218,7 +237,11 @@ describe('ConvexProjection — modifiers and identity', () => {
 
   it('drops the IR id property (Convex _id is identity)', () => {
     const ir = emptyIR();
-    ir.entities = [entity('T', { properties: [prop('id', 'string', ['required']), prop('name', 'string', ['required'])] })];
+    ir.entities = [
+      entity('T', {
+        properties: [prop('id', 'string', ['required']), prop('name', 'string', ['required'])],
+      }),
+    ];
     ir.stores = [durableStore('T')];
     const code = schemaCode(ir);
     expect(code).not.toMatch(/\bid: v\./);
@@ -228,7 +251,14 @@ describe('ConvexProjection — modifiers and identity', () => {
   it('never emits computed properties as fields', () => {
     const ir = emptyIR();
     const e = entity('T', { properties: [prop('a', 'int', ['required'])] });
-    e.computedProperties = [{ name: 'derived', type: { name: 'int', nullable: false }, expression: { kind: 'identifier', name: 'a' }, dependencies: ['a'] }];
+    e.computedProperties = [
+      {
+        name: 'derived',
+        type: { name: 'int', nullable: false },
+        expression: { kind: 'identifier', name: 'a' },
+        dependencies: ['a'],
+      },
+    ];
     ir.entities = [e];
     ir.stores = [durableStore('T')];
     expect(schemaCode(ir)).not.toContain('derived');
@@ -279,11 +309,22 @@ describe('ConvexProjection — enums', () => {
 describe('ConvexProjection — references and indexes', () => {
   it('emits v.id(targetTable) for belongsTo using the non-tenant FK column', () => {
     const ir = emptyIR();
-    ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
+    ir.tenant = {
+      property: 'tenantId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
     ir.entities = [
       entity('Child', {
         properties: [prop('tenantId', 'string', ['required'])],
-        relationships: [{ name: 'parent', kind: 'belongsTo', target: 'Parent', foreignKey: { fields: ['tenantId', 'parentId'], references: ['tenantId', 'id'] } }],
+        relationships: [
+          {
+            name: 'parent',
+            kind: 'belongsTo',
+            target: 'Parent',
+            foreignKey: { fields: ['tenantId', 'parentId'], references: ['tenantId', 'id'] },
+          },
+        ],
       }),
       entity('Parent', { properties: [prop('name', 'string', ['required'])] }),
     ];
@@ -295,12 +336,26 @@ describe('ConvexProjection — references and indexes', () => {
 
   it('retypes an explicit FK-column property to v.id(targetTable) in convexId mode', () => {
     const ir = emptyIR();
-    ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
+    ir.tenant = {
+      property: 'tenantId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
     ir.entities = [
       entity('Child', {
         // FK column declared as an explicit string property (capsule's IR shape)
-        properties: [prop('tenantId', 'string', ['required']), prop('parentId', 'uuid', ['required'])],
-        relationships: [{ name: 'parent', kind: 'belongsTo', target: 'Parent', foreignKey: { fields: ['tenantId', 'parentId'], references: ['tenantId', 'id'] } }],
+        properties: [
+          prop('tenantId', 'string', ['required']),
+          prop('parentId', 'uuid', ['required']),
+        ],
+        relationships: [
+          {
+            name: 'parent',
+            kind: 'belongsTo',
+            target: 'Parent',
+            foreignKey: { fields: ['tenantId', 'parentId'], references: ['tenantId', 'id'] },
+          },
+        ],
       }),
       entity('Parent', { properties: [prop('name', 'string', ['required'])] }),
     ];
@@ -317,7 +372,14 @@ describe('ConvexProjection — references and indexes', () => {
     ir.entities = [
       entity('Child', {
         properties: [prop('parentId', 'uuid', ['required'])],
-        relationships: [{ name: 'parent', kind: 'belongsTo', target: 'Parent', foreignKey: { fields: ['parentId'] } }],
+        relationships: [
+          {
+            name: 'parent',
+            kind: 'belongsTo',
+            target: 'Parent',
+            foreignKey: { fields: ['parentId'] },
+          },
+        ],
       }),
       entity('Parent', { properties: [prop('name', 'string', ['required'])] }),
     ];
@@ -330,7 +392,11 @@ describe('ConvexProjection — references and indexes', () => {
   it('emits v.string() references under referenceMode stringId', () => {
     const ir = emptyIR();
     ir.entities = [
-      entity('Child', { relationships: [{ name: 'parent', kind: 'ref', target: 'Parent', foreignKey: { fields: ['parentId'] } }] }),
+      entity('Child', {
+        relationships: [
+          { name: 'parent', kind: 'ref', target: 'Parent', foreignKey: { fields: ['parentId'] } },
+        ],
+      }),
       entity('Parent', { properties: [prop('name', 'string', ['required'])] }),
     ];
     ir.stores = [durableStore('Child'), durableStore('Parent')];
@@ -340,8 +406,19 @@ describe('ConvexProjection — references and indexes', () => {
 
   it('emits a by_<col> index for indexed properties and the tenant column', () => {
     const ir = emptyIR();
-    ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
-    ir.entities = [entity('T', { properties: [prop('tenantId', 'string', ['required']), prop('sku', 'string', ['required', 'indexed'])] })];
+    ir.tenant = {
+      property: 'tenantId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
+    ir.entities = [
+      entity('T', {
+        properties: [
+          prop('tenantId', 'string', ['required']),
+          prop('sku', 'string', ['required', 'indexed']),
+        ],
+      }),
+    ];
     ir.stores = [durableStore('T')];
     const code = schemaCode(ir);
     expect(code).toContain('.index("by_sku", ["sku"])');
@@ -351,13 +428,24 @@ describe('ConvexProjection — references and indexes', () => {
   it('emits consumer-supplied composite indexes and an info diag for referential actions', () => {
     const ir = emptyIR();
     ir.entities = [
-      entity('Child', { properties: [prop('a', 'string', ['required'])], relationships: [{ name: 'parent', kind: 'belongsTo', target: 'Parent', foreignKey: { fields: ['parentId'] }, onDelete: 'cascade' }] }),
+      entity('Child', {
+        properties: [prop('a', 'string', ['required'])],
+        relationships: [
+          {
+            name: 'parent',
+            kind: 'belongsTo',
+            target: 'Parent',
+            foreignKey: { fields: ['parentId'] },
+            onDelete: 'cascade',
+          },
+        ],
+      }),
       entity('Parent', { properties: [prop('name', 'string', ['required'])] }),
     ];
     ir.stores = [durableStore('Child'), durableStore('Parent')];
     const res = generate(ir, { indexes: { Child: [['a', 'parentId']] } });
     expect(res.artifacts[0].code).toContain('.index("by_a_parentId", ["a", "parentId"])');
-    expect(res.diagnostics.some(d => d.code === 'CONVEX_REFERENTIAL_ACTION_DEFERRED')).toBe(true);
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_REFERENTIAL_ACTION_DEFERRED')).toBe(true);
   });
 });
 
@@ -368,7 +456,10 @@ describe('ConvexProjection — references and indexes', () => {
 describe('ConvexProjection — naming and determinism', () => {
   it('defaults table names to camelCase + pluralized (Convex idiom)', () => {
     const ir = emptyIR();
-    ir.entities = [entity('CateringEvent', { properties: [prop('a', 'string', ['required'])] }), entity('Dish', { properties: [prop('a', 'string', ['required'])] })];
+    ir.entities = [
+      entity('CateringEvent', { properties: [prop('a', 'string', ['required'])] }),
+      entity('Dish', { properties: [prop('a', 'string', ['required'])] }),
+    ];
     ir.stores = [durableStore('CateringEvent'), durableStore('Dish')];
     const code = schemaCode(ir);
     expect(code).toContain('cateringEvents: defineTable');
@@ -379,13 +470,17 @@ describe('ConvexProjection — naming and determinism', () => {
     const ir = emptyIR();
     ir.entities = [entity('CateringEvent', { properties: [prop('a', 'string', ['required'])] })];
     ir.stores = [durableStore('CateringEvent')];
-    expect(schemaCode(ir, { tableMappings: { CateringEvent: 'events' } })).toContain('events: defineTable');
+    expect(schemaCode(ir, { tableMappings: { CateringEvent: 'events' } })).toContain(
+      'events: defineTable',
+    );
   });
 
   it('is deterministic: identical input → byte-identical output', () => {
     const build = () => {
       const ir = emptyIR();
-      ir.entities = [entity('T', { properties: [prop('a', 'string', ['required']), prop('b', 'int', [])] })];
+      ir.entities = [
+        entity('T', { properties: [prop('a', 'string', ['required']), prop('b', 'int', [])] }),
+      ];
       ir.stores = [durableStore('T')];
       return schemaCode(ir);
     };

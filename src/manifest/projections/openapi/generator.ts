@@ -79,10 +79,13 @@ interface OpenApiOperation {
     required?: boolean;
     description?: string;
   };
-  responses: Record<string, {
-    description: string;
-    content?: Record<string, { schema: JsonSchema }>;
-  }>;
+  responses: Record<
+    string,
+    {
+      description: string;
+      content?: Record<string, { schema: JsonSchema }>;
+    }
+  >;
   security?: Array<Record<string, string[]>> | null;
   deprecated?: boolean;
 }
@@ -170,10 +173,7 @@ function irTypeToJsonSchema(
 /**
  * Map an IR type to a JSON Schema, handling nullable.
  */
-function irTypeToSchema(
-  irType: IRType,
-  valueObjectMap?: Map<string, IRValueObject>,
-): JsonSchema {
+function irTypeToSchema(irType: IRType, valueObjectMap?: Map<string, IRValueObject>): JsonSchema {
   const schema = irTypeToJsonSchema(irType, valueObjectMap);
   if (irType.nullable) {
     // OpenAPI 3.1 uses type arrays for nullable
@@ -212,7 +212,13 @@ function toCamelCase(value: string): string {
 }
 
 function pluralize(name: string): string {
-  if (name.endsWith('s') || name.endsWith('sh') || name.endsWith('ch') || name.endsWith('x') || name.endsWith('z')) {
+  if (
+    name.endsWith('s') ||
+    name.endsWith('sh') ||
+    name.endsWith('ch') ||
+    name.endsWith('x') ||
+    name.endsWith('z')
+  ) {
     return name + 'es';
   }
   if (name.endsWith('y') && !['a', 'e', 'i', 'o', 'u'].includes(name[name.length - 2])) {
@@ -226,11 +232,16 @@ function pluralize(name: string): string {
  */
 function irValueToJson(value: IRValue): unknown {
   switch (value.kind) {
-    case 'string': return value.value;
-    case 'number': return value.value;
-    case 'boolean': return value.value;
-    case 'null': return null;
-    case 'array': return value.elements.map(irValueToJson);
+    case 'string':
+      return value.value;
+    case 'number':
+      return value.value;
+    case 'boolean':
+      return value.value;
+    case 'null':
+      return null;
+    case 'array':
+      return value.elements.map(irValueToJson);
     case 'object': {
       const obj: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(value.properties)) {
@@ -529,7 +540,10 @@ function buildStandardResponses(
   options: OpenApiProjectionOptions,
   entityName?: string,
 ): Record<string, { description: string; content?: Record<string, { schema: JsonSchema }> }> {
-  const responses: Record<string, { description: string; content?: Record<string, { schema: JsonSchema }> }> = {
+  const responses: Record<
+    string,
+    { description: string; content?: Record<string, { schema: JsonSchema }> }
+  > = {
     '401': {
       description: 'Unauthorized — authentication required',
     },
@@ -574,7 +588,8 @@ function deriveSecurityRequirements(
 ): Array<Record<string, string[]>> | undefined {
   if (options.includeAuth === false) return undefined;
   if (options.includePolicySecurity === false) return undefined;
-  if (!options.securitySchemes || Object.keys(options.securitySchemes).length === 0) return undefined;
+  if (!options.securitySchemes || Object.keys(options.securitySchemes).length === 0)
+    return undefined;
 
   // If the entity has policies, operations require security
   if (entity.policies.length > 0 || (entity.defaultPolicies && entity.defaultPolicies.length > 0)) {
@@ -601,7 +616,10 @@ function buildListOperation(
 
   const security = deriveSecurityRequirements(entity, allPolicies, options);
 
-  const responses: Record<string, { description: string; content?: Record<string, { schema: JsonSchema }> }> = {
+  const responses: Record<
+    string,
+    { description: string; content?: Record<string, { schema: JsonSchema }> }
+  > = {
     '200': {
       description: `List of ${entity.name} entities`,
       content: {
@@ -642,7 +660,10 @@ function buildGetOperation(
 
   const security = deriveSecurityRequirements(entity, allPolicies, options);
 
-  const responses: Record<string, { description: string; content?: Record<string, { schema: JsonSchema }> }> = {
+  const responses: Record<
+    string,
+    { description: string; content?: Record<string, { schema: JsonSchema }> }
+  > = {
     '200': {
       description: `A single ${entity.name} entity`,
       content: {
@@ -695,9 +716,7 @@ function buildCommandOperation(
   const commandSegment = toKebabCase(command.name);
   const path = `${basePath}/${segment}/${commandSegment}`;
 
-  const security = entity
-    ? deriveSecurityRequirements(entity, allPolicies, options)
-    : undefined;
+  const security = entity ? deriveSecurityRequirements(entity, allPolicies, options) : undefined;
 
   // Build request body
   const requestSchema = buildCommandRequestSchema(command, valueObjectMap);
@@ -709,7 +728,10 @@ function buildCommandOperation(
       ? { $ref: `#/components/schemas/${entity.name}` }
       : { type: 'object', additionalProperties: true };
 
-  const responses: Record<string, { description: string; content?: Record<string, { schema: JsonSchema }> }> = {
+  const responses: Record<
+    string,
+    { description: string; content?: Record<string, { schema: JsonSchema }> }
+  > = {
     '200': {
       description: `Result of ${command.name} command`,
       content: {
@@ -775,12 +797,11 @@ function buildOpenApiSpec(
 
   // Build value-object lookup so type-mapping functions can emit $ref instead
   // of the generic { type: 'string' } fallback.
-  const valueObjectMap = new Map<string, IRValueObject>(
-    (ir.values ?? []).map(v => [v.name, v]),
-  );
+  const valueObjectMap = new Map<string, IRValueObject>((ir.values ?? []).map((v) => [v.name, v]));
 
   // Build title
-  const title = options.info?.title ??
+  const title =
+    options.info?.title ??
     (ir.modules.length > 0 && ir.modules[0].name
       ? `${toPascalCase(ir.modules[0].name)} API`
       : 'Manifest API');
@@ -820,7 +841,14 @@ function buildOpenApiSpec(
     }
 
     const entity = entityByName.get(command.entity);
-    const cmdOp = buildCommandOperation(command, entity, basePath, options, ir.policies, valueObjectMap);
+    const cmdOp = buildCommandOperation(
+      command,
+      entity,
+      basePath,
+      options,
+      ir.policies,
+      valueObjectMap,
+    );
     if (cmdOp) {
       if (!paths[cmdOp.path]) paths[cmdOp.path] = {};
       paths[cmdOp.path].post = cmdOp.operation;
@@ -831,7 +859,7 @@ function buildOpenApiSpec(
   const schemas: Record<string, JsonSchema> = {};
 
   // Register value object schemas first so entity schemas can reference them
-  for (const vo of (ir.values ?? [])) {
+  for (const vo of ir.values ?? []) {
     schemas[vo.name] = buildValueObjectSchema(vo, valueObjectMap);
   }
 
@@ -880,7 +908,7 @@ function buildOpenApiSpec(
 
   // Global security
   if (options.security && options.security.length > 0) {
-    spec.security = options.security.map(s => ({ [s.ref]: [] }));
+    spec.security = options.security.map((s) => ({ [s.ref]: [] }));
   }
 
   return { spec, diagnostics };
@@ -900,7 +928,8 @@ function buildOpenApiSpec(
  */
 export class OpenApiProjection implements ProjectionTarget {
   readonly name = 'openapi';
-  readonly description = 'OpenAPI 3.1.0 spec generation from Manifest IR entities, commands, and routes';
+  readonly description =
+    'OpenAPI 3.1.0 spec generation from Manifest IR entities, commands, and routes';
   readonly surfaces = SURFACES;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
@@ -926,11 +955,13 @@ export class OpenApiProjection implements ProjectionTarget {
       default:
         return {
           artifacts: [],
-          diagnostics: [{
-            severity: 'error',
-            code: 'UNKNOWN_SURFACE',
-            message: `Unknown surface: "${request.surface}". Available: openapi.spec`,
-          }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'UNKNOWN_SURFACE',
+              message: `Unknown surface: "${request.surface}". Available: openapi.spec`,
+            },
+          ],
         };
     }
   }

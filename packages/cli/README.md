@@ -55,6 +55,7 @@ manifest init --force
 ```
 
 **Questions asked:**
+
 - Framework: Next.js, Remix, Vite, Other
 - Auth provider: Clerk, NextAuth, Custom, None
 - Workspace: Are you using pnpm/yarn workspaces?
@@ -129,6 +130,7 @@ manifest compile
 ```
 
 **Options:**
+
 - `-o, --output <path>` - Output directory or file path (default: `ir/`)
 - `-g, --glob <pattern>` - Glob pattern for multiple files
 - `-d, --diagnostics` - Include diagnostics in output
@@ -154,6 +156,7 @@ manifest generate ir/
 ```
 
 **Options:**
+
 - `-p, --projection <name>` - Projection name: `nextjs`, `ts.types`, `ts.client` (default: `nextjs`)
 - `-s, --surface <name>` - Surface: `route`, `command`, `types`, `client`, `all` (default: `all`)
 - `-o, --output <path>` - Output directory (uses config if set)
@@ -178,6 +181,7 @@ manifest build "modules/**/*.manifest"
 ```
 
 **Options:**
+
 - `-p, --projection <name>` - Projection name (default: `nextjs`)
 - `-s, --surface <name>` - Projection surface (default: `all`)
 - `--ir-output <path>` - IR output directory (uses config if set)
@@ -211,6 +215,7 @@ manifest build modules/ \
 ```
 
 **CLI option priority:**
+
 1. Command-line flags (highest priority)
 2. Config file values
 3. Built-in defaults (lowest priority)
@@ -234,6 +239,7 @@ manifest validate ir/ --schema custom-schema.json
 ```
 
 **Options:**
+
 - `--schema <path>` - Schema path (default: `docs/spec/ir/ir-v1.schema.json`)
 - `--strict` - Fail on warnings
 
@@ -323,6 +329,7 @@ manifest build modules/recipe.manifest \
 ```
 
 This creates:
+
 - `ir/recipe.ir.json` - Compiled IR
 - `apps/api/app/api/recipe/route.ts` - Generated API routes
 
@@ -330,11 +337,11 @@ This creates:
 
 ```typescript
 // apps/api/app/api/recipe/route.ts (GENERATED - DO NOT EDIT)
-import { NextRequest } from "next/server";
-import { database } from "@repo/database";           // ← Workspace import
-import { manifestSuccessResponse, manifestErrorResponse } from "@repo/manifest/response";
-import { createRuntime } from "@repo/manifest/runtime";
-import { auth } from "@repo/auth/server";            // ← Workspace import
+import { NextRequest } from 'next/server';
+import { database } from '@repo/database'; // ← Workspace import
+import { manifestSuccessResponse, manifestErrorResponse } from '@repo/manifest/response';
+import { createRuntime } from '@repo/manifest/runtime';
+import { auth } from '@repo/auth/server'; // ← Workspace import
 
 export async function GET(request: NextRequest) {
   // ... generated code
@@ -362,6 +369,7 @@ export async function POST(request: NextRequest) {
 ### Next.js Projection
 
 Surfaces:
+
 - **route** - Entity GET routes (list, retrieve)
 - **command** - Command POST routes (create, update, delete)
 - **types** - TypeScript type definitions
@@ -392,20 +400,20 @@ Create `manifest.config.yaml` in your project root:
 
 ```yaml
 # Project configuration
-src: "modules/**/*.manifest"
-output: "ir/"
+src: 'modules/**/*.manifest'
+output: 'ir/'
 
 projections:
   nextjs:
-    output: "app/api/"
+    output: 'app/api/'
     options:
-      authProvider: "clerk"
-      databaseImportPath: "@/lib/database"
-      runtimeImportPath: "@/lib/manifest-runtime"
-      responseImportPath: "@/lib/manifest-response"
+      authProvider: 'clerk'
+      databaseImportPath: '@/lib/database'
+      runtimeImportPath: '@/lib/manifest-runtime'
+      responseImportPath: '@/lib/manifest-response'
       includeTenantFilter: true
-      tenantIdProperty: "tenantId"
-      deletedAtProperty: "deletedAt"
+      tenantIdProperty: 'tenantId'
+      deletedAtProperty: 'deletedAt'
 
 dev:
   port: 5173
@@ -418,6 +426,7 @@ test:
 ## Examples
 
 See `docs/examples/` for complete examples:
+
 - Recipe API
 - Task management
 - Multi-tenant SaaS
@@ -440,11 +449,13 @@ Expected result: each command prints the Manifest help text.
 Root cause (fixed in `0.3.10`): direct-run detection compared unresolved normalized paths, which could differ across `node_modules` shim paths and `.pnpm` real targets.
 
 Implementation summary:
+
 - CLI now compares normalized **realpaths** for module and argv entrypoint.
 - On Windows, comparison is case-insensitive.
 - If argv realpath cannot be resolved, fallback bin-context checks allow execution (`manifest`/`index.js` path hints, ESM main-equivalent check).
 
 Note on `init --force`:
+
 - `manifest init --force` is interactive and requires terminal input.
 - In non-interactive/headless shells, it may wait for prompts or exit without rewriting config.
 
@@ -453,6 +464,7 @@ Note on `init --force`:
 If `pnpm exec manifest compile` fails at `packages/cli/dist/index.js` around line `48`, you are likely on a build with duplicate Commander argument declarations.
 
 Fixed behavior:
+
 - Command signatures no longer duplicate args in both `.command(...)` and `.argument(...)`.
 - Action handlers use safe option defaults (`options = {}`).
 - Config access remains null-safe (`config?.output`, `config?.projections?...`).
@@ -464,6 +476,7 @@ pnpm exec manifest --help
 ```
 
 Expected command shapes:
+
 - `compile [options] [source]`
 - `generate [options] <ir>`
 - `build [options] [source]`
@@ -480,6 +493,7 @@ Cannot find module .../dist/manifest/parser imported from .../dist/manifest/ir-c
 you are on a runtime build where ESM relative imports were emitted without `.js` extensions.
 
 Fixed behavior:
+
 - Runtime ESM imports now use explicit `.js` extensions (for example `./parser.js`, `./lexer.js`, `./ir-cache.js`, `./version.js`).
 - Projection registry/builtins exports/imports were also aligned to `.js` specifiers for Node ESM resolution.
 
@@ -511,6 +525,7 @@ manifest compile path/to/your/file.manifest
 ### Generated routes don't work
 
 Check your lib files are set up correctly:
+
 - `lib/manifest-runtime.ts`
 - `lib/database.ts`
 - `lib/manifest-response.ts`

@@ -56,8 +56,7 @@ export class MongoDBOutboxStore implements OutboxStore {
       MongoClient = mod.MongoClient;
     } catch {
       throw new Error(
-        `MongoDBOutboxStore requires 'mongodb' to be installed.\n` +
-        `Run: npm install mongodb`
+        `MongoDBOutboxStore requires 'mongodb' to be installed.\n` + `Run: npm install mongodb`,
       );
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -79,7 +78,7 @@ export class MongoDBOutboxStore implements OutboxStore {
     await this.ensureReady();
     if (entries.length === 0) return;
 
-    const docs = entries.map(entry => ({
+    const docs = entries.map((entry) => ({
       entryId: entry.entryId ?? this.generateId(),
       enqueuedAt: entry.enqueuedAt ?? this.now(),
       event: entry.event,
@@ -120,7 +119,7 @@ export class MongoDBOutboxStore implements OutboxStore {
           $set: { claimed: true, claimedAt },
           $inc: { attempts: 1 },
         },
-        { returnDocument: 'after' }
+        { returnDocument: 'after' },
       );
 
       if (!result) break;
@@ -137,7 +136,7 @@ export class MongoDBOutboxStore implements OutboxStore {
     const deliveredAt = this.now();
     await this.collection.updateMany(
       { entryId: { $in: entryIds } },
-      { $set: { status: 'delivered', claimed: false, deliveredAt } }
+      { $set: { status: 'delivered', claimed: false, deliveredAt } },
     );
   }
 
@@ -148,7 +147,7 @@ export class MongoDBOutboxStore implements OutboxStore {
     const failedAt = this.now();
     await this.collection.updateMany(
       { entryId: { $in: entryIds } },
-      { $set: { status: 'failed', claimed: false, lastError: error, failedAt } }
+      { $set: { status: 'failed', claimed: false, lastError: error, failedAt } },
     );
   }
 
@@ -166,10 +165,9 @@ export class MongoDBOutboxStore implements OutboxStore {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async watch(): Promise<any> {
     await this.ensureReady();
-    return this.collection.watch(
-      [{ $match: { operationType: 'insert' } }],
-      { fullDocument: 'updateLookup' }
-    );
+    return this.collection.watch([{ $match: { operationType: 'insert' } }], {
+      fullDocument: 'updateLookup',
+    });
   }
 
   async close(): Promise<void> {

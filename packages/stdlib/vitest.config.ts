@@ -11,7 +11,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@angriff36/manifest/ir-compiler': path.resolve(__dirname, '../../src/manifest/ir-compiler.ts'),
+      '@angriff36/manifest/ir-compiler': path.resolve(
+        __dirname,
+        '../../src/manifest/ir-compiler.ts',
+      ),
       '@angriff36/manifest/compiler': path.resolve(__dirname, '../../src/manifest/compiler.ts'),
       '@angriff36/manifest/ir': path.resolve(__dirname, '../../src/manifest/ir.ts'),
       '@angriff36/manifest': path.resolve(__dirname, '../../src/manifest/runtime-engine.ts'),

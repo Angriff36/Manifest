@@ -80,8 +80,7 @@ export class RedisOutboxStore implements OutboxStore {
       Redis = mod.Redis;
     } catch {
       throw new Error(
-        `RedisOutboxStore requires 'ioredis' to be installed.\n` +
-        `Run: npm install ioredis`
+        `RedisOutboxStore requires 'ioredis' to be installed.\n` + `Run: npm install ioredis`,
       );
     }
 
@@ -95,11 +94,13 @@ export class RedisOutboxStore implements OutboxStore {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.client = new (Redis as any)(config.url ?? {
-      host: config.host ?? 'localhost',
-      port: config.port ?? 6379,
-      ...options,
-    });
+    this.client = new (Redis as any)(
+      config.url ?? {
+        host: config.host ?? 'localhost',
+        port: config.port ?? 6379,
+        ...options,
+      },
+    );
 
     // Wait for connection
     await new Promise<void>((resolve, reject) => {
@@ -109,12 +110,7 @@ export class RedisOutboxStore implements OutboxStore {
 
     // Create consumer group if it doesn't exist
     try {
-      await this.client.xgroup_create(
-        this.streamKey,
-        this.consumerGroup,
-        '0',
-        { MKSTREAM: true }
-      );
+      await this.client.xgroup_create(this.streamKey, this.consumerGroup, '0', { MKSTREAM: true });
     } catch (err: unknown) {
       // Ignore BUSYGROUP error — group already exists
       const redisErr = err as { message?: string };
@@ -182,18 +178,16 @@ export class RedisOutboxStore implements OutboxStore {
       0,
       'STREAMS',
       this.streamKey,
-      '>' // '>' means new entries not yet delivered to other consumers
+      '>', // '>' means new entries not yet delivered to other consumers
     );
 
     if (!results || results.length === 0) return [];
 
     // Parse results: XREADGROUP returns [[streamName, [[entryId, fields...]]]]
-     
+
     for (const result of results) {
-       
       for (const [streamId, entries] of result) {
         if (streamId === this.streamKey) {
-           
           for (const [id, fields] of entries) {
             out.push(this.streamFieldsToEntry(id, fields as Record<string, string>));
           }
@@ -212,7 +206,7 @@ export class RedisOutboxStore implements OutboxStore {
         'claimedAt',
         now.toString(),
         'attempts',
-        (entry.attempts + 1).toString()
+        (entry.attempts + 1).toString(),
       );
     }
 
@@ -251,7 +245,7 @@ export class RedisOutboxStore implements OutboxStore {
         'status',
         'failed',
         'lastError',
-        error
+        error,
       );
     }
   }
@@ -289,7 +283,6 @@ export class RedisOutboxStore implements OutboxStore {
     const info: any = await this.client.xinfo('CONSUMERS', this.streamKey, this.consumerGroup);
     const result: Record<string, number> = {};
 
-     
     for (const consumer of info) {
       const name = consumer.name as string;
       const pending = consumer.pending as number;
@@ -313,10 +306,7 @@ export class RedisOutboxStore implements OutboxStore {
     await this.client.quit();
   }
 
-  private streamFieldsToEntry(
-    streamId: string,
-    fields: Record<string, string>
-  ): OutboxEntry {
+  private streamFieldsToEntry(streamId: string, fields: Record<string, string>): OutboxEntry {
     const entry: OutboxEntry = {
       entryId: fields.entryId,
       enqueuedAt: Number(fields.enqueuedAt),

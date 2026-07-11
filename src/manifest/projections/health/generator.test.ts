@@ -157,9 +157,9 @@ describe('HealthCheckProjection', () => {
       expect(code).toContain('function checkMemoryStore()');
       expect(code).toContain('function checkPostgresStore()');
       // Memory stores return healthy immediately
-      expect(code).toContain("memory store is always available");
+      expect(code).toContain('memory store is always available');
       // Postgres stores have try/catch with TODO
-      expect(code).toContain("postgres store connected");
+      expect(code).toContain('postgres store connected');
     });
 
     it('generates outbox check only when postgres/supabase stores exist', () => {
@@ -224,7 +224,7 @@ describe('HealthCheckProjection', () => {
       const code = firstCode(result);
 
       expect(code).toContain('function checkLocalStorageStore()');
-      expect(code).toContain("localStorage store is always available");
+      expect(code).toContain('localStorage store is always available');
     });
 
     it('handles no stores gracefully', () => {
@@ -515,7 +515,7 @@ describe('HealthCheckProjection', () => {
 
       expect(code).toContain('function checkDurableStore()');
       // durable is not a memory target, should have try/catch
-      expect(code).toContain("durable store connected");
+      expect(code).toContain('durable store connected');
       // durable is not an outbox target, no outbox check
       expect(code).not.toContain('function checkOutbox()');
     });

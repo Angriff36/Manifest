@@ -136,9 +136,7 @@ function findDanglingImports(
 ): DanglingImport[] {
   const artifacts = collectArtifacts(projectionName, options);
   const emitted = new Set(
-    artifacts
-      .filter((a) => a.pathHint)
-      .map((a) => stripExt(a.pathHint as string)),
+    artifacts.filter((a) => a.pathHint).map((a) => stripExt(a.pathHint as string)),
   );
 
   const dangling: DanglingImport[] = [];
@@ -221,7 +219,11 @@ describe('cross-projection companion import resolution', () => {
   it('remix — tenantProvider (emits + imports the tenant companion)', () => {
     expect(
       findDanglingImports('remix', 'remix', {
-        tenantProvider: { importPath: '~/utils/tenant', functionName: 'resolveTenantId', lookupKey: 'userId' },
+        tenantProvider: {
+          importPath: '~/utils/tenant',
+          functionName: 'resolveTenantId',
+          lookupKey: 'userId',
+        },
       }),
     ).toEqual([]);
   });
@@ -229,7 +231,11 @@ describe('cross-projection companion import resolution', () => {
   it('sveltekit — tenantProvider (emits + imports the tenant companion)', () => {
     expect(
       findDanglingImports('sveltekit', 'sveltekit', {
-        tenantProvider: { importPath: '$lib/server/tenant', functionName: 'resolveTenantId', lookupKey: 'userId' },
+        tenantProvider: {
+          importPath: '$lib/server/tenant',
+          functionName: 'resolveTenantId',
+          lookupKey: 'userId',
+        },
       }),
     ).toEqual([]);
   });
@@ -266,7 +272,10 @@ describe('cross-projection companion import resolution — webhook surfaces', ()
   });
 
   /** Walk every surface with the webhook IR and return dangling local imports. */
-  function danglingForWebhookIr(projectionName: string, framework: CompanionFramework): DanglingImport[] {
+  function danglingForWebhookIr(
+    projectionName: string,
+    framework: CompanionFramework,
+  ): DanglingImport[] {
     const projection = getProjection(projectionName);
     expect(projection, `projection "${projectionName}" is registered`).toBeDefined();
 
@@ -287,14 +296,23 @@ describe('cross-projection companion import resolution — webhook surfaces', ()
       }
     }
 
-    const emitted = new Set(artifacts.filter((a) => a.pathHint).map((a) => stripExt(a.pathHint as string)));
+    const emitted = new Set(
+      artifacts.filter((a) => a.pathHint).map((a) => stripExt(a.pathHint as string)),
+    );
     const dangling: DanglingImport[] = [];
     for (const artifact of artifacts) {
       for (const specifier of importSpecifiers(artifact.code)) {
-        const resolved = resolveLocalImportPathHint(specifier, { framework, importerPathHint: artifact.pathHint });
+        const resolved = resolveLocalImportPathHint(specifier, {
+          framework,
+          importerPathHint: artifact.pathHint,
+        });
         if (resolved === null) continue;
         if (!emitted.has(stripExt(resolved))) {
-          dangling.push({ importer: artifact.pathHint ?? artifact.id, specifier, resolvedPathHint: resolved });
+          dangling.push({
+            importer: artifact.pathHint ?? artifact.id,
+            specifier,
+            resolvedPathHint: resolved,
+          });
         }
       }
     }
@@ -303,19 +321,28 @@ describe('cross-projection companion import resolution — webhook surfaces', ()
 
   it('nextjs webhook route resolves createManifestRuntime to the emitted companion', () => {
     // Sanity: the webhook surface actually emitted a route for this IR.
-    const webhookArtifacts = getProjection('nextjs')!.generate(webhookIr, { surface: 'nextjs.webhook', options: {} }).artifacts;
+    const webhookArtifacts = getProjection('nextjs')!.generate(webhookIr, {
+      surface: 'nextjs.webhook',
+      options: {},
+    }).artifacts;
     expect(webhookArtifacts.length).toBeGreaterThan(0);
     expect(danglingForWebhookIr('nextjs', 'nextjs')).toEqual([]);
   });
 
   it('hono webhook route resolves ./lib/manifest-runtime to the emitted companion', () => {
-    const webhookArtifacts = getProjection('hono')!.generate(webhookIr, { surface: 'hono.webhooks', options: {} }).artifacts;
+    const webhookArtifacts = getProjection('hono')!.generate(webhookIr, {
+      surface: 'hono.webhooks',
+      options: {},
+    }).artifacts;
     expect(webhookArtifacts.length).toBeGreaterThan(0);
     expect(danglingForWebhookIr('hono', 'hono')).toEqual([]);
   });
 
   it('express webhook route resolves ./lib/manifest-runtime to the emitted companion', () => {
-    const webhookArtifacts = getProjection('express')!.generate(webhookIr, { surface: 'express.webhooks', options: {} }).artifacts;
+    const webhookArtifacts = getProjection('express')!.generate(webhookIr, {
+      surface: 'express.webhooks',
+      options: {},
+    }).artifacts;
     expect(webhookArtifacts.length).toBeGreaterThan(0);
     expect(danglingForWebhookIr('express', 'express')).toEqual([]);
   });

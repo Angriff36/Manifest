@@ -44,5 +44,5 @@ export const ES_TYPE_MAPPING: Readonly<Record<string, ESFieldType>> = Object.fre
 /** Types that the generator will refuse to map (produces diagnostic). */
 export const UNSUPPORTED_ES_TYPES: ReadonlySet<string> = new Set([
   'number', // ambiguous — see file header
-  'bytes',  // binary — not representable as a search field
+  'bytes', // binary — not representable as a search field
 ]);

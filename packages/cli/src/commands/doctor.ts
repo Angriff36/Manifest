@@ -68,19 +68,29 @@ function summarizeDiff(diff: EntitySurfaceDiff): { errors: string[]; warnings: s
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  if (diff.entityMissingInSource) errors.push(`Entity '${diff.entityName}' not found in source manifests.`);
+  if (diff.entityMissingInSource)
+    errors.push(`Entity '${diff.entityName}' not found in source manifests.`);
   if (diff.entityMissingInIR) errors.push(`Entity '${diff.entityName}' not found in compiled IR.`);
-  if (diff.commands.missingInIR.length > 0) errors.push(`Commands missing in IR: ${diff.commands.missingInIR.join(', ')}`);
-  if (diff.commands.extraInIR.length > 0) warnings.push(`Extra commands in IR: ${diff.commands.extraInIR.join(', ')}`);
-  if (diff.properties.missingInIR.length > 0) errors.push(`Properties missing in IR: ${diff.properties.missingInIR.join(', ')}`);
-  if (diff.properties.extraInIR.length > 0) warnings.push(`Extra properties in IR: ${diff.properties.extraInIR.join(', ')}`);
-  if (diff.emits.missingInIR.length > 0) warnings.push(`Emitted events missing in IR: ${diff.emits.missingInIR.join(', ')}`);
-  if (diff.emits.extraInIR.length > 0) warnings.push(`Extra emitted events in IR: ${diff.emits.extraInIR.join(', ')}`);
+  if (diff.commands.missingInIR.length > 0)
+    errors.push(`Commands missing in IR: ${diff.commands.missingInIR.join(', ')}`);
+  if (diff.commands.extraInIR.length > 0)
+    warnings.push(`Extra commands in IR: ${diff.commands.extraInIR.join(', ')}`);
+  if (diff.properties.missingInIR.length > 0)
+    errors.push(`Properties missing in IR: ${diff.properties.missingInIR.join(', ')}`);
+  if (diff.properties.extraInIR.length > 0)
+    warnings.push(`Extra properties in IR: ${diff.properties.extraInIR.join(', ')}`);
+  if (diff.emits.missingInIR.length > 0)
+    warnings.push(`Emitted events missing in IR: ${diff.emits.missingInIR.join(', ')}`);
+  if (diff.emits.extraInIR.length > 0)
+    warnings.push(`Extra emitted events in IR: ${diff.emits.extraInIR.join(', ')}`);
 
   return { errors, warnings };
 }
 
-function filterDuplicates(entries: DuplicateReportEntry[], entityName?: string): DuplicateReportEntry[] {
+function filterDuplicates(
+  entries: DuplicateReportEntry[],
+  entityName?: string,
+): DuplicateReportEntry[] {
   if (!entityName) return entries;
   const needle = entityName.toLowerCase();
   return entries.filter((e) => {
@@ -107,7 +117,10 @@ async function buildEntityContext(entityName: string, options: CommonOptions) {
   return { cwd, sourceInspection, irInspection, sourceDefs, irDefs, source, ir, diff };
 }
 
-export async function inspectEntityCommand(entityName: string, options: InspectEntityOptions = {}): Promise<void> {
+export async function inspectEntityCommand(
+  entityName: string,
+  options: InspectEntityOptions = {},
+): Promise<void> {
   const spinner = createSpinner(`Inspecting entity ${entityName}`, !options.json);
   try {
     const ctx = await buildEntityContext(entityName, options);
@@ -160,10 +173,21 @@ export async function inspectEntityCommand(entityName: string, options: InspectE
         console.log(`  - ${formatRelative(ctx.cwd, f.file)}${f.line ? `:${f.line}` : ''}`);
       }
     }
-    console.log(tableLine('Commands', ctx.source.commands.length ? ctx.source.commands.join(', ') : '(none)'));
-    console.log(tableLine('Properties', ctx.source.properties.length ? ctx.source.properties.join(', ') : '(none)'));
-    console.log(tableLine('Emits/events', ctx.source.emits.length ? ctx.source.emits.join(', ') : '(none)'));
-    console.log(tableLine('Policies', ctx.source.policies.length ? ctx.source.policies.join(', ') : '(none)'));
+    console.log(
+      tableLine('Commands', ctx.source.commands.length ? ctx.source.commands.join(', ') : '(none)'),
+    );
+    console.log(
+      tableLine(
+        'Properties',
+        ctx.source.properties.length ? ctx.source.properties.join(', ') : '(none)',
+      ),
+    );
+    console.log(
+      tableLine('Emits/events', ctx.source.emits.length ? ctx.source.emits.join(', ') : '(none)'),
+    );
+    console.log(
+      tableLine('Policies', ctx.source.policies.length ? ctx.source.policies.join(', ') : '(none)'),
+    );
 
     if (ctx.source.parserFindings.length > 0 || ctx.source.parserErrors.length > 0) {
       console.log('');
@@ -177,7 +201,9 @@ export async function inspectEntityCommand(entityName: string, options: InspectE
         console.log(`  [${(err.severity || 'error').toUpperCase()}] ${err.message}${at}`);
       }
       if (ctx.source.parserErrors.length > 10) {
-        console.log(chalk.gray(`  ... ${ctx.source.parserErrors.length - 10} more parser diagnostics`));
+        console.log(
+          chalk.gray(`  ... ${ctx.source.parserErrors.length - 10} more parser diagnostics`),
+        );
       }
     }
 
@@ -189,13 +215,21 @@ export async function inspectEntityCommand(entityName: string, options: InspectE
       const p = f.provenance || {};
       const compiledAt = typeof p.compiledAt === 'string' ? p.compiledAt : 'n/a';
       const compilerVersion = typeof p.compilerVersion === 'string' ? p.compilerVersion : 'n/a';
-      console.log(`  - ${formatRelative(ctx.cwd, f.file)} (compiledAt=${compiledAt}, compilerVersion=${compilerVersion})`);
+      console.log(
+        `  - ${formatRelative(ctx.cwd, f.file)} (compiledAt=${compiledAt}, compilerVersion=${compilerVersion})`,
+      );
     }
-    console.log(tableLine('Commands', ctx.ir.commands.length ? ctx.ir.commands.join(', ') : '(none)'));
-    console.log(tableLine('Properties', ctx.ir.properties.length ? ctx.ir.properties.join(', ') : '(none)'));
+    console.log(
+      tableLine('Commands', ctx.ir.commands.length ? ctx.ir.commands.join(', ') : '(none)'),
+    );
+    console.log(
+      tableLine('Properties', ctx.ir.properties.length ? ctx.ir.properties.join(', ') : '(none)'),
+    );
     console.log(tableLine('Emits', ctx.ir.emits.length ? ctx.ir.emits.join(', ') : '(none)'));
     console.log(tableLine('IR events', ctx.ir.events.length ? ctx.ir.events.join(', ') : '(none)'));
-    console.log(tableLine('Policies', ctx.ir.policies.length ? ctx.ir.policies.join(', ') : '(none)'));
+    console.log(
+      tableLine('Policies', ctx.ir.policies.length ? ctx.ir.policies.join(', ') : '(none)'),
+    );
 
     const summary = summarizeDiff(ctx.diff);
     console.log('');
@@ -206,17 +240,26 @@ export async function inspectEntityCommand(entityName: string, options: InspectE
       for (const err of summary.errors) console.log(chalk.red(`  ERROR: ${err}`));
       for (const warn of summary.warnings) console.log(chalk.yellow(`  WARN:  ${warn}`));
       if (ctx.source.commands.length > 0 && ctx.ir.commands.length === 0) {
-        console.log(chalk.red(`  Diagnosis: source defines commands for ${entityName}, but compiled IR has 0 commands. Precompiled IR is likely stale or generated from different sources.`));
+        console.log(
+          chalk.red(
+            `  Diagnosis: source defines commands for ${entityName}, but compiled IR has 0 commands. Precompiled IR is likely stale or generated from different sources.`,
+          ),
+        );
       }
       process.exit(1);
     }
   } catch (error) {
-    spinner.fail(`inspect entity failed: ${error instanceof Error ? error.message : String(error)}`);
+    spinner.fail(
+      `inspect entity failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exit(1);
   }
 }
 
-export async function diffSourceVsIRCommand(entityName: string, options: DiffSourceVsIROptions = {}): Promise<void> {
+export async function diffSourceVsIRCommand(
+  entityName: string,
+  options: DiffSourceVsIROptions = {},
+): Promise<void> {
   const spinner = createSpinner(`Diffing source vs IR for ${entityName}`, !options.json);
   try {
     const ctx = await buildEntityContext(entityName, options);
@@ -251,7 +294,9 @@ export async function diffSourceVsIRCommand(entityName: string, options: DiffSou
 
     if (ctx.diff.hasDrift) process.exit(1);
   } catch (error) {
-    spinner.fail(`diff source-vs-ir failed: ${error instanceof Error ? error.message : String(error)}`);
+    spinner.fail(
+      `diff source-vs-ir failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exit(1);
   }
 }
@@ -265,7 +310,10 @@ export async function duplicatesCommand(options: DuplicatesOptions = {}): Promis
     });
     spinner.stop();
 
-    const entries = filterDuplicates(reports.flatMap((r) => r.entries), options.entity);
+    const entries = filterDuplicates(
+      reports.flatMap((r) => r.entries),
+      options.entity,
+    );
     const suspicious = entries.filter((e) => e.classification === 'suspicious');
 
     const payload = {
@@ -292,7 +340,11 @@ export async function duplicatesCommand(options: DuplicatesOptions = {}): Promis
     console.log(chalk.bold('\nDuplicate / Merge Report'));
     if (reports.length === 0) {
       console.log(chalk.yellow('  No *.merge-report.json files found.'));
-      console.log(chalk.gray('  This is not an error. Duplicate merge visibility is unavailable until a merge report is generated.'));
+      console.log(
+        chalk.gray(
+          '  This is not an error. Duplicate merge visibility is unavailable until a merge report is generated.',
+        ),
+      );
       return;
     }
 
@@ -310,7 +362,9 @@ export async function duplicatesCommand(options: DuplicatesOptions = {}): Promis
       }
       for (const entry of filtered) {
         const color = entry.classification === 'known' ? chalk.yellow : chalk.red;
-        console.log(color(`    [${entry.classification.toUpperCase()}] ${entry.type} ${entry.key}`));
+        console.log(
+          color(`    [${entry.classification.toUpperCase()}] ${entry.type} ${entry.key}`),
+        );
         console.log(`      keptFrom: ${entry.keptFrom || 'n/a'}`);
         console.log(`      droppedFrom: ${entry.droppedFrom || 'n/a'}`);
       }
@@ -330,19 +384,36 @@ export async function duplicatesCommand(options: DuplicatesOptions = {}): Promis
   }
 }
 
-export async function runtimeCheckCommand(entityName: string, commandName: string, options: RuntimeCheckOptions = {}): Promise<void> {
-  const spinner = createSpinner(`Runtime readiness check ${entityName}.${commandName}`, !options.json);
+export async function runtimeCheckCommand(
+  entityName: string,
+  commandName: string,
+  options: RuntimeCheckOptions = {},
+): Promise<void> {
+  const spinner = createSpinner(
+    `Runtime readiness check ${entityName}.${commandName}`,
+    !options.json,
+  );
   try {
     const [ctx, routeCheck] = await Promise.all([
       buildEntityContext(entityName, options),
-      inspectRouteSurfaceForCommand({ entityName, commandName, routePath: options.route, cwd: process.cwd() }),
+      inspectRouteSurfaceForCommand({
+        entityName,
+        commandName,
+        routePath: options.route,
+        cwd: process.cwd(),
+      }),
     ]);
     spinner.stop();
 
     const sourceHasCommand = ctx.source.commands.includes(commandName);
     const irHasCommand = ctx.ir.commands.includes(commandName);
     const routeExists = routeCheck.routeExists;
-    const issues: Array<{ severity: 'error' | 'warning'; code: string; message: string; fix?: string }> = [];
+    const issues: Array<{
+      severity: 'error' | 'warning';
+      code: string;
+      message: string;
+      fix?: string;
+    }> = [];
 
     if (!sourceHasCommand) {
       issues.push({
@@ -386,13 +457,19 @@ export async function runtimeCheckCommand(entityName: string, commandName: strin
         source: {
           entityExists: ctx.source.exists,
           commandExists: sourceHasCommand,
-          files: ctx.source.files.map((f) => ({ file: formatRelative(ctx.cwd, f.file), line: f.line })),
+          files: ctx.source.files.map((f) => ({
+            file: formatRelative(ctx.cwd, f.file),
+            line: f.line,
+          })),
           parserFindings: ctx.source.parserFindings,
         },
         precompiledIR: {
           entityExists: ctx.ir.exists,
           commandExists: irHasCommand,
-          files: ctx.ir.files.map((f) => ({ file: formatRelative(ctx.cwd, f.file), provenance: f.provenance || null })),
+          files: ctx.ir.files.map((f) => ({
+            file: formatRelative(ctx.cwd, f.file),
+            provenance: f.provenance || null,
+          })),
         },
         routeSurface: {
           routeExists,
@@ -403,9 +480,10 @@ export async function runtimeCheckCommand(entityName: string, commandName: strin
         },
       },
       issues,
-      cacheGuidance: (sourceHasCommand && irHasCommand)
-        ? `Compiled IR includes ${entityName}.${commandName}. If runtime still returns "Command '${commandName}' not found", restart the API dev server to clear in-process IR cache.`
-        : `Fix source/IR drift first, then restart the API dev server to clear in-process IR cache.`,
+      cacheGuidance:
+        sourceHasCommand && irHasCommand
+          ? `Compiled IR includes ${entityName}.${commandName}. If runtime still returns "Command '${commandName}' not found", restart the API dev server to clear in-process IR cache.`
+          : `Fix source/IR drift first, then restart the API dev server to clear in-process IR cache.`,
     };
 
     if (options.json) {
@@ -438,7 +516,9 @@ export async function runtimeCheckCommand(entityName: string, commandName: strin
         if (issue.fix) console.log(chalk.gray(`    -> ${issue.fix}`));
       }
     } else {
-      console.log(chalk.green('\n  Source, precompiled IR, and route surface are aligned for this command.'));
+      console.log(
+        chalk.green('\n  Source, precompiled IR, and route surface are aligned for this command.'),
+      );
     }
 
     console.log('');
@@ -455,19 +535,24 @@ export async function runtimeCheckCommand(entityName: string, commandName: strin
 export async function cacheStatusCommand(options: CacheStatusOptions = {}): Promise<void> {
   const spinner = createSpinner('Inspecting compiled IR timestamps', !options.json);
   try {
-    const irInspection = await inspectCompiledIR({ cwd: process.cwd(), irRoots: arrayify(options.irRoot) });
+    const irInspection = await inspectCompiledIR({
+      cwd: process.cwd(),
+      irRoots: arrayify(options.irRoot),
+    });
     spinner.stop();
 
     const compiledEntries = Array.from(irInspection.entities.values())
       .flat()
       .flatMap((def) => {
         const p = def.provenance || {};
-        return [{
-          file: def.irFile,
-          entity: def.entityName,
-          compiledAt: typeof p.compiledAt === 'string' ? p.compiledAt : null,
-          compilerVersion: typeof p.compilerVersion === 'string' ? p.compilerVersion : null,
-        }];
+        return [
+          {
+            file: def.irFile,
+            entity: def.entityName,
+            compiledAt: typeof p.compiledAt === 'string' ? p.compiledAt : null,
+            compilerVersion: typeof p.compilerVersion === 'string' ? p.compilerVersion : null,
+          },
+        ];
       })
       .sort((a, b) => String(b.compiledAt || '').localeCompare(String(a.compiledAt || '')));
 
@@ -475,16 +560,20 @@ export async function cacheStatusCommand(options: CacheStatusOptions = {}): Prom
     const payload = {
       success: true,
       canInspectRuntimeCacheDirectly: false,
-      message: 'Direct in-process runtime cache introspection is not available from the CLI without app-specific hooks.',
-      latestCompiledIR: latest ? {
-        file: formatRelative(process.cwd(), latest.file),
-        entity: latest.entity,
-        compiledAt: latest.compiledAt,
-        compilerVersion: latest.compilerVersion,
-      } : null,
-      guidance: options.entity && options.command
-        ? `If ${options.entity}.${options.command} is now present in precompiled IR and runtime still reports command-not-found, restart the API dev server to clear in-process IR cache.`
-        : 'After rebuilding manifests, restart long-running API processes (dev server/workers) to clear any in-process IR cache.',
+      message:
+        'Direct in-process runtime cache introspection is not available from the CLI without app-specific hooks.',
+      latestCompiledIR: latest
+        ? {
+            file: formatRelative(process.cwd(), latest.file),
+            entity: latest.entity,
+            compiledAt: latest.compiledAt,
+            compilerVersion: latest.compilerVersion,
+          }
+        : null,
+      guidance:
+        options.entity && options.command
+          ? `If ${options.entity}.${options.command} is now present in precompiled IR and runtime still reports command-not-found, restart the API dev server to clear in-process IR cache.`
+          : 'After rebuilding manifests, restart long-running API processes (dev server/workers) to clear any in-process IR cache.',
     };
 
     if (options.json) {
@@ -493,7 +582,9 @@ export async function cacheStatusCommand(options: CacheStatusOptions = {}): Prom
     }
 
     console.log(chalk.bold('\nCache Status / Guidance'));
-    console.log(chalk.yellow('  Direct runtime cache introspection: unavailable (CLI is offline by design)'));
+    console.log(
+      chalk.yellow('  Direct runtime cache introspection: unavailable (CLI is offline by design)'),
+    );
     if (latest) {
       console.log(`  Latest compiled IR: ${formatRelative(process.cwd(), latest.file)}`);
       console.log(`    entity: ${latest.entity}`);
@@ -517,18 +608,30 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
   const spinner = createSpinner('Running manifest doctor', !options.json);
   try {
     const cwd = process.cwd();
-    const [sourceInspection, irInspection, duplicates, routeCheck, configFindings] = await Promise.all([
-      inspectSourceEntities({ cwd, srcPattern: options.src }),
-      inspectCompiledIR({ cwd, irRoots: arrayify(options.irRoot) }),
-      readMergeReports({ cwd }),
-      entityName && commandName
-        ? inspectRouteSurfaceForCommand({ entityName, commandName, routePath: options.route, cwd })
-        : Promise.resolve({ routeExists: false, matches: [] as RouteManifestCommandHit[] }),
-      inspectConfigHealth(cwd),
-    ]);
+    const [sourceInspection, irInspection, duplicates, routeCheck, configFindings] =
+      await Promise.all([
+        inspectSourceEntities({ cwd, srcPattern: options.src }),
+        inspectCompiledIR({ cwd, irRoots: arrayify(options.irRoot) }),
+        readMergeReports({ cwd }),
+        entityName && commandName
+          ? inspectRouteSurfaceForCommand({
+              entityName,
+              commandName,
+              routePath: options.route,
+              cwd,
+            })
+          : Promise.resolve({ routeExists: false, matches: [] as RouteManifestCommandHit[] }),
+        inspectConfigHealth(cwd),
+      ]);
     spinner.stop();
 
-    const findings: Array<{ rank: number; severity: 'error' | 'warning' | 'info'; code: string; message: string; fix?: string }> = [];
+    const findings: Array<{
+      rank: number;
+      severity: 'error' | 'warning' | 'info';
+      code: string;
+      message: string;
+      fix?: string;
+    }> = [];
 
     // Config preflight — projection config defects that break generate output.
     for (const finding of configFindings) {
@@ -569,12 +672,26 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       entityDiff = diffEntitySurface({ entityName, source: sourceMerged, ir: irMerged });
       const diffSummary = summarizeDiff(entityDiff);
       for (const msg of diffSummary.errors) {
-        findings.push({ rank: 20, severity: 'error', code: 'SOURCE_IR_DRIFT', message: `${entityName}: ${msg}` });
+        findings.push({
+          rank: 20,
+          severity: 'error',
+          code: 'SOURCE_IR_DRIFT',
+          message: `${entityName}: ${msg}`,
+        });
       }
       for (const msg of diffSummary.warnings) {
-        findings.push({ rank: 21, severity: 'warning', code: 'SOURCE_IR_DRIFT_WARNING', message: `${entityName}: ${msg}` });
+        findings.push({
+          rank: 21,
+          severity: 'warning',
+          code: 'SOURCE_IR_DRIFT_WARNING',
+          message: `${entityName}: ${msg}`,
+        });
       }
-      if (commandName && sourceMerged.commands.includes(commandName) && !irMerged.commands.includes(commandName)) {
+      if (
+        commandName &&
+        sourceMerged.commands.includes(commandName) &&
+        !irMerged.commands.includes(commandName)
+      ) {
         findings.push({
           rank: 25,
           severity: 'error',
@@ -583,7 +700,12 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
           fix: 'Run your manifest build step (e.g. `pnpm manifest:build`) and verify precompiled IR is regenerated.',
         });
       }
-      if (commandName && routeCheck.routeExists && sourceMerged.commands.includes(commandName) && !irMerged.commands.includes(commandName)) {
+      if (
+        commandName &&
+        routeCheck.routeExists &&
+        sourceMerged.commands.includes(commandName) &&
+        !irMerged.commands.includes(commandName)
+      ) {
         findings.push({
           rank: 30,
           severity: 'error',
@@ -592,7 +714,11 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
           fix: 'Route likely came from prior source/IR. Rebuild manifests and restart API dev server.',
         });
       }
-      if (commandName && sourceMerged.commands.includes(commandName) && irMerged.commands.includes(commandName)) {
+      if (
+        commandName &&
+        sourceMerged.commands.includes(commandName) &&
+        irMerged.commands.includes(commandName)
+      ) {
         findings.push({
           rank: 80,
           severity: 'warning',
@@ -609,7 +735,8 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       findings.push({
         rank: entry.classification === 'suspicious' ? 40 : 70,
         severity: entry.classification === 'suspicious' ? 'warning' : 'info',
-        code: entry.classification === 'suspicious' ? 'SUSPICIOUS_DUPLICATE' : 'KNOWN_DUPLICATE_MERGE',
+        code:
+          entry.classification === 'suspicious' ? 'SUSPICIOUS_DUPLICATE' : 'KNOWN_DUPLICATE_MERGE',
         message: `${entry.type} ${entry.key} (kept=${entry.keptFrom || 'n/a'}, dropped=${entry.droppedFrom || 'n/a'})`,
       });
     }
@@ -618,7 +745,9 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
 
     const payload = {
       success: !findings.some((f) => f.severity === 'error'),
-      target: entityName ? { entity: entityName, command: commandName || null, route: options.route || null } : null,
+      target: entityName
+        ? { entity: entityName, command: commandName || null, route: options.route || null }
+        : null,
       summary: {
         filesScanned: {
           sourceManifests: sourceInspection.filesScanned,
@@ -632,10 +761,16 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
           info: findings.filter((f) => f.severity === 'info').length,
         },
       },
-      routeSurface: entityName && commandName ? {
-        routeExists: routeCheck.routeExists,
-        matches: routeCheck.matches.map((m) => ({ ...m, manifestFile: formatRelative(cwd, m.manifestFile) })),
-      } : null,
+      routeSurface:
+        entityName && commandName
+          ? {
+              routeExists: routeCheck.routeExists,
+              matches: routeCheck.matches.map((m) => ({
+                ...m,
+                manifestFile: formatRelative(cwd, m.manifestFile),
+              })),
+            }
+          : null,
       drift: entityDiff,
       findings,
       suggestedFixes: [
@@ -654,14 +789,30 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     console.log(chalk.bold('\nManifest Doctor'));
     console.log('');
     console.log(chalk.cyan('Summary'));
-    console.log(tableLine('Source manifests scanned', String(payload.summary.filesScanned.sourceManifests)));
-    console.log(tableLine('Compiled IR files scanned', String(payload.summary.filesScanned.compiledIR)));
-    console.log(tableLine('Merge reports found', String(payload.summary.filesScanned.mergeReports)));
-    console.log(tableLine('Source parse-error files', String(payload.summary.parserErrorsInSourceFiles)));
+    console.log(
+      tableLine('Source manifests scanned', String(payload.summary.filesScanned.sourceManifests)),
+    );
+    console.log(
+      tableLine('Compiled IR files scanned', String(payload.summary.filesScanned.compiledIR)),
+    );
+    console.log(
+      tableLine('Merge reports found', String(payload.summary.filesScanned.mergeReports)),
+    );
+    console.log(
+      tableLine('Source parse-error files', String(payload.summary.parserErrorsInSourceFiles)),
+    );
     if (payload.target) {
-      console.log(tableLine('Target', `${payload.target.entity}${payload.target.command ? `.${payload.target.command}` : ''}`));
+      console.log(
+        tableLine(
+          'Target',
+          `${payload.target.entity}${payload.target.command ? `.${payload.target.command}` : ''}`,
+        ),
+      );
       if (payload.target.route) console.log(tableLine('Route', payload.target.route));
-      if (payload.routeSurface) console.log(tableLine('Route surface hit', payload.routeSurface.routeExists ? 'yes' : 'no'));
+      if (payload.routeSurface)
+        console.log(
+          tableLine('Route surface hit', payload.routeSurface.routeExists ? 'yes' : 'no'),
+        );
     }
 
     console.log('');
@@ -669,15 +820,20 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
     if (findings.length === 0) {
       console.log(chalk.green('  No issues detected by offline checks.'));
       if (entityName && commandName) {
-        console.log(chalk.yellow(`  If runtime still returns "Command '${commandName}' not found", restart the API dev server to clear in-process IR cache.`));
+        console.log(
+          chalk.yellow(
+            `  If runtime still returns "Command '${commandName}' not found", restart the API dev server to clear in-process IR cache.`,
+          ),
+        );
       }
     } else {
       for (const finding of findings) {
-        const prefix = finding.severity === 'error'
-          ? chalk.red('ERROR')
-          : finding.severity === 'warning'
-            ? chalk.yellow('WARN ')
-            : chalk.gray('INFO ');
+        const prefix =
+          finding.severity === 'error'
+            ? chalk.red('ERROR')
+            : finding.severity === 'warning'
+              ? chalk.yellow('WARN ')
+              : chalk.gray('INFO ');
         console.log(`  ${prefix} [${finding.code}] ${finding.message}`);
         if (finding.fix) console.log(chalk.gray(`        -> ${finding.fix}`));
       }

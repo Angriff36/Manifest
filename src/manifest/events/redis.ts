@@ -80,8 +80,7 @@ export class RedisEventBus implements EventBus {
       Redis = mod.Redis;
     } catch {
       throw new Error(
-        `RedisEventBus requires 'ioredis' to be installed.\n` +
-        `Run: npm install ioredis`
+        `RedisEventBus requires 'ioredis' to be installed.\n` + `Run: npm install ioredis`,
       );
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -106,9 +105,7 @@ export class RedisEventBus implements EventBus {
         message = JSON.parse(raw) as EventBusMessage;
       } catch {
         // Never throw back into the Redis callback — warn and drop.
-        console.warn(
-          `RedisEventBus: dropping malformed message on channel '${this.channel}'`
-        );
+        console.warn(`RedisEventBus: dropping malformed message on channel '${this.channel}'`);
         return;
       }
       // Swallow handler errors so one bad subscriber cannot break the Redis

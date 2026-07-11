@@ -12,7 +12,10 @@ export function RuntimeDrawer({ source, disabled, open, onToggle }: RuntimeDrawe
   if (!open) return null;
 
   return (
-    <div className="flex-shrink-0 border-t border-gray-800 bg-gray-900 flex flex-col" style={{ height: '45vh' }}>
+    <div
+      className="flex-shrink-0 border-t border-gray-800 bg-gray-900 flex flex-col"
+      style={{ height: '45vh' }}
+    >
       <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-800 bg-gray-900/80">
         <span className="text-xs font-medium text-gray-400">Interactive Runtime</span>
         <button

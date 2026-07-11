@@ -46,11 +46,13 @@ function bareEntity(name: string, properties: IREntity['properties']): IREntity 
 describe('JsonSchemaProjection — date/time primitive types', () => {
   it('maps time → { type: string, format: time } and duration → { type: number }', () => {
     const ir = makeMinimalIR({
-      entities: [bareEntity('Gadget', [
-        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-        { name: 'openAt', type: { name: 'time', nullable: false }, modifiers: ['required'] },
-        { name: 'span', type: { name: 'duration', nullable: false }, modifiers: ['required'] },
-      ])],
+      entities: [
+        bareEntity('Gadget', [
+          { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          { name: 'openAt', type: { name: 'time', nullable: false }, modifiers: ['required'] },
+          { name: 'span', type: { name: 'duration', nullable: false }, modifiers: ['required'] },
+        ]),
+      ],
     });
 
     const result = new JsonSchemaProjection().generate(ir, {
@@ -63,7 +65,7 @@ describe('JsonSchemaProjection — date/time primitive types', () => {
     expect(schema.properties.openAt).toEqual({ type: 'string', format: 'time' });
     expect(schema.properties.span).toEqual({ type: 'number' });
 
-    const unknownTypeWarnings = result.diagnostics.filter(d => d.code === 'UNKNOWN_TYPE');
+    const unknownTypeWarnings = result.diagnostics.filter((d) => d.code === 'UNKNOWN_TYPE');
     expect(unknownTypeWarnings).toHaveLength(0);
   });
 });

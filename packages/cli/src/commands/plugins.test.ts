@@ -81,7 +81,9 @@ describe('CLI plugin activation — a declared plugin contributes a command', ()
       expect(report.loaded[0].builtins).toContain('double');
       expect(report.loaded[0].storeAdapters).toContain('redis');
       expect(report.loaded[0].cliCommands).toContain('greet');
-      expect(report.diagnostics.some((d: { severity: string }) => d.severity === 'error')).toBe(false);
+      expect(report.diagnostics.some((d: { severity: string }) => d.severity === 'error')).toBe(
+        false,
+      );
     } finally {
       await fs.rm(dir, { recursive: true, force: true });
     }

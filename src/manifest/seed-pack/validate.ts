@@ -34,7 +34,7 @@ export interface ValidateSeedPackOptions {
 export function validateSeedPack(
   ir: IR,
   pack: SeedPack,
-  options: ValidateSeedPackOptions = {}
+  options: ValidateSeedPackOptions = {},
 ): SeedPackValidation {
   const errors: SeedPackIssue[] = [];
   const warnings: SeedPackIssue[] = [];

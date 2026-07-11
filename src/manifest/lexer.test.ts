@@ -14,31 +14,39 @@ describe('Lexer', () => {
       const source = 'entity property behavior constraint flow effect expose compose';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter(t => t.type === 'KEYWORD')).toHaveLength(8);
+      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(8);
       // Position is recorded after reading the token (points to next char)
-      expect(tokens[0]).toEqual({ type: 'KEYWORD', value: 'entity', position: { line: 1, column: 7 } });
-      expect(tokens[1]).toEqual({ type: 'KEYWORD', value: 'property', position: { line: 1, column: 16 } });
+      expect(tokens[0]).toEqual({
+        type: 'KEYWORD',
+        value: 'entity',
+        position: { line: 1, column: 7 },
+      });
+      expect(tokens[1]).toEqual({
+        type: 'KEYWORD',
+        value: 'property',
+        position: { line: 1, column: 16 },
+      });
     });
 
     it('should tokenize all command-related keywords', () => {
       const source = 'command on when then emit mutate compute guard publish persist';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter(t => t.type === 'KEYWORD')).toHaveLength(10);
+      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(10);
     });
 
     it('should tokenize all type keywords', () => {
       const source = 'string number boolean list map any void';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter(t => t.type === 'KEYWORD')).toHaveLength(7);
+      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(7);
     });
 
     it('should tokenize literal keywords', () => {
       const source = 'true false null';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter(t => t.type === 'KEYWORD')).toHaveLength(3);
+      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(3);
       expect(tokens[0].value).toBe('true');
       expect(tokens[1].value).toBe('false');
       expect(tokens[2].value).toBe('null');
@@ -48,42 +56,42 @@ describe('Lexer', () => {
       const source = 'required unique indexed private readonly optional';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter(t => t.type === 'KEYWORD')).toHaveLength(6);
+      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(6);
     });
 
     it('should tokenize relationship keywords', () => {
       const source = 'hasMany hasOne belongsTo ref through';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter(t => t.type === 'KEYWORD')).toHaveLength(5);
+      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(5);
     });
 
     it('should tokenize policy and security keywords', () => {
       const source = 'policy read write delete execute all override allow deny';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter(t => t.type === 'KEYWORD')).toHaveLength(9);
+      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(9);
     });
 
     it('should tokenize logical operator keywords', () => {
       const source = 'and or not is in contains';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter(t => t.type === 'KEYWORD')).toHaveLength(6);
+      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(6);
     });
 
     it('should tokenize special context keywords', () => {
       const source = 'user self context';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter(t => t.type === 'KEYWORD')).toHaveLength(3);
+      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(3);
     });
 
     it('should tokenize vNext constraint keywords', () => {
       const source = 'overrideable ok warn block';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter(t => t.type === 'KEYWORD')).toHaveLength(4);
+      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(4);
       expect(tokens[0].value).toBe('overrideable');
       expect(tokens[1].value).toBe('ok');
       expect(tokens[2].value).toBe('warn');
@@ -94,14 +102,14 @@ describe('Lexer', () => {
       const source = 'memory postgres supabase localStorage';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter(t => t.type === 'KEYWORD')).toHaveLength(4);
+      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(4);
     });
 
     it('should tokenize all reserved words from KEYWORDS set', () => {
       // Verify that all items in KEYWORDS set are correctly tokenized
       for (const keyword of KEYWORDS) {
         const tokens = new Lexer(keyword).tokenize();
-        const keywordToken = tokens.find(t => t.type === 'KEYWORD' && t.value === keyword);
+        const keywordToken = tokens.find((t) => t.type === 'KEYWORD' && t.value === keyword);
         expect(keywordToken).toBeDefined();
       }
     });
@@ -112,7 +120,7 @@ describe('Lexer', () => {
       const source = 'myEntity Order Item';
       const tokens = new Lexer(source).tokenize();
 
-      const identifiers = tokens.filter(t => t.type === 'IDENTIFIER');
+      const identifiers = tokens.filter((t) => t.type === 'IDENTIFIER');
       expect(identifiers).toHaveLength(3);
       expect(identifiers[0].value).toBe('myEntity');
       expect(identifiers[1].value).toBe('Order');
@@ -123,7 +131,7 @@ describe('Lexer', () => {
       const source = 'my_entity _private internal_';
       const tokens = new Lexer(source).tokenize();
 
-      const identifiers = tokens.filter(t => t.type === 'IDENTIFIER');
+      const identifiers = tokens.filter((t) => t.type === 'IDENTIFIER');
       expect(identifiers).toHaveLength(3);
       expect(identifiers[0].value).toBe('my_entity');
       expect(identifiers[1].value).toBe('_private');
@@ -134,7 +142,7 @@ describe('Lexer', () => {
       const source = 'item123 user2 type3info';
       const tokens = new Lexer(source).tokenize();
 
-      const identifiers = tokens.filter(t => t.type === 'IDENTIFIER');
+      const identifiers = tokens.filter((t) => t.type === 'IDENTIFIER');
       expect(identifiers).toHaveLength(3);
       expect(identifiers[0].value).toBe('item123');
       expect(identifiers[1].value).toBe('user2');
@@ -145,7 +153,7 @@ describe('Lexer', () => {
       const source = 'myEntityName getOrderById';
       const tokens = new Lexer(source).tokenize();
 
-      const identifiers = tokens.filter(t => t.type === 'IDENTIFIER');
+      const identifiers = tokens.filter((t) => t.type === 'IDENTIFIER');
       expect(identifiers).toHaveLength(2);
     });
 
@@ -153,7 +161,7 @@ describe('Lexer', () => {
       const source = 'OrderService UserManager';
       const tokens = new Lexer(source).tokenize();
 
-      const identifiers = tokens.filter(t => t.type === 'IDENTIFIER');
+      const identifiers = tokens.filter((t) => t.type === 'IDENTIFIER');
       expect(identifiers).toHaveLength(2);
     });
   });
@@ -163,7 +171,7 @@ describe('Lexer', () => {
       const source = '"hello world"';
       const tokens = new Lexer(source).tokenize();
 
-      const stringToken = tokens.find(t => t.type === 'STRING');
+      const stringToken = tokens.find((t) => t.type === 'STRING');
       expect(stringToken).toBeDefined();
       expect(stringToken?.value).toBe('hello world');
     });
@@ -172,7 +180,7 @@ describe('Lexer', () => {
       const source = "'hello world'";
       const tokens = new Lexer(source).tokenize();
 
-      const stringToken = tokens.find(t => t.type === 'STRING');
+      const stringToken = tokens.find((t) => t.type === 'STRING');
       expect(stringToken).toBeDefined();
       expect(stringToken?.value).toBe('hello world');
     });
@@ -181,7 +189,7 @@ describe('Lexer', () => {
       const source = '"hello\\nworld\\ttab"';
       const tokens = new Lexer(source).tokenize();
 
-      const stringToken = tokens.find(t => t.type === 'STRING');
+      const stringToken = tokens.find((t) => t.type === 'STRING');
       expect(stringToken?.value).toBe('hello\nworld\ttab');
     });
 
@@ -189,7 +197,7 @@ describe('Lexer', () => {
       const source = '"path\\\\to\\\\file"';
       const tokens = new Lexer(source).tokenize();
 
-      const stringToken = tokens.find(t => t.type === 'STRING');
+      const stringToken = tokens.find((t) => t.type === 'STRING');
       expect(stringToken?.value).toBe('path\\to\\file');
     });
 
@@ -197,7 +205,7 @@ describe('Lexer', () => {
       const source = '"say \\"hello\\""';
       const tokens = new Lexer(source).tokenize();
 
-      const stringToken = tokens.find(t => t.type === 'STRING');
+      const stringToken = tokens.find((t) => t.type === 'STRING');
       expect(stringToken?.value).toBe('say "hello"');
     });
 
@@ -205,7 +213,7 @@ describe('Lexer', () => {
       const source = '""';
       const tokens = new Lexer(source).tokenize();
 
-      const stringToken = tokens.find(t => t.type === 'STRING');
+      const stringToken = tokens.find((t) => t.type === 'STRING');
       expect(stringToken?.value).toBe('');
     });
 
@@ -213,7 +221,7 @@ describe('Lexer', () => {
       const source = '`hello ${name}`';
       const tokens = new Lexer(source).tokenize();
 
-      const stringToken = tokens.find(t => t.type === 'STRING');
+      const stringToken = tokens.find((t) => t.type === 'STRING');
       expect(stringToken?.value).toBe('hello ${name}');
     });
 
@@ -221,7 +229,7 @@ describe('Lexer', () => {
       const source = '`line1\nline2\nline3`';
       const tokens = new Lexer(source).tokenize();
 
-      const stringToken = tokens.find(t => t.type === 'STRING');
+      const stringToken = tokens.find((t) => t.type === 'STRING');
       expect(stringToken?.value).toBe('line1\nline2\nline3');
     });
   });
@@ -231,7 +239,7 @@ describe('Lexer', () => {
       const source = '0 42 100 9999';
       const tokens = new Lexer(source).tokenize();
 
-      const numbers = tokens.filter(t => t.type === 'NUMBER');
+      const numbers = tokens.filter((t) => t.type === 'NUMBER');
       expect(numbers).toHaveLength(4);
       expect(numbers[0].value).toBe('0');
       expect(numbers[1].value).toBe('42');
@@ -243,7 +251,7 @@ describe('Lexer', () => {
       const source = '3.14 0.5 99.99';
       const tokens = new Lexer(source).tokenize();
 
-      const numbers = tokens.filter(t => t.type === 'NUMBER');
+      const numbers = tokens.filter((t) => t.type === 'NUMBER');
       expect(numbers).toHaveLength(3);
       expect(numbers[0].value).toBe('3.14');
       expect(numbers[1].value).toBe('0.5');
@@ -256,11 +264,11 @@ describe('Lexer', () => {
 
       // The lexer treats lone '.' as an operator, not as start of number
       // Numbers must have at least one digit before or after the decimal point
-      const numbers = tokens.filter(t => t.type === 'NUMBER');
-      const operators = tokens.filter(t => t.type === 'OPERATOR');
+      const numbers = tokens.filter((t) => t.type === 'NUMBER');
+      const operators = tokens.filter((t) => t.type === 'OPERATOR');
 
       // Expect: OPERATOR(.), NUMBER(5), OPERATOR(.), NUMBER(25)
-      expect(operators.filter(t => t.value === '.')).toHaveLength(2);
+      expect(operators.filter((t) => t.value === '.')).toHaveLength(2);
       expect(numbers[0].value).toBe('5');
       expect(numbers[1].value).toBe('25');
     });
@@ -271,7 +279,7 @@ describe('Lexer', () => {
       const source = '+ - * / % = ! < >';
       const tokens = new Lexer(source).tokenize();
 
-      const operators = tokens.filter(t => t.type === 'OPERATOR');
+      const operators = tokens.filter((t) => t.type === 'OPERATOR');
       expect(operators).toHaveLength(9);
     });
 
@@ -279,7 +287,7 @@ describe('Lexer', () => {
       const source = '== != <= >= && || -> => ?. ..';
       const tokens = new Lexer(source).tokenize();
 
-      const operators = tokens.filter(t => t.type === 'OPERATOR');
+      const operators = tokens.filter((t) => t.type === 'OPERATOR');
       expect(operators).toHaveLength(10);
       expect(operators[0].value).toBe('==');
       expect(operators[1].value).toBe('!=');
@@ -297,7 +305,7 @@ describe('Lexer', () => {
       const source = '| &';
       const tokens = new Lexer(source).tokenize();
 
-      const operators = tokens.filter(t => t.type === 'OPERATOR');
+      const operators = tokens.filter((t) => t.type === 'OPERATOR');
       expect(operators).toHaveLength(2);
     });
 
@@ -305,7 +313,7 @@ describe('Lexer', () => {
       const source = '? :';
       const tokens = new Lexer(source).tokenize();
 
-      const operators = tokens.filter(t => t.type === 'OPERATOR');
+      const operators = tokens.filter((t) => t.type === 'OPERATOR');
       expect(operators).toHaveLength(2);
       expect(operators[0].value).toBe('?');
       expect(operators[1].value).toBe(':');
@@ -315,7 +323,7 @@ describe('Lexer', () => {
       const source = '. .. ?.';
       const tokens = new Lexer(source).tokenize();
 
-      const operators = tokens.filter(t => t.type === 'OPERATOR');
+      const operators = tokens.filter((t) => t.type === 'OPERATOR');
       expect(operators).toHaveLength(3);
     });
   });
@@ -325,7 +333,7 @@ describe('Lexer', () => {
       const source = '( ) { } [ ] , ; @';
       const tokens = new Lexer(source).tokenize();
 
-      const punctuation = tokens.filter(t => t.type === 'PUNCTUATION');
+      const punctuation = tokens.filter((t) => t.type === 'PUNCTUATION');
       expect(punctuation).toHaveLength(9);
       expect(punctuation[0].value).toBe('(');
       expect(punctuation[1].value).toBe(')');
@@ -344,7 +352,7 @@ describe('Lexer', () => {
       const source = 'line1\nline2\nline3';
       const tokens = new Lexer(source).tokenize();
 
-      const newlines = tokens.filter(t => t.type === 'NEWLINE');
+      const newlines = tokens.filter((t) => t.type === 'NEWLINE');
       expect(newlines).toHaveLength(2);
     });
 
@@ -353,7 +361,7 @@ describe('Lexer', () => {
       const tokens = new Lexer(source).tokenize();
 
       // \r is skipped as whitespace, \n is tokenized
-      const newlines = tokens.filter(t => t.type === 'NEWLINE');
+      const newlines = tokens.filter((t) => t.type === 'NEWLINE');
       expect(newlines).toHaveLength(1);
     });
 
@@ -362,7 +370,7 @@ describe('Lexer', () => {
       const tokens = new Lexer(source).tokenize();
 
       // Should have: IDENTIFIER(word1), IDENTIFIER(word2), EOF
-      expect(tokens.filter(t => t.type === 'IDENTIFIER')).toHaveLength(2);
+      expect(tokens.filter((t) => t.type === 'IDENTIFIER')).toHaveLength(2);
     });
 
     it('should track line and column positions correctly', () => {
@@ -401,7 +409,7 @@ describe('Lexer', () => {
       const source = 'word1 // this is a comment\nword2';
       const tokens = new Lexer(source).tokenize();
 
-      const identifiers = tokens.filter(t => t.type === 'IDENTIFIER');
+      const identifiers = tokens.filter((t) => t.type === 'IDENTIFIER');
       expect(identifiers).toHaveLength(2);
       expect(identifiers[0].value).toBe('word1');
       expect(identifiers[1].value).toBe('word2');
@@ -411,7 +419,7 @@ describe('Lexer', () => {
       const source = 'word1 /* multi\nline\ncomment */ word2';
       const tokens = new Lexer(source).tokenize();
 
-      const identifiers = tokens.filter(t => t.type === 'IDENTIFIER');
+      const identifiers = tokens.filter((t) => t.type === 'IDENTIFIER');
       expect(identifiers).toHaveLength(2);
     });
 
@@ -427,7 +435,7 @@ describe('Lexer', () => {
       const source = '// comment1\n// comment2\nword';
       const tokens = new Lexer(source).tokenize();
 
-      const identifiers = tokens.filter(t => t.type === 'IDENTIFIER');
+      const identifiers = tokens.filter((t) => t.type === 'IDENTIFIER');
       expect(identifiers).toHaveLength(1);
     });
   });
@@ -501,34 +509,34 @@ describe('Lexer', () => {
       `;
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.some(t => t.type === 'KEYWORD' && t.value === 'entity')).toBe(true);
-      expect(tokens.some(t => t.type === 'IDENTIFIER' && t.value === 'User')).toBe(true);
-      expect(tokens.some(t => t.type === 'KEYWORD' && t.value === 'property')).toBe(true);
+      expect(tokens.some((t) => t.type === 'KEYWORD' && t.value === 'entity')).toBe(true);
+      expect(tokens.some((t) => t.type === 'IDENTIFIER' && t.value === 'User')).toBe(true);
+      expect(tokens.some((t) => t.type === 'KEYWORD' && t.value === 'property')).toBe(true);
     });
 
     it('should tokenize a command with guards', () => {
       const source = 'command updateName(id: string, name: string) when user.role == "admin"';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.some(t => t.type === 'KEYWORD' && t.value === 'command')).toBe(true);
-      expect(tokens.some(t => t.type === 'IDENTIFIER' && t.value === 'updateName')).toBe(true);
-      expect(tokens.some(t => t.type === 'KEYWORD' && t.value === 'when')).toBe(true);
+      expect(tokens.some((t) => t.type === 'KEYWORD' && t.value === 'command')).toBe(true);
+      expect(tokens.some((t) => t.type === 'IDENTIFIER' && t.value === 'updateName')).toBe(true);
+      expect(tokens.some((t) => t.type === 'KEYWORD' && t.value === 'when')).toBe(true);
     });
 
     it('should tokenize a constraint with severity', () => {
       const source = 'constraint ageLimit:ok user.age >= 18';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.some(t => t.type === 'KEYWORD' && t.value === 'constraint')).toBe(true);
-      expect(tokens.some(t => t.type === 'KEYWORD' && t.value === 'ok')).toBe(true);
+      expect(tokens.some((t) => t.type === 'KEYWORD' && t.value === 'constraint')).toBe(true);
+      expect(tokens.some((t) => t.type === 'KEYWORD' && t.value === 'ok')).toBe(true);
     });
 
     it('should tokenize overrideable constraint', () => {
       const source = 'constraint limit:overrideable:block self.amount > 1000';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.some(t => t.type === 'KEYWORD' && t.value === 'overrideable')).toBe(true);
-      expect(tokens.some(t => t.type === 'KEYWORD' && t.value === 'block')).toBe(true);
+      expect(tokens.some((t) => t.type === 'KEYWORD' && t.value === 'overrideable')).toBe(true);
+      expect(tokens.some((t) => t.type === 'KEYWORD' && t.value === 'block')).toBe(true);
     });
   });
 
@@ -537,7 +545,7 @@ describe('Lexer', () => {
       const source = '== != <= >= && ||';
       const tokens = new Lexer(source).tokenize();
 
-      const operators = tokens.filter(t => t.type === 'OPERATOR');
+      const operators = tokens.filter((t) => t.type === 'OPERATOR');
       expect(operators).toHaveLength(6);
     });
 
@@ -545,18 +553,18 @@ describe('Lexer', () => {
       const source = 'entity User { property id: number = 0 }';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.some(t => t.type === 'KEYWORD')).toBe(true);
-      expect(tokens.some(t => t.type === 'IDENTIFIER')).toBe(true);
-      expect(tokens.some(t => t.type === 'PUNCTUATION')).toBe(true);
-      expect(tokens.some(t => t.type === 'OPERATOR')).toBe(true);
-      expect(tokens.some(t => t.type === 'NUMBER')).toBe(true);
+      expect(tokens.some((t) => t.type === 'KEYWORD')).toBe(true);
+      expect(tokens.some((t) => t.type === 'IDENTIFIER')).toBe(true);
+      expect(tokens.some((t) => t.type === 'PUNCTUATION')).toBe(true);
+      expect(tokens.some((t) => t.type === 'OPERATOR')).toBe(true);
+      expect(tokens.some((t) => t.type === 'NUMBER')).toBe(true);
     });
 
     it('should handle string with special characters', () => {
       const source = '"hello@world#$%"';
       const tokens = new Lexer(source).tokenize();
 
-      const stringToken = tokens.find(t => t.type === 'STRING');
+      const stringToken = tokens.find((t) => t.type === 'STRING');
       expect(stringToken?.value).toBe('hello@world#$%');
     });
 
@@ -564,8 +572,8 @@ describe('Lexer', () => {
       const source = 'x + y * 3.14 / 2';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter(t => t.type === 'NUMBER')).toHaveLength(2);
-      expect(tokens.filter(t => t.type === 'OPERATOR')).toHaveLength(3);
+      expect(tokens.filter((t) => t.type === 'NUMBER')).toHaveLength(2);
+      expect(tokens.filter((t) => t.type === 'OPERATOR')).toHaveLength(3);
     });
 
     it('should handle brackets and arrays', () => {
@@ -574,8 +582,8 @@ describe('Lexer', () => {
 
       // [ and ] are punctuation, commas are punctuation
       // Tokens: [, 1, ,, 2, ,, 3, ]
-      expect(tokens.filter(t => t.type === 'PUNCTUATION')).toHaveLength(4); // [, ], comma, comma
-      expect(tokens.filter(t => t.type === 'NUMBER')).toHaveLength(3); // 1, 2, 3
+      expect(tokens.filter((t) => t.type === 'PUNCTUATION')).toHaveLength(4); // [, ], comma, comma
+      expect(tokens.filter((t) => t.type === 'NUMBER')).toHaveLength(3); // 1, 2, 3
     });
   });
 });

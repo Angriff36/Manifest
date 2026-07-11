@@ -1,7 +1,7 @@
 ---
-title: "Remix / React Router v7 projection"
-sidebarTitle: "Remix"
-description: "Generate Remix loader and action functions, route modules, and type-safe API surfaces from Manifest IR — supporting Remix v2 and React Router v7 file-based routing conventions."
+title: 'Remix / React Router v7 projection'
+sidebarTitle: 'Remix'
+description: 'Generate Remix loader and action functions, route modules, and type-safe API surfaces from Manifest IR — supporting Remix v2 and React Router v7 file-based routing conventions.'
 ---
 
 The Remix projection generates route modules from compiled Manifest IR that follow Remix conventions: `loader` functions for entity reads, `action` functions for command dispatch, and TypeScript type definitions for your data. Use it when you are building a Remix or React Router v7 application and want Manifest entities wired directly into the data layer of your routes. The projection mirrors the [Express projection's](/projections/express) handler structure but targets Remix's `loader`/`action` exports instead of Express middleware.
@@ -90,7 +90,11 @@ The projection maps Manifest IR types to TypeScript: `string` to `string`; `numb
 ## Notes & limitations
 
 <Note>
-The generated modules import auth and runtime factory from the configured paths; they do not define those modules. Read routes (`list`/`detail`) bypass the runtime engine and call read methods directly. All writes go through `runtime.runCommand`, preserving guard, policy, and constraint enforcement. The `basePath` option is normalized but the entity route paths in generated handlers are not prefixed with it — apply the prefix where you mount the routes.
+  The generated modules import auth and runtime factory from the configured paths; they do not
+  define those modules. Read routes (`list`/`detail`) bypass the runtime engine and call read
+  methods directly. All writes go through `runtime.runCommand`, preserving guard, policy, and
+  constraint enforcement. The `basePath` option is normalized but the entity route paths in
+  generated handlers are not prefixed with it — apply the prefix where you mount the routes.
 </Note>
 
 The projection supports both Remix v2 and React Router v7 file-based routing conventions, controlled by the `remixVersion` option. Tenant filtering is optional and activated via `includeTenantContext`. Soft-delete filtering (adding `deletedAt: null` to read queries) is available through `includeSoftDeleteFilter`.

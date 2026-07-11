@@ -1,4 +1,22 @@
-import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, StoreNode, OutboxEventNode, RelationshipNode, TypeNode as ASTTypeNode, ReactionNode, RoleNode, SagaNode } from './types';
+import {
+  ManifestProgram,
+  EntityNode,
+  FlowNode,
+  EffectNode,
+  ExposeNode,
+  CompositionNode,
+  ExpressionNode,
+  BehaviorNode,
+  ConstraintNode,
+  CommandNode,
+  StoreNode,
+  OutboxEventNode,
+  RelationshipNode,
+  TypeNode as ASTTypeNode,
+  ReactionNode,
+  RoleNode,
+  SagaNode,
+} from './types';
 import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
 
 /** Provenance metadata for generated code */
@@ -30,16 +48,46 @@ export class CodeGenerator {
     this.emitStoreRuntime(program);
 
     for (const store of program.stores) this.genStore(store);
-    for (const e of program.entities) { this.genEntity(e); this.line(); }
-    for (const c of program.commands) { this.genCommand(c); this.line(); }
-    for (const f of program.flows) { this.genFlow(f); this.line(); }
-    for (const e of program.effects) { this.genEffect(e); this.line(); }
-    for (const ev of program.events) { this.genOutboxEvent(ev); this.line(); }
-    for (const r of (program.reactions || [])) { this.genReaction(r); this.line(); }
-    for (const s of (program.sagas || [])) { this.genSaga(s); this.line(); }
-    for (const role of (program.roles || [])) { this.genRole(role); this.line(); }
-    for (const x of program.exposures) { this.genExpose(x); this.line(); }
-    for (const c of program.compositions) { this.genComposition(c); this.line(); }
+    for (const e of program.entities) {
+      this.genEntity(e);
+      this.line();
+    }
+    for (const c of program.commands) {
+      this.genCommand(c);
+      this.line();
+    }
+    for (const f of program.flows) {
+      this.genFlow(f);
+      this.line();
+    }
+    for (const e of program.effects) {
+      this.genEffect(e);
+      this.line();
+    }
+    for (const ev of program.events) {
+      this.genOutboxEvent(ev);
+      this.line();
+    }
+    for (const r of program.reactions || []) {
+      this.genReaction(r);
+      this.line();
+    }
+    for (const s of program.sagas || []) {
+      this.genSaga(s);
+      this.line();
+    }
+    for (const role of program.roles || []) {
+      this.genRole(role);
+      this.line();
+    }
+    for (const x of program.exposures) {
+      this.genExpose(x);
+      this.line();
+    }
+    for (const c of program.compositions) {
+      this.genComposition(c);
+      this.line();
+    }
 
     this.emitExports(program);
     this.genServerCode(program);
@@ -48,7 +96,7 @@ export class CodeGenerator {
     return {
       code: this.out.join('\n'),
       serverCode: this.serverOut.join('\n'),
-      testCode: this.testOut.join('\n')
+      testCode: this.testOut.join('\n'),
     };
   }
 
@@ -63,7 +111,9 @@ export class CodeGenerator {
     this.line(`//   Schema Version: ${this.provenance.schemaVersion}`);
     this.line(`//   Generated At: ${this.provenance.generatedAt}`);
     this.line('//');
-    this.line('// Includes: Commands, Computed Properties, Relationships, Policies, Stores, Events');
+    this.line(
+      '// Includes: Commands, Computed Properties, Relationships, Policies, Stores, Events',
+    );
     this.line();
     this.line('type Subscriber<T> = (value: T) => void;');
     this.line('type User = { id: string; role?: string; [key: string]: unknown };');
@@ -74,34 +124,53 @@ export class CodeGenerator {
     this.line('const getContext = () => _context;');
     this.line();
     this.line('class Observable<T> {');
-    this.in(); this.line('private subs: Set<Subscriber<T>> = new Set();');
+    this.in();
+    this.line('private subs: Set<Subscriber<T>> = new Set();');
     this.line('private _v: T;');
     this.line('constructor(v: T) { this._v = v; }');
     this.line('get value(): T { return this._v; }');
     this.line('set(v: T) { this._v = v; this.subs.forEach(fn => fn(v)); }');
-    this.line('subscribe(fn: Subscriber<T>) { this.subs.add(fn); fn(this._v); return () => this.subs.delete(fn); }');
-    this.de(); this.line('}');
+    this.line(
+      'subscribe(fn: Subscriber<T>) { this.subs.add(fn); fn(this._v); return () => this.subs.delete(fn); }',
+    );
+    this.de();
+    this.line('}');
     this.line();
     this.line('class EventEmitter<T extends Record<string, unknown>> {');
-    this.in(); this.line('private listeners: Map<keyof T, Set<(d: unknown) => void>> = new Map();');
-    this.line('on<K extends keyof T>(e: K, fn: (d: T[K]) => void) { if (!this.listeners.has(e)) this.listeners.set(e, new Set()); this.listeners.get(e)!.add(fn); return () => this.listeners.get(e)?.delete(fn); }');
-    this.line('emit<K extends keyof T>(e: K, d: T[K]) { this.listeners.get(e)?.forEach(fn => fn(d)); }');
-    this.de(); this.line('}');
+    this.in();
+    this.line('private listeners: Map<keyof T, Set<(d: unknown) => void>> = new Map();');
+    this.line(
+      'on<K extends keyof T>(e: K, fn: (d: T[K]) => void) { if (!this.listeners.has(e)) this.listeners.set(e, new Set()); this.listeners.get(e)!.add(fn); return () => this.listeners.get(e)?.delete(fn); }',
+    );
+    this.line(
+      'emit<K extends keyof T>(e: K, d: T[K]) { this.listeners.get(e)?.forEach(fn => fn(d)); }',
+    );
+    this.de();
+    this.line('}');
     this.line();
     this.line('class EventBus {');
     this.in();
     this.line('private static channels: Map<string, Set<(d: unknown) => void>> = new Map();');
-    this.line('static publish(channel: string, data: unknown) { this.channels.get(channel)?.forEach(fn => fn(data)); }');
-    this.line('static subscribe(channel: string, fn: (d: unknown) => void) { if (!this.channels.has(channel)) this.channels.set(channel, new Set()); this.channels.get(channel)!.add(fn); return () => this.channels.get(channel)?.delete(fn); }');
-    this.de(); this.line('}');
+    this.line(
+      'static publish(channel: string, data: unknown) { this.channels.get(channel)?.forEach(fn => fn(data)); }',
+    );
+    this.line(
+      'static subscribe(channel: string, fn: (d: unknown) => void) { if (!this.channels.has(channel)) this.channels.set(channel, new Set()); this.channels.get(channel)!.add(fn); return () => this.channels.get(channel)?.delete(fn); }',
+    );
+    this.de();
+    this.line('}');
     this.line();
   }
 
   private emitStoreRuntime(program: ManifestProgram) {
-    const hasSupabase = program.stores.some(s => s.target === 'supabase');
+    const hasSupabase = program.stores.some((s) => s.target === 'supabase');
     if (hasSupabase) {
-      this.line('// Development-time Supabase client mock (production runtime uses stores.node.ts:SupabaseStore)');
-      this.line('const supabase = { from: (table: string) => ({ select: () => Promise.resolve({ data: [], error: null }), insert: (d: unknown) => Promise.resolve({ data: d, error: null }), update: (d: unknown) => ({ eq: () => Promise.resolve({ data: d, error: null }) }), delete: () => ({ eq: () => Promise.resolve({ error: null }) }) }) };');
+      this.line(
+        '// Development-time Supabase client mock (production runtime uses stores.node.ts:SupabaseStore)',
+      );
+      this.line(
+        'const supabase = { from: (table: string) => ({ select: () => Promise.resolve({ data: [], error: null }), insert: (d: unknown) => Promise.resolve({ data: d, error: null }), update: (d: unknown) => ({ eq: () => Promise.resolve({ data: d, error: null }) }), delete: () => ({ eq: () => Promise.resolve({ error: null }) }) }) };',
+      );
       this.line();
     }
 
@@ -113,7 +182,8 @@ export class CodeGenerator {
     this.line('update(id: string, item: Partial<T>): Promise<T>;');
     this.line('delete(id: string): Promise<boolean>;');
     this.line('query(filter: (item: T) => boolean): Promise<T[]>;');
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
     this.line();
 
     this.line('class MemoryStore<T extends { id: string }> implements Store<T> {');
@@ -121,38 +191,67 @@ export class CodeGenerator {
     this.line('private data: Map<string, T> = new Map();');
     this.line('async getAll() { return Array.from(this.data.values()); }');
     this.line('async getById(id: string) { return this.data.get(id) || null; }');
-    this.line('async create(item: Partial<T>) { const id = item.id || crypto.randomUUID(); const full = { ...item, id } as T; this.data.set(id, full); return full; }');
-    this.line('async update(id: string, item: Partial<T>) { const existing = this.data.get(id); if (!existing) throw new Error("Not found"); const updated = { ...existing, ...item }; this.data.set(id, updated); return updated; }');
+    this.line(
+      'async create(item: Partial<T>) { const id = item.id || crypto.randomUUID(); const full = { ...item, id } as T; this.data.set(id, full); return full; }',
+    );
+    this.line(
+      'async update(id: string, item: Partial<T>) { const existing = this.data.get(id); if (!existing) throw new Error("Not found"); const updated = { ...existing, ...item }; this.data.set(id, updated); return updated; }',
+    );
     this.line('async delete(id: string) { return this.data.delete(id); }');
-    this.line('async query(filter: (item: T) => boolean) { return Array.from(this.data.values()).filter(filter); }');
-    this.de(); this.line('}');
+    this.line(
+      'async query(filter: (item: T) => boolean) { return Array.from(this.data.values()).filter(filter); }',
+    );
+    this.de();
+    this.line('}');
     this.line();
 
     this.line('class LocalStorageStore<T extends { id: string }> implements Store<T> {');
     this.in();
     this.line('constructor(private key: string) {}');
-    this.line('private load(): T[] { const d = localStorage.getItem(this.key); return d ? JSON.parse(d) : []; }');
+    this.line(
+      'private load(): T[] { const d = localStorage.getItem(this.key); return d ? JSON.parse(d) : []; }',
+    );
     this.line('private save(data: T[]) { localStorage.setItem(this.key, JSON.stringify(data)); }');
     this.line('async getAll() { return this.load(); }');
     this.line('async getById(id: string) { return this.load().find(x => x.id === id) || null; }');
-    this.line('async create(item: Partial<T>) { const data = this.load(); const id = item.id || crypto.randomUUID(); const full = { ...item, id } as T; data.push(full); this.save(data); return full; }');
-    this.line('async update(id: string, item: Partial<T>) { const data = this.load(); const idx = data.findIndex(x => x.id === id); if (idx < 0) throw new Error("Not found"); data[idx] = { ...data[idx], ...item }; this.save(data); return data[idx]; }');
-    this.line('async delete(id: string) { const data = this.load(); const idx = data.findIndex(x => x.id === id); if (idx < 0) return false; data.splice(idx, 1); this.save(data); return true; }');
+    this.line(
+      'async create(item: Partial<T>) { const data = this.load(); const id = item.id || crypto.randomUUID(); const full = { ...item, id } as T; data.push(full); this.save(data); return full; }',
+    );
+    this.line(
+      'async update(id: string, item: Partial<T>) { const data = this.load(); const idx = data.findIndex(x => x.id === id); if (idx < 0) throw new Error("Not found"); data[idx] = { ...data[idx], ...item }; this.save(data); return data[idx]; }',
+    );
+    this.line(
+      'async delete(id: string) { const data = this.load(); const idx = data.findIndex(x => x.id === id); if (idx < 0) return false; data.splice(idx, 1); this.save(data); return true; }',
+    );
     this.line('async query(filter: (item: T) => boolean) { return this.load().filter(filter); }');
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
     this.line();
 
     if (hasSupabase) {
       this.line('class SupabaseStore<T extends { id: string }> implements Store<T> {');
       this.in();
       this.line('constructor(private table: string) {}');
-      this.line('async getAll() { const { data } = await supabase.from(this.table).select(); return (data || []) as T[]; }');
-      this.line('async getById(id: string) { const { data } = await supabase.from(this.table).select().eq("id", id).single(); return data as T | null; }');
-      this.line('async create(item: Partial<T>) { const { data } = await supabase.from(this.table).insert(item).select().single(); return data as T; }');
-      this.line('async update(id: string, item: Partial<T>) { const { data } = await supabase.from(this.table).update(item).eq("id", id).select().single(); return data as T; }');
-      this.line('async delete(id: string) { const { error } = await supabase.from(this.table).delete().eq("id", id); return !error; }');
-      this.line('async query(filter: (item: T) => boolean) { const all = await this.getAll(); return all.filter(filter); }');
-      this.de(); this.line('}');
+      this.line(
+        'async getAll() { const { data } = await supabase.from(this.table).select(); return (data || []) as T[]; }',
+      );
+      this.line(
+        'async getById(id: string) { const { data } = await supabase.from(this.table).select().eq("id", id).single(); return data as T | null; }',
+      );
+      this.line(
+        'async create(item: Partial<T>) { const { data } = await supabase.from(this.table).insert(item).select().single(); return data as T; }',
+      );
+      this.line(
+        'async update(id: string, item: Partial<T>) { const { data } = await supabase.from(this.table).update(item).eq("id", id).select().single(); return data as T; }',
+      );
+      this.line(
+        'async delete(id: string) { const { error } = await supabase.from(this.table).delete().eq("id", id); return !error; }',
+      );
+      this.line(
+        'async query(filter: (item: T) => boolean) { const all = await this.getAll(); return all.filter(filter); }',
+      );
+      this.de();
+      this.line('}');
       this.line();
     }
   }
@@ -164,13 +263,17 @@ export class CodeGenerator {
         this.line(`const ${storeName}: Store<I${store.entity}> = new MemoryStore();`);
         break;
       case 'localStorage': {
-        const key = store.config?.['key'] ? this.genExpr(store.config['key']) : `"${store.entity.toLowerCase()}s"`;
+        const key = store.config?.['key']
+          ? this.genExpr(store.config['key'])
+          : `"${store.entity.toLowerCase()}s"`;
         this.line(`const ${storeName}: Store<I${store.entity}> = new LocalStorageStore(${key});`);
         break;
       }
       case 'supabase':
       case 'postgres': {
-        const table = store.config?.['table'] ? this.genExpr(store.config['table']) : `"${store.entity.toLowerCase()}s"`;
+        const table = store.config?.['table']
+          ? this.genExpr(store.config['table'])
+          : `"${store.entity.toLowerCase()}s"`;
         this.line(`const ${storeName}: Store<I${store.entity}> = new SupabaseStore(${table});`);
         break;
       }
@@ -183,14 +286,26 @@ export class CodeGenerator {
 
     this.line(`interface ${iface} {`);
     this.in();
-    for (const p of e.properties) { const opt = p.modifiers.includes('required') ? '' : '?'; this.line(`${p.name}${opt}: ${this.tsType(p.dataType)};`); }
-    for (const cp of e.computedProperties) { this.line(`readonly ${cp.name}: ${this.tsType(cp.dataType)};`); }
-    for (const r of e.relationships) { this.line(`${r.name}${r.kind === 'belongsTo' || r.kind === 'ref' ? '?' : ''}: ${this.relationType(r)};`); }
-    this.de(); this.line('}');
+    for (const p of e.properties) {
+      const opt = p.modifiers.includes('required') ? '' : '?';
+      this.line(`${p.name}${opt}: ${this.tsType(p.dataType)};`);
+    }
+    for (const cp of e.computedProperties) {
+      this.line(`readonly ${cp.name}: ${this.tsType(cp.dataType)};`);
+    }
+    for (const r of e.relationships) {
+      this.line(
+        `${r.name}${r.kind === 'belongsTo' || r.kind === 'ref' ? '?' : ''}: ${this.relationType(r)};`,
+      );
+    }
+    this.de();
+    this.line('}');
     this.line();
 
     const events = this.collectEvents(e);
-    const evtMap = events.size ? `{ ${[...events].map(ev => `${ev}: unknown`).join('; ')} }` : '{}';
+    const evtMap = events.size
+      ? `{ ${[...events].map((ev) => `${ev}: unknown`).join('; ')} }`
+      : '{}';
 
     this.line(`class ${e.name} extends EventEmitter<${evtMap}> {`);
     this.in();
@@ -210,12 +325,15 @@ export class CodeGenerator {
         this.line(`const old = this._${p.name}.value;`);
         this.line(`this._${p.name}.set(v);`);
         this.line(`if (old !== v) this._recompute();`);
-        this.de(); this.line('}');
+        this.de();
+        this.line('}');
       }
     }
 
     for (const cp of e.computedProperties) {
-      this.line(`private _computed_${cp.name}: ${this.tsType(cp.dataType)} = ${this.defVal(cp.dataType)};`);
+      this.line(
+        `private _computed_${cp.name}: ${this.tsType(cp.dataType)} = ${this.defVal(cp.dataType)};`,
+      );
       this.line(`get ${cp.name}() { return this._computed_${cp.name}; }`);
     }
 
@@ -223,7 +341,9 @@ export class CodeGenerator {
       if (r.kind === 'hasMany') {
         this.line(`private _rel_${r.name}: ${r.target}[] = [];`);
         this.line(`get ${r.name}() { return this._rel_${r.name}; }`);
-        this.line(`add${this.capitalize(r.name.replace(/s$/, ''))}(item: ${r.target}) { this._rel_${r.name}.push(item); }`);
+        this.line(
+          `add${this.capitalize(r.name.replace(/s$/, ''))}(item: ${r.target}) { this._rel_${r.name}.push(item); }`,
+        );
       } else {
         this.line(`private _rel_${r.name}: ${r.target} | null = null;`);
         this.line(`get ${r.name}() { return this._rel_${r.name}; }`);
@@ -233,28 +353,36 @@ export class CodeGenerator {
 
     this.line();
     this.line(`constructor(init?: Partial<${iface}>) {`);
-    this.in(); this.line('super();');
+    this.in();
+    this.line('super();');
     this.line('if (init) {');
     this.in();
-    for (const p of e.properties) this.line(`if (init.${p.name} !== undefined) this._${p.name}.set(init.${p.name});`);
-    this.de(); this.line('}');
+    for (const p of e.properties)
+      this.line(`if (init.${p.name} !== undefined) this._${p.name}.set(init.${p.name});`);
+    this.de();
+    this.line('}');
     this.line('this._initBehaviors();');
     this.line('this._recompute();');
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
 
     this.line();
     this.line('private _recompute() {');
     this.in();
     for (const cp of e.computedProperties) {
-      this.line(`this._computed_${cp.name} = ${this.genExpr(cp.expression).replace(/\bthis\./g, 'this.')};`);
+      this.line(
+        `this._computed_${cp.name} = ${this.genExpr(cp.expression).replace(/\bthis\./g, 'this.')};`,
+      );
     }
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
 
     this.line();
     this.line('private _initBehaviors() {');
     this.in();
     for (const b of e.behaviors) this.genBehaviorBinding(b);
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
 
     if (e.policies.length > 0) {
       this.line();
@@ -266,24 +394,34 @@ export class CodeGenerator {
         this.line(`if (${actionCheck} && !(${this.genExpr(p.expression)})) return false;`);
       }
       this.line('return true;');
-      this.de(); this.line('}');
+      this.de();
+      this.line('}');
     }
 
     this.line();
-    this.line(`subscribe(prop: keyof ${iface}, fn: (v: unknown) => void) { return (this as Record<string, unknown>)[\`_\${prop}\`]?.subscribe?.(fn); }`);
+    this.line(
+      `subscribe(prop: keyof ${iface}, fn: (v: unknown) => void) { return (this as Record<string, unknown>)[\`_\${prop}\`]?.subscribe?.(fn); }`,
+    );
 
     this.line();
     this.line('toJSON() {');
-    this.in(); this.line('return {');
+    this.in();
+    this.line('return {');
     this.in();
     for (const p of e.properties) this.line(`${p.name}: this.${p.name},`);
     for (const cp of e.computedProperties) this.line(`${cp.name}: this.${cp.name},`);
-    this.de(); this.line('};'); this.de(); this.line('}');
+    this.de();
+    this.line('};');
+    this.de();
+    this.line('}');
 
     for (const cmd of e.commands) this.genCommandMethod(cmd, e);
-    for (const b of e.behaviors) if (b.trigger.event !== 'create' && !b.trigger.event.startsWith('_')) this.genBehaviorMethod(b);
+    for (const b of e.behaviors)
+      if (b.trigger.event !== 'create' && !b.trigger.event.startsWith('_'))
+        this.genBehaviorMethod(b);
 
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
   }
 
   private collectEvents(e: EntityNode): Set<string> {
@@ -291,11 +429,12 @@ export class CodeGenerator {
     for (const b of e.behaviors) {
       events.add(b.trigger.event);
       for (const a of b.actions) {
-        if (a.kind === 'emit' && a.expression.type === 'Identifier' && 'name' in a.expression) events.add(a.expression.name);
+        if (a.kind === 'emit' && a.expression.type === 'Identifier' && 'name' in a.expression)
+          events.add(a.expression.name);
       }
     }
     for (const cmd of e.commands) {
-      if (cmd.emits) cmd.emits.forEach(ev => events.add(ev));
+      if (cmd.emits) cmd.emits.forEach((ev) => events.add(ev));
     }
     return events;
   }
@@ -306,7 +445,9 @@ export class CodeGenerator {
   }
 
   private genCommandMethod(cmd: CommandNode, entity?: EntityNode) {
-    const params = cmd.parameters.map(p => `${p.name}${p.required ? '' : '?'}: ${this.tsType(p.dataType)}`).join(', ');
+    const params = cmd.parameters
+      .map((p) => `${p.name}${p.required ? '' : '?'}: ${this.tsType(p.dataType)}`)
+      .join(', ');
     // Return the last action result type if specified, otherwise infer from actions or default to unknown
     const returnType = cmd.returns ? this.tsType(cmd.returns) : 'unknown';
 
@@ -317,12 +458,16 @@ export class CodeGenerator {
     // Check policies first (if entity has policies with execute/all action)
     if (entity && entity.policies.length > 0) {
       this.line('// Policy checks');
-      const hasRelevantPolicies = entity.policies.some(p => p.action === 'all' || p.action === 'execute');
+      const hasRelevantPolicies = entity.policies.some(
+        (p) => p.action === 'all' || p.action === 'execute',
+      );
       if (hasRelevantPolicies) {
         this.line(`const user = getContext().user;`);
         for (const p of entity.policies) {
           if (p.action !== 'all' && p.action !== 'execute') continue;
-          this.line(`if (!(${this.genExpr(p.expression)})) throw new Error(${JSON.stringify(p.message || `Denied by policy '${p.name}'`)});`);
+          this.line(
+            `if (!(${this.genExpr(p.expression)})) throw new Error(${JSON.stringify(p.message || `Denied by policy '${p.name}'`)});`,
+          );
         }
       }
     }
@@ -345,7 +490,7 @@ export class CodeGenerator {
 
     if (cmd.emits) {
       for (const ev of cmd.emits) {
-        this.line(`this.emit('${ev}', { ${cmd.parameters.map(p => p.name).join(', ')} });`);
+        this.line(`this.emit('${ev}', { ${cmd.parameters.map((p) => p.name).join(', ')} });`);
       }
     }
 
@@ -354,11 +499,14 @@ export class CodeGenerator {
       this.line(`return _result as ${returnType};`);
     }
 
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
   }
 
   private genCommand(cmd: CommandNode) {
-    const params = cmd.parameters.map(p => `${p.name}${p.required ? '' : '?'}: ${this.tsType(p.dataType)}`).join(', ');
+    const params = cmd.parameters
+      .map((p) => `${p.name}${p.required ? '' : '?'}: ${this.tsType(p.dataType)}`)
+      .join(', ');
     const returnType = cmd.returns ? this.tsType(cmd.returns) : 'unknown';
 
     this.line(`async function ${cmd.name}(${params}): Promise<${returnType}> {`);
@@ -381,7 +529,9 @@ export class CodeGenerator {
 
     if (cmd.emits) {
       for (const ev of cmd.emits) {
-        this.line(`EventBus.publish('${ev}', { ${cmd.parameters.map(p => p.name).join(', ')} });`);
+        this.line(
+          `EventBus.publish('${ev}', { ${cmd.parameters.map((p) => p.name).join(', ')} });`,
+        );
       }
     }
 
@@ -390,7 +540,8 @@ export class CodeGenerator {
       this.line(`return _result as ${returnType};`);
     }
 
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
   }
 
   private genOutboxEvent(ev: OutboxEventNode) {
@@ -399,7 +550,10 @@ export class CodeGenerator {
       this.line(`interface ${ev.name}Event ${payloadType}`);
       this.line();
       this.line(`const publish${ev.name} = (data: ${ev.name}Event) => {`);
-      this.in(); this.line(`EventBus.publish('${ev.channel}', data);`); this.de(); this.line('};');
+      this.in();
+      this.line(`EventBus.publish('${ev.channel}', data);`);
+      this.de();
+      this.line('};');
       return;
     }
     // At this point, ev.payload must be TypeNode (not { fields }) since we returned above
@@ -407,18 +561,21 @@ export class CodeGenerator {
     this.line(`interface ${ev.name}Event ${payloadType}`);
     this.line();
     this.line(`const publish${ev.name} = (data: ${ev.name}Event) => {`);
-    this.in(); this.line(`EventBus.publish('${ev.channel}', data);`);
-    this.de(); this.line('};');
+    this.in();
+    this.line(`EventBus.publish('${ev.channel}', data);`);
+    this.de();
+    this.line('};');
     this.line();
     this.line(`const subscribe${ev.name} = (fn: (data: ${ev.name}Event) => void) => {`);
     this.in();
     this.line(`return EventBus.subscribe('${ev.channel}', fn);`);
-    this.de(); this.line('};');
+    this.de();
+    this.line('};');
   }
 
   private genReaction(r: ReactionNode) {
     const paramsStr = r.params
-      ? `{ ${r.params.map(p => `${p.name}: ${this.genExpr(p.expression)}`).join(', ')} }`
+      ? `{ ${r.params.map((p) => `${p.name}: ${this.genExpr(p.expression)}`).join(', ')} }`
       : '{}';
     this.line(`// Reaction: on ${r.event} → ${r.targetEntity}.${r.targetCommand}`);
     this.line(`EventBus.subscribe('${r.event}', async (payload) => {`);
@@ -426,15 +583,21 @@ export class CodeGenerator {
     if (r.fanOut) {
       // Fan-out: run the command on every target row where row.<matchField> == matchSource.
       const sourceExpr = this.genExpr(r.fanOut.matchSource);
-      this.line(`const __matches = await ${r.targetEntity}Store.query((row) => (row as any).${r.fanOut.matchField} === ${sourceExpr});`);
+      this.line(
+        `const __matches = await ${r.targetEntity}Store.query((row) => (row as any).${r.fanOut.matchField} === ${sourceExpr});`,
+      );
       this.line(`for (const __m of __matches) {`);
       this.in();
-      this.line(`await ${r.targetEntity}Store.runCommand('${r.targetCommand}', (__m as any).id, ${paramsStr});`);
+      this.line(
+        `await ${r.targetEntity}Store.runCommand('${r.targetCommand}', (__m as any).id, ${paramsStr});`,
+      );
       this.de();
       this.line(`}`);
     } else if (r.resolve) {
       this.line(`const instanceId = ${this.genExpr(r.resolve)};`);
-      this.line(`await ${r.targetEntity}Store.runCommand('${r.targetCommand}', instanceId, ${paramsStr});`);
+      this.line(
+        `await ${r.targetEntity}Store.runCommand('${r.targetCommand}', instanceId, ${paramsStr});`,
+      );
     }
     this.de();
     this.line('});');
@@ -446,13 +609,17 @@ export class CodeGenerator {
     this.in();
     this.line(`name: '${role.name}',`);
     if (role.parent) this.line(`parent: '${role.parent}',`);
-    const allows = role.permissions.filter(p => p.kind === 'allow');
-    const denies = role.permissions.filter(p => p.kind === 'deny');
+    const allows = role.permissions.filter((p) => p.kind === 'allow');
+    const denies = role.permissions.filter((p) => p.kind === 'deny');
     if (allows.length > 0) {
-      this.line(`allow: [${allows.map(p => `{ action: '${p.action}'${p.target ? `, target: '${p.target}'` : ''} }`).join(', ')}],`);
+      this.line(
+        `allow: [${allows.map((p) => `{ action: '${p.action}'${p.target ? `, target: '${p.target}'` : ''} }`).join(', ')}],`,
+      );
     }
     if (denies.length > 0) {
-      this.line(`deny: [${denies.map(p => `{ action: '${p.action}'${p.target ? `, target: '${p.target}'` : ''} }`).join(', ')}],`);
+      this.line(
+        `deny: [${denies.map((p) => `{ action: '${p.action}'${p.target ? `, target: '${p.target}'` : ''} }`).join(', ')}],`,
+      );
     }
     this.de();
     this.line('} as const;');
@@ -470,11 +637,13 @@ export class CodeGenerator {
       const comp = step.compensate
         ? `, compensate: '${step.compensateEntity}.${step.compensate}'`
         : '';
-      this.line(`{ name: '${step.name}', command: '${step.commandEntity}.${step.command}'${comp} },`);
+      this.line(
+        `{ name: '${step.name}', command: '${step.commandEntity}.${step.command}'${comp} },`,
+      );
     }
     this.de();
     this.line(`],`);
-    this.line(`emits: [${s.emits.map(e => `'${e}'`).join(', ')}],`);
+    this.line(`emits: [${s.emits.map((e) => `'${e}'`).join(', ')}],`);
     this.de();
     this.line('} as const;');
   }
@@ -483,32 +652,49 @@ export class CodeGenerator {
     for (const c of constraints) {
       const expr = this.genExpr(c.expression);
       if (expr.includes(prop) || expr.includes('this.')) {
-        this.line(`if (!(${expr.replace(new RegExp(`this\\.${prop}`, 'g'), 'v')})) throw new Error(${JSON.stringify(c.message || `Constraint '${c.name}' violated`)});`);
+        this.line(
+          `if (!(${expr.replace(new RegExp(`this\\.${prop}`, 'g'), 'v')})) throw new Error(${JSON.stringify(c.message || `Constraint '${c.name}' violated`)});`,
+        );
       }
     }
   }
 
   private genBehaviorBinding(b: BehaviorNode) {
-    if (b.trigger.event === 'create') { for (const a of b.actions) this.line(this.genAction(a)); return; }
+    if (b.trigger.event === 'create') {
+      for (const a of b.actions) this.line(this.genAction(a));
+      return;
+    }
     const params = b.trigger.parameters?.join(', ') || 'd';
     this.line(`this.on('${b.trigger.event}', (${params}) => {`);
     this.in();
-    if (b.guards?.length) { const g = b.guards.map(x => `(${this.genExpr(x)})`).join(' && '); this.line(`if (!(${g})) return;`); }
+    if (b.guards?.length) {
+      const g = b.guards.map((x) => `(${this.genExpr(x)})`).join(' && ');
+      this.line(`if (!(${g})) return;`);
+    }
     for (const a of b.actions) this.line(this.genAction(a));
-    this.de(); this.line('});');
+    this.de();
+    this.line('});');
   }
 
   private genBehaviorMethod(b: BehaviorNode) {
     const params = b.trigger.parameters || [];
     this.line();
-    this.line(`${b.trigger.event}(${params.map(p => `${p}: unknown`).join(', ')}) {`);
-    this.in(); this.line(`this.emit('${b.trigger.event}', ${params.length ? `{ ${params.join(', ')} }` : '{}'});`);
-    this.de(); this.line('}');
+    this.line(`${b.trigger.event}(${params.map((p) => `${p}: unknown`).join(', ')}) {`);
+    this.in();
+    this.line(
+      `this.emit('${b.trigger.event}', ${params.length ? `{ ${params.join(', ')} }` : '{}'});`,
+    );
+    this.de();
+    this.line('}');
   }
 
   private genAction(a: { kind: string; target?: string; expression: ExpressionNode }): string {
     if (a.kind === 'mutate') return `this.${a.target} = ${this.genExpr(a.expression)};`;
-    if (a.kind === 'emit') { if (a.expression.type === 'Identifier' && 'name' in a.expression) return `this.emit('${a.expression.name}', {});`; return `this.emit('event', ${this.genExpr(a.expression)});`; }
+    if (a.kind === 'emit') {
+      if (a.expression.type === 'Identifier' && 'name' in a.expression)
+        return `this.emit('${a.expression.name}', {});`;
+      return `this.emit('event', ${this.genExpr(a.expression)});`;
+    }
     if (a.kind === 'effect') return `await (${this.genExpr(a.expression)});`;
     if (a.kind === 'publish') return `EventBus.publish('event', ${this.genExpr(a.expression)});`;
     if (a.kind === 'persist') return `await ${a.target}Store.update(this.id, this.toJSON());`;
@@ -517,33 +703,53 @@ export class CodeGenerator {
 
   private genFlow(f: FlowNode) {
     this.line(`function ${f.name}(input: ${this.tsType(f.input)}): ${this.tsType(f.output)} {`);
-    this.in(); this.line('let _v = input;'); this.line();
+    this.in();
+    this.line('let _v = input;');
+    this.line();
     for (const s of f.steps) {
       const expr = this.genExpr(s.expression);
-      if (s.condition) { this.line(`if (${this.genExpr(s.condition)}) {`); this.in(); }
+      if (s.condition) {
+        this.line(`if (${this.genExpr(s.condition)}) {`);
+        this.in();
+      }
       if (s.operation === 'map') this.line(`_v = (${expr})(_v);`);
       else if (s.operation === 'filter') this.line(`if (!(${expr})(_v)) return null;`);
-      else if (s.operation === 'validate') this.line(`if (!(${expr})(_v)) throw new Error('Validation failed');`);
+      else if (s.operation === 'validate')
+        this.line(`if (!(${expr})(_v)) throw new Error('Validation failed');`);
       else if (s.operation === 'transform') this.line(`_v = ${expr};`);
       else if (s.operation === 'tap') this.line(`(${expr})(_v);`);
       else this.line(`_v = ${expr};`);
-      if (s.condition) { this.de(); this.line('}'); }
+      if (s.condition) {
+        this.de();
+        this.line('}');
+      }
     }
-    this.line(); this.line('return _v;'); this.de(); this.line('}');
+    this.line();
+    this.line('return _v;');
+    this.de();
+    this.line('}');
   }
 
   private genEffect(e: EffectNode) {
     this.line(`const ${e.name}Effect = {`);
-    this.in(); this.line(`kind: '${e.kind}' as const,`);
+    this.in();
+    this.line(`kind: '${e.kind}' as const,`);
     if (e.kind === 'http') {
       const url = e.config['url'] ? this.genExpr(e.config['url']) : '""';
       const method = e.config['method'] ? this.genExpr(e.config['method']) : '"GET"';
       this.line(`async execute(data?: unknown) {`);
-      this.in(); this.line(`const res = await fetch(${url}, { method: ${method}, headers: { 'Content-Type': 'application/json' }, body: data ? JSON.stringify(data) : undefined });`);
-      this.line('return res.json();'); this.de(); this.line('},');
+      this.in();
+      this.line(
+        `const res = await fetch(${url}, { method: ${method}, headers: { 'Content-Type': 'application/json' }, body: data ? JSON.stringify(data) : undefined });`,
+      );
+      this.line('return res.json();');
+      this.de();
+      this.line('},');
     } else if (e.kind === 'storage') {
       const key = e.config['key'] ? this.genExpr(e.config['key']) : '"data"';
-      this.line(`get() { const d = localStorage.getItem(${key}); return d ? JSON.parse(d) : null; },`);
+      this.line(
+        `get() { const d = localStorage.getItem(${key}); return d ? JSON.parse(d) : null; },`,
+      );
       this.line(`set(v: unknown) { localStorage.setItem(${key}, JSON.stringify(v)); },`);
       this.line(`remove() { localStorage.removeItem(${key}); },`);
     } else if (e.kind === 'timer') {
@@ -551,12 +757,15 @@ export class CodeGenerator {
       this.line(`start(cb: () => void) { return setInterval(cb, ${interval}); },`);
       this.line('stop(id: number) { clearInterval(id); },');
     } else {
-      this.line('config: {'); this.in();
+      this.line('config: {');
+      this.in();
       for (const [k, v] of Object.entries(e.config)) this.line(`${k}: ${this.genExpr(v)},`);
-      this.de(); this.line('},');
+      this.de();
+      this.line('},');
       this.line('execute(data?: unknown) { /* custom */ },');
     }
-    this.de(); this.line('};');
+    this.de();
+    this.line('};');
   }
 
   private genExpose(x: ExposeNode) {
@@ -565,17 +774,30 @@ export class CodeGenerator {
       const apiName = x.entity;
       const basePath = x.name.startsWith('/') ? x.name : `/${x.name}`;
       this.line(`const ${apiName}API = {`);
-      this.in(); this.line(`basePath: '${basePath}',`);
+      this.in();
+      this.line(`basePath: '${basePath}',`);
       this.line(`entity: ${x.entity},`);
-      const ops = x.operations.length ? x.operations : ['list', 'get', 'create', 'update', 'delete'];
-      if (ops.includes('list')) this.line(`async list(q?: Record<string, unknown>) { return ${x.entity}Store.getAll(); },`);
-      if (ops.includes('get')) this.line(`async get(id: string) { return ${x.entity}Store.getById(id); },`);
-      if (ops.includes('create')) this.line(`async create(d: Partial<I${x.entity}>) { return ${x.entity}Store.create(d); },`);
-      if (ops.includes('update')) this.line(`async update(id: string, d: Partial<I${x.entity}>) { return ${x.entity}Store.update(id, d); },`);
-      if (ops.includes('delete')) this.line(`async delete(id: string) { return ${x.entity}Store.delete(id); },`);
-      this.de(); this.line('};');
+      const ops = x.operations.length
+        ? x.operations
+        : ['list', 'get', 'create', 'update', 'delete'];
+      if (ops.includes('list'))
+        this.line(`async list(q?: Record<string, unknown>) { return ${x.entity}Store.getAll(); },`);
+      if (ops.includes('get'))
+        this.line(`async get(id: string) { return ${x.entity}Store.getById(id); },`);
+      if (ops.includes('create'))
+        this.line(`async create(d: Partial<I${x.entity}>) { return ${x.entity}Store.create(d); },`);
+      if (ops.includes('update'))
+        this.line(
+          `async update(id: string, d: Partial<I${x.entity}>) { return ${x.entity}Store.update(id, d); },`,
+        );
+      if (ops.includes('delete'))
+        this.line(`async delete(id: string) { return ${x.entity}Store.delete(id); },`);
+      this.de();
+      this.line('};');
     } else if (x.protocol === 'function') {
-      this.line(`function create${x.entity}(d: Partial<I${x.entity}>) { return new ${x.entity}(d); }`);
+      this.line(
+        `function create${x.entity}(d: Partial<I${x.entity}>) { return new ${x.entity}(d); }`,
+      );
     }
   }
 
@@ -590,10 +812,12 @@ export class CodeGenerator {
     this.serverOut.push('app.use("*", cors());');
     this.serverOut.push('');
 
-    for (const x of program.exposures.filter(e => e.generateServer && e.protocol === 'rest')) {
-      const entity = program.entities.find(e => e.name === x.entity);
+    for (const x of program.exposures.filter((e) => e.generateServer && e.protocol === 'rest')) {
+      const entity = program.entities.find((e) => e.name === x.entity);
       const basePath = `/${x.name}`;
-      const ops = x.operations.length ? x.operations : ['list', 'get', 'create', 'update', 'delete'];
+      const ops = x.operations.length
+        ? x.operations
+        : ['list', 'get', 'create', 'update', 'delete'];
 
       this.serverOut.push(`// ${x.entity} Routes`);
 
@@ -618,8 +842,12 @@ export class CodeGenerator {
         if (entity?.constraints.length) {
           this.serverOut.push(`  // Validation from constraints`);
           for (const constraint of entity.constraints) {
-            this.serverOut.push(`  if (!(${this.genExpr(constraint.expression).replace(/this\./g, 'body.')})) {`);
-            this.serverOut.push(`    return c.json({ error: ${JSON.stringify(constraint.message || constraint.name)} }, 400);`);
+            this.serverOut.push(
+              `  if (!(${this.genExpr(constraint.expression).replace(/this\./g, 'body.')})) {`,
+            );
+            this.serverOut.push(
+              `    return c.json({ error: ${JSON.stringify(constraint.message || constraint.name)} }, 400);`,
+            );
             this.serverOut.push(`  }`);
           }
         }
@@ -631,7 +859,9 @@ export class CodeGenerator {
       if (ops.includes('update')) {
         this.serverOut.push(`app.put("${basePath}/:id", async (c) => {`);
         this.serverOut.push(`  const body = await c.req.json();`);
-        this.serverOut.push(`  const item = await ${x.entity}Store.update(c.req.param("id"), body);`);
+        this.serverOut.push(
+          `  const item = await ${x.entity}Store.update(c.req.param("id"), body);`,
+        );
         this.serverOut.push(`  return c.json(item);`);
         this.serverOut.push(`});`);
       }
@@ -661,7 +891,9 @@ export class CodeGenerator {
         }
       }
 
-      this.serverOut.push(`  const result = await ${cmd.name}(${cmd.parameters.map(p => `body.${p.name}`).join(', ')});`);
+      this.serverOut.push(
+        `  const result = await ${cmd.name}(${cmd.parameters.map((p) => `body.${p.name}`).join(', ')});`,
+      );
       this.serverOut.push(`  return c.json({ success: true, result });`);
       this.serverOut.push(`});`);
       this.serverOut.push('');
@@ -699,7 +931,9 @@ export class CodeGenerator {
         this.testOut.push(`      const instance = new ${entity.name}();`);
         this.testOut.push(`      expect(() => {`);
         this.testOut.push(`        // Set values that violate constraint`);
-        this.testOut.push(`      }).toThrow(${JSON.stringify(constraint.message || `Constraint '${constraint.name}' violated`)});`);
+        this.testOut.push(
+          `      }).toThrow(${JSON.stringify(constraint.message || `Constraint '${constraint.name}' violated`)});`,
+        );
         this.testOut.push(`    });`);
         this.testOut.push(`  });`);
         this.testOut.push('');
@@ -716,7 +950,9 @@ export class CodeGenerator {
 
       for (let i = 0; i < cmd.guards.length; i++) {
         this.testOut.push(`  it("should enforce guard ${i + 1}", async () => {`);
-        this.testOut.push(`    await expect(${cmd.name}(/* invalid params */)).rejects.toThrow("Guard failed");`);
+        this.testOut.push(
+          `    await expect(${cmd.name}(/* invalid params */)).rejects.toThrow("Guard failed");`,
+        );
         this.testOut.push(`  });`);
       }
 
@@ -728,17 +964,32 @@ export class CodeGenerator {
   private genComposition(c: CompositionNode) {
     this.line(`class ${c.name} {`);
     this.in();
-    for (const comp of c.components) { const n = comp.alias || comp.entity.toLowerCase(); this.line(`${n}: ${comp.entity};`); }
+    for (const comp of c.components) {
+      const n = comp.alias || comp.entity.toLowerCase();
+      this.line(`${n}: ${comp.entity};`);
+    }
     this.line();
-    this.line('constructor() {'); this.in();
-    for (const comp of c.components) { const n = comp.alias || comp.entity.toLowerCase(); this.line(`this.${n} = new ${comp.entity}();`); }
+    this.line('constructor() {');
+    this.in();
+    for (const comp of c.components) {
+      const n = comp.alias || comp.entity.toLowerCase();
+      this.line(`this.${n} = new ${comp.entity}();`);
+    }
     this.line();
     for (const conn of c.connections) {
-      if (conn.transform) this.line(`this.${conn.from.component}.on('${conn.from.output}', (d) => { const t = (${this.genExpr(conn.transform)})(d); this.${conn.to.component}.emit('${conn.to.input}', t); });`);
-      else this.line(`this.${conn.from.component}.on('${conn.from.output}', (d) => this.${conn.to.component}.emit('${conn.to.input}', d));`);
+      if (conn.transform)
+        this.line(
+          `this.${conn.from.component}.on('${conn.from.output}', (d) => { const t = (${this.genExpr(conn.transform)})(d); this.${conn.to.component}.emit('${conn.to.input}', t); });`,
+        );
+      else
+        this.line(
+          `this.${conn.from.component}.on('${conn.from.output}', (d) => this.${conn.to.component}.emit('${conn.to.input}', d));`,
+        );
     }
-    this.de(); this.line('}');
-    this.de(); this.line('}');
+    this.de();
+    this.line('}');
+    this.de();
+    this.line('}');
   }
 
   private emitExports(p: ManifestProgram) {
@@ -748,10 +999,17 @@ export class CodeGenerator {
     for (const cmd of p.commands) exports.push(cmd.name);
     for (const f of p.flows) exports.push(f.name);
     for (const e of p.effects) exports.push(`${e.name}Effect`);
-    for (const ev of p.events) { exports.push(`publish${ev.name}`); exports.push(`subscribe${ev.name}`); }
-    for (const x of p.exposures) exports.push(x.protocol === 'rest' ? `${x.entity}API` : `create${x.entity}`);
+    for (const ev of p.events) {
+      exports.push(`publish${ev.name}`);
+      exports.push(`subscribe${ev.name}`);
+    }
+    for (const x of p.exposures)
+      exports.push(x.protocol === 'rest' ? `${x.entity}API` : `create${x.entity}`);
     for (const c of p.compositions) exports.push(c.name);
-    if (exports.length) { this.line(); this.line(`export { ${exports.join(', ')} };`); }
+    if (exports.length) {
+      this.line();
+      this.line(`export { ${exports.join(', ')} };`);
+    }
   }
 
   private genExpr(e: ExpressionNode): string {
@@ -769,7 +1027,7 @@ export class CodeGenerator {
         const op = e.operator;
         const l = this.genExpr(e.left);
         const r = this.genExpr(e.right);
-        const m: Record<string, string> = { 'and': '&&', 'or': '||', 'is': '===', 'contains': '.includes' };
+        const m: Record<string, string> = { and: '&&', or: '||', is: '===', contains: '.includes' };
         if (op === 'contains') return `${l}.includes(${r})`;
         return `(${l} ${m[op] || op} ${r})`;
       }
@@ -789,7 +1047,9 @@ export class CodeGenerator {
         return `(${e.parameters.join(', ')}) => ${this.genExpr(e.body)}`;
       case 'AggregateCount': {
         const pred = e.predicates.length
-          ? e.predicates.map(p => `(row as any).${p.field} === ${this.genExpr(p.value)}`).join(' && ')
+          ? e.predicates
+              .map((p) => `(row as any).${p.field} === ${this.genExpr(p.value)}`)
+              .join(' && ')
           : 'true';
         return `(await ${e.entity}Store.query((row) => ${pred})).length`;
       }
@@ -799,7 +1059,19 @@ export class CodeGenerator {
   }
 
   private tsType(t: ASTTypeNode): string {
-    const m: Record<string, string> = { string: 'string', number: 'number', boolean: 'boolean', any: 'any', void: 'void', list: 'Array', map: 'Map', date: 'string', time: 'string', datetime: 'number', duration: 'number' };
+    const m: Record<string, string> = {
+      string: 'string',
+      number: 'number',
+      boolean: 'boolean',
+      any: 'any',
+      void: 'void',
+      list: 'Array',
+      map: 'Map',
+      date: 'string',
+      time: 'string',
+      datetime: 'number',
+      duration: 'number',
+    };
     let r = m[t.name] || t.name;
     if (t.generic) r += `<${this.tsType(t.generic)}>`;
     if (t.nullable) r += ' | null';
@@ -808,7 +1080,18 @@ export class CodeGenerator {
 
   private defVal(t: { name: string; nullable: boolean }): string {
     if (t.nullable) return 'null';
-    const d: Record<string, string> = { string: '""', number: '0', boolean: 'false', list: '[]', map: 'new Map()', unknown: 'null', date: '""', time: '""', datetime: '0', duration: '0' };
+    const d: Record<string, string> = {
+      string: '""',
+      number: '0',
+      boolean: 'false',
+      list: '[]',
+      map: 'new Map()',
+      unknown: 'null',
+      date: '""',
+      time: '""',
+      datetime: '0',
+      duration: '0',
+    };
     return d[t.name] || 'null';
   }
 
@@ -816,7 +1099,13 @@ export class CodeGenerator {
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
 
-  private line(s = '') { this.out.push('  '.repeat(this.indent) + s); }
-  private in() { this.indent++; }
-  private de() { this.indent = Math.max(0, this.indent - 1); }
+  private line(s = '') {
+    this.out.push('  '.repeat(this.indent) + s);
+  }
+  private in() {
+    this.indent++;
+  }
+  private de() {
+    this.indent = Math.max(0, this.indent - 1);
+  }
 }

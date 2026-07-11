@@ -55,24 +55,44 @@ async function cleanupTemp(filePath: string): Promise<void> {
 
 function captureOutput() {
   const outputs: string[] = [];
-  const logSpy   = vi.spyOn(console, 'log').mockImplementation((...a) => { outputs.push(a.join(' ')); });
-  const errorSpy = vi.spyOn(console, 'error').mockImplementation((...a) => { outputs.push(a.join(' ')); });
-  const warnSpy  = vi.spyOn(console, 'warn').mockImplementation((...a) => { outputs.push(a.join(' ')); });
-  const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation((d: any) => { outputs.push(String(d)); return true; });
+  const logSpy = vi.spyOn(console, 'log').mockImplementation((...a) => {
+    outputs.push(a.join(' '));
+  });
+  const errorSpy = vi.spyOn(console, 'error').mockImplementation((...a) => {
+    outputs.push(a.join(' '));
+  });
+  const warnSpy = vi.spyOn(console, 'warn').mockImplementation((...a) => {
+    outputs.push(a.join(' '));
+  });
+  const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation((d: any) => {
+    outputs.push(String(d));
+    return true;
+  });
   return {
     outputs,
-    restore: () => { logSpy.mockRestore(); errorSpy.mockRestore(); warnSpy.mockRestore(); stderrSpy.mockRestore(); },
+    restore: () => {
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+      warnSpy.mockRestore();
+      stderrSpy.mockRestore();
+    },
   };
 }
 
 /** Run validateCommand, swallowing the process.exit(1) it calls on failure. */
-async function runValidate(filePath: string, opts = { strict: false }): Promise<{ outputs: string[]; exited: boolean }> {
+async function runValidate(
+  filePath: string,
+  opts = { strict: false },
+): Promise<{ outputs: string[]; exited: boolean }> {
   const { validateCommand } = await import('./validate.js');
   const capture = captureOutput();
   let exited = false;
 
   const originalExit = process.exit;
-  process.exit = vi.fn().mockImplementation(() => { exited = true; throw new Error('process.exit'); }) as any;
+  process.exit = vi.fn().mockImplementation(() => {
+    exited = true;
+    throw new Error('process.exit');
+  }) as any;
 
   try {
     await validateCommand(filePath, opts);
@@ -90,7 +110,9 @@ async function runValidate(filePath: string, opts = { strict: false }): Promise<
 // Valid IR
 // ---------------------------------------------------------------------------
 describe('Validate Command – valid IR', () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it('passes for a minimal valid IR', async () => {
     const filePath = await createTempIR(makeValidIR());
@@ -106,16 +128,18 @@ describe('Validate Command – valid IR', () => {
   it('accepts custom (capability-style) role permission actions', async () => {
     // Roles may use custom permission tokens beyond read/write/delete/execute/all
     // (e.g. salesAccess) for capability-based RBAC. These must validate.
-    const filePath = await createTempIR(makeValidIR({
-      roles: [
-        {
-          name: 'Sales',
-          allow: [{ action: 'salesAccess' }, { action: 'read' }],
-          deny: [{ action: 'adminAccess' }],
-          effectivePermissions: [{ action: 'read' }, { action: 'salesAccess' }],
-        },
-      ],
-    }));
+    const filePath = await createTempIR(
+      makeValidIR({
+        roles: [
+          {
+            name: 'Sales',
+            allow: [{ action: 'salesAccess' }, { action: 'read' }],
+            deny: [{ action: 'adminAccess' }],
+            effectivePermissions: [{ action: 'read' }, { action: 'salesAccess' }],
+          },
+        ],
+      }),
+    );
     try {
       const { outputs, exited } = await runValidate(filePath);
       expect(exited).toBe(false);
@@ -127,16 +151,18 @@ describe('Validate Command – valid IR', () => {
 
   it('rejects a non-identifier role permission action', async () => {
     // A custom action must still be a valid identifier (no spaces/punctuation).
-    const filePath = await createTempIR(makeValidIR({
-      roles: [
-        {
-          name: 'Broken',
-          allow: [{ action: 'not a valid action!' }],
-          deny: [],
-          effectivePermissions: [],
-        },
-      ],
-    }));
+    const filePath = await createTempIR(
+      makeValidIR({
+        roles: [
+          {
+            name: 'Broken',
+            allow: [{ action: 'not a valid action!' }],
+            deny: [],
+            effectivePermissions: [],
+          },
+        ],
+      }),
+    );
     try {
       const { exited } = await runValidate(filePath);
       expect(exited).toBe(true);
@@ -146,15 +172,17 @@ describe('Validate Command – valid IR', () => {
   });
 
   it('passes when optional irHash is present in provenance', async () => {
-    const filePath = await createTempIR(makeValidIR({
-      provenance: {
-        contentHash: 'abc123',
-        irHash: 'def456',
-        compilerVersion: '0.3.21',
-        schemaVersion: '1.0',
-        compiledAt: '2026-02-21T00:00:00.000Z',
-      },
-    }));
+    const filePath = await createTempIR(
+      makeValidIR({
+        provenance: {
+          contentHash: 'abc123',
+          irHash: 'def456',
+          compilerVersion: '0.3.21',
+          schemaVersion: '1.0',
+          compiledAt: '2026-02-21T00:00:00.000Z',
+        },
+      }),
+    );
     try {
       const { exited } = await runValidate(filePath);
       expect(exited).toBe(false);
@@ -168,7 +196,9 @@ describe('Validate Command – valid IR', () => {
 // Invalid IR – top-level required fields
 // ---------------------------------------------------------------------------
 describe('Validate Command – missing top-level required fields', () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it('fails when version is missing', async () => {
     const ir = makeValidIR() as any;
@@ -240,7 +270,9 @@ describe('Validate Command – missing top-level required fields', () => {
 // Invalid IR – provenance required fields
 // ---------------------------------------------------------------------------
 describe('Validate Command – provenance validation', () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it('fails when provenance.contentHash is missing', async () => {
     const ir = makeValidIR() as any;
@@ -283,7 +315,7 @@ describe('Validate Command – provenance validation', () => {
 
   it('fails when provenance has an unknown additional property', async () => {
     const ir = makeValidIR() as any;
-    ir.provenance.sources = ['foo.manifest'];   // not in schema (additionalProperties: false)
+    ir.provenance.sources = ['foo.manifest']; // not in schema (additionalProperties: false)
     const filePath = await createTempIR(ir);
     try {
       const { outputs, exited } = await runValidate(filePath);
@@ -299,7 +331,9 @@ describe('Validate Command – provenance validation', () => {
 // Invalid IR – version const
 // ---------------------------------------------------------------------------
 describe('Validate Command – version field', () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it('fails when version is not "1.0"', async () => {
     const filePath = await createTempIR(makeValidIR({ version: '2.0' }));
@@ -317,7 +351,9 @@ describe('Validate Command – version field', () => {
 // File-level errors
 // ---------------------------------------------------------------------------
 describe('Validate Command – file errors', () => {
-  beforeEach(() => { vi.resetModules(); });
+  beforeEach(() => {
+    vi.resetModules();
+  });
 
   it('fails for invalid JSON', async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-validate-test-'));

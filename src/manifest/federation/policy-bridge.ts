@@ -78,7 +78,11 @@ export function parseBridgeHeaders(source: Headers | Record<string, string>): Po
   const org = get('X-Manifest-Org');
   if (org) headers.orgId = org;
   const roles = get('X-Manifest-Roles');
-  if (roles) headers.actorRoles = roles.split(',').map((r) => r.trim()).filter(Boolean);
+  if (roles)
+    headers.actorRoles = roles
+      .split(',')
+      .map((r) => r.trim())
+      .filter(Boolean);
   const reqId = get('X-Request-Id');
   if (reqId) headers.requestId = reqId;
   const corrId = get('X-Correlation-Id');

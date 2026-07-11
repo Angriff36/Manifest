@@ -3,6 +3,7 @@
 ## Phases
 
 ### Phase 0 — Full inventory (READ ONLY)
+
 - [ ] A. Grammar investigation
 - [ ] B. IR investigation (3 representative entities)
 - [ ] C. Projection investigation
@@ -12,6 +13,7 @@
 - [ ] CHECKPOINT 0 — Report gap list + classification + blast radius
 
 ### Phase 1 — Grammar + IR design (DESIGN, get approval)
+
 - [ ] Grammar surface design for approved scope
 - [ ] IR shape design for approved scope
 - [ ] Projection-config boundary design
@@ -19,12 +21,14 @@
 - [ ] CHECKPOINT 1 — Approve grammar + IR design
 
 ### Phase 2 — Core grammar + IR implementation ✅
+
 - [x] Grammar/parser for composite FK, composite PK, non-id references, referential actions
 - [x] IR extension (foreignKey becomes structured form)
 - [x] Unit tests for 3 representative entities (9 tests added, all passing)
 - [x] CHECKPOINT 2 — reported to user; user directed agent to proceed (no independent approval gate)
 
 ### Phase 3 — Projection implementation ✅
+
 - [x] Composite @@id primary keys
 - [x] Composite FK with correct fields/references
 - [x] Non-id references targets
@@ -33,12 +37,14 @@
 - [x] CHECKPOINT 3 — reported to user; user directed agent to proceed (no independent approval gate)
 
 ### Phase 4 — Migrate all foreignKey readers ✅
+
 - [x] Migrate all readers from Phase 0(D)
 - [x] Assertion/test for each migrated reader
 - [x] Full typecheck/build green
 - [x] CHECKPOINT 4 — reported to user; user directed agent to proceed (no independent approval gate)
 
 ### Phase 5 — Round-trip verification ✅
+
 - [x] Generate schema.prisma for real multi-tenant entities
 - [x] `npx prisma validate` PASSED on generated schema (Prisma 7.3.0 at capsule-pro)
 - [x] Diff against real schema; remaining diffs are all PROJECTION-CONFIG gaps (no SEMANTIC-CORE gaps)
@@ -47,6 +53,7 @@
 - [x] CHECKPOINT 5 — reported to user; pending user final acceptance
 
 ## Status
+
 Phase 0 COMPLETE
 Phase 1 COMPLETE — Grammar + IR design approved
 Phase 2 COMPLETE — Core grammar + IR implementation done; awaiting CHECKPOINT 2 approval
@@ -55,12 +62,14 @@ Phase 4 COMPLETE — All foreignKey readers migrated; typecheck clean; 1073/1073
 Phase 5 COMPLETE — 14/14 structural checks PASS; all capability gaps closed; notes.md updated
 
 ## Scope Adjustments (user approved)
+
 - @@unique for relationship-backing / alternate identity → SEMANTIC-CORE (added to scope)
 - Pure performance @@index → PROJECTION-CONFIG (excluded from scope)
 - Item 9 (through wiring bug // PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED) → DEFERRED to separate follow-up task (not this 1.0 wave)
 - Phase 4 blast radius: must re-verify in main context, not inherited from subagent
 
 ## Design Corrections (CHECKPOINT 1 blockers fixed)
+
 - **BLOCKER 1 fixed**: alternateKeys is `string[][]` (multiple alternate keys, each a column-list). IREntity type corrected. JSON schema single block with no duplication, no typo.
 - **BLOCKER 2 fixed**: case 3 (references-only, no fields) infers local from `relName + "Id"`, not from `references[0]`. Composite refs without fields = parse error. Cases 3 and 4 now unambiguous.
 - **Clarification 1**: Invariant stated — `foreignKey` and `through` are mutually exclusive. hasMany+through → through only; belongsTo with FK → foreignKey only; ref → neither.
@@ -70,6 +79,7 @@ Phase 5 COMPLETE — 14/14 structural checks PASS; all capability gaps closed; n
 ## CHECKPOINT 2 Report
 
 **Grammar + IR diffs:**
+
 - `src/manifest/lexer.ts`: added keywords `key`, `fields`, `references`, `onDelete`, `onUpdate`, `cascade`, `restrict`, `setNull`, `setDefault`, `noAction`
 - `src/manifest/types.ts`: added `RefAction` type; `RelationshipNode`: removed `foreignKey?: string`, added `fields?: string[]`, `references?: string[]`, `onDelete/onUpdate?: RefAction`; `EntityNode`: added `key?: string[]`, `alternateKeys?: string[][]`
 - `src/manifest/ir.ts`: added `RefAction`, `IRForeignKey`; `IRRelationship.foreignKey?: string` → `foreignKey?: IRForeignKey`; added `onDelete`, `onUpdate`, `key`, `alternateKeys`
@@ -80,5 +90,6 @@ Phase 5 COMPLETE — 14/14 structural checks PASS; all capability gaps closed; n
 **Tests:** `npm test` → 1032/1032 passing. 9 new composite PK/FK tests all green.
 
 **TypeScript red state (Phase 4 deferred):**
+
 - `src/manifest/runtime-engine.ts`: 3 type errors (uses old string foreignKey) — intentional Phase 4 work
 - `src/artifacts/zipExporter.ts`, `src/project-template/templates.ts`: have own local types, no TS errors yet; Phase 4 must migrate

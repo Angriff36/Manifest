@@ -61,12 +61,20 @@ function makeIR(overrides: Record<string, unknown> = {}) {
           {
             kind: 'unary',
             operator: 'not',
-            operand: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'completed' },
+            operand: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'self' },
+              property: 'completed',
+            },
           },
         ],
         constraints: [],
         actions: [
-          { kind: 'mutate', target: 'completed', expression: { kind: 'literal', value: { kind: 'boolean', value: true } } },
+          {
+            kind: 'mutate',
+            target: 'completed',
+            expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+          },
         ],
         emits: ['TaskCompleted'],
       },
@@ -130,7 +138,7 @@ describe('manifest coverage', () => {
     await writeFile(
       path.join(dir, 'tests', 'task.test.ts'),
       `describe('Task.complete', () => { it('works', () => {}); });\n` +
-      `describe('Task.setPriority', () => { it('works', () => {}); });\n`
+        `describe('Task.setPriority', () => { it('works', () => {}); });\n`,
     );
 
     const result = await coverageCommand({ ir: irPath, root: dir, format: 'json' });
@@ -163,7 +171,7 @@ describe('manifest coverage', () => {
     };
     await writeFile(
       path.join(dir, 'conformance', 'expected', '01-test.results.json'),
-      JSON.stringify(results)
+      JSON.stringify(results),
     );
 
     const result = await coverageCommand({ ir: irPath, root: dir, format: 'json' });
@@ -200,7 +208,7 @@ describe('manifest coverage', () => {
     };
     await writeFile(
       path.join(dir, 'conformance', 'expected', '01-policy.results.json'),
-      JSON.stringify(results)
+      JSON.stringify(results),
     );
 
     const result = await coverageCommand({ ir: irPath, root: dir, format: 'json' });
@@ -218,7 +226,7 @@ describe('manifest coverage', () => {
     // Test file that references constraint codes
     await writeFile(
       path.join(dir, 'tests', 'constraints.test.ts'),
-      `it('validates validPriority constraint', () => {});\nit('checks levelRange', () => {});\n`
+      `it('validates validPriority constraint', () => {});\nit('checks levelRange', () => {});\n`,
     );
 
     const result = await coverageCommand({ ir: irPath, root: dir, format: 'json' });
@@ -237,7 +245,7 @@ describe('manifest coverage', () => {
     // (2 commands + 1 guard + 1 policy + 2 constraints = 6)
     await writeFile(
       path.join(dir, 'tests', 'partial.test.ts'),
-      `describe('Task.complete', () => {});\ndescribe('Task.setPriority', () => {});\n`
+      `describe('Task.complete', () => {});\ndescribe('Task.setPriority', () => {});\n`,
     );
 
     const result = await coverageCommand({ ir: irPath, root: dir, format: 'json' });
@@ -279,10 +287,7 @@ describe('manifest coverage', () => {
     const irPath = path.join(dir, 'test.ir.json');
     await writeFile(irPath, JSON.stringify(simpleIR));
 
-    await writeFile(
-      path.join(dir, 'tests', 'all.test.ts'),
-      `describe('Task.doIt', () => {});\n`
-    );
+    await writeFile(path.join(dir, 'tests', 'all.test.ts'), `describe('Task.doIt', () => {});\n`);
 
     const result = await coverageCommand({ ir: irPath, root: dir, format: 'json' });
 
@@ -319,9 +324,7 @@ describe('manifest coverage', () => {
   it('throws when no IR file is found and no source is given', async () => {
     const dir = await tempDir('manifest-coverage-no-ir-');
 
-    await expect(
-      coverageCommand({ root: dir })
-    ).rejects.toThrow(/No IR file found/);
+    await expect(coverageCommand({ root: dir })).rejects.toThrow(/No IR file found/);
   });
 
   it('returns structured JSON output', async () => {
@@ -356,7 +359,7 @@ describe('manifest coverage', () => {
     // Cover just the commands
     await writeFile(
       path.join(dir, 'tests', 'partial.test.ts'),
-      `describe('Task.complete', () => {});\ndescribe('Task.setPriority', () => {});\n`
+      `describe('Task.complete', () => {});\ndescribe('Task.setPriority', () => {});\n`,
     );
 
     const result = await coverageCommand({ ir: irPath, root: dir, format: 'json' });

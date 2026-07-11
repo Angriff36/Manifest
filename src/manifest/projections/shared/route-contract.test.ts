@@ -29,9 +29,15 @@ describe('resolveEntitySegment', () => {
   });
 
   it('routeSegments override wins over casing and may be multi-segment', () => {
-    expect(resolveEntitySegment('OrderLine', { routeSegments: { OrderLine: 'order-lines' }, routeCasing: 'kebab-case' }))
-      .toBe('order-lines');
-    expect(resolveEntitySegment('Event', { routeSegments: { Event: 'events/event' } })).toBe('events/event');
+    expect(
+      resolveEntitySegment('OrderLine', {
+        routeSegments: { OrderLine: 'order-lines' },
+        routeCasing: 'kebab-case',
+      }),
+    ).toBe('order-lines');
+    expect(resolveEntitySegment('Event', { routeSegments: { Event: 'events/event' } })).toBe(
+      'events/event',
+    );
   });
 });
 
@@ -59,7 +65,9 @@ describe('envelope keys', () => {
 describe('zodParamsSchemaName', () => {
   it('is `${Entity}${Command}ParamsSchema`, capitalize-first (matches hono/express)', () => {
     expect(zodParamsSchemaName('Recipe', 'create')).toBe('RecipeCreateParamsSchema');
-    expect(zodParamsSchemaName('OrderLine', 'publishRecipe')).toBe('OrderLinePublishRecipeParamsSchema');
+    expect(zodParamsSchemaName('OrderLine', 'publishRecipe')).toBe(
+      'OrderLinePublishRecipeParamsSchema',
+    );
   });
 });
 
@@ -82,13 +90,19 @@ describe('resolveRouteContract — defaults', () => {
   it('dispatcher URL template matches its route pathHint, invocation uses raw names', () => {
     expect(c.dispatcherPath()).toBe('/api/manifest/[entity]/commands/[command]');
     expect(c.dispatcherPath('colon')).toBe('/api/manifest/:entity/commands/:command');
-    expect(c.dispatcherRoutePathHint()).toBe('app/api/manifest/[entity]/commands/[command]/route.ts');
-    expect(c.dispatcherInvocationPath('Recipe', 'publishRecipe')).toBe('/api/manifest/Recipe/commands/publishRecipe');
+    expect(c.dispatcherRoutePathHint()).toBe(
+      'app/api/manifest/[entity]/commands/[command]/route.ts',
+    );
+    expect(c.dispatcherInvocationPath('Recipe', 'publishRecipe')).toBe(
+      '/api/manifest/Recipe/commands/publishRecipe',
+    );
   });
 
   it('concrete per-command path uses the kebab command slug', () => {
     expect(c.concreteCommandPath('Recipe', 'publishRecipe')).toBe('/api/recipe/publish-recipe');
-    expect(c.concreteCommandRoutePathHint('Recipe', 'publishRecipe')).toBe('app/api/recipe/publish-recipe/route.ts');
+    expect(c.concreteCommandRoutePathHint('Recipe', 'publishRecipe')).toBe(
+      'app/api/recipe/publish-recipe/route.ts',
+    );
   });
 });
 
@@ -107,7 +121,10 @@ describe('resolveRouteContract — appDir change keeps client and routes coheren
 
 describe('resolveRouteContract — explicit overrides', () => {
   it('honors an explicit apiBasePath and routeSegments', () => {
-    const c = resolveRouteContract({ apiBasePath: '/v1/api', routeSegments: { OrderLine: 'order-lines' } });
+    const c = resolveRouteContract({
+      apiBasePath: '/v1/api',
+      routeSegments: { OrderLine: 'order-lines' },
+    });
     expect(c.listPath('OrderLine')).toBe('/v1/api/order-lines/list');
     expect(c.dispatcherBasePath).toBe('/v1/api/manifest');
   });

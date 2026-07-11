@@ -62,7 +62,7 @@ export async function wiringInspectCommand(
   }
 
   const failOn = options.failOn
-    ? (options.failOn.split(',').map(s => s.trim()) as WiringInspectConfig['failOn'])
+    ? (options.failOn.split(',').map((s) => s.trim()) as WiringInspectConfig['failOn'])
     : fileConfig.failOn;
 
   const report = await inspectWiringConsumers({

@@ -44,9 +44,9 @@ function packageRoot(): string {
   let dir = __dirname;
   for (let i = 0; i < 6; i++) {
     try {
-            const pkg = JSON.parse(
-        readFileSync(resolve(dir, 'package.json'), 'utf-8')
-      ) as { name?: string };
+      const pkg = JSON.parse(readFileSync(resolve(dir, 'package.json'), 'utf-8')) as {
+        name?: string;
+      };
       if (pkg.name === '@manifest/stdlib') {
         return dir;
       }
@@ -91,10 +91,8 @@ export const timestampedArchetypeSource = () =>
   readManifestSource('archetypes/timestamped.manifest');
 export const softDeletableArchetypeSource = () =>
   readManifestSource('archetypes/soft-deletable.manifest');
-export const ownedArchetypeSource = () =>
-  readManifestSource('archetypes/owned.manifest');
-export const auditableArchetypeSource = () =>
-  readManifestSource('archetypes/auditable.manifest');
+export const ownedArchetypeSource = () => readManifestSource('archetypes/owned.manifest');
+export const auditableArchetypeSource = () => readManifestSource('archetypes/auditable.manifest');
 export const stateMachineArchetypeSource = () =>
   readManifestSource('archetypes/state-machine.manifest');
 

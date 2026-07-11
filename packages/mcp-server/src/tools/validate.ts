@@ -11,16 +11,10 @@ import { compileToIR } from '@angriff36/manifest/ir-compiler';
 
 export const validateInputSchema = {
   source: z.string().describe('The .manifest source text to validate'),
-  sourcePath: z
-    .string()
-    .optional()
-    .describe('Optional file path for diagnostic messages'),
+  sourcePath: z.string().optional().describe('Optional file path for diagnostic messages'),
 };
 
-export async function handleValidate(args: {
-  source: string;
-  sourcePath?: string;
-}) {
+export async function handleValidate(args: { source: string; sourcePath?: string }) {
   const result = await compileToIR(args.source, {
     useCache: false,
     sourcePath: args.sourcePath,
