@@ -246,15 +246,23 @@ entity Product {
   command reduceStock(amount: number) {
     guard self.stock >= amount
     mutate stock = stock - amount
-    // Alert when stock is low
-    compute checkLowStock()
     emit stockReduced
   }
 
-  behavior on stockReduced when isLowStock {
+  // Side effects after emit use reactions, not entity behavior blocks
+  // (behaviors are rejected at compile time — ENTITY_BEHAVIOR_UNSUPPORTED).
+  command publishLowStockAlert() {
+    guard self.stock <= self.lowStockThreshold
     publish InventoryLow
   }
 }
+
+event stockReduced: "inventory.stock-reduced" {
+  productId: string
+}
+
+on stockReduced run Product.publishLowStockAlert
+  resolve payload._subject.id
 
 store Order in supabase
 store Product in supabase

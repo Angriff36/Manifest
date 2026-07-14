@@ -173,9 +173,14 @@ time-travel debugger; full WASM runtime (only the scoped expression-compat
 layer above exists); `EventSourcedStore` (IR accepts the `eventSourced` store
 kind as passthrough only).
 
-**Silently dropped (violates the no-silent-failure house style):** entity
+~~**Silently dropped (violates the no-silent-failure house style):** entity
 `behaviors` blocks parse but never reach the IR (`IREntity` has no such field,
-`ir-compiler.ts` never reads it) and no diagnostic is emitted.
+`ir-compiler.ts` never reads it) and no diagnostic is emitted.~~
+
+**Update (2026-07-14):** entity `behavior` / bare `on Event { ... }` blocks are
+hard compile errors (`ENTITY_BEHAVIOR_UNSUPPORTED`, fixture 110). Canonical IR
+and `docs/spec` define no behavior semantics; use top-level reactions or command
+actions instead.
 
 **Distribution gap:** MCP server, LSP server, stdlib, and the VS Code
 extension are built and tested but published nowhere.

@@ -1,0 +1,13 @@
+// Test: Entity `behavior` / bare `on Event { ... }` blocks are a hard compile error.
+// ENTITY_BEHAVIOR_UNSUPPORTED — no IREntity.behaviors field and no canonical
+// semantics in docs/spec. Use top-level `on Event run Entity.command` reactions
+// or command actions instead. This is a shouldFail fixture.
+
+entity Product {
+  property required id: string
+  property stock: number = 0
+
+  behavior on stockReduced {
+    publish InventoryLow
+  }
+}

@@ -11,9 +11,9 @@ main @ v3.5.0 (commit 22a19e1). Every item below was verified open in source on
       still uses the retired `startsWith('severity')` constraint-polarity heuristic;
       the runtime engine now reads the explicit `failWhen` field
       (`runtime-engine.ts:5661`). The two evaluators disagree on constraint polarity.
-- [ ] **Entity `behaviors` silently dropped** — parsed but `IREntity` has no
-      `behaviors` field and `ir-compiler.ts` never reads it; no diagnostic is
-      emitted. Either compile it or reject it loudly (house style: never silent).
+- [x] **Entity `behaviors` loudly rejected** — ~~silently dropped~~ fixed 2026-07-14:
+      `ir-compiler.ts` emits `ENTITY_BEHAVIOR_UNSUPPORTED` error (fixture 110).
+      No IR field / no canonical semantics; use reactions or command actions.
 - [ ] **M5 remainder (Convex/zod expression bugs)** — `Event_create` array-default
       bug and zod enum/timestamp mapping to `z.unknown()` were NOT fixed by the
       3.5.0 wave (not in commit 79093ec's file list).

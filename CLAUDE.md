@@ -105,7 +105,9 @@ The `src/artifacts/` directory provides UI for viewing generated code:
 
 ### Core Concepts
 
-- **Entities**: Business objects with properties and behaviors
+- ~~**Entities**: Business objects with properties and behaviors~~
+- **Entities**: Business objects with properties, commands, and reactions
+  (entity `behavior` blocks are rejected at compile time — 2026-07-14)
 - **Properties**: Data fields with types and constraints
 - **Computed Properties**: Auto-calculating derived fields (spreadsheet-like)
 - **Commands**: Business operations with guards and mutations

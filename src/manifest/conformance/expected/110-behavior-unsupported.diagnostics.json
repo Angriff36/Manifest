@@ -1,0 +1,13 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Entity 'Product' declares behavior 'stockReduced', which is not supported in this version. Use a top-level reaction ('on Event run Entity.command') or command actions instead."
+    },
+    {
+      "severity": "warning",
+      "message": "Entity 'Product' is declared but unused: no store, no entity-scoped commands, and not referenced by any relationship. Remove it or wire it into the domain."
+    }
+  ]
+}

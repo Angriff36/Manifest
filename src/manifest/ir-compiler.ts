@@ -763,6 +763,18 @@ export class IRCompiler {
   }
 
   private transformEntity(e: EntityNode, moduleName?: string): IREntity {
+    // ENTITY_BEHAVIOR_UNSUPPORTED: entity `behavior` / bare `on Event { ... }`
+    // blocks parse into BehaviorNode but have no IREntity field and no canonical
+    // semantics in docs/spec. Reject loudly — never silently drop (house style).
+    // Use top-level `on Event run Entity.command` reactions or command actions.
+    for (const behavior of e.behaviors) {
+      const label = behavior.name || behavior.trigger?.event || '(unnamed)';
+      this.emitDiagnostic(
+        'error',
+        `Entity '${e.name}' declares behavior '${label}', which is not supported in this version. Use a top-level reaction ('on Event run Entity.command') or command actions instead.`,
+      );
+    }
+
     const constraints = e.constraints.map((c) => this.transformConstraint(c));
     this.validateConstraintCodeUniqueness(constraints, e.constraints, `entity '${e.name}'`);
 
