@@ -170,6 +170,14 @@ export interface ConvexProjectionOptions {
    * is on and the entity declares the column.
    */
   deletedAtProperty?: string;
+
+  /**
+   * How computed properties are emitted. Default `'helpers'`.
+   * - `'helpers'` → `convex/computed.ts` with `compute<Entity>(doc)` pure functions
+   * - `'inline'` → materialize self-only computeds into get/list returns
+   * There is no `'off'`: unresolved computeds always emit diagnostics.
+   */
+  computedProperties?: 'helpers' | 'inline';
 }
 
 /**
@@ -185,6 +193,7 @@ export const CONVEX_PROJECTION_DEFAULTS = {
   includeTenantFilter: true,
   includeSoftDeleteFilter: true,
   deletedAtProperty: 'deletedAt',
+  computedProperties: 'helpers' as 'helpers' | 'inline',
 } as const;
 
 /**
@@ -218,6 +227,7 @@ export function normalizeOptions(
     | 'includeTenantFilter'
     | 'includeSoftDeleteFilter'
     | 'deletedAtProperty'
+    | 'computedProperties'
   >
 > &
   Pick<ConvexProjectionOptions, 'naming' | 'tenantIdProperty' | 'authContextImport'> {
@@ -238,6 +248,7 @@ export function normalizeOptions(
     includeSoftDeleteFilter:
       input.includeSoftDeleteFilter ?? CONVEX_PROJECTION_DEFAULTS.includeSoftDeleteFilter,
     deletedAtProperty: input.deletedAtProperty ?? CONVEX_PROJECTION_DEFAULTS.deletedAtProperty,
+    computedProperties: input.computedProperties ?? CONVEX_PROJECTION_DEFAULTS.computedProperties,
     tenantIdProperty: input.tenantIdProperty,
     authContextImport: input.authContextImport,
     // Absent → Convex-idiomatic default applied by the generator.

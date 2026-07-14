@@ -1,20 +1,26 @@
 # Convex projection
 
-Projects Manifest IR to a [Convex](https://convex.dev) backend. **Phase 1**
-emits the schema surface; functions and schedules are on the roadmap.
+Projects Manifest IR to a [Convex](https://convex.dev) backend. Seven surfaces
+ship today: schema, queries, mutations, crons, http (webhooks), sagas, and
+computed helpers.
 
 Design spec: `docs/superpowers/specs/2026-06-15-convex-projection-design.md`.
+Agent build-spec (language model, capability matrix, frontend rules, limits,
+workflow): `docs/convex-projection-wiring.html`.
+
+**Capability matrix (Supported / Partial / Unsupported):** [`CAPABILITIES.md`](./CAPABILITIES.md).
 
 ## Surface
 
-| Surface            | Output                                                                         | Status     |
-| ------------------ | ------------------------------------------------------------------------------ | ---------- |
+| Surface            | Output                                                                         | Status    |
+| ------------------ | ------------------------------------------------------------------------------ | --------- |
 | `convex.schema`    | `convex/schema.ts` (`defineSchema`/`defineTable` + `convex/values` validators) | ✅ Phase 1 |
 | `convex.queries`   | `convex/queries.ts` (`list`/`get`/`listBy<Field>` reactive reads)              | ✅ Phase 2 |
 | `convex.mutations` | `convex/mutations.ts` (governed `mutation` per command)                        | ✅ Phase 2 |
 | `convex.crons`     | `convex/crons.ts` (`cronJobs()` scheduling command mutations)                  | ✅ Phase 3 |
 | `convex.http`      | `convex/http.ts` (`httpRouter`/`httpAction` webhooks → commands)               | ✅ Phase 3 |
 | `convex.sagas`     | `convex/sagas.ts` (orchestrator `action`s + compensation)                      | ✅ Phase 3 |
+| `convex.computed`  | `convex/computed.ts` (`compute<Entity>(doc)` pure helpers)                     | ✅ M4      |
 
 ## Orchestration surfaces (Phase 3)
 
@@ -161,7 +167,11 @@ Override per property: `typeMappings: { Entity: { prop: "v.number()" } }`.
 See `options.ts` (`ConvexProjectionOptions`): `output`, `tableMappings`,
 `typeMappings`, `indexes`, `references`, `referenceMode`, `naming`,
 `emitEventsTable`, `eventsTable`, `policyMode`, `includeTenantFilter`,
-`includeSoftDeleteFilter`, `tenantIdProperty`, `deletedAtProperty`.
+`includeSoftDeleteFilter`, `tenantIdProperty`, `deletedAtProperty`,
+`authContextImport`, `computedProperties` (`helpers` \| `inline`).
+
+**Always-on semantics (not options):** transition enforcement, private-field
+stripping on reads, capability-map / encrypted diagnostics.
 
 ## Validation
 

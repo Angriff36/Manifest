@@ -182,4 +182,17 @@ describe('renderExpression — fail closed', () => {
     );
     expect(res.unresolved).toHaveLength(0);
   });
+
+  it('resolves substring / indexOf / toUpperCase builtins', () => {
+    const sub = renderExpression(
+      {
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'substring' },
+        args: [self('code'), lit(0), lit(4)],
+      },
+      DOC,
+    );
+    expect(sub.unresolved).toEqual([]);
+    expect(sub.code).toBe('(doc.code).substring(0, 4)');
+  });
 });

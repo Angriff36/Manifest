@@ -42,6 +42,14 @@ import {
   type RenderScope,
   type RenderResult,
 } from './expression.js';
+import { renderTransitionChecks } from './transitions.js';
+import {
+  privateFieldNames,
+  stripPrivateFromDoc,
+  stripPrivateFromReturn,
+  stripPrivateFromRows,
+} from './privacy.js';
+import { renderInlineComputedFields } from './computed.js';
 
 type Normalized = NormalizedOptions;
 
@@ -136,7 +144,7 @@ function renderActionValue(
  * so an unmapped type is permissive rather than a hard diagnostic).
  */
 function paramValidator(type: { name: string; generic?: { name: string } }): string {
-  if (type.name === 'array' && type.generic) {
+  if ((type.name === 'array' || type.name === 'list') && type.generic) {
     const element = resolveConvexValidator(type.generic.name, undefined, '') ?? 'v.any()';
     return `v.array(${element})`;
   }
@@ -261,16 +269,59 @@ export function generateQueries(
   for (const entity of persistentEntities(ir)) {
     const table = resolveConvexTableName(entity.name, options);
     const rf = resolveReadFilter(ir, entity, options);
+    const privates = privateFieldNames(entity);
+    const inlineComputed =
+      options.computedProperties === 'inline'
+        ? renderInlineComputedFields(entity, '__row')
+        : { fields: [] as { name: string; code: string }[], diagnostics: [] as ProjectionDiagnostic[] };
+    diagnostics.push(...inlineComputed.diagnostics);
+
+    /** Finalize a rows expression: optional inline computeds + private strip. */
+    const finishRows = (rowsExpr: string): string => {
+      if (inlineComputed.fields.length === 0) {
+        return stripPrivateFromRows(rowsExpr, privates);
+      }
+      const assigns = inlineComputed.fields.map((f) => `${f.name}: ${f.code}`).join(', ');
+      const mapped =
+        `(${rowsExpr}).map((__row) => ({ ...(__row as any), ${assigns} }))`;
+      return stripPrivateFromRows(mapped, privates);
+    };
+    /** Finalize a single-doc expression. */
+    const finishDoc = (docExpr: string): string => {
+      if (inlineComputed.fields.length === 0) {
+        return stripPrivateFromDoc(docExpr, privates);
+      }
+      // Bind then enrich then strip.
+      const assigns = inlineComputed.fields
+        .map((f) => `${f.name}: ${f.code.replace(/\b__row\b/g, '__doc')}`)
+        .join(', ');
+      if (privates.length === 0) {
+        return (
+          `const __doc = ${docExpr};\n` +
+          `    if (!__doc) return __doc;\n` +
+          `    return { ...(__doc as any), ${assigns} };`
+        );
+      }
+      const dels = privates.map((p) => `delete (__out as any).${p};`).join(' ');
+      return (
+        `const __doc = ${docExpr};\n` +
+        `    if (!__doc) return __doc;\n` +
+        `    const __out = { ...(__doc as any), ${assigns} };\n` +
+        `    ${dels}\n` +
+        `    return __out;`
+      );
+    };
 
     // list<Entity> — tenant-scoped + soft-delete-filtered by default. The tenant
     // id comes from the authenticated identity (never a client arg), so an
     // un-scoped list cannot leak rows across tenants.
     if (!rf.hasTenant && !rf.hasSoftDelete) {
+      const bodyLines = finishRows(`await ctx.db.query("${table}").collect()`);
       blocks.push(
         `export const list${entity.name} = query({\n` +
           `  args: {},\n` +
           `  handler: async (ctx) => {\n` +
-          `    return await ctx.db.query("${table}").collect();\n` +
+          `    ${bodyLines}\n` +
           `  },\n});`,
       );
     } else {
@@ -287,7 +338,7 @@ export function generateQueries(
       }
       if (rf.hasSoftDelete)
         lines.push(`    rows = rows.filter((d) => (d as any).${rf.deletedProp} == null);`);
-      lines.push(`    return rows;`);
+      lines.push(`    ${finishRows('rows')}`);
       blocks.push(
         `export const list${entity.name} = query({\n` +
           `  args: {},\n` +
@@ -301,7 +352,7 @@ export function generateQueries(
         `export const get${entity.name} = query({\n` +
           `  args: { id: v.id("${table}") },\n` +
           `  handler: async (ctx, { id }) => {\n` +
-          `    return await ctx.db.get(id);\n` +
+          `    ${finishDoc(`await ctx.db.get(id)`)}\n` +
           `  },\n});`,
       );
     } else {
@@ -312,7 +363,7 @@ export function generateQueries(
       }
       if (rf.hasSoftDelete)
         lines.push(`    if (doc && (doc as any).${rf.deletedProp} != null) return null;`);
-      lines.push(`    return doc;`);
+      lines.push(`    ${finishDoc('doc')}`);
       blocks.push(
         `export const get${entity.name} = query({\n` +
           `  args: { id: v.id("${table}") },\n` +
@@ -335,11 +386,14 @@ export function generateQueries(
       const applyTenant = rf.hasTenant && !!rf.tenantProp && !names.includes(rf.tenantProp);
 
       if (!applyTenant && !rf.hasSoftDelete) {
+        const bodyLines = finishRows(
+          `await ctx.db.query("${table}").withIndex("${spec.indexName}", (q) => q${eqChain}).collect()`,
+        );
         blocks.push(
           `export const list${entity.name}By${suffix} = query({\n` +
             `  args: { ${argList} },\n` +
             `  handler: async (ctx, ${destructure}) => {\n` +
-            `    return await ctx.db.query("${table}").withIndex("${spec.indexName}", (q) => q${eqChain}).collect();\n` +
+            `    ${bodyLines}\n` +
             `  },\n});`,
         );
       } else {
@@ -352,7 +406,7 @@ export function generateQueries(
           lines.push(`    rows = rows.filter((d) => (d as any).${rf.tenantProp} === __tenant);`);
         if (rf.hasSoftDelete)
           lines.push(`    rows = rows.filter((d) => (d as any).${rf.deletedProp} == null);`);
-        lines.push(`    return rows;`);
+        lines.push(`    ${finishRows('rows')}`);
         blocks.push(
           `export const list${entity.name}By${suffix} = query({\n` +
             `  args: { ${argList} },\n` +
@@ -849,6 +903,9 @@ function generateMutation(
     !!options.authContextImport &&
     !!writeTenantProp &&
     entity.properties.some((p) => p.name === writeTenantProp);
+  // Mutation RESULTS are client-visible too — strip private fields from them
+  // exactly like the query surfaces do.
+  const mutationPrivates = privateFieldNames(entity);
 
   if (isCreate) {
     // Unified create model. Every stored field must be reachable so the insert
@@ -971,7 +1028,7 @@ function generateMutation(
       `    const _id = await ctx.db.insert("${table}", doc as any);\n` +
       payloadBinding +
       (tail ? tail + '\n' : '') +
-      `    return { _id, ...doc };\n` +
+      stripPrivateFromReturn('{ _id, ...doc }', mutationPrivates) +
       `  },\n});`;
     return { code: body, diagnostics };
   }
@@ -992,6 +1049,11 @@ function generateMutation(
   diagnostics.push(...checks.diagnostics);
 
   const updateLines: string[] = [];
+  const resolvedUpdates: {
+    target: string;
+    expression: IRExpression;
+    renderedCode: string;
+  }[] = [];
   for (const a of cmd.actions ?? []) {
     if (a.kind !== 'mutate' || !a.target) continue;
     const { code, unresolved } = renderActionValue(entity, a.target, a.expression, {
@@ -1008,7 +1070,11 @@ function generateMutation(
       continue;
     }
     updateLines.push(`      ${a.target}: ${code}`);
+    resolvedUpdates.push({ target: a.target, expression: a.expression, renderedCode: code });
   }
+
+  const transitions = renderTransitionChecks(entity, cmd, 'doc', resolvedUpdates);
+  diagnostics.push(...transitions.diagnostics);
 
   // G7 `emit Event { field: expr }`: declared payload fields are evaluated
   // against the POST-action instance (fetched doc + applied updates). Introduce
@@ -1039,7 +1105,7 @@ function generateMutation(
       : `    const payload: Record<string, any> = { id: docId, ...doc, ...updates, result: { id: docId, ...doc, ...updates }, ${subjectLiteral} };\n`
     : '';
   const argDestructure = paramNames.length ? `, ${paramNames.join(', ')}` : '';
-  const bodyText = [...checks.lines, ...updateLines, tail].join('\n');
+  const bodyText = [...checks.lines, ...transitions.lines, ...updateLines, tail].join('\n');
   const authLines = authBindings(bodyText, options, tenantScoped);
   // Document-tenancy check: an instance command may only touch documents in
   // the caller's tenant. Same message as the missing-doc throw so a cross-
@@ -1057,12 +1123,13 @@ function generateMutation(
     `    if (!doc) throw new Error(${JSON.stringify(`${entity.name} not found`)});\n` +
     ownershipLine +
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
+    (transitions.lines.length ? transitions.lines.join('\n') + '\n' : '') +
     `    const updates = {\n${updateLines.join(',\n')}${updateLines.length ? '\n' : ''}    };\n` +
     `    await ctx.db.patch(docId, updates as any);\n` +
     afterLine +
     payloadBinding +
     (tail ? tail + '\n' : '') +
-    `    return { ...doc, ...updates };\n` +
+    stripPrivateFromReturn('{ ...doc, ...updates }', mutationPrivates) +
     `  },\n});`;
   return { code: body, diagnostics };
 }

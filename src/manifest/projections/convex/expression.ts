@@ -200,9 +200,27 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
           case 'length':
             return `(${args[0]}).length`;
           case 'lower':
+          case 'toLowerCase':
             return `(${args[0]}).toLowerCase()`;
           case 'upper':
+          case 'toUpperCase':
             return `(${args[0]}).toUpperCase()`;
+          case 'trim':
+            return `(${args[0]}).trim()`;
+          case 'substring':
+            return args.length >= 3
+              ? `(${args[0]}).substring(${args[1]}, ${args[2]})`
+              : `(${args[0]}).substring(${args[1]})`;
+          case 'indexOf':
+            return `(${args[0]}).indexOf(${args[1]})`;
+          case 'startsWith':
+            return `(${args[0]}).startsWith(${args[1]})`;
+          case 'endsWith':
+            return `(${args[0]}).endsWith(${args[1]})`;
+          case 'replace':
+            return `(${args[0]}).replace(${args[1]}, ${args[2]})`;
+          case 'split':
+            return `(${args[0]}).split(${args[1]})`;
           default:
             if (!callee) {
               unresolved.push('non-identifier callee');
