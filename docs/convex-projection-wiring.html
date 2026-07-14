@@ -970,8 +970,8 @@
             <tr>
               <td class="m">policy / roles</td>
               <td class="m">policy checks + ROLE_PERMISSIONS / checkRole</td>
-              <td><span class="st full">full</span></td>
-              <td>Wire authContextImport; don't re-auth in handlers</td>
+              <td><span class="st part">partial</span></td>
+              <td>Enforced in <b>mutations</b> only. Read/<code>all</code> policies are NOT applied to generated queries — gate reads at the app edge. Wire authContextImport; don't re-auth in handlers</td>
             </tr>
             <tr>
               <td class="m">event + emit</td>
@@ -1133,7 +1133,7 @@
             </div>
             <div class="node amber">
               <div class="nf">convex/queries.ts</div>
-              <div class="nd">list / get / listBy… · tenant + soft-delete filtered.</div>
+              <div class="nd">list / get / listBy… · tenant + soft-delete filtered. No read-policy gating — enforce at the app edge.</div>
               <span class="tag gen">convex.queries</span>
             </div>
             <div class="node amber">
@@ -1226,6 +1226,10 @@
           <strong>Convex React hooks</strong> (<code>useQuery</code> / <code>useMutation</code>)
           against <code>api</code> from <code>convex/_generated/api</code>. The separate TanStack
           Query projection targets HTTP/Next stacks — not the primary Convex path.
+          <b>Authorization caveat:</b> generated queries apply tenant + soft-delete filters but do
+          <b>not</b> enforce read/<code>all</code> policies (<code>CONVEX_UNSUPPORTED_READ_POLICY</code>).
+          If an entity has read policies, do not expose its generated queries directly to
+          untrusted clients — wrap them in a policy-enforcing server read surface.
         </p>
         <table class="cap" style="margin-top: 28px">
           <thead>

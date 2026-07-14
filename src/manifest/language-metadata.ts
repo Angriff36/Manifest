@@ -74,11 +74,14 @@ const CONTEXTUAL_TOP_LEVEL_CONSTRUCTS = ['value', 'role', 'schedule'] as const;
  * sites (superset of the top-level ones): entity headers (external, mixin,
  * realtime, policies), property modifiers (masked, unmask), command/policy
  * bodies (retry, rateLimit), schedule bodies (cron, interval, every),
- * reaction params (count), webhook bodies (method). None are reserved words.
+ * reaction params (count), webhook bodies (method), saga bodies (step,
+ * compensate, on_failure), approval bodies (stage, on_timeout). None are
+ * reserved words.
  * Kept in sync with parser.ts mechanically: language-metadata.test.ts greps
  * the parser source for IDENTIFIER checks and fails on any drift.
  */
 const CONTEXTUAL_KEYWORDS = [
+  'compensate',
   'count',
   'cron',
   'every',
@@ -87,12 +90,16 @@ const CONTEXTUAL_KEYWORDS = [
   'masked',
   'method',
   'mixin',
+  'on_failure',
+  'on_timeout',
   'policies',
   'rateLimit',
   'realtime',
   'retry',
   'role',
   'schedule',
+  'stage',
+  'step',
   'unmask',
   'value',
 ] as const;

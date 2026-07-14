@@ -120,8 +120,9 @@ describe('getLanguageMetadata', () => {
     const source = readFileSync(join(process.cwd(), 'src/manifest/parser.ts'), 'utf8');
     const found = new Set<string>();
     for (const re of [
-      /check\('IDENTIFIER',\s*'([A-Za-z]+)'\)/g,
-      /type === 'IDENTIFIER' && \w+\.value === '([A-Za-z]+)'/g,
+      /check\('IDENTIFIER',\s*'([A-Za-z_]+)'\)/g,
+      /type === 'IDENTIFIER' && \w+\.value === '([A-Za-z_]+)'/g,
+      /current\(\)\?\.value === '([A-Za-z_]+)'/g,
     ]) {
       for (const m of source.matchAll(re)) found.add(m[1]);
     }
