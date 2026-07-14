@@ -131,7 +131,7 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 ## 7. Packages & Distribution
 
 - **Published**: `@angriff36/manifest` v3.5.0 on npmjs.org (OIDC trusted publishing via the one-button `cut-release.yml` workflow)
-- **Platform API for Builder (2026-07-14, unreleased):** `@angriff36/manifest/language-metadata` → `getLanguageMetadata()` — keywords/operators from lexer, modifiers from `property-modifiers.ts` / IR schema, builtins from `RuntimeEngine.getBuiltins()`, date/time primitives from `date-time.ts`. Not a hand-maintained second registry.
+- **Platform API for Builder (2026-07-14, unreleased):** `@angriff36/manifest/language-metadata` → `getLanguageMetadata()` — keywords/operators from lexer, modifiers from `property-modifiers.ts` / IR schema, builtins from `RuntimeEngine.getBuiltins()`, date/time primitives from `date-time.ts`. Keyword/operator/modifier/builtin lists are derived (no second registry); the categorized construct lists are curated subsets, lexer-asserted and drift-tested against parser source.
 - **Projection capabilities API (2026-07-14, unreleased):** `@angriff36/manifest/projections` → `getProjectionCapabilities(name)` + optional `ProjectionTarget.capabilities` (`feature` + `supported`/`partial`/`unsupported` + `note`). Convex declares its full matrix; projections without a declared matrix return `undefined` (undeclared ≠ unsupported).
 - **In-repo, tested, NOT published** (see Gaps): `@manifest/mcp-server` 0.1.0 (tools: compile/execute/explain/validate), `@manifest/lsp-server` 0.1.0 (completion/definition/diagnostics/document-symbols/hover), `@manifest/stdlib` 0.1.0, `manifest-lang` VS Code extension 0.3.0 (marketplace status unverified)
 

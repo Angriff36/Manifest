@@ -1,6 +1,11 @@
 /**
  * Structured language metadata for Builder / editors.
- * Every field is derived from an existing authoritative source — never a second registry.
+ * Keywords, operators, modifiers, and builtins are derived directly from
+ * their authoritative sources (lexer, property-modifiers registry, live
+ * RuntimeEngine). The categorized construct lists below are curated subsets:
+ * asserted against the lexer at call time and drift-tested against the
+ * parser source in language-metadata.test.ts — but a new parser construct
+ * still needs a human to categorize it here.
  */
 
 import { DATE_TIME_TYPE_NAMES } from './date-time.js';

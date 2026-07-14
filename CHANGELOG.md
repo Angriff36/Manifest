@@ -4,10 +4,28 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [3.6.0] - 2026-07-14
+## [4.0.0] - 2026-07-14
 
 Platform-SDK wave for Builder (roadmap M13) plus Convex generated-code
-correctness and security fixes. No IR or grammar changes.
+correctness and security fixes. No IR-schema or grammar changes, but two
+behavior breaks (below) make this a major per `docs/spec/sdk-stability.md`.
+
+### Breaking
+
+- Entity `behavior` blocks (and bare `on Event { ... }` inside an entity)
+  are now hard compile errors. Previously they parsed and were **silently
+  dropped** — they never executed — so any program using them was already
+  broken in a hidden way; it now fails loudly at compile time (conformance
+  fixture 110, specified in `docs/spec/semantics.md`). Migration: move the
+  logic to a top-level reaction (`on Event run Entity.command`) or command
+  actions.
+- Convex projection: entities gated by `read`/`all` policies now emit
+  `internalQuery` instead of publicly callable `query` (fail-closed
+  security fix — the old output allowed clients to read policy-protected
+  rows with no checks). A global read/`all` policy locks down every
+  entity's queries and the events-table queries. If your app called those
+  generated queries from the client, add a policy-enforcing public wrapper.
+  Programs without read/`all` policies produce byte-identical output.
 
 ### Added
 
@@ -19,8 +37,11 @@ correctness and security fixes. No IR or grammar changes.
   constructs, and the contextual identifiers (value, role, schedule,
   external, mixin, retry, rateLimit, cron, masked, unmask, realtime,
   policies, count, method, interval, every, stage, step, compensate,
-  on_failure, on_timeout). Derive-only — no hand-maintained second
-  registry; a drift test pins the lists to the parser source.
+  on_failure, on_timeout). Keywords, operators, modifiers, and builtins are
+  derived directly from their authoritative sources (lexer, shared modifier
+  registry, live RuntimeEngine); the categorized construct lists are curated
+  subsets asserted against the lexer at call time and drift-tested against
+  the parser source.
 - Projection capabilities API — `getProjectionCapabilities(name)` on the
   projections registry plus optional `ProjectionTarget.capabilities`
   (`feature` + `supported`/`partial`/`unsupported` + `note`). The Convex
@@ -29,26 +50,12 @@ correctness and security fixes. No IR or grammar changes.
 - SDK stability declaration — `docs/spec/sdk-stability.md` lists the
   subpaths that are stable for Builder/platform consumers; breaking one now
   requires a major version and a **Breaking** changelog entry.
-- Spec: entity `behavior` blocks (and bare `on Event { ... }` inside an
-  entity) are now specified as MUST-reject in `docs/spec/semantics.md`.
-  The compiler emits a hard error (conformance fixture 110) instead of
-  silently dropping them. Use top-level reactions or command actions.
-
 ### Fixed
 
 - **Convex — constraint `failWhen` polarity (correctness):** generated
   mutations rendered every constraint as `if (!(expr)) throw`, reversing
   fail-on-truthy (`failWhen`) constraints. Gated constraints now render
   `if (expr) throw`, matching runtime semantics.
-- **Convex — read-policy lockdown (security):** entities gated by
-  `read`/`all` policies previously generated publicly callable queries with
-  no policy checks. Gated entities now emit `internalQuery` (fail-closed,
-  not client-callable); a global read/`all` policy locks down every entity,
-  and any read/`all` policy also locks the events-table queries. Policy
-  expressions are still not evaluated in queries — the new
-  `CONVEX_UNSUPPORTED_READ_POLICY` diagnostic points at the
-  policy-enforcing-wrapper pattern. Programs without read/`all` policies
-  are byte-identical.
 - WASM-compatible expression evaluator: constraint polarity aligned with
   RuntimeEngine `failWhen`/severity via shared `constraint-polarity.ts`
   (parity matrix tests) — never name heuristics.
