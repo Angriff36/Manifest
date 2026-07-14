@@ -83,10 +83,16 @@ main @ v3.5.0 (commit 22a19e1). Every item below was verified open in source on
 
 ## Distribution
 
+- [x] **`getLanguageMetadata()` platform export** — shipped 2026-07-14 as
+      `@angriff36/manifest/language-metadata` (derive-only from lexer/IR/runtime).
 - [ ] **Publish or officially park the sub-packages** — `@manifest/mcp-server`,
       `@manifest/lsp-server`, `@manifest/stdlib` (all 0.1.0), VS Code extension
       `manifest-lang` 0.3.0: built and tested in-repo, published nowhere
       (npm 404 verified 2026-07-14; marketplace unverified).
+- [ ] **Projection capability descriptors API** — capability matrices still mostly
+      markdown/per-projection; structured `getProjectionCapabilities()` still open.
+- [x] **Stable Builder export contract (semver subset)** — declared 2026-07-14 in
+      `docs/spec/sdk-stability.md` (stable subpaths; breaking = major + CHANGELOG entry).
 
 ## App-side (Capsule-V2 — different repo, tracked here because it's the critical path)
 

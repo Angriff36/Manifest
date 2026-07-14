@@ -61,9 +61,9 @@ so "Manifest needs an SDK" is mostly false — what's missing is narrower:
 | `analyzeImpact()` | `@angriff36/manifest/ir-diff` + `/breaking-change` | ✅ exists; Builder does NOT consume yet |
 | `inspectWiring()` | `@angriff36/manifest/projections/wiring` | ✅ exists; Builder does NOT consume yet |
 | `generateAgentTools()` | `@angriff36/manifest/agent-sdk` + `@manifest/mcp-server` | ✅ exists; Builder consumes agent-sdk |
-| `getLanguageMetadata()` | — | 🟥 **GAP.** Keyword/builtin/modifier lists live inside lexer/parser only. Builder hardcodes keywords (`builder/src/lib/completions.ts:12`) — the exact drift this contract forbids. Ship `@angriff36/manifest/language-metadata` (or export from `/lexer`) as **data**, sourced from the same tables the lexer uses. |
+| `getLanguageMetadata()` | `@angriff36/manifest/language-metadata` (`getLanguageMetadata`) | ✅ exists (2026-07-14). Keywords ← lexer `KEYWORDS`, modifiers ← `PROPERTY_MODIFIERS` / IR schema, builtins ← `RuntimeEngine.getBuiltins()`, date/time primitives ← `date-time.ts`. |
 | `getProjectionCapabilities()` | `listProjections()` gives names/surfaces | 🟧 **PARTIAL.** Capability matrices are markdown (e.g. convex `CAPABILITIES.md`), not API. Expose structured per-projection capability data (supported / partial / unsupported per IR feature) so Builder can render honest coverage without parsing docs. |
-| Stability guarantee | none declared | 🟥 **GAP.** Declare which subpaths are stable-for-Builder (semver discipline + breaking-change notes in CHANGELOG). Without this, "SDK" is just "whatever exports exist today". |
+| Stability guarantee | `docs/spec/sdk-stability.md` | ✅ declared (2026-07-14). Lists the stable-for-Builder subpaths; breaking a stable subpath requires a major version + a **Breaking** CHANGELOG entry. Unlisted exports are internal. |
 
 ## Builder-side requirement: the `manifest-project` control plane
 

@@ -60,6 +60,12 @@ export interface ProjectionDiagnostic {
   entity?: string;
 }
 
+export interface ProjectionCapability {
+  feature: string;
+  status: 'supported' | 'partial' | 'unsupported';
+  note?: string;
+}
+
 export interface ProjectionResult {
   artifacts: ProjectionArtifact[];
   diagnostics: ProjectionDiagnostic[];

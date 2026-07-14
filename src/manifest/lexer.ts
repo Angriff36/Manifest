@@ -190,6 +190,11 @@ const OPERATORS = new Set([
   '?.',
 ]);
 
+/** Authoritative operator token set used by the lexer (do not duplicate elsewhere). */
+export function getLexerOperators(): readonly string[] {
+  return [...OPERATORS].sort();
+}
+
 const PUNCTUATION = new Set(['(', ')', '{', '}', '[', ']', ',', ';', '@']);
 
 export class Lexer {

@@ -1,3 +1,8 @@
+import type { PropertyModifier } from './property-modifiers.js';
+
+export type { PropertyModifier } from './property-modifiers.js';
+export { PROPERTY_MODIFIERS } from './property-modifiers.js';
+
 export interface IRTenant {
   /** Property name injected into tenant-scoped entities (e.g. "tenantId") */
   property: string;
@@ -177,17 +182,6 @@ export interface IRProperty {
    */
   maskStrategy?: IRMaskStrategy;
 }
-
-export type PropertyModifier =
-  | 'required'
-  | 'unique'
-  | 'indexed'
-  | 'private'
-  | 'readonly'
-  | 'optional'
-  | 'searchable'
-  | 'encrypted'
-  | 'masked';
 
 export type MaskStrategyType = 'redact' | 'partial' | 'email' | 'phone' | 'last4';
 

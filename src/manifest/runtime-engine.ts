@@ -1525,7 +1525,12 @@ export class RuntimeEngine {
     return this.options.generateId ? this.options.generateId() : crypto.randomUUID();
   }
 
-  private getBuiltins(): Record<string, (...args: unknown[]) => unknown> {
+  /**
+   * Core (+ optional custom) builtin callables for this engine.
+   * Core names always win collisions against plugins (docs/spec/builtins.md).
+   * Public so language-metadata / Builder can introspect the live registry.
+   */
+  getBuiltins(): Record<string, (...args: unknown[]) => unknown> {
     // Custom builtins from plugins are spread first; core builtins override
     // any name collision so reserved names cannot be replaced.
     const custom = this.options.customBuiltins;

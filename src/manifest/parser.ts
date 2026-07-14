@@ -1,4 +1,5 @@
 import { Lexer } from './lexer.js';
+import { PROPERTY_MODIFIERS, type PropertyModifier } from './property-modifiers.js';
 import {
   Token,
   ManifestProgram,
@@ -560,16 +561,8 @@ export class Parser {
       const cur = this.current();
       if (
         cur &&
-        [
-          'required',
-          'unique',
-          'indexed',
-          'private',
-          'readonly',
-          'optional',
-          'searchable',
-          'encrypted',
-        ].includes(cur.value || '')
+        PROPERTY_MODIFIERS.includes(cur.value as PropertyModifier) &&
+        cur.value !== 'masked'
       ) {
         modifiers.push(this.advance().value);
         continue;

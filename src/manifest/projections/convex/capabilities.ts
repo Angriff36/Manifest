@@ -9,8 +9,49 @@
  */
 
 import type { IR, IREntity } from '../../ir';
-import type { ProjectionDiagnostic } from '../interface';
+import type { ProjectionCapability, ProjectionDiagnostic } from '../interface';
 import { isPersistentEntity } from './persist.js';
+
+/**
+ * Structured counterpart to CAPABILITIES.md. Keep both representations aligned
+ * when Convex projection support changes.
+ */
+export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
+  { feature: 'Persistent entities + properties', status: 'supported' },
+  { feature: 'Enums / nullable / arrays', status: 'supported' },
+  { feature: 'Relationships belongsTo/ref FK + indexes', status: 'supported' },
+  { feature: 'Indexed, tenant, and option indexes', status: 'supported' },
+  { feature: 'Commands to mutations', status: 'supported' },
+  { feature: 'Policies / guards / constraints', status: 'supported' },
+  { feature: 'Roles + roleAllows', status: 'supported' },
+  { feature: 'Events + emit payloads', status: 'supported' },
+  { feature: 'Reactions', status: 'supported' },
+  { feature: 'Transitions', status: 'supported' },
+  { feature: 'Private properties', status: 'supported' },
+  { feature: 'Computed self-only properties', status: 'supported' },
+  { feature: 'Schedules', status: 'supported' },
+  { feature: 'Webhooks', status: 'supported' },
+  { feature: 'Sagas', status: 'supported' },
+  { feature: 'Tenant / soft-delete filters', status: 'supported' },
+  { feature: 'authContextImport', status: 'supported' },
+  { feature: 'Webhook signature', status: 'partial', note: 'Generated httpAction does not verify HMAC.' },
+  { feature: 'Saga step arguments', status: 'partial', note: 'A single input is forwarded to every step.' },
+  { feature: 'trustedSource params', status: 'partial', note: 'Exposed as normal args unless the auth/create seam injects them.' },
+  { feature: 'Referential onDelete/onUpdate', status: 'partial', note: 'No schema cascade.' },
+  { feature: 'Computed relation aggregates', status: 'partial', note: 'Unresolved unless self-only or count via reactions.' },
+  { feature: 'Encrypted properties', status: 'partial', note: 'Stored and returned as plain strings.' },
+  { feature: "policyMode: 'skip'", status: 'partial', note: 'Omits authorization only.' },
+  { feature: 'Approvals', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_APPROVAL' },
+  { feature: 'realtime hint', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_REALTIME' },
+  { feature: 'versionProperty / optimistic concurrency', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_VERSION' },
+  { feature: 'masked / unmask when', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_MASKED' },
+  { feature: 'searchable', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_SEARCHABLE' },
+  { feature: 'Computed cache directives', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_COMPUTED_CACHE' },
+  { feature: 'Command/policy retry', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_RETRY' },
+  { feature: 'Command/policy rateLimit', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_RATE_LIMIT' },
+  { feature: 'async commands / job queue', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_ASYNC_COMMAND' },
+  { feature: 'Action kinds effect / publish / persist', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_ACTION_KIND' },
+];
 
 /**
  * Emit warnings for IR constructs the Convex projection does not enforce.
