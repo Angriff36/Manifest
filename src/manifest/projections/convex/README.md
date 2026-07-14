@@ -1,20 +1,26 @@
 # Convex projection
 
-Projects Manifest IR to a [Convex](https://convex.dev) backend. **Phase 1**
-emits the schema surface; functions and schedules are on the roadmap.
+Projects Manifest IR to a [Convex](https://convex.dev) backend. Seven surfaces
+ship today: schema, queries, mutations, crons, http (webhooks), sagas, and
+computed helpers.
 
 Design spec: `docs/superpowers/specs/2026-06-15-convex-projection-design.md`.
+Agent build-spec (language model, capability matrix, frontend rules, limits,
+workflow): `docs/convex-projection-wiring.html`.
+
+**Capability matrix (Supported / Partial / Unsupported):** [`CAPABILITIES.md`](./CAPABILITIES.md).
 
 ## Surface
 
-| Surface            | Output                                                                         | Status     |
-| ------------------ | ------------------------------------------------------------------------------ | ---------- |
+| Surface            | Output                                                                         | Status    |
+| ------------------ | ------------------------------------------------------------------------------ | --------- |
 | `convex.schema`    | `convex/schema.ts` (`defineSchema`/`defineTable` + `convex/values` validators) | ✅ Phase 1 |
 | `convex.queries`   | `convex/queries.ts` (`list`/`get`/`listBy<Field>` reactive reads)              | ✅ Phase 2 |
 | `convex.mutations` | `convex/mutations.ts` (governed `mutation` per command)                        | ✅ Phase 2 |
 | `convex.crons`     | `convex/crons.ts` (`cronJobs()` scheduling command mutations)                  | ✅ Phase 3 |
 | `convex.http`      | `convex/http.ts` (`httpRouter`/`httpAction` webhooks → commands)               | ✅ Phase 3 |
 | `convex.sagas`     | `convex/sagas.ts` (orchestrator `action`s + compensation)                      | ✅ Phase 3 |
+| `convex.computed`  | `convex/computed.ts` (`compute<Entity>(doc)` pure helpers)                     | ✅ M4      |
 
 ## Orchestration surfaces (Phase 3)
 
@@ -46,9 +52,11 @@ are **tenant-scoped + soft-delete-filtered by default** (see below).
 - **Events table:** when emitted, `listRecentEvents` plus indexed lookups
   `listEventsByType` / `listEventsByEntity` / `listEventsByEntityId`.
 - **Read filtering (field-aware, default on):** `list<E>` / `get<E>` are scoped
-  to the current tenant — the tenant id is read from `ctx.auth.<tenantProp>`,
-  **never a client arg**, so an un-scoped list fails closed (no auth → no rows)
-  rather than leaking across tenants. `get<E>` returns `null` on a tenant
+  to the current tenant — the tenant id is derived from the authenticated
+  identity (via `getAuthContext(ctx)` when `authContextImport` is set, otherwise
+  the legacy inline `ctx.auth.<tenantProp>` read), **never a client arg**, so an
+  un-scoped list fails closed (no auth → no rows) rather than leaking across
+  tenants. `get<E>` returns `null` on a tenant
   mismatch or a soft-deleted row. `list<E>By<Field…>` reads drop soft-deleted
   rows and apply the auth tenant filter unless the index already constrains the
   tenant column. Toggle with `includeTenantFilter` / `includeSoftDeleteFilter`;
@@ -95,6 +103,18 @@ into the insert, unless an explicit reaction param already sets it.
 local backends with no auth context configured. Default is `'enforce'`; keep it
 for production. When skipped, the role map / `checkRole` helpers are not emitted
 (no dead code).
+
+**Auth context seam (`authContextImport`):** by default identity is read from an
+inline `(ctx as any).auth` bag — a shape the real Convex runtime never populates
+(`ctx.auth` only exposes `getUserIdentity()`), so role/tenant reads fail closed
+until auth is wired by hand. Set `authContextImport` (e.g. `"./lib/authContext"`)
+to route every identity read through your module's exported `getAuthContext(ctx)`.
+For tenant-scoped entities this also makes `create` derive the tenant column
+server-side (dropped from client args; a create action targeting it is
+overridden with a `CONVEX_TENANT_SERVER_DERIVED` info diagnostic) and makes
+instance mutations throw "not found" on a cross-tenant document (same message as
+a missing doc — no existence oracle). The module must handle identity-less
+system calls too (crons/sagas/webhooks run the same mutations).
 
 ## Usage
 
@@ -147,7 +167,11 @@ Override per property: `typeMappings: { Entity: { prop: "v.number()" } }`.
 See `options.ts` (`ConvexProjectionOptions`): `output`, `tableMappings`,
 `typeMappings`, `indexes`, `references`, `referenceMode`, `naming`,
 `emitEventsTable`, `eventsTable`, `policyMode`, `includeTenantFilter`,
-`includeSoftDeleteFilter`, `tenantIdProperty`, `deletedAtProperty`.
+`includeSoftDeleteFilter`, `tenantIdProperty`, `deletedAtProperty`,
+`authContextImport`, `computedProperties` (`helpers` \| `inline`).
+
+**Always-on semantics (not options):** transition enforcement, private-field
+stripping on reads, capability-map / encrypted diagnostics.
 
 ## Validation
 

@@ -257,6 +257,134 @@ describe('convex.queries — tenant + soft-delete read filtering', () => {
   });
 });
 
+describe('authContextImport — the auth seam', () => {
+  function tenantIR(): IR {
+    const ir = emptyIR();
+    ir.tenant = {
+      property: 'tenantId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
+    ir.entities = [
+      entity('Invoice', [
+        prop('tenantId', 'string', ['required']),
+        prop('total', 'number', ['required']),
+      ]),
+    ];
+    ir.stores = [durable('Invoice')];
+    return ir;
+  }
+  const seam = { authContextImport: './lib/authContext' };
+
+  it('queries derive the tenant from getAuthContext, not ctx.auth', () => {
+    const code = new ConvexProjection().generate(tenantIR(), {
+      surface: 'convex.queries',
+      options: seam,
+    }).artifacts[0].code;
+    expect(code).toContain('import { getAuthContext } from "./lib/authContext";');
+    expect(code).toContain(
+      'const __tenant = ((await getAuthContext(ctx)) as any).tenantId ?? null;',
+    );
+    expect(code).not.toContain('(ctx as any).auth');
+  });
+
+  it('create derives the tenant server-side and drops the client tenant arg', () => {
+    const ir = tenantIR();
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Invoice',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.mutations',
+      options: seam,
+    }).artifacts[0].code;
+    expect(code).toContain('import { getAuthContext } from "./lib/authContext";');
+    expect(code).toContain('const __auth = (await getAuthContext(ctx)) as any;');
+    expect(code).toContain('tenantId: __auth.tenantId'); // server-derived
+    expect(code).not.toContain('tenantId: v.string()'); // not a client arg
+    expect(code).not.toContain('args.tenantId'); // never read from the caller
+  });
+
+  it('instance mutations reject documents from another tenant', () => {
+    const ir = tenantIR();
+    ir.commands = [
+      {
+        name: 'archive',
+        entity: 'Invoice',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'total',
+            expression: { kind: 'literal', value: { kind: 'number', value: 0 } },
+          },
+        ],
+        emits: [],
+      },
+    ];
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.mutations',
+      options: seam,
+    }).artifacts[0].code;
+    expect(code).toContain(
+      'if ((doc as any).tenantId !== __auth.tenantId) throw new Error("Invoice not found");',
+    );
+    // ownership check runs after the fetch, before governance/patch
+    expect(code.indexOf('!== __auth.tenantId')).toBeLessThan(code.indexOf('ctx.db.patch'));
+  });
+
+  it('role/user bindings route through the auth context', () => {
+    const ir = tenantIR();
+    ir.policies = [
+      {
+        name: 'canArchive',
+        action: 'execute',
+        expression: {
+          kind: 'call',
+          callee: { kind: 'identifier', name: 'roleAllows' },
+          args: [
+            { kind: 'member', object: { kind: 'identifier', name: 'user' }, property: 'role' },
+            { kind: 'literal', value: { kind: 'string', value: 'manage' } },
+          ],
+        },
+      },
+    ] as IRPolicy[];
+    ir.commands = [
+      {
+        name: 'archive',
+        entity: 'Invoice',
+        parameters: [],
+        policies: ['canArchive'],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.mutations',
+      options: seam,
+    }).artifacts[0].code;
+    expect(code).toContain('const userRole = __auth.role ?? "anonymous";');
+    expect(code).not.toContain('(ctx as any).auth');
+  });
+
+  it('unset option keeps the legacy inline ctx.auth output (no seam, no import)', () => {
+    const code = queries(tenantIR()).artifacts[0].code;
+    expect(code).toContain('const __tenant = (ctx as any).auth?.tenantId ?? null;');
+    expect(code).not.toContain('getAuthContext');
+  });
+});
+
 describe('convex.mutations — governance', () => {
   function govIR(): IR {
     const ir = emptyIR();

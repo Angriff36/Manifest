@@ -37,6 +37,12 @@ import { resolveConvexValidator } from './type-mapping.js';
 import { resolveTableName } from '../shared/naming.js';
 import { generateQueries, generateMutations } from './functions.js';
 import { generateCrons, generateHttp, generateSagas } from './orchestration.js';
+import { generateComputedHelpers } from './computed.js';
+import { collectEncryptedDiagnostics } from './privacy.js';
+import { collectUnsupportedDiagnostics } from './capabilities.js';
+import { isPersistentEntity, isPersistentStoreTarget } from './persist.js';
+
+export { isPersistentEntity } from './persist.js';
 
 // ============================================================================
 // Surface identifiers
@@ -48,6 +54,7 @@ const SURFACE_MUTATIONS = 'convex.mutations' as const;
 const SURFACE_CRONS = 'convex.crons' as const;
 const SURFACE_HTTP = 'convex.http' as const;
 const SURFACE_SAGAS = 'convex.sagas' as const;
+const SURFACE_COMPUTED = 'convex.computed' as const;
 const SURFACES = [
   SURFACE_SCHEMA,
   SURFACE_QUERIES,
@@ -55,20 +62,15 @@ const SURFACES = [
   SURFACE_CRONS,
   SURFACE_HTTP,
   SURFACE_SAGAS,
+  SURFACE_COMPUTED,
 ] as const;
 
 // ============================================================================
 // Store target classification (identical policy to the Prisma projection)
 // ============================================================================
 
-const PERSISTENT_TARGETS: ReadonlySet<IRStore['target']> = new Set([
-  'durable',
-  'postgres',
-  'supabase',
-]);
-
 function isPersistent(target: IRStore['target']): boolean {
-  return PERSISTENT_TARGETS.has(target);
+  return isPersistentStoreTarget(target);
 }
 
 // ============================================================================
@@ -124,13 +126,6 @@ export function collectFkTargets(
 ): Map<string, string> {
   if (options.referenceMode !== 'convexId') return new Map();
   return collectReferenceFields(entity, ir, options);
-}
-
-/** True when an entity owns a persistent (emittable) store and is not external. */
-export function isPersistentEntity(entity: IREntity, ir: IR): boolean {
-  if ((entity as { external?: boolean }).external === true) return false;
-  const store = ir.stores.find((s) => s.entity === entity.name);
-  return !!store && isPersistent(store.target);
 }
 
 /**
@@ -198,8 +193,9 @@ export function buildValidator(
     return { validator: refValidator, diagnostics };
   }
 
-  // array<T> / T[] → v.array(<element>)
-  const isArray = prop.type.name === 'array' && !!prop.type.generic;
+  // array<T> / list<T> / T[] → v.array(<element>)
+  const isArray =
+    (prop.type.name === 'array' || prop.type.name === 'list') && !!prop.type.generic;
   const effectiveTypeName = isArray ? prop.type.generic!.name : prop.type.name;
 
   const typeOverrides = options.typeMappings[entity.name];
@@ -428,13 +424,18 @@ export class ConvexProjection implements ProjectionTarget {
   readonly surfaces = SURFACES;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
+    const crossCutting = [
+      ...collectEncryptedDiagnostics(ir),
+      ...collectUnsupportedDiagnostics(ir),
+    ];
+
     if (request.surface === SURFACE_QUERIES) {
       const { code, diagnostics } = generateQueries(ir, request.options);
       return {
         artifacts: [
           { id: SURFACE_QUERIES, pathHint: 'convex/queries.ts', contentType: 'typescript', code },
         ],
-        diagnostics,
+        diagnostics: [...diagnostics, ...crossCutting],
       };
     }
     if (request.surface === SURFACE_MUTATIONS) {
@@ -448,7 +449,7 @@ export class ConvexProjection implements ProjectionTarget {
             code,
           },
         ],
-        diagnostics,
+        diagnostics: [...diagnostics, ...crossCutting],
       };
     }
     if (request.surface === SURFACE_CRONS) {
@@ -457,7 +458,7 @@ export class ConvexProjection implements ProjectionTarget {
         artifacts: [
           { id: SURFACE_CRONS, pathHint: 'convex/crons.ts', contentType: 'typescript', code },
         ],
-        diagnostics,
+        diagnostics: [...diagnostics, ...crossCutting],
       };
     }
     if (request.surface === SURFACE_HTTP) {
@@ -466,7 +467,7 @@ export class ConvexProjection implements ProjectionTarget {
         artifacts: [
           { id: SURFACE_HTTP, pathHint: 'convex/http.ts', contentType: 'typescript', code },
         ],
-        diagnostics,
+        diagnostics: [...diagnostics, ...crossCutting],
       };
     }
     if (request.surface === SURFACE_SAGAS) {
@@ -475,7 +476,22 @@ export class ConvexProjection implements ProjectionTarget {
         artifacts: [
           { id: SURFACE_SAGAS, pathHint: 'convex/sagas.ts', contentType: 'typescript', code },
         ],
-        diagnostics,
+        diagnostics: [...diagnostics, ...crossCutting],
+      };
+    }
+    if (request.surface === SURFACE_COMPUTED) {
+      const options = normalizeOptions(request.options);
+      const { code, diagnostics } = generateComputedHelpers(ir, options);
+      return {
+        artifacts: [
+          {
+            id: SURFACE_COMPUTED,
+            pathHint: 'convex/computed.ts',
+            contentType: 'typescript',
+            code,
+          },
+        ],
+        diagnostics: [...diagnostics, ...crossCutting],
       };
     }
     if (request.surface !== SURFACE_SCHEMA) {
@@ -487,12 +503,13 @@ export class ConvexProjection implements ProjectionTarget {
             code: 'CONVEX_UNSUPPORTED_SURFACE',
             message: `Convex projection does not support surface '${request.surface}'. Supported: ${SURFACES.join(', ')}.`,
           },
+          ...crossCutting,
         ],
       };
     }
 
     const options = normalizeOptions(request.options);
-    const diagnostics: ProjectionDiagnostic[] = [];
+    const diagnostics: ProjectionDiagnostic[] = [...crossCutting];
     const blocks: string[] = [];
 
     for (const entity of ir.entities) {

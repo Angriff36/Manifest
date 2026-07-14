@@ -89,7 +89,14 @@ not authoritative for Manifest semantics.
 
 A property literal default MUST be compatible with its declared type. The compiler MUST reject incompatible pairs (for example, `property metadata: string? = {}`) instead of emitting IR that downstream projections cannot type safely. `null` is valid only for nullable types; object and array literals are valid only for compatible composite, JSON, or `any` types.
 
-- `encrypted` and `masked` are enforced as described in their own sections.
+- ~~`encrypted` and `masked` are enforced as described in their own sections.~~
+- **(2026-07-14)** `masked` is enforced as described in Property Masking below.
+  `encrypted` is enforced by the reference runtime when an `encryptionProvider`
+  is configured (envelope encrypt-on-write / decrypt-on-read); there is **no
+  dedicated Property Encryption section in this spec yet**. Projections that
+  cannot honor encryption MUST emit a loud diagnostic (Convex:
+  `CONVEX_ENCRYPTED_UNSUPPORTED`) rather than silently treating ciphertext as
+  a plain string without notice.
 
 ### Computed Properties
 
