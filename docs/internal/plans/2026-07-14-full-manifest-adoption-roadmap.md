@@ -128,6 +128,20 @@ Ordered by impact. Each item: problem → change → acceptance.
 
 ---
 
+## Part 3 — The interconnection gap (single-consumer IR)
+
+Capsule-V2 consumes exactly **two** features of the whole platform: multi-module compile (`compile --merge` with `use`/mixins) and the Convex projection. Everything else that makes the IR a *source of truth across surfaces* is unwired. From the same `manifest/ir.json`, without touching the sources, the toolchain can emit (verify each against the current CLI before wiring — some FEATURE-LIST entries are phantom per the 2026-07-01 audit):
+
+- **Boundary contracts:** Zod schemas (arg/form validation in the UI), OpenAPI 3.1 (external API contract), JSON Schema.
+- **Frontend layer:** TanStack Query hooks (V2 already deps @tanstack/react-query and hand-writes this layer).
+- **Human/agent views:** Mermaid ER/entity diagrams (`manifest diagram`), generated API docs, policy matrix, llms.txt context export, MCP server for IR introspection.
+- **Safety tooling:** IR diff + breaking-change detector between revisions, changelog generation, command/guard coverage reporter, seed-data generator, mock server.
+- **Not applicable to a Convex-backed app** (record the decision, don't cargo-cult): reference runtime engine, store adapters (Redis/DynamoDB/Turso/event-sourcing), Express/Hono/Remix/SvelteKit/Prisma-family projections.
+
+**A9. Wire the interconnection surfaces into `manifest-regen.mjs`** — the "one edit updates every surface" property only exists if every consumed artifact is generated in the SAME regen script and covered by the SAME drift gate. Pilot order: zod (validation at the UI boundary) → TanStack hooks (replace hand-written `src/lib/api.ts` seam incrementally) → `manifest diagram` + docs (repo artifacts for humans/agents) → IR-diff/breaking-change check as a CI step comparing the committed `ir.json` against the previous commit's.
+
+**Why adoption stalled (evidence, not blame):** the language docs are NOT the gap — `mintlify/language/` has dedicated pages for computed-properties, reactions, events, approvals, async-commands, workflows (74 .mdx pages total). Causes: (1) the capsule sources were translated from an existing codebase, largely before the orchestration constructs existed (fan-out and aggregate-count were added to Manifest in June 2026 specifically to retire capsule middleware); (2) the Convex projection silently drops computed/transitions/encrypted (M2–M4), so app agents learned they couldn't rely on declared features and hand-rolled instead — fixing M2–M4 is what makes declaring features trustworthy again; (3) only one IR consumer was ever wired into the pipeline (this Part).
+
 ## Sequencing
 
 1. **M1 → A1** (auth seam release + patch-script retirement) — unblocks everything, code already written.
