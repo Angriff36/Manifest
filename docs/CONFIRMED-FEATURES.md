@@ -96,7 +96,7 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
 - Idempotency store: memory/postgres (`src/manifest/idempotency/stores/*`)
 - Custom store adapters registrable via plugin API
 
-## 5. Projections — 27 registered
+## 5. Projections — 28 registered
 
 Single registration point `registerBuiltinProjections()` in
 `src/manifest/projections/builtins.ts`; every projection folder is registered
@@ -109,7 +109,7 @@ sveltekit, kysely, dynamodb, pydantic, dart, wiring.
 
 Highlights:
 
-- **Convex** (v3.5.0 semantics wave, `src/manifest/projections/convex/`): schema/queries/mutations/crons/http/sagas; `authContextImport` option (server-derived tenant, cross-tenant reject); state-transition enforcement (always on); private-field stripping from query & mutation returns (always on); `convex.computed` helpers; **capability map** (`capabilities.ts`) emitting explicit `CONVEX_UNSUPPORTED_*` diagnostics for everything it does not generate (approvals, masked, searchable, versionProperty, computed-cache, realtime, retry, rateLimit) instead of silently dropping
+- **Convex** (v3.5.0 semantics wave, `src/manifest/projections/convex/`): schema/queries/mutations/crons/http/sagas; `authContextImport` option (server-derived tenant, cross-tenant reject); state-transition enforcement (always on); private-field stripping from query & mutation returns (always on); `convex.computed` helpers; **capability map** (`capabilities.ts`) emitting explicit `CONVEX_UNSUPPORTED_*` diagnostics for everything it does not generate (approvals, masked, searchable, versionProperty, computed-cache, realtime, retry, rateLimit, read/all policies on queries) instead of silently dropping
 - **Next.js**: full command surface incl. `createManifestRuntime` emission, executionMode dispatcher (`dispatcher-modes.test.ts`), field-aware soft-delete/timestamp reads
 - **Prisma**: multi-schema (`@@schema` from modules), opt-in snake_case/pluralize naming, autoBackRelations, composite-unique/optional-FK/cycle correctness — natively generates capsule-pro's 199-model schema
 

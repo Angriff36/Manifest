@@ -20,7 +20,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Relationships belongsTo/ref FK + indexes         | schema + queries             | `referenceMode` convexId \| stringId                               |
 | `indexed`, tenant index, option indexes          | schema + queries             | Index/query parity                                                 |
 | Commands → mutations                             | mutations                    | Order: policies → guards → constraints → mutate → emit → react     |
-| Policies / guards / constraints                  | mutations                    | Fail-closed; `CONVEX_UNRESOLVED_*` + denying throw                 |
+| Command policies / guards / constraints          | mutations                    | Fail-closed; `CONVEX_UNRESOLVED_*` + denying throw; constraint `failWhen` polarity honored |
 | Roles + `roleAllows`                             | mutations                    | `ROLE_PERMISSIONS` + `checkRole`                                   |
 | Events + G7 emit payloads                        | mutations                    | `manifestEvents` table                                             |
 | Reactions (resolve, fanOut, count aggregates)    | mutations                    |                                                                    |
@@ -57,6 +57,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Computed `cache` directives                   | `CONVEX_UNSUPPORTED_COMPUTED_CACHE` |
 | Command/policy `retry`                        | `CONVEX_UNSUPPORTED_RETRY`          |
 | Command/policy `rateLimit`                    | `CONVEX_UNSUPPORTED_RATE_LIMIT`     |
+| Read/`all` policies on generated queries      | `CONVEX_UNSUPPORTED_READ_POLICY`    |
 | `async` commands / job queue                  | `CONVEX_UNSUPPORTED_ASYNC_COMMAND`  |
 | Action kinds `effect` / `publish` / `persist` | `CONVEX_UNSUPPORTED_ACTION_KIND`    |
 

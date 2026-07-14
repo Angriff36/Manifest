@@ -22,7 +22,8 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   { feature: 'Relationships belongsTo/ref FK + indexes', status: 'supported' },
   { feature: 'Indexed, tenant, and option indexes', status: 'supported' },
   { feature: 'Commands to mutations', status: 'supported' },
-  { feature: 'Policies / guards / constraints', status: 'supported' },
+  { feature: 'Command policies / guards / constraints (in mutations)', status: 'supported' },
+  { feature: 'Read/all policies on generated queries', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_READ_POLICY — queries filter tenant/soft-delete only; gate reads at the app edge.' },
   { feature: 'Roles + roleAllows', status: 'supported' },
   { feature: 'Events + emit payloads', status: 'supported' },
   { feature: 'Reactions', status: 'supported' },
@@ -124,6 +125,24 @@ export function collectUnsupportedDiagnostics(ir: IR): ProjectionDiagnostic[] {
           message: `Computed '${entity.name}.${cp.name}' declares cache '${cp.cache.strategy}'; Convex helpers are pure and do not honor cache directives.`,
         });
       }
+    }
+  }
+
+  // Read/all policies are NOT applied to generated queries (queries filter
+  // tenant/soft-delete only; command policies are enforced in mutations).
+  for (const policy of ir.policies) {
+    if (policy.action !== 'read' && policy.action !== 'all') continue;
+    const target = policy.entity;
+    const gated = target
+      ? ir.entities.some((e) => e.name === target && isPersistentEntity(e, ir))
+      : ir.entities.some((e) => isPersistentEntity(e, ir));
+    if (gated) {
+      out.push({
+        severity: 'warning',
+        code: 'CONVEX_UNSUPPORTED_READ_POLICY',
+        entity: target,
+        message: `Policy '${policy.name}' (action: ${policy.action}) is not applied to generated Convex queries; gate reads at the app edge or hand-write policy-aware queries.`,
+      });
     }
   }
 

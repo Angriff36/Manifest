@@ -1475,7 +1475,9 @@
             <tr>
               <td><span class="st full">Supported</span></td>
               <td>
-                Entities/properties/relationships · commands with guards/constraints/policies ·
+                Entities/properties/relationships · commands with guards/constraints/policies
+                (enforced in mutations; read/<code>all</code> policies are NOT applied to
+                generated queries — gate reads at the app edge) ·
                 events/emits · reactions · schedules → crons · webhooks → http (routing/transform
                 only — see Partial for signatures) · tenant-scoped
                 reads/writes · roles/checkRole · events table · transitions (status checks in

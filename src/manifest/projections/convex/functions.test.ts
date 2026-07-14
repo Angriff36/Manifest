@@ -476,6 +476,40 @@ describe('convex.mutations — governance', () => {
     expect(code).toContain('policyMode: skip');
   });
 
+  it('renders constraint failWhen polarity (truthy = violation) and default polarity', () => {
+    const ir = govIR();
+    const statusEmpty = {
+      kind: 'binary' as const,
+      operator: '==',
+      left: {
+        kind: 'member' as const,
+        object: { kind: 'identifier' as const, name: 'self' },
+        property: 'status',
+      },
+      right: { kind: 'literal' as const, value: { kind: 'string' as const, value: '' } },
+    };
+    ir.commands[0].constraints = [
+      // failWhen: truthy expression is the VIOLATION → `if (expr) throw`
+      {
+        name: 'noEmptyStatus',
+        code: 'noEmptyStatus',
+        expression: statusEmpty,
+        failWhen: true,
+        message: 'status must not be empty',
+      },
+      // default polarity: falsy expression is the violation → `if (!(expr)) throw`
+      {
+        name: 'statusPresent',
+        code: 'statusPresent',
+        expression: statusEmpty,
+        message: 'status must be empty',
+      },
+    ];
+    const code = mutations(ir).artifacts[0].code;
+    expect(code).toContain('if ((doc.status === "")) throw new Error("status must not be empty")');
+    expect(code).toContain('if (!((doc.status === ""))) throw new Error("status must be empty")');
+  });
+
   it('fails CLOSED on an unresolvable guard (throws + diagnostic, never passes)', () => {
     const ir = govIR();
     // a lambda guard the resolver cannot map

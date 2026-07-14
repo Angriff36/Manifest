@@ -11,7 +11,9 @@ for Builder and other platform consumers.
 - `./lexer`
 - `./parser`
 - `./projections`
-- `./projections/*`
+- each `./projections/<name>` subpath explicitly listed in `package.json`
+  `exports` (there is no wildcard export — a projection is importable per-name
+  only once it has an explicit exports entry)
 - `./runtime-engine`
 - `./agent-sdk`
 - `./ir-diff`

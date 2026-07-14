@@ -474,6 +474,12 @@ interface CheckSpec {
   /** diagnostic code emitted when unresolved */
   code: 'CONVEX_UNRESOLVED_POLICY' | 'CONVEX_UNRESOLVED_GUARD' | 'CONVEX_UNRESOLVED_CONSTRAINT';
   label: string;
+  /**
+   * failWhen polarity (docs/spec/semantics.md § Constraint Polarity): a TRUTHY
+   * expression is the violation, so the check throws when the expression holds.
+   * Default/absent: falsy expression is the violation.
+   */
+  failWhen?: boolean;
 }
 
 /** Render governance checks fail-closed. Returns TS lines + diagnostics. */
@@ -494,6 +500,8 @@ function renderChecks(
         message: `${c.label}: could not resolve expression (${unresolved.join('; ')}). Emitted a denying throw (fail-closed).`,
       });
       lines.push(`    throw new Error(${JSON.stringify(`${c.label} unresolved — denied`)});`);
+    } else if (c.failWhen) {
+      lines.push(`    if (${code}) throw new Error(${JSON.stringify(c.message)});`);
     } else {
       lines.push(`    if (!(${code})) throw new Error(${JSON.stringify(c.message)});`);
     }
@@ -531,6 +539,7 @@ function commandChecks(ir: IR, cmd: IRCommand, policyMode: 'enforce' | 'skip'): 
       message: c.message ?? c.messageTemplate ?? `Constraint ${c.code} failed`,
       code: 'CONVEX_UNRESOLVED_CONSTRAINT',
       label: `constraint '${c.code}'`,
+      failWhen: c.failWhen === true,
     });
   }
   return checks;
