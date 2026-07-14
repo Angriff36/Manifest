@@ -67,7 +67,7 @@ Never hand-edit `convex/*.ts` (except `convex/lib/`) or `manifest/ir.json`. Comp
 
 ## Part 0.5 — Config placement decisions (verified against schema at 3.4.25, 2026-07-14)
 
-The config audit at `docs/internal/proposals/config/manifest-config-vnext.md` was written at v2.1.0; a dated accuracy addendum has been added to it. Current reality: `manifest.config.*` top-level keys are `src`/`output`/`prismaSchema`/`projections`/`env`/`hooks`/`plugins`/`naming`; `projections.*` accepts 28 projection keys including `convex`, each `{ output, options }` with `options` as `additionalProperties: true` **passed verbatim to the generator** — so new Convex projection options require NO config-schema change. None of the vNext keys (`validation`, `mergeIntegrity`, `provenance`, `runtime`, `driftGates`, `projections.enabled/defaults`) exist yet.
+The config audit at `docs/internal/proposals/config/manifest-config-vnext.md` was written at v2.1.0; a dated accuracy addendum has been added to it. Current reality: `manifest.config.*` top-level keys are `src`/`output`/`prismaSchema`/`projections`/`env`/`hooks`/`plugins`/`naming`; `projections.*` accepts 28 projection keys including `convex`, each `{ output, options }` with `options` as `additionalProperties: true` **passed verbatim to the generator** — so new Convex projection options require NO config-schema change. None of the proposed **config-vNext** keys (`validation`, `mergeIntegrity`, `provenance`, `runtime`, `driftGates`, `projections.enabled/defaults`) exist yet. NOTE the name collision: "vNext" also names the **language/runtime feature set** (`docs/spec/manifest-vnext.md` — constraint outcomes, overrides, concurrency, state transitions, workflow metadata), which is FULLY IMPLEMENTED and conformance-covered. Only the config proposal's Part 2 keys are unbuilt.
 
 Placement rules for the projection-repair work:
 
@@ -80,7 +80,7 @@ Placement rules for the projection-repair work:
 | `private` field stripping in reads (M3 phase 1) | **NOT config** — always on | Security default; same argument |
 | Constraints/guards/policies enforcement | **NOT config** (existing `policyMode: 'skip'` stays the only, documented, dev-build escape) | Already fail-closed |
 | Capability-map diagnostics (M7 below) | **NOT config** — always emitted | Visibility must not be optional |
-| CI failure policy on diagnostics (fail build on warning-level loss) | Future `validation.failOn` (vNext G2, unimplemented) | Until then: consumers' regen scripts must fail on error-severity diagnostics themselves |
+| CI failure policy on diagnostics (fail build on warning-level loss) | Future `validation.failOn` (config-vNext G2, unimplemented) | Until then: consumers' regen scripts must fail on error-severity diagnostics themselves |
 | Surface/output selection | `projections.convex.output` + `manifest generate --all` — exists today | — |
 
 ## Part 1 — Manifest-core work (enablement; repo `C:\projects\manifest`)
