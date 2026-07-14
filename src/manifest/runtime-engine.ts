@@ -22,6 +22,7 @@ import {
 } from './ir';
 import { dateOf, timeOf, datetimeOf, isValidDateString, isValidTimeString } from './date-time.js';
 import { applyMaskStrategy } from './masking.js';
+import { constraintExpressionPasses } from './constraint-polarity.js';
 import { RateLimiter } from './runtime-rate-limit.js';
 import {
   checkRateLimitGate,
@@ -5654,13 +5655,12 @@ export class RuntimeEngine {
   ): Promise<ConstraintOutcome> {
     const result = await this.evaluateExpression(constraint.expression, evalContext);
 
-    // Polarity: failWhen field in IR (set by compiler from explicit declaration or legacy heuristic).
-    // - failWhen=true: truthy expression = VIOLATION (passed = !expr)
-    // - failWhen absent/false: falsy expression = violation (passed = !!expr) — positive polarity
-    const raw = !!result;
-    const rawPassed = constraint.failWhen ? !raw : raw;
-    // Item 1 — ok severity forces passed=true; expression still evaluated above for details/resolved.
-    const passed = (constraint.severity ?? 'block') === 'ok' ? true : rawPassed;
+    // Polarity + severity: shared with WASM evaluator (semantics.md § Constraint Polarity).
+    // Runtimes MUST read only failWhen — never constraint names.
+    const passed = constraintExpressionPasses(result, {
+      failWhen: constraint.failWhen,
+      severity: constraint.severity,
+    });
 
     // Build details mapping if specified
     let details: Record<string, unknown> | undefined = undefined;

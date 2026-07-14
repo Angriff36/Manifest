@@ -12,6 +12,10 @@
 
 import type { IRExpression } from '../ir.js';
 import {
+  constraintExpressionPasses,
+  type ConstraintPolarityOptions,
+} from '../constraint-polarity.js';
+import {
   deserializeResult,
   loadDefaultWasmBytes,
   loadWasmModule,
@@ -19,6 +23,8 @@ import {
   serializeExpression,
   type WasmModule,
 } from './wasm-loader.js';
+
+export type { ConstraintPolarityOptions };
 
 // ============================================================================
 // Types
@@ -195,36 +201,17 @@ export class WasmExpressionEvaluator {
   /**
    * Evaluate a constraint expression.
    * Returns true if the constraint passes, false otherwise.
-   * Mirrors the hybrid constraint semantics from the TypeScript runtime.
+   * Polarity uses explicit `failWhen` + severity (semantics.md) — never name heuristics.
+   * Expression evaluation may use WASM when available; polarity is always applied in TS
+   * so both evaluators agree with RuntimeEngine.
    */
   async evaluateConstraint(
     expr: IRExpression,
     context: Record<string, unknown>,
-    constraintName: string,
+    options: ConstraintPolarityOptions = {},
   ): Promise<boolean> {
-    if (!this.isReady()) {
-      if (this.options.strict) {
-        throw new Error('WASM module is not ready');
-      }
-      return this.fallbackConstraint(expr, context, constraintName);
-    }
-    try {
-      const exprJson = serializeExpression(expr);
-      const ctxJson = serializeContext(context);
-      const result = this.module!.evalConstraint(
-        this.module!.__pin(this.module!.__newString(exprJson)),
-        this.module!.__pin(this.module!.__newString(ctxJson)),
-        this.module!.__pin(this.module!.__newString(constraintName)),
-      );
-      const strResult = this.module!.__getString(result);
-      return strResult === 'pass';
-    } catch (err) {
-      if (this.options.strict) throw err;
-      if (this.options.debug) {
-        console.warn('[WASM] Constraint evaluation failed, falling back:', err);
-      }
-      return this.fallbackConstraint(expr, context, constraintName);
-    }
+    const result = await this.evaluate(expr, context);
+    return constraintExpressionPasses(result, options);
   }
 
   // ============================================================================
@@ -239,17 +226,6 @@ export class WasmExpressionEvaluator {
     const dummyIR = createDummyIR();
     const engine = new RuntimeEngine(dummyIR, {});
     return await engine.evaluateExpression(expr, context);
-  }
-
-  private async fallbackConstraint(
-    expr: IRExpression,
-    context: Record<string, unknown>,
-    constraintName: string,
-  ): Promise<boolean> {
-    const result = await this.fallbackEvaluate(expr, context);
-    const negative = constraintName.startsWith('severity');
-    const truthy = Boolean(result);
-    return negative ? !truthy : truthy;
   }
 }
 

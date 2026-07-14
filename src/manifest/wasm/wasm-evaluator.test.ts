@@ -302,21 +302,35 @@ describe('Fallback constraint evaluation (no WASM)', () => {
     evaluator = new WasmExpressionEvaluator();
   });
 
-  it('should evaluate positive constraints (expression true = pass)', async () => {
-    const passed = await evaluator.evaluateConstraint(literal(true), {}, 'mustBeValid');
+  it('should evaluate positive polarity (expression true = pass)', async () => {
+    const passed = await evaluator.evaluateConstraint(literal(true), {}, { failWhen: false });
     expect(passed).toBe(true);
 
-    const failed = await evaluator.evaluateConstraint(literal(false), {}, 'mustBeValid');
+    const failed = await evaluator.evaluateConstraint(literal(false), {}, { failWhen: false });
     expect(failed).toBe(false);
   });
 
-  it('should evaluate negative constraints (name starts with "severity")', async () => {
-    // severity-* constraints: expression true means bad state → fail
-    const failed = await evaluator.evaluateConstraint(literal(true), {}, 'severityCheck');
+  it('should evaluate failWhen=true (expression true = violation)', async () => {
+    const failed = await evaluator.evaluateConstraint(literal(true), {}, { failWhen: true });
     expect(failed).toBe(false);
 
-    const passed = await evaluator.evaluateConstraint(literal(false), {}, 'severityCheck');
+    const passed = await evaluator.evaluateConstraint(literal(false), {}, { failWhen: true });
     expect(passed).toBe(true);
+  });
+
+  it('must not use severity-name heuristics for polarity', async () => {
+    // Name starts with "severity" but failWhen is absent → positive polarity (pass when true).
+    const passed = await evaluator.evaluateConstraint(literal(true), {}, {});
+    expect(passed).toBe(true);
+  });
+
+  it('ok severity always passes regardless of expression and polarity', async () => {
+    expect(
+      await evaluator.evaluateConstraint(literal(false), {}, { severity: 'ok', failWhen: false }),
+    ).toBe(true);
+    expect(
+      await evaluator.evaluateConstraint(literal(true), {}, { severity: 'ok', failWhen: true }),
+    ).toBe(true);
   });
 });
 
@@ -438,4 +452,77 @@ describe('Host provider configuration', () => {
     const evaluator = new WasmExpressionEvaluator();
     expect(() => evaluator.setUuidProvider(() => 'custom-uuid')).not.toThrow();
   });
+});
+
+describe('Constraint polarity parity: WASM evaluator vs RuntimeEngine', () => {
+  // Matrix: severity × failWhen × expression truthiness — both paths must agree.
+  const severities = ['ok', 'warn', 'block'] as const;
+  const failWhenValues = [false, true] as const;
+  const exprValues = [false, true] as const;
+
+  it.each(
+    severities.flatMap((severity) =>
+      failWhenValues.flatMap((failWhen) =>
+        exprValues.map((exprTruthy) => ({ severity, failWhen, exprTruthy })),
+      ),
+    ),
+  )(
+    'severity=$severity failWhen=$failWhen expr=$exprTruthy',
+    async ({ severity, failWhen, exprTruthy }) => {
+      const { RuntimeEngine } = await import('../runtime-engine.js');
+      const { constraintExpressionPasses } = await import('../constraint-polarity.js');
+
+      const expr = literal(exprTruthy);
+      const wasm = new WasmExpressionEvaluator();
+      const wasmPassed = await wasm.evaluateConstraint(expr, {}, { failWhen, severity });
+
+      const engine = new RuntimeEngine(
+        {
+          version: '1.0',
+          provenance: {
+            contentHash: 'parity',
+            compilerVersion: 'test',
+            schemaVersion: '1.0',
+            compiledAt: '1970-01-01T00:00:00.000Z',
+          },
+          modules: [],
+          values: [],
+          entities: [
+            {
+              name: 'E',
+              properties: [],
+              computedProperties: [],
+              relationships: [],
+              commands: [],
+              constraints: [
+                {
+                  name: 'c',
+                  code: 'c',
+                  expression: expr,
+                  severity,
+                  ...(failWhen ? { failWhen: true } : {}),
+                },
+              ],
+              policies: [],
+            },
+          ],
+          enums: [],
+          stores: [],
+          events: [],
+          commands: [],
+          policies: [],
+        },
+        {},
+      );
+
+      const outcomes = await engine.checkConstraints('E', {});
+      // checkConstraints returns only failures — empty means passed.
+      const runtimePassed = outcomes.length === 0;
+
+      // Shared helper is the normative formula; both surfaces must match it.
+      const expected = constraintExpressionPasses(exprTruthy, { failWhen, severity });
+      expect(wasmPassed).toBe(expected);
+      expect(runtimePassed).toBe(expected);
+    },
+  );
 });

@@ -7,10 +7,9 @@ main @ v3.5.0 (commit 22a19e1). Every item below was verified open in source on
 
 ## Bugs
 
-- [ ] **WASM evaluator polarity divergence** — `src/manifest/wasm/wasm-evaluator.ts:250`
-      still uses the retired `startsWith('severity')` constraint-polarity heuristic;
-      the runtime engine now reads the explicit `failWhen` field
-      (`runtime-engine.ts:5661`). The two evaluators disagree on constraint polarity.
+- [x] **WASM evaluator polarity aligned** — ~~`startsWith('severity')` heuristic~~
+      fixed 2026-07-14: shared `constraint-polarity.ts` + `failWhen`/`severity`
+      options on `WasmExpressionEvaluator.evaluateConstraint`; parity matrix tests.
 - [x] **Entity `behaviors` loudly rejected** — ~~silently dropped~~ fixed 2026-07-14:
       `ir-compiler.ts` emits `ENTITY_BEHAVIOR_UNSUPPORTED` error (fixture 110).
       No IR field / no canonical semantics; use reactions or command actions.

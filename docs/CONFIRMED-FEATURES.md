@@ -86,7 +86,7 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
 - Batched persistence: per-command working-copy buffer, one flush, atomic-on-failure (`runtime-command-batched-persistence.test.ts`)
 - Pluggable `EncryptionProvider`; feature-flag provider; deterministic mode
 - EventBus (`src/manifest/events/event-bus`, `runtime-eventbus.test.ts`)
-- Scoped WASM expression-compatibility layer (`isWasmCompatible()`) for pure computational expressions — an optimization path, **not** a WASM runtime (see Gaps for a known polarity-heuristic bug in `wasm/wasm-evaluator.ts`)
+- Scoped WASM expression-compatibility layer (`isWasmCompatible()`) for pure computational expressions — an optimization path, **not** a WASM runtime. Constraint polarity uses shared `constraint-polarity.ts` (`failWhen` + severity), aligned with RuntimeEngine (2026-07-14).
 
 ## 4. Stores & Persistence Subsystems
 
@@ -185,6 +185,10 @@ actions instead.
 **Distribution gap:** MCP server, LSP server, stdlib, and the VS Code
 extension are built and tested but published nowhere.
 
-**Known bug:** `wasm/wasm-evaluator.ts` still uses the retired
+~~**Known bug:** `wasm/wasm-evaluator.ts` still uses the retired
 `startsWith('severity')` constraint-polarity heuristic and disagrees with the
-runtime engine's explicit `failWhen` handling.
+runtime engine's explicit `failWhen` handling.~~
+
+**Update (2026-07-14):** WASM-compatible evaluator uses shared
+`constraint-polarity.ts` (`failWhen` + severity); name heuristics removed.
+Parity matrix covers ok/warn/block × both polarities.
