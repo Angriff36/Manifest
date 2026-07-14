@@ -971,7 +971,7 @@
               <td class="m">policy / roles</td>
               <td class="m">policy checks + ROLE_PERMISSIONS / checkRole</td>
               <td><span class="st part">partial</span></td>
-              <td>Enforced in <b>mutations</b> only. Read/<code>all</code> policies are NOT applied to generated queries — gate reads at the app edge. Wire authContextImport; don't re-auth in handlers</td>
+              <td>Enforced in <b>mutations</b>. Read/<code>all</code> policies are NOT evaluated in queries — entities they gate emit <code>internalQuery</code> (fail-closed, not client-callable); expose via a policy-enforcing public wrapper. Wire authContextImport; don't re-auth in handlers</td>
             </tr>
             <tr>
               <td class="m">event + emit</td>
@@ -1133,7 +1133,7 @@
             </div>
             <div class="node amber">
               <div class="nf">convex/queries.ts</div>
-              <div class="nd">list / get / listBy… · tenant + soft-delete filtered. No read-policy gating — enforce at the app edge.</div>
+              <div class="nd">list / get / listBy… · tenant + soft-delete filtered. Read/all-gated entities emit internalQuery (fail-closed).</div>
               <span class="tag gen">convex.queries</span>
             </div>
             <div class="node amber">
@@ -1227,9 +1227,10 @@
           against <code>api</code> from <code>convex/_generated/api</code>. The separate TanStack
           Query projection targets HTTP/Next stacks — not the primary Convex path.
           <b>Authorization caveat:</b> generated queries apply tenant + soft-delete filters but do
-          <b>not</b> enforce read/<code>all</code> policies (<code>CONVEX_UNSUPPORTED_READ_POLICY</code>).
-          If an entity has read policies, do not expose its generated queries directly to
-          untrusted clients — wrap them in a policy-enforcing server read surface.
+          <b>not</b> evaluate read/<code>all</code> policies (<code>CONVEX_UNSUPPORTED_READ_POLICY</code>).
+          Entities gated by such policies emit <code>internalQuery</code> — fail-closed, not
+          callable from clients. To surface their data in UI, write a policy-enforcing public
+          query that wraps the internal one.
         </p>
         <table class="cap" style="margin-top: 28px">
           <thead>
@@ -1480,8 +1481,8 @@
               <td><span class="st full">Supported</span></td>
               <td>
                 Entities/properties/relationships · commands with guards/constraints/policies
-                (enforced in mutations; read/<code>all</code> policies are NOT applied to
-                generated queries — gate reads at the app edge) ·
+                (enforced in mutations; read/<code>all</code>-gated entities emit
+                <code>internalQuery</code> — expressions not evaluated in queries) ·
                 events/emits · reactions · schedules → crons · webhooks → http (routing/transform
                 only — see Partial for signatures) · tenant-scoped
                 reads/writes · roles/checkRole · events table · transitions (status checks in

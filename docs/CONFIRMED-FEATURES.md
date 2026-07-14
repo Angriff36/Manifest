@@ -24,7 +24,7 @@ carries file evidence checked on 2026-07-14.
 
 All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts`
 + a dedicated conformance fixture in `src/manifest/conformance/fixtures/`
-(98 fixtures — executable semantics, not just tests).
+(99 fixtures — executable semantics, not just tests).
 
 **Entities & data model**
 
@@ -142,8 +142,8 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 
 ## 9. Testing & Release Infrastructure
 
-- 231 test files (170 under `src/`, 61 under `packages/`); ~3,929 tests per CLAUDE.md (file counts re-verified 2026-07-14; test total not re-run this pass)
-- 98 conformance fixtures with expected IR/diagnostics/results — executable semantics
+- 234 test files (173 under `src/`, 61 under `packages/`); ~3,973 passing + 21 skipped as of the 2026-07-14 SDK wave (counts drift — run `pnpm test` for current)
+- 99 conformance fixtures with expected IR/diagnostics/results — executable semantics
 - 4 benchmark files; coverage floors + dependency-cycle check in CI
 - Docs snippet doctest gate in CI (`.github/workflows/ci.yml` — every fenced `manifest` code block in docs must compile; TypeScript blocks are NOT checked, see TODO.md)
 - One-button release: `cut-release.yml` (build+typecheck+test gate → version bump → npm publish via OIDC → tag → GitHub Release)
