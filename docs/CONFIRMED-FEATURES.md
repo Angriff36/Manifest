@@ -1,15 +1,17 @@
 ---
 title: Manifest Confirmed Features
 created: 2026-07-14
-verified_against: main @ v3.5.0 (commit 22a19e1)
+verified_against: main (npm release = v3.5.0, commit 22a19e1; entries marked "unreleased" are on main after that tag and NOT yet on npm)
 source_of_truth: This file is the source of truth for WHICH features verifiably exist. For feature SEMANTICS the spec chain still governs (docs/spec/ir/ir-v1.schema.json → semantics.md → builtins.md → adapters.md → conformance fixtures).
 ---
 
-# Manifest Confirmed Features (verified 2026-07-14, v3.5.0)
+# Manifest Confirmed Features (verified 2026-07-14 on `main`; latest npm release: v3.5.0)
 
 This document lists what Manifest **actually does today**, verified against source
-code, registration points, and tests on `main` at v3.5.0 — not against docs,
-roadmaps, or `.automaker` status files. It supersedes the verification status of
+code, registration points, and tests on `main` — not against docs, roadmaps, or
+`.automaker` status files. Anything dated 2026-07-14 and marked **unreleased**
+landed on `main` after the v3.5.0 tag and is not installable from npm until the
+next release. It supersedes the verification status of
 `docs/FEATURE-LIST.md` (a 2026-06-02 roadmap snapshot).
 
 **Verification bar:** a feature is listed only if (1) implementation source
@@ -86,7 +88,7 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
 - Batched persistence: per-command working-copy buffer, one flush, atomic-on-failure (`runtime-command-batched-persistence.test.ts`)
 - Pluggable `EncryptionProvider`; feature-flag provider; deterministic mode
 - EventBus (`src/manifest/events/event-bus`, `runtime-eventbus.test.ts`)
-- Scoped WASM expression-compatibility layer (`isWasmCompatible()`) for pure computational expressions — an optimization path, **not** a WASM runtime. Constraint polarity uses shared `constraint-polarity.ts` (`failWhen` + severity), aligned with RuntimeEngine (2026-07-14).
+- Scoped WASM expression-compatibility layer (`isWasmCompatible()`) for pure computational expressions — an optimization path, **not** a WASM runtime. Constraint polarity uses shared `constraint-polarity.ts` (`failWhen` + severity), aligned with RuntimeEngine (2026-07-14, unreleased).
 
 ## 4. Stores & Persistence Subsystems
 
@@ -129,8 +131,8 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 ## 7. Packages & Distribution
 
 - **Published**: `@angriff36/manifest` v3.5.0 on npmjs.org (OIDC trusted publishing via the one-button `cut-release.yml` workflow)
-- **Platform API for Builder (2026-07-14):** `@angriff36/manifest/language-metadata` → `getLanguageMetadata()` — keywords/operators from lexer, modifiers from `property-modifiers.ts` / IR schema, builtins from `RuntimeEngine.getBuiltins()`, date/time primitives from `date-time.ts`. Not a hand-maintained second registry.
-- **Projection capabilities API (2026-07-14):** `@angriff36/manifest/projections` → `getProjectionCapabilities(name)` + optional `ProjectionTarget.capabilities` (`feature` + `supported`/`partial`/`unsupported` + `note`). Convex declares its full matrix; projections without a declared matrix return `undefined` (undeclared ≠ unsupported).
+- **Platform API for Builder (2026-07-14, unreleased):** `@angriff36/manifest/language-metadata` → `getLanguageMetadata()` — keywords/operators from lexer, modifiers from `property-modifiers.ts` / IR schema, builtins from `RuntimeEngine.getBuiltins()`, date/time primitives from `date-time.ts`. Not a hand-maintained second registry.
+- **Projection capabilities API (2026-07-14, unreleased):** `@angriff36/manifest/projections` → `getProjectionCapabilities(name)` + optional `ProjectionTarget.capabilities` (`feature` + `supported`/`partial`/`unsupported` + `note`). Convex declares its full matrix; projections without a declared matrix return `undefined` (undeclared ≠ unsupported).
 - **In-repo, tested, NOT published** (see Gaps): `@manifest/mcp-server` 0.1.0 (tools: compile/execute/explain/validate), `@manifest/lsp-server` 0.1.0 (completion/definition/diagnostics/document-symbols/hover), `@manifest/stdlib` 0.1.0, `manifest-lang` VS Code extension 0.3.0 (marketplace status unverified)
 
 ## 8. Config System
@@ -179,9 +181,9 @@ kind as passthrough only).
 `behaviors` blocks parse but never reach the IR (`IREntity` has no such field,
 `ir-compiler.ts` never reads it) and no diagnostic is emitted.~~
 
-**Update (2026-07-14):** entity `behavior` / bare `on Event { ... }` blocks are
-hard compile errors (message-only diagnostic, fixture 110 — `IRDiagnostic` has
-no machine-readable `code` field yet; see TODO). Canonical IR and `docs/spec`
+**Update (2026-07-14, unreleased):** entity `behavior` / bare `on Event { ... }`
+blocks are hard compile errors (message-only diagnostic, fixture 110 —
+`IRDiagnostic` has no machine-readable `code` field yet; see TODO). Canonical IR and `docs/spec`
 define no behavior semantics; use top-level reactions or command actions
 instead.
 
