@@ -29,6 +29,7 @@ import type {
 } from '../interface';
 
 import { normalizeOptions, type TerraformBucket, type TerraformProvider } from './options.js';
+import { TERRAFORM_DESCRIPTOR_META } from './descriptor-meta.js';
 import {
   PERSISTENT_DB_TARGETS,
   resolveDatabaseConfig,
@@ -819,6 +820,7 @@ export class TerraformProjection implements ProjectionTarget {
     'Supports AWS (RDS + S3 + SNS), GCP (Cloud SQL + GCS + Pub/Sub), and Supabase providers. ' +
     'Enables one-click infrastructure provisioning aligned with the Manifest domain model.';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = TERRAFORM_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const allDiagnostics: ProjectionDiagnostic[] = [];

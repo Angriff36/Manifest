@@ -40,6 +40,8 @@ import type {
 import { normalizeOptions } from './options.js';
 import { ES_TYPE_MAPPING, UNSUPPORTED_ES_TYPES, type ESFieldType } from './type-mapping.js';
 import type { ElasticsearchIndexDefinition, ESFieldOverride } from './types.js';
+import { ELASTICSEARCH_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 // ============================================================================
 // Surface constants
@@ -659,6 +661,7 @@ export class ElasticsearchProjection implements ProjectionTarget {
     'outbox-driven indexer workers, and typed search query builders from IR entities ' +
     'marked with `store X in elasticsearch`.';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = ELASTICSEARCH_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const artifacts: ProjectionArtifact[] = [];

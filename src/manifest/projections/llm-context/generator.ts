@@ -13,6 +13,7 @@
 
 import type { IR, IRExpression, IRType, IRValue } from '../../ir';
 import type { ProjectionTarget, ProjectionRequest, ProjectionResult } from '../interface';
+import { LLM_CONTEXT_DESCRIPTOR_META } from './descriptor-meta.js';
 import type {
   LlmContextProjectionOptions,
   ManifestContext,
@@ -336,6 +337,7 @@ export class LlmContextProjection implements ProjectionTarget {
   readonly description =
     'Structured manifest-context.json for LLM context injection — entities, commands, policies, constraints, and relationships in one document.';
   readonly surfaces = ['llm-context.full', 'llm-context.summary', 'llm-context.ir'] as const;
+  readonly descriptorMeta = LLM_CONTEXT_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const { surface } = request;

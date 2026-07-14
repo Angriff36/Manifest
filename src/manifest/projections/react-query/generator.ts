@@ -27,6 +27,8 @@ import type {
 import { type RouteCasing } from '../shared/naming.js';
 import { resolveRouteContract, type RouteContract } from '../shared/route-contract.js';
 import { irTypeToTypeScript } from '../shared/typescript-types.js';
+import { REACT_QUERY_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 // ---------------------------------------------------------------------------
 // Options
@@ -584,6 +586,7 @@ export class ReactQueryProjection implements ProjectionTarget {
   readonly description =
     'TanStack Query (React Query) hooks with typed queries, mutations, and cache invalidation';
   readonly surfaces = ['react-query.hooks', 'react-query.provider'] as const;
+  readonly descriptorMeta = REACT_QUERY_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = request.options as ReactQueryProjectionOptions | undefined;

@@ -23,6 +23,8 @@ import type {
   RemixProjectionOptions,
 } from '../interface';
 import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
+import { REMIX_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 /**
  * Re-export the projection-interface types so downstream consumers of
@@ -1011,6 +1013,7 @@ export class RemixProjection implements ProjectionTarget {
     'remix.client',
     'remix.companions',
   ] as const;
+  readonly descriptorMeta = REMIX_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = request.options as RemixProjectionOptions | undefined;

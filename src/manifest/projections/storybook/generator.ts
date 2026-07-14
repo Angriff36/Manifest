@@ -9,6 +9,7 @@
  */
 
 import type { IR, IREntity, IRCommand, IRProperty, IRType, IRValue, IRExpression } from '../../ir';
+import { STORYBOOK_DESCRIPTOR_META } from './descriptor-meta.js';
 import type {
   ProjectionTarget,
   ProjectionRequest,
@@ -457,6 +458,7 @@ export class StorybookProjection implements ProjectionTarget {
   readonly name = 'storybook';
   readonly description = 'Storybook CSF3 stories with typed controls from IR entities and commands';
   readonly surfaces = ['storybook.entity', 'storybook.command', 'storybook.all'] as const;
+  readonly descriptorMeta = STORYBOOK_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const opts = normalizeOptions(request.options);

@@ -38,6 +38,7 @@ import {
   type PrismaProjectionOptions,
   type PrismaProvider,
 } from './options.js';
+import { PRISMA_DESCRIPTOR_META } from './descriptor-meta.js';
 import {
   DEFAULT_DECIMAL_PRECISION,
   DEFAULT_DECIMAL_SCALE,
@@ -1353,6 +1354,7 @@ export class PrismaProjection implements ProjectionTarget {
   readonly name = 'prisma';
   readonly description = 'Manifest IR → Prisma schema projection. Compile-time only. App-agnostic.';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = PRISMA_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     if (request.surface !== SURFACE_SCHEMA) {

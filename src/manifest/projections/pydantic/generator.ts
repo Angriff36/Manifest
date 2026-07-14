@@ -32,6 +32,7 @@ import type {
   ProjectionArtifact,
 } from '../interface';
 import type { PydanticProjectionOptions } from './types';
+import { PYDANTIC_DESCRIPTOR_META } from './descriptor-meta.js';
 import {
   analyzeConstraints,
   type NumericRange,
@@ -683,6 +684,7 @@ export class PydanticProjection implements ProjectionTarget {
     'pydantic.models',
     'pydantic.client',
   ] as const;
+  readonly descriptorMeta = PYDANTIC_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const diagnostics: ProjectionDiagnostic[] = [];

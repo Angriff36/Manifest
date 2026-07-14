@@ -37,6 +37,7 @@ import {
 } from './defaults.js';
 import { generateScheduleCronRoutes } from './schedule-generator.js';
 import { generateWebhookRoutes } from './webhook-generator.js';
+import { NEXTJS_DESCRIPTOR_META } from './descriptor-meta.js';
 
 // Re-export the projection-interface types so downstream consumers of
 // `@angriff36/manifest/projections/nextjs` can type the projection
@@ -597,6 +598,7 @@ export class NextJsProjection implements ProjectionTarget {
     'ts.types',
     'ts.client',
   ] as const;
+  readonly descriptorMeta = NEXTJS_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = request.options as NextJsProjectionOptions | undefined;
@@ -1737,6 +1739,7 @@ export function use${name}Subscription(options: Use${name}SubscriptionOptions = 
 ${requireNote}// See docs/spec/semantics.md § "Realtime Entities".
 
 import { createManifestRuntime } from "${opts.runtimeImportPath}";
+
 
 type SharedRuntime = Awaited<ReturnType<typeof createManifestRuntime>>;
 

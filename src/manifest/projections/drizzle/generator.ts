@@ -31,6 +31,7 @@ import {
   type DrizzleProjectionOptions,
   type ForeignKeyConfig,
 } from './options.js';
+import { DRIZZLE_DESCRIPTOR_META } from './descriptor-meta.js';
 import {
   resolveDrizzleColumnType,
   isNumericType,
@@ -695,6 +696,7 @@ export class DrizzleProjection implements ProjectionTarget {
   readonly description =
     'Manifest IR → Drizzle ORM schema projection. TypeScript-first, compatible with Drizzle Kit migrations.';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = DRIZZLE_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     if (request.surface !== SURFACE_SCHEMA) {

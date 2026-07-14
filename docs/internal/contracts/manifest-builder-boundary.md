@@ -63,7 +63,8 @@ so "Manifest needs an SDK" is mostly false — what's missing is narrower:
 | `generateAgentTools()` | `@angriff36/manifest/agent-sdk` + `@manifest/mcp-server` | ✅ exists; Builder consumes agent-sdk |
 | `getLanguageMetadata()` | `@angriff36/manifest/language-metadata` (`getLanguageMetadata`) | ✅ exists (2026-07-14). Keywords ← lexer `KEYWORDS`, modifiers ← `PROPERTY_MODIFIERS` / IR schema, builtins ← `RuntimeEngine.getBuiltins()`, date/time primitives ← `date-time.ts`. |
 | `getProjectionCapabilities()` | `@angriff36/manifest/projections` (`getProjectionCapabilities(name)`) | ✅ exists (2026-07-14). Optional `capabilities` on `ProjectionTarget` (`ProjectionCapability[]`: feature + supported/partial/unsupported + note); Convex declares its full matrix. Undeclared matrices return `undefined` — Builder must render that as "undeclared", never "supports nothing". Remaining projections declare theirs incrementally. |
-| Stability guarantee | `docs/spec/sdk-stability.md` | ✅ declared (2026-07-14). Lists the stable-for-Builder subpaths; breaking a stable subpath requires a major version + a **Breaking** CHANGELOG entry. Unlisted exports are internal. |
+| `describeProjection()` / `listProjectionDescriptors()` | `@angriff36/manifest/projections` | ✅ exists (2026-07-14). Structured scope/options/prerequisites/artifacts/deps/companions + `safelyInvokable`. Registration ≠ safe invoke. Spec: `docs/spec/projection-descriptors.md`. |
+| Stability guarantee | `docs/spec/sdk-stability.md` | ✅ declared (2026-07-14). Lists the stable-for-Builder subpaths; breaking a stable subpath requires a breaking-tier version + a **Breaking** CHANGELOG entry. Unlisted exports are internal. |
 
 ## Builder-side requirement: the `manifest-project` control plane
 

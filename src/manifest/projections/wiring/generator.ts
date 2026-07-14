@@ -24,6 +24,8 @@ import type {
 import { buildWiringContract } from './contract-builder.js';
 import { generateWiringBindings } from './bindings-generator.js';
 import type { WiringProjectionOptions } from './types.js';
+import { WIRING_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 const SURFACE_CONTRACT = 'wiring.contract' as const;
 const SURFACE_BINDINGS = 'wiring.bindings' as const;
@@ -49,6 +51,7 @@ export class WiringProjection implements ProjectionTarget {
   readonly name = 'wiring';
   readonly description = 'Product wiring contract + safe command bindings (not a UI generator)';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = WIRING_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const diagnostics: ProjectionDiagnostic[] = [];

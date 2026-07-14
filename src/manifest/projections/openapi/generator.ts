@@ -36,6 +36,8 @@ import type {
   ProjectionArtifact,
 } from '../interface';
 import type { OpenApiProjectionOptions } from './types';
+import { OPENAPI_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 // ============================================================================
 // OpenAPI 3.1 Types (inline to avoid external dependencies)
@@ -931,6 +933,7 @@ export class OpenApiProjection implements ProjectionTarget {
   readonly description =
     'OpenAPI 3.1.0 spec generation from Manifest IR entities, commands, and routes';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = OPENAPI_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = (request.options ?? {}) as OpenApiProjectionOptions;

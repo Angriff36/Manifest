@@ -26,6 +26,7 @@ import type {
   ProjectionArtifact,
 } from '../interface';
 import type { DartProjectionOptions, DartStateManagement } from './types';
+import { DART_DESCRIPTOR_META } from './descriptor-meta.js';
 import {
   analyzeConstraints,
   numericRangeToZodChain,
@@ -870,6 +871,7 @@ Auto-generated Dart/Flutter client SDK for the Manifest API.
 \`\`\`dart
 import 'package:${opts.packageName}/${opts.packageName}.dart';
 
+
 final client = ${opts.clientClassName}(baseUrl: 'https://api.example.com');
 
 // List entities
@@ -965,6 +967,7 @@ export class DartProjection implements ProjectionTarget {
     'dart.providers',
     'dart.package',
   ] as const;
+  readonly descriptorMeta = DART_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const diagnostics: ProjectionDiagnostic[] = [];

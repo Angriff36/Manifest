@@ -23,6 +23,8 @@ import type {
 } from '../interface';
 import type { HealthCheckProjectionOptions } from './types';
 import { normalizeHealthOptions } from './types.js';
+import { HEALTH_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 // ============================================================================
 // Surface identifiers
@@ -367,6 +369,7 @@ export class HealthCheckProjection implements ProjectionTarget {
   readonly description =
     'Health check endpoint generation with IR integrity, store connectivity, and outbox checks';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = HEALTH_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const opts = normalizeHealthOptions(

@@ -36,6 +36,8 @@ import type { ExpressProjectionOptions } from './types';
 import type { RouteCasing } from '../shared/naming.js';
 import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
 import { resolveRouteContract, zodParamsSchemaName } from '../shared/route-contract.js';
+import { EXPRESS_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 // ============================================================================
 // Constants
@@ -1093,6 +1095,7 @@ export class ExpressProjection implements ProjectionTarget {
   readonly description =
     'Express/Fastify route handlers and middleware from IR entities and commands';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = EXPRESS_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = normalizeOptions((request.options ?? {}) as ExpressProjectionOptions);

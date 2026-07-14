@@ -39,6 +39,8 @@ import type {
 } from '../interface';
 import { zodParamsSchemaName } from '../shared/route-contract.js';
 import type { ZodProjectionOptions } from './types';
+import { ZOD_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 // ============================================================================
 // Type mapping
@@ -416,6 +418,7 @@ export class ZodProjection implements ProjectionTarget {
   readonly name = 'zod';
   readonly description = 'Zod validation schemas for IR entities and command parameters';
   readonly surfaces = ['zod.entity', 'zod.command', 'zod.schemas'] as const;
+  readonly descriptorMeta = ZOD_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const diagnostics: ProjectionDiagnostic[] = [];

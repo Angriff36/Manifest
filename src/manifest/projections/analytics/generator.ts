@@ -22,6 +22,8 @@ import type {
   ProjectionArtifact,
 } from '../interface';
 import type { AnalyticsProjectionOptions, AnalyticsProvider } from './types';
+import { ANALYTICS_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 // ============================================================================
 // Surface constants
@@ -791,6 +793,7 @@ export class AnalyticsProjection implements ProjectionTarget {
   readonly description =
     'Typed analytics event schemas and track() calls for Segment, Amplitude, Mixpanel, or Snowplow';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = ANALYTICS_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const diagnostics: ProjectionDiagnostic[] = [];

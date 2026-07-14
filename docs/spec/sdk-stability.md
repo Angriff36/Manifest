@@ -21,6 +21,12 @@ for Builder and other platform consumers.
 - `./config`
 - `./language-metadata`
 
+The `./projections` subpath includes the projection descriptor API
+(`ProjectionDescriptor`, `describeProjection`, `listProjectionDescriptors`,
+`validateProjectionInvocation`). See `docs/spec/projection-descriptors.md`
+for the schema, registered-vs-safely-invokable distinction, authoring rules,
+and descriptor-specific semver expectations.
+
 Breaking changes to a stable subpath require both:
 
 1. A breaking-tier version bump. **This project does not use standard

@@ -34,6 +34,8 @@ import type { HonoProjectionOptions } from './types';
 import type { RouteCasing } from '../shared/naming.js';
 import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
 import { resolveRouteContract, zodParamsSchemaName } from '../shared/route-contract.js';
+import { HONO_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 // ============================================================================
 // Constants
@@ -967,6 +969,7 @@ export class HonoProjection implements ProjectionTarget {
   readonly description =
     'Hono route handlers optimized for edge runtimes (Cloudflare Workers, Vercel Edge, Deno Deploy)';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = HONO_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = normalizeOptions((request.options ?? {}) as HonoProjectionOptions);

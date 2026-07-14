@@ -23,6 +23,7 @@
  */
 
 import type { IR, IRStore, IREntity } from '../../ir';
+import { DYNAMODB_DESCRIPTOR_META } from './descriptor-meta.js';
 import type {
   ProjectionTarget,
   ProjectionRequest,
@@ -333,6 +334,7 @@ export class DynamoDBProjection implements ProjectionTarget {
   readonly description =
     'Generates AWS DynamoDB infrastructure (CloudFormation, CDK, Terraform) from Manifest IR stores';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = DYNAMODB_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const artifacts: ProjectionArtifact[] = [];

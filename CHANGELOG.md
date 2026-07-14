@@ -4,6 +4,18 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- Projection descriptor API on `@angriff36/manifest/projections`:
+  `describeProjection`, `listProjectionDescriptors`,
+  `validateProjectionInvocation`, and `ProjectionDescriptor` (scope, options,
+  prerequisites, artifacts, package/runtime deps, companions, capability
+  groups, `safelyInvokable`). Every registered projection declares
+  `descriptorMeta` beside the owning projection; registry/descriptor parity
+  is test-enforced. Spec: `docs/spec/projection-descriptors.md`.
+
 ## [3.6.0] - 2026-07-14
 
 Platform-SDK wave for Builder (roadmap M13) plus Convex generated-code

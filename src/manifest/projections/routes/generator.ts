@@ -29,6 +29,8 @@ import type {
   ManualRouteDeclaration,
 } from './types';
 import { resolveRouteContract, type RouteContract } from '../shared/route-contract.js';
+import { ROUTES_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 // ============================================================================
 // Helpers
@@ -473,6 +475,7 @@ export class RoutesProjection implements ProjectionTarget {
   readonly description =
     'Canonical route surface — deterministic route manifest and typed path builders';
   readonly surfaces = ['routes.manifest', 'routes.ts'] as const;
+  readonly descriptorMeta = ROUTES_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = (request.options ?? {}) as RoutesProjectionOptions;

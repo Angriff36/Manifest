@@ -30,6 +30,8 @@ import type {
 
 import { normalizeOptions, type MaterializedViewsProjectionOptions } from './options.js';
 import type { MaterializedViewDefinition, MaterializedViewIndex } from './types.js';
+import { MATERIALIZED_VIEWS_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 // ============================================================================
 // Surface identifiers
@@ -260,6 +262,7 @@ export class MaterializedViewsProjection implements ProjectionTarget {
     'with @materialized computed properties. Supports on-demand, scheduled (pg_cron), and ' +
     'trigger-based refresh strategies plus supporting indexes.';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = MATERIALIZED_VIEWS_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const allDiagnostics: ProjectionDiagnostic[] = [];

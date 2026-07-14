@@ -1,0 +1,70 @@
+import type { ProjectionDescriptorMeta } from '../descriptor-types.js';
+import {
+  aggregateSurface,
+  commandSurface,
+  entitySurface,
+  optionalOption,
+} from '../descriptor-helpers.js';
+
+export const NEXTJS_DESCRIPTOR_META: ProjectionDescriptorMeta = {
+  displayName: 'Next.js',
+  surfaces: [
+    entitySurface('nextjs.route'),
+    entitySurface('nextjs.detail'),
+    commandSurface('nextjs.command'),
+    aggregateSurface('nextjs.dispatcher'),
+    entitySurface('nextjs.subscribe'),
+    entitySurface('nextjs.subscriptionHook'),
+    aggregateSurface('nextjs.sharedRuntime'),
+    aggregateSurface('nextjs.schedule'),
+    aggregateSurface('nextjs.webhook'),
+    aggregateSurface('nextjs.companions'),
+    aggregateSurface('ts.types'),
+    aggregateSurface('ts.client'),
+  ],
+  options: [
+    optionalOption('authProvider', 'enum', {
+      enumValues: ['clerk', 'nextauth', 'custom', 'none'],
+    }),
+    optionalOption('authImportPath', 'string'),
+    optionalOption('databaseImportPath', 'string'),
+    optionalOption('responseImportPath', 'string'),
+    optionalOption('runtimeImportPath', 'string'),
+    optionalOption('includeTenantFilter', 'boolean', { default: true }),
+    optionalOption('includeSoftDeleteFilter', 'boolean', { default: true }),
+    optionalOption('appDir', 'string', { default: 'app/api' }),
+    optionalOption('emitCompanions', 'boolean', { default: true }),
+    optionalOption('dispatcher', 'object'),
+    optionalOption('concreteCommandRoutes', 'object'),
+    optionalOption('readRoutes', 'object'),
+    optionalOption('naming', 'object'),
+    optionalOption('routeSegments', 'record'),
+    optionalOption('apiBasePath', 'string'),
+  ],
+  prerequisites: [
+    {
+      kind: 'schedules',
+      description: 'IR schedules required for useful nextjs.schedule output.',
+      required: false,
+      surfaces: ['nextjs.schedule'],
+    },
+    {
+      kind: 'webhooks',
+      description: 'IR webhooks required for useful nextjs.webhook output.',
+      required: false,
+      surfaces: ['nextjs.webhook'],
+    },
+    {
+      kind: 'realtime',
+      description: 'Entities flagged realtime drive subscribe/subscriptionHook surfaces.',
+      required: false,
+      surfaces: ['nextjs.subscribe', 'nextjs.subscriptionHook'],
+    },
+  ],
+  artifactCategories: ['routes', 'types', 'client', 'companions', 'schedules', 'webhooks'],
+  packageDependencies: ['next'],
+  runtimeDependencies: [],
+  compatibleCompanions: ['prisma', 'react-query', 'zod'],
+  incompatibleWith: [],
+  resolved: true,
+};

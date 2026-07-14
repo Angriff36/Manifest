@@ -10,6 +10,16 @@
 
 import type { ProjectionCapability, ProjectionTarget } from './interface';
 import { registerBuiltinProjections } from './builtins.js';
+import {
+  buildProjectionDescriptor,
+  validateAgainstDescriptor,
+} from './descriptor-build.js';
+import { UnknownProjectionError } from './descriptor-types.js';
+import type {
+  ProjectionDescriptor,
+  ProjectionInvocationRequest,
+  ProjectionInvocationValidation,
+} from './descriptor-types.js';
 
 /**
  * Internal registry of all registered projections.
@@ -133,3 +143,51 @@ export function ensureBuiltinProjections(): void {
     builtinsRegistered = true;
   }
 }
+
+/**
+ * Describe a registered projection. Throws UnknownProjectionError when the
+ * name is not in the registry.
+ */
+export function describeProjection(name: string): ProjectionDescriptor {
+  const target = getProjection(name);
+  if (!target) {
+    throw new UnknownProjectionError(name);
+  }
+  return buildProjectionDescriptor(target);
+}
+
+/** Descriptors for every registered projection, sorted by name. */
+export function listProjectionDescriptors(): ProjectionDescriptor[] {
+  return listProjections()
+    .map((p) => buildProjectionDescriptor(p))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Validate a generate request against the published descriptor.
+ * Blocks unknown surfaces, missing required entity/command/options, and
+ * invocations when the descriptor is not safely invokable.
+ */
+export function validateProjectionInvocation(
+  projectionName: string,
+  request: ProjectionInvocationRequest,
+): ProjectionInvocationValidation {
+  return validateAgainstDescriptor(describeProjection(projectionName), request);
+}
+
+export type {
+  ProjectionCapabilityGroups,
+  ProjectionDescriptor,
+  ProjectionDescriptorMeta,
+  ProjectionInvocationRequest,
+  ProjectionInvocationValidation,
+  ProjectionOptionDescriptor,
+  ProjectionOptionValueType,
+  ProjectionPrerequisiteDescriptor,
+  ProjectionPrerequisiteKind,
+  ProjectionSurfaceDescriptor,
+  ProjectionSurfaceMeta,
+  ProjectionInvocationScope,
+} from './descriptor-types.js';
+
+export { UnknownProjectionError } from './descriptor-types.js';

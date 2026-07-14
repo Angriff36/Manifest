@@ -41,6 +41,8 @@ import { generateComputedHelpers } from './computed.js';
 import { collectEncryptedDiagnostics } from './privacy.js';
 import { collectUnsupportedDiagnostics, CONVEX_PROJECTION_CAPABILITIES } from './capabilities.js';
 import { isPersistentEntity, isPersistentStoreTarget } from './persist.js';
+import { CONVEX_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 export { isPersistentEntity } from './persist.js';
 
@@ -423,6 +425,7 @@ export class ConvexProjection implements ProjectionTarget {
     'enum unions, v.id references, indexes).';
   readonly surfaces = SURFACES;
   readonly capabilities = CONVEX_PROJECTION_CAPABILITIES;
+  readonly descriptorMeta = CONVEX_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const crossCutting = [

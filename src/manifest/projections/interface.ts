@@ -6,6 +6,7 @@
  */
 
 import type { IR } from '../ir';
+import type { ProjectionDescriptorMeta } from './descriptor-types';
 import type { NamingConventionInput } from './shared/naming';
 
 export interface ProjectionRequest {
@@ -96,6 +97,13 @@ export interface ProjectionTarget {
    * coverage omit it, which consumers must treat as "undeclared", not "none".
    */
   readonly capabilities?: readonly ProjectionCapability[];
+
+  /**
+   * Structured invocation contract for Builder (scope, options, prerequisites).
+   * Required on every registered projection — parity is enforced by tests.
+   * Live beside the owning projection; do not invent a parallel name registry.
+   */
+  readonly descriptorMeta: ProjectionDescriptorMeta;
 
   /**
    * Generate artifacts for a requested surface.

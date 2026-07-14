@@ -41,8 +41,19 @@ If a projection requires new semantic behavior, that change must follow:
 
 Do not ship projection-only behavior that changes language meaning.
 
+## Projection descriptors (Builder contract)
+
+Every registered projection must declare `descriptorMeta` beside the owning
+projection (`*/descriptor-meta.ts`). See
+[`docs/spec/projection-descriptors.md`](../spec/projection-descriptors.md).
+
+Do not invent a parallel name registry. Derive name/description/surfaces/
+capabilities from `ProjectionTarget`; author only the non-derivable scope,
+options, prerequisites, and companion facts.
+
 ## Related
 
 - `C:/Projects/Manifest/docs/spec/semantics.md`
 - `C:/Projects/Manifest/docs/spec/adapters.md`
+- `C:/Projects/Manifest/docs/spec/projection-descriptors.md`
 - `C:/Projects/Manifest/src/manifest/projections/nextjs/README.md`

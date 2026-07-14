@@ -36,6 +36,7 @@ import type {
 } from '../interface';
 
 import { normalizeOptions, type KyselyProjectionOptions } from './options.js';
+import { KYSELY_DESCRIPTOR_META } from './descriptor-meta.js';
 import {
   resolveKyselyColumnType,
   dialectClassName,
@@ -252,6 +253,7 @@ export class KyselyProjection implements ProjectionTarget {
   readonly description =
     'Manifest IR → Kysely Type-Safe Query Builder types projection. Generates Database interface and per-table row types for Kysely query building.';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = KYSELY_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     if (request.surface !== SURFACE_TYPES) {

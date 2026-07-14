@@ -6,6 +6,8 @@ import {
   emitRegistryModule,
 } from './metadata-builder.js';
 import { normalizeStoreOptions } from './options.js';
+import { PRISMA_STORE_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 export const SURFACE_METADATA = 'prisma-store.metadata';
 export const SURFACE_REGISTRY = 'prisma-store.registry';
@@ -16,6 +18,7 @@ export class PrismaStoreProjection implements ProjectionTarget {
   readonly description =
     'Manifest IR → Prisma store metadata and registry for GenericPrismaStore. Compile-time only.';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = PRISMA_STORE_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     if (!SURFACES.includes(request.surface as (typeof SURFACES)[number])) {

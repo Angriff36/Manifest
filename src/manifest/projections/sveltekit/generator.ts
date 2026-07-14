@@ -34,6 +34,8 @@ import type {
 } from '../interface';
 import type { SvelteKitProjectionOptions } from './types';
 import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
+import { SVELTEKIT_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 // ============================================================================
 // Surface constants
@@ -1257,6 +1259,7 @@ export class SvelteKitProjection implements ProjectionTarget {
   readonly description =
     'SvelteKit +server.ts routes and +page.server.ts loaders with form actions, $lib imports, and type-safe PageData';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = SVELTEKIT_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = normalizeOptions((request.options ?? {}) as SvelteKitProjectionOptions);

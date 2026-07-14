@@ -16,6 +16,7 @@
  */
 
 import type { IR } from '../../ir';
+import { MERMAID_DESCRIPTOR_META } from './descriptor-meta.js';
 import type {
   ProjectionTarget,
   ProjectionRequest,
@@ -441,6 +442,7 @@ export class MermaidProjection implements ProjectionTarget {
   readonly name = 'mermaid';
   readonly description = 'Mermaid diagrams — ER, state machine, and sequence diagrams from IR';
   readonly surfaces = ['mermaid.er', 'mermaid.state', 'mermaid.sequence', 'mermaid.all'] as const;
+  readonly descriptorMeta = MERMAID_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options: MermaidProjectionOptions = {

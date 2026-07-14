@@ -23,6 +23,8 @@ import type {
 } from '../interface';
 import { analyzeConstraints } from '../../constraint-analysis.js';
 import type { JsonSchemaProjectionOptions } from './types';
+import { JSONSCHEMA_DESCRIPTOR_META } from './descriptor-meta.js';
+
 
 // ============================================================================
 // Constants
@@ -382,6 +384,7 @@ export class JsonSchemaProjection implements ProjectionTarget {
   readonly description =
     'JSON Schema (draft-07/2019-09/2020-12) generation from Manifest IR entities';
   readonly surfaces = SURFACES;
+  readonly descriptorMeta = JSONSCHEMA_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const opts = normalizeOptions(request.options as JsonSchemaProjectionOptions | undefined);
