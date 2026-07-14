@@ -73,8 +73,8 @@
       "import": "./dist/manifest/projections/prisma-store/generator.js"
     },
     "./projections/convex": {
-      "types": "./dist/manifest/projections/convex/generator.d.ts",
-      "import": "./dist/manifest/projections/convex/generator.js"
+      "types": "./dist/manifest/projections/convex/index.d.ts",
+      "import": "./dist/manifest/projections/convex/index.js"
     },
     "./stores/prisma-generic": {
       "types": "./dist/manifest/stores/prisma-generic/index.d.ts",
@@ -123,6 +123,10 @@
     "./projections/wiring": {
       "types": "./dist/manifest/projections/wiring/index.d.ts",
       "import": "./dist/manifest/projections/wiring/index.js"
+    },
+    "./projections/contract-tests": {
+      "types": "./dist/manifest/projections/contract-tests/index.d.ts",
+      "import": "./dist/manifest/projections/contract-tests/index.js"
     },
     "./ir": {
       "types": "./dist/manifest/ir.d.ts",

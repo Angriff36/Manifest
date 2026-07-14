@@ -20,7 +20,7 @@ export const ZOD_DESCRIPTOR_META: ProjectionDescriptorMeta = {
   artifactCategories: ['validation', 'schemas'],
   packageDependencies: ['zod'],
   runtimeDependencies: [],
-  compatibleCompanions: [],
+  compatibleCompanions: ['convex'],
   incompatibleWith: [],
   resolved: true,
 };

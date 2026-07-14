@@ -10,3 +10,4 @@ export * from './validate.js';
 export * from './fill.js';
 export * from './fill-providers.js';
 export * from './apply.js';
+export * from './convex-binding.js';

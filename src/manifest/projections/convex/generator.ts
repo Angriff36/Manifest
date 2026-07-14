@@ -42,6 +42,7 @@ import { collectEncryptedDiagnostics } from './privacy.js';
 import { collectUnsupportedDiagnostics, CONVEX_PROJECTION_CAPABILITIES } from './capabilities.js';
 import { isPersistentEntity, isPersistentStoreTarget } from './persist.js';
 import { CONVEX_DESCRIPTOR_META } from './descriptor-meta.js';
+import { generateReactClient } from './react-client.js';
 
 
 export { isPersistentEntity } from './persist.js';
@@ -57,6 +58,7 @@ const SURFACE_CRONS = 'convex.crons' as const;
 const SURFACE_HTTP = 'convex.http' as const;
 const SURFACE_SAGAS = 'convex.sagas' as const;
 const SURFACE_COMPUTED = 'convex.computed' as const;
+const SURFACE_REACT = 'convex.react' as const;
 const SURFACES = [
   SURFACE_SCHEMA,
   SURFACE_QUERIES,
@@ -65,6 +67,7 @@ const SURFACES = [
   SURFACE_HTTP,
   SURFACE_SAGAS,
   SURFACE_COMPUTED,
+  SURFACE_REACT,
 ] as const;
 
 // ============================================================================
@@ -491,6 +494,20 @@ export class ConvexProjection implements ProjectionTarget {
           {
             id: SURFACE_COMPUTED,
             pathHint: 'convex/computed.ts',
+            contentType: 'typescript',
+            code,
+          },
+        ],
+        diagnostics: [...diagnostics, ...crossCutting],
+      };
+    }
+    if (request.surface === SURFACE_REACT) {
+      const { code, diagnostics, pathHint } = generateReactClient(ir, request.options);
+      return {
+        artifacts: [
+          {
+            id: SURFACE_REACT,
+            pathHint,
             contentType: 'typescript',
             code,
           },

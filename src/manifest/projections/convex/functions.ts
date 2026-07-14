@@ -43,6 +43,7 @@ import {
   type RenderResult,
 } from './expression.js';
 import { renderTransitionChecks } from './transitions.js';
+import { hasReadPolicies } from './read-policies.js';
 import {
   privateFieldNames,
   stripPrivateFromDoc,
@@ -256,21 +257,6 @@ function resolveReadFilter(ir: IR, entity: IREntity, options: Normalized): ReadF
     hasSoftDelete,
     deletedProp,
   };
-}
-
-/**
- * Mirrors RuntimeEngine.selectReadPolicies: read/`all` policies (entity-scoped
- * or global) gate an entity's read surface. Policy EXPRESSIONS are not
- * evaluated in generated queries — gated entities emit `internalQuery`
- * (fail-closed: not client-callable) so protected rows cannot be read
- * directly; expose them via a policy-enforcing public wrapper.
- */
-function hasReadPolicies(ir: IR, entityName: string): boolean {
-  return ir.policies.some(
-    (p) =>
-      (p.action === 'read' || p.action === 'all') &&
-      (p.entity === undefined || p.entity === entityName),
-  );
 }
 
 export function generateQueries(

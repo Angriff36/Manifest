@@ -4,6 +4,18 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.2] - 2026-07-14
+
+### Added
+
+- **Convex P4 application proofs:** `convex.react` client surface (`useQuery` /
+  `useMutation`); mutual `compatibleCompanions` between `convex` and `zod`
+  (parity evidence in `zod-parity.test.ts`); `contract-tests` projection
+  (`contract-tests.convex`); seed-pack Convex binding
+  (`describeConvexSeedBinding` / `generateConvexSeedScript` on
+  `@angriff36/manifest/seed-pack`); `verifyConvexApplicationAssembly` on
+  `@angriff36/manifest/projections/convex`.
+
 ## [3.6.1] - 2026-07-14
 
 ### Added

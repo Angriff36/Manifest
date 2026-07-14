@@ -98,7 +98,7 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
 - Idempotency store: memory/postgres (`src/manifest/idempotency/stores/*`)
 - Custom store adapters registrable via plugin API
 
-## 5. Projections — 28 registered
+## 5. Projections — 29 registered
 
 Single registration point `registerBuiltinProjections()` in
 `src/manifest/projections/builtins.ts`; every projection folder is registered
@@ -107,11 +107,12 @@ Single registration point `registerBuiltinProjections()` in
 nextjs, routes, prisma, prisma-store, convex, openapi, react-query, zod,
 drizzle, graphql, llm-context, express, hono, mermaid, jsonschema, storybook,
 health, materialized-views, elasticsearch, terraform, analytics, remix,
-sveltekit, kysely, dynamodb, pydantic, dart, wiring.
+sveltekit, kysely, dynamodb, pydantic, dart, wiring, contract-tests.
 
 Highlights:
 
-- **Convex** (v3.5.0 semantics wave, `src/manifest/projections/convex/`): schema/queries/mutations/crons/http/sagas; `authContextImport` option (server-derived tenant, cross-tenant reject); state-transition enforcement (always on); private-field stripping from query & mutation returns (always on); `convex.computed` helpers; **capability map** (`capabilities.ts`) emitting explicit `CONVEX_UNSUPPORTED_*` diagnostics for everything it does not generate (approvals, masked, searchable, versionProperty, computed-cache, realtime, retry, rateLimit, read/all policies on queries) instead of silently dropping
+- **Convex** (`src/manifest/projections/convex/`): schema/queries/mutations/crons/http/sagas/`convex.computed`/`convex.react`; companions `wiring`, `llm-context`, `mermaid`, `zod`, `contract-tests`; `authContextImport`; transition enforcement; private-field stripping; capability map with `CONVEX_UNSUPPORTED_*`; assembly gate `verifyConvexApplicationAssembly`
+- **contract-tests**: Vitest suites asserting Convex query/mutation export names match IR
 - **Next.js**: full command surface incl. `createManifestRuntime` emission, executionMode dispatcher (`dispatcher-modes.test.ts`), field-aware soft-delete/timestamp reads
 - **Prisma**: multi-schema (`@@schema` from modules), opt-in snake_case/pluralize naming, autoBackRelations, composite-unique/optional-FK/cycle correctness — natively generates capsule-pro's 199-model schema
 
@@ -134,6 +135,7 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 - **Platform API for Builder (2026-07-14, shipped in v3.6.0):** `@angriff36/manifest/language-metadata` → `getLanguageMetadata()` — keywords/operators from lexer, modifiers from `property-modifiers.ts` / IR schema, builtins from `RuntimeEngine.getBuiltins()`, date/time primitives from `date-time.ts`. Keyword/operator/modifier/builtin lists are derived (no second registry); the categorized construct lists are curated subsets, lexer-asserted and drift-tested against parser source.
 - **Projection capabilities API (2026-07-14, shipped in v3.6.0):** `@angriff36/manifest/projections` → `getProjectionCapabilities(name)` + optional `ProjectionTarget.capabilities` (`feature` + `supported`/`partial`/`unsupported` + `note`). Convex declares its full matrix; projections without a declared matrix return `undefined` (undeclared ≠ unsupported).
 - **Projection descriptor API (2026-07-14, shipped in v3.6.1):** `@angriff36/manifest/projections` → `describeProjection` / `listProjectionDescriptors` / `validateProjectionInvocation` + `ProjectionDescriptor`. Scope, options, prerequisites, artifacts, deps, companions; `safelyInvokable` distinguishes registered vs safely invokable. Meta lives beside each projection (`descriptorMeta`); parity-tested against the registry. Spec: `docs/spec/projection-descriptors.md`.
+- **Convex application assembly proofs (2026-07-14, shipping in v3.6.2):** `convex.react`; zod↔convex companions; `@angriff36/manifest/seed-pack` Convex binding; `contract-tests` projection; `verifyConvexApplicationAssembly`.
 - **In-repo, tested, NOT published** (see Gaps): `@manifest/mcp-server` 0.1.0 (tools: compile/execute/explain/validate), `@manifest/lsp-server` 0.1.0 (completion/definition/diagnostics/document-symbols/hover), `@manifest/stdlib` 0.1.0, `manifest-lang` VS Code extension 0.3.0 (marketplace status unverified)
 
 ## 8. Config System

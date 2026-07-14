@@ -38,6 +38,7 @@ import { DynamoDBProjection } from './dynamodb/generator.js';
 import { PydanticProjection } from './pydantic/generator.js';
 import { DartProjection } from './dart/generator.js';
 import { WiringProjection } from './wiring/generator.js';
+import { ContractTestsProjection } from './contract-tests/generator.js';
 
 /**
  * Register all built-in projections.
@@ -131,6 +132,9 @@ export function registerBuiltinProjections(): void {
   // Product wiring contract + safe command bindings (not a UI generator)
   registerProjection(new WiringProjection());
 
+  // Generated contract-test suites (Convex query/mutation export parity)
+  registerProjection(new ContractTestsProjection());
+
   // NOTE: When adding a new projection, add it to this list.
   // The registry will call this function automatically, so
   // consumers don't need to remember.
@@ -173,5 +177,6 @@ export function listBuiltinProjections(): ProjectionTarget[] {
     new PydanticProjection(),
     new DartProjection(),
     new WiringProjection(),
+    new ContractTestsProjection(),
   ];
 }

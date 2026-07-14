@@ -16,3 +16,13 @@ export {
   type PropertyName,
 } from './options.js';
 export { DEFAULT_TYPE_MAPPING, resolveConvexValidator } from './type-mapping.js';
+export {
+  verifyConvexApplicationAssembly,
+  CONVEX_ASSEMBLY_REQUIRED_SURFACES,
+  CONVEX_ASSEMBLY_REQUIRED_COMPANIONS,
+  type VerifyConvexApplicationAssemblyInput,
+  type ConvexAssemblyVerification,
+  type ConvexAssemblyCheck,
+  type ConvexAssemblyArtifact,
+} from './assembly-verify.js';
+export { SURFACE_REACT, generateReactClient, type ConvexReactOptions } from './react-client.js';

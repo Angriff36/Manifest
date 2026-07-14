@@ -20,6 +20,7 @@ for Builder and other platform consumers.
 - `./breaking-change`
 - `./config`
 - `./language-metadata`
+- `./seed-pack`
 
 The `./projections` subpath includes the projection descriptor API
 (`ProjectionDescriptor`, `describeProjection`, `listProjectionDescriptors`,

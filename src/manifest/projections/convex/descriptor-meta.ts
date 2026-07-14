@@ -10,6 +10,7 @@ const SURFACES = [
   'convex.http',
   'convex.sagas',
   'convex.computed',
+  'convex.react',
 ] as const;
 
 /** Convex is aggregate: generate() never requires request.entity/command. */
@@ -53,6 +54,9 @@ export const CONVEX_DESCRIPTOR_META: ProjectionDescriptorMeta = {
       default: CONVEX_PROJECTION_DEFAULTS.computedProperties,
       enumValues: ['helpers', 'inline'],
     }),
+    optionalOption('apiImportPath', 'string', {
+      default: '../convex/_generated/api',
+    }),
   ],
   prerequisites: [
     {
@@ -68,11 +72,13 @@ export const CONVEX_DESCRIPTOR_META: ProjectionDescriptorMeta = {
       surfaces: ['convex.http'],
     },
   ],
-  artifactCategories: ['schema', 'queries', 'mutations', 'orchestration', 'computed'],
+  artifactCategories: ['schema', 'queries', 'mutations', 'orchestration', 'computed', 'client'],
   packageDependencies: ['convex'],
   runtimeDependencies: [],
   // Evidence: Capsule-V2 / Builder Convex app preset pairs these in one workflow.
-  compatibleCompanions: ['wiring', 'llm-context', 'mermaid'],
+  // zod: type-parity proven in convex/zod-parity.test.ts (shared IR scalars → both projections).
+  // contract-tests: emits Vitest suites against convex.queries / convex.mutations.
+  compatibleCompanions: ['wiring', 'llm-context', 'mermaid', 'zod', 'contract-tests'],
   incompatibleWith: [],
   resolved: true,
 };
