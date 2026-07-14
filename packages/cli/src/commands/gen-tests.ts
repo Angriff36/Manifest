@@ -52,7 +52,7 @@ export interface GenTestsOptions {
   nextNumber?: number;
 }
 
-interface GeneratedFixture {
+export interface GeneratedFixture {
   name: string;
   source: string;
   ir: unknown;
@@ -60,7 +60,7 @@ interface GeneratedFixture {
   results?: unknown;
 }
 
-interface GenerationResult {
+export interface GenerationResult {
   fixtures: GeneratedFixture[];
   totalAttempts: number;
   successful: number;
@@ -362,7 +362,7 @@ async function writeFixtureFiles(
 export async function genTestsCommand(
   source: string | undefined,
   options: GenTestsOptions = {},
-): Promise<void> {
+): Promise<GenerationResult> {
   const root = path.resolve(
     path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..'),
   );
@@ -485,9 +485,7 @@ export async function genTestsCommand(
       }
     }
 
-    if (result.failed > 0) {
-      process.exit(1);
-    }
+    return result;
   } catch (error) {
     spinner.fail(
       `Test generation failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -495,6 +493,6 @@ export async function genTestsCommand(
     if (options.verbose) {
       console.error(error);
     }
-    process.exit(1);
+    throw error;
   }
 }

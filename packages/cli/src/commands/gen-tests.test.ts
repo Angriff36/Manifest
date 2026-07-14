@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
@@ -61,18 +61,11 @@ describe('manifest generate-tests', () => {
     expect(stdout).toContain('Generate conformance test fixtures');
   }, 30_000);
 
-  it('fails fast without an API key (exit 1, nothing written)', async () => {
-    // The command handles its own errors and calls process.exit(1).
-    // Intercept the exit so the failure path is observable in-process.
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
-      throw new Error(`__exit_${code}__`);
-    }) as never);
-    try {
-      await expect(genTestsCommand(undefined, { dryRun: true, count: 1 })).rejects.toThrow(
-        '__exit_1__',
-      );
-    } finally {
-      exitSpy.mockRestore();
-    }
+  it('fails fast without an API key (rejects, nothing written)', async () => {
+    // The command throws instead of exiting so programmatic consumers
+    // (the '@angriff36/manifest/generate-tests' subpath) keep their process.
+    await expect(genTestsCommand(undefined, { dryRun: true, count: 1 })).rejects.toThrow(
+      'ANTHROPIC_API_KEY',
+    );
   });
 });

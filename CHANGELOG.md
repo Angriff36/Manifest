@@ -4,6 +4,32 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.3] - 2026-07-14
+
+### Added
+
+- Three new public subpath exports (unblocks Builder P6 consumption; all
+  three already shipped in the tarball, they were just unreachable):
+  - `@angriff36/manifest/coverage` — `coverageCommand(options)` plus the
+    `CoverageResult` / `CoverageCategory` / `CoverablePath` /
+    `CoverageOptions` types (IR-path coverage from conformance + test
+    evidence).
+  - `@angriff36/manifest/generate-tests` — `genTestsCommand(source, options)`
+    plus `GenTestsOptions` / `GenerationResult` / `GeneratedFixture`
+    (LLM-driven conformance fixture generation; requires
+    `ANTHROPIC_API_KEY`).
+  - `@angriff36/manifest/mcp-server` — `startServer()` (stdio transport) and
+    new re-exports `registerTools(server)` / `registerResources(server)` so
+    hosts can attach the Manifest MCP tools to their own `McpServer`.
+
+### Changed
+
+- `genTestsCommand` no longer calls `process.exit(1)`: it returns the
+  `GenerationResult` and throws on hard failure (aligned with
+  `coverageCommand`), so programmatic consumers keep their process. The
+  `manifest generate-tests` CLI exit codes are unchanged (the CLI wrapper
+  sets the exit code).
+
 ## [3.6.2] - 2026-07-14
 
 ### Added

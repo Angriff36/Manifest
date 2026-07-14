@@ -25,6 +25,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { registerTools, registerResources } from './server.js';
 
+// Re-exported so hosts can attach the Manifest tools/resources to their own
+// McpServer instead of spawning the stdio binary.
+export { registerTools, registerResources } from './server.js';
+
 export async function startServer(): Promise<void> {
   const server = new McpServer({
     name: 'manifest-mcp-server',

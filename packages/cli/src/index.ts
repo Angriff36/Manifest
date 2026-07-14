@@ -668,7 +668,7 @@ program
   .option('--verbose', 'Show detailed iteration logs', false)
   .action(async (source, options = {}) => {
     const { genTestsCommand } = await import('./commands/gen-tests.js');
-    await genTestsCommand(source, {
+    const result = await genTestsCommand(source, {
       feature: options.feature,
       category: options.category,
       count: options.count,
@@ -680,6 +680,9 @@ program
       dryRun: options.dryRun,
       verbose: options.verbose,
     });
+    if (result.failed > 0) {
+      process.exitCode = 1;
+    }
   });
 
 /**

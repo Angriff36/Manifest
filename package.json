@@ -284,6 +284,18 @@
       "types": "./dist/manifest/config.d.ts",
       "import": "./dist/manifest/config.js"
     },
+    "./coverage": {
+      "types": "./packages/cli/dist/commands/coverage.d.ts",
+      "import": "./packages/cli/dist/commands/coverage.js"
+    },
+    "./generate-tests": {
+      "types": "./packages/cli/dist/commands/gen-tests.d.ts",
+      "import": "./packages/cli/dist/commands/gen-tests.js"
+    },
+    "./mcp-server": {
+      "types": "./packages/mcp-server/dist/index.d.ts",
+      "import": "./packages/mcp-server/dist/index.js"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
