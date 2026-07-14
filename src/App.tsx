@@ -12,6 +12,7 @@ import {
   Package,
 } from 'lucide-react';
 import { ManifestCompiler, ManifestProgram, CompilationError } from './manifest/compiler';
+import { COMPILER_VERSION } from './manifest/version';
 import { examples } from './manifest/examples';
 import { ArtifactsPanel } from './artifacts';
 import { Editor } from './app-panels';
@@ -67,7 +68,8 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white tracking-tight">
-                Manifest <span className="text-sky-400 text-sm font-normal">v2.0</span>
+                Manifest{' '}
+                <span className="text-sky-400 text-sm font-normal">v{COMPILER_VERSION}</span>
               </h1>
               <p className="text-xs text-gray-500">
                 Commands / Computed / Relations / Policies / Stores
