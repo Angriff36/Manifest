@@ -124,6 +124,26 @@ Ordered by impact. Each item: problem → change → acceptance.
 
 ---
 
+## Part 1.5 — Manifest-core gaps beyond the projection (verified 2026-07-14 unless marked VERIFY)
+
+### M8. Approval timeout escalation is a declared-but-unsupported language feature
+- `parser.ts` accepts `onTimeout: 'escalate'` on approvals; `ir-compiler.ts:884–889` emits a hard "not supported in this version" diagnostic. Either implement escalation semantics (spec first: docs/spec/, then conformance fixtures, then runtime) or remove it from the grammar — a keyword that always errors is grammar debt.
+
+### M9. `through` (M2M) relationships — complete the chain or fail loud (VERIFY depth)
+- `lexer.ts:36` + `parser.ts:921–975` parse `through`; the 2026-07-06 IR wiring audit recorded through/M2M as deferred. Trace parse → IR → runtime → projections; wherever the chain breaks, either finish it (spec-first, Danger Zone) or emit a compile-time diagnostic at the break point. No silent acceptance of a construct that does nothing.
+
+### M10. `retry` / `rateLimit` enforcement depth (VERIFY)
+- `IRRetry` exists (`ir.ts:262+`, command `retry?`); rate-limit has conformance fixtures (74/75). Verify the reference runtime actually enforces both (retry re-execution, limiter state) and that the capability map (M7) classifies their projection status honestly. Close or loudly-diagnose any gap found.
+
+### M11. CLI + config leverage items
+- **M6** (native `generate --check` drift gate) — see Part 1.
+- **Config G5** (`projections.enabled` + `defaults`) — low-risk, unblocks multi-projection regen pipelines (Part 3/A9) without per-projection repetition.
+- **Config G2/G10** (`validation.failOn`, `driftGates`/`manifest ci-gate`) — makes "CI fails on semantic-loss diagnostics" first-class instead of per-consumer script logic. Danger-Zone-adjacent: policy must never weaken language semantics (a block is always a block).
+- **createManifestRuntime emission** (docs-audit native-gap #1, VERIFY still open) — the embedded-runtime import path that `nextjs` inline dispatcher mode assumes.
+
+### M12. FEATURE-LIST.md truth cleanup
+- `docs/FEATURE-LIST.md` is a 6,399-line 2026-06-02 automaker snapshot with known phantom entries (16/116 per the 2026-07-01 audit). Replace with (or gate behind) a *verified* feature inventory — ideally generated from the registries the code already has (projection registry, CLI command table, conformance fixture list) so it cannot rot. Until then, add a header warning pointing at the verified inventory.
+
 ## Part 2 — App-side adoption (Capsule-V2 first; capsule-pro sources are the shared upstream)
 
 ### A1. Adopt the auth seam (depends on M1) — covered in M1 "Do".
