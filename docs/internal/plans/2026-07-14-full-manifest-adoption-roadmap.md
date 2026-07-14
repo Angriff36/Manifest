@@ -345,13 +345,24 @@ section's own "verify each against the current CLI" instruction, spot-checked
 against `packages/cli/src/commands/*.ts`): `diagram` (`manifest diagram`),
 `ir-diff.ts` + `breaking-change.ts` (IR diff / breaking-change detector),
 `changelog.ts`, `coverage.ts`, `seed.ts`/`seed-pack.ts`, `mock.ts`, and
-`docs.ts` all **exist as real CLI commands** — not phantom. A dedicated
+`docs.ts` all **exist as real CLI commands** — not phantom. ~~A dedicated
 "policy matrix" command, an "llms.txt" export, and an MCP server for IR
 introspection were **not found** by name anywhere in `packages/cli/src/` or
 `src/manifest/projections/` (an `llm-context` projection exists but doesn't
 literally emit `llms.txt`) — those three specific claims are unverified/
 likely aspirational as named; re-check before treating them as available
-surfaces to wire into A9.
+surfaces to wire into A9.~~
+
+> **Correction (2026-07-14):** two of those three exist, just not where the
+> first check looked. The MCP server is real: `packages/mcp-server`
+> (`@manifest/mcp-server` 0.1.0, tools compile/execute/explain/validate in
+> `packages/mcp-server/src/tools/`, tested) — built but **unpublished to npm**,
+> so wiring it into A9 means running it from the repo, not installing it. The
+> LLM context export is the registered `llm-context` projection, which emits
+> `manifest-context.json` / `manifest-context-summary.json` / `manifest-ir.json`
+> (`src/manifest/projections/llm-context/generator.ts:372-411`) — equivalent
+> capability, though no literal `llms.txt` file. Only the "policy matrix"
+> surface is phantom (no command or projection anywhere).
 
 **A9. Wire the interconnection surfaces into `manifest-regen.mjs`** — the "one edit updates every surface" property only exists if every consumed artifact is generated in the SAME regen script and covered by the SAME drift gate. Pilot order: zod (validation at the UI boundary) → TanStack hooks (replace hand-written `src/lib/api.ts` seam incrementally) → `manifest diagram` + docs (repo artifacts for humans/agents) → IR-diff/breaking-change check as a CI step comparing the committed `ir.json` against the previous commit's.
 
