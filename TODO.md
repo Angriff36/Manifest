@@ -89,8 +89,10 @@ main @ v3.5.0 (commit 22a19e1). Every item below was verified open in source on
       `@manifest/lsp-server`, `@manifest/stdlib` (all 0.1.0), VS Code extension
       `manifest-lang` 0.3.0: built and tested in-repo, published nowhere
       (npm 404 verified 2026-07-14; marketplace unverified).
-- [ ] **Projection capability descriptors API** — capability matrices still mostly
-      markdown/per-projection; structured `getProjectionCapabilities()` still open.
+- [x] **Projection capability descriptors API** — shipped 2026-07-14:
+      `getProjectionCapabilities(name)` on the projections registry + optional
+      `ProjectionTarget.capabilities`; Convex declares its matrix. Other
+      projections still return `undefined` (undeclared) — declare incrementally.
 - [x] **Stable Builder export contract (semver subset)** — declared 2026-07-14 in
       `docs/spec/sdk-stability.md` (stable subpaths; breaking = major + CHANGELOG entry).
 

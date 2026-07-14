@@ -8,7 +8,7 @@
  * Consumers don't need to think about startup ordering.
  */
 
-import type { ProjectionTarget } from './interface';
+import type { ProjectionCapability, ProjectionTarget } from './interface';
 import { registerBuiltinProjections } from './builtins.js';
 
 /**
@@ -83,6 +83,19 @@ export function hasProjection(name: string): boolean {
     builtinsRegistered = true;
   }
   return projections.has(name);
+}
+
+/**
+ * Get a projection's declared IR-feature coverage matrix.
+ *
+ * @param name - The unique identifier of the projection
+ * @returns The declared capabilities, or undefined when the projection is
+ *          unknown OR has not declared a matrix (undeclared ≠ unsupported).
+ */
+export function getProjectionCapabilities(
+  name: string,
+): readonly ProjectionCapability[] | undefined {
+  return getProjection(name)?.capabilities;
 }
 
 /**

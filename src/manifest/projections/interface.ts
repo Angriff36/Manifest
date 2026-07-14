@@ -91,6 +91,13 @@ export interface ProjectionTarget {
   readonly surfaces: readonly string[];
 
   /**
+   * Structured IR-feature coverage matrix (the API form of a projection's
+   * CAPABILITIES.md). Optional: projections that have not audited their
+   * coverage omit it, which consumers must treat as "undeclared", not "none".
+   */
+  readonly capabilities?: readonly ProjectionCapability[];
+
+  /**
    * Generate artifacts for a requested surface.
    *
    * @param ir - Compiled Manifest IR

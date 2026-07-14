@@ -39,7 +39,7 @@ import { generateQueries, generateMutations } from './functions.js';
 import { generateCrons, generateHttp, generateSagas } from './orchestration.js';
 import { generateComputedHelpers } from './computed.js';
 import { collectEncryptedDiagnostics } from './privacy.js';
-import { collectUnsupportedDiagnostics } from './capabilities.js';
+import { collectUnsupportedDiagnostics, CONVEX_PROJECTION_CAPABILITIES } from './capabilities.js';
 import { isPersistentEntity, isPersistentStoreTarget } from './persist.js';
 
 export { isPersistentEntity } from './persist.js';
@@ -422,6 +422,7 @@ export class ConvexProjection implements ProjectionTarget {
     'Convex schema projection (defineSchema/defineTable + convex/values validators, ' +
     'enum unions, v.id references, indexes).';
   readonly surfaces = SURFACES;
+  readonly capabilities = CONVEX_PROJECTION_CAPABILITIES;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const crossCutting = [
