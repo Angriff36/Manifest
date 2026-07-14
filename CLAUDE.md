@@ -35,6 +35,12 @@ gh workflow run cut-release.yml -f version=minor   # or patch / major / explicit
 gh run watch --repo Angriff36/Manifest             # wait for green
 ```
 
+**Versioning policy (owner decision 2026-07-14, NOT standard semver):**
+`major` (breaking) bumps the **minor digit** (`x.Y.z` → `x.(Y+1).0`);
+`minor` and `patch` both bump the **patch digit**. The keyword remap lives in
+`cut-release.yml`'s Bump step; policy text in `docs/spec/sdk-stability.md`.
+Consumers must pin exact versions (`^` ranges pull breaking releases).
+
 `pnpm manifest:publish` wraps `scripts/release.mjs` (dispatch + watch with
 `--exit-status`). Pre-write the `CHANGELOG.md` section for the target version
 first — the workflow keeps an existing section, otherwise it auto-stubs.
@@ -247,48 +253,42 @@ A change is only done when:
 # === COGNILAYER (auto-generated, do not delete) ===
 
 ## CogniLayer v4 Active
-
 Persistent memory + code intelligence is ON.
 ON FIRST USER MESSAGE in this session, briefly tell the user:
-'CogniLayer v4 active — persistent memory is on. Type /cognihelp for available commands.'
+  'CogniLayer v4 active — persistent memory is on. Type /cognihelp for available commands.'
 Say it ONCE, keep it short, then continue with their request.
 
 ## Tools — HOW TO WORK
 
 FIRST RUN ON A PROJECT:
 When DNA shows "[new session]" or "[first session]":
-
 1. Run /onboard — indexes project docs (PRD, README), builds initial memory
 2. Run code_index() — builds AST index for code intelligence
-   Both are one-time. After that, updates are incremental.
-   If file_search or code_search return empty → these haven't been run yet.
+Both are one-time. After that, updates are incremental.
+If file_search or code_search return empty → these haven't been run yet.
 
 UNDERSTAND FIRST (before making changes):
-
 - memory_search(query) → what do we know? Past bugs, decisions, gotchas
 - code_context(symbol) → how does the code work? Callers, callees, dependencies
 - file_search(query) → search project docs (PRD, README) without reading full files
 - code_search(query) → find where a function/class is defined
-  Use BOTH memory + code tools for complete picture. They are fast — call in parallel.
+Use BOTH memory + code tools for complete picture. They are fast — call in parallel.
 
 BEFORE RISKY CHANGES (mandatory):
-
 - Renaming, deleting, or moving a function/class → code_impact(symbol) FIRST
 - Changing a function's signature or return value → code_impact(symbol) FIRST
 - Modifying shared utilities used across multiple files → code_impact(symbol) FIRST
 - ALSO: memory_search(symbol) → check for related decisions or known gotchas
-  Both required. Structure tells you what breaks, memory tells you WHY it was built that way.
+Both required. Structure tells you what breaks, memory tells you WHY it was built that way.
 
 AFTER COMPLETING WORK:
-
 - memory_write(content) → save important discoveries immediately
   (error_fix, gotcha, pattern, api_contract, procedure, decision)
 - session_bridge(action="save", content="Progress: ...; Open: ...")
-  DO NOT wait for /harvest — session may crash.
+DO NOT wait for /harvest — session may crash.
 
 SUBAGENT MEMORY PROTOCOL:
 When spawning Agent tool for research or exploration:
-
 - Include in prompt: synthesize findings into consolidated memory_write(content, type, tags="subagent,<task-topic>") facts
   Assign a descriptive topic tag per subagent (e.g. tags="subagent,auth-review", tags="subagent,perf-analysis")
 - Do NOT write each discovery separately — group related findings into cohesive facts
@@ -300,35 +300,29 @@ When spawning Agent tool for research or exploration:
 - Return: actionable summary (file paths, function names, specific values) + what was saved + keywords for memory_search
 - If MCP tools unavailable or fail → include key findings directly in return text as fallback
 - Launch subagents as foreground (default) for reliable MCP access — user can Ctrl+B to background later
-  Why: without this protocol, subagent returns dump all text into parent context (40K+ tokens).
-  With protocol, findings go to DB and parent gets ~500 token summary + on-demand memory_search.
+Why: without this protocol, subagent returns dump all text into parent context (40K+ tokens).
+With protocol, findings go to DB and parent gets ~500 token summary + on-demand memory_search.
 
 BEFORE DEPLOY/PUSH:
-
 - verify_identity(action_type="...") → mandatory safety gate
 - If BLOCKED → STOP and ask the user
 - If VERIFIED → READ the target server to the user and request confirmation
 
 ## VERIFY-BEFORE-ACT
-
 When memory_search returns a fact marked ⚠ STALE:
-
 1. Read the source file and verify the fact still holds
 2. If changed → update via memory_write
 3. NEVER act on STALE facts without verification
 
 ## Process Management (Windows)
-
 - NEVER use `taskkill //F //IM node.exe` — kills ALL Node.js INCLUDING Claude Code CLI!
 - Use: `npx kill-port PORT` or find PID via `netstat -ano | findstr :PORT` then `taskkill //F //PID XXXX`
 
 ## Git Rules
-
 - Commit often, small atomic changes. Format: "[type] what and why"
 - commit = Tier 1 (do it yourself). push = Tier 3 (verify_identity).
 
 ## Project DNA: @angriff36/manifest
-
 Stack: React 18.3.1, TypeScript, Tailwind CSS
 Style: [unknown]
 Structure: .automaker, .bolt, .codex-main-push, .github, .opencode, .playwright-mcp, .tmp, .turbo
@@ -337,23 +331,7 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-
-[pre-compact bridge — saved before context compaction]
-Files (7):
-C:/Users/Ryan/.claude/skills/manifest/SKILL.md (create)
-C:/Projects/capsule-pro/manifest/NATIVE-REWRITE-PLAN.md (edit)
-C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/project-manifest-skill-consolidated.md (create)
-C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/MEMORY.md (edit)
-C:/Projects/capsule-pro/HANDOFF-FABLE.md (edit)
-C:/Users/Ryan/.claude/skills/manifest/SKILL.md (edit)
-C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/project-manifest-skill-consolidated.md (edit)
-Manual bridge:
-[proactive bridge @ 86% context — saved before compacting]
-Files (5):
-C:/Users/Ryan/.claude/skills/manifest/SKILL.md (create)
-C:/Projects/capsule-pro/manifest/NATIVE-REWRITE-PLAN.md (edit)
-C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/project-manifest-skill-consolidated.md (create)
-C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/MEMORY.md (edit)
-C:/Projects/capsule-pro/HANDOFF-FABLE.md (edit)
+[Emergency bridge — running bridge was not updated]
+No changes or facts in this session.
 
 # === END COGNILAYER ===

@@ -3,8 +3,13 @@
  * One-button release: dispatch the cut-release workflow and watch it to green.
  *
  *   pnpm manifest:publish            # patch bump (2.18.5 -> 2.18.6)
- *   pnpm manifest:publish minor      # minor bump
+ *   pnpm manifest:publish minor      # feature bump  (also +0.0.1 — see below)
+ *   pnpm manifest:publish major      # BREAKING bump (+0.1: x.Y.z -> x.Y+1.0)
  *   pnpm manifest:publish 2.19.0     # explicit version
+ *
+ * VERSIONING POLICY (owner decision 2026-07-14, not standard semver):
+ * major/breaking bumps the MINOR digit; minor and patch both bump the PATCH
+ * digit. The remap lives in cut-release.yml's Bump step. Consumers pin exact.
  *
  * Wraps `gh workflow run cut-release.yml -f version=<bump>` + `gh run watch`,
  * so releases don't depend on remembering the exact gh invocation. The actual

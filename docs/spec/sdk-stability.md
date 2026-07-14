@@ -23,8 +23,15 @@ for Builder and other platform consumers.
 
 Breaking changes to a stable subpath require both:
 
-1. A new major package version.
+1. A breaking-tier version bump. **This project does not use standard
+   semver digit conventions** (owner decision 2026-07-14): a breaking
+   release increments the MINOR digit (`x.Y.z` → `x.(Y+1).0`); features and
+   fixes increment the PATCH digit (`x.y.Z` → `x.y.(Z+1)`).
 2. A `CHANGELOG` entry under a **Breaking** heading describing the migration.
+
+Because the scheme is not standard semver, consumers must **pin exact
+versions**. A `^` range will auto-upgrade across breaking releases; `~` is
+safe from breaks but pulls new features.
 
 Exports not listed above are internal. They may change in any release without
 a compatibility guarantee.

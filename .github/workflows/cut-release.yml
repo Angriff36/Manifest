@@ -4,6 +4,13 @@ name: Cut Release
 # publishing (no NPM_TOKEN). Run from the Actions tab:
 #   gh workflow run cut-release.yml -f version=patch    (or minor / major / explicit e.g. 2.19.0)
 #
+# VERSIONING POLICY (owner decision 2026-07-14 — NOT standard semver):
+#   major (breaking)  -> bumps the MINOR digit   x.Y.z -> x.(Y+1).0
+#   minor / patch     -> bumps the PATCH digit   x.y.Z -> x.y.(Z+1)
+# The keywords keep their MEANING (major = breaking change) but map to
+# smaller number movements. Consumers should pin exact versions: a ^ range
+# under this scheme can pull in breaking changes.
+#
 # Publish-first: npm is the source of truth for "released", so the version
 # commit + tag are pushed ONLY after `npm publish` succeeds. A publish
 # failure leaves npm and git untouched — no dangling tags, no half-released
@@ -20,7 +27,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Explicit version (e.g. 2.19.0) or bump: patch | minor | major'
+        description: 'Explicit version (e.g. 2.19.0) or bump: patch | minor | major (custom scheme: major -> +0.1, minor/patch -> +0.0.1)'
         required: true
         default: 'patch'
 
@@ -68,7 +75,15 @@ jobs:
       - name: Bump version
         id: ver
         run: |
-          npm version "${{ inputs.version }}" --no-git-tag-version --ignore-scripts
+          # Custom versioning policy (see header): remap the RELEASE-TIER
+          # keyword to the digit it moves under this project's scheme.
+          INPUT="${{ inputs.version }}"
+          case "$INPUT" in
+            major) BUMP=minor ;;
+            minor|patch) BUMP=patch ;;
+            *) BUMP="$INPUT" ;;
+          esac
+          npm version "$BUMP" --no-git-tag-version --ignore-scripts
           node scripts/sync-version.mjs
           VER=$(node -p "require('./package.json').version")
           if git rev-parse -q --verify "refs/tags/v$VER" >/dev/null; then

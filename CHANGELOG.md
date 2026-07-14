@@ -4,11 +4,14 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [4.0.0] - 2026-07-14
+## [3.6.0] - 2026-07-14
 
 Platform-SDK wave for Builder (roadmap M13) plus Convex generated-code
 correctness and security fixes. No IR-schema or grammar changes, but two
-behavior breaks (below) make this a major per `docs/spec/sdk-stability.md`.
+behavior breaks (below) make this a **breaking release**. Under this
+project's versioning scheme (see `docs/spec/sdk-stability.md`) a breaking
+release increments the minor digit — hence 3.6.0, not 4.0.0. Pin exact
+versions; `^` ranges are unsafe with this scheme.
 
 ### Breaking
 
