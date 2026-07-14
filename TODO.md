@@ -11,8 +11,12 @@ main @ v3.5.0 (commit 22a19e1). Every item below was verified open in source on
       fixed 2026-07-14: shared `constraint-polarity.ts` + `failWhen`/`severity`
       options on `WasmExpressionEvaluator.evaluateConstraint`; parity matrix tests.
 - [x] **Entity `behaviors` loudly rejected** — ~~silently dropped~~ fixed 2026-07-14:
-      `ir-compiler.ts` emits `ENTITY_BEHAVIOR_UNSUPPORTED` error (fixture 110).
-      No IR field / no canonical semantics; use reactions or command actions.
+      `ir-compiler.ts` emits a hard error (fixture 110). No IR field / no canonical
+      semantics; use reactions or command actions.
+- [ ] **Structured diagnostic codes** — `IRDiagnostic` has no `code` field; compile
+      errors (e.g. the behavior rejection) are message-only. Add an optional
+      machine-readable `code` (as `ProjectionDiagnostic` already has) so consumers
+      don't string-match messages. Requires IR schema + conformance fixture updates.
 - [ ] **M5 remainder (Convex/zod expression bugs)** — `Event_create` array-default
       bug and zod enum/timestamp mapping to `z.unknown()` were NOT fixed by the
       3.5.0 wave (not in commit 79093ec's file list).

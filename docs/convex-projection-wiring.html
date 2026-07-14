@@ -858,7 +858,9 @@
           schemas that duplicate Manifest constraints · DB models that duplicate entities · event
           handlers that duplicate reactions · crons that duplicate <code>schedule</code> · webhook
           endpoints that duplicate <code>webhook</code>. If you think you need those, first check
-          whether Manifest already has the concept.
+          whether Manifest already has the concept. One real gap to cover yourself: the generated
+          webhook httpAction does <b>not</b> verify HMAC signatures — put a verifying edge in
+          front of it (do not reimplement the route).
         </div>
       </div>
     </section>
@@ -992,8 +994,8 @@
             <tr>
               <td class="m">webhook</td>
               <td class="m">http.ts httpAction</td>
-              <td><span class="st full">full</span></td>
-              <td>Do not add Express/Next webhook routes for the same path</td>
+              <td><span class="st part">partial</span></td>
+              <td>Do not add Express/Next webhook routes for the same path. Caveat: the generated httpAction does <b>not</b> verify HMAC signatures — front it with a verifying edge until generated enforcement ships</td>
             </tr>
             <tr>
               <td class="m">saga</td>
@@ -1014,7 +1016,13 @@
               <td>Prefer Manifest timestamps; don't invent parallel clocks</td>
             </tr>
             <tr>
-              <td class="m">approval / retry / rateLimit / transition</td>
+              <td class="m">transition</td>
+              <td class="m">mutations.ts status checks</td>
+              <td><span class="st full">full</span></td>
+              <td>Illegal status moves throw in generated mutations — do not duplicate state-machine checks in app code</td>
+            </tr>
+            <tr>
+              <td class="m">approval / retry / rateLimit</td>
               <td class="m">—</td>
               <td><span class="st none">not projected</span></td>
               <td>Language/IR may exist; Convex surfaces do not emit these — do not fake in app without an explicit plan</td>
@@ -1468,8 +1476,10 @@
               <td><span class="st full">Supported</span></td>
               <td>
                 Entities/properties/relationships · commands with guards/constraints/policies ·
-                events/emits · reactions · schedules → crons · webhooks → http · tenant-scoped
-                reads/writes · roles/checkRole · events table · fan-out / aggregate-count reaction
+                events/emits · reactions · schedules → crons · webhooks → http (routing/transform
+                only — see Partial for signatures) · tenant-scoped
+                reads/writes · roles/checkRole · events table · transitions (status checks in
+                generated mutations) · fan-out / aggregate-count reaction
                 params (when indexed)
               </td>
             </tr>
@@ -1478,7 +1488,9 @@
               <td>
                 Computeds (no columns; usable in some emit/reaction exprs) · sagas (shared
                 <code>input</code> only) · referential actions (diagnostic only) · memory stores
-                (skipped)
+                (skipped) · webhook <code>signature</code> (declared but NOT enforced — the
+                generated httpAction performs no HMAC verification; require a verifying
+                edge/proxy in front of the endpoint until generated enforcement exists)
               </td>
             </tr>
             <tr>
@@ -1488,7 +1500,7 @@
             <tr>
               <td><span class="st none">Not in Convex projection</span></td>
               <td>
-                approval / retry / rateLimit / transition surfaces · live RuntimeEngine adapters
+                approval / retry / rateLimit surfaces · live RuntimeEngine adapters
                 (outbox/EventBus as Node packages) · Prisma-style migrations · TanStack hooks as the
                 Convex default client
               </td>

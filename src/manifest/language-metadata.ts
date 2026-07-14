@@ -21,6 +21,7 @@ const COMMAND_ACTION_CONSTRUCTS = [
   'publish',
   'persist',
   'compute',
+  'effect',
   'returns',
   'async',
 ] as const;
@@ -38,7 +39,10 @@ const KEYWORD_PRIMITIVE_TYPES = [
   'money',
 ] as const;
 
-/** Top-level declaration constructs (lexer keywords). */
+/**
+ * Top-level declaration constructs that are lexer keywords.
+ * Must mirror the parser's top-level dispatch (parser.ts parseProgram loop).
+ */
 const TOP_LEVEL_CONSTRUCTS = [
   'entity',
   'enum',
@@ -51,6 +55,36 @@ const TOP_LEVEL_CONSTRUCTS = [
   'tenant',
   'webhook',
   'use',
+  'flow',
+  'effect',
+  'expose',
+  'compose',
+  'on',
+] as const;
+
+/**
+ * Top-level constructs parsed as CONTEXTUAL identifiers, not reserved words
+ * (so `property schedule: string` stays legal). Cannot be asserted against
+ * lexer KEYWORDS; verified against the parser's top-level dispatch instead.
+ */
+const CONTEXTUAL_TOP_LEVEL_CONSTRUCTS = ['value', 'role', 'schedule'] as const;
+
+/**
+ * ALL identifiers with contextual syntactic meaning at specific declaration
+ * sites (superset of the top-level ones): `external`/`mixin` in entity
+ * headers, `retry`/`rateLimit` in command and policy bodies, `cron` in
+ * schedule bodies. None are reserved words. Verified against parser.ts;
+ * matches the lexer's "contextual identifiers" comment.
+ */
+const CONTEXTUAL_KEYWORDS = [
+  'cron',
+  'external',
+  'mixin',
+  'rateLimit',
+  'retry',
+  'role',
+  'schedule',
+  'value',
 ] as const;
 
 export interface BuiltinMetadata {
@@ -70,6 +104,19 @@ export interface LanguageMetadata {
   commandActionConstructs: string[];
   /** Top-level declaration constructs (subset of keywords, asserted). */
   topLevelConstructs: string[];
+  /**
+   * Top-level constructs parsed as contextual identifiers rather than
+   * reserved words (value, role, schedule). Valid at the start of a
+   * top-level declaration but usable elsewhere as plain identifiers.
+   */
+  contextualTopLevelConstructs: string[];
+  /**
+   * All contextual identifiers (superset of contextualTopLevelConstructs):
+   * identifiers with syntactic meaning at specific declaration sites
+   * (external, mixin, retry, rateLimit, cron, …) that remain legal as plain
+   * property/parameter names elsewhere.
+   */
+  contextualKeywords: string[];
   /** Keyword primitive type names + date/time primitives from semantics. */
   primitiveTypes: string[];
   /** Core builtin function names from RuntimeEngine.getBuiltins(). */
@@ -127,6 +174,8 @@ export function getLanguageMetadata(): LanguageMetadata {
     COMMAND_ACTION_CONSTRUCTS,
   );
   const topLevelConstructs = assertKeywordSubset('topLevelConstructs', TOP_LEVEL_CONSTRUCTS);
+  const contextualTopLevelConstructs = [...CONTEXTUAL_TOP_LEVEL_CONSTRUCTS];
+  const contextualKeywords = [...CONTEXTUAL_KEYWORDS];
   const keywordPrimitives = assertKeywordSubset('primitiveTypes', KEYWORD_PRIMITIVE_TYPES);
   const primitiveTypes = [...keywordPrimitives, ...DATE_TIME_TYPE_NAMES].sort();
   const builtinNames = listCoreBuiltinNames();
@@ -140,6 +189,8 @@ export function getLanguageMetadata(): LanguageMetadata {
     relationshipKinds,
     commandActionConstructs,
     topLevelConstructs,
+    contextualTopLevelConstructs,
+    contextualKeywords,
     primitiveTypes,
     builtins,
     documentationIds,

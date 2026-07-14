@@ -180,9 +180,10 @@ kind as passthrough only).
 `ir-compiler.ts` never reads it) and no diagnostic is emitted.~~
 
 **Update (2026-07-14):** entity `behavior` / bare `on Event { ... }` blocks are
-hard compile errors (`ENTITY_BEHAVIOR_UNSUPPORTED`, fixture 110). Canonical IR
-and `docs/spec` define no behavior semantics; use top-level reactions or command
-actions instead.
+hard compile errors (message-only diagnostic, fixture 110 — `IRDiagnostic` has
+no machine-readable `code` field yet; see TODO). Canonical IR and `docs/spec`
+define no behavior semantics; use top-level reactions or command actions
+instead.
 
 **Distribution gap:** MCP server, LSP server, stdlib, and the VS Code
 extension are built and tested but published nowhere.

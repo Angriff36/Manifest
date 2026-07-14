@@ -250,7 +250,7 @@ entity Product {
   }
 
   // Side effects after emit use reactions, not entity behavior blocks
-  // (behaviors are rejected at compile time — ENTITY_BEHAVIOR_UNSUPPORTED).
+  // (behaviors are rejected at compile time with a hard error).
   command publishLowStockAlert() {
     guard self.stock <= self.lowStockThreshold
     publish InventoryLow

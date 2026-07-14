@@ -3,7 +3,7 @@
  * Must match PropertyModifier in ir.ts and docs/spec/ir/ir-v1.schema.json.
  */
 
-export const PROPERTY_MODIFIERS = [
+export const PROPERTY_MODIFIERS = Object.freeze([
   'required',
   'unique',
   'indexed',
@@ -13,6 +13,6 @@ export const PROPERTY_MODIFIERS = [
   'searchable',
   'encrypted',
   'masked',
-] as const;
+] as const);
 
 export type PropertyModifier = (typeof PROPERTY_MODIFIERS)[number];

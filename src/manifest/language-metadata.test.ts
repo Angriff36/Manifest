@@ -72,6 +72,72 @@ describe('getLanguageMetadata', () => {
     expect(metadata.relationshipKinds).toEqual(['hasMany', 'hasOne', 'belongsTo', 'ref']);
   });
 
+  it('categorized constructs cover the parser top-level dispatch', () => {
+    // Every construct the parser accepts at the start of a top-level
+    // declaration (parser.ts parseProgram loop). If a construct is added
+    // there, this test forces the metadata to learn it.
+    const PARSER_TOP_LEVEL_KEYWORDS = [
+      'use',
+      'module',
+      'entity',
+      'enum',
+      'tenant',
+      'command',
+      'flow',
+      'effect',
+      'expose',
+      'compose',
+      'policy',
+      'store',
+      'event',
+      'on',
+      'saga',
+      'webhook',
+    ];
+    const PARSER_TOP_LEVEL_CONTEXTUAL = ['value', 'role', 'schedule'];
+
+    const metadata = getLanguageMetadata();
+    expect([...metadata.topLevelConstructs].sort()).toEqual(PARSER_TOP_LEVEL_KEYWORDS.sort());
+    expect([...metadata.contextualTopLevelConstructs].sort()).toEqual(
+      PARSER_TOP_LEVEL_CONTEXTUAL.sort(),
+    );
+    // Contextual constructs must NOT be reserved words (property names like
+    // `property schedule: string` stay legal).
+    for (const construct of metadata.contextualTopLevelConstructs) {
+      expect(KEYWORDS.has(construct)).toBe(false);
+    }
+    // 'effect' is both a top-level declaration and a command action kind.
+    expect(metadata.commandActionConstructs).toContain('effect');
+  });
+
+  it('contextual keywords cover all parser declaration-site identifiers', () => {
+    const metadata = getLanguageMetadata();
+    // Each parsed contextually in parser.ts: external/mixin (entity headers),
+    // retry/rateLimit (command + policy bodies), cron (schedule bodies),
+    // value/role/schedule (top-level declarations).
+    const PARSER_CONTEXTUAL = [
+      'cron',
+      'external',
+      'mixin',
+      'rateLimit',
+      'retry',
+      'role',
+      'schedule',
+      'value',
+    ];
+    expect([...metadata.contextualKeywords].sort()).toEqual(PARSER_CONTEXTUAL.sort());
+    for (const id of metadata.contextualKeywords) {
+      expect(KEYWORDS.has(id)).toBe(false);
+    }
+    for (const construct of metadata.contextualTopLevelConstructs) {
+      expect(metadata.contextualKeywords).toContain(construct);
+    }
+  });
+
+  it('property modifier registry is frozen against runtime mutation', () => {
+    expect(Object.isFrozen(PROPERTY_MODIFIERS)).toBe(true);
+  });
+
   it('documentation ids cover keywords and builtins', () => {
     const metadata = getLanguageMetadata();
     expect(metadata.documentationIds).toContain('entity');

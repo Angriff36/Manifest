@@ -70,6 +70,12 @@ not authoritative for Manifest semantics.
   - commands (references to IRCommand by name)
   - constraints (IRConstraint)
   - policies (IRPolicy references by name)
+- Entity `behavior` blocks (including bare `on Event { ... }` inside an
+  entity) have no IR representation and no defined semantics. A conforming
+  compiler MUST reject a program that declares them with an error diagnostic
+  (see conformance fixture 110) — it MUST NOT silently drop them. Use
+  top-level reactions (`on Event run Entity.command`) or command actions
+  instead.
 
 ### Properties
 
