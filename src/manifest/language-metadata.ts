@@ -71,19 +71,29 @@ const CONTEXTUAL_TOP_LEVEL_CONSTRUCTS = ['value', 'role', 'schedule'] as const;
 
 /**
  * ALL identifiers with contextual syntactic meaning at specific declaration
- * sites (superset of the top-level ones): `external`/`mixin` in entity
- * headers, `retry`/`rateLimit` in command and policy bodies, `cron` in
- * schedule bodies. None are reserved words. Verified against parser.ts;
- * matches the lexer's "contextual identifiers" comment.
+ * sites (superset of the top-level ones): entity headers (external, mixin,
+ * realtime, policies), property modifiers (masked, unmask), command/policy
+ * bodies (retry, rateLimit), schedule bodies (cron, interval, every),
+ * reaction params (count), webhook bodies (method). None are reserved words.
+ * Kept in sync with parser.ts mechanically: language-metadata.test.ts greps
+ * the parser source for IDENTIFIER checks and fails on any drift.
  */
 const CONTEXTUAL_KEYWORDS = [
+  'count',
   'cron',
+  'every',
   'external',
+  'interval',
+  'masked',
+  'method',
   'mixin',
+  'policies',
   'rateLimit',
+  'realtime',
   'retry',
   'role',
   'schedule',
+  'unmask',
   'value',
 ] as const;
 

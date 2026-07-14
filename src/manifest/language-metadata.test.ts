@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DATE_TIME_TYPE_NAMES } from './date-time.js';
 import type { IR } from './ir.js';
@@ -110,22 +112,24 @@ describe('getLanguageMetadata', () => {
     expect(metadata.commandActionConstructs).toContain('effect');
   });
 
-  it('contextual keywords cover all parser declaration-site identifiers', () => {
+  it('contextual keywords match the parser source (no drift)', () => {
+    // Derive the contextual-identifier set from parser.ts itself: every
+    // token the parser matches as a contextual IDENTIFIER. Reserved words
+    // are excluded (an IDENTIFIER check on a keyword is dead code — the
+    // lexer already classified it as KEYWORD).
+    const source = readFileSync(join(process.cwd(), 'src/manifest/parser.ts'), 'utf8');
+    const found = new Set<string>();
+    for (const re of [
+      /check\('IDENTIFIER',\s*'([A-Za-z]+)'\)/g,
+      /type === 'IDENTIFIER' && \w+\.value === '([A-Za-z]+)'/g,
+    ]) {
+      for (const m of source.matchAll(re)) found.add(m[1]);
+    }
+    const parserContextual = [...found].filter((id) => !KEYWORDS.has(id)).sort();
+    expect(parserContextual.length).toBeGreaterThan(0);
+
     const metadata = getLanguageMetadata();
-    // Each parsed contextually in parser.ts: external/mixin (entity headers),
-    // retry/rateLimit (command + policy bodies), cron (schedule bodies),
-    // value/role/schedule (top-level declarations).
-    const PARSER_CONTEXTUAL = [
-      'cron',
-      'external',
-      'mixin',
-      'rateLimit',
-      'retry',
-      'role',
-      'schedule',
-      'value',
-    ];
-    expect([...metadata.contextualKeywords].sort()).toEqual(PARSER_CONTEXTUAL.sort());
+    expect([...metadata.contextualKeywords].sort()).toEqual(parserContextual);
     for (const id of metadata.contextualKeywords) {
       expect(KEYWORDS.has(id)).toBe(false);
     }
