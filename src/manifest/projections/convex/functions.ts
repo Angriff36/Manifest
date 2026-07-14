@@ -258,6 +258,21 @@ function resolveReadFilter(ir: IR, entity: IREntity, options: Normalized): ReadF
   };
 }
 
+/**
+ * Mirrors RuntimeEngine.selectReadPolicies: read/`all` policies (entity-scoped
+ * or global) gate an entity's read surface. Policy EXPRESSIONS are not
+ * evaluated in generated queries — gated entities emit `internalQuery`
+ * (fail-closed: not client-callable) so protected rows cannot be read
+ * directly; expose them via a policy-enforcing public wrapper.
+ */
+function hasReadPolicies(ir: IR, entityName: string): boolean {
+  return ir.policies.some(
+    (p) =>
+      (p.action === 'read' || p.action === 'all') &&
+      (p.entity === undefined || p.entity === entityName),
+  );
+}
+
 export function generateQueries(
   ir: IR,
   rawOptions: Record<string, unknown> | undefined,
@@ -267,6 +282,7 @@ export function generateQueries(
   const blocks: string[] = [];
 
   for (const entity of persistentEntities(ir)) {
+    const qfn = hasReadPolicies(ir, entity.name) ? 'internalQuery' : 'query';
     const table = resolveConvexTableName(entity.name, options);
     const rf = resolveReadFilter(ir, entity, options);
     const privates = privateFieldNames(entity);
@@ -318,7 +334,7 @@ export function generateQueries(
     if (!rf.hasTenant && !rf.hasSoftDelete) {
       const bodyLines = finishRows(`await ctx.db.query("${table}").collect()`);
       blocks.push(
-        `export const list${entity.name} = query({\n` +
+        `export const list${entity.name} = ${qfn}({\n` +
           `  args: {},\n` +
           `  handler: async (ctx) => {\n` +
           `    ${bodyLines}\n` +
@@ -340,7 +356,7 @@ export function generateQueries(
         lines.push(`    rows = rows.filter((d) => (d as any).${rf.deletedProp} == null);`);
       lines.push(`    ${finishRows('rows')}`);
       blocks.push(
-        `export const list${entity.name} = query({\n` +
+        `export const list${entity.name} = ${qfn}({\n` +
           `  args: {},\n` +
           `  handler: async (ctx) => {\n${lines.join('\n')}\n  },\n});`,
       );
@@ -349,7 +365,7 @@ export function generateQueries(
     // get<Entity> by Convex _id — returns null on tenant mismatch / soft-deleted.
     if (!rf.hasTenant && !rf.hasSoftDelete) {
       blocks.push(
-        `export const get${entity.name} = query({\n` +
+        `export const get${entity.name} = ${qfn}({\n` +
           `  args: { id: v.id("${table}") },\n` +
           `  handler: async (ctx, { id }) => {\n` +
           `    ${finishDoc(`await ctx.db.get(id)`)}\n` +
@@ -365,7 +381,7 @@ export function generateQueries(
         lines.push(`    if (doc && (doc as any).${rf.deletedProp} != null) return null;`);
       lines.push(`    ${finishDoc('doc')}`);
       blocks.push(
-        `export const get${entity.name} = query({\n` +
+        `export const get${entity.name} = ${qfn}({\n` +
           `  args: { id: v.id("${table}") },\n` +
           `  handler: async (ctx, { id }) => {\n${lines.join('\n')}\n  },\n});`,
       );
@@ -390,7 +406,7 @@ export function generateQueries(
           `await ctx.db.query("${table}").withIndex("${spec.indexName}", (q) => q${eqChain}).collect()`,
         );
         blocks.push(
-          `export const list${entity.name}By${suffix} = query({\n` +
+          `export const list${entity.name}By${suffix} = ${qfn}({\n` +
             `  args: { ${argList} },\n` +
             `  handler: async (ctx, ${destructure}) => {\n` +
             `    ${bodyLines}\n` +
@@ -408,7 +424,7 @@ export function generateQueries(
           lines.push(`    rows = rows.filter((d) => (d as any).${rf.deletedProp} == null);`);
         lines.push(`    ${finishRows('rows')}`);
         blocks.push(
-          `export const list${entity.name}By${suffix} = query({\n` +
+          `export const list${entity.name}By${suffix} = ${qfn}({\n` +
             `  args: { ${argList} },\n` +
             `  handler: async (ctx, ${destructure}) => {\n${lines.join('\n')}\n  },\n});`,
         );
@@ -419,9 +435,14 @@ export function generateQueries(
   // System events table reads (when emitted): recent feed + the three indexed
   // lookups (by_type / by_entity / by_entityId) the schema declares on it.
   if (options.emitEventsTable) {
+    // Event rows carry payloads from every entity, so ANY read/all policy in
+    // the program locks the events feed down too (fail-closed).
+    const evq = ir.policies.some((p) => p.action === 'read' || p.action === 'all')
+      ? 'internalQuery'
+      : 'query';
     const ev = resolveEventsTableName(ir, options);
     blocks.push(
-      `export const listRecentEvents = query({\n` +
+      `export const listRecentEvents = ${evq}({\n` +
         `  args: {},\n` +
         `  handler: async (ctx) => {\n` +
         `    return await ctx.db.query("${ev}").order("desc").take(50);\n` +
@@ -429,7 +450,7 @@ export function generateQueries(
     );
     for (const field of ['type', 'entity', 'entityId']) {
       blocks.push(
-        `export const listEventsBy${capWord(field)} = query({\n` +
+        `export const listEventsBy${capWord(field)} = ${evq}({\n` +
           `  args: { ${field}: v.string() },\n` +
           `  handler: async (ctx, { ${field} }) => {\n` +
           `    return await ctx.db.query("${ev}").withIndex("by_${field}", (q) => q.eq("${field}", ${field})).collect();\n` +
@@ -440,9 +461,13 @@ export function generateQueries(
 
   const body = blocks.join('\n\n');
   const needsAuthCtx = !!options.authContextImport && /\bgetAuthContext\b/.test(body);
+  const serverImports = [
+    ...(/= query\({/.test(body) || blocks.length === 0 ? ['query'] : []),
+    ...(/= internalQuery\({/.test(body) ? ['internalQuery'] : []),
+  ];
   const code =
     `${GENERATED_HEADER}\n// ${blocks.length} query function(s).\n\n` +
-    `import { query } from "./_generated/server";\n` +
+    `import { ${serverImports.join(', ')} } from "./_generated/server";\n` +
     `import { v } from "convex/values";\n` +
     (needsAuthCtx
       ? `import { getAuthContext } from ${JSON.stringify(options.authContextImport)};\n`

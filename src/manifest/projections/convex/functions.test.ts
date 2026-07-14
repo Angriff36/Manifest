@@ -385,6 +385,49 @@ describe('authContextImport — the auth seam', () => {
   });
 });
 
+describe('convex.queries — read-policy lockdown', () => {
+  it('emits internalQuery for entities gated by read/all policies; others stay public', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Secret', [prop('name', 'string', ['required', 'indexed'])]),
+      entity('Public', [prop('name', 'string', ['required'])]),
+    ];
+    ir.stores = [durable('Secret'), durable('Public')];
+    ir.policies = [
+      {
+        name: 'canReadSecret',
+        entity: 'Secret',
+        action: 'read',
+        expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+      },
+    ] as IRPolicy[];
+    const res = queries(ir);
+    const code = res.artifacts[0].code;
+    expect(code).toContain('export const listSecret = internalQuery({');
+    expect(code).toContain('export const getSecret = internalQuery({');
+    expect(code).toContain('export const listSecretByName = internalQuery({');
+    expect(code).toContain('export const listPublic = query({');
+    expect(code).toContain('import { query, internalQuery } from "./_generated/server";');
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_READ_POLICY')).toBe(true);
+  });
+
+  it('a global (entity-less) read policy locks down every entity, runtime-parity', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Doc', [prop('name', 'string', ['required'])])];
+    ir.stores = [durable('Doc')];
+    ir.policies = [
+      {
+        name: 'readAll',
+        action: 'all',
+        expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+      },
+    ] as IRPolicy[];
+    const code = queries(ir).artifacts[0].code;
+    expect(code).toContain('export const listDoc = internalQuery({');
+    expect(code).not.toContain('= query({');
+  });
+});
+
 describe('convex.mutations — governance', () => {
   function govIR(): IR {
     const ir = emptyIR();

@@ -23,7 +23,7 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   { feature: 'Indexed, tenant, and option indexes', status: 'supported' },
   { feature: 'Commands to mutations', status: 'supported' },
   { feature: 'Command policies / guards / constraints (in mutations)', status: 'supported' },
-  { feature: 'Read/all policies on generated queries', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_READ_POLICY — queries filter tenant/soft-delete only; gate reads at the app edge.' },
+  { feature: 'Read/all policies on generated queries', status: 'partial', note: 'CONVEX_UNSUPPORTED_READ_POLICY — gated entities emit internalQuery (fail-closed, not client-callable); policy expressions are NOT evaluated. Wrap with a policy-enforcing public query.' },
   { feature: 'Roles + roleAllows', status: 'supported' },
   { feature: 'Events + emit payloads', status: 'supported' },
   { feature: 'Reactions', status: 'supported' },
@@ -141,7 +141,7 @@ export function collectUnsupportedDiagnostics(ir: IR): ProjectionDiagnostic[] {
         severity: 'warning',
         code: 'CONVEX_UNSUPPORTED_READ_POLICY',
         entity: target,
-        message: `Policy '${policy.name}' (action: ${policy.action}) is not applied to generated Convex queries; gate reads at the app edge or hand-write policy-aware queries.`,
+        message: `Policy '${policy.name}' (action: ${policy.action}) is not evaluated in generated Convex queries; the gated queries are emitted as internalQuery (not client-callable). Expose them through a policy-enforcing public wrapper.`,
       });
     }
   }
