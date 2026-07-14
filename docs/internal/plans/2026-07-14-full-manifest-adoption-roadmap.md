@@ -65,6 +65,24 @@ Never hand-edit `convex/*.ts` (except `convex/lib/`) or `manifest/ir.json`. Comp
 
 ---
 
+## Part 0.5 — Config placement decisions (verified against schema at 3.4.25, 2026-07-14)
+
+The config audit at `docs/internal/proposals/config/manifest-config-vnext.md` was written at v2.1.0; a dated accuracy addendum has been added to it. Current reality: `manifest.config.*` top-level keys are `src`/`output`/`prismaSchema`/`projections`/`env`/`hooks`/`plugins`/`naming`; `projections.*` accepts 28 projection keys including `convex`, each `{ output, options }` with `options` as `additionalProperties: true` **passed verbatim to the generator** — so new Convex projection options require NO config-schema change. None of the vNext keys (`validation`, `mergeIntegrity`, `provenance`, `runtime`, `driftGates`, `projections.enabled/defaults`) exist yet.
+
+Placement rules for the projection-repair work:
+
+| Concern | Placement | Rationale |
+|---|---|---|
+| Auth seam module path (`authContextImport`) | `projections.convex.options` — **exists on branch** | Environment-specific seam, not semantics |
+| Encryption seam module path (new, M3 phase 2 — e.g. `encryptionImport`) | `projections.convex.options` | Same pattern as authContextImport: author-owned module, projection calls it |
+| Computed-property emission strategy (M4 — e.g. `computedProperties: 'helpers' \| 'inline'`) | `projections.convex.options` | Multiple legitimate codegen shapes; but NO `'off'`-that-silently-drops — absence of support emits diagnostics |
+| Transition enforcement (M2) | **NOT config** — always on | Language semantics; a knob to disable = "make an invalid program succeed", a language violation |
+| `private` field stripping in reads (M3 phase 1) | **NOT config** — always on | Security default; same argument |
+| Constraints/guards/policies enforcement | **NOT config** (existing `policyMode: 'skip'` stays the only, documented, dev-build escape) | Already fail-closed |
+| Capability-map diagnostics (M7 below) | **NOT config** — always emitted | Visibility must not be optional |
+| CI failure policy on diagnostics (fail build on warning-level loss) | Future `validation.failOn` (vNext G2, unimplemented) | Until then: consumers' regen scripts must fail on error-severity diagnostics themselves |
+| Surface/output selection | `projections.convex.output` + `manifest generate --all` — exists today | — |
+
 ## Part 1 — Manifest-core work (enablement; repo `C:\projects\manifest`)
 
 Ordered by impact. Each item: problem → change → acceptance.
@@ -98,6 +116,11 @@ Ordered by impact. Each item: problem → change → acceptance.
 
 ### M6. Native drift-check ergonomics (nice-to-have)
 - `manifest generate --check` style flag that generates to temp and byte-compares against the output dir with `compiledAt`/`irHash` normalization, exiting 1 with a file list — retires each consumer's hand-rolled compare (Capsule-V2's `--check` branch). Verify current CLI flags before building (`manifest generate --help`); do not duplicate an existing capability.
+
+### M7. Capability map — eliminate "parsed but ignored"
+- **Problem:** the Convex projection consumes a subset of IR fields; everything else vanishes silently (transitions/computed/private/encrypted being the proven cases). Nothing tells a consumer which declarations survived.
+- **Do:** audit every IR field (`src/manifest/ir.ts`) against the Convex generators; produce a checked-in capability matrix (`src/manifest/projections/convex/CAPABILITIES.md` or structured TS the README embeds): **Supported** (generated + tested) / **Partial** (exact limitation stated) / **Unsupported** (generation emits a diagnostic naming the dropped declaration). Add a projection-level pass that walks the IR for declarations in the Unsupported set and emits `CONVEX_UNSUPPORTED_<FEATURE>` warnings — a program using a dropped feature can never regenerate silently again.
+- **Accept:** generating capsule's IR lists every dropped declaration in diagnostics; matrix file exists and is referenced from the projection README; test asserting an entity with an unsupported construct yields the diagnostic.
 
 ---
 

@@ -19,6 +19,28 @@
 
 # Part 1 — Current config (what actually works today)
 
+> **2026-07-14 accuracy update (verified against the schema at v3.4.25):**
+> Part 1 below was written against v2.1.0 and is stale in these ways:
+>
+> - `projections.*` now accepts **28 projection keys**, not 3: analytics,
+>   convex, dart, drizzle, dynamodb, elasticsearch, express, graphql, health,
+>   hono, jsonschema, kysely, llm-context, materialized-views, mermaid, nextjs,
+>   openapi, prisma, prisma-store, pydantic, react-query, remix, routes,
+>   storybook, sveltekit, terraform, wiring, zod. Each takes `output` +
+>   `options` (options are `additionalProperties: true` — passed verbatim to
+>   the projection, so new projection options like the Convex
+>   `authContextImport` need **no schema change**).
+> - Top-level keys are now: `$schema`, `src`, `output`, `prismaSchema`,
+>   `projections`, `env`, `hooks`, `plugins`, **`naming`** (naming is new
+>   since this doc).
+> - `manifest compile --merge` / `--all` exists (multi-module merged IR),
+>   though the G3 collision-policy config below remains unimplemented.
+>
+> Part 2 status is UNCHANGED: none of `validation`, `mergeIntegrity`,
+> `provenance`, `runtime`, `driftGates`, `projections.enabled/defaults` exist
+> at v3.4.25 (verified: absent from the schema's top-level and projections
+> properties).
+
 Manifest's real config surface is **small**. There are two files, with different
 validation paths:
 
