@@ -4,6 +4,49 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.5.0] - 2026-07-14
+
+Convex projection semantics-preservation wave: generated Convex apps now
+preserve declared IR meaning or say loudly when they cannot. No IR, grammar,
+or config-schema changes; all options ride the existing
+`projections.convex.options` passthrough.
+
+### Added
+
+- Convex `authContextImport` option — routes every generated identity read
+  through an author-owned `getAuthContext(ctx)` module instead of the
+  fictional `(ctx as any).auth` bag. For tenant-scoped entities, `create`
+  derives the tenant column server-side (no longer a client argument; a
+  create action targeting it is overridden with a
+  `CONVEX_TENANT_SERVER_DERIVED` diagnostic) and instance mutations reject
+  cross-tenant documents with the same "not found" as a missing doc. Unset
+  keeps byte-identical legacy output.
+- Convex state-transition enforcement — `entity.transitions` now lower into
+  pre-patch legality checks in generated mutations, with exact
+  reference-runtime parity (unknown from-states pass; same denial message).
+  Always on.
+- Convex `private` property handling — private fields are stripped from
+  generated query returns AND mutation return values. Always on;
+  byte-stable for entities without private fields.
+- Convex computed properties — new `convex.computed` surface
+  (`convex/computed.ts` helpers) plus `computedProperties: 'helpers' | 'inline'`
+  option to materialize self-only computeds into reads. Unresolved computed
+  expressions emit `CONVEX_UNRESOLVED_COMPUTED`.
+- Convex capability map — `CAPABILITIES.md` plus a generation pass emitting
+  `CONVEX_UNSUPPORTED_*` diagnostics (approvals, masked, searchable,
+  versionProperty, computed cache, realtime hint, retry, rateLimit, …) so a
+  declaration the projection cannot lower can never regenerate silently.
+- `CONVEX_ENCRYPTED_UNSUPPORTED` warning per `encrypted` property — at-rest
+  encryption seam deferred until the spec gains an encrypted-semantics
+  section.
+
+### Fixed
+
+- Convex expression resolver: `substring` and related string builtins now
+  resolve (previously unresolved → fields silently omitted from create
+  defaults); `list<T>` params/fields treated like `array<T>` in validators
+  and default fills.
+
 ## [3.4.25] - 2026-07-11
 
 ### Changed
