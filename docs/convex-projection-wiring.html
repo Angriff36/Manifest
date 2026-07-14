@@ -1,0 +1,1643 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manifest · Convex Application Build Spec</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #0a0e16;
+        --ink-2: #0e131f;
+        --panel: #121927;
+        --panel-2: #161f30;
+        --line: #243246;
+        --grid: rgba(86, 156, 214, 0.06);
+        --cyan: #56b6c2;
+        --cyan-br: #7fd6e0;
+        --amber: #e0a64a;
+        --amber-br: #f4c06a;
+        --green: #7fb069;
+        --violet: #9d8df1;
+        --rose: #e06c75;
+        --paper: #e7ecf3;
+        --paper-dim: #9bacc4;
+        --paper-mute: #5e7088;
+        --mono: 'IBM Plex Mono', ui-monospace, monospace;
+        --sans: 'IBM Plex Sans', system-ui, sans-serif;
+        --disp: 'Bricolage Grotesque', var(--sans);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        background-color: var(--ink);
+        background-image:
+          linear-gradient(var(--grid) 1px, transparent 1px),
+          linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+          radial-gradient(ellipse 80% 50% at 50% -10%, rgba(86, 182, 194, 0.1), transparent 60%);
+        background-size:
+          32px 32px,
+          32px 32px,
+          100% 100%;
+        color: var(--paper);
+        font-family: var(--sans);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 0 28px;
+      }
+
+      a {
+        color: var(--cyan-br);
+        text-decoration: none;
+      }
+
+      code,
+      .mono {
+        font-family: var(--mono);
+      }
+
+      /* ---------- header / hero ---------- */
+      header {
+        padding: 88px 0 56px;
+        border-bottom: 1px solid var(--line);
+        position: relative;
+      }
+      .kicker {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 22px;
+      }
+      .kicker::before {
+        content: '';
+        width: 38px;
+        height: 1px;
+        background: var(--cyan);
+      }
+      h1 {
+        font-family: var(--disp);
+        font-weight: 800;
+        font-size: clamp(40px, 7vw, 86px);
+        line-height: 0.98;
+        letter-spacing: -0.02em;
+        margin-bottom: 24px;
+      }
+      h1 .em {
+        color: var(--amber);
+      }
+      h1 .slash {
+        color: var(--paper-mute);
+        font-weight: 400;
+      }
+      .lede {
+        max-width: 680px;
+        font-size: 18px;
+        color: var(--paper-dim);
+      }
+      .lede strong {
+        color: var(--paper);
+        font-weight: 600;
+      }
+      .meta-row {
+        margin-top: 36px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-family: var(--mono);
+        font-size: 12.5px;
+      }
+      .chip {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        padding: 7px 13px;
+        border-radius: 2px;
+        color: var(--paper-dim);
+      }
+      .chip b {
+        color: var(--cyan-br);
+        font-weight: 600;
+      }
+
+      /* corner brackets decoration */
+      .bracket {
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        border: 1px solid var(--amber);
+        opacity: 0.55;
+      }
+      .bracket.tr {
+        top: 30px;
+        right: 28px;
+        border-left: 0;
+        border-bottom: 0;
+      }
+      .bracket.bl {
+        bottom: -1px;
+        left: 28px;
+        border-right: 0;
+        border-top: 0;
+      }
+
+      /* ---------- section scaffolding ---------- */
+      section {
+        padding: 72px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .sec-head {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        margin-bottom: 40px;
+      }
+      .sec-num {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--amber);
+        border: 1px solid var(--amber);
+        border-radius: 50%;
+        width: 34px;
+        height: 34px;
+        flex: none;
+        display: grid;
+        place-items: center;
+      }
+      h2 {
+        font-family: var(--disp);
+        font-weight: 700;
+        font-size: clamp(26px, 3.6vw, 40px);
+        letter-spacing: -0.015em;
+        line-height: 1.05;
+      }
+      .sec-sub {
+        color: var(--paper-dim);
+        max-width: 640px;
+        margin: 14px 0 0 50px;
+      }
+
+      /* ---------- pipeline flow ---------- */
+      .pipe {
+        display: flex;
+        align-items: stretch;
+        flex-wrap: wrap;
+        gap: 0;
+        margin: 8px 0;
+      }
+      .stage {
+        flex: 1 1 0;
+        min-width: 110px;
+        background: linear-gradient(180deg, var(--panel-2), var(--panel));
+        border: 1px solid var(--line);
+        padding: 16px 14px;
+        position: relative;
+        border-radius: 3px;
+      }
+      .stage + .stage {
+        margin-left: 26px;
+      }
+      .stage + .stage::before {
+        content: '▸';
+        position: absolute;
+        left: -21px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--cyan);
+        font-size: 15px;
+      }
+      .stage .st-k {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--paper-mute);
+      }
+      .stage .st-t {
+        font-family: var(--disp);
+        font-weight: 600;
+        font-size: 17px;
+        margin-top: 4px;
+      }
+      .stage .st-d {
+        font-size: 12.5px;
+        color: var(--paper-dim);
+        margin-top: 6px;
+      }
+      .stage.src {
+        border-color: #36506e;
+      }
+      .stage.ir {
+        border-color: var(--cyan);
+        box-shadow: 0 0 0 1px rgba(86, 182, 194, 0.25) inset;
+      }
+      .stage.out {
+        border-color: var(--amber);
+      }
+
+      /* ---------- file/wiring graph ---------- */
+      .graph {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 22px;
+        margin-top: 8px;
+      }
+      .col-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--paper-mute);
+        padding-bottom: 10px;
+        margin-bottom: 4px;
+        border-bottom: 1px dashed var(--line);
+      }
+      .node {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--cyan);
+        border-radius: 3px;
+        padding: 13px 15px;
+        margin-bottom: 14px;
+      }
+      .node:last-child {
+        margin-bottom: 0;
+      }
+      .node .nf {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--paper);
+        font-weight: 500;
+      }
+      .node .nd {
+        font-size: 12px;
+        color: var(--paper-dim);
+        margin-top: 5px;
+      }
+      .node.amber {
+        border-left-color: var(--amber);
+      }
+      .node.green {
+        border-left-color: var(--green);
+      }
+      .node.violet {
+        border-left-color: var(--violet);
+      }
+      .node.rose {
+        border-left-color: var(--rose);
+      }
+      .node .tag {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        border-radius: 2px;
+        margin-top: 9px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--paper-mute);
+      }
+      .tag.gen {
+        background: rgba(224, 166, 74, 0.14);
+        color: var(--amber-br);
+      }
+      .tag.hand {
+        background: rgba(86, 182, 194, 0.14);
+        color: var(--cyan-br);
+      }
+
+      .flow-note {
+        grid-column: 1 / -1;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--paper-mute);
+        border: 1px dashed var(--line);
+        border-radius: 3px;
+        padding: 12px 16px;
+        margin-top: 4px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .flow-note::before {
+        content: '↳';
+        color: var(--cyan);
+      }
+
+      /* ---------- timeline / when to run ---------- */
+      .phases {
+        display: grid;
+        gap: 18px;
+      }
+      .phase {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 0;
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        overflow: hidden;
+        background: var(--panel);
+      }
+      .phase .when {
+        background: var(--ink-2);
+        padding: 18px 18px;
+        border-right: 1px solid var(--line);
+      }
+      .phase .when .wlabel {
+        font-family: var(--disp);
+        font-weight: 700;
+        font-size: 16px;
+      }
+      .phase .when .wfreq {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin-top: 6px;
+      }
+      .phase .body {
+        padding: 18px 20px;
+      }
+      .phase .body .cmd {
+        font-family: var(--mono);
+        font-size: 13.5px;
+        color: var(--cyan-br);
+        background: var(--ink-2);
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        padding: 9px 13px;
+        display: inline-block;
+        margin-bottom: 10px;
+      }
+      .phase .body .cmd .fl {
+        color: var(--amber-br);
+      }
+      .phase .body p {
+        font-size: 13.5px;
+        color: var(--paper-dim);
+      }
+      .phase .body p code {
+        color: var(--paper);
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1px 5px;
+        border-radius: 2px;
+        font-size: 12.5px;
+      }
+
+      /* ---------- code blocks ---------- */
+      .code {
+        background: var(--ink-2);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 8px;
+      }
+      .code .bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 14px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+      }
+      .code .bar .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--line);
+      }
+      .code .bar .fname {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--paper-dim);
+        margin-left: 6px;
+      }
+      .code .bar .badge {
+        margin-left: auto;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 2px;
+      }
+      .badge.gen {
+        background: rgba(224, 166, 74, 0.14);
+        color: var(--amber-br);
+      }
+      .badge.hand {
+        background: rgba(86, 182, 194, 0.14);
+        color: var(--cyan-br);
+      }
+      pre {
+        font-family: var(--mono);
+        font-size: 12.8px;
+        line-height: 1.65;
+        padding: 16px 18px;
+        overflow-x: auto;
+        color: var(--paper-dim);
+      }
+      pre .k {
+        color: var(--violet);
+      }
+      pre .s {
+        color: var(--green);
+      }
+      pre .c {
+        color: var(--paper-mute);
+        font-style: italic;
+      }
+      pre .a {
+        color: var(--amber-br);
+      }
+      pre .t {
+        color: var(--cyan-br);
+      }
+      pre .n {
+        color: var(--paper);
+      }
+
+      /* ---------- two col ---------- */
+      .two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .two .head3 {
+        font-family: var(--disp);
+        font-weight: 600;
+        font-size: 18px;
+        margin-bottom: 4px;
+      }
+      .two .head3 .px {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--amber);
+        margin-right: 8px;
+      }
+
+      /* ---------- mapping table ---------- */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-top: 8px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 11px 14px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--paper-mute);
+        font-weight: 500;
+      }
+      td.m {
+        font-family: var(--mono);
+        color: var(--paper);
+        font-size: 12.5px;
+      }
+      td .arrow {
+        color: var(--cyan);
+      }
+      tr:hover td {
+        background: rgba(255, 255, 255, 0.018);
+      }
+
+      /* ---------- callout ---------- */
+      .note {
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--amber);
+        background: linear-gradient(90deg, rgba(224, 166, 74, 0.06), transparent 60%);
+        border-radius: 3px;
+        padding: 16px 20px;
+        margin-top: 26px;
+        font-size: 14px;
+        color: var(--paper-dim);
+      }
+      .note b {
+        color: var(--amber-br);
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      /* runtime sequence */
+      .seq {
+        display: grid;
+        gap: 0;
+        counter-reset: step;
+        margin-top: 8px;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        gap: 18px;
+        padding: 18px 0;
+        border-bottom: 1px dashed var(--line);
+      }
+      .step:last-child {
+        border-bottom: 0;
+      }
+      .step .num {
+        counter-increment: step;
+        font-family: var(--mono);
+        font-size: 14px;
+        color: var(--ink);
+        background: var(--cyan);
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        font-weight: 600;
+      }
+      .step .num::before {
+        content: counter(step);
+      }
+      .step .st {
+        font-family: var(--disp);
+        font-weight: 600;
+        font-size: 16px;
+      }
+      .step .sd {
+        font-size: 13.5px;
+        color: var(--paper-dim);
+        margin-top: 4px;
+      }
+      .step .sd code {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--cyan-br);
+      }
+
+      footer {
+        padding: 50px 0 80px;
+        color: var(--paper-mute);
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      footer .big {
+        font-family: var(--disp);
+        font-size: 20px;
+        color: var(--paper-dim);
+        margin-bottom: 10px;
+      }
+
+      /* reveal */
+      .rev {
+        opacity: 0;
+        transform: translateY(18px);
+        transition:
+          opacity 0.7s ease,
+          transform 0.7s ease;
+      }
+      .rev.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (max-width: 860px) {
+        .graph {
+          grid-template-columns: 1fr;
+        }
+        .two {
+          grid-template-columns: 1fr;
+        }
+        .phase {
+          grid-template-columns: 1fr;
+        }
+        .phase .when {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+        .stage + .stage {
+          margin-left: 0;
+          margin-top: 26px;
+        }
+        .stage + .stage::before {
+          left: 50%;
+          top: -21px;
+          transform: translateX(-50%) rotate(90deg);
+        }
+      }
+    
+      /* ---- agent-spec extras ---- */
+      .tree {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        line-height: 1.55;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        padding: 18px 22px;
+        color: var(--paper-dim);
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .tree .hl { color: var(--cyan-br); }
+      .tree .dim { color: var(--paper-mute); }
+      .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
+      .st {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 3px 8px;
+        border-radius: 2px;
+        border: 1px solid var(--line);
+      }
+      .st.full { color: var(--green); border-color: rgba(127,176,105,0.45); background: rgba(127,176,105,0.1); }
+      .st.part { color: var(--amber-br); border-color: rgba(224,166,74,0.45); background: rgba(224,166,74,0.1); }
+      .st.none { color: var(--rose); border-color: rgba(224,108,117,0.45); background: rgba(224,108,117,0.1); }
+      .st.ign { color: var(--paper-mute); }
+      .forbid li {
+        margin: 8px 0 8px 18px;
+        color: var(--paper-dim);
+        font-size: 14px;
+      }
+      .forbid li code { color: var(--cyan-br); }
+      .checklist label {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 8px 0;
+        border-bottom: 1px dashed var(--line);
+        font-size: 13.5px;
+        color: var(--paper-dim);
+      }
+      .checklist label:last-child { border-bottom: 0; }
+      .checklist input { margin-top: 3px; accent-color: var(--cyan); }
+      table.cap { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+      table.cap th, table.cap td {
+        text-align: left;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      table.cap th {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--paper-mute);
+      }
+      table.cap td.m { font-family: var(--mono); font-size: 12px; color: var(--paper); }
+      .toc {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 8px 18px;
+        margin-top: 28px;
+        font-family: var(--mono);
+        font-size: 12.5px;
+      }
+      .toc a { color: var(--paper-dim); }
+      .toc a:hover { color: var(--cyan-br); }
+      .toc span { color: var(--amber); margin-right: 8px; }
+
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="bracket tr"></span><span class="bracket bl"></span>
+      <div class="wrap">
+        <div class="kicker">Manifest · agent build-spec · Convex host</div>
+        <h1>
+          Build the app from<br /><span class="em">.manifest</span>
+          <span class="slash">/</span><br />not from hand-rolled Convex
+        </h1>
+        <p class="lede">
+          This is the handoff document for an agent building a Capsule-class product on the
+          <strong>Convex projection</strong>. It covers language meaning, source-of-truth rules,
+          the feature→Convex capability matrix, frontend consumption, auth/tenant, forbidden
+          patterns, workflows, and current limitations — not just the compiler pipeline.
+        </p>
+        <div class="meta-row">
+          <span class="chip">authority · <b>IR</b></span>
+          <span class="chip">host · <b>Convex</b></span>
+          <span class="chip">surfaces · <b>6</b></span>
+          <span class="chip">audience · <b>builder agents</b></span>
+          <span class="chip"
+            >sibling · <b><a href="./projection-wiring.html">Prisma + Next.js</a></b></span
+          >
+        </div>
+        <nav class="toc" aria-label="Sections">
+          <a href="#s01"><span>01</span>Philosophy</a>
+          <a href="#s02"><span>02</span>Authority rules</a>
+          <a href="#s03"><span>03</span>Language model</a>
+          <a href="#s04"><span>04</span>Capability matrix</a>
+          <a href="#s05"><span>05</span>Pipeline &amp; files</a>
+          <a href="#s06"><span>06</span>Config</a>
+          <a href="#s07"><span>07</span>Frontend rules</a>
+          <a href="#s08"><span>08</span>Auth &amp; tenant</a>
+          <a href="#s09"><span>09</span>Agent workflow</a>
+          <a href="#s10"><span>10</span>Limitations</a>
+          <a href="#s11"><span>11</span>Forbidden patterns</a>
+          <a href="#s12"><span>12</span>Runtime path</a>
+          <a href="#s13"><span>13</span>Checklist</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- 01 -->
+    <section id="s01">
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">01</span>
+          <h2>Manifest philosophy</h2>
+        </div>
+        <p class="sec-sub">
+          Manifest is an <strong>IR-first DSL for business rules</strong>. You author
+          <code>.manifest</code> → compile to IR (the contract) → projections emit Convex (or
+          Prisma/Next/…). Generated files are views. Editing them is drift.
+        </p>
+        <div class="note" style="margin-top: 28px">
+          <b>Golden rule</b>
+          If a behavior can be expressed in the <code>.manifest</code> (guard, constraint, policy,
+          computed, event, reaction, schedule, webhook, saga, …), express it there — not in
+          TypeScript. Before writing app logic, check the capability matrix. Hand-rolled duplicates
+          of Manifest constructs are bugs, not shortcuts.
+        </div>
+        <div class="note">
+          <b>Entity ≠ table</b>
+          An entity is a governed domain object: data <em>plus</em> commands, guards, policies,
+          events, and reactions. A Convex table is only the persistence projection of its
+          properties. If you only emit CRUD tables, you missed the point of Manifest.
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 -->
+    <section id="s02">
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">02</span>
+          <h2>What is authoritative</h2>
+        </div>
+        <p class="sec-sub">
+          One source of truth. Everything else is derivative or glue.
+        </p>
+        <table class="cap">
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Role</th>
+              <th>Agent may edit?</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="m">*.manifest</td>
+              <td>Domain meaning: entities, commands, reactions, schedules, webhooks, sagas</td>
+              <td class="m" style="color: var(--green)">YES — primary edit target</td>
+            </tr>
+            <tr>
+              <td class="m">manifest.config.ts</td>
+              <td>Src glob, IR out, projection options (<code>authContextImport</code>, …)</td>
+              <td class="m" style="color: var(--green)">YES — wiring only</td>
+            </tr>
+            <tr>
+              <td class="m">IR JSON</td>
+              <td>Executable contract every projection consumes</td>
+              <td class="m" style="color: var(--rose)">NO — compile output</td>
+            </tr>
+            <tr>
+              <td class="m">convex/*.ts (generated)</td>
+              <td>Schema, queries, mutations, crons, http, sagas</td>
+              <td class="m" style="color: var(--rose)">NO — regenerate</td>
+            </tr>
+            <tr>
+              <td class="m">convex/lib/authContext.ts</td>
+              <td>Maps Convex identity → role + tenant for generated code</td>
+              <td class="m" style="color: var(--green)">YES — required glue</td>
+            </tr>
+            <tr>
+              <td class="m">UI pages / components</td>
+              <td>Presentation; calls generated <code>api.*</code></td>
+              <td class="m" style="color: var(--green)">YES — no business rules</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="note" style="margin-top: 24px">
+          <b>Never manually create</b>
+          Convex mutations for business logic · HTTP routes that re-implement commands · Zod/OpenAPI
+          schemas that duplicate Manifest constraints · DB models that duplicate entities · event
+          handlers that duplicate reactions · crons that duplicate <code>schedule</code> · webhook
+          endpoints that duplicate <code>webhook</code>. If you think you need those, first check
+          whether Manifest already has the concept.
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 -->
+    <section id="s03">
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">03</span>
+          <h2>Language model (semantic map)</h2>
+        </div>
+        <p class="sec-sub">
+          What a <code>.manifest</code> author is declaring — not “tables,” but governed behavior.
+        </p>
+        <div class="tree" style="margin-top: 28px"><span class="hl">entity</span> Order
+ ├── <span class="hl">property</span> …          <span class="dim">persisted fields (+ modifiers)</span>
+ ├── <span class="hl">computed</span> …           <span class="dim">derived; never a Convex column</span>
+ ├── <span class="hl">relationship</span> …       <span class="dim">hasMany / hasOne / belongsTo / ref</span>
+ ├── <span class="hl">constraint</span> …         <span class="dim">validation (block/warn)</span>
+ ├── <span class="hl">policy</span> …             <span class="dim">authz: read / write / execute</span>
+ ├── <span class="hl">transition</span> …         <span class="dim">legal status moves</span>
+ ├── <span class="hl">command</span> claim(…)
+ │    ├── <span class="hl">guard</span> …          <span class="dim">halt on first falsey</span>
+ │    ├── <span class="hl">mutate</span> …         <span class="dim">working-copy field writes</span>
+ │    ├── <span class="hl">emit</span> Event      <span class="dim">named IR event + optional payload</span>
+ │    └── <span class="hl">retry / rateLimit / approval</span>  <span class="dim">when declared</span>
+ └── <span class="hl">store in</span> supabase|postgres|durable|memory
+
+<span class="hl">event</span> TaskClaimed: "…" { … }
+<span class="hl">on</span> TaskClaimed <span class="hl">run</span> Station.sync…   <span class="dim">reaction (real runtime wiring)</span>
+<span class="hl">schedule</span> … <span class="hl">cron</span> "…" <span class="hl">run</span> Entity.cmd
+<span class="hl">webhook</span> … "/path" <span class="hl">run</span> Entity.cmd
+<span class="hl">saga</span> Checkout { steps + compensate }
+
+<span class="dim">// Parsed but NOT lowered to IR (no runtime effect) — do not rely on these:</span>
+<span class="hl">compose</span> … { <span class="hl">connect</span> … }     <span class="dim">→ use reactions instead</span>
+<span class="hl">expose</span> … as rest …      <span class="dim">→ use projections (Convex/Next/Express)</span>
+<span class="hl">flow</span> / <span class="hl">effect</span>               <span class="dim">→ stubs; warnings only</span></div>
+        <div class="note" style="margin-top: 22px">
+          <b>Command execution order (normative)</b>
+          Build context → <strong>policies</strong> → <strong>guards</strong> (ordered, halt on
+          first falsey) → <strong>actions</strong> → <strong>emits</strong> → reactions cascade →
+          result. Diagnostics explain; they must not change semantics. Identical IR + identical
+          context ⇒ identical results.
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 -->
+    <section id="s04">
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">04</span>
+          <h2>Capability matrix (Manifest → Convex → agent action)</h2>
+        </div>
+        <p class="sec-sub">
+          Use this before writing TypeScript. Status is relative to the
+          <strong>Convex projection</strong> (verified against
+          <code>src/manifest/projections/convex/*</code>).
+        </p>
+        <div class="badge-row">
+          <span class="st full">full — projected</span>
+          <span class="st part">partial</span>
+          <span class="st none">not in Convex projection</span>
+          <span class="st ign">parse-only / ignored</span>
+        </div>
+        <table class="cap">
+          <thead>
+            <tr>
+              <th>Manifest feature</th>
+              <th>Convex output</th>
+              <th>Status</th>
+              <th>Agent action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="m">entity + properties</td>
+              <td class="m">defineTable + validators</td>
+              <td><span class="st full">full</span></td>
+              <td>Declare in .manifest; never hand-write tables</td>
+            </tr>
+            <tr>
+              <td class="m">relationships</td>
+              <td class="m">FK fields + indexes (v.id / stringId)</td>
+              <td><span class="st full">full</span></td>
+              <td>Declare both sides when product-complete</td>
+            </tr>
+            <tr>
+              <td class="m">computed</td>
+              <td class="m">not a column; may appear in emit/reaction exprs</td>
+              <td><span class="st part">partial</span></td>
+              <td>Do not store derived fields; recompute in UI or via emit payloads</td>
+            </tr>
+            <tr>
+              <td class="m">command</td>
+              <td class="m">mutations.ts mutation</td>
+              <td><span class="st full">full</span></td>
+              <td>UI calls generated mutation only</td>
+            </tr>
+            <tr>
+              <td class="m">guard / constraint</td>
+              <td class="m">inline checks in mutation (fail-closed)</td>
+              <td><span class="st full">full</span></td>
+              <td>Do not duplicate validation in UI or routes</td>
+            </tr>
+            <tr>
+              <td class="m">policy / roles</td>
+              <td class="m">policy checks + ROLE_PERMISSIONS / checkRole</td>
+              <td><span class="st full">full</span></td>
+              <td>Wire authContextImport; don't re-auth in handlers</td>
+            </tr>
+            <tr>
+              <td class="m">event + emit</td>
+              <td class="m">manifestEvents row + payload</td>
+              <td><span class="st full">full</span></td>
+              <td>Declare events; use reactions for follow-ups</td>
+            </tr>
+            <tr>
+              <td class="m">reaction (on…run)</td>
+              <td class="m">chained insert/patch inside mutation turn</td>
+              <td><span class="st full">full</span></td>
+              <td>Never write after-emit middleware / event handlers</td>
+            </tr>
+            <tr>
+              <td class="m">schedule</td>
+              <td class="m">crons.ts → runMutation</td>
+              <td><span class="st full">full</span></td>
+              <td>Do not add Convex crons by hand</td>
+            </tr>
+            <tr>
+              <td class="m">webhook</td>
+              <td class="m">http.ts httpAction</td>
+              <td><span class="st full">full</span></td>
+              <td>Do not add Express/Next webhook routes for the same path</td>
+            </tr>
+            <tr>
+              <td class="m">saga</td>
+              <td class="m">sagas.ts action (+ compensate)</td>
+              <td><span class="st part">partial</span></td>
+              <td>OK to use; one shared input payload per step (no per-step arg map in IR yet)</td>
+            </tr>
+            <tr>
+              <td class="m">tenant decl</td>
+              <td class="m">server-derived tenant on create; scoped reads</td>
+              <td><span class="st full">full</span></td>
+              <td>Never pass tenantId from the client</td>
+            </tr>
+            <tr>
+              <td class="m">timestamps / versionProperty</td>
+              <td class="m">columns when declared as properties</td>
+              <td><span class="st part">partial</span></td>
+              <td>Prefer Manifest timestamps; don't invent parallel clocks</td>
+            </tr>
+            <tr>
+              <td class="m">approval / retry / rateLimit / transition</td>
+              <td class="m">—</td>
+              <td><span class="st none">not projected</span></td>
+              <td>Language/IR may exist; Convex surfaces do not emit these — do not fake in app without an explicit plan</td>
+            </tr>
+            <tr>
+              <td class="m">compose / connect</td>
+              <td class="m">—</td>
+              <td><span class="st ign">ignored</span></td>
+              <td>Parse-only stub. Rewrite as <code>on Event run …</code> reactions</td>
+            </tr>
+            <tr>
+              <td class="m">expose … rest</td>
+              <td class="m">—</td>
+              <td><span class="st ign">ignored</span></td>
+              <td>Parse-only stub. HTTP is the projection (Convex http / Next / Express)</td>
+            </tr>
+            <tr>
+              <td class="m">flow / effect</td>
+              <td class="m">—</td>
+              <td><span class="st ign">ignored</span></td>
+              <td>Parse-only stubs; no runtime effect</td>
+            </tr>
+            <tr>
+              <td class="m">store in memory</td>
+              <td class="m">table skipped</td>
+              <td><span class="st part">skipped</span></td>
+              <td>Use durable/postgres/supabase if the entity must live in Convex</td>
+            </tr>
+            <tr>
+              <td class="m">onDelete / onUpdate</td>
+              <td class="m">info diagnostic only</td>
+              <td><span class="st part">deferred</span></td>
+              <td>No schema-level cascade; model via commands/reactions if needed</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 05 -->
+    <section id="s05">
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">05</span>
+          <h2>Pipeline &amp; generated files</h2>
+        </div>
+        <p class="sec-sub">
+          Same IR-first pipeline as Prisma+Next. Convex is the host: governance is
+          <em>compiled into</em> mutations (no live <code>RuntimeEngine</code> process).
+        </p>
+        <div class="pipe" style="margin-top: 32px">
+          <div class="stage src">
+            <div class="st-k">author</div>
+            <div class="st-t">.manifest</div>
+            <div class="st-d">entities · commands · reactions · schedules · webhooks · sagas</div>
+          </div>
+          <div class="stage">
+            <div class="st-k">lex · parse</div>
+            <div class="st-t">AST</div>
+            <div class="st-d">tokens → syntax tree</div>
+          </div>
+          <div class="stage ir">
+            <div class="st-k">ir-compiler</div>
+            <div class="st-t">IR JSON</div>
+            <div class="st-d">single source of truth</div>
+          </div>
+          <div class="stage out">
+            <div class="st-k">six surfaces</div>
+            <div class="st-t">convex/*</div>
+            <div class="st-d">schema · queries · mutations · crons · http · sagas</div>
+          </div>
+        </div>
+        <div class="graph" style="margin-top: 36px">
+          <div>
+            <div class="col-label">① You author</div>
+            <div class="node">
+              <div class="nf">src/**/*.manifest</div>
+              <div class="nd">The only real source for domain meaning.</div>
+              <span class="tag hand">hand-written</span>
+            </div>
+            <div class="node">
+              <div class="nf">manifest.config.ts</div>
+              <div class="nd">Projection options, especially <code>authContextImport</code>.</div>
+              <span class="tag hand">hand-written</span>
+            </div>
+            <div class="node green">
+              <div class="nf">convex/lib/authContext.ts</div>
+              <div class="nd"><code>getAuthContext(ctx)</code> → role + tenant (+ system callers).</div>
+              <span class="tag hand">hand-written glue</span>
+            </div>
+            <div class="node green">
+              <div class="nf">app UI</div>
+              <div class="nd">Pages/forms calling generated <code>api.*</code> — no business rules.</div>
+              <span class="tag hand">hand-written</span>
+            </div>
+          </div>
+          <div>
+            <div class="col-label">② Manifest emits</div>
+            <div class="node amber">
+              <div class="nf">ir/*.json</div>
+              <div class="nd">Merged IR from <code>compile --all</code>.</div>
+              <span class="tag gen">generated</span>
+            </div>
+            <div class="node amber">
+              <div class="nf">convex/schema.ts</div>
+              <div class="nd">Tables, validators, indexes, events table.</div>
+              <span class="tag gen">convex.schema</span>
+            </div>
+            <div class="node amber">
+              <div class="nf">convex/queries.ts</div>
+              <div class="nd">list / get / listBy… · tenant + soft-delete filtered.</div>
+              <span class="tag gen">convex.queries</span>
+            </div>
+            <div class="node amber">
+              <div class="nf">convex/mutations.ts</div>
+              <div class="nd">Governed mutation per command + reactions.</div>
+              <span class="tag gen">convex.mutations</span>
+            </div>
+            <div class="node amber">
+              <div class="nf">convex/crons.ts · http.ts · sagas.ts</div>
+              <div class="nd">Schedules · webhooks · saga orchestrators.</div>
+              <span class="tag gen">orchestration</span>
+            </div>
+          </div>
+          <div>
+            <div class="col-label">③ Platform derives</div>
+            <div class="node violet">
+              <div class="nf">convex/_generated/*</div>
+              <div class="nd"><code>npx convex dev</code> typed <code>api</code>.</div>
+              <span class="tag">convex cli</span>
+            </div>
+            <div class="node violet">
+              <div class="nf">Convex backend</div>
+              <div class="nd">Reactive DB · cron runner · HTTP actions.</div>
+              <span class="tag">platform</span>
+            </div>
+            <div class="node rose">
+              <div class="nf">UI build</div>
+              <div class="nd">Bundles Convex React client against generated API.</div>
+              <span class="tag">app</span>
+            </div>
+          </div>
+          <div class="flow-note">
+            One config drives compile (src→IR) and generate (IR→all six surfaces).
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section id="s06">
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">06</span>
+          <h2>Config that wires Convex</h2>
+        </div>
+        <div class="code" style="margin-top: 28px">
+          <div class="bar">
+            <span class="dot"></span><span class="fname">manifest.config.ts</span
+            ><span class="badge hand">you write this</span>
+          </div>
+          <pre><span class="k">import</span> type { ManifestConfig } <span class="k">from</span> <span class="s">'@angriff36/manifest'</span>
+
+<span class="k">const</span> config<span class="t">: ManifestConfig</span> = {
+  <span class="a">src</span>: <span class="s">'src/**/*.manifest'</span>,
+  <span class="a">output</span>: <span class="s">'ir/'</span>,
+  <span class="a">projections</span>: {
+    <span class="t">convex</span>: {
+      <span class="a">output</span>: <span class="s">'convex/'</span>,
+      <span class="a">options</span>: {
+        <span class="a">referenceMode</span>: <span class="s">'convexId'</span>,
+        <span class="a">authContextImport</span>: <span class="s">'./lib/authContext'</span>,
+        <span class="a">policyMode</span>: <span class="s">'enforce'</span>,
+        <span class="a">includeTenantFilter</span>: <span class="k">true</span>,
+        <span class="a">includeSoftDeleteFilter</span>: <span class="k">true</span>,
+        <span class="a">emitEventsTable</span>: <span class="k">true</span>,
+      }
+    }
+  }
+}
+<span class="k">export default</span> config</pre>
+        </div>
+        <div class="note">
+          <b>Stores</b>
+          Only <code>durable</code> / <code>postgres</code> / <code>supabase</code> entities become
+          Convex tables. <code>memory</code> / <code>localStorage</code> are skipped — change the
+          store target if the entity must persist in Convex.
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 -->
+    <section id="s07">
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">07</span>
+          <h2>Frontend consumption rules</h2>
+        </div>
+        <p class="sec-sub">
+          Manifest owns the backend contract. The UI consumes generated Convex functions. Prefer
+          <strong>Convex React hooks</strong> (<code>useQuery</code> / <code>useMutation</code>)
+          against <code>api</code> from <code>convex/_generated/api</code>. The separate TanStack
+          Query projection targets HTTP/Next stacks — not the primary Convex path.
+        </p>
+        <table class="cap" style="margin-top: 28px">
+          <thead>
+            <tr>
+              <th>UI need</th>
+              <th>Map to</th>
+              <th>Do not</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Entity list / detail</td>
+              <td class="m">useQuery(api.queries.listX) / getX</td>
+              <td>Raw db access or ad-hoc REST</td>
+            </tr>
+            <tr>
+              <td>Filtered list by FK/index</td>
+              <td class="m">useQuery(api.queries.listXByY, { y })</td>
+              <td>Client-side full-table filter as the source of truth</td>
+            </tr>
+            <tr>
+              <td>Create / update / domain action</td>
+              <td class="m">useMutation(api.mutations.Entity_command)</td>
+              <td>Patch documents from the client; invent parallel APIs</td>
+            </tr>
+            <tr>
+              <td>Form fields</td>
+              <td>Command <code>parameters</code> (+ required props on create)</td>
+              <td>Ask users for tenantId / auth ids / auto timestamps</td>
+            </tr>
+            <tr>
+              <td>Buttons enabled/disabled</td>
+              <td>Reflect guards/policies in UX copy; still enforce on server</td>
+              <td>Treat UI checks as security</td>
+            </tr>
+            <tr>
+              <td>Permissions / hide actions</td>
+              <td>Role from auth context; policies already gate mutations</td>
+              <td>Re-implement policy expressions in React</td>
+            </tr>
+            <tr>
+              <td>Derived totals / labels</td>
+              <td>Manifest <code>computed</code> (display via query fields you store, or client calc)</td>
+              <td>Persist computeds as columns (projection forbids it)</td>
+            </tr>
+            <tr>
+              <td>Follow-up writes after a command</td>
+              <td><code>reaction</code> in .manifest</td>
+              <td><code>useEffect</code> chaining mutations as business logic</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="code" style="margin-top: 28px">
+          <div class="bar">
+            <span class="dot"></span><span class="fname">app/orders/page.tsx</span
+            ><span class="badge hand">UI pattern</span>
+          </div>
+          <pre><span class="k">import</span> { useQuery, useMutation } <span class="k">from</span> <span class="s">'convex/react'</span>
+<span class="k">import</span> { api } <span class="k">from</span> <span class="s">'../convex/_generated/api'</span>
+
+<span class="k">export function</span> <span class="t">OrdersPage</span>() {
+  <span class="k">const</span> orders = useQuery(api.queries.listOrder)
+  <span class="k">const</span> process = useMutation(api.mutations.Order_process)
+
+  <span class="k">return</span> (
+    &lt;ul&gt;
+      {orders?.map((o) =&gt; (
+        &lt;li key={o._id}&gt;
+          {o.status}
+          &lt;button onClick={() =&gt; process({ docId: o._id })}&gt;Process&lt;/button&gt;
+        &lt;/li&gt;
+      ))}
+    &lt;/ul&gt;
+  )
+}</pre>
+        </div>
+        <div class="note">
+          <b>Custom UI logic belongs</b>
+          Layout, navigation, empty states, optimistic UX, third-party widgets (payments, maps),
+          analytics beacons. It does <em>not</em> belong in: authorization, invariants, cascades,
+          cron, webhook verification, or status machines — those are Manifest.
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 -->
+    <section id="s08">
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">08</span>
+          <h2>Auth &amp; tenant rules</h2>
+        </div>
+        <p class="sec-sub">
+          Real Convex only exposes <code>ctx.auth.getUserIdentity()</code>. Generated code must not
+          read a fake <code>(ctx as any).auth</code> bag in production.
+        </p>
+        <div class="note" style="margin-top: 24px">
+          <b>Required glue</b>
+          Set <code>authContextImport: './lib/authContext'</code>. Export
+          <code>getAuthContext(ctx)</code> returning at least <code>role</code> and the tenant
+          property. Handle identity-less system calls (crons, webhooks, sagas) explicitly — they
+          invoke the same governed mutations.
+        </div>
+        <ul class="forbid" style="margin-top: 18px; color: var(--paper-dim)">
+          <li>Tenant id is <strong>server-derived</strong> on create — never a client argument.</li>
+          <li>
+            Cross-tenant instance writes throw the same “not found” as missing docs (no existence
+            oracle).
+          </li>
+          <li>
+            Queries fail closed: no auth → no rows (when tenant filter is on and the entity declares
+            the column).
+          </li>
+          <li>
+            <code>policyMode: 'skip'</code> is for local demos only — never ship it.
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 09 -->
+    <section id="s09">
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">09</span>
+          <h2>Agent workflow (setup → loop → CI)</h2>
+        </div>
+        <div class="phases" style="margin-top: 28px">
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">Bootstrap</div>
+              <div class="wfreq">once</div>
+            </div>
+            <div class="body">
+              <span class="cmd">create manifest.config.ts</span>
+              <p>
+                Add <code>src/**/*.manifest</code> (or project convention), IR
+                <code>output</code>, and <code>projections.convex</code> with
+                <code>authContextImport</code>. Create <code>convex/lib/authContext.ts</code>.
+              </p>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">Author</div>
+              <div class="wfreq">domain</div>
+            </div>
+            <div class="body">
+              <span class="cmd">write *.manifest</span>
+              <p>
+                Entities, commands, events, reactions, stores (durable path), schedules/webhooks/sagas
+                as needed. Prefer reactions over <code>compose</code>. Prefer projections over
+                <code>expose</code>.
+              </p>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">Compile</div>
+              <div class="wfreq">step 1</div>
+            </div>
+            <div class="body">
+              <span class="cmd">manifest compile <span class="fl">--all</span></span>
+              <p>Merged IR to <code>config.output</code>. Fix error diagnostics before generating.</p>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">Generate</div>
+              <div class="wfreq">step 2</div>
+            </div>
+            <div class="body">
+              <span class="cmd">manifest generate <span class="fl">--all</span></span>
+              <p>
+                Emits all six Convex surfaces. Resolve any
+                <code>CONVEX_UNRESOLVED_*</code> by simplifying expressions or fixing IR — never by
+                editing generated files.
+              </p>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">Convex</div>
+              <div class="wfreq">platform</div>
+            </div>
+            <div class="body">
+              <span class="cmd">npx convex dev</span>
+              <p>Types <code>_generated/api</code> and pushes functions. Then build UI against <code>api</code>.</p>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">Inner loop</div>
+              <div class="wfreq">on change</div>
+            </div>
+            <div class="body">
+              <span class="cmd">manifest watch <span class="fl">--all</span></span>
+              <p>
+                Or: edit <code>.manifest</code> → compile → generate → convex dev hot-reload. Commit
+                regenerated artifacts with the source change when the host repo requires it.
+              </p>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">CI</div>
+              <div class="wfreq">drift gate</div>
+            </div>
+            <div class="body">
+              <span class="cmd">manifest generate <span class="fl">--all --check</span></span>
+              <p>Fail the build if committed Convex artifacts don't match a fresh generate.</p>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="when">
+              <div class="wlabel">Ship</div>
+              <div class="wfreq">deploy</div>
+            </div>
+            <div class="body">
+              <span class="cmd">npx convex deploy</span>
+              <p>Plus the frontend deploy. Ordering: compile → generate → convex deploy → app build.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section id="s10">
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">10</span>
+          <h2>Limitations matrix</h2>
+        </div>
+        <p class="sec-sub">
+          Assume nothing in Manifest syntax “just works” on Convex until it appears as
+          <span class="st full">full</span> or documented <span class="st part">partial</span> above.
+        </p>
+        <table class="cap" style="margin-top: 22px">
+          <thead>
+            <tr>
+              <th>Bucket</th>
+              <th>Items</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="st full">Supported</span></td>
+              <td>
+                Entities/properties/relationships · commands with guards/constraints/policies ·
+                events/emits · reactions · schedules → crons · webhooks → http · tenant-scoped
+                reads/writes · roles/checkRole · events table · fan-out / aggregate-count reaction
+                params (when indexed)
+              </td>
+            </tr>
+            <tr>
+              <td><span class="st part">Partial</span></td>
+              <td>
+                Computeds (no columns; usable in some emit/reaction exprs) · sagas (shared
+                <code>input</code> only) · referential actions (diagnostic only) · memory stores
+                (skipped)
+              </td>
+            </tr>
+            <tr>
+              <td><span class="st ign">Ignored (parse-only)</span></td>
+              <td><code>compose</code>/<code>connect</code> · <code>expose</code> · <code>flow</code> · <code>effect</code></td>
+            </tr>
+            <tr>
+              <td><span class="st none">Not in Convex projection</span></td>
+              <td>
+                approval / retry / rateLimit / transition surfaces · live RuntimeEngine adapters
+                (outbox/EventBus as Node packages) · Prisma-style migrations · TanStack hooks as the
+                Convex default client
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="note" style="margin-top: 22px">
+          <b>Unresolved expressions</b>
+          Anything the Convex expression renderer cannot map emits
+          <code>CONVEX_UNRESOLVED_{POLICY,GUARD,CONSTRAINT,…}</code> <em>and</em> a denying throw —
+          never a silent pass. Fix the .manifest; don't weaken the generated throw.
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 -->
+    <section id="s11">
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">11</span>
+          <h2>Forbidden manual patterns</h2>
+        </div>
+        <ul class="forbid" style="margin-top: 20px">
+          <li>Editing <code>convex/schema.ts</code>, <code>mutations.ts</code>, <code>queries.ts</code>, <code>crons.ts</code>, <code>http.ts</code>, or <code>sagas.ts</code> by hand.</li>
+          <li>Writing a Convex mutation that re-implements a Manifest command.</li>
+          <li>Adding a cron/webhook/event handler that duplicates <code>schedule</code> / <code>webhook</code> / <code>reaction</code>.</li>
+          <li>Client-supplied <code>tenantId</code> / auth user ids on create forms.</li>
+          <li>Bypassing generated mutations to <code>ctx.db.patch</code> from a custom action for domain writes.</li>
+          <li>Using <code>compose</code>/<code>expose</code> as if they executed — they don't.</li>
+          <li>Shipping with <code>policyMode: 'skip'</code>.</li>
+          <li>Saying “Manifest probably doesn't support X” without checking the matrix / skill catalog first.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 12 -->
+    <section id="s12">
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">12</span>
+          <h2>Runtime path (Convex mutation turn)</h2>
+        </div>
+        <div class="seq" style="margin-top: 22px">
+          <div class="step">
+            <div class="num"></div>
+            <div>
+              <div class="st">UI → useMutation(api.mutations.Entity_cmd)</div>
+              <div class="sd">One generated mutation per IR command.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num"></div>
+            <div>
+              <div class="st">getAuthContext(ctx)</div>
+              <div class="sd">Role + tenant; system callers for cron/http/saga.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num"></div>
+            <div>
+              <div class="st">policies → guards → constraints</div>
+              <div class="sd">Fail closed; halt on first falsey guard.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num"></div>
+            <div>
+              <div class="st">insert / patch</div>
+              <div class="sd">Against tables from the same IR schema.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num"></div>
+            <div>
+              <div class="st">event row + reactions</div>
+              <div class="sd">Cascades in declaration order; tenant threaded on creates when needed.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num"></div>
+            <div>
+              <div class="st">Queries stay lean</div>
+              <div class="sd">Reactive reads with tenant/soft-delete filters — not the full policy gate.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 13 -->
+    <section id="s13">
+      <div class="wrap rev">
+        <div class="sec-head">
+          <span class="sec-num">13</span>
+          <h2>Capability checklist (before claiming “done”)</h2>
+        </div>
+        <div class="checklist" style="margin-top: 24px">
+          <label><input type="checkbox" /> Domain behavior lives in <code>.manifest</code> (commands/guards/policies/reactions), not in custom Convex mutations.</label>
+          <label><input type="checkbox" /> Every persisted entity uses durable/postgres/supabase store (not memory) if it must appear in Convex.</label>
+          <label><input type="checkbox" /> Cascades use <code>on Event run …</code> — no hand event handlers; no reliance on <code>compose</code>.</label>
+          <label><input type="checkbox" /> Schedules/webhooks declared natively and emitted to crons/http — no duplicate platform wiring.</label>
+          <label><input type="checkbox" /> <code>authContextImport</code> implemented; <code>policyMode: 'enforce'</code> for non-demo.</label>
+          <label><input type="checkbox" /> UI uses generated <code>api.queries</code> / <code>api.mutations</code> only for domain I/O.</label>
+          <label><input type="checkbox" /> Forms never ask for tenant/auth/auto timestamp fields.</label>
+          <label><input type="checkbox" /> <code>manifest generate --all --check</code> is green in CI.</label>
+          <label><input type="checkbox" /> Known partials (saga args, computeds-as-columns, approvals-on-Convex) are not silently assumed complete.</label>
+        </div>
+        <div class="note" style="margin-top: 28px">
+          <b>Companion docs</b>
+          Language catalog: Manifest skill / <code>docs/spec/semantics.md</code> · Projection
+          internals: <code>src/manifest/projections/convex/README.md</code> · Prisma+Next sibling:
+          <a href="./projection-wiring.html">projection-wiring.html</a> · Capsule product
+          requirements: host-repo PRD (not this file).
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="wrap">
+        <div class="big">
+          Change the <span style="color: var(--amber)">.manifest</span> → recompile → regenerate.
+          Never the other way.
+        </div>
+        <div>
+          Agent build-spec for Manifest on Convex. Order:
+          <span style="color: var(--cyan-br)"
+            >compile → generate → convex dev/deploy → UI</span
+          >.
+          If you need a construct, check the matrix before writing TypeScript.
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      const io = new IntersectionObserver(
+        (es) => {
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add('in');
+              io.unobserve(e.target);
+            }
+          });
+        },
+        { threshold: 0.12 },
+      );
+      document.querySelectorAll('.rev').forEach((el) => io.observe(el));
+    </script>
+  </body>
+</html>
+
+  </body>
+</html>

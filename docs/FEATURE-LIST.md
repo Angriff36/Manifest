@@ -2,6 +2,12 @@
 
 > Auto-generated from `.automaker/features/*/feature.json` on 2026-06-02.
 > **Shipped (v1.8.0): 27** | **Implemented, unreleased: 76** | **No summary: 13** | **Total: 116**
+>
+> **Note (2026-07-14):** this is a historical roadmap snapshot; its status labels
+> are NOT verified (a prior audit found 16/116 ".automaker verified" features
+> phantom). For the current, evidence-verified capability list see
+> **[docs/CONFIRMED-FEATURES.md](CONFIRMED-FEATURES.md)** (verified against
+> main @ v3.5.0).
 
 ---
 
@@ -37,7 +43,9 @@ New primitive types, entity inheritance/generics, rate limiting, scheduling, and
 
 16 projection targets (OpenAPI, Zod, React Query, Flutter, Python, Terraform, etc.) and multi-language SDK generation.
 
-**16 features:**
+**Note (2026-07-14):** This roadmap snapshot is dated 2026-06-02 and is incomplete for later-shipped projections. **Convex** (`convex-projection` — surfaces `convex.schema` / `queries` / `mutations` / `crons` / `http` / `sagas`) ships in-tree today; see `src/manifest/projections/convex/README.md` and the agent build-spec `docs/convex-projection-wiring.html` (language model, capability matrix, frontend rules, limitations, workflow — not only the compiler pipeline). Also shipped but easy to miss when reading only this list: Next.js + Prisma projection wiring (`docs/projection-wiring.html`), Express/Fastify, GraphQL stubs, and the language constructs (reactions, webhooks, schedules, sagas, approvals, outbox, EventBus) documented in the summaries below.
+
+**16 features (original list):**
 
 - **OpenAPI 3.1 Specification Projection** (`openapi-projection`)
 - **JSON Schema Projection from IR Entities** (`json-schema-projection`)
