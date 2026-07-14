@@ -4,6 +4,69 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.0] - 2026-07-14
+
+Platform-SDK wave for Builder (roadmap M13) plus Convex generated-code
+correctness and security fixes. No IR or grammar changes.
+
+### Added
+
+- `@angriff36/manifest/language-metadata` — new stable subpath exporting
+  `getLanguageMetadata()`: keywords/operators derived from the lexer,
+  property modifiers from the shared (frozen) `PROPERTY_MODIFIERS` registry,
+  builtin names from a live `RuntimeEngine.getBuiltins()`, date/time
+  primitives from `date-time.ts`, categorized top-level / command-action
+  constructs, and the contextual identifiers (value, role, schedule,
+  external, mixin, retry, rateLimit, cron, masked, unmask, realtime,
+  policies, count, method, interval, every, stage, step, compensate,
+  on_failure, on_timeout). Derive-only — no hand-maintained second
+  registry; a drift test pins the lists to the parser source.
+- Projection capabilities API — `getProjectionCapabilities(name)` on the
+  projections registry plus optional `ProjectionTarget.capabilities`
+  (`feature` + `supported`/`partial`/`unsupported` + `note`). The Convex
+  projection declares its full matrix; projections without a declared matrix
+  return `undefined` (undeclared ≠ unsupported).
+- SDK stability declaration — `docs/spec/sdk-stability.md` lists the
+  subpaths that are stable for Builder/platform consumers; breaking one now
+  requires a major version and a **Breaking** changelog entry.
+- Spec: entity `behavior` blocks (and bare `on Event { ... }` inside an
+  entity) are now specified as MUST-reject in `docs/spec/semantics.md`.
+  The compiler emits a hard error (conformance fixture 110) instead of
+  silently dropping them. Use top-level reactions or command actions.
+
+### Fixed
+
+- **Convex — constraint `failWhen` polarity (correctness):** generated
+  mutations rendered every constraint as `if (!(expr)) throw`, reversing
+  fail-on-truthy (`failWhen`) constraints. Gated constraints now render
+  `if (expr) throw`, matching runtime semantics.
+- **Convex — read-policy lockdown (security):** entities gated by
+  `read`/`all` policies previously generated publicly callable queries with
+  no policy checks. Gated entities now emit `internalQuery` (fail-closed,
+  not client-callable); a global read/`all` policy locks down every entity,
+  and any read/`all` policy also locks the events-table queries. Policy
+  expressions are still not evaluated in queries — the new
+  `CONVEX_UNSUPPORTED_READ_POLICY` diagnostic points at the
+  policy-enforcing-wrapper pattern. Programs without read/`all` policies
+  are byte-identical.
+- WASM-compatible expression evaluator: constraint polarity aligned with
+  RuntimeEngine `failWhen`/severity via shared `constraint-polarity.ts`
+  (parity matrix tests) — never name heuristics.
+- `RuntimeEngine.getBuiltins()` is now public so language metadata and
+  Builder can introspect the live builtin registry (core names still win
+  collisions with plugins).
+
+### Changed
+
+- Convex capability documentation is now honest and structured: webhook
+  `httpAction`s do NOT verify HMAC signatures (declared partial), state
+  transitions ARE enforced in generated mutations (was wrongly listed as
+  not projected), and `CAPABILITIES.md` gained the structured matrix
+  counterpart used by the capabilities API.
+- New agent build-spec for the Convex projection at
+  `docs/convex-projection-wiring.html`; `docs/CONFIRMED-FEATURES.md` is the
+  verified capability inventory (release-status aware).
+
 ## [3.5.0] - 2026-07-14
 
 Convex projection semantics-preservation wave: generated Convex apps now
