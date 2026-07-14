@@ -1,5 +1,48 @@
 # `enforce-surface` CLI Guard Implementation Plan
 
+> **Status update (2026-07-14):** IMPLEMENTED — shipped on `main` via branches
+> `feat/enforce-surface-cli-guard` and `fix/enforce-surface-followups` (both
+> merged). Core commits: `0be081c` (orchestrator), `e9b2ccb` (fix: resolve
+> registry paths against cwd before detector dispatch), `ff10847` (fix:
+> honor `--include`/`--exclude`, scan `.js`/`.jsx`), `d3fd0b6` (feat:
+> configurable `--write-receiver` for direct-write detectors, ticket U13).
+> Checkboxes below were never ticked during execution; this pass ticks the
+> ones verified against the current `main` tree and marks the rest.
+>
+> **Deviations from plan (verified 2026-07-14):**
+> - The "File Structure" section below promises standalone
+>   `packages/cli/src/audit/registry-loader.ts` and `runtime-calls.ts`
+>   files. They were never created — `loadCommandSet` and
+>   `extractRunCommandCalls` live inline in
+>   `packages/cli/src/audit/unregistered-command-call.ts`, exactly as the
+>   plan's own Task 2–4 code samples show. The top-level file list was
+>   internally inconsistent with the plan's detailed steps; the steps won.
+> - `docs/tools/CLI_REFERENCE.md` (the path named in Task 10) does not
+>   exist. The CLI reference lives at
+>   `docs/internal/tools/CLI_REFERENCE.md` (documented, see `manifest
+>   enforce-surface` section) and a shorter entry was also added to
+>   `docs/reference/cli.md`.
+> - `newguard.json`, the plan's cited spec-of-truth at repo root, was never
+>   committed to git (`git log --all -- newguard.json` returns nothing) —
+>   it was a local/ephemeral spec file, not a tracked artifact. Nothing to
+>   reconcile; noted for anyone chasing that path.
+> - A follow-up flag not in the original spec was added:
+>   `--write-receiver <name>` (default `prisma`), letting
+>   `direct-writes`/`unregistered-entity-write` target non-Prisma ORM
+>   client identifiers (ticket U13, commit `d3fd0b6`).
+> - An additional test file exists beyond the plan's list:
+>   `packages/cli/src/commands/enforce-surface.cli.test.ts` (added in
+>   commit `8591fea`, CLI-flag-level tests distinct from the
+>   orchestrator-level `enforce-surface.test.ts`).
+> - All three new detectors (`unregistered-command-call`,
+>   `unregistered-entity-write`, `existing-command-available`) exist with
+>   matching filenames and are composed in
+>   `packages/cli/src/commands/enforce-surface.ts` alongside the four
+>   reused detectors (`direct-writes`, `event-fabrication`, `route-drift`,
+>   `bypass-violations`), matching the plan's architecture section exactly.
+> - `enforce-surface` is registered in `packages/cli/src/index.ts` with all
+>   8 planned flags plus `--write-receiver`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a CI-safe Manifest CLI command `enforce-surface` that fails when application code deviates from the compiled Manifest command registry — stopping agents/contributors from inventing duplicate or bypass write paths when a registered Manifest command already exists.
@@ -16,10 +59,11 @@
 
 **Created:**
 
-- `packages/cli/src/audit/registry-loader.ts` — shared `loadCommandSet` / `loadEntitySet` (extracted to avoid cross-detector coupling)
-- `packages/cli/src/audit/registry-loader.test.ts`
-- `packages/cli/src/audit/runtime-calls.ts` — shared `extractRunCommandCalls` AST helper
-- `packages/cli/src/audit/runtime-calls.test.ts`
+- ~~`packages/cli/src/audit/registry-loader.ts` — shared `loadCommandSet` / `loadEntitySet` (extracted to avoid cross-detector coupling)~~
+- ~~`packages/cli/src/audit/registry-loader.test.ts`~~
+- ~~`packages/cli/src/audit/runtime-calls.ts` — shared `extractRunCommandCalls` AST helper~~
+- ~~`packages/cli/src/audit/runtime-calls.test.ts`~~
+  > **Correction (2026-07-14):** these four files were never created. `loadCommandSet` and `extractRunCommandCalls` live inline in `packages/cli/src/audit/unregistered-command-call.ts` (verified on `main`), matching the plan's own Task 2–4 steps rather than this file list.
 - `packages/cli/src/audit/unregistered-command-call.ts` — detector for `runtime.runCommand("entity.command", …)` calls absent from registry
 - `packages/cli/src/audit/unregistered-command-call.test.ts`
 - `packages/cli/src/audit/unregistered-entity-write.ts` — flags ORM writes to models that look governed but have no entry in `entities.json`
@@ -99,6 +143,18 @@ JSON shape (see `output_contract.json` in spec):
 Text: summary counts by finding type, then one line per finding `<severity> <code> <file>:<line> <message> — <suggestion>`.
 
 ---
+
+> **Task 1–9 status (2026-07-14):** verified implemented on `main` — types
+> extended (`packages/cli/src/audit/types.ts`), all three new detectors
+> exist with tests (`unregistered-command-call.ts`/`.test.ts`,
+> `unregistered-entity-write.ts`/`.test.ts`,
+> `existing-command-available.ts`/`.test.ts`), orchestrator exists
+> (`packages/cli/src/commands/enforce-surface.ts` +
+> `enforce-surface.test.ts` + `enforce-surface.cli.test.ts`), and the
+> command is registered in `packages/cli/src/index.ts`. Individual
+> sub-step checkboxes below were not ticked during execution and are left
+> unchecked rather than back-filled step-by-step; the artifacts they
+> describe are confirmed present.
 
 ## Task 1: Extend `AuditFinding` + `DetectorContext` shapes
 
@@ -1458,6 +1514,8 @@ git commit -m "[feat] register enforce-surface in CLI"
 
 ---
 
+> **Verified 2026-07-14:** `packages/cli/src/commands/enforce-surface.sample-app.test.ts` exists on `main`.
+
 ## Task 9: Sample-app integration test
 
 **Files:**
@@ -1519,7 +1577,8 @@ git commit -m "[test] add sample-app integration test for enforce-surface"
 
 **Files:**
 
-- Modify: `docs/tools/CLI_REFERENCE.md`
+- ~~Modify: `docs/tools/CLI_REFERENCE.md`~~
+  > **Correction (2026-07-14):** that path does not exist in this repo. The actual reference lives at `docs/internal/tools/CLI_REFERENCE.md` (has a full `manifest enforce-surface` section — synopsis, flags, finding codes, CI usage, agent workflow guidance, example text/JSON output) with a shorter mirror entry in `docs/reference/cli.md`. Both are documented as of `main`.
 
 - [ ] **Step 1: Append `enforce-surface` section**
 
@@ -1594,6 +1653,7 @@ Write a summary that includes:
 7. Limitations:
    - Semantic duplicate detection (`existing-command-available`) relies on a name-token multiset heuristic; ambiguous names (e.g., `update`) or fully dynamic command names will not be caught
    - Direct-write detection inherits the regex pattern from `direct-writes.ts` (Prisma-shaped); non-Prisma ORMs (Drizzle, Kysely) require detector extensions
+     > **Partial follow-up (2026-07-14, commit `d3fd0b6`, ticket U13):** `--write-receiver <name>` (see `packages/cli/src/audit/write-receiver.ts`) makes the *identifier* configurable — e.g. point the same `<receiver>.model.create(...)` pattern at `db` instead of `prisma`. It does not add support for structurally different query-builder call shapes (Drizzle's `db.insert(table).values(...)`, Kysely's `.insertInto(...).values(...)`), so this limitation still stands for those ORMs.
    - The detector does not parse SQL string literals — raw SQL inserts in template literals are not yet flagged; a follow-up plan should add a SQL-write detector
 
 ---
@@ -1614,8 +1674,14 @@ Every task above follows: **red test → minimal code → green test → commit*
 ## Spec contract checklist (verify before declaring done)
 
 - [ ] All 10 `tests_required` fixtures from `newguard.json` covered by tests in this plan
-- [ ] All 7 finding types from `newguard.json.finding_types` emit at the spec-defined `code` string
-- [ ] All 8 `options` flags wired in CLI registration
-- [ ] JSON output matches `output_contract.json` shape exactly (ok, root, registry, summary.byCode, findings[])
-- [ ] Strict mode exits 1 on errors; non-strict exits 0 even with findings
-- [ ] Documentation updated per `docs_required`
+  > **Unverifiable (2026-07-14):** `newguard.json` was never committed to git and no longer exists anywhere in this repo or its history — cannot check individual fixtures against it. Test coverage on `main` is broad (unit tests per detector + orchestrator tests + CLI-flag tests + sample-app integration test), but a fixture-by-fixture match to the original spec can't be confirmed.
+- [x] All 7 finding types from `newguard.json.finding_types` emit at the spec-defined `code` string
+  > **Verified (2026-07-14):** `packages/cli/src/commands/enforce-surface.ts` `CODE_MAP` emits `UNREGISTERED_COMMAND_CALL`, `DIRECT_WRITE_BYPASS`, `EXISTING_COMMAND_AVAILABLE`, `ROUTE_SURFACE_DRIFT`, `UNREGISTERED_ENTITY_WRITE`, `EVENT_FABRICATION`, `APPROVED_BYPASS_REQUIRED` (plus `DYNAMIC_COMMAND_UNVERIFIABLE`), matching the plan's Code-mapping Contract table.
+- [x] All 8 `options` flags wired in CLI registration
+  > **Verified (2026-07-14):** `packages/cli/src/index.ts` registers `--root`, `--commands-registry`, `--entities-registry`, `--bypass-registry`, `--format`, `--strict`, `--include`, `--exclude`, plus the follow-up `--write-receiver`.
+- [x] JSON output matches `output_contract.json` shape exactly (ok, root, registry, summary.byCode, findings[])
+  > **Verified (2026-07-14):** `EnforceSurfaceResult` in `enforce-surface.ts` matches this shape.
+- [x] Strict mode exits 1 on errors; non-strict exits 0 even with findings
+  > **Verified (2026-07-14):** `enforce-surface.ts:220` — `if (options.strict && failed) process.exitCode = 1;`.
+- [x] Documentation updated per `docs_required`
+  > **Verified (2026-07-14):** see the Task 10 correction above — documented at `docs/internal/tools/CLI_REFERENCE.md` and `docs/reference/cli.md`, not the plan's originally named path.

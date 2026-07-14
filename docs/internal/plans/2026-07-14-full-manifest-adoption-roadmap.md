@@ -239,40 +239,93 @@ classifies both honestly as Unsupported-with-diagnostic
 - `IRRetry` exists (`ir.ts:262+`, command `retry?`); rate-limit has conformance fixtures (74/75). Verify the reference runtime actually enforces both (retry re-execution, limiter state) and that the capability map (M7) classifies their projection status honestly. Close or loudly-diagnose any gap found.
 
 ### M11. CLI + config leverage items
-- **M6** (native `generate --check` drift gate) — see Part 1.
-- **Config G5** (`projections.enabled` + `defaults`) — low-risk, unblocks multi-projection regen pipelines (Part 3/A9) without per-projection repetition.
-- **Config G2/G10** (`validation.failOn`, `driftGates`/`manifest ci-gate`) — makes "CI fails on semantic-loss diagnostics" first-class instead of per-consumer script logic. Danger-Zone-adjacent: policy must never weaken language semantics (a block is always a block).
-- **createManifestRuntime emission** (docs-audit native-gap #1, VERIFY still open) — the embedded-runtime import path that `nextjs` inline dispatcher mode assumes.
+**Update (2026-07-14):** Mixed — verified each sub-item individually.
+- **M6** (native `generate --check` drift gate) — see the corrected M6 entry above: it **already existed** before this doc was written, not a new item.
+- **Config G5** (`projections.enabled` + `defaults`) — **still missing**, confirmed live: `src/manifest/config.ts:25` still lists `driftGates`/`mergeIntegrity`/`provenance`/`runtime` (and by extension `projections.enabled/defaults`) as "NOT modelled here."
+- **Config G2/G10** (`validation.failOn`, `driftGates`/`manifest ci-gate`) — **still missing**, same `config.ts:25` comment confirms it.
+- **createManifestRuntime emission** (docs-audit native-gap #1) — ~~VERIFY still open~~ **partially resolved on inspection, needs the original audit re-checked**: `createManifestRuntime` IS imported and invoked by the Next.js generator (`src/manifest/projections/nextjs/generator.ts:1187,1255,1350,1435,1739,1750`) — it is not "never emitted." What the generator does NOT do is generate the runtime factory module itself at the `runtimeImportPath` target; that module is author/consumer-supplied (same author-owned-seam pattern as `authContextImport`), which may be what the original audit meant by "assumes." This doc cannot resolve the ambiguity without the 2026-07-01 audit's original repro; re-run it against current `main` before carrying this forward as an open gap.
 
 ### M13. Platform-SDK gaps for Builder (see the binding contract)
 - The Builder app (Manifest Studio) is the official Manifest control plane; the ownership contract is `docs/internal/contracts/manifest-builder-boundary.md`. Manifest-side prerequisites before ANY Builder feature growth: (a) `language-metadata` export (keywords/builtins/modifiers as data, sourced from the lexer's own tables — Builder currently hardcodes them at `builder/src/lib/completions.ts:12`); (b) structured `getProjectionCapabilities()` (capability matrices as API, not markdown); (c) a declared stable-for-Builder export subset with semver discipline.
 
 ### M12. FEATURE-LIST.md truth cleanup
+**Update (2026-07-14):** In progress, not yet committed. The working tree
+already has an uncommitted header note in `docs/FEATURE-LIST.md` (dated
+2026-07-14) marking the doc as an incomplete 2026-06-02 snapshot and
+pointing readers at the Convex projection's `README.md` and
+`docs/convex-projection-wiring.html` for what actually shipped since. That
+covers the "header warning" half of this item; the fuller ask (replace with
+a registry-generated verified inventory) remains undone.
 - `docs/FEATURE-LIST.md` is a 6,399-line 2026-06-02 automaker snapshot with known phantom entries (16/116 per the 2026-07-01 audit). Replace with (or gate behind) a *verified* feature inventory — ideally generated from the registries the code already has (projection registry, CLI command table, conformance fixture list) so it cannot rot. Until then, add a header warning pointing at the verified inventory.
 
 ## Part 2 — App-side adoption (Capsule-V2 first; capsule-pro sources are the shared upstream)
 
 ### A1. Adopt the auth seam (depends on M1) — covered in M1 "Do".
+**Update (2026-07-14):** The dependency (M1) is now released as v3.5.0 — this
+item is unblocked. It is still **not started**: verified `C:\projects\Capsule-V2\package.json`
+still pins `@angriff36/manifest` at `3.4.25`, `scripts/patch-generated-auth.mjs`
+still exists, and no `authContextImport` reference exists under
+`C:\projects\Capsule-V2\scripts\`.
 
 ### A2. Replace hand-rolled timer/expiry logic with `schedule` declarations
+**Update (2026-07-14):** Re-verified directly against `C:\projects\Capsule-V2\manifest\source`
+— genuinely zero `schedule` declarations (a naive grep for the substring
+"schedule " hits ~15 false positives, all English words in guard/constraint
+messages like "Can only schedule delivery..."; none are the `schedule`
+keyword). `convex/crons.ts` is 10 lines (stub/empty). Claim confirmed
+accurate, still open.
 - Sources declare **zero** schedules; `convex/crons.ts` generates empty. Candidates (search sources for status-expiry/overdue patterns): dunning escalation (collections), certification expiry, cycle-count cadences, prep-list generation. One pilot: pick ONE (e.g. overdue-invoice flagging), declare `schedule` on the command, regen, verify `crons.ts` emits `crons.cron(...)` wiring to the mutation. NOTE: generated mutations run under system identity — `getAuthContext` must return a system context for scheduler calls (already required by the seam contract).
 
 ### A3. Inbound integrations as `webhook` declarations
+**Update (2026-07-14):** Re-verified — zero `webhook` declarations in
+Capsule-V2 sources, `convex/http.ts` is 11 lines (stub/empty). Claim
+confirmed accurate, still open. The signature-verification gap this item
+flags is now formally documented in Manifest core's own capability map:
+`CAPABILITIES.md` lists "Webhook `signature`" as **Partial** —
+"httpAction does not verify HMAC" / `CONVEX_UNSUPPORTED_WEBHOOK_SIGNATURE` —
+so if webhooks are adopted, the caveat is no longer just this doc's
+observation, it's a shipped diagnostic.
 - Sources declare zero webhooks; `convex/http.ts` generates empty. Candidates: sms-automation, email-workflow, payment-provider callbacks. Caveat (per Convex projection README): generated `httpAction`s do NOT verify `IRWebhook.signature` or enforce `idempotencyHeader` — either fix that in Manifest first (add to Part 1 if pursued) or front with a verifying edge.
 
 ### A4. Grow reactions / fan-out / aggregates where V2 slices need cascades
 - Currently 10 reactions, 1 fanOut, 2 `count()` aggregates. As PARITY.md slices land (Kitchen production, Inventory, Procurement), express cross-entity cascades as `on Event run Command` (+ `fanOut` for 1:N) instead of UI-side chaining. The generated mutations already render reactions via `ctx.runMutation` with governance intact.
 
 ### A5. Approvals: evaluate native constructs before building approval UI
+**Update (2026-07-14):** The "unverified — check before committing" flag is
+now resolved by Manifest core's own shipped capability map: `CAPABILITIES.md`
+lists **Approvals** under **Unsupported (diagnostic always emitted when
+declared)** — `CONVEX_UNSUPPORTED_APPROVAL`. The Convex projection does not
+render approval stages. Per this item's own guidance, that settles it: stay
+with the hand-rolled FSM pattern (M2's transition enforcement now covers it)
+rather than adopting `approvalStore`/`approveStage`, unless someone builds
+Convex projection support for approvals first (not currently planned/tracked
+in Part 1).
 - Approvals today are hand-rolled status strings + transitions. Runtime has `approvalStore`/`approveStage` (shipped v2.1.0-era; **Convex projection support unverified — check before committing**). If the projection doesn't render approval stages, either stay with the FSM pattern (it works, and M2 will enforce it) or add projection support upstream first. Do not half-adopt.
 
 ### A6. Delete dead Studio artifacts in Capsule-V2
+**Update (2026-07-14):** Re-verified — all four files still present in
+`C:\projects\Capsule-V2`: `src/generated/manifest-wiring-bindings.ts`,
+`src/generated/manifest-wiring-contract.json`,
+`src/hooks/manifest-hooks.ts`, `src/providers/manifest-query-provider.tsx`.
+Not deleted; still open, still trivial.
 - `src/generated/manifest-wiring-bindings.ts`, `src/generated/manifest-wiring-contract.json`, `src/hooks/manifest-hooks.ts`, `src/providers/manifest-query-provider.tsx` — react-query/product-wiring projection output from the original download; mounted nowhere; not regenerated by `manifest:regen`. Delete (git preserves them) unless a REST dispatcher is actually planned.
 
 ### A7. Projection adoption decisions (deliberate, not drift)
+**Update (2026-07-14):** Re-verified — `C:\projects\Capsule-V2\scripts\manifest-regen.mjs`
+has no `zod`/`react-query`/`tanstack` references; the zod and TanStack
+projections are still not wired into the regen script. No decision recorded
+either way (not "deliberate, not drift" yet — genuinely undecided). Still
+open exactly as written.
 - V2 already depends on `zod` and `@tanstack/react-query` but hand-writes both layers. If the hand-written `src/lib/api.ts` seam + Biome/tsc suffice, fine — record the decision. Otherwise wire the zod projection (arg validation at the UI boundary) and/or TanStack hooks projection INTO the regen script so they're governed by the same drift gate. Never re-import them as one-off Studio downloads (that's how A6's corpses were born).
 
 ### A8. Keep capsule-pro and Capsule-V2 sources from diverging
+**Update (2026-07-14):** Re-verified — both repos have exactly 104 `.manifest`
+files under `manifest/source/`, still in sync on count. `AGENTS.md` in both
+repos has a "source of truth" table, but it documents the in-repo rule
+(`.manifest` sources are the source of truth over generated `convex/*.ts`
+within each repo) — neither says which of the two *repos* (capsule-pro vs
+Capsule-V2) is authoritative over the other. The cross-repo decision this
+item asks for is still not recorded anywhere found. Still open.
 - Today they are semantically identical (only `use`-path prefixes differ). V2 is the fork that will evolve (lowercase roles noted in its regen header). Decide the source of truth (likely: V2 forward; capsule-pro frozen as intent reference per goal.md) and record it in both repos' AGENTS.md so agents stop treating capsule-pro's copy as live.
 
 ---
@@ -287,21 +340,42 @@ Capsule-V2 consumes exactly **two** features of the whole platform: multi-module
 - **Safety tooling:** IR diff + breaking-change detector between revisions, changelog generation, command/guard coverage reporter, seed-data generator, mock server.
 - **Not applicable to a Convex-backed app** (record the decision, don't cargo-cult): reference runtime engine, store adapters (Redis/DynamoDB/Turso/event-sourcing), Express/Hono/Remix/SvelteKit/Prisma-family projections.
 
+**Update (2026-07-14) — CLI verification of the list above** (per this
+section's own "verify each against the current CLI" instruction, spot-checked
+against `packages/cli/src/commands/*.ts`): `diagram` (`manifest diagram`),
+`ir-diff.ts` + `breaking-change.ts` (IR diff / breaking-change detector),
+`changelog.ts`, `coverage.ts`, `seed.ts`/`seed-pack.ts`, `mock.ts`, and
+`docs.ts` all **exist as real CLI commands** — not phantom. A dedicated
+"policy matrix" command, an "llms.txt" export, and an MCP server for IR
+introspection were **not found** by name anywhere in `packages/cli/src/` or
+`src/manifest/projections/` (an `llm-context` projection exists but doesn't
+literally emit `llms.txt`) — those three specific claims are unverified/
+likely aspirational as named; re-check before treating them as available
+surfaces to wire into A9.
+
 **A9. Wire the interconnection surfaces into `manifest-regen.mjs`** — the "one edit updates every surface" property only exists if every consumed artifact is generated in the SAME regen script and covered by the SAME drift gate. Pilot order: zod (validation at the UI boundary) → TanStack hooks (replace hand-written `src/lib/api.ts` seam incrementally) → `manifest diagram` + docs (repo artifacts for humans/agents) → IR-diff/breaking-change check as a CI step comparing the committed `ir.json` against the previous commit's.
 
 **Ownership note (2026-07-14):** the Builder app (Manifest Studio) is the official control plane for these surfaces — binding contract at `docs/internal/contracts/manifest-builder-boundary.md`; Manifest-side prerequisites are M13.
 
-**Why adoption stalled (evidence, not blame):** the language docs are NOT the gap — `mintlify/language/` has dedicated pages for computed-properties, reactions, events, approvals, async-commands, workflows (74 .mdx pages total). Causes: (1) the capsule sources were translated from an existing codebase, largely before the orchestration constructs existed (fan-out and aggregate-count were added to Manifest in June 2026 specifically to retire capsule middleware); (2) the Convex projection silently drops computed/transitions/encrypted (M2–M4), so app agents learned they couldn't rely on declared features and hand-rolled instead — fixing M2–M4 is what makes declaring features trustworthy again; (3) only one IR consumer was ever wired into the pipeline (this Part).
+**Why adoption stalled (evidence, not blame):** the language docs are NOT the gap — `mintlify/language/` has dedicated pages for computed-properties, reactions, events, approvals, async-commands, workflows (74 .mdx pages total). Causes: (1) the capsule sources were translated from an existing codebase, largely before the orchestration constructs existed (fan-out and aggregate-count were added to Manifest in June 2026 specifically to retire capsule middleware); (2) ~~the Convex projection silently drops computed/transitions/encrypted (M2–M4), so app agents learned they couldn't rely on declared features and hand-rolled instead — fixing M2–M4 is what makes declaring features trustworthy again~~ **(2026-07-14 update: M2-M4 shipped same-day in v3.5.0 — the projection no longer silently drops these; the historical cause stands, but the fix now exists and the remaining work is Capsule-V2 adopting it, see A1)**; (3) only one IR consumer was ever wired into the pipeline (this Part).
 
 ## Sequencing
 
-1. **M1 → A1** (auth seam release + patch-script retirement) — unblocks everything, code already written.
-2. **M2** (transitions) — 280 declared rules become enforced; biggest correctness win per line of work.
-3. **M3 phase 1** (private stripping + encrypted warning) — security exposure, small diff.
-4. **M5** (small generator bugs) — cheap, removes documented workarounds.
-5. **A6** (delete dead artifacts) — trivial hygiene, any time.
-6. **M4** (computed strategy) — design doc first.
-7. **A2/A3/A4/A5/A7** — per-slice adoption as PARITY.md work proceeds.
-8. **M6** — opportunistic.
+**Update (2026-07-14):** Steps 1-4 and 6 below (M1, M2, M3 phase 1, M5
+partial, M4) shipped in Manifest core the same day this doc was written
+(commits `e30a863` and `79093ec`, released as v3.5.0). Step 8 (M6) turned
+out to already exist and needed no work. What's actually left of this
+sequence is entirely **app-side**: A1 (Capsule-V2 pin bump + regen +
+`authContextImport` adoption) is now the unblocked next action, followed by
+A6 and the per-slice items.
+
+1. ~~**M1 → A1** (auth seam release + patch-script retirement) — unblocks everything, code already written.~~ M1 done/released; **A1 still pending** (see A1 update above) — this is now the critical path.
+2. ~~**M2** (transitions) — 280 declared rules become enforced; biggest correctness win per line of work.~~ Done (v3.5.0); not yet regenerated into Capsule-V2.
+3. ~~**M3 phase 1** (private stripping + encrypted warning) — security exposure, small diff.~~ Done (v3.5.0); not yet regenerated into Capsule-V2.
+4. **M5** (small generator bugs) — substring fixed (v3.5.0); array-default and zod enum/timestamp bugs still open.
+5. **A6** (delete dead artifacts) — trivial hygiene, any time. Not verified in this pass (app-side, Capsule-V2).
+6. ~~**M4** (computed strategy) — design doc first.~~ Done (v3.5.0), design doc at `docs/internal/proposals/2026-07-14-convex-computed-properties.md`.
+7. **A2/A3/A4/A5/A7** — per-slice adoption as PARITY.md work proceeds. Not verified in this pass (app-side, Capsule-V2).
+8. ~~**M6** — opportunistic.~~ No work needed — already existed before this doc was written.
 
 **Standing rules for implementing agents:** IR is authority; spec → tests → implementation for any semantics change; conformance fixtures are executable semantics; `pnpm test` / `pnpm run typecheck` / `pnpm run lint` green before any "done"; releases only via `pnpm manifest:publish` (cut-release workflow), never by hand; verify every count/claim in this doc against the repos before acting on it.

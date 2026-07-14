@@ -1,6 +1,6 @@
 # Built-ins
 
-Last updated: 2026-06-02
+Last updated: 2026-07-14 (reserved-names count corrected; Roles builtins documented)
 Status: Active
 Authority: Binding
 Enforced by: src/manifest/conformance/**, npm test
@@ -148,6 +148,24 @@ const runtime = new RuntimeEngine(ir, context, {
 
 Evidence: conformance fixture `66-feature-flags.manifest`.
 
+### Roles
+
+_Added 2026-07-14 — these builtins were implemented but previously undocumented here._
+
+- `hasPermission(action, target?)` — `true` when the current user's role
+  (`context.user.role`) grants `action` (optionally scoped to `target`) under the
+  program's role hierarchy (including inherited permissions and deny rules).
+  Returns `false` when `action` is not a string or no user role is bound.
+- `roleAllows(roleName, action, target?)` — same check for an explicit role name
+  instead of the current user. Returns `false` when `roleName` or `action` is not
+  a string.
+
+Role-name matching is **case-sensitive**: `roleAllows("Admin", ...)` and
+`roleAllows("admin", ...)` refer to different roles.
+
+Evidence: conformance fixture `71-role-hierarchy.manifest`; implementation
+`RuntimeEngine.getBuiltins()` in runtime-engine.ts.
+
 ## Custom Expression Functions (Plugin API)
 
 Plugin authors and project configurations can register custom deterministic expression
@@ -173,13 +191,25 @@ precedence on name collision — reserved names cannot be overridden.
 
 ### Reserved Names
 
-The following 36 names are reserved and cannot be used by plugins:
+~~The following 36 names are reserved and cannot be used by plugins:
 `now`, `uuid`, `trim`, `split`, `count`, `startsWith`, `endsWith`, `replace`,
 `toUpperCase`, `toLowerCase`, `length`, `substring`, `indexOf`, `matches`, `search`,
 `abs`, `round`, `floor`, `ceil`, `min`, `max`, `between`,
 `sum`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map`,
 `year`, `month`, `day`, `hours`, `minutes`, `seconds`,
-`flag`.
+`flag`.~~
+
+> **Correction (2026-07-14):** the list above undercounted. Every core builtin in
+> `RuntimeEngine.getBuiltins()` (runtime-engine.ts) wins name collisions against
+> plugin builtins, so all **47** implemented names are reserved:
+> `now`, `uuid`, `trim`, `split`, `count`, `startsWith`, `endsWith`, `replace`,
+> `toUpperCase`, `toLowerCase`, `length`, `substring`, `indexOf`, `matches`, `search`,
+> `abs`, `round`, `floor`, `ceil`, `min`, `max`, `between`,
+> `sum`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map`,
+> `year`, `month`, `day`, `hours`, `minutes`, `seconds`,
+> `dateOf`, `timeOf`, `datetimeOf`, `addDuration`, `durationBetween`,
+> `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`,
+> `flag`, `hasPermission`, `roleAllows`.
 
 ### Example
 

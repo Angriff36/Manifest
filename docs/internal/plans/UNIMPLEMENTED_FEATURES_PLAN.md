@@ -5,6 +5,19 @@ Status: Implemented
 Authority: Advisory
 Enforced by: npm test (482 tests)
 
+**Reconciliation note (2026-07-14):** Re-verified against the repo today. Both
+features remain implemented exactly as described below — `EvaluationLimits`/
+`EvaluationBudgetExceededError` are still live in
+`src/manifest/runtime-engine.ts` (interface at line 713, class at line 698,
+budget tracking at lines 1006–1047), and the compliance matrix still carries
+both closures (`Bounded complexity` `[x] FULLY_IMPLEMENTED`; `Workflow replay
+engine` `OUT_OF_SCOPE`). The only stale detail: every `docs/COMPLIANCE_MATRIX.md`
+path reference below (§ "Implementation Summary", § "Recommendations", the
+Feature 2 "Steps to Formally Close" table, § 9) moved during the 2026-07 docs
+reorg — the file now lives at ~~`docs/COMPLIANCE_MATRIX.md`~~
+`docs/internal/COMPLIANCE_MATRIX.md`. No other content in this plan is wrong;
+it is left as-is as an accurate historical record of a closed plan.
+
 This plan addresses the two NOT_IMPLEMENTED items from `docs/COMPLIANCE_MATRIX.md` § "Implementation Summary":
 
 1. **Bounded complexity limits** — ~~No expression depth or step-count limits enforced~~ **IMPLEMENTED**
