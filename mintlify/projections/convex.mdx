@@ -92,13 +92,25 @@ The options object is `ConvexProjectionOptions` in `convex/options.ts`, normaliz
 | `includeSoftDeleteFilter` | `boolean`                                          | `true`                                          | Exclude soft-deleted rows from generated reads. Field-aware.                                                                                                              |
 | `tenantIdProperty`        | `string`                                           | IR `tenant.property`                            | Override the tenant property name used for read scoping.                                                                                                                  |
 | `deletedAtProperty`       | `string`                                           | `"deletedAt"`                                   | Soft-delete property name; a read drops rows whose value is non-null.                                                                                                     |
+| `authContextImport`       | `string`                                           | unset                                           | Module specifier of an author-owned auth-context module — see [Auth context seam](#auth-context-seam).                                                                    |
+
+### Auth context seam (`authContextImport`)
+
+By default (unset), generated functions read identity from an inline `(ctx as any).auth` bag — a shape the real Convex runtime **never populates** (`ctx.auth` only exposes `getUserIdentity()`), so role/tenant reads evaluate against `undefined` and fail closed until you wire auth by hand. Setting `authContextImport` (e.g. `"./lib/authContext"`) routes all identity reads through your module's exported `getAuthContext(ctx)` — which should derive role and tenant from the real authenticated identity (e.g. a Clerk/Auth0 JWT via `ctx.auth.getUserIdentity()`).
+
+With the seam active, two write-side protections also turn on for tenant-scoped entities:
+
+- **`create` mutations derive the tenant server-side.** The tenant column is filled from the auth context and removed from the mutation's client arguments (a create action targeting it is overridden, with a `CONVEX_TENANT_SERVER_DERIVED` diagnostic).
+- **Instance mutations verify document tenancy.** A command against a document from another tenant throws the same "not found" error as a missing document (no cross-tenant existence oracle).
+
+Contract: `getAuthContext(ctx)` returns (or resolves to) an object carrying at least `role` and the tenant property. Crons, sagas, and webhooks invoke the same governed mutations, so the module must also handle identity-less system calls (e.g. return a system context).
 
 ### Read filtering
 
 Generated reads are **tenant-scoped and soft-delete-filtered by default**, mirroring the [Next.js projection](/integration/nextjs). Both filters are _field-aware_: a clause is emitted only for entities that actually declare the column, so entities that don't follow the tenancy / soft-delete conventions get plain unfiltered reads.
 
 <Note>
-The tenant id for `list<Entity>` and `get<Entity>` is derived from the authenticated identity (`ctx.auth.<tenantProp>`), **never from a client argument** — so an un-scoped `list<Entity>()` cannot return rows across tenants (it fails closed: with no auth wired, it matches no tenant and returns nothing rather than everything). `get<Entity>` returns `null` on a tenant mismatch or a soft-deleted row. `list<Entity>By<Field…>` reads additionally drop soft-deleted rows and apply the auth-derived tenant filter unless the index already constrains the tenant column. Turn either filter off with `includeTenantFilter` / `includeSoftDeleteFilter`.
+The tenant id for `list<Entity>` and `get<Entity>` is derived from the authenticated identity (via `getAuthContext(ctx)` when `authContextImport` is set, otherwise the legacy inline `ctx.auth.<tenantProp>` read), **never from a client argument** — so an un-scoped `list<Entity>()` cannot return rows across tenants (it fails closed: with no auth wired, it matches no tenant and returns nothing rather than everything). `get<Entity>` returns `null` on a tenant mismatch or a soft-deleted row. `list<Entity>By<Field…>` reads additionally drop soft-deleted rows and apply the auth-derived tenant filter unless the index already constrains the tenant column. Turn either filter off with `includeTenantFilter` / `includeSoftDeleteFilter`.
 </Note>
 
 ### policyMode

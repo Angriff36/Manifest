@@ -120,6 +120,27 @@ export interface ConvexProjectionOptions {
   policyMode?: 'enforce' | 'skip';
 
   /**
+   * Module specifier of an author-owned auth-context module (e.g.
+   * `"./lib/authContext"`, resolved relative to the generated files). When set,
+   * generated functions derive identity through its exported
+   * `getAuthContext(ctx)` instead of reading `(ctx as any).auth` — a bag the
+   * real Convex runtime never populates (`ctx.auth` only exposes
+   * `getUserIdentity()`), so without this seam every role/tenant read
+   * evaluates against `undefined`. Two write-side protections also activate
+   * for tenant-scoped entities:
+   * - `create` mutations set the tenant column from the auth context; it is
+   *   no longer a client-supplied argument.
+   * - instance mutations throw when the target document belongs to another
+   *   tenant.
+   * Contract: `getAuthContext(ctx)` returns (or resolves to) an object
+   * carrying at least `role` and the tenant property. Crons/sagas/webhooks
+   * invoke the same governed mutations, so the module must also handle
+   * identity-less system calls. Unset (default) keeps the legacy inline
+   * `ctx.auth` reads.
+   */
+  authContextImport?: string;
+
+  /**
    * Scope the unfiltered `list<Entity>` / `get<Entity>` reads to the current
    * tenant. Default `true`. Field-aware: only applied to entities that actually
    * declare the tenant column. The tenant id is derived from the authenticated
@@ -199,7 +220,7 @@ export function normalizeOptions(
     | 'deletedAtProperty'
   >
 > &
-  Pick<ConvexProjectionOptions, 'naming' | 'tenantIdProperty'> {
+  Pick<ConvexProjectionOptions, 'naming' | 'tenantIdProperty' | 'authContextImport'> {
   const input = (raw ?? {}) as Partial<ConvexProjectionOptions>;
   return {
     output: input.output ?? CONVEX_PROJECTION_DEFAULTS.output,
@@ -218,6 +239,7 @@ export function normalizeOptions(
       input.includeSoftDeleteFilter ?? CONVEX_PROJECTION_DEFAULTS.includeSoftDeleteFilter,
     deletedAtProperty: input.deletedAtProperty ?? CONVEX_PROJECTION_DEFAULTS.deletedAtProperty,
     tenantIdProperty: input.tenantIdProperty,
+    authContextImport: input.authContextImport,
     // Absent → Convex-idiomatic default applied by the generator.
     naming: input.naming,
   };

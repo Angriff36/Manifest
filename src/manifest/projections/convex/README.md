@@ -46,9 +46,11 @@ are **tenant-scoped + soft-delete-filtered by default** (see below).
 - **Events table:** when emitted, `listRecentEvents` plus indexed lookups
   `listEventsByType` / `listEventsByEntity` / `listEventsByEntityId`.
 - **Read filtering (field-aware, default on):** `list<E>` / `get<E>` are scoped
-  to the current tenant — the tenant id is read from `ctx.auth.<tenantProp>`,
-  **never a client arg**, so an un-scoped list fails closed (no auth → no rows)
-  rather than leaking across tenants. `get<E>` returns `null` on a tenant
+  to the current tenant — the tenant id is derived from the authenticated
+  identity (via `getAuthContext(ctx)` when `authContextImport` is set, otherwise
+  the legacy inline `ctx.auth.<tenantProp>` read), **never a client arg**, so an
+  un-scoped list fails closed (no auth → no rows) rather than leaking across
+  tenants. `get<E>` returns `null` on a tenant
   mismatch or a soft-deleted row. `list<E>By<Field…>` reads drop soft-deleted
   rows and apply the auth tenant filter unless the index already constrains the
   tenant column. Toggle with `includeTenantFilter` / `includeSoftDeleteFilter`;
@@ -95,6 +97,18 @@ into the insert, unless an explicit reaction param already sets it.
 local backends with no auth context configured. Default is `'enforce'`; keep it
 for production. When skipped, the role map / `checkRole` helpers are not emitted
 (no dead code).
+
+**Auth context seam (`authContextImport`):** by default identity is read from an
+inline `(ctx as any).auth` bag — a shape the real Convex runtime never populates
+(`ctx.auth` only exposes `getUserIdentity()`), so role/tenant reads fail closed
+until auth is wired by hand. Set `authContextImport` (e.g. `"./lib/authContext"`)
+to route every identity read through your module's exported `getAuthContext(ctx)`.
+For tenant-scoped entities this also makes `create` derive the tenant column
+server-side (dropped from client args; a create action targeting it is
+overridden with a `CONVEX_TENANT_SERVER_DERIVED` info diagnostic) and makes
+instance mutations throw "not found" on a cross-tenant document (same message as
+a missing doc — no existence oracle). The module must handle identity-less
+system calls too (crons/sagas/webhooks run the same mutations).
 
 ## Usage
 

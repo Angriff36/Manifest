@@ -209,6 +209,19 @@ function collectQueryIndexSpecs(ir: IR, entity: IREntity, options: Normalized): 
   return specs;
 }
 
+/**
+ * Tenant-id binding for a handler body. With `authContextImport` the id comes
+ * from the author-owned auth context; otherwise from the legacy inline
+ * `ctx.auth` bag (which the real Convex runtime never populates — kept only
+ * for back-compat with pre-seam consumers). `?? null` keeps the filter fail
+ * closed: no identity → no rows.
+ */
+function tenantBindingLine(options: Normalized, tenantProp: string): string {
+  return options.authContextImport
+    ? `    const __tenant = ((await getAuthContext(ctx)) as any).${tenantProp} ?? null;`
+    : `    const __tenant = (ctx as any).auth?.${tenantProp} ?? null;`;
+}
+
 /** Resolved read-side tenant + soft-delete filtering for an entity (field-aware). */
 interface ReadFilter {
   hasTenant: boolean;
@@ -262,8 +275,7 @@ export function generateQueries(
       );
     } else {
       const lines: string[] = [];
-      if (rf.hasTenant)
-        lines.push(`    const __tenant = (ctx as any).auth?.${rf.tenantProp} ?? null;`);
+      if (rf.hasTenant) lines.push(tenantBindingLine(options, rf.tenantProp!));
       if (rf.hasTenant && rf.tenantIndexed) {
         lines.push(
           `    let rows = await ctx.db.query("${table}").withIndex("by_${rf.tenantProp}", (q) => q.eq("${rf.tenantProp}", __tenant)).collect();`,
@@ -295,7 +307,7 @@ export function generateQueries(
     } else {
       const lines: string[] = [`    const doc = await ctx.db.get(id);`];
       if (rf.hasTenant) {
-        lines.push(`    const __tenant = (ctx as any).auth?.${rf.tenantProp} ?? null;`);
+        lines.push(tenantBindingLine(options, rf.tenantProp!));
         lines.push(`    if (doc && (doc as any).${rf.tenantProp} !== __tenant) return null;`);
       }
       if (rf.hasSoftDelete)
@@ -332,8 +344,7 @@ export function generateQueries(
         );
       } else {
         const lines: string[] = [];
-        if (applyTenant)
-          lines.push(`    const __tenant = (ctx as any).auth?.${rf.tenantProp} ?? null;`);
+        if (applyTenant) lines.push(tenantBindingLine(options, rf.tenantProp!));
         lines.push(
           `    let rows = await ctx.db.query("${table}").withIndex("${spec.indexName}", (q) => q${eqChain}).collect();`,
         );
@@ -373,11 +384,16 @@ export function generateQueries(
     }
   }
 
+  const body = blocks.join('\n\n');
+  const needsAuthCtx = !!options.authContextImport && /\bgetAuthContext\b/.test(body);
   const code =
     `${GENERATED_HEADER}\n// ${blocks.length} query function(s).\n\n` +
     `import { query } from "./_generated/server";\n` +
-    `import { v } from "convex/values";\n\n` +
-    `${blocks.join('\n\n')}\n`;
+    `import { v } from "convex/values";\n` +
+    (needsAuthCtx
+      ? `import { getAuthContext } from ${JSON.stringify(options.authContextImport)};\n`
+      : '') +
+    `\n${body}\n`;
 
   return { code, diagnostics };
 }
@@ -558,7 +574,7 @@ function renderReactions(
       if (rf.hasSoftDelete) filters.push(`(d as any).${rf.deletedProp} == null`);
       if (rf.hasTenant && rf.tenantProp) {
         if (!tenantEmitted) {
-          preLines.push(`    const __tenant = (ctx as any).auth?.${rf.tenantProp} ?? null;`);
+          preLines.push(tenantBindingLine(options, rf.tenantProp!));
           tenantEmitted = true;
         }
         filters.push(`(d as any).${rf.tenantProp} === __tenant`);
@@ -786,13 +802,25 @@ function renderEvents(
 /**
  * Auth/context/payload bindings a handler needs, derived by scanning the body
  * for the identifiers it actually references (avoids both undefined-name and
- * unused-var errors). `payloadValue` is the expression `payload` binds to.
+ * unused-var errors). With `authContextImport`, identity comes from the
+ * author-owned `getAuthContext(ctx)`; `forceAuth` binds `__auth` even when the
+ * scanned body does not reference it (tenant injection / ownership checks are
+ * assembled after this scan).
  */
-function authBindings(bodyText: string): string[] {
+function authBindings(bodyText: string, options: Normalized, forceAuth = false): string[] {
   const lines: string[] = [];
   const refs = (token: string) => new RegExp(`\\b${token}\\b`).test(bodyText);
-  if (refs('userRole')) lines.push(`    const userRole = (ctx as any).auth?.role ?? "anonymous";`);
-  if (refs('user')) lines.push(`    const user = (ctx as any).auth ?? {};`);
+  if (options.authContextImport) {
+    if (forceAuth || refs('userRole') || refs('user')) {
+      lines.push(`    const __auth = (await getAuthContext(ctx)) as any;`);
+    }
+    if (refs('userRole')) lines.push(`    const userRole = __auth.role ?? "anonymous";`);
+    if (refs('user')) lines.push(`    const user = __auth;`);
+  } else {
+    if (refs('userRole'))
+      lines.push(`    const userRole = (ctx as any).auth?.role ?? "anonymous";`);
+    if (refs('user')) lines.push(`    const user = (ctx as any).auth ?? {};`);
+  }
   if (refs('context')) lines.push(`    const context = (ctx as any);`);
   return lines;
 }
@@ -813,6 +841,15 @@ function generateMutation(
   const isCreate = cmd.name === 'create';
   const paramNames = (cmd.parameters ?? []).map((p) => p.name);
 
+  // Write-side tenant protection, active only with an auth seam: creates set
+  // the tenant column server-side (never a client argument), instance commands
+  // verify the document belongs to the caller's tenant.
+  const writeTenantProp = options.tenantIdProperty ?? ir.tenant?.property;
+  const tenantScoped =
+    !!options.authContextImport &&
+    !!writeTenantProp &&
+    entity.properties.some((p) => p.name === writeTenantProp);
+
   if (isCreate) {
     // Unified create model. Every stored field must be reachable so the insert
     // satisfies the schema: it is either (a) set by a `mutate` action, (b) filled
@@ -826,11 +863,31 @@ function generateMutation(
     const docLines: string[] = [];
 
     // Fields set by mutate actions (mapped from params); not exposed as args.
-    const mutates = (cmd.actions ?? []).filter((a) => a.kind === 'mutate' && a.target);
+    // A create action targeting the tenant column is overridden by the seam —
+    // the tenant id is always server-derived, never caller-influenced.
+    if (
+      tenantScoped &&
+      (cmd.actions ?? []).some((a) => a.kind === 'mutate' && a.target === writeTenantProp)
+    ) {
+      diagnostics.push({
+        severity: 'info',
+        code: 'CONVEX_TENANT_SERVER_DERIVED',
+        entity: entity.name,
+        message: `create action sets '${writeTenantProp}'; overridden — the tenant id is derived from the auth context.`,
+      });
+    }
+    const mutates = (cmd.actions ?? []).filter(
+      (a) => a.kind === 'mutate' && a.target && !(tenantScoped && a.target === writeTenantProp),
+    );
     const targetSet = new Set(mutates.map((a) => a.target as string));
 
     // Entity properties → args (unless action-set) + doc lines (with defaults).
     for (const p of entity.properties) {
+      if (tenantScoped && p.name === writeTenantProp) {
+        docLines.push(`      ${p.name}: __auth.${p.name}`);
+        argNames.add(p.name); // suppress any same-named command param arg
+        continue;
+      }
       if (p.name === 'id' || targetSet.has(p.name)) continue;
       const { validator, diagnostics: vd } = buildValidator(
         entity,
@@ -902,12 +959,13 @@ function generateMutation(
       ? `    const payload: Record<string, any> = { _id, id: _id, ...doc, result: { _id, id: _id, ...doc }${g7Entries ? `, ${g7Entries}` : ''}, ${subjectLiteral} };\n`
       : '';
     const bodyText = [...checks.lines, tail].join('\n');
+    const authLines = authBindings(bodyText, options, tenantScoped);
 
     const body =
       `export const ${name} = mutation({\n` +
       `  args: {\n${argLines.join(',\n')}\n  },\n` +
       `  handler: async (ctx, args: any) => {\n` +
-      (authBindings(bodyText).join('\n') ? authBindings(bodyText).join('\n') + '\n' : '') +
+      (authLines.length ? authLines.join('\n') + '\n' : '') +
       `    const doc: Record<string, any> = {\n${docLines.join(',\n')}\n    };\n` +
       (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
       `    const _id = await ctx.db.insert("${table}", doc as any);\n` +
@@ -982,14 +1040,22 @@ function generateMutation(
     : '';
   const argDestructure = paramNames.length ? `, ${paramNames.join(', ')}` : '';
   const bodyText = [...checks.lines, ...updateLines, tail].join('\n');
+  const authLines = authBindings(bodyText, options, tenantScoped);
+  // Document-tenancy check: an instance command may only touch documents in
+  // the caller's tenant. Same message as the missing-doc throw so a cross-
+  // tenant probe cannot distinguish "exists elsewhere" from "does not exist".
+  const ownershipLine = tenantScoped
+    ? `    if ((doc as any).${writeTenantProp} !== __auth.${writeTenantProp}) throw new Error(${JSON.stringify(`${entity.name} not found`)});\n`
+    : '';
 
   const body =
     `export const ${name} = mutation({\n` +
     `  args: {\n${argLines.join(',\n')}\n  },\n` +
     `  handler: async (ctx, { docId${argDestructure} }) => {\n` +
-    (authBindings(bodyText).join('\n') ? authBindings(bodyText).join('\n') + '\n' : '') +
+    (authLines.length ? authLines.join('\n') + '\n' : '') +
     `    const doc = await ctx.db.get(docId) as Record<string, any> | null;\n` +
     `    if (!doc) throw new Error(${JSON.stringify(`${entity.name} not found`)});\n` +
+    ownershipLine +
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
     `    const updates = {\n${updateLines.join(',\n')}${updateLines.length ? '\n' : ''}    };\n` +
     `    await ctx.db.patch(docId, updates as any);\n` +
@@ -1041,11 +1107,15 @@ export function generateMutations(
   // Fan-out reactions dispatch sibling mutations via ctx.runMutation, which
   // needs the generated `api`. Only import it when actually used (no dead import).
   const needsApi = /\bctx\.runMutation\b/.test(body);
+  const needsAuthCtx = !!options.authContextImport && /\bgetAuthContext\b/.test(body);
   const code =
     `${GENERATED_HEADER}\n// ${blocks.length} mutation(s); roles: ${(ir.roles ?? []).length}; policies: ${ir.policies.length}.${policyNote}\n\n` +
     `import { mutation } from "./_generated/server";\n` +
     `import { v } from "convex/values";\n` +
     (needsApi ? `import { api } from "./_generated/api";\n` : '') +
+    (needsAuthCtx
+      ? `import { getAuthContext } from ${JSON.stringify(options.authContextImport)};\n`
+      : '') +
     `\n` +
     (helpers.length ? helpers.join('\n\n') + '\n\n' : '') +
     `${body}\n`;
