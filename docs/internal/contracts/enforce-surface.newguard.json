@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Manifest enforce-surface contract",
+  "description": "Durable replacement for the never-committed root newguard.json cited by docs/internal/plans/2026-05-22-enforce-surface-cli-guard.md. Binding for finding codes, severity, and JSON output shape of `manifest enforce-surface`. Updated 2026-07-15 for Drizzle/Kysely/raw-SQL direct-write flavors.",
+  "created": "2026-07-15",
+  "implements": "packages/cli/src/commands/enforce-surface.ts",
+  "detectors": [
+    "direct-writes",
+    "unregistered-command-call",
+    "unregistered-entity-write",
+    "existing-command-available",
+    "event-fabrication",
+    "route-drift",
+    "bypass-violations"
+  ],
+  "codeMap": {
+    "DIRECT_WRITE": "DIRECT_WRITE_BYPASS",
+    "ROUTE_DRIFT": "ROUTE_SURFACE_DRIFT",
+    "BYPASS_VIOLATION": "APPROVED_BYPASS_REQUIRED",
+    "EVENT_FABRICATION_PUBLISH": "EVENT_FABRICATION",
+    "EVENT_FABRICATION_CTOR": "EVENT_FABRICATION",
+    "EVENT_FABRICATION_EMIT_LITERAL": "EVENT_FABRICATION"
+  },
+  "passThroughCodes": [
+    "UNREGISTERED_COMMAND_CALL",
+    "UNREGISTERED_ENTITY_WRITE",
+    "EXISTING_COMMAND_AVAILABLE",
+    "DYNAMIC_COMMAND_UNVERIFIABLE",
+    "DETECTOR_ERROR"
+  ],
+  "strictEscalate": ["APPROVED_BYPASS_REQUIRED", "DYNAMIC_COMMAND_UNVERIFIABLE"],
+  "directWriteFlavors": ["prisma", "drizzle", "kysely", "raw-sql"],
+  "options": {
+    "root": "workspace root",
+    "commandsRegistry": "path to commands.json",
+    "entitiesRegistry": "path to entities.json",
+    "bypassRegistry": "path to bypasses.json",
+    "include": "extra globs",
+    "exclude": "ignore globs",
+    "writeReceiver": "ORM client identifier (default: prisma)",
+    "strict": "escalate listed warning codes to error",
+    "json": "emit JSON output contract"
+  },
+  "outputContract": {
+    "ok": "boolean — true when errors === 0",
+    "root": "absolute path",
+    "registry": {
+      "commandsRegistry": "string|null",
+      "entitiesRegistry": "string|null"
+    },
+    "summary": {
+      "errors": "number",
+      "warnings": "number",
+      "byCode": "Record<code, count>"
+    },
+    "findings": [
+      {
+        "code": "string",
+        "severity": "error|warning",
+        "file": "string|null",
+        "line": "number|null",
+        "column": "number|null",
+        "entity": "string|null",
+        "command": "string|null",
+        "message": "string",
+        "suggestion": "string"
+      }
+    ]
+  }
+}

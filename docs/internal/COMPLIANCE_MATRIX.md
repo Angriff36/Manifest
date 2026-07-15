@@ -328,11 +328,13 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | [x]    | Entity-level constraint overrides                                              | FULLY_IMPLEMENTED          | §1                                                   |
 | [x]    | `command.returns` runtime validation                                           | OUT_OF_SCOPE               | by design — projection metadata only; see §4 / semantics § Commands |
 | [x]    | EventSourcedStore                                                              | FULLY_IMPLEMENTED          | §1                                                   |
-| [ ]    | softDelete language keyword                                                    | NOT_IMPLEMENTED            | Manifest language gap (projection config exists)   |
+| [ ]    | softDelete language keyword                                                    | NOT_IMPLEMENTED / parked   | projection config intentional; reopen when language work scheduled |
 | [x]    | Materialized-views SQL expression lowering                                     | FULLY_IMPLEMENTED          | §1                                                   |
 | [ ]    | Convex unsupported surfaces (list in §6)                                       | DIAGNOSTIC_ONLY            |
 | [ ]    | Config G5/G2/G10                                                               | NOT_IMPLEMENTED            |
 | [x]    | `createUserResolver` wired into runtime factory                                | FULLY_IMPLEMENTED          | §1                                                   |
+| [x]    | enforce-surface Drizzle/Kysely/raw-SQL                                         | FULLY_IMPLEMENTED          | §1                                                   |
+| [x]    | enforce-surface newguard contract restored                                     | FULLY_IMPLEMENTED          | `docs/internal/contracts/enforce-surface.newguard.json` |
 | [ ]    | Sub-package publish/park                                                       | NOT_IMPLEMENTED            | Manifest distribution                                |
 | [ ]    | Full WASM runtime                                                              | NOT_IMPLEMENTED            | Manifest phantom                                     |
 | [ ]    | Time-travel / product debugger UI                                              | OUT_OF_SCOPE               | Builder-owned                                        |

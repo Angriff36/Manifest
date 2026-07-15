@@ -78,10 +78,11 @@ forensics: Appendix D in
 - [x] **`flag()` has no static flags map** — fixed 2026-07-15:
       `RuntimeOptions.flags?: Record<string, unknown>`; `flagProvider` still wins
       when both are set.
-- [ ] **`softDelete` is not a language keyword** — only a prisma-store / projection
-      config option. **Clarified 2026-07-15:** still open only if language-level
-      soft-delete is scheduled; projection-config softDelete is intentional and
-      not a runtime gap.
+- [x] **`softDelete` is not a language keyword** — **Parked 2026-07-15:**
+      Projection-config softDelete (prisma-store etc.) is intentional. A
+      language keyword is Appendix-E-class backlog — reopen when language
+      soft-delete is scheduled. Not a missing runtime feature today.
+      ~~`softDelete` is not a language keyword~~
 - [x] **Materialized-views uses `expression-to-sql.ts`** — fixed 2026-07-15:
       default SELECT emits stored props plus IR `computedProperties` lowered
       via `translateExpression`; `self`/`this` members map to columns; raw
@@ -121,9 +122,11 @@ forensics: Appendix D in
       `packages/cli/src/audit/write-receiver.ts`, `direct-writes.test.ts`.
       ~~`--write-receiver` only renames the receiver; Drizzle/Kysely/raw-SQL
       undetected~~
-- [ ] **`newguard.json` spec-of-truth lost** — the enforce-surface plan's contract
-      file was never committed (checked `git log --all`); recreate it somewhere
-      durable if that contract still matters.
+- [x] **`newguard.json` spec-of-truth lost** — restored 2026-07-15 as
+      `docs/internal/contracts/enforce-surface.newguard.json` (finding codes,
+      severity, output contract, direct-write flavors). Root `newguard.json`
+      was never in git; this path is the durable contract.
+      ~~`newguard.json` spec-of-truth lost~~
 
 ## Docs
 
