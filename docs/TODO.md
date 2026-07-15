@@ -47,9 +47,12 @@ forensics: Appendix D in
       `runtime-entity-constraint-overrides.test.ts`; semantics.md § Constraints /
       § Override Mechanism.
       ~~entity-level constraint overrides never evaluated~~
-- [ ] **`command.returns` projection-only** — runtime does not validate/coerce
-      return type; see `docs/internal/plans/2026-07-06-ir-wiring-audit-matrix.md`.
-      ~~bundled with entity overrides in one TODO bullet~~ **split 2026-07-15.**
+- [x] **`command.returns` projection-only** — **Clarified 2026-07-15:**
+      `returns` is projection metadata (TS/OpenAPI/Zod/etc.); the reference
+      runtime does not validate/coerce results against it. Documented in
+      semantics.md § Commands and `ir-v1.schema.json` `returns` description.
+      Runtime enforcement would be a separate language change.
+      ~~`command.returns` projection-only as an open gap~~
 - [x] **`alternateKeys` runtime uniqueness** — fixed 2026-07-15: create/update
       enforce multi-column groups (`E_ALTERNATE_KEY`); semantics.md § Composite
       Keys updated. Lookup-by-AK not required.

@@ -325,7 +325,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | [ ]    | Approval escalate timeout                                                      | REJECTED_LOUD              | Manifest language gap — preserve |
 | [ ]    | `optional` runtime gate (beyond `required`)                                    | OUT_OF_SCOPE               | by design — see §4; not a missing Manifest feature |
 | [x]    | Entity-level constraint overrides                                              | FULLY_IMPLEMENTED          | §1                                                   |
-| [ ]    | `command.returns` runtime validation                                           | NOT_IMPLEMENTED            | projection metadata only — preserve until designed     |
+| [x]    | `command.returns` runtime validation                                           | OUT_OF_SCOPE               | by design — projection metadata only; see §4 / semantics § Commands |
 | [x]    | EventSourcedStore                                                              | FULLY_IMPLEMENTED          | §1                                                   |
 | [ ]    | softDelete language keyword                                                    | NOT_IMPLEMENTED            | Manifest language gap (projection config exists)   |
 | [x]    | Materialized-views SQL expression lowering                                     | FULLY_IMPLEMENTED          | §1                                                   |

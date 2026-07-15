@@ -469,6 +469,12 @@ normalization is enabled.
 - Different entities MAY define the same normal command names, such as `create`, `update`, or `delete`; canonical duplicate checks are scoped to the same entity or resolved entity alias.
 - If an entity references a command name that does not exist in the root command list, compilation MUST fail.
 - Commands take parameters, optional guards, actions, emits, and optional return type.
+- **`command.returns` is projection-only metadata (2026-07-15 clarification).**
+  The optional `returns` type on a command feeds TypeScript/OpenAPI/Zod/Dart/etc.
+  projections. The reference runtime does **not** validate or coerce
+  `CommandResult` (or the last action result) against `returns`. Runtime return-type
+  enforcement would be a separate language change and is not implied by declaring
+  `returns`.
 - A parameter MAY declare a trusted source with `from context.<path>` (same grammar as the `tenant` declaration). When present, the compiler records `IRParameter.trustedSource` (e.g. `context.actorId`). Trusted parameters are **server-owned**:
   - Generated client input types and browser-facing bindings MUST omit them.
   - Before `runCommand`, the host/generated server binding MUST strip any client-supplied value for that parameter name and inject the value resolved from `RuntimeContext` at the declared path.
