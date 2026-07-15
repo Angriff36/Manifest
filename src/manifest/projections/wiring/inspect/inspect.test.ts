@@ -4,7 +4,7 @@
  * Trace forms adapted from codebase-explorer indirectUiConsumer tests.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { compileToIR } from '../../../ir-compiler.js';
 import { buildWiringContract } from '../contract-builder.js';
 import { inspectWiringConsumersSync, fileMapFromRecord } from './inspector.js';
@@ -973,5 +973,30 @@ entity Event {
     expect(resolveImportPath('apps/app/app/ui/nested/child.tsx', '../sibling', files, false)).toBe(
       'apps/app/app/ui/sibling.ts',
     );
+  });
+
+  it('24. inspect runs without a Node process global (browser consumers)', async () => {
+    const contract = await contractFrom(DOMAIN);
+    const files = fileMapFromRecord({
+      'apps/app/app/ui/page.tsx': `
+        import { executeCommand } from "@/lib/client";
+        export async function run() {
+          await executeCommand("Task", "archive", { id: "1" });
+        }
+      `,
+    });
+    vi.stubGlobal('process', undefined);
+    try {
+      const report = inspectWiringConsumersSync({
+        contract,
+        fileContents: files,
+        config: { roots: ['.'] },
+      });
+      expect(report.findings.find((x) => x.capabilityId === 'Task.archive')?.status).toBe(
+        'consumed',
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

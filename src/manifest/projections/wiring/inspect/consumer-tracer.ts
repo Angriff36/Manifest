@@ -46,7 +46,9 @@ export class ConsumerTracer {
   constructor(
     private readonly fileContents: Map<string, string>,
     private readonly surface: ProductSurfaceClassifier,
-    private readonly caseInsensitive = process.platform === 'win32',
+    // Browser-safe: `process` does not exist outside Node (builder runs this in the browser).
+    private readonly caseInsensitive = typeof process !== 'undefined' &&
+      process.platform === 'win32',
   ) {
     this.parser = new ProductionFlowParser(fileContents);
     this.routeHelpers = RouteHelperIndex.build(fileContents);
