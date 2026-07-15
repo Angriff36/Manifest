@@ -3,6 +3,7 @@
   "diagnostics": [
     {
       "severity": "error",
+      "code": "APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED",
       "message": "Approval 'escalateApproval' declares onTimeout: 'escalate', which is not supported in this version. Use onTimeout: 'cancel' instead.",
       "line": 16,
       "column": 11

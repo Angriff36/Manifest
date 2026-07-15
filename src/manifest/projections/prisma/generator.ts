@@ -653,20 +653,38 @@ function emitRelationship(
     return { lines, diagnostics };
   }
 
-  // (1) `through` → join-entity-mediated many-to-many.
+  // (1) `through` → many-to-many via explicit join entity.
+  // Emit a collection to the join rows (if the author did not already declare
+  // hasMany Join). Target Tag[] is runtime-only (two-hop); Prisma wires Join.
   if (rel.through) {
-    diagnostics.push({
-      severity: 'info',
-      code: 'PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED',
-      entity: entity.name,
-      message:
-        `Relationship '${entity.name}.${rel.name}' uses 'through ${rel.through}' (many-to-many via join entity). ` +
-        `The projection does not emit this as a Prisma field — declare the join entity ('${rel.through}') ` +
-        'as its own entity with two belongsTo relations to wire the Prisma schema.',
-    });
-    lines.push(
-      `  // ${rel.kind} ${rel.name}: ${rel.target} through ${rel.through} — see PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED`,
+    const joinName = rel.through;
+    const alreadyHasJoinCollection = entity.relationships.some(
+      (r) => !r.through && (r.kind === 'hasMany' || r.kind === 'hasOne') && r.target === joinName,
     );
+    if (!alreadyHasJoinCollection) {
+      const fieldName = lowerFirst(pluralize(joinName));
+      const collision = entity.properties.some((p) => p.name === fieldName);
+      if (!collision) {
+        lines.push(`  ${fieldName} ${joinName}[]`);
+      } else {
+        diagnostics.push({
+          severity: 'warning',
+          code: 'PRISMA_THROUGH_JOIN_FIELD_COLLISION',
+          entity: entity.name,
+          message:
+            `Relationship '${entity.name}.${rel.name}' through '${joinName}' needs a Prisma field ` +
+            `'${fieldName} ${joinName}[]', but that name collides with a property. Rename the property ` +
+            `or declare 'hasMany …: ${joinName}' explicitly.`,
+        });
+        lines.push(
+          `  // ${rel.kind} ${rel.name}: ${rel.target} through ${joinName} — see PRISMA_THROUGH_JOIN_FIELD_COLLISION`,
+        );
+      }
+    } else {
+      lines.push(
+        `  // ${rel.kind} ${rel.name}: ${rel.target} through ${joinName} — runtime two-hop; join rows via existing ${joinName} hasMany`,
+      );
+    }
     return { lines, diagnostics };
   }
 

@@ -1224,7 +1224,7 @@ describe('PrismaProjection — relationship wiring (Step 3)', () => {
 });
 
 describe('PrismaProjection — relationship diagnostics for unhandleable shapes', () => {
-  it('emits PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED for many-to-many via `through`', () => {
+  it('emits join-entity collection for hasMany through (not Target[])', () => {
     const ir = emptyIR();
     ir.entities.push(
       bareEntity('Author', {
@@ -1238,7 +1238,16 @@ describe('PrismaProjection — relationship diagnostics for unhandleable shapes'
         ],
       }),
       bareEntity('Book'),
-      bareEntity('AuthorBook'),
+      bareEntity('AuthorBook', {
+        relationships: [
+          { name: 'author', kind: 'belongsTo', target: 'Author', foreignKey: { fields: ['authorId'] } },
+          { name: 'book', kind: 'belongsTo', target: 'Book', foreignKey: { fields: ['bookId'] } },
+        ],
+        properties: [
+          { name: 'authorId', type: { name: 'string', nullable: false }, modifiers: [] },
+          { name: 'bookId', type: { name: 'string', nullable: false }, modifiers: [] },
+        ],
+      }),
     );
     ir.stores.push(durableStore('Author'), durableStore('Book'), durableStore('AuthorBook'));
 
@@ -1248,13 +1257,10 @@ describe('PrismaProjection — relationship diagnostics for unhandleable shapes'
     const code = result.artifacts[0].code;
 
     expect(code).not.toMatch(/^\s+books Book\[\]$/m);
-    const through = result.diagnostics.find(
-      (d) => d.code === 'PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED',
-    );
-    expect(through).toBeDefined();
-    expect(through?.entity).toBe('Author');
-    expect(through?.message).toMatch(/AuthorBook/);
-    expect(through?.message).toMatch(/join entity/);
+    expect(code).toMatch(/^\s+authorBooks AuthorBook\[\]$/m);
+    expect(
+      result.diagnostics.find((d) => d.code === 'PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED'),
+    ).toBeUndefined();
   });
 
   it('emits deterministic named @relation on both sides when multiple relations connect the same pair', () => {

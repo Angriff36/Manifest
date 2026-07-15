@@ -592,6 +592,16 @@ describe('RuntimeEngine', () => {
   });
 
   describe('Feature Flag Builtin', () => {
+    it('should return the value from the static flags map when no flagProvider is set', async () => {
+      const runtime = new RuntimeEngine(simpleIR, {}, { flags: { 'beta-ui': true } });
+      const expr: IRExpression = {
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'flag' },
+        args: [{ kind: 'literal', value: { kind: 'string', value: 'beta-ui' } }],
+      };
+      expect(await runtime.evaluateExpression(expr, {})).toBe(true);
+    });
+
     it('should return false when no flagProvider is configured', async () => {
       const runtime = new RuntimeEngine(simpleIR, {});
       const expr: IRExpression = {

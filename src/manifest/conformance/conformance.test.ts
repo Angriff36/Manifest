@@ -38,6 +38,7 @@ interface ExpectedDiagnostics {
   diagnostics: Array<{
     severity: 'error' | 'warning';
     message: string;
+    code?: string;
     line?: number;
     column?: number;
   }>;
@@ -256,6 +257,9 @@ describe('Manifest Conformance Tests', () => {
             }
             if (expectedDiag.column !== undefined) {
               expect(actualDiag.column).toBe(expectedDiag.column);
+            }
+            if (expectedDiag.code !== undefined) {
+              expect(actualDiag.code).toBe(expectedDiag.code);
             }
           });
         });

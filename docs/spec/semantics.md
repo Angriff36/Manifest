@@ -133,8 +133,29 @@ A property literal default MUST be compatible with its declared type. The compil
 
 - For `belongsTo` and `ref`: The foreign key property on the source instance contains the ID of the target instance. The runtime MUST look up the target instance by that ID.
 - For `hasOne`: The inverse `belongsTo` relationship on the target entity is used. The runtime MUST query the target entity where the foreign key equals the current instance's ID.
-- For `hasMany`: The inverse `belongsTo` relationship on the target entity is used. The runtime MUST query all target instances where the foreign key equals the current instance's ID.
+- For `hasMany` **without** `through`: The inverse `belongsTo` relationship on the target entity is used. The runtime MUST query all target instances where the foreign key equals the current instance's ID.
+- For `hasMany` **with** `through <Join>` (many-to-many via join entity): The runtime MUST resolve in two hops:
+  1. Find all `Join` instances whose `belongsTo`/`ref` back to the source entity matches the current instance (same FK rules as inverse `hasMany`).
+  2. For each join row, resolve the join's `belongsTo`/`ref` to the declared target entity and collect those target instances (dedupe by target identity). Empty join set → `[]`.
 - Composite foreign keys (`foreignKey.fields` with more than one column) ARE resolved by the reference runtime. The runtime MUST pair each local FK column with the target column it references (via `foreignKey.references`; absent/mismatched, the target entity's declared `key` columns are paired positionally, else the local field names are assumed to match) and select the target row where every paired column is equal. This picks the exact row even when several targets share a first-column value. When any local FK column is unset, the relationship resolves to `null`/`[]`.
+
+#### Many-to-many via `through` (join entity)
+
+A relationship MAY declare `through <JoinEntity>` instead of `foreignKey` (they remain mutually exclusive — see below). Semantics:
+
+- Only `hasMany` MAY use `through` in this version. Other kinds with `through` MUST fail compilation with `RELATION_THROUGH_KIND_UNSUPPORTED`.
+- The join entity MUST exist in the program. It MUST declare a `belongsTo` or `ref` to the source entity and a `belongsTo` or `ref` to the relationship target. Otherwise the compiler MUST emit `RELATION_THROUGH_JOIN_INVALID` and fail compilation.
+- Expression traversal of the relationship name (e.g. `self.tags` for `hasMany tags: Tag through PostTag`) MUST return the target instances per the two-hop rule above — not the join rows.
+- Projections that emit relational schemas (Prisma, Drizzle) MUST wire the **join entity** as a first-class table with two FK-owning sides, and MUST expose a collection from each end to the join rows (so the database schema is valid). They MUST NOT invent an implicit join table that drops the join entity.
+- Conformance fixture `102-through-join.manifest` is the canonical happy path; `101-foreignkey-through-conflict.manifest` remains the exclusivity failure case.
+
+~~### Unsupported: join-table relationships (`through`) (error)
+
+Many-to-many relationships declared via `through` are **not supported** in this version — not at runtime, and not in the Prisma or Drizzle projections. The compiler MUST reject any relationship that sets `through` with an **error**-severity diagnostic `RELATION_THROUGH_UNSUPPORTED`, naming the entity and relationship and directing the author to model the join entity explicitly with two `belongsTo` relationships. Compilation MUST fail (`ir` is null). Setting both `foreignKey` and `through` on one relationship is additionally rejected as `RELATION_FK_THROUGH_EXCLUSIVE` (the mutual-exclusivity previously documented only in JSDoc is now a compile error enforced by the checks above). Conformance fixture `102-through-unsupported.manifest` is the canonical test case.
+
+Migration: model the join table as a first-class entity with two `belongsTo` sides, one back to each end of the relationship.~~
+
+**Update (2026-07-15):** `through` is supported as specified in § Many-to-many via `through` above. The former `RELATION_THROUGH_UNSUPPORTED` hard reject is removed.
 
 #### Relationship Constraints
 
@@ -142,6 +163,32 @@ A property literal default MUST be compatible with its declared type. The compil
 - Circular relationships MUST be handled gracefully; runtime MAY prevent infinite recursion.
 - Accessing a relationship on a non-existent instance returns `null` for `hasOne`/`belongsTo`/`ref` or `[]` for `hasMany`.
 - If the target entity or instance does not exist, the relationship returns `null` or `[]`.
+
+#### Referential Actions (runtime)
+
+`belongsTo` / `ref` relationships MAY declare `onDelete` and/or `onUpdate` with one of:
+`cascade`, `restrict`, `setNull`, `setDefault`, `noAction`.
+
+~~Previously these were projection-only (Prisma/Drizzle FK attributes); the reference
+runtime ignored them on `deleteInstance` / `updateInstance`.~~
+
+**Update (2026-07-15):** The reference runtime **MUST** enforce these actions for
+every store (including `memory` / `localStorage`), so IR meaning holds without a
+database FK engine:
+
+- Actions are declared on the **child** relationship that owns the foreign key.
+- **Absent** action (or explicit `noAction`): do nothing to children (orphans may remain).
+- **`onDelete`** runs inside `deleteInstance` **before** the parent row is removed:
+  - `restrict` — if any child FK matches the parent, throw `ManifestReferentialRestrictError` and leave all rows unchanged.
+  - `cascade` — recursively apply `onDelete` for each matching child, then delete that child (depth-first; cycle-safe via a visit set).
+  - `setNull` — set each local FK column to `null`. If a declared property has `nullable: false`, throw `ManifestReferentialSetNullError`.
+  - `setDefault` — set each local FK column to the property's IR `defaultValue`, else the type default.
+- **`onUpdate`** runs inside `updateInstance` when any **referenced** parent column changes (the remote side of `foreignKey.fields`/`references`, or `id` for the `${rel}Id` convention), **before** the parent write:
+  - `restrict` — throw `ManifestReferentialRestrictError` if dependents exist.
+  - `cascade` — rewrite matching child FK columns to the new parent values.
+  - `setNull` / `setDefault` — same as onDelete.
+- Projections (Prisma/Drizzle) continue to emit native FK attributes; runtime enforcement is the portable contract for non-SQL stores.
+- Conformance / unit evidence: `runtime-referential-actions.test.ts`.
 
 #### Entity Concurrency (vNext)
 
@@ -723,11 +770,13 @@ When this diagnostic fires, compilation MUST fail (`ir` is null), same as other 
 
 Compilation MUST fail (`ir` is null) when this diagnostic is emitted. Conformance fixture `101-foreignkey-through-conflict.manifest` is the canonical test case.
 
-### Unsupported: join-table relationships (`through`) (error)
+~~### Unsupported: join-table relationships (`through`) (error)
 
 Many-to-many relationships declared via `through` are **not supported** in this version — not at runtime, and not in the Prisma or Drizzle projections. The compiler MUST reject any relationship that sets `through` with an **error**-severity diagnostic `RELATION_THROUGH_UNSUPPORTED`, naming the entity and relationship and directing the author to model the join entity explicitly with two `belongsTo` relationships. Compilation MUST fail (`ir` is null). Setting both `foreignKey` and `through` on one relationship is additionally rejected as `RELATION_FK_THROUGH_EXCLUSIVE` (the mutual-exclusivity previously documented only in JSDoc is now a compile error enforced by the checks above). Conformance fixture `102-through-unsupported.manifest` is the canonical test case.
 
-Migration: model the join table as a first-class entity with two `belongsTo` sides, one back to each end of the relationship.
+Migration: model the join table as a first-class entity with two `belongsTo` sides, one back to each end of the relationship.~~
+
+**Update (2026-07-15):** Replaced by § Relationships → Many-to-many via `through`. See also resolution rules for two-hop runtime navigation.
 
 ### One-sided relationships (warning)
 

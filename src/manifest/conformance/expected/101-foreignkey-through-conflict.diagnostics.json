@@ -3,6 +3,7 @@
   "diagnostics": [
     {
       "severity": "error",
+      "code": "RELATION_FK_THROUGH_EXCLUSIVE",
       "message": "Relationship 'tags' on entity 'Post' cannot set both 'foreignKey' and 'through' — they are mutually exclusive."
     },
     {

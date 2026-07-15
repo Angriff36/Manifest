@@ -1,8 +1,0 @@
-// Test: Relationship with 'through' (many-to-many via join entity) is a hard compile error.
-// RELATION_THROUGH_UNSUPPORTED — through/M2M is not implemented; model the join entity
-// explicitly with two belongsTo relationships instead.
-// This is a shouldFail fixture — the compiler must emit an error diagnostic.
-
-entity Post {
-  hasMany tags: Tag through PostTag
-}

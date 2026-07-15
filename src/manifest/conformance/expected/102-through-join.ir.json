@@ -1,0 +1,322 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "normalized-ir-hash",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Post",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "tagCount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "length"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "tags"
+              }
+            ]
+          },
+          "dependencies": [
+            "length",
+            "tags"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "tags",
+          "kind": "hasMany",
+          "target": "Tag",
+          "through": "PostTag"
+        },
+        {
+          "name": "tagLinks",
+          "kind": "hasMany",
+          "target": "PostTag"
+        }
+      ],
+      "commands": [
+        "create"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Tag",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "postLinks",
+          "kind": "hasMany",
+          "target": "PostTag"
+        }
+      ],
+      "commands": [
+        "create"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "PostTag",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "postId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "tagId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "post",
+          "kind": "belongsTo",
+          "target": "Post",
+          "foreignKey": {
+            "fields": [
+              "postId"
+            ]
+          }
+        },
+        {
+          "name": "tag",
+          "kind": "belongsTo",
+          "target": "Tag",
+          "foreignKey": {
+            "fields": [
+              "tagId"
+            ]
+          }
+        }
+      ],
+      "commands": [
+        "create"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Post",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Tag",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "PostTag",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [
+    {
+      "name": "create",
+      "entity": "Post",
+      "parameters": [
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "title",
+          "expression": {
+            "kind": "identifier",
+            "name": "title"
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "create",
+      "entity": "Tag",
+      "parameters": [
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "name",
+          "expression": {
+            "kind": "identifier",
+            "name": "name"
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "create",
+      "entity": "PostTag",
+      "parameters": [
+        {
+          "name": "postId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "tagId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "postId",
+          "expression": {
+            "kind": "identifier",
+            "name": "postId"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "tagId",
+          "expression": {
+            "kind": "identifier",
+            "name": "tagId"
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

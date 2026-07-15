@@ -1307,5 +1307,68 @@ describe('ZodProjection', () => {
       const warnings = result.diagnostics.filter((d) => d.code === 'ZOD_UNKNOWN_TYPE');
       expect(warnings).toHaveLength(0);
     });
+
+    it('emits z.enum([...]) for IR enum-typed properties (not z.unknown())', () => {
+      const ir = makeMinimalIR({
+        enums: [
+          {
+            name: 'Status',
+            values: [{ name: 'draft' }, { name: 'published' }, { name: 'archived' }],
+          },
+        ],
+        entities: [
+          bareEntity('Article', [
+            {
+              name: 'status',
+              type: { name: 'Status', nullable: false },
+              modifiers: ['required'],
+            },
+          ]),
+        ],
+      });
+
+      const result = projection.generate(ir, { surface: 'zod.entity' });
+      const code = firstCode(result);
+      expect(code).toContain('status: z.enum(["draft", "published", "archived"]),');
+      expect(code).not.toContain('z.unknown()');
+      expect(result.diagnostics.filter((d) => d.code === 'ZOD_UNKNOWN_TYPE')).toHaveLength(0);
+    });
+
+    it('maps timestamp alias like datetime (not z.unknown())', () => {
+      const ir = makeMinimalIR({
+        entities: [
+          bareEntity('Asset', [
+            {
+              name: 'createdAt',
+              type: { name: 'timestamp', nullable: false },
+              modifiers: ['required'],
+            },
+          ]),
+        ],
+      });
+
+      const result = projection.generate(ir, { surface: 'zod.entity' });
+      const code = firstCode(result);
+      expect(code).toContain('createdAt: z.coerce.date(),');
+      expect(result.diagnostics.filter((d) => d.code === 'ZOD_UNKNOWN_TYPE')).toHaveLength(0);
+    });
+
+    it('maps list<T> like array<T>', () => {
+      const ir = makeMinimalIR({
+        entities: [
+          bareEntity('Event', [
+            {
+              name: 'accessibilityOptions',
+              type: { name: 'list', nullable: false, generic: { name: 'string', nullable: false } },
+              modifiers: ['required'],
+            },
+          ]),
+        ],
+      });
+
+      const result = projection.generate(ir, { surface: 'zod.entity' });
+      const code = firstCode(result);
+      expect(code).toContain('accessibilityOptions: z.array(z.string()),');
+    });
   });
 });

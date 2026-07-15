@@ -33,6 +33,13 @@ import { getSchedulesFromIR } from './runtime-schedule.js';
 import type { IRSchedule } from './ir';
 import { RuntimeProfilingBridge } from './runtime-profiling-bridge.js';
 import type { EventBus, EventBusMessage } from './events/event-bus';
+import {
+  ReferentialActionApplier,
+  ManifestReferentialRestrictError,
+  ManifestReferentialSetNullError,
+} from './runtime-referential-actions.js';
+
+export { ManifestReferentialRestrictError, ManifestReferentialSetNullError };
 
 // Note: PostgresStore and SupabaseStore are in stores.node.ts for server-side use only.
 // This file is browser-safe and only includes MemoryStore and LocalStorageStore.
@@ -246,12 +253,20 @@ export interface RuntimeOptions {
    */
   approvalStore?: import('./approval/approval-store').ApprovalStore;
   /**
+   * Optional static feature-flag map. Checked by `flag(name)` when no
+   * `flagProvider` is set (or as a fallback when the provider is absent).
+   * Missing keys resolve to `false` (safe default — features off).
+   * When both `flags` and `flagProvider` are set, `flagProvider` wins.
+   */
+  flags?: Record<string, unknown>;
+  /**
    * Optional feature flag provider function.
    * Called with a flag name and returns the flag value (boolean, string, number, or object).
    * Enables the `flag(name)` built-in to resolve feature flags declaratively
    * from any provider (LaunchDarkly, Unleash, JSON file, etc.).
    *
-   * When not provided, `flag(name)` returns `false` (safe default — features off).
+   * When not provided, `flag(name)` returns `false` (safe default — features off)
+   * unless a matching entry exists in {@link flags}.
    *
    * @example
    * ```typescript
@@ -847,6 +862,7 @@ export class RuntimeEngine {
       kind: 'hasMany' | 'hasOne' | 'belongsTo' | 'ref';
       targetEntity: string;
       foreignKey?: string; // single-column FK field name for runtime lookup
+      through?: string; // join entity for hasMany many-to-many
     }
   > = new Map();
 
@@ -964,6 +980,7 @@ export class RuntimeEngine {
   private rateLimiter = new RateLimiter();
 
   private readonly profilingBridge: RuntimeProfilingBridge;
+  private readonly referentialActions: ReferentialActionApplier;
   private actionTraceCounter = 0;
 
   /**
@@ -1157,6 +1174,32 @@ export class RuntimeEngine {
     this.context = context;
     this.options = options;
     this.profilingBridge = new RuntimeProfilingBridge(options.profiling);
+    this.referentialActions = new ReferentialActionApplier({
+      getEntity: (name) => this.getEntity(name),
+      getAllEntities: () => this.ir.entities,
+      getAllInstancesRaw: (name) => this.getAllInstancesRaw(name),
+      getInstanceRaw: (name, id) => this.getInstanceRaw(name, id),
+      deleteInstanceRaw: async (name, id) => {
+        const store = this.stores.get(name);
+        return store ? await store.delete(id, this.activeTx ?? undefined) : false;
+      },
+      updateInstanceRaw: async (name, id, data) => {
+        const store = this.stores.get(name);
+        if (!store) return undefined;
+        const encrypted = await this.encryptProperties(name, data);
+        const result = await store.update(id, encrypted, this.activeTx ?? undefined);
+        return result ? await this.decryptProperties(name, result) : result;
+      },
+      defaultForProperty: (entityName, propertyName) => {
+        const entity = this.getEntity(entityName);
+        const prop = entity?.properties.find((p) => p.name === propertyName);
+        if (prop?.defaultValue) return this.irValueToJs(prop.defaultValue);
+        if (prop) return this.getDefaultForType(prop.type);
+        return null;
+      },
+      compositeId: (entity, instance) => this.compositeId(entity, instance),
+      fkColumnPairs: (fk, referenced) => this.fkColumnPairs(fk, referenced),
+    });
     this.initializeStores();
     this.buildRelationshipIndex();
     this.buildRoleIndex();
@@ -1256,6 +1299,7 @@ export class RuntimeEngine {
             rel.foreignKey && rel.foreignKey.fields.length === 1
               ? rel.foreignKey.fields[0]
               : undefined,
+          through: rel.through,
         });
       }
     }
@@ -1291,6 +1335,77 @@ export class RuntimeEngine {
   private clearMemoCache(): void {
     this.relationshipMemoCache.clear();
     this.computedPropertyRequestCache.clear();
+  }
+
+  /**
+   * Two-hop hasMany via join entity: source → Join rows → target instances.
+   */
+  private async resolveHasManyThrough(
+    sourceEntityName: string,
+    sourceInstance: EntityInstance,
+    sourceId: string,
+    sourceEntity: IREntity | undefined,
+    targetEntityName: string,
+    throughName: string,
+  ): Promise<EntityInstance[]> {
+    const joinEntity = this.getEntity(throughName);
+    if (!joinEntity) return [];
+
+    const toSource = joinEntity.relationships.find(
+      (r) =>
+        (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === sourceEntityName,
+    );
+    const toTarget = joinEntity.relationships.find(
+      (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === targetEntityName,
+    );
+    if (!toSource || !toTarget) return [];
+
+    const allJoins = await this.getAllInstancesRaw(throughName);
+    let matchingJoins: EntityInstance[];
+    if (toSource.foreignKey && toSource.foreignKey.fields.length > 1) {
+      const pairs = this.fkColumnPairs(toSource.foreignKey, sourceEntity);
+      matchingJoins = allJoins.filter((j) =>
+        pairs.every(([local, remote]) => j[local] === sourceInstance[remote]),
+      );
+    } else {
+      const fkProperty = toSource.foreignKey?.fields[0] ?? `${toSource.name}Id`;
+      matchingJoins = allJoins.filter((j) => j[fkProperty] === sourceId);
+    }
+
+    const seen = new Set<string>();
+    const targets: EntityInstance[] = [];
+    for (const join of matchingJoins) {
+      let target: EntityInstance | null = null;
+      if (toTarget.foreignKey && toTarget.foreignKey.fields.length > 1) {
+        const targetEntity = this.getEntity(targetEntityName);
+        const pairs = this.fkColumnPairs(toTarget.foreignKey, targetEntity);
+        const unset = pairs.some(
+          ([local]) => join[local] === undefined || join[local] === null,
+        );
+        if (!unset) {
+          const allTargets = await this.getAllInstancesRaw(targetEntityName);
+          target =
+            allTargets.find((t) =>
+              pairs.every(([local, remote]) => t[remote] === join[local]),
+            ) ?? null;
+        }
+      } else {
+        const fkProperty = toTarget.foreignKey?.fields[0] ?? `${toTarget.name}Id`;
+        const targetId = join[fkProperty] as string | undefined;
+        if (targetId) {
+          target = (await this.getInstanceRaw(targetEntityName, targetId)) ?? null;
+        }
+      }
+      if (!target) continue;
+      const tid =
+        typeof target.id === 'string'
+          ? target.id
+          : JSON.stringify(target.id ?? target);
+      if (seen.has(tid)) continue;
+      seen.add(tid);
+      targets.push(target);
+    }
+    return targets;
   }
 
   /**
@@ -1411,6 +1526,19 @@ export class RuntimeEngine {
       }
 
       case 'hasMany': {
+        const rawRel = sourceEntity?.relationships.find((r) => r.name === relationshipName);
+        const throughName = rawRel?.through ?? (rel as { through?: string }).through;
+        if (throughName) {
+          result = await this.resolveHasManyThrough(
+            entityName,
+            instance,
+            sourceId,
+            sourceEntity,
+            rel.targetEntity,
+            throughName,
+          );
+          break;
+        }
         // For hasMany: find all target instances where their belongsTo foreign key equals source ID
         const targetEntity = this.getEntity(rel.targetEntity);
         if (!targetEntity) {
@@ -1765,6 +1893,9 @@ export class RuntimeEngine {
         if (typeof name !== 'string') return false;
         if (this.options.flagProvider) {
           return this.options.flagProvider(name);
+        }
+        if (this.options.flags && Object.prototype.hasOwnProperty.call(this.options.flags, name)) {
+          return this.options.flags[name];
         }
         return false;
       },
@@ -2866,6 +2997,10 @@ export class RuntimeEngine {
       // Mark cached computed properties as stale when their dependencies change
       this.markComputedPropertiesStale(entityName, id, Object.keys(data));
 
+      // Referential onUpdate: when referenced identity columns change, apply
+      // child-side actions before persisting the parent (restrict may throw).
+      await this.referentialActions.applyOnUpdate(entityName, id, existing, mergedData);
+
       // Encrypt fields before store write, decrypt result before returning
       const encryptedData = await this.encryptProperties(entityName, data);
       if (buffering) {
@@ -2920,7 +3055,13 @@ export class RuntimeEngine {
 
   async deleteInstance(entityName: string, id: string): Promise<boolean> {
     const store = this.stores.get(entityName);
-    return store ? await store.delete(id, this.activeTx ?? undefined) : false;
+    if (!store) return false;
+    const existing = await store.getById(id);
+    if (!existing) return false;
+    // Enforce child-side onDelete (cascade / restrict / setNull / setDefault)
+    // before removing the parent. See semantics.md § Referential Actions.
+    await this.referentialActions.applyOnDelete(entityName, id);
+    return await store.delete(id, this.activeTx ?? undefined);
   }
 
   async runCommand(

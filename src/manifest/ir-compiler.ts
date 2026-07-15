@@ -336,8 +336,9 @@ export class IRCompiler {
     message: string,
     line?: number,
     column?: number,
+    code?: string,
   ): void {
-    this.diagnostics.push({ severity, message, line, column });
+    this.diagnostics.push({ severity, message, line, column, ...(code ? { code } : {}) });
   }
 
   async compileToIR(
@@ -497,6 +498,7 @@ export class IRCompiler {
       ...program.entities.map((e) => this.transformEntity(e)),
       ...program.modules.flatMap((m) => m.entities.map((e) => this.transformEntity(e, m.name))),
     ];
+    this.validateThroughRelationships(entities);
 
     const enums: IREnum[] = [
       ...program.enums.map((e) => this.transformEnum(e)),
@@ -805,6 +807,9 @@ export class IRCompiler {
       this.emitDiagnostic(
         'error',
         `Entity '${e.name}' declares behavior '${label}', which is not supported in this version. Use a top-level reaction ('on Event run Entity.command') or command actions instead.`,
+        undefined,
+        undefined,
+        'ENTITY_BEHAVIOR_UNSUPPORTED',
       );
     }
 
@@ -934,6 +939,7 @@ export class IRCompiler {
           `Approval '${a.name}' declares onTimeout: 'escalate', which is not supported in this version. Use onTimeout: 'cancel' instead.`,
           a.position?.line,
           a.position?.column,
+          'APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED',
         );
       } else {
         node.onTimeout = a.onTimeout;
@@ -1105,15 +1111,12 @@ export class IRCompiler {
       this.emitDiagnostic(
         'error',
         `Relationship '${r.name}' on entity '${entityName}' cannot set both 'foreignKey' and 'through' — they are mutually exclusive.`,
-      );
-    } else if (r.through) {
-      // RELATION_THROUGH_UNSUPPORTED: many-to-many via join entity is not implemented.
-      // Model the join entity explicitly with two belongsTo relationships instead.
-      this.emitDiagnostic(
-        'error',
-        `Relationship '${r.name}' on entity '${entityName}' uses 'through' (many-to-many via join entity), which is not supported in this version. Model the join entity '${r.through}' explicitly with two belongsTo relationships.`,
+        undefined,
+        undefined,
+        'RELATION_FK_THROUGH_EXCLUSIVE',
       );
     }
+    // `through` validated in validateThroughRelationships after all entities exist.
     return {
       name: r.name,
       kind: r.kind,
@@ -1123,6 +1126,57 @@ export class IRCompiler {
       ...(r.onDelete ? { onDelete: r.onDelete } : {}),
       ...(r.onUpdate ? { onUpdate: r.onUpdate } : {}),
     };
+  }
+
+  /**
+   * Validate many-to-many `through` joins once every entity is in IR
+   * (semantics.md § Many-to-many via through).
+   */
+  private validateThroughRelationships(entities: IREntity[]): void {
+    const byName = new Map(entities.map((e) => [e.name, e]));
+    for (const entity of entities) {
+      for (const rel of entity.relationships) {
+        if (!rel.through) continue;
+        if (rel.foreignKey) continue; // exclusivity diagnostic already emitted
+        if (rel.kind !== 'hasMany') {
+          this.emitDiagnostic(
+            'error',
+            `Relationship '${rel.name}' on entity '${entity.name}' uses 'through', which is only supported on hasMany in this version.`,
+            undefined,
+            undefined,
+            'RELATION_THROUGH_KIND_UNSUPPORTED',
+          );
+          continue;
+        }
+        const join = byName.get(rel.through);
+        if (!join) {
+          this.emitDiagnostic(
+            'error',
+            `Relationship '${rel.name}' on entity '${entity.name}' uses through '${rel.through}', but no entity '${rel.through}' is declared.`,
+            undefined,
+            undefined,
+            'RELATION_THROUGH_JOIN_INVALID',
+          );
+          continue;
+        }
+        const toSource = join.relationships.some(
+          (jr) =>
+            (jr.kind === 'belongsTo' || jr.kind === 'ref') && jr.target === entity.name,
+        );
+        const toTarget = join.relationships.some(
+          (jr) => (jr.kind === 'belongsTo' || jr.kind === 'ref') && jr.target === rel.target,
+        );
+        if (!toSource || !toTarget) {
+          this.emitDiagnostic(
+            'error',
+            `Relationship '${rel.name}' on entity '${entity.name}' through '${rel.through}' requires '${rel.through}' to declare belongsTo/ref to '${entity.name}' and to '${rel.target}'.`,
+            undefined,
+            undefined,
+            'RELATION_THROUGH_JOIN_INVALID',
+          );
+        }
+      }
+    }
   }
 
   private transformConstraint(c: ConstraintNode): IRConstraint {

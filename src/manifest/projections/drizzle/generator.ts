@@ -341,16 +341,8 @@ function emitRelationship(
     return { lines, diagnostics };
   }
 
-  // through → join-entity-mediated many-to-many
+  // through → many-to-many via explicit join entity (Drizzle wires Join; target[] is runtime)
   if (rel.through) {
-    diagnostics.push({
-      severity: 'info',
-      code: 'DRIZZLE_RELATION_VIA_THROUGH_UNIMPLEMENTED',
-      entity: entity.name,
-      message:
-        `Relationship '${entity.name}.${rel.name}' uses 'through ${rel.through}'. ` +
-        `Declare the join entity with two belongsTo relations instead.`,
-    });
     return { lines, diagnostics };
   }
 

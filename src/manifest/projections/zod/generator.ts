@@ -24,6 +24,7 @@ import type {
   IRCommand,
   IRComputedProperty,
   IREntity,
+  IREnum,
   IRParameter,
   IRProperty,
   IRType,
@@ -61,6 +62,8 @@ const TYPE_MAP: Record<string, string> = {
   bigint: 'z.bigint()',
   date: 'z.coerce.date()',
   datetime: 'z.coerce.date()',
+  /** Alias used by some apps/docs; same coercion as datetime. */
+  timestamp: 'z.coerce.date()',
   time: 'z.string().regex(/^([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d$/)',
   duration: 'z.number()',
   uuid: 'z.string().uuid()',
@@ -82,25 +85,30 @@ function irTypeToZod(
   type: IRType,
   diagnostics: ProjectionDiagnostic[],
   valueObjectMap?: Map<string, IRValueObject>,
+  enumMap?: Map<string, IREnum>,
 ): string {
   // Handle generic types first (array, map) before TYPE_MAP lookup
-  if (type.name === 'array' && type.generic) {
-    const inner = irTypeToZod(type.generic, diagnostics, valueObjectMap);
+  if ((type.name === 'array' || type.name === 'list') && type.generic) {
+    const inner = irTypeToZod(type.generic, diagnostics, valueObjectMap, enumMap);
     return `z.array(${inner})`;
   }
 
   if (type.name === 'map' && type.generic) {
-    const inner = irTypeToZod(type.generic, diagnostics, valueObjectMap);
+    const inner = irTypeToZod(type.generic, diagnostics, valueObjectMap, enumMap);
     return `z.record(${inner})`;
   }
 
   const base = TYPE_MAP[type.name];
   if (base === undefined) {
+    const en = enumMap?.get(type.name);
+    if (en) {
+      return buildEnumZod(en);
+    }
     // Check for a known value-object definition before falling back.
     // valueObjectMap is defined when vo is found (?.get returned a result).
     const vo = valueObjectMap?.get(type.name);
     if (vo) {
-      return buildValueObjectZod(vo, diagnostics, valueObjectMap!);
+      return buildValueObjectZod(vo, diagnostics, valueObjectMap!, enumMap);
     }
     diagnostics.push({
       severity: 'warning',
@@ -113,6 +121,12 @@ function irTypeToZod(
   return base;
 }
 
+/** Emit `z.enum([...])` from an IR enum declaration (member names as string literals). */
+function buildEnumZod(en: IREnum): string {
+  const members = en.values.map((v) => JSON.stringify(v.name));
+  return `z.enum([${members.join(', ')}])`;
+}
+
 /**
  * Build an inline `z.object({...})` expression for a value-object type.
  * Mirrors how `generatePropertyLine` renders individual fields, including
@@ -122,9 +136,10 @@ function buildValueObjectZod(
   vo: IRValueObject,
   diagnostics: ProjectionDiagnostic[],
   valueObjectMap: Map<string, IRValueObject>,
+  enumMap?: Map<string, IREnum>,
 ): string {
   const fields = vo.properties.map((prop) => {
-    let expr = irTypeToZod(prop.type, diagnostics, valueObjectMap);
+    let expr = irTypeToZod(prop.type, diagnostics, valueObjectMap, enumMap);
     if (prop.type.nullable) {
       expr += '.nullable()';
     }
@@ -181,6 +196,7 @@ function generateEntitySchema(
   analysisOptions: ZodProjectionOptions,
   diagnostics: ProjectionDiagnostic[],
   valueObjectMap?: Map<string, IRValueObject>,
+  enumMap?: Map<string, IREnum>,
 ): EntitySchemaResult {
   const name = pascalCase(entity.name);
   const lines: string[] = [];
@@ -223,6 +239,7 @@ function generateEntitySchema(
       patternChains,
       diagnostics,
       valueObjectMap,
+      enumMap,
     );
     lines.push(`  ${prop.name}: ${propLine},`);
   }
@@ -235,7 +252,7 @@ function generateEntitySchema(
     lines.push(`// Computed: ${entity.name}`);
     lines.push(`export const ${name}ComputedSchema = ${name}Schema.extend({`);
     for (const cp of entity.computedProperties) {
-      const cpLine = generateComputedPropertyLine(cp, diagnostics, valueObjectMap);
+      const cpLine = generateComputedPropertyLine(cp, diagnostics, valueObjectMap, enumMap);
       lines.push(`  ${cp.name}: ${cpLine},`);
     }
     lines.push('});');
@@ -264,8 +281,9 @@ function generatePropertyLine(
   patternChains: Map<string, string>,
   diagnostics: ProjectionDiagnostic[],
   valueObjectMap?: Map<string, IRValueObject>,
+  enumMap?: Map<string, IREnum>,
 ): string {
-  let expr = irTypeToZod(prop.type, diagnostics, valueObjectMap);
+  let expr = irTypeToZod(prop.type, diagnostics, valueObjectMap, enumMap);
 
   // Apply numeric range chain for numeric types
   const numChain = numericChains.get(prop.name);
@@ -307,8 +325,9 @@ function generateComputedPropertyLine(
   cp: IRComputedProperty,
   diagnostics: ProjectionDiagnostic[],
   valueObjectMap?: Map<string, IRValueObject>,
+  enumMap?: Map<string, IREnum>,
 ): string {
-  let expr = irTypeToZod(cp.type, diagnostics, valueObjectMap);
+  let expr = irTypeToZod(cp.type, diagnostics, valueObjectMap, enumMap);
 
   if (cp.type.nullable) {
     expr += '.nullable()';
@@ -326,6 +345,7 @@ function generateCommandSchema(
   analysisOptions: ZodProjectionOptions,
   diagnostics: ProjectionDiagnostic[],
   valueObjectMap?: Map<string, IRValueObject>,
+  enumMap?: Map<string, IREnum>,
 ): string[] {
   const lines: string[] = [];
   const opts = normalizeOptions(analysisOptions);
@@ -345,7 +365,7 @@ function generateCommandSchema(
   } else {
     lines.push(`export const ${schemaName} = z.object({`);
     for (const param of command.parameters) {
-      const paramLine = generateParameterLine(param, diagnostics, valueObjectMap);
+      const paramLine = generateParameterLine(param, diagnostics, valueObjectMap, enumMap);
       lines.push(`  ${param.name}: ${paramLine},`);
     }
     lines.push('});');
@@ -359,7 +379,7 @@ function generateCommandSchema(
 
   // Return type schema if command has a return type
   if (command.returns && opts.emitTypes) {
-    const returnExpr = irTypeToZod(command.returns, diagnostics, valueObjectMap);
+    const returnExpr = irTypeToZod(command.returns, diagnostics, valueObjectMap, enumMap);
     lines.push(`export const ${qualified}ReturnSchema = ${returnExpr};`);
     lines.push(`export type ${qualified}Return = z.infer<typeof ${qualified}ReturnSchema>;`);
   }
@@ -371,8 +391,9 @@ function generateParameterLine(
   param: IRParameter,
   diagnostics: ProjectionDiagnostic[],
   valueObjectMap?: Map<string, IRValueObject>,
+  enumMap?: Map<string, IREnum>,
 ): string {
-  let expr = irTypeToZod(param.type, diagnostics, valueObjectMap);
+  let expr = irTypeToZod(param.type, diagnostics, valueObjectMap, enumMap);
 
   if (param.type.nullable) {
     expr += '.nullable()';
@@ -472,10 +493,11 @@ export class ZodProjection implements ProjectionTarget {
     const valueObjectMap = new Map<string, IRValueObject>(
       (ir.values ?? []).map((v) => [v.name, v]),
     );
+    const enumMap = new Map<string, IREnum>((ir.enums ?? []).map((e) => [e.name, e]));
     const artifacts: ProjectionArtifact[] = [];
 
     for (const entity of entities) {
-      const result = generateEntitySchema(entity, opts, diagnostics, valueObjectMap);
+      const result = generateEntitySchema(entity, opts, diagnostics, valueObjectMap, enumMap);
       const code = this.wrapWithImport(result.lines, opts);
       artifacts.push({
         id: `zod.entity.${entity.name}`,
@@ -514,10 +536,11 @@ export class ZodProjection implements ProjectionTarget {
     const valueObjectMap = new Map<string, IRValueObject>(
       (ir.values ?? []).map((v) => [v.name, v]),
     );
+    const enumMap = new Map<string, IREnum>((ir.enums ?? []).map((e) => [e.name, e]));
     const artifacts: ProjectionArtifact[] = [];
 
     for (const command of commands) {
-      const lines = generateCommandSchema(command, opts, diagnostics, valueObjectMap);
+      const lines = generateCommandSchema(command, opts, diagnostics, valueObjectMap, enumMap);
       const code = this.wrapWithImport(lines, opts);
       artifacts.push({
         id: `zod.command.${command.name}`,
@@ -538,16 +561,17 @@ export class ZodProjection implements ProjectionTarget {
     const valueObjectMap = new Map<string, IRValueObject>(
       (ir.values ?? []).map((v) => [v.name, v]),
     );
+    const enumMap = new Map<string, IREnum>((ir.enums ?? []).map((e) => [e.name, e]));
     const lines: string[] = [];
 
     for (const entity of ir.entities) {
-      const result = generateEntitySchema(entity, opts, diagnostics, valueObjectMap);
+      const result = generateEntitySchema(entity, opts, diagnostics, valueObjectMap, enumMap);
       lines.push(...result.lines);
       lines.push('');
     }
 
     for (const command of ir.commands) {
-      const cmdLines = generateCommandSchema(command, opts, diagnostics, valueObjectMap);
+      const cmdLines = generateCommandSchema(command, opts, diagnostics, valueObjectMap, enumMap);
       lines.push(...cmdLines);
       lines.push('');
     }

@@ -778,23 +778,26 @@ describe('DrizzleProjection — relationship wiring', () => {
 });
 
 describe('DrizzleProjection — relationship diagnostics', () => {
-  it('emits DRIZZLE_RELATION_VIA_THROUGH_UNIMPLEMENTED for through', () => {
+  it('skips through sugar field (join entity wired via belongsTo sides)', () => {
     const ir = emptyIR();
     ir.entities.push(
       bareEntity('Author', {
         relationships: [{ name: 'books', kind: 'hasMany', target: 'Book', through: 'AuthorBook' }],
       }),
       bareEntity('Book'),
-      bareEntity('AuthorBook'),
+      bareEntity('AuthorBook', {
+        relationships: [
+          { name: 'author', kind: 'belongsTo', target: 'Author', foreignKey: { fields: ['authorId'] } },
+          { name: 'book', kind: 'belongsTo', target: 'Book', foreignKey: { fields: ['bookId'] } },
+        ],
+      }),
     );
     ir.stores.push(durableStore('Author'), durableStore('Book'), durableStore('AuthorBook'));
 
     const result = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' });
-    const through = result.diagnostics.find(
-      (d) => d.code === 'DRIZZLE_RELATION_VIA_THROUGH_UNIMPLEMENTED',
-    );
-    expect(through).toBeDefined();
-    expect(through?.entity).toBe('Author');
+    expect(
+      result.diagnostics.find((d) => d.code === 'DRIZZLE_RELATION_VIA_THROUGH_UNIMPLEMENTED'),
+    ).toBeUndefined();
   });
 
   it('emits DRIZZLE_RELATION_TARGET_NOT_EMITTED for dangling target', () => {

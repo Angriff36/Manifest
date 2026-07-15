@@ -552,6 +552,8 @@ export type IRExpression =
 export interface IRDiagnostic {
   severity: 'error' | 'warning' | 'info';
   message: string;
+  /** Machine-readable code for programmatic handling (optional; message remains canonical). */
+  code?: string;
   line?: number;
   column?: number;
 }

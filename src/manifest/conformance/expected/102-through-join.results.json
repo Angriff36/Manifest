@@ -1,0 +1,37 @@
+{
+  "testCases": [
+    {
+      "name": "through hasMany resolves Tag[] via PostTag join rows",
+      "setup": {
+        "createInstances": [
+          { "entity": "Post", "data": { "id": "p1", "title": "Hello" } },
+          { "entity": "Tag", "data": { "id": "t1", "name": "news" } },
+          { "entity": "Tag", "data": { "id": "t2", "name": "tech" } },
+          { "entity": "PostTag", "data": { "id": "pt1", "postId": "p1", "tagId": "t1" } },
+          { "entity": "PostTag", "data": { "id": "pt2", "postId": "p1", "tagId": "t2" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Post",
+        "instanceId": "p1",
+        "property": "tagCount"
+      },
+      "expectedValue": 2
+    },
+    {
+      "name": "through hasMany returns empty when no join rows",
+      "setup": {
+        "createInstances": [
+          { "entity": "Post", "data": { "id": "p2", "title": "Empty" } },
+          { "entity": "Tag", "data": { "id": "t3", "name": "unused" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Post",
+        "instanceId": "p2",
+        "property": "tagCount"
+      },
+      "expectedValue": 0
+    }
+  ]
+}

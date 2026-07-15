@@ -1,0 +1,46 @@
+// Many-to-many via join entity (`through`).
+// Post.tags resolves to Tag[] through PostTag join rows at runtime.
+// Prisma/Drizzle wire PostTag as a first-class table with two belongsTo sides.
+
+entity Post {
+  property id: string = ""
+  property title: string = ""
+
+  hasMany tags: Tag through PostTag
+  hasMany tagLinks: PostTag
+
+  computed tagCount: number = length(self.tags)
+
+  command create(title: string) {
+    mutate title = title
+  }
+}
+
+entity Tag {
+  property id: string = ""
+  property name: string = ""
+
+  hasMany postLinks: PostTag
+
+  command create(name: string) {
+    mutate name = name
+  }
+}
+
+entity PostTag {
+  property id: string = ""
+  property postId: string = ""
+  property tagId: string = ""
+
+  belongsTo post: Post with postId
+  belongsTo tag: Tag with tagId
+
+  command create(postId: string, tagId: string) {
+    mutate postId = postId
+    mutate tagId = tagId
+  }
+}
+
+store Post in memory
+store Tag in memory
+store PostTag in memory

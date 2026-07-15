@@ -110,6 +110,11 @@ Valid values: `cascade`, `restrict`, `setNull`, `setDefault`, `noAction`.
 
 **IR**: `IRRelationship.onDelete?: RefAction`, `IRRelationship.onUpdate?: RefAction`. **Absent means emit nothing** — let the projection target use its own default. This is intentional: entities without an explicit action diff cleanly against schemas that also omit it.
 
+~~**Runtime:** referential actions were previously projection-delegated only.~~
+**Update (2026-07-15):** The reference runtime enforces `onDelete` / `onUpdate` on
+`deleteInstance` / `updateInstance` for all stores (see `semantics.md`
+§ Referential Actions). Projections still emit native FK attributes where supported.
+
 #### Runtime behavior for composite FK
 
 The Manifest runtime engine resolves both single- and multi-column foreign keys. At runtime:

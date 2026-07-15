@@ -1579,19 +1579,51 @@ describe('IRCompiler', () => {
       expect(command?.parameters[1].defaultValue?.kind).toBe('object');
     });
 
-    it('rejects through relationships with RELATION_THROUGH_UNSUPPORTED', async () => {
+    it('compiles hasMany through when join entity has belongsTo both ends', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity User {
+          property id: string = ""
+          hasMany posts: Post through AuthorPost
+        }
+        entity Post {
+          property id: string = ""
+          hasMany authorLinks: AuthorPost
+        }
+        entity AuthorPost {
+          property id: string = ""
+          property userId: string = ""
+          property postId: string = ""
+          belongsTo user: User with userId
+          belongsTo post: Post with postId
+        }
+        store User in memory
+        store Post in memory
+        store AuthorPost in memory
+      `);
+
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+      expect(result.ir).not.toBeNull();
+      const rel = result.ir!.entities.find((e) => e.name === 'User')!.relationships.find(
+        (r) => r.name === 'posts',
+      );
+      expect(rel?.through).toBe('AuthorPost');
+      expect(rel?.target).toBe('Post');
+    });
+
+    it('rejects through when join entity lacks belongsTo sides', async () => {
       const compiler = new IRCompiler();
       const result = await compiler.compileToIR(`
         entity User {
           hasMany posts: Post through AuthorPost
         }
+        entity Post {}
+        entity AuthorPost {}
       `);
 
       expect(result.ir).toBeNull();
       const errors = result.diagnostics.filter((d) => d.severity === 'error');
-      expect(errors).toHaveLength(1);
-      expect(errors[0].message).toContain("uses 'through'");
-      expect(errors[0].message).toContain('not supported');
+      expect(errors.some((e) => e.code === 'RELATION_THROUGH_JOIN_INVALID')).toBe(true);
     });
 
     it('should handle foreign key relationships (with clause → structured FK)', async () => {
@@ -1708,7 +1740,7 @@ describe('IRCompiler', () => {
         expect(rel?.onUpdate).toBe('restrict');
       });
 
-      it('through relation alone emits RELATION_THROUGH_UNSUPPORTED and fails compilation', async () => {
+      it('through without valid join entity fails with RELATION_THROUGH_JOIN_INVALID', async () => {
         const compiler = new IRCompiler();
         const result = await compiler.compileToIR(`
           entity Post {
@@ -1717,9 +1749,7 @@ describe('IRCompiler', () => {
         `);
         expect(result.ir).toBeNull();
         const errors = result.diagnostics.filter((d) => d.severity === 'error');
-        expect(errors).toHaveLength(1);
-        expect(errors[0].message).toContain("uses 'through'");
-        expect(errors[0].message).toContain('not supported');
+        expect(errors.some((e) => e.code === 'RELATION_THROUGH_JOIN_INVALID')).toBe(true);
       });
 
       it('emits an error when both foreignKey fields and through are set on the same relationship', async () => {

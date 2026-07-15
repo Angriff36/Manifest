@@ -159,7 +159,12 @@ This two-pass shape is also why the FK-collision detection works correctly: by t
 
 The projection produces structured diagnostics rather than emit Prisma that wouldn't validate:
 
-- **`through` relationships** (`hasMany ... through X`): explicit many-to-many via a join entity. Prisma's M2M model requires the join entity to declare two `belongsTo` relations and the linked sides to declare `hasMany` pointing at the **join entity itself**. Manifest's `through` syntax doesn't carry that information. The projection emits `PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED` info + a comment marker, leaving wire-up to the consumer (who already declared the join entity as a real Manifest entity).
+- **`through` relationships** (`hasMany ... through Join`): many-to-many via an
+  explicit join entity. Join MUST declare `belongsTo`/`ref` to both ends. The
+  projection emits a collection on each end to the **join** rows (e.g.
+  `authorBooks AuthorBook[]`) when the author did not already declare
+  `hasMany …: Join`; target navigation (`self.books` → `Book[]`) is runtime
+  two-hop. ~~`PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED`~~ removed 2026-07-15.
 - **Multi-relation between same pair**: e.g. `Book belongsTo author: Author` AND `Book belongsTo editor: Author`. Prisma requires `@relation("name")` to disambiguate; the projection refuses to invent names. Emits `PRISMA_RELATION_AMBIGUOUS` info. Two-sided self-relations (e.g. `Tree { belongsTo parent: Tree; hasMany children: Tree }`) hit the same rule for the same reason — Prisma can't auto-match the sides.
 - **One-sided relations**: a `hasMany` / `hasOne` / `belongsTo` / `ref` with no matching opposite. The field IS emitted but Prisma will reject the schema. Emits `PRISMA_RELATION_MISSING_BACKSIDE` warning with the missing-declaration hint. v0.9.1+: `ref` warns too (used to be exempt; Codex review pointed out that ref emits a full `@relation` which Prisma rejects without the opposite side regardless of IR intent).
 - **Dangling target reference** (v0.9.1+): relationship points at an entity that was skipped (external, non-durable store, no store). Emits `PRISMA_RELATION_TARGET_NOT_EMITTED` warning + comment marker; the relation field is NOT emitted.
