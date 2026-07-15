@@ -108,7 +108,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Convex `searchable` → `.searchIndex`                  | FULLY_IMPLEMENTED     | `generator.ts:367-441` @ `f8221d44be41a80725ab58981658edf3cfe64f30`; `capabilities.ts` string-gate; `type-mapping.ts:85-87`; `semantics.test.ts` @ same |
 | [x]    | Convex `versionProperty` OCC                          | FULLY_IMPLEMENTED     | `version-occ.ts:1-76` @ `4660059ba17fcc00f06de523b14c361df421fea8`; `functions.ts` create/update OCC; schema synthesize; `semantics.test.ts` @ same |
 | [x]    | FEATURE-LIST → registry inventory (M12)               | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts:1-301` @ `e0ffb716ffc627fdfe7bdb8df8ea6882be3dff66`; `src/manifest/feature-list-generator.test.ts:1-52` @ same; `package.json` `docs:feature-list` / `docs:check:feature-list` |
-| [x]    | Convex realtime/cache PARTIAL reclass                 | FULLY_IMPLEMENTED     | `capabilities.ts` `CONVEX_PARTIAL_REALTIME` / `CONVEX_PARTIAL_COMPUTED_CACHE`; `semantics.test.ts` — SHA after commit |
+| [x]    | Convex realtime/cache PARTIAL reclass                 | FULLY_IMPLEMENTED     | `capabilities.ts` @ `03a019efbeddbf2bc177b745957de81c5a9384a1` (`CONVEX_PARTIAL_REALTIME` / `CONVEX_PARTIAL_COMPUTED_CACHE`); `semantics.test.ts` @ same |
 | [x]    | enforce-surface Drizzle/Kysely/raw-SQL detection      | FULLY_IMPLEMENTED     | `packages/cli/src/audit/write-receiver.ts:61-105` @ `3d459a1654c53a30af2e1730a0ba9ffe3ea67342`; `direct-writes.ts` + `direct-writes.test.ts` @ same                                                                              |
 
 ---
