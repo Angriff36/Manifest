@@ -36,9 +36,9 @@ import {
   type NormalizedOptions,
 } from './generator.js';
 import { resolveConvexValidator } from './type-mapping.js';
+import { ReactionPayloadCollisionPlanner } from './reactionPayloadCollision.js';
 import {
-  renderExpression,
-  isNullLiteral,
+  renderExpression,  isNullLiteral,
   type RenderScope,
   type RenderResult,
 } from './expression.js';
@@ -60,8 +60,11 @@ import {
   collectCountOfHasManyRels,
   renderCountOfHasManyPreloads,
 } from './count-of-preload.js';
+import { ReactionPayloadCollisionPlanner } from './reactionPayloadCollision.js';
 
 type Normalized = NormalizedOptions;
+
+const reactionPayloadCollisionPlanner = new ReactionPayloadCollisionPlanner();
 
 export interface FunctionsResult {
   code: string;
@@ -1049,15 +1052,29 @@ function generateMutation(
     const tail = [...events.lines, ...reactions.lines].join('\n');
     // Reaction expressions resolve `payload` against the reference-runtime
     // contract (runtime-engine.ts): the emitted event payload is `{ ...input,
-    // result }` and reactions additionally see `_subject` (the canonical
-    // entity/command/id metadata). `result` is the affected entity, with its
-    // app-level `id` aliased to the Convex `_id` (convexId mode stores no `id`
-    // scalar). Without these keys, IR expressions like `payload.result.id` /
-    // `payload._subject.id` read through `undefined` and crash at runtime.
-    const g7Entries = g7.fields.map((f) => `${f.name}: ${f.code}`).join(', ');
+    // result }` then G7 fields overwrite; reactions additionally see `_subject`.
+    // When G7 declares `result`, keep the business field and omit the envelope
+    // (entity identity stays on `_subject`) — never emit duplicate object keys.
+    const collision = reactionPayloadCollisionPlanner.plan(g7.fields, {
+      entity: entity.name,
+      command: cmd.name,
+    });
+    diagnostics.push(...collision.diagnostics);
+    const g7Entries = collision.reactionFields.map((f) => `${f.name}: ${f.code}`).join(', ');
     const subjectLiteral = `_subject: { entity: ${JSON.stringify(entity.name)}, command: ${JSON.stringify(cmd.name)}, id: _id }`;
+    const envelopeResult = collision.includeEnvelopeResult
+      ? 'result: { _id, id: _id, ...doc }'
+      : '';
+    const payloadParts = [
+      '_id',
+      'id: _id',
+      '...doc',
+      ...(envelopeResult ? [envelopeResult] : []),
+      ...(g7Entries ? [g7Entries] : []),
+      subjectLiteral,
+    ].join(', ');
     const payloadBinding = /\bpayload\b/.test(tail)
-      ? `    const payload: Record<string, any> = { _id, id: _id, ...doc, result: { _id, id: _id, ...doc }${g7Entries ? `, ${g7Entries}` : ''}, ${subjectLiteral} };\n`
+      ? `    const payload: Record<string, any> = { ${payloadParts} };\n`
       : '';
     const bodyText = [...checks.lines, tail].join('\n');
     const authLines = authBindings(bodyText, options, tenantScoped);
@@ -1153,15 +1170,31 @@ function generateMutation(
   diagnostics.push(...reactions.diagnostics);
 
   const tail = [...events.lines, ...reactions.lines].join('\n');
-  // Same reference-runtime payload contract as the create branch: `result` is
-  // the affected entity (post-patch) with `id` aliased to the Convex `_id`, and
-  // `_subject` carries the canonical entity/command/id metadata reactions read.
-  const g7Entries = g7.fields.map((f) => `${f.name}: ${f.code}`).join(', ');
+  // Same reference-runtime payload contract as the create branch, including
+  // G7 `result` collision handling (business field wins; `_subject` keeps id).
+  const collision = reactionPayloadCollisionPlanner.plan(g7.fields, {
+    entity: entity.name,
+    command: cmd.name,
+  });
+  diagnostics.push(...collision.diagnostics);
+  const g7Entries = collision.reactionFields.map((f) => `${f.name}: ${f.code}`).join(', ');
   const subjectLiteral = `_subject: { entity: ${JSON.stringify(entity.name)}, command: ${JSON.stringify(cmd.name)}, id: docId }`;
-  const payloadBinding = /\bpayload\b/.test(tail)
+  const envelopeResult = collision.includeEnvelopeResult
     ? useAfter
-      ? `    const payload: Record<string, any> = { id: docId, ...__after, result: { id: docId, ...__after }${g7Entries ? `, ${g7Entries}` : ''}, ${subjectLiteral} };\n`
-      : `    const payload: Record<string, any> = { id: docId, ...doc, ...updates, result: { id: docId, ...doc, ...updates }, ${subjectLiteral} };\n`
+      ? 'result: { id: docId, ...__after }'
+      : 'result: { id: docId, ...doc, ...updates }'
+    : '';
+  const baseParts = useAfter
+    ? ['id: docId', '...__after']
+    : ['id: docId', '...doc', '...updates'];
+  const payloadParts = [
+    ...baseParts,
+    ...(envelopeResult ? [envelopeResult] : []),
+    ...(g7Entries ? [g7Entries] : []),
+    subjectLiteral,
+  ].join(', ');
+  const payloadBinding = /\bpayload\b/.test(tail)
+    ? `    const payload: Record<string, any> = { ${payloadParts} };\n`
     : '';
   const argDestructureParts = [...paramNames];
   if (versionOcc.expectedArgName) {

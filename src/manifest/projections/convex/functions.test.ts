@@ -1158,6 +1158,95 @@ describe('convex.mutations — G7 emit payloads (`emit Event { field: expr }`)',
     expect(code).toContain('payload: {}'); // empty payload, as before G7
     expect(code).not.toContain('__after'); // no post-action var introduced
   });
+
+  it('does not emit duplicate result keys when G7 declares result (TS1117 collision)', () => {
+    // Capsule Manifest-source: QualityCheck.pass / EventAllergenCheck.record emit
+    // `result: …` while the reaction envelope also binds reserved `result`.
+    const ir = emptyIR();
+    ir.entities = [
+      entity('QualityCheck', [
+        prop('status', 'string', ['required']),
+        prop('result', 'string'),
+      ]),
+      entity('Board', [prop('sourceId', 'string', ['required'])]),
+    ];
+    ir.stores = [durable('QualityCheck'), durable('Board')];
+    ir.reactions = [
+      {
+        event: 'QualityCheckPassed',
+        targetEntity: 'Board',
+        targetCommand: 'create',
+        resolve: { kind: 'literal', value: { kind: 'null' } },
+        params: [
+          {
+            name: 'sourceId',
+            expression: {
+              kind: 'member',
+              object: {
+                kind: 'member',
+                object: { kind: 'identifier', name: 'payload' },
+                property: '_subject',
+              },
+              property: 'id',
+            },
+          },
+        ],
+      },
+    ] as IRReactionRule[];
+    ir.commands = [
+      {
+        name: 'pass',
+        entity: 'QualityCheck',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'result',
+            expression: { kind: 'literal', value: { kind: 'string', value: 'pass' } },
+          },
+          {
+            kind: 'mutate',
+            target: 'status',
+            expression: { kind: 'literal', value: { kind: 'string', value: 'passed' } },
+          },
+        ],
+        emits: ['QualityCheckPassed'],
+        emitPayloads: [
+          {
+            eventName: 'QualityCheckPassed',
+            fields: [
+              {
+                name: 'result',
+                expression: { kind: 'literal', value: { kind: 'string', value: 'pass' } },
+              },
+              {
+                name: 'status',
+                expression: { kind: 'literal', value: { kind: 'string', value: 'passed' } },
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const generated = mutations(ir);
+    const code = generated.artifacts[0].code;
+    const payloadLines = code.split('\n').filter((l) => l.includes('const payload:'));
+    expect(payloadLines.length).toBeGreaterThan(0);
+    for (const line of payloadLines) {
+      const resultKeys = line.match(/\bresult:/g) ?? [];
+      expect(resultKeys.length).toBe(1); // business G7 result only — no TS1117
+    }
+    expect(code).toContain('result: "pass"'); // domain field kept (not renamed)
+    expect(code).not.toContain('result: { id: docId, ...__after }'); // envelope omitted on collision
+    expect(code).toContain('_subject:'); // entity identity preserved
+    expect(
+      generated.diagnostics.some(
+        (d) => d.code === 'CONVEX_PAYLOAD_FIELD_COLLISION' && d.message.includes('result'),
+      ),
+    ).toBe(true);
+  });
 });
 
 describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.x run cmd`)', () => {
