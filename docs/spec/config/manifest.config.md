@@ -160,7 +160,7 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 | `env`          | `{}`              | object | Environment-variable declarations for `manifest preflight`. Grouped under `stores`, `auth`, `adapters`, `custom`.                                         |
 | `hooks`        | (see below)       | object | Git pre-commit hook settings consumed by `manifest install-hooks`.                                                                                        |
 | `plugins`      | `[]`              | array  | Third-party plugin declarations loaded by the CLI; inspected via `manifest plugins`.                                                                      |
-| `naming`       | (off)             | mixed  | Identifier naming policy. Legacy physical convention and/or opt-in normalization — see **`naming`**.                                                    |
+| `naming`       | (off)             | mixed  | Identifier naming policy. Legacy physical convention and/or opt-in normalization — see **`naming`**.                                                      |
 
 ---
 
@@ -252,12 +252,12 @@ naming:
         Article.author: writerId
 ```
 
-| `mismatch` | Behavior |
-| ---------- | -------- |
-| `off` | Ignore |
-| `warn` | Keep source spelling; warn |
-| `error` | Fail compile |
-| `fix` | Normalize generated output only (never rewrites `.manifest` sources) |
+| `mismatch` | Behavior                                                             |
+| ---------- | -------------------------------------------------------------------- |
+| `off`      | Ignore                                                               |
+| `warn`     | Keep source spelling; warn                                           |
+| `error`    | Fail compile                                                         |
+| `fix`      | Normalize generated output only (never rewrites `.manifest` sources) |
 
 `resolveNamingConfig` / `resolveBuildNaming` from `@angriff36/manifest/config`
 expose the resolved policy for Builder and tooling.

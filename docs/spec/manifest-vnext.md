@@ -7,7 +7,7 @@ Enforced by: src/manifest/conformance/**, npm test
 
 ## Purpose
 
-This document specifies vNext language and runtime features for Manifest: constraint outcomes, overrides, workflows, concurrency, state transitions, and runtime performance. It is a Tier A normative document per `docs/DOCUMENTATION_GOVERNANCE.md`.
+This document specifies vNext language and runtime features for Manifest: constraint outcomes, overrides, workflows, concurrency, state transitions, and runtime performance. It is a Tier A normative document per ~~`docs/DOCUMENTATION_GOVERNANCE.md`~~ `docs/internal/DOCUMENTATION_GOVERNANCE.md` (path corrected 2026-07-15).
 
 All normative statements use RFC 2119 language (MUST, SHOULD, MAY). Advisory guidance is explicitly marked or lives in `docs/guides/`.
 
@@ -515,13 +515,13 @@ The route manifest (`routes.manifest.json`) MUST conform to this structure:
 
 ## Cross-References
 
-| Topic                   | Authoritative Document                |
-| ----------------------- | ------------------------------------- |
-| IR shape (contract)     | `docs/spec/ir/ir-v1.schema.json`      |
-| Runtime semantics       | `docs/spec/semantics.md`              |
-| Built-in identifiers    | `docs/spec/builtins.md`               |
-| Adapter hooks           | `docs/spec/adapters.md`               |
-| Conformance rules       | `docs/spec/conformance.md`            |
-| Documentation authority | `docs/DOCUMENTATION_GOVERNANCE.md`    |
-| Compliance tracking     | `docs/COMPLIANCE_MATRIX.md`           |
-| Route surface boundary  | `docs/guides/external-projections.md` |
+| Topic                   | Authoritative Document                                                                                    |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| IR shape (contract)     | `docs/spec/ir/ir-v1.schema.json`                                                                          |
+| Runtime semantics       | `docs/spec/semantics.md`                                                                                  |
+| Built-in identifiers    | `docs/spec/builtins.md`                                                                                   |
+| Adapter hooks           | `docs/spec/adapters.md`                                                                                   |
+| Conformance rules       | `docs/spec/conformance.md`                                                                                |
+| Documentation authority | ~~`docs/DOCUMENTATION_GOVERNANCE.md`~~ `docs/internal/DOCUMENTATION_GOVERNANCE.md` (corrected 2026-07-15) |
+| Compliance tracking     | `docs/COMPLIANCE_MATRIX.md`                                                                               |
+| Route surface boundary  | `docs/guides/external-projections.md`                                                                     |

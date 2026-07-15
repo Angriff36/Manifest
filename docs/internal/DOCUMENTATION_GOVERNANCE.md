@@ -134,25 +134,25 @@ into compliance when meaningfully edited.
 
 **Reference models (structure only — not Manifest feature claims):**
 
-| Model | Borrow for |
-| ----- | ---------- |
-| Prisma | Page structure, progressive explanation, schema-language tone, generated outputs, CLI workflows |
-| TypeSpec | Completeness across language + compiler + libraries + diagnostics + emitters/projections |
-| Encore | High-level application model: one semantic definition powers tooling and generated outputs |
-| Convex | Plain-language definitions, capability comparisons, small examples, when-to-use guidance |
-| Stripe | Reference pages that open with real-world meaning before operations and fields |
+| Model    | Borrow for                                                                                      |
+| -------- | ----------------------------------------------------------------------------------------------- |
+| Prisma   | Page structure, progressive explanation, schema-language tone, generated outputs, CLI workflows |
+| TypeSpec | Completeness across language + compiler + libraries + diagnostics + emitters/projections        |
+| Encore   | High-level application model: one semantic definition powers tooling and generated outputs      |
+| Convex   | Plain-language definitions, capability comparisons, small examples, when-to-use guidance        |
+| Stripe   | Reference pages that open with real-world meaning before operations and fields                  |
 
 ### Information architecture (separate doc kinds)
 
 Keep these roles in **separate trees** (do not collapse them into one page type):
 
-| Kind | Home | Purpose |
-| ---- | ---- | ------- |
-| Tutorials | `docs/getting-started/**` (+ Mintlify quickstart/install) | Goal-oriented first success |
-| Concepts | `docs/guides/**` (+ positioning pages) | Mental models and integration shapes |
-| Language guides | `docs/features/**` (+ `mintlify/language/**`) | How to use a language/runtime capability |
+| Kind              | Home                                                                           | Purpose                                       |
+| ----------------- | ------------------------------------------------------------------------------ | --------------------------------------------- |
+| Tutorials         | `docs/getting-started/**` (+ Mintlify quickstart/install)                      | Goal-oriented first success                   |
+| Concepts          | `docs/guides/**` (+ positioning pages)                                         | Mental models and integration shapes          |
+| Language guides   | `docs/features/**` (+ `mintlify/language/**`)                                  | How to use a language/runtime capability      |
 | Generated outputs | `docs/projections/**` (+ `mintlify/projections/**`, `mintlify/integration/**`) | What projections emit and how to consume them |
-| Exact reference | `docs/reference/**`, Tier A `docs/spec/**`, config/registry schemas | Normative or exhaustive API/CLI/IR detail |
+| Exact reference   | `docs/reference/**`, Tier A `docs/spec/**`, config/registry schemas            | Normative or exhaustive API/CLI/IR detail     |
 
 Tier A `docs/spec/**` remains binding law. User guides explain; they do not replace
 `semantics.md` or `ir-v1.schema.json`.
@@ -290,23 +290,23 @@ confirmed in this file.
 
 ## Directory Map
 
-| Directory | Tier | Contents |
-| --------- | ---- | -------- |
-| `docs/spec/` | A — Binding | Language law: IR schema, semantics, builtins, adapters, conformance, vNext, config, registry, project layout |
-| `src/manifest/conformance/` | A — Binding | Fixture-based executable semantics evidence |
-| `docs/getting-started/` | C — Tutorials | First-run journeys and positioning |
-| `docs/features/` | C — Language guides | Per-capability guides (page skeleton required for new/rewrites) |
-| `docs/guides/` | C — Concepts / integration | Patterns; includes `guides/migration/` |
-| `docs/projections/` | C — Generated outputs | Projection usage and emitted artifacts |
-| `docs/reference/` | C — Exact reference | CLI, API, compiler, runtime packaging reference |
-| `docs/internal/proposals/` | B — Non-binding | Design proposals, deferred work, drafts |
-| `docs/plans/`, `docs/internal/plans/`, `docs/internal/notes/`, `docs/internal/context/`, `docs/superpowers/` | B — Non-binding | Plans, WIP, agent design artifacts |
-| `docs/internal/tools/` | C — Advisory | CLI/API usage guides (internal) |
-| `docs/internal/contracts/` | C — Advisory | Signpost + scope boundary docs |
-| `docs/internal/codedocs/` | D — Derivative | Auto-generated API reference for tooling ingestion |
-| `mintlify/` | D — Advisory (curated) | Public docs site; follow page skeleton on new/rewrites |
-| `docs/internal/archive/` | Historical | Pre-IR design history; context only |
-| `docs/internal/integrations/` | Historical / consumer | Downstream consumer examples; non-authoritative |
+| Directory                                                                                                    | Tier                       | Contents                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `docs/spec/`                                                                                                 | A — Binding                | Language law: IR schema, semantics, builtins, adapters, conformance, vNext, config, registry, project layout |
+| `src/manifest/conformance/`                                                                                  | A — Binding                | Fixture-based executable semantics evidence                                                                  |
+| `docs/getting-started/`                                                                                      | C — Tutorials              | First-run journeys and positioning                                                                           |
+| `docs/features/`                                                                                             | C — Language guides        | Per-capability guides (page skeleton required for new/rewrites)                                              |
+| `docs/guides/`                                                                                               | C — Concepts / integration | Patterns; includes `guides/migration/`                                                                       |
+| `docs/projections/`                                                                                          | C — Generated outputs      | Projection usage and emitted artifacts                                                                       |
+| `docs/reference/`                                                                                            | C — Exact reference        | CLI, API, compiler, runtime packaging reference                                                              |
+| `docs/internal/proposals/`                                                                                   | B — Non-binding            | Design proposals, deferred work, drafts                                                                      |
+| `docs/plans/`, `docs/internal/plans/`, `docs/internal/notes/`, `docs/internal/context/`, `docs/superpowers/` | B — Non-binding            | Plans, WIP, agent design artifacts                                                                           |
+| `docs/internal/tools/`                                                                                       | C — Advisory               | CLI/API usage guides (internal)                                                                              |
+| `docs/internal/contracts/`                                                                                   | C — Advisory               | Signpost + scope boundary docs                                                                               |
+| `docs/internal/codedocs/`                                                                                    | D — Derivative             | Auto-generated API reference for tooling ingestion                                                           |
+| `mintlify/`                                                                                                  | D — Advisory (curated)     | Public docs site; follow page skeleton on new/rewrites                                                       |
+| `docs/internal/archive/`                                                                                     | Historical                 | Pre-IR design history; context only                                                                          |
+| `docs/internal/integrations/`                                                                                | Historical / consumer      | Downstream consumer examples; non-authoritative                                                              |
 
 ~~Obsolete root paths (`docs/proposals/`, `docs/tools/`, `docs/contracts/`,
 `docs/codedocs/`, `docs/migration/`, `docs/archive/`, `docs/integrations/` as

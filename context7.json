@@ -16,7 +16,7 @@
     "AGENTS.md",
     "CLAUDE.md",
     "docs/REPO_GUARDRAILS.md",
-    "docs/DOCUMENTATION_GOVERNANCE.md"
+    "docs/internal/DOCUMENTATION_GOVERNANCE.md"
   ],
   "rules": [
     "Manifest is IR-first: the IR (docs/spec/ir/ir-v1.schema.json) is the single source of truth, generated code is a view of it.",

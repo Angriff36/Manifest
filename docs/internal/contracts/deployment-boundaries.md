@@ -196,5 +196,6 @@ Recommended checks:
 - `docs/spec/adapters.md`
 - `docs/spec/conformance.md`
 - `src/manifest/conformance/**`
-- `docs/DOCUMENTATION_GOVERNANCE.md`
+- ~~`docs/DOCUMENTATION_GOVERNANCE.md`~~
+  - `docs/internal/DOCUMENTATION_GOVERNANCE.md` (path corrected 2026-07-15)
 - `house-style.md`

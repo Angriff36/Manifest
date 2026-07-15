@@ -8,7 +8,8 @@ Quick routing:
 
 - Canonical reading order: `docs/README.md`
 - Contracts signpost: `docs/contracts/README.md`
-- Governance rules: `docs/DOCUMENTATION_GOVERNANCE.md`
+- ~~Governance rules: `docs/DOCUMENTATION_GOVERNANCE.md`~~
+  - Governance rules: `docs/internal/DOCUMENTATION_GOVERNANCE.md` (corrected 2026-07-15)
 
 # Manifest Language Specification
 
@@ -92,8 +93,9 @@ specification are to be interpreted as described in RFC 2119.
 
 ### Documentation Governance
 
-- `docs/DOCUMENTATION_GOVERNANCE.md` — Doc authority tiers, edit rules, and
-  mandatory-vs-temporary test policy
+- ~~`docs/DOCUMENTATION_GOVERNANCE.md`~~
+  - `docs/internal/DOCUMENTATION_GOVERNANCE.md` — Doc authority tiers, edit rules, and
+    mandatory-vs-temporary test policy (path corrected 2026-07-15)
 
 ## Versioning Rules
 

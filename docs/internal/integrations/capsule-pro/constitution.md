@@ -33,7 +33,8 @@ Normative authority for governed domain semantics resides exclusively in Manifes
 
 Authoritative sources include:
 
-- `docs/DOCUMENTATION_GOVERNANCE.md`
+- ~~`docs/DOCUMENTATION_GOVERNANCE.md`~~
+  - `docs/internal/DOCUMENTATION_GOVERNANCE.md` (path corrected 2026-07-15)
 - `docs/spec/ir/ir-v1.schema.json`
 - `docs/spec/semantics.md`
 - `docs/spec/builtins.md`

@@ -42,22 +42,22 @@ projection options — never by editing them as if they were source.
 
 ## Folder routing
 
-| I want to…                                                    | Go to                                                                                                     |
-| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Understand what a language construct means at runtime         | `docs/spec/semantics.md`                                                                                  |
-| Change language behavior                                      | Update `docs/spec/**` first, then conformance, then implementation                                        |
-| Add a new IR field                                            | `docs/spec/ir/ir-v1.schema.json` → conformance fixtures → `src/manifest/ir-compiler.ts`                   |
-| Understand the Prisma projection                              | `docs/projections/prisma.md`, `docs/internal/codedocs/api-reference/projections.md`, `mintlify/integration/prisma.mdx` |
-| Read the full doc hierarchy                                   | `docs/README.md`                                                                                          |
-| Understand doc authority tiers **and** user-page style/IA     | `docs/internal/DOCUMENTATION_GOVERNANCE.md` (path corrected 2026-07-15; style/IA section added 2026-07-15) |
-| Write or rewrite a feature / guide / projection page          | Same governance file § User documentation style & information architecture                                |
-| Find tutorials                                                | `docs/getting-started/**`                                                                                 |
-| Find language guides                                          | `docs/features/**`                                                                                        |
-| Find generated-output docs                                    | `docs/projections/**`                                                                                     |
-| Find exact CLI/API reference                                  | `docs/reference/**`                                                                                       |
-| Find binding language law                                     | `docs/spec/**` and `src/manifest/conformance/**`                                                          |
-| Map consumer repo folders (`.manifest`, IR, generated routes) | `docs/spec/project-layout.md`                                                                             |
-| Find advisory guidance and patterns                           | `docs/guides/**`, ~~`docs/tools/**`~~ `docs/internal/tools/**` (corrected 2026-07-15)                     |
+| I want to…                                                    | Go to                                                                                                                      |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Understand what a language construct means at runtime         | `docs/spec/semantics.md`                                                                                                   |
+| Change language behavior                                      | Update `docs/spec/**` first, then conformance, then implementation                                                         |
+| Add a new IR field                                            | `docs/spec/ir/ir-v1.schema.json` → conformance fixtures → `src/manifest/ir-compiler.ts`                                    |
+| Understand the Prisma projection                              | `docs/projections/prisma.md`, `docs/internal/codedocs/api-reference/projections.md`, `mintlify/integration/prisma.mdx`     |
+| Read the full doc hierarchy                                   | `docs/README.md`                                                                                                           |
+| Understand doc authority tiers **and** user-page style/IA     | `docs/internal/DOCUMENTATION_GOVERNANCE.md` (path corrected 2026-07-15; style/IA section added 2026-07-15)                 |
+| Write or rewrite a feature / guide / projection page          | Same governance file § User documentation style & information architecture                                                 |
+| Find tutorials                                                | `docs/getting-started/**`                                                                                                  |
+| Find language guides                                          | `docs/features/**`                                                                                                         |
+| Find generated-output docs                                    | `docs/projections/**`                                                                                                      |
+| Find exact CLI/API reference                                  | `docs/reference/**`                                                                                                        |
+| Find binding language law                                     | `docs/spec/**` and `src/manifest/conformance/**`                                                                           |
+| Map consumer repo folders (`.manifest`, IR, generated routes) | `docs/spec/project-layout.md`                                                                                              |
+| Find advisory guidance and patterns                           | `docs/guides/**`, ~~`docs/tools/**`~~ `docs/internal/tools/**` (corrected 2026-07-15)                                      |
 | Find design history or deferred proposals                     | ~~`docs/proposals/**`, `docs/archive/**`~~ `docs/internal/proposals/**`, `docs/internal/archive/**` (corrected 2026-07-15) |
 
 ## What "done" means

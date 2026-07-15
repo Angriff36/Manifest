@@ -82,7 +82,8 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
 
 ## 3. Runtime Engine (`src/manifest/runtime-engine.ts`)
 
-- Fixed execution order: policies → guards → actions → emits → return
+- ~~Fixed execution order: policies → guards → actions → emits → return~~
+  - **Correction (2026-07-15):** policies → **command constraints** → guards → actions → emits → return (see `docs/spec/semantics.md`)
 - `RuntimeContext`: `tenantId` / `orgId` / `actorId` / `requestId` / `source` / `deterministic`
 - Middleware pipeline with 4 hooks: before-policy, before-guard, before-action, after-emit
 - Batched persistence: per-command working-copy buffer, one flush, atomic-on-failure (`runtime-command-batched-persistence.test.ts`)
@@ -131,7 +132,8 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 
 ## 7. Packages & Distribution
 
-- **Published**: `@angriff36/manifest` v3.6.0 on npmjs.org (OIDC trusted publishing via the one-button `cut-release.yml` workflow)
+- ~~**Published**: `@angriff36/manifest` v3.6.0 on npmjs.org~~
+  - **Published (corrected 2026-07-15):** `@angriff36/manifest` **v3.6.3** on npmjs.org (OIDC trusted publishing via the one-button `cut-release.yml` workflow); package.json is the version SoT
 - **Platform API for Builder (2026-07-14, shipped in v3.6.0):** `@angriff36/manifest/language-metadata` → `getLanguageMetadata()` — keywords/operators from lexer, modifiers from `property-modifiers.ts` / IR schema, builtins from `RuntimeEngine.getBuiltins()`, date/time primitives from `date-time.ts`. Keyword/operator/modifier/builtin lists are derived (no second registry); the categorized construct lists are curated subsets, lexer-asserted and drift-tested against parser source.
 - **Projection capabilities API (2026-07-14, shipped in v3.6.0):** `@angriff36/manifest/projections` → `getProjectionCapabilities(name)` + optional `ProjectionTarget.capabilities` (`feature` + `supported`/`partial`/`unsupported` + `note`). Convex declares its full matrix; projections without a declared matrix return `undefined` (undeclared ≠ unsupported).
 - **Projection descriptor API (2026-07-14, shipped in v3.6.1):** `@angriff36/manifest/projections` → `describeProjection` / `listProjectionDescriptors` / `validateProjectionInvocation` + `ProjectionDescriptor`. Scope, options, prerequisites, artifacts, deps, companions; `safelyInvokable` distinguishes registered vs safely invokable. Meta lives beside each projection (`descriptorMeta`); parity-tested against the registry. Spec: `docs/spec/projection-descriptors.md`.
