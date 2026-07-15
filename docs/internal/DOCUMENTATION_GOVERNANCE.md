@@ -1,23 +1,29 @@
 # Manifest Documentation Governance
 
-Last updated: 2026-05-24
+Last updated: 2026-07-15
 Status: Active
 Authority: Binding
-Enforced by: npm run docs:check, npm run docs:check:spec-integrity
+Enforced by: pnpm run docs:check, pnpm run docs:check:spec-integrity
 
 ## Purpose
 
-This document defines how to classify, name, version, and edit documentation in this
-repository so humans and AI agents can reliably distinguish binding language law from
-advisory guidance from generated derivative output.
+This document defines how to classify, name, version, structure, and edit
+documentation in this repository so humans and AI agents can reliably distinguish
+binding language law from advisory guidance from generated derivative output —
+and write user-facing pages that stay accurate to shipped Manifest capabilities.
 
 ## Front Door
 
 Read these first:
 
-- `docs/START_HERE.md` — one-page orientation: what Manifest is, what IR/runtime/conformance are, folder routing
-- `docs/README.md` — full canonical reading order
-- `docs/contracts/README.md` — contracts signpost to canonical law
+- ~~`docs/START_HERE.md`~~ → `docs/internal/START_HERE.md` — one-page orientation
+  (IR / runtime / conformance, folder routing). Path corrected 2026-07-15.
+- `docs/README.md` — product documentation front door and reading order
+- ~~`docs/contracts/README.md`~~ → `docs/internal/contracts/README.md` —
+  contracts signpost. Path corrected 2026-07-15.
+
+Style and information-architecture rules for user pages live in
+**User documentation style & information architecture** below.
 
 ## What Manifest Is
 
@@ -27,8 +33,10 @@ Manifest is a deterministic domain-specific language (DSL) with:
 - defined runtime semantics (`docs/spec/semantics.md`),
 - and executable conformance evidence (`src/manifest/conformance/**`).
 
-Projections (PrismaProjection, NextJsProjection, RoutesProjection) are **tooling** — they
-read IR and emit derived artifacts. They do not define semantics.
+**Projections** (for example Prisma, Next.js, Convex, Zod) are **tooling**: they
+read IR and emit derived artifacts. They do not define semantics. Prefer naming
+real registered projections when writing examples; do not invent projection
+targets in docs.
 
 ## Authority Model
 
@@ -41,71 +49,188 @@ These files define language meaning and are authoritative:
 - `docs/spec/builtins.md`
 - `docs/spec/adapters.md`
 - `docs/spec/conformance.md`
-- `docs/spec/manifest-vnext.md` — vNext features including composite keys, referential actions, constraint outcomes, overrides, concurrency
-- `docs/spec/registry/` — registry schemas (commands, governed entities, approved bypasses)
-- `src/manifest/conformance/**` — fixtures and expected outputs as executable semantics evidence
+- `docs/spec/manifest-vnext.md`
+- `docs/spec/registry/` — registry schemas (commands, governed entities, bypasses)
+- `docs/spec/config/` — config schemas and normative config prose where marked Binding
+- `src/manifest/conformance/**` — fixtures and expected outputs as executable semantics
 
 Rules:
 
 - Meaning changes follow: spec → conformance/tests → implementation.
-- If implementation differs from spec, document **Nonconformance** in the relevant spec file until resolved.
+- If implementation differs from spec, document **Nonconformance** in the
+  relevant spec file until resolved.
 - No ad-hoc reinterpretation in guides, projections, or UI docs.
 
 ### Tier B: Proposals and design docs (non-binding)
 
 Advisory drafts, explorations, or planning notes:
 
-- `docs/proposals/**`
-- Planning folders: `docs/plans/`, `docs/notes/`, `docs/context/`
+- ~~`docs/proposals/**`~~ → `docs/internal/proposals/**` (corrected 2026-07-15)
+- Planning folders: `docs/plans/`, `docs/internal/plans/`,
+  ~~`docs/notes/`~~ → `docs/internal/notes/`,
+  ~~`docs/context/`~~ → `docs/internal/context/`,
+  `docs/superpowers/**` (agent plans/specs; non-binding)
 
 Rules:
 
 - Proposal docs may suggest future behavior but do not override Tier A.
 - Proposal docs must explicitly state when they differ from current normative behavior.
-- `docs/proposals/storage-projection/README.md` documents the already-shipped Prisma
-  projection behavior as a reference — it is advisory, not normative.
+- `docs/internal/proposals/storage-projection/README.md` documents already-shipped
+  Prisma projection behavior as a reference — advisory, not normative.
 
 ### Tier C: Guidance and integration docs (advisory)
 
 Help users implement or adopt Manifest behavior:
 
-- `docs/guides/**`
-- `docs/migration/**`
-- `docs/tools/**`
-- `docs/contracts/**`
-- Repository guardrails and operational docs under `docs/*.md`
+- `docs/getting-started/**` — tutorials / first-run journeys
+- `docs/features/**` — language and runtime capability guides (must follow the
+  page template below)
+- `docs/guides/**` — integration patterns and concepts
+  (migration lives at `docs/guides/migration/**`;
+  ~~`docs/migration/**`~~ is not a root tree — corrected 2026-07-15)
+- `docs/projections/**` — generated-output / projection usage docs
+- `docs/reference/**` — exact CLI / API / compiler / runtime reference
+- ~~`docs/tools/**`~~ → `docs/internal/tools/**` (corrected 2026-07-15)
+- ~~`docs/contracts/**`~~ → `docs/internal/contracts/**` (corrected 2026-07-15)
+- Repository guardrails and operational docs under `docs/*.md` and
+  `docs/internal/*.md` when advisory
 
 Rules:
 
 - Guidance must not contradict Tier A.
 - If simplifications are used, they must call out assumptions.
+- Capability claims must map to shipped behavior (schemas, conformance, tests,
+  or package exports) or be labeled **Documentation gap** / **SOURCE REQUIRED**.
 
 ### Tier D: Generated and derivative output (not authoritative)
 
-Derived from IR or code — never edited directly as source:
+Derived from IR or code — never treated as language law:
 
-- `docs/codedocs/**` — auto-generated API reference snapshots (Context7, search indexers)
-- `mintlify/**` — Mintlify docs site (hand-curated user docs, advisory on tooling usage)
+- ~~`docs/codedocs/**`~~ → `docs/internal/codedocs/**` — auto-generated API
+  reference snapshots (corrected 2026-07-15)
+- `mintlify/**` — public docs site (hand-curated **user** docs; **advisory** on
+  tooling and explanation; must not contradict Tier A). Classification note
+  (2026-07-15): Mintlify is curated prose, not machine-generated; it remains
+  Tier D for authority (not binding) while remaining editable like Tier C for
+  content workflow.
 - Any `schema.prisma`, route handlers, or TypeScript types generated by projections
 
 Rules:
 
-- Tier D files document IR-derived behavior; they do not define it.
+- Tier D files document IR-derived or product-facing behavior; they do not define language meaning.
 - If a Tier D file contradicts Tier A, Tier A wins.
-- `docs/codedocs/` files carry an `AUTO-GENERATED REFERENCE` banner to signal their status.
+- `docs/internal/codedocs/` files carry an `AUTO-GENERATED REFERENCE` banner.
 - Mintlify pages covering projection usage are advisory on tooling, not language semantics.
+- New or rewritten Mintlify language/feature pages SHOULD follow the same page
+  template as `docs/features/**`.
+
+## User documentation style & information architecture
+
+**Status:** Binding for **new and rewritten** user-facing pages under
+`docs/getting-started/`, `docs/features/`, `docs/guides/`, `docs/projections/`,
+`docs/reference/`, and `mintlify/**` (language/feature/projection pages).
+Existing pages are **not** required to be mass-rewritten in one pass; bring them
+into compliance when meaningfully edited.
+
+**Reference models (structure only — not Manifest feature claims):**
+
+| Model | Borrow for |
+| ----- | ---------- |
+| Prisma | Page structure, progressive explanation, schema-language tone, generated outputs, CLI workflows |
+| TypeSpec | Completeness across language + compiler + libraries + diagnostics + emitters/projections |
+| Encore | High-level application model: one semantic definition powers tooling and generated outputs |
+| Convex | Plain-language definitions, capability comparisons, small examples, when-to-use guidance |
+| Stripe | Reference pages that open with real-world meaning before operations and fields |
+
+### Information architecture (separate doc kinds)
+
+Keep these roles in **separate trees** (do not collapse them into one page type):
+
+| Kind | Home | Purpose |
+| ---- | ---- | ------- |
+| Tutorials | `docs/getting-started/**` (+ Mintlify quickstart/install) | Goal-oriented first success |
+| Concepts | `docs/guides/**` (+ positioning pages) | Mental models and integration shapes |
+| Language guides | `docs/features/**` (+ `mintlify/language/**`) | How to use a language/runtime capability |
+| Generated outputs | `docs/projections/**` (+ `mintlify/projections/**`, `mintlify/integration/**`) | What projections emit and how to consume them |
+| Exact reference | `docs/reference/**`, Tier A `docs/spec/**`, config/registry schemas | Normative or exhaustive API/CLI/IR detail |
+
+Tier A `docs/spec/**` remains binding law. User guides explain; they do not replace
+`semantics.md` or `ir-v1.schema.json`.
+
+### Required page skeleton (user-facing)
+
+Every new or rewritten tutorial, language-guide, projection, or concept page MUST
+include these sections **in this order** (omit a layer only when marked N/A with
+a one-line reason):
+
+1. **Purpose (plain English)** — What this construct or workflow is for, in
+   product terms, before any jargon.
+2. **Smallest valid example** — The shortest compiling (or runnable) example
+   before advanced syntax. Prefer conformance fixtures or verified package samples.
+3. **Observable application effect** — What a human or system notices when this
+   is used (data written, command denied, artifact emitted, event published).
+4. **Behavior by layer** (where applicable):
+   - **Compile-time** — parser/compiler diagnostics, IR shape, rejected source
+   - **Runtime** — `RuntimeEngine` / adapter effects, evaluation order, outcomes
+   - **Projection** — which registered projection(s) consume it and what they emit
+   - **Generated SDK / package surface** — public exports (for example
+     `@angriff36/manifest/projections`, `language-metadata`, CLI) when relevant
+5. **Use this when** / **Do not use this when** — decision guidance; do not invent
+   alternatives Manifest does not ship.
+6. **Related constructs** and **Next steps** — links to sibling guides, projections,
+   and the exact reference/spec pages.
+7. **Complete syntax or API reference** — exhaustive fields/options/flags **after**
+   the explanation, never as the opening section.
+8. **Diagnostics and failure behavior** — error codes, guard/policy/constraint
+   failures, validate/compile failures, and what does *not* fail (silent cases)
+   when known.
+
+### Terminology rule
+
+Do **not** use unexplained **compiler**, **AST**, **IR**, **semantic model**, or
+**projection** terminology on user-facing pages.
+
+- On first use, define the term in one short sentence, **or** link to
+  `docs/getting-started/architecture-and-positioning.md` / `docs/internal/START_HERE.md`.
+- Prefer product wording (“the compiled program”, “generated Prisma schema”) once
+  defined.
+- Tier A and internal agent docs may remain IR-first; user trees must not assume
+  prior IR literacy.
+
+### Capability honesty
+
+- Every recommendation and example MUST map to an existing Manifest capability
+  evidenced by Tier A, conformance fixtures, tests, CLI, or published package
+  exports — or must be explicitly labeled:
+
+  `Documentation gap — not verified against shipped Manifest`
+
+  or
+
+  `SOURCE REQUIRED — UNABLE TO FIND DOCUMENTED METHODS`
+- Do not invent syntax, CLI flags, projection names, store targets, or SDK
+  exports to make a page look complete.
+- When a layer does not apply (for example a pure type has no projection
+  emission), write `N/A — <reason>` under that layer heading.
+
+### Relationship to informal feature-page habit
+
+`docs/features/README.md` previously described intro → usage → behavior →
+reference → caveats. That habit is **superseded** by the skeleton above for new
+and rewritten pages (corrected 2026-07-15). Bring older feature pages into
+compliance when they are next substantially edited.
 
 ## Test Governance
 
 ### Official mandatory gate tests
 
-The following commands are required for completion and must be green:
+Required for completion and must be green:
 
-- `npm test`
-- `npm run typecheck`
-- `npm run lint`
+- `pnpm test` (preferred; `npm test` remains equivalent where used)
+- `pnpm run typecheck`
+- `pnpm run lint`
 
-For language meaning changes, `npm test` (including conformance) is mandatory evidence.
+For language meaning changes, `pnpm test` (including conformance) is mandatory evidence.
 
 ### Temporary validation tests
 
@@ -115,27 +240,29 @@ Temporary tests/scripts created for debugging or AI-assisted verification are al
 - they must not be the sole proof for semantic behavior changes,
 - and they must be either removed or promoted to permanent test assets before completion.
 
-Promotion requirements:
-
-- clear scope and ownership,
-- deterministic behavior,
-- alignment with spec/conformance expectations.
+Promotion requirements: clear scope and ownership, deterministic behavior,
+alignment with spec/conformance expectations.
 
 ## Documentation Integrity Checks
 
 The repository enforces deterministic documentation hygiene with:
 
-- `npm run docs:check:metadata` — Tier D banner and frontmatter checks
-- `npm run docs:check:links` — internal link resolution across docs/ and mintlify/
-- `npm run docs:check:spec-integrity` — Tier A header presence check (Authority/Status/Last-updated)
-- `npm run docs:check` — all of the above
+- `pnpm run docs:check:metadata` — Tier D banner and frontmatter checks
+- `pnpm run docs:check:links` — internal link resolution across docs/ and mintlify/
+- `pnpm run docs:check:spec-integrity` — Tier A header presence check
+- `pnpm run docs:check:snippets` — snippet checks where configured
+- `pnpm run docs:check` — all of the above
 
-What they validate:
+What they validate today:
 
-- Tier D markdown files under `docs/codedocs/*.md` include the AUTO-GENERATED REFERENCE banner.
+- Tier D markdown under `docs/internal/codedocs/*.md` includes the AUTO-GENERATED REFERENCE banner.
 - Mintlify `.mdx` files include a `title` frontmatter field.
 - Markdown links in `docs/**` and `mintlify/**` resolve to existing local paths.
 - Tier A docs under `docs/spec/*.md` include `Authority:`, `Status:`, and `Last updated:` headers.
+
+**Documentation gap (2026-07-15):** `docs:check` does **not** yet enforce the
+user page skeleton (purpose / smallest example / Use when / diagnostics order).
+Enforcement remains editorial + review until a checker exists.
 
 ## Naming and Metadata Rules
 
@@ -147,39 +274,61 @@ top of the file:
 - `Authority` (`Binding` or `Advisory`)
 - `Enforced by` (test path or `None`)
 
+User-facing pages SHOULD also open with a plain-English purpose statement (see
+page skeleton) even when they omit full governance frontmatter.
+
 ## Editability Rules
 
 - Tier A docs: editable only through the spec-driven workflow (spec → conformance → implementation).
 - Tier B docs: freely editable as working material.
-- Tier C docs: editable, but must remain consistent with Tier A.
-- Tier D docs: regenerated from source; do not edit directly.
+- Tier C docs: editable, but must remain consistent with Tier A and this style/IA section.
+- Tier D codedocs: regenerated from source; do not edit directly.
+- Mintlify (Tier D authority, curated): editable; must not contradict Tier A; new/rewritten pages follow the page skeleton.
 
 If uncertain whether a doc is binding, treat it as binding until classification is
 confirmed in this file.
 
 ## Directory Map
 
-| Directory                                     | Tier                      | Contents                                                                                            |
-| --------------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------- |
-| `docs/spec/`                                  | A — Binding               | Language law: IR schema, semantics, builtins, adapters, conformance, vNext, consumer project layout |
-| `src/manifest/conformance/`                   | A — Binding               | Fixture-based executable semantics evidence                                                         |
-| `docs/proposals/`                             | B — Non-binding           | Design proposals, deferred work, drafts                                                             |
-| `docs/plans/`, `docs/notes/`, `docs/context/` | B — Non-binding           | Work-in-progress, session snapshots                                                                 |
-| `docs/guides/`                                | C — Advisory              | Integration patterns and usage guidance                                                             |
-| `docs/tools/`                                 | C — Advisory              | CLI and API usage guides                                                                            |
-| `docs/contracts/`                             | C — Advisory              | Signpost + scope boundary docs (no normative content)                                               |
-| `docs/migration/`                             | C — Advisory              | Version-jump guides                                                                                 |
-| `docs/codedocs/`                              | D — Derivative            | Auto-generated API reference for tooling ingestion                                                  |
-| `mintlify/`                                   | D — Derivative (advisory) | Mintlify docs site                                                                                  |
-| `docs/archive/`                               | Historical                | Pre-IR design history; read for context only                                                        |
-| `docs/integrations/`                          | Historical                | Downstream consumer examples; non-authoritative                                                     |
+| Directory | Tier | Contents |
+| --------- | ---- | -------- |
+| `docs/spec/` | A — Binding | Language law: IR schema, semantics, builtins, adapters, conformance, vNext, config, registry, project layout |
+| `src/manifest/conformance/` | A — Binding | Fixture-based executable semantics evidence |
+| `docs/getting-started/` | C — Tutorials | First-run journeys and positioning |
+| `docs/features/` | C — Language guides | Per-capability guides (page skeleton required for new/rewrites) |
+| `docs/guides/` | C — Concepts / integration | Patterns; includes `guides/migration/` |
+| `docs/projections/` | C — Generated outputs | Projection usage and emitted artifacts |
+| `docs/reference/` | C — Exact reference | CLI, API, compiler, runtime packaging reference |
+| `docs/internal/proposals/` | B — Non-binding | Design proposals, deferred work, drafts |
+| `docs/plans/`, `docs/internal/plans/`, `docs/internal/notes/`, `docs/internal/context/`, `docs/superpowers/` | B — Non-binding | Plans, WIP, agent design artifacts |
+| `docs/internal/tools/` | C — Advisory | CLI/API usage guides (internal) |
+| `docs/internal/contracts/` | C — Advisory | Signpost + scope boundary docs |
+| `docs/internal/codedocs/` | D — Derivative | Auto-generated API reference for tooling ingestion |
+| `mintlify/` | D — Advisory (curated) | Public docs site; follow page skeleton on new/rewrites |
+| `docs/internal/archive/` | Historical | Pre-IR design history; context only |
+| `docs/internal/integrations/` | Historical / consumer | Downstream consumer examples; non-authoritative |
+
+~~Obsolete root paths (`docs/proposals/`, `docs/tools/`, `docs/contracts/`,
+`docs/codedocs/`, `docs/migration/`, `docs/archive/`, `docs/integrations/` as
+top-level homes)~~ — corrected 2026-07-15 to the `docs/internal/**` (or
+`docs/guides/migration/**`) locations above.
 
 ## Change Protocol
 
-When changing documentation structure or authority boundaries:
+When changing documentation structure, authority boundaries, or this style/IA standard:
 
 1. Update this governance file first.
 2. Update references in `docs/spec/README.md` and `docs/README.md`.
-3. Update `docs/START_HERE.md` if folder routing changes.
-4. Validate: `npm run docs:check`.
-5. Record rationale and date in this file or `docs/plans/`.
+3. Update ~~`docs/START_HERE.md`~~ `docs/internal/START_HERE.md` if folder routing changes.
+4. Validate: `pnpm run docs:check`.
+5. Record rationale and date in this file (or `docs/internal/plans/` for large moves).
+
+## Rationale (2026-07-15)
+
+Structural documentation-standard change only: path corrections for relocated
+`docs/internal/**` trees; tier assignment for previously unmapped user trees
+(`getting-started`, `features`, `projections`, `reference`); and a required
+pedagogical page skeleton inspired by Prisma / TypeSpec / Encore / Convex /
+Stripe documentation systems. No Manifest language redesign; no mass rewrite of
+existing pages; capability honesty and an explicit docs:check enforcement gap
+are recorded so agents do not invent behavior to fill template slots.

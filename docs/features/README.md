@@ -1,8 +1,28 @@
 # Manifest Features
 
-This directory documents the language, runtime, and tooling features of Manifest. Each page follows the same shape: a short intro, usage/syntax drawn from the conformance fixtures or real source, verified behavior, a reference section, and honest caveats. Language-feature syntax is taken from the conformance fixtures in `src/manifest/conformance/fixtures/`; tooling and SDK behavior is verified against the implementation in `src/manifest/` and `packages/`.
+This directory holds **language guides**: how to use shipped Manifest language,
+runtime, and tooling capabilities.
 
-For the command-line interface, see `../reference/cli.md`. For code-generation targets (Next.js, Prisma, Drizzle, OpenAPI, Zod, TanStack Query, and others), see `../projections/`.
+**Page standard (binding for new and rewritten pages, 2026-07-15):** follow
+[`docs/internal/DOCUMENTATION_GOVERNANCE.md`](../internal/DOCUMENTATION_GOVERNANCE.md)
+§ User documentation style & information architecture — purpose → smallest valid
+example → observable effect → compile / runtime / projection / SDK layers → Use
+this when / Do not use this when → related + next steps → complete reference →
+diagnostics. Do not invent unsupported behavior; label documentation gaps
+explicitly.
+
+~~Each page follows the same shape: a short intro, usage/syntax drawn from the
+conformance fixtures or real source, verified behavior, a reference section, and
+honest caveats.~~ That informal habit is superseded by the governance skeleton
+above when a page is substantially edited.
+
+Language-feature syntax is taken from the conformance fixtures in
+`src/manifest/conformance/fixtures/`; tooling and SDK behavior is verified
+against the implementation in `src/manifest/` and `packages/`.
+
+For the command-line interface, see `../reference/cli.md`. For code-generation
+targets (Next.js, Prisma, Drizzle, OpenAPI, Zod, TanStack Query, and others),
+see `../projections/`.
 
 ## Feature pages by category
 

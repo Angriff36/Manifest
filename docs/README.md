@@ -9,6 +9,8 @@ Manifest is a deterministic, **IR-first** domain-specific language for business 
 
 The IR schema (`spec/ir/ir-v1.schema.json`) is authoritative. Generated TypeScript and routes are derivative views, not authority.
 
+**Documentation standard (binding for new/rewritten user pages):** page skeleton, IA roles (tutorials / concepts / language guides / generated outputs / exact reference), and capability-honesty rules live in [`internal/DOCUMENTATION_GOVERNANCE.md`](./internal/DOCUMENTATION_GOVERNANCE.md) § User documentation style & information architecture (updated 2026-07-15). Existing pages are brought into compliance when substantially edited — not mass-rewritten in one pass.
+
 ---
 
 ## Getting started
