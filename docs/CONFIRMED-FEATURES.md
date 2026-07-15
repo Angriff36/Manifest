@@ -2,7 +2,7 @@
 title: Manifest Confirmed Features
 created: 2026-07-14
 verified_against: main (package.json SoT; see §7 for published npm version). Entries marked "unreleased" mean built-in-repo but not published as their own package (or not yet on npm when first verified) — re-check §7 / package.json before treating as installable.
-source_of_truth: This file is the source of truth for WHICH features verifiably exist. For feature SEMANTICS the spec chain still governs (docs/spec/ir/ir-v1.schema.json → semantics.md → builtins.md → adapters.md → conformance fixtures).
+source_of_truth: This file is the source of truth for WHICH features verifiably *exist* (inventory). **Feature completion status** (done vs open) is governed by `docs/internal/COMPLIANCE_MATRIX.md` — that matrix wins disputes. For feature SEMANTICS the spec chain still governs (docs/spec/ir/ir-v1.schema.json → semantics.md → builtins.md → adapters.md → conformance fixtures).
 ---
 
 # Manifest Confirmed Features (verified 2026-07-14 on `main`; package.json version drifts — see §7)

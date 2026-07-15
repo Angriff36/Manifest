@@ -4,14 +4,32 @@
 
 **YOU MUST READ THESE FULLY AT THE BEGINNING OF EVERY SESSION**
 
+0. `docs/internal/COMPLIANCE_MATRIX.md` — **source of truth for feature completion**
+   (whether something is done). See Proof Protocol inside that file.
 1. `docs/spec/ir/ir-v1.schema.json` (IR shape is the contract)
 2. `docs/spec/semantics.md` (runtime meaning)
 3. `docs/spec/builtins.md` (built-ins)
 4. `docs/spec/adapters.md` (adapter hooks / missing behavior)
 5. `docs/spec/conformance.md` + `src/manifest/conformance/*` (executable
    evidence)
-6. `docs\spec\manifest-vnext.md"` (Constraints)
-7. `docs\spec\README.md"`
+6. `docs/spec/manifest-vnext.md` (Constraints)
+7. `docs/spec/README.md`
+
+@RYAN_APPROVED 2026-07-15
+**Feature completion law:** `docs/internal/COMPLIANCE_MATRIX.md` is the binding
+source of truth for feature completion. Agents MUST:
+
+- Enter every feature/gap into that matrix using its established table format.
+- NEVER mark a row `FULLY_IMPLEMENTED` without hard proof: **filename**,
+  **inclusive line range**, and **git commit SHA**.
+- When closing a gap: update the matrix first, then reconcile `docs/TODO.md`
+  and `docs/CONFIRMED-FEATURES.md` (existence inventory — not completion SoT).
+- Prefer matrix status over roadmaps, FEATURE-LIST, or chat memory when
+  deciding if work is done.
+
+This rule is human-authored (`RYAN_APPROVED`) and must not be deleted or
+weakened without a new dated owner mark.
+@RYAN_APPROVED
 
 If any implementation behavior differs, it must be called out as
 **Nonconformance** in the spec docs, then fixed via spec → tests → code.

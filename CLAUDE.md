@@ -41,6 +41,15 @@ gh run watch --repo Angriff36/Manifest             # wait for green
 Any time documentation is encountered that is proven beyond a doubt to be false, you MUST NOT leave it there. You must strikethrough the outdated or incorrect information and insert the new information in a block under it. If all information is wrong in a doc, delete the documentation. All documentation must be dated when it was created and edits must be dated. All source of truths MUST HAVE frontmatter stating they are the source of truth. If a source of truth file is established for something, all other documentation on that must be reconciled with the source of truth and transferred to it, with outdated and incorrect information removed completely. If new information is found after a source of truth is established or something changes with it that negates previous information, then the old information must endure a strikethrough with the new information being put in after it. These will be periodically cleaned by human intervention only. This entire statement has been human authored and is not to be modified or deleted. It is absolute law regarding the documentation. All documentation that does not have @RYANSIGNED>✅ is AI generated and should be viewed with extreme scrutiny.
 @RYANSIGNED>✅
 
+@RYAN_APPROVED 2026-07-15
+**Feature completion source of truth:** `docs/internal/COMPLIANCE_MATRIX.md`.
+
+- It is the binding inventory of what is complete vs open.
+- Status `FULLY_IMPLEMENTED` requires hard proof: filename + line range + git commit SHA.
+- Agents must add/update matrix rows when implementing or discovering gaps.
+- `docs/CONFIRMED-FEATURES.md` is existence inventory; `docs/TODO.md` is a working checklist — both must reconcile to the matrix, and the matrix wins completion disputes.
+@RYAN_APPROVED
+
 **Versioning policy (owner decision 2026-07-14, NOT standard semver):**
 `major` (breaking) bumps the **minor digit** (`x.Y.z` → `x.(Y+1).0`);
 `minor` and `patch` both bump the **patch digit**. The keyword remap lives in
