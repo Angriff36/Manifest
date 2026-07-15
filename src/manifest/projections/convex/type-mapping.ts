@@ -77,3 +77,11 @@ export function resolveConvexValidator(
   }
   return DEFAULT_TYPE_MAPPING[irTypeName];
 }
+
+/**
+ * Convex `.searchIndex` requires `searchField` to be a string column.
+ * True when the default IR→Convex mapping is `v.string()`.
+ */
+export function isConvexSearchIndexFieldType(irTypeName: string): boolean {
+  return DEFAULT_TYPE_MAPPING[irTypeName] === 'v.string()';
+}

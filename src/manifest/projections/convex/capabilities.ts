@@ -11,6 +11,7 @@
 import type { IR, IREntity } from '../../ir';
 import type { ProjectionCapability, ProjectionDiagnostic } from '../interface';
 import { isPersistentEntity } from './persist.js';
+import { isConvexSearchIndexFieldType } from './type-mapping.js';
 
 /**
  * Structured counterpart to CAPABILITIES.md. Keep both representations aligned
@@ -46,7 +47,7 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   { feature: 'realtime hint', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_REALTIME' },
   { feature: 'versionProperty / optimistic concurrency', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_VERSION' },
   { feature: 'masked / unmask when', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_MASKED' },
-  { feature: 'searchable', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_SEARCHABLE' },
+  { feature: 'searchable (string-like → .searchIndex)', status: 'supported', note: 'Non-string searchable still emits CONVEX_UNSUPPORTED_SEARCHABLE' },
   { feature: 'Computed cache directives', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_COMPUTED_CACHE' },
   { feature: 'Command/policy retry', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_RETRY' },
   { feature: 'Command/policy rateLimit', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_RATE_LIMIT' },
@@ -107,12 +108,14 @@ export function collectUnsupportedDiagnostics(ir: IR): ProjectionDiagnostic[] {
         });
       }
       if (p.modifiers.includes('searchable') && persistent) {
-        out.push({
-          severity: 'warning',
-          code: 'CONVEX_UNSUPPORTED_SEARCHABLE',
-          entity: entity.name,
-          message: `Property '${entity.name}.${p.name}' is searchable; no Convex search index is emitted.`,
-        });
+        if (!isConvexSearchIndexFieldType(p.type.name)) {
+          out.push({
+            severity: 'warning',
+            code: 'CONVEX_UNSUPPORTED_SEARCHABLE',
+            entity: entity.name,
+            message: `Property '${entity.name}.${p.name}' is searchable but type '${p.type.name}' is not a Convex string searchField; no .searchIndex is emitted (string/text/uuid supported).`,
+          });
+        }
       }
     }
 

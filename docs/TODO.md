@@ -97,9 +97,15 @@ forensics: Appendix D in
       via `translateExpression`; `self`/`this` members map to columns; raw
       `columns` overrides remain an escape hatch.
       ~~Materialized-views projection ignores `expression-to-sql.ts`.~~
-- [ ] **Convex projection diagnostics-only surfaces** — approvals, masking,
-      searchable, versionProperty, computed-cache, realtime, retry, rateLimit emit
-      `CONVEX_UNSUPPORTED_*` diagnostics (good) but generate no Convex enforcement.
+- [x] **Convex `searchable` → `.searchIndex`** — fixed 2026-07-15: string-like
+      properties (`string`/`text`/`uuid`) emit Convex `.searchIndex`; tenant
+      becomes `filterFields` when declared. Non-string searchable still warns
+      (`CONVEX_UNSUPPORTED_SEARCHABLE`).
+- [ ] **Convex projection remaining diagnostics-only surfaces** — approvals,
+      masking, versionProperty, computed-cache, realtime, retry, rateLimit emit
+      `CONVEX_UNSUPPORTED_*` (good) but generate no Convex enforcement.
+      ~~Convex projection diagnostics-only surfaces — approvals, masking,
+      searchable, versionProperty, …~~
 - [x] **Config vNext G5** — fixed 2026-07-15: `projections.enabled` (opt-in
       list for `manifest generate --all`) + `projections.defaults` (shared
       options merged under each target via `resolveProjectionOptions`); schema

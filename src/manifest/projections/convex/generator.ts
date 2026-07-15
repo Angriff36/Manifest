@@ -33,7 +33,7 @@ import type {
 } from '../interface';
 
 import { normalizeOptions, type IndexEntry, resolveConvexTableName, collectConvexAuthConfigDiagnostics, collectConvexNamingPrecedenceDiagnostics } from './options.js';
-import { resolveConvexValidator } from './type-mapping.js';
+import { resolveConvexValidator, isConvexSearchIndexFieldType } from './type-mapping.js';
 import { generateQueries, generateMutations } from './functions.js';
 import { generateCrons, generateHttp, generateSagas } from './orchestration.js';
 import { generateComputedHelpers } from './computed.js';
@@ -295,6 +295,12 @@ export interface IndexDef {
   fields: string[];
 }
 
+interface SearchIndexDef {
+  name: string;
+  searchField: string;
+  filterFields: string[];
+}
+
 export function indexEntryToDef(entry: IndexEntry): IndexDef {
   if (Array.isArray(entry)) {
     return { name: `by_${entry.join('_')}`, fields: entry };
@@ -320,11 +326,19 @@ function emitTable(entity: IREntity, ir: IR, options: NormalizedOptions): TableE
   const emittedFieldNames = new Set<string>();
   const indexes: IndexDef[] = [];
   const indexNames = new Set<string>();
+  const searchIndexes: SearchIndexDef[] = [];
+  const searchIndexNames = new Set<string>();
 
   const addIndex = (def: IndexDef): void => {
     if (indexNames.has(def.name)) return;
     indexNames.add(def.name);
     indexes.push(def);
+  };
+
+  const addSearchIndex = (def: SearchIndexDef): void => {
+    if (searchIndexNames.has(def.name)) return;
+    searchIndexNames.add(def.name);
+    searchIndexes.push(def);
   };
 
   // Map FK column name → target table for belongsTo/ref relationships. In
@@ -350,12 +364,24 @@ function emitTable(entity: IREntity, ir: IR, options: NormalizedOptions): TableE
       if (prop.modifiers.includes('indexed')) {
         addIndex({ name: `by_${prop.name}`, fields: [prop.name] });
       }
+      if (prop.modifiers.includes('searchable') && isConvexSearchIndexFieldType(prop.type.name)) {
+        addSearchIndex({
+          name: `search_${prop.name}`,
+          searchField: prop.name,
+          filterFields: [],
+        });
+      }
     }
   }
 
   // Tenant index (the tenant column is a regular property; index it for scoped reads).
   if (tenantProp && emittedFieldNames.has(tenantProp)) {
     addIndex({ name: `by_${tenantProp}`, fields: [tenantProp] });
+    for (const si of searchIndexes) {
+      if (!si.filterFields.includes(tenantProp)) {
+        si.filterFields.push(tenantProp);
+      }
+    }
   }
 
   // References from belongsTo/ref relationships.
@@ -406,6 +432,13 @@ function emitTable(entity: IREntity, ir: IR, options: NormalizedOptions): TableE
   for (const idx of indexes) {
     const cols = idx.fields.map((f) => JSON.stringify(f)).join(', ');
     block += `\n    .index(${JSON.stringify(idx.name)}, [${cols}])`;
+  }
+  for (const si of searchIndexes) {
+    const filterPart =
+      si.filterFields.length > 0
+        ? `, filterFields: [${si.filterFields.map((f) => JSON.stringify(f)).join(', ')}]`
+        : '';
+    block += `\n    .searchIndex(${JSON.stringify(si.name)}, { searchField: ${JSON.stringify(si.searchField)}${filterPart} })`;
   }
   return { block, diagnostics };
 }

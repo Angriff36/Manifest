@@ -19,10 +19,10 @@ companion_checklist: docs/TODO.md
 
 **Ownership boundary (canonical):** [`docs/internal/contracts/manifest-builder-boundary.md`](./contracts/manifest-builder-boundary.md)
 
-| Owner | Owns |
-| ----- | ---- |
-| **Manifest** | Language/syntax; compiler, AST, IR; runtime semantics; projections; analysis/verification APIs; stable public SDK contracts |
-| **Builder** | Visual editing; workspace/project management; presets; projection orchestration; generated-app assembly; consumer wiring inspection; verification/debugging UI; generated-app lifecycle |
+| Owner        | Owns                                                                                                                                                                                    |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Manifest** | Language/syntax; compiler, AST, IR; runtime semantics; projections; analysis/verification APIs; stable public SDK contracts                                                             |
+| **Builder**  | Visual editing; workspace/project management; presets; projection orchestration; generated-app assembly; consumer wiring inspection; verification/debugging UI; generated-app lifecycle |
 
 Builder consumption / end-to-end proof lives in Builder’s matrix:  
 `C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md` (repo-relative from Builder: `docs/CAPABILITY_CONSUMPTION_MATRIX.md`).
@@ -33,15 +33,15 @@ Builder consumption / end-to-end proof lives in Builder’s matrix:
 
 ## Proof Protocol
 
-| Status                | Meaning                                                                   |
-| --------------------- | ------------------------------------------------------------------------- |
+| Status                | Meaning                                                                          |
+| --------------------- | -------------------------------------------------------------------------------- |
 | `FULLY_IMPLEMENTED`   | Manifest end-to-end + tests; **requires** filename + line range + git commit SHA |
-| `PARTIAL`             | Present but incomplete across Manifest consumers/layers                   |
-| `DIAGNOSTIC_ONLY`     | Loud unsupported path; no full enforcement                                |
-| `REJECTED_LOUD`       | Compile/schema rejects until designed                                     |
-| `NOT_IMPLEMENTED`     | Missing / passthrough / phantom **in Manifest**                           |
-| `OUT_OF_SCOPE`        | Not a Manifest-core deliverable (often Builder-owned)                     |
-| `CLAIMED_NEEDS_PROOF` | Exists in inventory/fixtures but **no** commit proof yet — **not** “done” |
+| `PARTIAL`             | Present but incomplete across Manifest consumers/layers                          |
+| `DIAGNOSTIC_ONLY`     | Loud unsupported path; no full enforcement                                       |
+| `REJECTED_LOUD`       | Compile/schema rejects until designed                                            |
+| `NOT_IMPLEMENTED`     | Missing / passthrough / phantom **in Manifest**                                  |
+| `OUT_OF_SCOPE`        | Not a Manifest-core deliverable (often Builder-owned)                            |
+| `CLAIMED_NEEDS_PROOF` | Exists in inventory/fixtures but **no** commit proof yet — **not** “done”        |
 
 Update this matrix first when closing Manifest work; then reconcile `docs/TODO.md` and `docs/CONFIRMED-FEATURES.md`.
 
@@ -49,11 +49,11 @@ Update this matrix first when closing Manifest work; then reconcile `docs/TODO.m
 
 These states are **orthogonal** to implementation status above. A Manifest gap is never “fixed” by Builder UI. Builder-owned work is never a Manifest `NOT_IMPLEMENTED` row.
 
-| Integration state       | Meaning |
-| ----------------------- | ------- |
-| `MANIFEST_COMPLETE`     | Manifest matrix marks the capability `FULLY_IMPLEMENTED` (hard proof) **or** the published SDK surface is declared stable and present for that capability |
-| `BUILDER_CONSUMED`      | Builder’s consumption matrix records a real import of the Manifest public API + Builder implementation location |
-| `END_TO_END_VERIFIED`   | `MANIFEST_COMPLETE` **and** `BUILDER_CONSUMED` **and** a focused Builder test proves consumption (see Builder matrix “Focused test” column) |
+| Integration state     | Meaning                                                                                                                                                   |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MANIFEST_COMPLETE`   | Manifest matrix marks the capability `FULLY_IMPLEMENTED` (hard proof) **or** the published SDK surface is declared stable and present for that capability |
+| `BUILDER_CONSUMED`    | Builder’s consumption matrix records a real import of the Manifest public API + Builder implementation location                                           |
+| `END_TO_END_VERIFIED` | `MANIFEST_COMPLETE` **and** `BUILDER_CONSUMED` **and** a focused Builder test proves consumption (see Builder matrix “Focused test” column)               |
 
 Do **not** write `END_TO_END_VERIFIED` in this file without a matching Builder matrix row. Track consumption details only in Builder.
 
@@ -61,51 +61,52 @@ Do **not** write `END_TO_END_VERIFIED` in this file without a matching Builder m
 
 Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/manifest@3.6.3` (Manifest SoT version is `package.json` — verify before asserting). Detail rows: Builder matrix.
 
-| Manifest public API | Manifest status | Integration (as of 2026-07-15) |
-| ------------------- | --------------- | ------------------------------ |
-| `@angriff36/manifest/ir-compiler` (`compile`) | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` → see Builder matrix |
-| `@angriff36/manifest/multi-compiler` | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` |
-| `@angriff36/manifest/projections` (generate / list / capabilities / descriptors) | PARTIAL (capabilities declared incrementally) + §1 for APIs | `BUILDER_CONSUMED` |
-| `@angriff36/manifest/runtime-engine` | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` |
-| `@angriff36/manifest/ir-diff` + `/breaking-change` | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` |
-| `@angriff36/manifest/projections/wiring` | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` |
-| `@angriff36/manifest/agent-sdk` | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` |
-| `@angriff36/manifest/language-metadata` | FULLY_IMPLEMENTED (§1) | `BUILDER_CONSUMED` (candidate `END_TO_END_VERIFIED` if Builder test green) |
-| `@angriff36/manifest/seed-pack` + convex assembly helpers | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` (preset path) |
-| Stable export contract (`docs/spec/sdk-stability.md`) | FULLY_IMPLEMENTED (§1) | `MANIFEST_COMPLETE` — Builder must stay on listed subpaths |
+| Manifest public API                                                              | Manifest status                                             | Integration (as of 2026-07-15)                                             |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `@angriff36/manifest/ir-compiler` (`compile`)                                    | CLAIMED_NEEDS_PROOF / shipped                               | `BUILDER_CONSUMED` → see Builder matrix                                    |
+| `@angriff36/manifest/multi-compiler`                                             | CLAIMED_NEEDS_PROOF / shipped                               | `BUILDER_CONSUMED`                                                         |
+| `@angriff36/manifest/projections` (generate / list / capabilities / descriptors) | PARTIAL (capabilities declared incrementally) + §1 for APIs | `BUILDER_CONSUMED`                                                         |
+| `@angriff36/manifest/runtime-engine`                                             | CLAIMED_NEEDS_PROOF / shipped                               | `BUILDER_CONSUMED`                                                         |
+| `@angriff36/manifest/ir-diff` + `/breaking-change`                               | CLAIMED_NEEDS_PROOF / shipped                               | `BUILDER_CONSUMED`                                                         |
+| `@angriff36/manifest/projections/wiring`                                         | CLAIMED_NEEDS_PROOF / shipped                               | `BUILDER_CONSUMED`                                                         |
+| `@angriff36/manifest/agent-sdk`                                                  | CLAIMED_NEEDS_PROOF / shipped                               | `BUILDER_CONSUMED`                                                         |
+| `@angriff36/manifest/language-metadata`                                          | FULLY_IMPLEMENTED (§1)                                      | `BUILDER_CONSUMED` (candidate `END_TO_END_VERIFIED` if Builder test green) |
+| `@angriff36/manifest/seed-pack` + convex assembly helpers                        | CLAIMED_NEEDS_PROOF / shipped                               | `BUILDER_CONSUMED` (preset path)                                           |
+| Stable export contract (`docs/spec/sdk-stability.md`)                            | FULLY_IMPLEMENTED (§1)                                      | `MANIFEST_COMPLETE` — Builder must stay on listed subpaths                 |
 
 ---
 
 ## 1. Proven complete (`FULLY_IMPLEMENTED` + hard proof)
 
-| Status | Feature                                               | Implementation Status | Proof (file:lines @ commit)                                                                                                                   |
-| ------ | ----------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| [x]    | Entity `behavior` rejected (no silent drop)           | FULLY_IMPLEMENTED     | `src/manifest/ir-compiler.ts:801-816` @ `3f41cb8da272c7d71efcad242ff498403ec09fd5`                                                            |
-| [x]    | Constraint `failWhen` polarity (RuntimeEngine + WASM) | FULLY_IMPLEMENTED     | `src/manifest/constraint-polarity.ts:1-27` @ `55670fdd48891f336064bbbab1d402e5260ebfd7`; `src/manifest/wasm/wasm-evaluator.ts:200-215` @ same |
-| [x]    | `getLanguageMetadata()` export                        | FULLY_IMPLEMENTED     | `src/manifest/language-metadata.ts:190-220` @ `11988d6055503c1046ba093cf007cc123778ec5a`; `package.json:275-278`                              |
-| [x]    | `PROPERTY_MODIFIERS` single source                    | FULLY_IMPLEMENTED     | `src/manifest/property-modifiers.ts:1-18` @ `11988d6055503c1046ba093cf007cc123778ec5a`                                                        |
-| [x]    | `getProjectionCapabilities(name)`                     | FULLY_IMPLEMENTED     | `src/manifest/projections/registry.ts:105-120` @ `2828d0da940de5d5004d65b6d2e1342f66807e4d`                                                   |
-| [x]    | Projection descriptors API                            | FULLY_IMPLEMENTED     | `src/manifest/projections/registry.ts:151-175` @ `f335a74128466feaef1ffde8b14d52b1bbcd5eab`                                                   |
-| [x]    | Stable Builder export contract                        | FULLY_IMPLEMENTED     | `docs/spec/sdk-stability.md:1-48` @ `11988d6055503c1046ba093cf007cc123778ec5a`                                                                |
-| [x]    | `hasMany … through Join` M2M                          | FULLY_IMPLEMENTED     | `src/manifest/ir-compiler.ts:1132-1175` @ `3052dc56c45639f587a687017a13240d34dec997`; fixture `102-through-join`                              |
-| [x]    | Referential actions in reference runtime              | FULLY_IMPLEMENTED     | `src/manifest/runtime-referential-actions.ts:1-300` @ `3052dc56c45639f587a687017a13240d34dec997`                                              |
-| [x]    | `RuntimeOptions.flags` for `flag()`                   | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:255-261,1894-1898` @ `3052dc56c45639f587a687017a13240d34dec997`                                               |
-| [x]    | Hono/Express `authProvider`                           | FULLY_IMPLEMENTED     | `src/manifest/projections/hono/types.ts:30` @ `1b1e2be9e059e5524021a671dd45eeddf3c7026f`; `express/types.ts:37`                               |
-| [x]    | `manifest db init`                                    | FULLY_IMPLEMENTED     | `packages/cli/src/commands/db-init.ts:1-195` @ `2b4f30cf6010e89d3e3e3000c704212fd0574aff`                                                     |
-| [x]    | Doctest TS `check`/`invalid` fences                   | FULLY_IMPLEMENTED     | `scripts/check-doc-snippets.mjs:94-117` @ `6ed6549fc70c86cd7e586818175d44715e1332d5`                                                          |
-| [x]    | RedisEventBus via `RuntimeOptions.eventBus`           | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:307` @ `61d5ab6fb1da4dca32e683b45f9934e56dba141c`; `src/manifest/events/redis.ts:55-60`                       |
-| [x]    | Durable `RateLimitStore` (Memory + Postgres)          | FULLY_IMPLEMENTED     | `src/manifest/runtime-rate-limit.ts:46-133` @ `fd4bb50a41dbfaf340013389e6023f31b9e23a79`; `src/manifest/rate-limit/stores/postgres.ts:48-137` @ same; `RuntimeOptions.rateLimitStore` `runtime-engine.ts:264,1187` @ same |
-| [x]    | `createUserResolver` in config + runtime factory      | FULLY_IMPLEMENTED     | `src/manifest/config.ts:280-299` @ `3c1a4e61f845867cf3881edf42ea63005c17ea4d`; `src/manifest/projections/shared/companions.ts:225-280` @ same |
-| [x]    | Materialized-views computed → SQL                     | FULLY_IMPLEMENTED     | `src/manifest/projections/materialized-views/generator.ts:215-265` @ `7ce53859bdc162263384825043b2ecbb0ab96191`; `expression-to-sql.ts:67-88` @ same |
-| [x]    | `EventSourcedStore` for `eventSourced` target         | FULLY_IMPLEMENTED     | `src/manifest/stores/event-sourced.ts:37-140` @ `ca526f02c67d1db7138d6e34a400fe459a87caef`; `runtime-engine.ts:1279-1283` @ same |
-| [x]    | `alternateKeys` uniqueness on create/update           | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2832-2864,2876,2966-2977` @ `a8af116268de8f4329eb2af1a4df82fb5a65fa5b` |
-| [x]    | Entity-level constraint overrides on create/update    | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2625-2642,4958-4995,5934-5985` @ `f36c83dd63690e83812ee286f42379f18d65e0d9`; `src/manifest/runtime-entity-constraint-overrides.test.ts:1-149` @ same |
-| [x]    | Config G5 `projections.enabled`/`defaults`            | FULLY_IMPLEMENTED     | `src/manifest/config.ts:117-168,380-414` @ `505e5051f67b0d1a33f59f7e4d1f48b14e124f2b`; `packages/cli/src/commands/generate.ts:822-895` @ same |
-| [x]    | Config G2 `validation.failOn`                         | FULLY_IMPLEMENTED     | `packages/cli/src/utils/validation-gate-policy.ts:1-45` @ `7c3e16a9349af3130ae5408beee5297e33b7200d` |
-| [x]    | Config G10 `driftGates` / `manifest ci-gate`          | FULLY_IMPLEMENTED     | `packages/cli/src/commands/ci-gate.ts:1-160` @ `c28e3e437a9d4af3a121e7cbdbf211c09997a98f`; `drift-gates.ts:1-59` @ same |
+| Status | Feature                                               | Implementation Status | Proof (file:lines @ commit)                                                                                                                                                                                                      |
+| ------ | ----------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [x]    | Entity `behavior` rejected (no silent drop)           | FULLY_IMPLEMENTED     | `src/manifest/ir-compiler.ts:801-816` @ `3f41cb8da272c7d71efcad242ff498403ec09fd5`                                                                                                                                               |
+| [x]    | Constraint `failWhen` polarity (RuntimeEngine + WASM) | FULLY_IMPLEMENTED     | `src/manifest/constraint-polarity.ts:1-27` @ `55670fdd48891f336064bbbab1d402e5260ebfd7`; `src/manifest/wasm/wasm-evaluator.ts:200-215` @ same                                                                                    |
+| [x]    | `getLanguageMetadata()` export                        | FULLY_IMPLEMENTED     | `src/manifest/language-metadata.ts:190-220` @ `11988d6055503c1046ba093cf007cc123778ec5a`; `package.json:275-278`                                                                                                                 |
+| [x]    | `PROPERTY_MODIFIERS` single source                    | FULLY_IMPLEMENTED     | `src/manifest/property-modifiers.ts:1-18` @ `11988d6055503c1046ba093cf007cc123778ec5a`                                                                                                                                           |
+| [x]    | `getProjectionCapabilities(name)`                     | FULLY_IMPLEMENTED     | `src/manifest/projections/registry.ts:105-120` @ `2828d0da940de5d5004d65b6d2e1342f66807e4d`                                                                                                                                      |
+| [x]    | Projection descriptors API                            | FULLY_IMPLEMENTED     | `src/manifest/projections/registry.ts:151-175` @ `f335a74128466feaef1ffde8b14d52b1bbcd5eab`                                                                                                                                      |
+| [x]    | Stable Builder export contract                        | FULLY_IMPLEMENTED     | `docs/spec/sdk-stability.md:1-48` @ `11988d6055503c1046ba093cf007cc123778ec5a`                                                                                                                                                   |
+| [x]    | `hasMany … through Join` M2M                          | FULLY_IMPLEMENTED     | `src/manifest/ir-compiler.ts:1132-1175` @ `3052dc56c45639f587a687017a13240d34dec997`; fixture `102-through-join`                                                                                                                 |
+| [x]    | Referential actions in reference runtime              | FULLY_IMPLEMENTED     | `src/manifest/runtime-referential-actions.ts:1-300` @ `3052dc56c45639f587a687017a13240d34dec997`                                                                                                                                 |
+| [x]    | `RuntimeOptions.flags` for `flag()`                   | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:255-261,1894-1898` @ `3052dc56c45639f587a687017a13240d34dec997`                                                                                                                                  |
+| [x]    | Hono/Express `authProvider`                           | FULLY_IMPLEMENTED     | `src/manifest/projections/hono/types.ts:30` @ `1b1e2be9e059e5524021a671dd45eeddf3c7026f`; `express/types.ts:37`                                                                                                                  |
+| [x]    | `manifest db init`                                    | FULLY_IMPLEMENTED     | `packages/cli/src/commands/db-init.ts:1-195` @ `2b4f30cf6010e89d3e3e3000c704212fd0574aff`                                                                                                                                        |
+| [x]    | Doctest TS `check`/`invalid` fences                   | FULLY_IMPLEMENTED     | `scripts/check-doc-snippets.mjs:94-117` @ `6ed6549fc70c86cd7e586818175d44715e1332d5`                                                                                                                                             |
+| [x]    | RedisEventBus via `RuntimeOptions.eventBus`           | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:307` @ `61d5ab6fb1da4dca32e683b45f9934e56dba141c`; `src/manifest/events/redis.ts:55-60`                                                                                                          |
+| [x]    | Durable `RateLimitStore` (Memory + Postgres)          | FULLY_IMPLEMENTED     | `src/manifest/runtime-rate-limit.ts:46-133` @ `fd4bb50a41dbfaf340013389e6023f31b9e23a79`; `src/manifest/rate-limit/stores/postgres.ts:48-137` @ same; `RuntimeOptions.rateLimitStore` `runtime-engine.ts:264,1187` @ same        |
+| [x]    | `createUserResolver` in config + runtime factory      | FULLY_IMPLEMENTED     | `src/manifest/config.ts:280-299` @ `3c1a4e61f845867cf3881edf42ea63005c17ea4d`; `src/manifest/projections/shared/companions.ts:225-280` @ same                                                                                    |
+| [x]    | Materialized-views computed → SQL                     | FULLY_IMPLEMENTED     | `src/manifest/projections/materialized-views/generator.ts:215-265` @ `7ce53859bdc162263384825043b2ecbb0ab96191`; `expression-to-sql.ts:67-88` @ same                                                                             |
+| [x]    | `EventSourcedStore` for `eventSourced` target         | FULLY_IMPLEMENTED     | `src/manifest/stores/event-sourced.ts:37-140` @ `ca526f02c67d1db7138d6e34a400fe459a87caef`; `runtime-engine.ts:1279-1283` @ same                                                                                                 |
+| [x]    | `alternateKeys` uniqueness on create/update           | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2832-2864,2876,2966-2977` @ `a8af116268de8f4329eb2af1a4df82fb5a65fa5b`                                                                                                                           |
+| [x]    | Entity-level constraint overrides on create/update    | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2625-2642,4958-4995,5934-5985` @ `f36c83dd63690e83812ee286f42379f18d65e0d9`; `src/manifest/runtime-entity-constraint-overrides.test.ts:1-149` @ same                                             |
+| [x]    | Config G5 `projections.enabled`/`defaults`            | FULLY_IMPLEMENTED     | `src/manifest/config.ts:117-168,380-414` @ `505e5051f67b0d1a33f59f7e4d1f48b14e124f2b`; `packages/cli/src/commands/generate.ts:822-895` @ same                                                                                    |
+| [x]    | Config G2 `validation.failOn`                         | FULLY_IMPLEMENTED     | `packages/cli/src/utils/validation-gate-policy.ts:1-45` @ `7c3e16a9349af3130ae5408beee5297e33b7200d`                                                                                                                             |
+| [x]    | Config G10 `driftGates` / `manifest ci-gate`          | FULLY_IMPLEMENTED     | `packages/cli/src/commands/ci-gate.ts:1-160` @ `c28e3e437a9d4af3a121e7cbdbf211c09997a98f`; `drift-gates.ts:1-59` @ same                                                                                                          |
 | [x]    | Health projection docs                                | FULLY_IMPLEMENTED     | `docs/projections/health.md:1-68` @ `ebf2164dff1ab0ea648b12cc109ac5eaa0ee332b`; `mintlify/projections/health.mdx:1-77` @ same; `src/manifest/projections/health/generator.ts:1-429` @ `f335a74128466feaef1ffde8b14d52b1bbcd5eab` |
-| [x]    | Approval `onTimeout: escalate` (open routing)         | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:748-820` @ `a16d2bf16c54d8d20a4d58323415513163ab0b4e`; `ir-compiler.ts:934-1005` @ same; `runtime-engine.ts:6550-6590` @ same; fixtures `111`, `103` |
-| [x]    | enforce-surface Drizzle/Kysely/raw-SQL detection      | FULLY_IMPLEMENTED     | `packages/cli/src/audit/write-receiver.ts:61-105` @ `3d459a1654c53a30af2e1730a0ba9ffe3ea67342`; `direct-writes.ts` + `direct-writes.test.ts` @ same |
+| [x]    | Approval `onTimeout: escalate` (open routing)         | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:748-820` @ `a16d2bf16c54d8d20a4d58323415513163ab0b4e`; `ir-compiler.ts:934-1005` @ same; `runtime-engine.ts:6550-6590` @ same; fixtures `111`, `103`                                                     |
+| [x]    | Convex `searchable` → `.searchIndex`                  | FULLY_IMPLEMENTED     | `generator.ts:367-441`; `capabilities.ts` string-gate; `type-mapping.ts:85-87`; `semantics.test.ts` — SHA after commit |
+| [x]    | enforce-surface Drizzle/Kysely/raw-SQL detection      | FULLY_IMPLEMENTED     | `packages/cli/src/audit/write-receiver.ts:61-105` @ `3d459a1654c53a30af2e1730a0ba9ffe3ea67342`; `direct-writes.ts` + `direct-writes.test.ts` @ same                                                                              |
 
 ---
 
@@ -127,7 +128,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | Array types `T[]` / `array<T>`                                                                                       | CLAIMED_NEEDS_PROOF           | fixture `40`                                                        |
 | [~]    | `date` / `time` / `datetime` / `duration`                                                                            | CLAIMED_NEEDS_PROOF           | fixture `92`                                                        |
 | [~]    | Composite primary keys (`key`)                                                                                       | CLAIMED_NEEDS_PROOF           | fixture `109`                                                       |
-| [~]    | `alternateKeys` (compile into IR)                                                                                    | FULLY_IMPLEMENTED             | §1 uniqueness; compile still CLAIMED_NEEDS_PROOF for parser path                |
+| [~]    | `alternateKeys` (compile into IR)                                                                                    | FULLY_IMPLEMENTED             | §1 uniqueness; compile still CLAIMED_NEEDS_PROOF for parser path    |
 | [~]    | Relationships `hasMany` / `hasOne` / `belongsTo` / `ref`                                                             | CLAIMED_NEEDS_PROOF           | fixtures `02`, `98`, `99`                                           |
 | [x]    | Referential actions `onDelete`/`onUpdate`                                                                            | FULLY_IMPLEMENTED             | see §1                                                              |
 | [x]    | Many-to-many `through`                                                                                               | FULLY_IMPLEMENTED             | see §1                                                              |
@@ -153,7 +154,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | Reaction fan-out                                                                                                     | CLAIMED_NEEDS_PROOF           | fixture `96`                                                        |
 | [~]    | Sagas + compensation                                                                                                 | CLAIMED_NEEDS_PROOF           | fixture `88`                                                        |
 | [~]    | Approvals (multi-stage, `onTimeout: cancel`)                                                                         | CLAIMED_NEEDS_PROOF           | fixture `68`                                                        |
-| [x]    | Approval `onTimeout: escalate` (open author target)                                                                  | FULLY_IMPLEMENTED             | see §1; fixtures `111`, `103` (bare incomplete)                              |
+| [x]    | Approval `onTimeout: escalate` (open author target)                                                                  | FULLY_IMPLEMENTED             | see §1; fixtures `111`, `103` (bare incomplete)                     |
 | [~]    | Roles / RBAC hierarchy + deny                                                                                        | CLAIMED_NEEDS_PROOF           | fixture `71`                                                        |
 | [~]    | Webhooks + HMAC                                                                                                      | CLAIMED_NEEDS_PROOF           | fixture `90`                                                        |
 | [~]    | Schedules cron/interval/every                                                                                        | CLAIMED_NEEDS_PROOF           | fixture `76`                                                        |
@@ -193,47 +194,47 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 
 ## 4. Runtime engine & adapters
 
-| Status | Feature                                                                       | Implementation Status          | Evidence pointer                                                                                 |
-| ------ | ----------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------ |
-| [~]    | Command order (rateLimit → policies → constraints → guards → actions → emits) | CLAIMED_NEEDS_PROOF            | semantics.md § Commands                                                                          |
-| [~]    | `RuntimeContext` fields                                                       | CLAIMED_NEEDS_PROOF            |                                                                                                  |
-| [~]    | Middleware (4 hooks)                                                          | CLAIMED_NEEDS_PROOF            | runtime-middleware feature doc                                                                   |
-| [~]    | `IRDiagnostic.code` optional                                                  | CLAIMED_NEEDS_PROOF            | seeded codes 2026-07-15                                                                          |
-| [~]    | Batched persistence                                                           | CLAIMED_NEEDS_PROOF            | `runtime-command-batched-persistence.test.ts`                                                    |
-| [~]    | `EncryptionProvider`                                                          | CLAIMED_NEEDS_PROOF            |                                                                                                  |
-| [~]    | Deterministic mode / effect boundary                                          | CLAIMED_NEEDS_PROOF            |                                                                                                  |
-| [~]    | EventBus (in-process)                                                         | CLAIMED_NEEDS_PROOF            | `runtime-eventbus.test.ts`                                                                       |
-| [x]    | RedisEventBus injectable                                                      | FULLY_IMPLEMENTED              | §1                                                                                               |
-| [~]    | WASM expression compatibility layer                                           | CLAIMED_NEEDS_PROOF / PARTIAL  | not a full WASM runtime                                                                          |
-| [ ]    | Full WASM runtime                                                             | NOT_IMPLEMENTED                | phantom                                                                                          |
-| [ ]    | Time-travel debugger (product UI)                                             | OUT_OF_SCOPE                   | Builder owns verification/debugging UI — see boundary; not a Manifest language gap               |
-| [~]    | IdempotencyStore                                                              | CLAIMED_NEEDS_PROOF            |                                                                                                  |
-| [~]    | JobQueue / async worker path                                                  | CLAIMED_NEEDS_PROOF            | fixture `69`                                                                                     |
-| [x]    | `optional` modifier (projection hint; no runtime gate)                        | OUT_OF_SCOPE / by design   | semantics.md § Properties — enforced via `required` only                                         |
-| [x]    | Runtime uses `alternateKeys`                                                  | FULLY_IMPLEMENTED              | §1                                                                                               |
-| [x]    | `command.returns` (projection metadata; no runtime coerce)                    | OUT_OF_SCOPE / by design       | semantics.md § Commands; `ir-v1.schema.json` `returns` @ `ccfaf65071dc1e097fce1f3fe33752e55f3dd8a3` |
-| [x]    | Durable rate-limit (Postgres store)                                           | FULLY_IMPLEMENTED              | §1                                                                                               |
+| Status | Feature                                                                       | Implementation Status         | Evidence pointer                                                                                    |
+| ------ | ----------------------------------------------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------- |
+| [~]    | Command order (rateLimit → policies → constraints → guards → actions → emits) | CLAIMED_NEEDS_PROOF           | semantics.md § Commands                                                                             |
+| [~]    | `RuntimeContext` fields                                                       | CLAIMED_NEEDS_PROOF           |                                                                                                     |
+| [~]    | Middleware (4 hooks)                                                          | CLAIMED_NEEDS_PROOF           | runtime-middleware feature doc                                                                      |
+| [~]    | `IRDiagnostic.code` optional                                                  | CLAIMED_NEEDS_PROOF           | seeded codes 2026-07-15                                                                             |
+| [~]    | Batched persistence                                                           | CLAIMED_NEEDS_PROOF           | `runtime-command-batched-persistence.test.ts`                                                       |
+| [~]    | `EncryptionProvider`                                                          | CLAIMED_NEEDS_PROOF           |                                                                                                     |
+| [~]    | Deterministic mode / effect boundary                                          | CLAIMED_NEEDS_PROOF           |                                                                                                     |
+| [~]    | EventBus (in-process)                                                         | CLAIMED_NEEDS_PROOF           | `runtime-eventbus.test.ts`                                                                          |
+| [x]    | RedisEventBus injectable                                                      | FULLY_IMPLEMENTED             | §1                                                                                                  |
+| [~]    | WASM expression compatibility layer                                           | CLAIMED_NEEDS_PROOF / PARTIAL | not a full WASM runtime                                                                             |
+| [ ]    | Full WASM runtime                                                             | NOT_IMPLEMENTED               | phantom                                                                                             |
+| [ ]    | Time-travel debugger (product UI)                                             | OUT_OF_SCOPE                  | Builder owns verification/debugging UI — see boundary; not a Manifest language gap                  |
+| [~]    | IdempotencyStore                                                              | CLAIMED_NEEDS_PROOF           |                                                                                                     |
+| [~]    | JobQueue / async worker path                                                  | CLAIMED_NEEDS_PROOF           | fixture `69`                                                                                        |
+| [x]    | `optional` modifier (projection hint; no runtime gate)                        | OUT_OF_SCOPE / by design      | semantics.md § Properties — enforced via `required` only                                            |
+| [x]    | Runtime uses `alternateKeys`                                                  | FULLY_IMPLEMENTED             | §1                                                                                                  |
+| [x]    | `command.returns` (projection metadata; no runtime coerce)                    | OUT_OF_SCOPE / by design      | semantics.md § Commands; `ir-v1.schema.json` `returns` @ `ccfaf65071dc1e097fce1f3fe33752e55f3dd8a3` |
+| [x]    | Durable rate-limit (Postgres store)                                           | FULLY_IMPLEMENTED             | §1                                                                                                  |
 
 ---
 
 ## 5. Stores & persistence subsystems
 
-| Status | Feature                                        | Implementation Status | Evidence pointer         |
-| ------ | ---------------------------------------------- | --------------------- | ------------------------ |
-| [~]    | MemoryStore                                    | CLAIMED_NEEDS_PROOF   | runtime-engine           |
-| [~]    | LocalStorageStore                              | CLAIMED_NEEDS_PROOF   |                          |
-| [~]    | PostgresStore                                  | CLAIMED_NEEDS_PROOF   | `stores.node.ts`         |
-| [~]    | SupabaseStore                                  | CLAIMED_NEEDS_PROOF   |                          |
-| [~]    | Turso / libSQL store                           | CLAIMED_NEEDS_PROOF   |                          |
-| [~]    | DynamoDB store                                 | CLAIMED_NEEDS_PROOF   |                          |
-| [~]    | GenericPrismaStore                             | CLAIMED_NEEDS_PROOF   | `stores/prisma-generic/` |
+| Status | Feature                                        | Implementation Status | Evidence pointer                       |
+| ------ | ---------------------------------------------- | --------------------- | -------------------------------------- |
+| [~]    | MemoryStore                                    | CLAIMED_NEEDS_PROOF   | runtime-engine                         |
+| [~]    | LocalStorageStore                              | CLAIMED_NEEDS_PROOF   |                                        |
+| [~]    | PostgresStore                                  | CLAIMED_NEEDS_PROOF   | `stores.node.ts`                       |
+| [~]    | SupabaseStore                                  | CLAIMED_NEEDS_PROOF   |                                        |
+| [~]    | Turso / libSQL store                           | CLAIMED_NEEDS_PROOF   |                                        |
+| [~]    | DynamoDB store                                 | CLAIMED_NEEDS_PROOF   |                                        |
+| [~]    | GenericPrismaStore                             | CLAIMED_NEEDS_PROOF   | `stores/prisma-generic/`               |
 | [x]    | EventSourcedStore                              | FULLY_IMPLEMENTED     | §1 — in-process event log + projection |
-| [~]    | Outbox: memory/postgres/redis/mongodb/dynamodb | CLAIMED_NEEDS_PROOF   | `outbox/stores/*`        |
-| [~]    | Approval store memory/postgres                 | CLAIMED_NEEDS_PROOF   |                          |
-| [~]    | Idempotency store memory/postgres              | CLAIMED_NEEDS_PROOF   |                          |
-| [x]    | RateLimit store memory/postgres                | FULLY_IMPLEMENTED     | §1                       |
-| [~]    | Custom store via plugin API                    | CLAIMED_NEEDS_PROOF   |                          |
-| [x]    | `manifest db init` SQL apply/print             | FULLY_IMPLEMENTED     | §1                       |
+| [~]    | Outbox: memory/postgres/redis/mongodb/dynamodb | CLAIMED_NEEDS_PROOF   | `outbox/stores/*`                      |
+| [~]    | Approval store memory/postgres                 | CLAIMED_NEEDS_PROOF   |                                        |
+| [~]    | Idempotency store memory/postgres              | CLAIMED_NEEDS_PROOF   |                                        |
+| [x]    | RateLimit store memory/postgres                | FULLY_IMPLEMENTED     | §1                                     |
+| [~]    | Custom store via plugin API                    | CLAIMED_NEEDS_PROOF   |                                        |
+| [x]    | `manifest db init` SQL apply/print             | FULLY_IMPLEMENTED     | §1                                     |
 
 ---
 
@@ -259,7 +260,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [~]    | mermaid               | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | jsonschema            | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | storybook             | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | health                | PARTIAL                        | generator registered; live IR/store/outbox checks still TODO stubs; docs §7   |
+| [~]    | health                | PARTIAL                        | generator registered; live IR/store/outbox checks still TODO stubs; docs §7    |
 | [x]    | materialized-views    | FULLY_IMPLEMENTED              | §1 — computed via `translateExpression`; raw `columns` escape hatch            |
 | [~]    | elasticsearch         | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | terraform             | CLAIMED_NEEDS_PROOF            |                                                                                |
@@ -282,7 +283,8 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | Projection descriptor API                                                          | FULLY_IMPLEMENTED     | §1                     |
 | [ ]    | `ir.tenant` in all web projections                                                 | PARTIAL               | wiring matrix          |
 | [ ]    | Module-based output splitting                                                      | PARTIAL               |                        |
-| [ ]    | Convex approvals/masking/searchable/versionProperty/cache/realtime/retry/rateLimit | DIAGNOSTIC_ONLY       | `CONVEX_UNSUPPORTED_*` |
+| [ ]    | Convex approvals/masking/versionProperty/cache/realtime/retry/rateLimit | DIAGNOSTIC_ONLY       | `CONVEX_UNSUPPORTED_*` (searchable shipped §1) |
+| [x]    | Convex `searchable` → `.searchIndex`                                   | FULLY_IMPLEMENTED     | §1                                             |
 | [ ]    | Convex complete lambda lowering                                                    | PARTIAL               |                        |
 | [ ]    | Hono/Express historically missing authProvider                                     | FULLY_IMPLEMENTED     | fixed §1               |
 
@@ -290,37 +292,37 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 
 ## 7. CLI, SDK, config, packaging, docs tooling
 
-| Status | Feature                                             | Implementation Status         | Evidence pointer                      |
-| ------ | --------------------------------------------------- | ----------------------------- | ------------------------------------- |
-| [~]    | CLI compile/generate/build/watch/validate/fmt/init  | CLAIMED_NEEDS_PROOF           | `packages/cli`                        |
-| [x]    | CLI `db init`                                       | FULLY_IMPLEMENTED             | §1                                    |
-| [~]    | enforce-surface / audit-* / lint-routes             | CLAIMED_NEEDS_PROOF + §1 ORM | Drizzle/Kysely/raw-SQL §1             |
-| [~]    | wiring-coverage/inspect/remediate                   | CLAIMED_NEEDS_PROOF           |                                       |
-| [~]    | diff / versions / migrate / changelog               | CLAIMED_NEEDS_PROOF           |                                       |
-| [~]    | AI: generate-from-prompt, gen-tests, validate-ai    | CLAIMED_NEEDS_PROOF           |                                       |
-| [~]    | Dev: repl, mock, harness, load-test, profile, seed… | CLAIMED_NEEDS_PROOF           |                                       |
-| [x]    | `@angriff36/manifest/language-metadata`             | FULLY_IMPLEMENTED             | §1                                    |
-| [~]    | `@angriff36/manifest/agent-sdk`                     | CLAIMED_NEEDS_PROOF           |                                       |
-| [~]    | `@angriff36/manifest/seed-pack`                     | CLAIMED_NEEDS_PROOF           |                                       |
-| [~]    | IR version control / versions CLI                   | CLAIMED_NEEDS_PROOF           | `docs/features/ir-version-control.md` |
-| [~]    | Snapshot testing tooling                            | CLAIMED_NEEDS_PROOF           | `docs/features/snapshot-testing.md`   |
-| [~]    | Config schema + `manifest config *`                 | CLAIMED_NEEDS_PROOF           | G0/G1                                 |
-| [x]    | Config G5 `projections.enabled`/`defaults`          | FULLY_IMPLEMENTED             | §1                                    |
-| [x]    | Config G2 `validation.failOn`                       | FULLY_IMPLEMENTED             | §1                                    |
-| [x]    | Config G10 `driftGates` / `manifest ci-gate`        | FULLY_IMPLEMENTED             | §1                                    |
-| [~]    | Published `@angriff36/manifest` npm                 | CLAIMED_NEEDS_PROOF           | pin `package.json` each release       |
-| [ ]    | Publish `@manifest/mcp-server`                      | NOT_IMPLEMENTED               | in-repo only                          |
-| [ ]    | Publish `@manifest/lsp-server`                      | NOT_IMPLEMENTED               |                                       |
-| [ ]    | Publish `@manifest/stdlib`                          | NOT_IMPLEMENTED               |                                       |
-| [ ]    | Publish VS Code `manifest-lang`                     | NOT_IMPLEMENTED               |                                       |
-| [x]    | SDK stability policy                                | FULLY_IMPLEMENTED             | §1                                    |
-| [~]    | Conformance suite (~99 fixtures)                    | CLAIMED_NEEDS_PROOF           | `src/manifest/conformance/`           |
-| [x]    | Doc snippet TS check mode                           | FULLY_IMPLEMENTED             | §1                                    |
-| [x]    | enforce-surface Drizzle/Kysely/raw-SQL              | FULLY_IMPLEMENTED             | §1                                    |
-| [ ]    | Restore `newguard.json`                             | NOT_IMPLEMENTED               |                                       |
-| [x]    | Health projection docs                              | FULLY_IMPLEMENTED             | §1                                    |
-| [ ]    | FEATURE-LIST → registry inventory (M12)             | NOT_IMPLEMENTED               |                                       |
-| [ ]    | Capsule-V2 / consumer app auth-seam adoption        | OUT_OF_SCOPE                  | Generated-app lifecycle — Builder + consumer apps; not a Manifest gap |
+| Status | Feature                                             | Implementation Status        | Evidence pointer                                                      |
+| ------ | --------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------- |
+| [~]    | CLI compile/generate/build/watch/validate/fmt/init  | CLAIMED_NEEDS_PROOF          | `packages/cli`                                                        |
+| [x]    | CLI `db init`                                       | FULLY_IMPLEMENTED            | §1                                                                    |
+| [~]    | enforce-surface / audit-* / lint-routes             | CLAIMED_NEEDS_PROOF + §1 ORM | Drizzle/Kysely/raw-SQL §1                                             |
+| [~]    | wiring-coverage/inspect/remediate                   | CLAIMED_NEEDS_PROOF          |                                                                       |
+| [~]    | diff / versions / migrate / changelog               | CLAIMED_NEEDS_PROOF          |                                                                       |
+| [~]    | AI: generate-from-prompt, gen-tests, validate-ai    | CLAIMED_NEEDS_PROOF          |                                                                       |
+| [~]    | Dev: repl, mock, harness, load-test, profile, seed… | CLAIMED_NEEDS_PROOF          |                                                                       |
+| [x]    | `@angriff36/manifest/language-metadata`             | FULLY_IMPLEMENTED            | §1                                                                    |
+| [~]    | `@angriff36/manifest/agent-sdk`                     | CLAIMED_NEEDS_PROOF          |                                                                       |
+| [~]    | `@angriff36/manifest/seed-pack`                     | CLAIMED_NEEDS_PROOF          |                                                                       |
+| [~]    | IR version control / versions CLI                   | CLAIMED_NEEDS_PROOF          | `docs/features/ir-version-control.md`                                 |
+| [~]    | Snapshot testing tooling                            | CLAIMED_NEEDS_PROOF          | `docs/features/snapshot-testing.md`                                   |
+| [~]    | Config schema + `manifest config *`                 | CLAIMED_NEEDS_PROOF          | G0/G1                                                                 |
+| [x]    | Config G5 `projections.enabled`/`defaults`          | FULLY_IMPLEMENTED            | §1                                                                    |
+| [x]    | Config G2 `validation.failOn`                       | FULLY_IMPLEMENTED            | §1                                                                    |
+| [x]    | Config G10 `driftGates` / `manifest ci-gate`        | FULLY_IMPLEMENTED            | §1                                                                    |
+| [~]    | Published `@angriff36/manifest` npm                 | CLAIMED_NEEDS_PROOF          | pin `package.json` each release                                       |
+| [ ]    | Publish `@manifest/mcp-server`                      | NOT_IMPLEMENTED              | in-repo only                                                          |
+| [ ]    | Publish `@manifest/lsp-server`                      | NOT_IMPLEMENTED              |                                                                       |
+| [ ]    | Publish `@manifest/stdlib`                          | NOT_IMPLEMENTED              |                                                                       |
+| [ ]    | Publish VS Code `manifest-lang`                     | NOT_IMPLEMENTED              |                                                                       |
+| [x]    | SDK stability policy                                | FULLY_IMPLEMENTED            | §1                                                                    |
+| [~]    | Conformance suite (~99 fixtures)                    | CLAIMED_NEEDS_PROOF          | `src/manifest/conformance/`                                           |
+| [x]    | Doc snippet TS check mode                           | FULLY_IMPLEMENTED            | §1                                                                    |
+| [x]    | enforce-surface Drizzle/Kysely/raw-SQL              | FULLY_IMPLEMENTED            | §1                                                                    |
+| [ ]    | Restore `newguard.json`                             | NOT_IMPLEMENTED              |                                                                       |
+| [x]    | Health projection docs                              | FULLY_IMPLEMENTED            | §1                                                                    |
+| [ ]    | FEATURE-LIST → registry inventory (M12)             | NOT_IMPLEMENTED              |                                                                       |
+| [ ]    | Capsule-V2 / consumer app auth-seam adoption        | OUT_OF_SCOPE                 | Generated-app lifecycle — Builder + consumer apps; not a Manifest gap |
 
 ---
 
@@ -328,34 +330,34 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 
 Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 
-| Status | Gap                                                                            | Implementation Status      |
-| ------ | ------------------------------------------------------------------------------ | -------------------------- |
-| [x]    | Approval escalate timeout (open `to` expression)                       | FULLY_IMPLEMENTED         | §1; author-defined routing — not person/department platform choice           |
-| [ ]    | `optional` runtime gate (beyond `required`)                                    | OUT_OF_SCOPE               | by design — see §4; not a missing Manifest feature |
-| [x]    | Entity-level constraint overrides                                              | FULLY_IMPLEMENTED          | §1                                                   |
-| [x]    | `command.returns` runtime validation                                           | OUT_OF_SCOPE               | by design — projection metadata only; see §4 / semantics § Commands |
-| [x]    | EventSourcedStore                                                              | FULLY_IMPLEMENTED          | §1                                                   |
-| [ ]    | softDelete language keyword                                                    | NOT_IMPLEMENTED / parked   | projection config intentional; reopen when language work scheduled |
-| [x]    | Materialized-views SQL expression lowering                                     | FULLY_IMPLEMENTED          | §1                                                   |
-| [ ]    | Convex unsupported surfaces (list in §6)                                       | DIAGNOSTIC_ONLY            |
-| [x]    | Config G5 `projections.enabled`/`defaults`                                     | FULLY_IMPLEMENTED          | §1                                                   |
-| [x]    | Config G2 `validation.failOn`                                                  | FULLY_IMPLEMENTED          | §1                                                   |
-| [x]    | Config G10 `driftGates` / `manifest ci-gate`                                   | FULLY_IMPLEMENTED          | §1                                                   |
-| [x]    | `createUserResolver` wired into runtime factory                                | FULLY_IMPLEMENTED          | §1                                                   |
-| [x]    | enforce-surface Drizzle/Kysely/raw-SQL                                         | FULLY_IMPLEMENTED          | §1                                                   |
-| [x]    | enforce-surface newguard contract restored                                     | FULLY_IMPLEMENTED          | `docs/internal/contracts/enforce-surface.newguard.json` |
-| [ ]    | Sub-package publish/park                                                       | NOT_IMPLEMENTED            | Manifest distribution                                |
-| [ ]    | Full WASM runtime                                                              | NOT_IMPLEMENTED            | Manifest phantom                                     |
-| [ ]    | Time-travel / product debugger UI                                              | OUT_OF_SCOPE               | Builder-owned                                        |
-| [x]    | Durable `RateLimitStore` / Postgres adapter                                    | FULLY_IMPLEMENTED          | §1                                                   |
-| [ ]    | `manifest test constraints` / ConstraintTestHarness                            | NOT_IMPLEMENTED            | phantom CLI                                          |
-| [ ]    | `manifest generate-fixtures`                                                   | NOT_IMPLEMENTED            | phantom CLI                                          |
-| [ ]    | Config `env(VAR)` / `MANIFEST_ENV` overlays / top-level `stores:` YAML         | NOT_IMPLEMENTED            | phantom config                                       |
-| [ ]    | `projection.generateRoute` / `generateTypes` / `generateClient` API            | NOT_IMPLEMENTED            | phantom projection API                               |
-| [ ]    | Kysely `columnMappings` actually applied                                       | NOT_IMPLEMENTED / PARTIAL  | option declared, unused                              |
-| [ ]    | Kitchen tutorial / product editor UI                                           | OUT_OF_SCOPE               | Builder owns visual editing; Kitchen is Manifest diagnostic surface only |
-| [ ]    | Default encryption provider (common no-vendor case)                            | NOT_IMPLEMENTED            | fail-closed by design until provider set             |
-| [ ]    | Projection orchestration / presets / app assembly UX                           | OUT_OF_SCOPE               | Builder — see Builder consumption matrix             |
+| Status | Gap                                                                    | Implementation Status     |
+| ------ | ---------------------------------------------------------------------- | ------------------------- |
+| [x]    | Approval escalate timeout (open `to` expression)                       | FULLY_IMPLEMENTED         | §1; author-defined routing — not person/department platform choice       |
+| [ ]    | `optional` runtime gate (beyond `required`)                            | OUT_OF_SCOPE              | by design — see §4; not a missing Manifest feature                       |
+| [x]    | Entity-level constraint overrides                                      | FULLY_IMPLEMENTED         | §1                                                                       |
+| [x]    | `command.returns` runtime validation                                   | OUT_OF_SCOPE              | by design — projection metadata only; see §4 / semantics § Commands      |
+| [x]    | EventSourcedStore                                                      | FULLY_IMPLEMENTED         | §1                                                                       |
+| [ ]    | softDelete language keyword                                            | NOT_IMPLEMENTED / parked  | projection config intentional; reopen when language work scheduled       |
+| [x]    | Materialized-views SQL expression lowering                             | FULLY_IMPLEMENTED         | §1                                                                       |
+| [ ]    | Convex unsupported surfaces (list in §6; searchable done)              | DIAGNOSTIC_ONLY           |
+| [x]    | Config G5 `projections.enabled`/`defaults`                             | FULLY_IMPLEMENTED         | §1                                                                       |
+| [x]    | Config G2 `validation.failOn`                                          | FULLY_IMPLEMENTED         | §1                                                                       |
+| [x]    | Config G10 `driftGates` / `manifest ci-gate`                           | FULLY_IMPLEMENTED         | §1                                                                       |
+| [x]    | `createUserResolver` wired into runtime factory                        | FULLY_IMPLEMENTED         | §1                                                                       |
+| [x]    | enforce-surface Drizzle/Kysely/raw-SQL                                 | FULLY_IMPLEMENTED         | §1                                                                       |
+| [x]    | enforce-surface newguard contract restored                             | FULLY_IMPLEMENTED         | `docs/internal/contracts/enforce-surface.newguard.json`                  |
+| [ ]    | Sub-package publish/park                                               | NOT_IMPLEMENTED           | Manifest distribution                                                    |
+| [ ]    | Full WASM runtime                                                      | NOT_IMPLEMENTED           | Manifest phantom                                                         |
+| [ ]    | Time-travel / product debugger UI                                      | OUT_OF_SCOPE              | Builder-owned                                                            |
+| [x]    | Durable `RateLimitStore` / Postgres adapter                            | FULLY_IMPLEMENTED         | §1                                                                       |
+| [ ]    | `manifest test constraints` / ConstraintTestHarness                    | NOT_IMPLEMENTED           | phantom CLI                                                              |
+| [ ]    | `manifest generate-fixtures`                                           | NOT_IMPLEMENTED           | phantom CLI                                                              |
+| [ ]    | Config `env(VAR)` / `MANIFEST_ENV` overlays / top-level `stores:` YAML | NOT_IMPLEMENTED           | phantom config                                                           |
+| [ ]    | `projection.generateRoute` / `generateTypes` / `generateClient` API    | NOT_IMPLEMENTED           | phantom projection API                                                   |
+| [ ]    | Kysely `columnMappings` actually applied                               | NOT_IMPLEMENTED / PARTIAL | option declared, unused                                                  |
+| [ ]    | Kitchen tutorial / product editor UI                                   | OUT_OF_SCOPE              | Builder owns visual editing; Kitchen is Manifest diagnostic surface only |
+| [ ]    | Default encryption provider (common no-vendor case)                    | NOT_IMPLEMENTED           | fail-closed by design until provider set                                 |
+| [ ]    | Projection orchestration / presets / app assembly UX                   | OUT_OF_SCOPE              | Builder — see Builder consumption matrix                                 |
 
 ---
 
@@ -401,16 +403,16 @@ Agents: when auditing a feature page, update the matching row; do not invent com
 
 ## 10. Coverage honesty
 
-| Source                                 | Role vs this matrix                                                                            |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `docs/internal/contracts/manifest-builder-boundary.md` | **Ownership law** — what belongs in this matrix vs Builder |
-| `C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md` | Builder consumption + `BUILDER_CONSUMED` / `END_TO_END_VERIFIED` evidence |
-| `docs/CONFIRMED-FEATURES.md`           | Existence narrative — must not claim completion beyond this file                               |
-| `docs/FEATURE-LIST.md`                 | Historical roadmap (2026-06-02); **not** completion SoT; use to find missing **Manifest** rows |
-| `docs/features/*.md`                   | User guides — each Manifest capability should appear as a row above                            |
-| `docs/TODO.md`                         | Working checklist (Manifest gaps; Builder items must be `OUT_OF_SCOPE` or moved)               |
-| Conformance fixtures                   | Executable semantics evidence pointers                                                         |
-| Appendix D phantoms (2026-07-01 audit) | Names that must appear as `NOT_IMPLEMENTED` / struck claims until fixed                        |
+| Source                                                      | Role vs this matrix                                                                            |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `docs/internal/contracts/manifest-builder-boundary.md`      | **Ownership law** — what belongs in this matrix vs Builder                                     |
+| `C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md` | Builder consumption + `BUILDER_CONSUMED` / `END_TO_END_VERIFIED` evidence                      |
+| `docs/CONFIRMED-FEATURES.md`                                | Existence narrative — must not claim completion beyond this file                               |
+| `docs/FEATURE-LIST.md`                                      | Historical roadmap (2026-06-02); **not** completion SoT; use to find missing **Manifest** rows |
+| `docs/features/*.md`                                        | User guides — each Manifest capability should appear as a row above                            |
+| `docs/TODO.md`                                              | Working checklist (Manifest gaps; Builder items must be `OUT_OF_SCOPE` or moved)               |
+| Conformance fixtures                                        | Executable semantics evidence pointers                                                         |
+| Appendix D phantoms (2026-07-01 audit)                      | Names that must appear as `NOT_IMPLEMENTED` / struck claims until fixed                        |
 
 When a **Manifest-owned** feature is found in any of those sources but missing here: **add a row immediately** (even as `CLAIMED_NEEDS_PROOF` or `NOT_IMPLEMENTED`). When the capability is Builder-owned: mark `OUT_OF_SCOPE` here and add/update the Builder consumption matrix — do **not** treat it as a missing Manifest implementation.
 

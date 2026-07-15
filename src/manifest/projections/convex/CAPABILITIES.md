@@ -1,10 +1,12 @@
 # Convex projection — capability map
 
-**Date:** 2026-07-14  
+**Date:** 2026-07-15  
 **Authority:** this file + diagnostics emitted by `capabilities.ts` / `privacy.ts`.  
 **Rule:** every IR declaration is either Supported (generated + tested), Partial
 (limitation stated), or Unsupported (`CONVEX_UNSUPPORTED_*` / related warning).
 "Parsed but ignored" without a diagnostic is a bug.
+
+~~Date: 2026-07-14~~
 
 See also: `README.md`, `docs/internal/proposals/2026-07-14-convex-computed-properties.md`,
 roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption-roadmap.md`.
@@ -19,6 +21,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Enums / nullable / arrays (`array`/`list`)       | schema                       |                                                                                            |
 | Relationships belongsTo/ref FK + indexes         | schema + queries             | `referenceMode` convexId \| stringId                                                       |
 | `indexed`, tenant index, option indexes          | schema + queries             | Index/query parity                                                                         |
+| `searchable` (string/text/uuid)                  | schema                       | Emits `.searchIndex("search_<field>", { searchField })`; tenant → `filterFields` when set  |
 | Commands → mutations                             | mutations                    | Order: policies → guards → constraints → mutate → emit → react                             |
 | Command policies / guards / constraints          | mutations                    | Fail-closed; `CONVEX_UNRESOLVED_*` + denying throw; constraint `failWhen` polarity honored |
 | Roles + `roleAllows`                             | mutations                    | `ROLE_PERMISSIONS` + `checkRole`                                                           |
@@ -54,7 +57,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | `realtime` hint                               | `CONVEX_UNSUPPORTED_REALTIME`       |
 | `versionProperty` / optimistic concurrency    | `CONVEX_UNSUPPORTED_VERSION`        |
 | `masked` / `unmask when`                      | `CONVEX_UNSUPPORTED_MASKED`         |
-| `searchable`                                  | `CONVEX_UNSUPPORTED_SEARCHABLE`     |
+| `searchable` (non-string types)               | `CONVEX_UNSUPPORTED_SEARCHABLE`     |
 | Computed `cache` directives                   | `CONVEX_UNSUPPORTED_COMPUTED_CACHE` |
 | Command/policy `retry`                        | `CONVEX_UNSUPPORTED_RETRY`          |
 | Command/policy `rateLimit`                    | `CONVEX_UNSUPPORTED_RATE_LIMIT`     |

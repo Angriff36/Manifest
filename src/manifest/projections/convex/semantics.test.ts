@@ -367,6 +367,60 @@ describe('M7 — capability diagnostics', () => {
     const diags = gen(ir, 'convex.mutations').diagnostics;
     expect(diags.some((d) => d.code === 'CONVEX_UNSUPPORTED_RETRY')).toBe(true);
   });
+
+  it('emits .searchIndex for searchable string properties (no UNSUPPORTED_SEARCHABLE)', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Article', [
+        prop('title', 'string', ['required', 'searchable']),
+        prop('body', 'text', ['searchable']),
+        prop('views', 'number', ['searchable']),
+      ]),
+    ];
+    ir.stores = [durable('Article')];
+    const res = gen(ir, 'convex.schema');
+    const code = res.artifacts[0].code;
+    expect(code).toContain('.searchIndex("search_title", { searchField: "title" })');
+    expect(code).toContain('.searchIndex("search_body", { searchField: "body" })');
+    expect(code).not.toContain('search_views');
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_SEARCHABLE')).toBe(true);
+    expect(
+      res.diagnostics.some(
+        (d) =>
+          d.code === 'CONVEX_UNSUPPORTED_SEARCHABLE' &&
+          typeof d.message === 'string' &&
+          d.message.includes('views'),
+      ),
+    ).toBe(true);
+    expect(
+      res.diagnostics.some(
+        (d) =>
+          d.code === 'CONVEX_UNSUPPORTED_SEARCHABLE' &&
+          typeof d.message === 'string' &&
+          d.message.includes('title'),
+      ),
+    ).toBe(false);
+  });
+
+  it('adds tenant filterFields on searchable indexes when tenant is declared', () => {
+    const ir = emptyIR();
+    ir.tenant = {
+      property: 'tenantId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
+    ir.entities = [
+      entity('Doc', [
+        prop('tenantId', 'string', ['required']),
+        prop('content', 'string', ['required', 'searchable']),
+      ]),
+    ];
+    ir.stores = [durable('Doc')];
+    const code = gen(ir, 'convex.schema').artifacts[0].code;
+    expect(code).toContain(
+      '.searchIndex("search_content", { searchField: "content", filterFields: ["tenantId"] })',
+    );
+  });
 });
 
 describe('working surfaces — smoke fixtures', () => {
