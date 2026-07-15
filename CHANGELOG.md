@@ -4,6 +4,33 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.5] - 2026-07-15
+
+### Added
+
+- **Language:** `timestamp` is a `datetime` alias end-to-end; `map<string, V>`
+  sugar for `map<V>`.
+- **Runtime:** through-joins + referential actions; durable `RateLimitStore`
+  (Postgres); `EventSourcedStore`; `alternateKeys` uniqueness;
+  entity-level constraint overrides; `createUserResolver` wiring.
+- **Convex:** `versionProperty` OCC; `.searchIndex` for searchable strings;
+  `count_of(self.hasMany, λ)` guard lowering + related-row preload (PB023).
+- **Approvals:** author-defined `onTimeout escalate`.
+- **Config/CLI:** `projections.enabled` + defaults (G5); `validation.failOn`
+  (G2); `manifest ci-gate` driftGates (G10); `manifest db init`; enforce-surface
+  detection for Drizzle/Kysely/raw-SQL; Hono/Express `authProvider` companions;
+  materialized-views computed lowering; FEATURE-LIST generation from registries.
+
+### Fixed
+
+- Convex realtime / computed-cache reclassified as PARTIAL (honest surface).
+- Lint/typecheck restore after projections typing and WASM cleanup.
+
+### Changed
+
+- Parked `mcp` / `lsp` / `stdlib` / `vscode` packages as private unpublished.
+- Compliance matrix + Sources of Truth index bound as documentation authorities.
+
 ## [3.6.4] - 2026-07-15
 
 ### Added
