@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://manifest.lang/spec/config/manifest.config.schema.json",
   "title": "Manifest Build Configuration",
+  "$comment": "SOURCE OF TRUTH (Binding): machine contract for manifest.config YAML/keys. Prose: docs/spec/config/manifest.config.md. Index: docs/SOURCE_OF_TRUTH_INDEX.md.",
   "description": "Schema for manifest.config.yaml / manifest.config.yml / .manifestrc.yaml. The runtime-level TypeScript config (manifest.config.ts) is validated structurally by the loader, not by this schema — it contains JavaScript functions and class references that cannot be expressed in JSON.",
   "type": "object",
   "additionalProperties": false,
@@ -93,6 +94,11 @@
             }
           }
         },
+        "defaults": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Shared options merged under every named projection's `options` (per-projection keys win). Consumed by `resolveProjectionOptions` / `manifest generate --all`. Not a projection target."
+        },
         "drizzle": {
           "type": "object",
           "additionalProperties": false,
@@ -140,6 +146,14 @@
               "description": "Projection-specific options passed verbatim to the projection generator."
             }
           }
+        },
+        "enabled": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "When set, `manifest generate --all` runs only these projection names (order preserved). Absent = every declared projection block. Not a projection target."
         },
         "express": {
           "type": "object",

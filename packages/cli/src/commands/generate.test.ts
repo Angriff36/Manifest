@@ -113,6 +113,86 @@ describe('Generate Command - --all (config-driven batch)', () => {
       await fs.rm(tempDir, { recursive: true, force: true });
     }
   }, 30000);
+
+  it('honors projections.enabled — skips projections not in the list', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-generate-enabled-'));
+    await fs.mkdir(path.join(tempDir, 'src'));
+    await fs.writeFile(path.join(tempDir, 'src', 'widget.manifest'), SOURCE, 'utf-8');
+    await fs.writeFile(
+      path.join(tempDir, 'manifest.config.yaml'),
+      [
+        'src: src/**/*.manifest',
+        'output: ir/',
+        'projections:',
+        '  enabled:',
+        '    - zod',
+        '  nextjs:',
+        '    output: apps/api/',
+        '    options:',
+        '      appDir: app/api',
+        '      generatedDir: app',
+        '  zod:',
+        '    output: schemas/',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+
+    const { compileCommand } = await import('./compile.js');
+    const { generateAllFromConfig } = await import('./generate.js');
+
+    const origCwd = process.cwd();
+    try {
+      process.chdir(tempDir);
+      await compileCommand('src', { output: 'ir/' });
+      await generateAllFromConfig({});
+
+      const rel = (await findGeneratedFiles(tempDir)).map((f) =>
+        path.relative(tempDir, f).replace(/\\/g, '/'),
+      );
+      expect(rel.some((f) => f.startsWith('schemas/'))).toBe(true);
+      expect(rel.some((f) => f.startsWith('apps/api/'))).toBe(false);
+    } finally {
+      process.chdir(origCwd);
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  it('merges projections.defaults into each projection options bag', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-generate-defaults-'));
+    await fs.mkdir(path.join(tempDir, 'src'));
+    await fs.writeFile(path.join(tempDir, 'src', 'widget.manifest'), SOURCE, 'utf-8');
+    await fs.writeFile(
+      path.join(tempDir, 'manifest.config.yaml'),
+      [
+        'src: src/**/*.manifest',
+        'output: ir/',
+        'projections:',
+        '  defaults:',
+        '    includeComments: true',
+        '  zod:',
+        '    output: schemas/',
+        '    options:',
+        '      strict: true',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+
+    const { loadAllConfigs, layerProjectionOptions } = await import('../utils/config.js');
+    const origCwd = process.cwd();
+    try {
+      process.chdir(tempDir);
+      const { build } = await loadAllConfigs(tempDir);
+      expect(layerProjectionOptions(build, 'zod')).toEqual({
+        includeComments: true,
+        strict: true,
+      });
+    } finally {
+      process.chdir(origCwd);
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  }, 30000);
 });
 
 describe('Generate Command - appDir/output overlap', () => {

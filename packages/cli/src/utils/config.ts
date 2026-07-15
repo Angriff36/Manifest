@@ -34,14 +34,21 @@ export interface ManifestConfig {
   // Defaults to: prisma/schema.prisma, schema.prisma, or db/schema.prisma
   prismaSchema?: string;
 
-  // Optional: Projection settings for code generation
-  projections?: Record<
-    string,
-    {
-      output?: string;
-      options?: Record<string, unknown>;
-    }
-  >;
+  // Optional: Projection settings for code generation (plus G5 enabled/defaults)
+  projections?: {
+    /** When set, `manifest generate --all` runs only these projection names. */
+    enabled?: string[];
+    /** Shared options merged under each projection's own `options`. */
+    defaults?: Record<string, unknown>;
+    [name: string]:
+      | {
+          output?: string;
+          options?: Record<string, unknown>;
+        }
+      | string[]
+      | Record<string, unknown>
+      | undefined;
+  };
 
   /**
    * Identifier naming policy. Legacy: `'snake_case'` / `{ table, column,
@@ -55,7 +62,6 @@ export interface ManifestConfig {
         pluralizeTables?: boolean;
       }
     | Record<string, unknown>;
-
 
   /** Environment variable mapping for store/auth/adapter configuration */
   env?: EnvMapping;

@@ -1,10 +1,14 @@
 # TODO — verified open items
 
 Created 2026-07-14 from a full reconciliation of the internal plan docs against
-main @ v3.5.0 (commit 22a19e1). Companion docs: `docs/CONFIRMED-FEATURES.md`
-(existence) and **`docs/internal/COMPLIANCE_MATRIX.md` (binding feature-completion
+main @ v3.5.0 (commit 22a19e1). Companion docs: `docs/platform/CONFIRMED-FEATURES.md`
+(existence) and **`docs/platform/FEATURE_MATRIX.md` (binding feature-completion
 source of truth — update the matrix when closing items here)**.
 AI-generated.
+
+~~Companion was `docs/CONFIRMED-FEATURES.md` + `docs/internal/COMPLIANCE_MATRIX.md`~~
+**Correction (2026-07-15):** platform paths above are authoritative
+(`docs/SOURCE_OF_TRUTH_INDEX.md`).
 
 ~~Verified against main @ v3.5.0~~
 **Update (2026-07-15):** `package.json` / npm are at **v3.6.4**. Phantom
@@ -91,8 +95,14 @@ forensics: Appendix D in
 - [ ] **Convex projection diagnostics-only surfaces** — approvals, masking,
       searchable, versionProperty, computed-cache, realtime, retry, rateLimit emit
       `CONVEX_UNSUPPORTED_*` diagnostics (good) but generate no Convex enforcement.
-- [ ] **Config vNext G5/G2/G10** — `projections.enabled/defaults`,
-      `validation.failOn`, drift gates: confirmed unbuilt (`src/manifest/config.ts`).
+- [x] **Config vNext G5** — fixed 2026-07-15: `projections.enabled` (opt-in
+      list for `manifest generate --all`) + `projections.defaults` (shared
+      options merged under each target via `resolveProjectionOptions`); schema
+      meta keys; evidence in `config.test.ts`, `generate.test.ts`,
+      `config-validate.test.ts`.
+- [ ] **Config vNext G2/G10** — `validation.failOn`, drift gates: confirmed
+      unbuilt (`src/manifest/config.ts` still notes them as proposal-only).
+      ~~Config vNext G5/G2/G10~~
 - [x] **`manifest db init`** — fixed 2026-07-15: CLI prints/applies the shipped
       approval/audit/outbox/jobs/idempotency/rate-limit `.sql` schemas
       (`manifest db init`, `--apply` + `DATABASE_URL` / `--out` / `--only` /

@@ -40,6 +40,11 @@
 > `provenance`, `runtime`, `driftGates`, `projections.enabled/defaults` exist
 > at v3.4.25 (verified: absent from the schema's top-level and projections
 > properties).
+>
+> ~~Part 2 status UNCHANGED including G5~~
+> **Correction (2026-07-15):** G5 (`projections.enabled` / `defaults`) shipped.
+> Remaining Part 2 still unbuilt: `validation`, `mergeIntegrity`, `provenance`,
+> `runtime`, `driftGates` (G2/G3/G4/G7/G10).
 
 Manifest's real config surface is **small**. There are two files, with different
 validation paths:
@@ -485,7 +490,7 @@ conformance / IR-shape changes that require schema + fixture + runtime updates.
 | **G2**              | `validation` policy                  | Fixed language severities; `manifest validate` has no knobs | Config-driven gate policy + rule registry; must NOT change language semantics                                                                                                                        | `packages/cli/src/commands/validate.ts`, new `validation` schema def                                                   | Med. **Danger Zone (semantics-adjacent — must stay non-compensating).** |
 | **G3**              | `mergeIntegrity`                     | Per-file IR; no central collision policy                    | Multi-module merge pass with deterministic ordering + collision policy                                                                                                                               | `src/manifest/compiler.ts`, `ir-compiler.ts`, new conformance fixtures                                                 | High. **Danger Zone (IR shape/semantics).**                             |
 | **G4**              | `provenance`                         | None                                                        | Source-hash + version stamping into IR/generated; deterministic; lockfile + staleness check                                                                                                          | `ir-compiler.ts`, `generator.ts`, projections, schema                                                                  | Med–High. **Danger Zone (IR shape).**                                   |
-| **G5**              | `projections.enabled`/`defaults`     | Per-projection blocks; `--surface all`                      | Merge `defaults` into each projection; honor `enabled` list in CLI generate                                                                                                                          | `packages/cli/src/commands/generate*`, schema                                                                          | Low–Med                                                                 |
+| **G5**              | `projections.enabled`/`defaults`     | Per-projection blocks; `--surface all`                      | ~~Merge `defaults` into each projection; honor `enabled` list in CLI generate~~ **DONE 2026-07-15:** schema meta keys + `resolveProjectionOptions` / `listConfiguredProjectionNames` / `generateAllFromConfig` | `packages/cli/src/commands/generate*`, schema, `src/manifest/config.ts`                                                | Shipped                                                                 |
 | **G6** ✅ CORE DONE | `prisma.multiSchema`                 | Was: single-schema (flat) output                            | **Shipped:** `schemas = [...]` + `@@schema` per model from `IREntity.module` (+ `entitySchema`/`defaultSchema` overrides, provider guard). **Deferred:** `splitFiles` (one .prisma file per schema). | `src/manifest/projections/prisma/{options,generator}.ts`, `prisma-projection.schema.json`, `generator.test.ts`, README | Med                                                                     |
 | **G7**              | `runtime` block                      | Runtime opts in code; dispatcher mode under nextjs          | Central runtime config consumed by runtime factory + dispatcher; determinism guards                                                                                                                  | `runtime-engine.ts`, CLI runtime wiring, schema                                                                        | Med–High. **Danger Zone (runtime).**                                    |
 | **G8**              | `hooks.lifecycle`                    | git pre-commit only                                         | Lifecycle hook runner around compile/generate                                                                                                                                                        | `packages/cli/src/commands/{build,generate}.ts`, `install-hooks.ts`                                                    | Med                                                                     |
@@ -497,8 +502,8 @@ conformance / IR-shape changes that require schema + fixture + runtime updates.
 1. ~~**G0 + G1**~~ ✅ **DONE** — schema gap fixed (`hooks`/`plugins`) and typed
    `defineConfig` shipped at `@angriff36/manifest/config`.
 2. **G5 + G6** ✅ **G6 core DONE** (Prisma multi-schema layout shipped;
-   `splitFiles` deferred) — projection-layer work, no IR/semantics risk. G5 next.
-   Original framing: contained to the
+   `splitFiles` deferred) — ✅ **G5 DONE 2026-07-15** (`projections.enabled` /
+   `defaults`). Original framing: contained to the
    projection layer, no IR/semantics risk.
 3. **G2 + G10** (validation policy + drift gates): CI-facing, high leverage.
 4. **G4 + G3 + G7** (provenance, merge integrity, runtime): the Danger-Zone IR/

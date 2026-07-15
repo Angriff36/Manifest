@@ -10,6 +10,8 @@ import { describe, it, expect } from 'vitest';
 import {
   defineConfig,
   resolveProjectionOptions,
+  listConfiguredProjectionNames,
+  isProjectionMetaKey,
   createUserResolver,
   hasUserResolver,
   type ManifestRuntimeConfig,
@@ -49,7 +51,66 @@ describe('defineConfig', () => {
     expect(config.resolveUser).toBe(resolveUser);
     expect(config.build?.hooks?.provider).toBe('husky');
     expect(config.build?.plugins?.[0].module).toBe('@acme/manifest-audit');
-    expect(config.build?.projections?.nextjs.output).toBe('app/api');
+    expect(config.build?.projections?.nextjs?.output).toBe('app/api');
+  });
+});
+
+describe('projections.enabled / defaults (Config G5)', () => {
+  it('isProjectionMetaKey recognizes enabled and defaults only', () => {
+    expect(isProjectionMetaKey('enabled')).toBe(true);
+    expect(isProjectionMetaKey('defaults')).toBe(true);
+    expect(isProjectionMetaKey('nextjs')).toBe(false);
+    expect(isProjectionMetaKey('zod')).toBe(false);
+  });
+
+  it('listConfiguredProjectionNames returns all non-meta keys when enabled is absent', () => {
+    expect(
+      listConfiguredProjectionNames({
+        defaults: { includeComments: true },
+        nextjs: { output: 'app/' },
+        zod: { output: 'schemas/' },
+      }),
+    ).toEqual(['nextjs', 'zod']);
+  });
+
+  it('listConfiguredProjectionNames honors projections.enabled order', () => {
+    expect(
+      listConfiguredProjectionNames({
+        enabled: ['zod', 'nextjs'],
+        nextjs: { output: 'app/' },
+        zod: { output: 'schemas/' },
+        prisma: { output: 'schema.prisma' },
+      }),
+    ).toEqual(['zod', 'nextjs']);
+  });
+
+  it('resolveProjectionOptions merges projections.defaults under per-projection options', () => {
+    const opts = resolveProjectionOptions(
+      {
+        projections: {
+          defaults: { includeComments: true, indentSize: 2 },
+          zod: { options: { indentSize: 4, strict: true } },
+        },
+      },
+      'zod',
+    );
+    expect(opts).toEqual({
+      includeComments: true,
+      indentSize: 4,
+      strict: true,
+    });
+  });
+
+  it('resolveProjectionOptions ignores meta keys as projection names', () => {
+    const build = {
+      projections: {
+        defaults: { includeComments: true },
+        enabled: ['zod'] as string[],
+        zod: { options: { strict: true } },
+      },
+    };
+    expect(resolveProjectionOptions(build, 'enabled')).toEqual({});
+    expect(resolveProjectionOptions(build, 'defaults')).toEqual({});
   });
 });
 

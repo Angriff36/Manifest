@@ -823,9 +823,12 @@ export async function generateAllFromConfig(
   options: { check?: boolean; irOverride?: string } = {},
 ): Promise<void> {
   const { loadAllConfigs, layerProjectionOptions } = await import('../utils/config.js');
+  const { listConfiguredProjectionNames, getProjectionBlock } = await import(
+    '@angriff36/manifest/config'
+  );
   const { build } = await loadAllConfigs(process.cwd());
   const projections = build.projections ?? {};
-  const names = Object.keys(projections);
+  const names = listConfiguredProjectionNames(projections);
 
   if (names.length === 0) {
     console.warn(
@@ -847,7 +850,8 @@ export async function generateAllFromConfig(
   const failures: string[] = [];
   const drifted: string[] = [];
 
-  for (const [name, projection] of Object.entries(projections)) {
+  for (const name of names) {
+    const projection = getProjectionBlock(projections, name);
     const output = projection?.output;
     if (!output) {
       console.warn(chalk.yellow(`\n→ ${name}: no output path configured — skipped.`));

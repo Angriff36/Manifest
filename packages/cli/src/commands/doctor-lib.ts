@@ -804,8 +804,11 @@ export async function inspectConfigHealth(
   const segs = (p: string): string[] => p.split(/[/\\]+/).filter(Boolean);
 
   for (const [name, projection] of Object.entries(config.projections)) {
-    const output = projection?.output ?? config.output;
-    const options = (projection?.options ?? {}) as Record<string, unknown>;
+    if (name === 'enabled' || name === 'defaults') continue;
+    if (!projection || typeof projection !== 'object' || Array.isArray(projection)) continue;
+    const block = projection as { output?: string; options?: Record<string, unknown> };
+    const output = block.output ?? config.output;
+    const options = (block.options ?? {}) as Record<string, unknown>;
     const appDir = typeof options.appDir === 'string' ? options.appDir : undefined;
 
     // 1. appDir overlaps output → route paths double unless collapsed.

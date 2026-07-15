@@ -300,7 +300,8 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [~]    | IR version control / versions CLI                   | CLAIMED_NEEDS_PROOF           | `docs/features/ir-version-control.md` |
 | [~]    | Snapshot testing tooling                            | CLAIMED_NEEDS_PROOF           | `docs/features/snapshot-testing.md`   |
 | [~]    | Config schema + `manifest config *`                 | CLAIMED_NEEDS_PROOF           | G0/G1                                 |
-| [ ]    | Config G5/G2/G10                                    | NOT_IMPLEMENTED               |                                       |
+| [~]    | Config G5 `projections.enabled`/`defaults`          | CLAIMED_NEEDS_PROOF           | shipped — §1 proof follows feat       |
+| [ ]    | Config G2/G10 (`validation` / `driftGates`)         | NOT_IMPLEMENTED               |                                       |
 | [~]    | Published `@angriff36/manifest` npm                 | CLAIMED_NEEDS_PROOF           | pin `package.json` each release       |
 | [ ]    | Publish `@manifest/mcp-server`                      | NOT_IMPLEMENTED               | in-repo only                          |
 | [ ]    | Publish `@manifest/lsp-server`                      | NOT_IMPLEMENTED               |                                       |
@@ -331,7 +332,8 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | [ ]    | softDelete language keyword                                                    | NOT_IMPLEMENTED / parked   | projection config intentional; reopen when language work scheduled |
 | [x]    | Materialized-views SQL expression lowering                                     | FULLY_IMPLEMENTED          | §1                                                   |
 | [ ]    | Convex unsupported surfaces (list in §6)                                       | DIAGNOSTIC_ONLY            |
-| [ ]    | Config G5/G2/G10                                                               | NOT_IMPLEMENTED            |
+| [~]    | Config G5 `projections.enabled`/`defaults`                                     | CLAIMED_NEEDS_PROOF        | shipped — prove in §1                                |
+| [ ]    | Config G2/G10 (`validation` / `driftGates`)                                    | NOT_IMPLEMENTED            |
 | [x]    | `createUserResolver` wired into runtime factory                                | FULLY_IMPLEMENTED          | §1                                                   |
 | [x]    | enforce-surface Drizzle/Kysely/raw-SQL                                         | FULLY_IMPLEMENTED          | §1                                                   |
 | [x]    | enforce-surface newguard contract restored                                     | FULLY_IMPLEMENTED          | `docs/internal/contracts/enforce-surface.newguard.json` |

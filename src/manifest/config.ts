@@ -20,9 +20,11 @@
  * checking for the config shape.
  *
  * Scope note: these types describe the config surface that ACTUALLY ships today
- * (see docs/spec/config/manifest.config.md). The richer vNext sections proposed
- * in docs/internal/proposals/config/manifest-config-vnext.md (validation,
- * mergeIntegrity, provenance, runtime, driftGates, …) are NOT modelled here —
+ * (see docs/spec/config/manifest.config.md). Config G5 (`projections.enabled` /
+ * `projections.defaults`) is modelled and honored by `manifest generate --all`.
+ * Richer vNext sections still proposed only
+ * (docs/internal/proposals/config/manifest-config-vnext.md: validation,
+ * mergeIntegrity, provenance, runtime, driftGates) are NOT modelled here —
  * they are not implemented. The JSON schema at
  * docs/spec/config/manifest.config.schema.json remains the executable contract
  * that `manifest config validate` enforces for the YAML/build config.
@@ -106,6 +108,63 @@ export interface ManifestProjectionConfig {
   output?: string;
   /** Surface-specific options. See the projection's option reference. */
   options?: Record<string, unknown>;
+}
+
+/**
+ * Meta keys under `projections` that are not projection targets (Config G5).
+ * `manifest generate --all` must skip these when iterating configured names.
+ */
+export const PROJECTION_META_KEYS = ['enabled', 'defaults'] as const;
+
+export type ProjectionMetaKey = (typeof PROJECTION_META_KEYS)[number];
+
+/** True for `projections.enabled` / `projections.defaults` (not a target name). */
+export function isProjectionMetaKey(name: string): name is ProjectionMetaKey {
+  return name === 'enabled' || name === 'defaults';
+}
+
+/**
+ * Projection map plus Config G5 controls:
+ * - `enabled` — when set, `manifest generate --all` runs only these names (order preserved)
+ * - `defaults` — shared options merged under each projection's own `options`
+ *
+ * Named projection blocks remain `{ output?, options? }`.
+ */
+export type ManifestProjectionsConfig = {
+  /** Explicit opt-in list for `manifest generate --all`. Absent = all declared targets. */
+  enabled?: string[];
+  /** Shared options merged under each projection's `options` (per-projection wins). */
+  defaults?: Record<string, unknown>;
+} & {
+  [projectionName: string]: ManifestProjectionConfig | string[] | Record<string, unknown> | undefined;
+};
+
+/**
+ * Names `manifest generate --all` should run for this projections map.
+ * When `enabled` is set, returns that list (order preserved); otherwise every
+ * non-meta key. Does not require each name to have an `output` block — the
+ * generate driver still skips missing outputs with a warning.
+ */
+export function listConfiguredProjectionNames(
+  projections: ManifestProjectionsConfig | Record<string, unknown> | undefined | null,
+): string[] {
+  if (!projections || typeof projections !== 'object') return [];
+  const enabled = (projections as ManifestProjectionsConfig).enabled;
+  if (Array.isArray(enabled)) {
+    return enabled.filter((name): name is string => typeof name === 'string' && name.length > 0);
+  }
+  return Object.keys(projections).filter((key) => !isProjectionMetaKey(key));
+}
+
+/** Read a named projection block, or undefined for meta keys / missing / wrong shape. */
+export function getProjectionBlock(
+  projections: ManifestProjectionsConfig | Record<string, unknown> | undefined | null,
+  name: string,
+): ManifestProjectionConfig | undefined {
+  if (!projections || isProjectionMetaKey(name)) return undefined;
+  const block = projections[name];
+  if (!block || typeof block !== 'object' || Array.isArray(block)) return undefined;
+  return block as ManifestProjectionConfig;
 }
 
 /**
@@ -198,8 +257,11 @@ export interface ManifestBuildConfig {
   output?: string;
   /** Optional path to a Prisma schema for property-alignment scans. */
   prismaSchema?: string;
-  /** Per-projection config blocks, keyed by projection name. */
-  projections?: Record<string, ManifestProjectionConfig>;
+  /**
+   * Per-projection config blocks, keyed by projection name, plus optional
+   * Config G5 `enabled` / `defaults` meta keys.
+   */
+  projections?: ManifestProjectionsConfig;
   /** Environment-variable declarations for `manifest preflight`. */
   env?: ManifestEnvMapping;
   /** Git pre-commit hook settings for `manifest install-hooks`. */
@@ -319,7 +381,15 @@ export function resolveProjectionOptions(
   build: ManifestBuildConfig | undefined,
   projectionName: string,
 ): Record<string, unknown> {
-  const projectionOptions = { ...(build?.projections?.[projectionName]?.options ?? {}) };
+  if (isProjectionMetaKey(projectionName)) {
+    return {};
+  }
+  const sharedDefaults = readProjectionDefaults(build?.projections);
+  const block = getProjectionBlock(build?.projections, projectionName);
+  const projectionOptions = {
+    ...sharedDefaults,
+    ...(block?.options ?? {}),
+  };
   const convention = extractNamingConvention(build?.naming);
   if (convention !== undefined && projectionOptions.naming === undefined) {
     projectionOptions.naming = convention;
@@ -331,6 +401,16 @@ export function resolveProjectionOptions(
     projectionOptions.__manifestNaming = resolved;
   }
   return projectionOptions;
+}
+
+function readProjectionDefaults(
+  projections: ManifestProjectionsConfig | undefined,
+): Record<string, unknown> {
+  const defaults = projections?.defaults;
+  if (!defaults || typeof defaults !== 'object' || Array.isArray(defaults)) {
+    return {};
+  }
+  return { ...defaults };
 }
 
 /** Public helper for Builder / `manifest config inspect`. */

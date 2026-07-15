@@ -1,3 +1,14 @@
+---
+title: Manifest Configuration Reference
+updated: 2026-07-15
+source_of_truth: true
+source_of_truth_for: 'Prose reference for manifest.config keys and projection/runtime configuration'
+authority: Binding
+must_reconcile_to:
+  - docs/spec/config/manifest.config.schema.json
+does_not_define: 'Machine-validated key set when this prose disagrees — JSON schema wins'
+---
+
 # Manifest Configuration Reference
 
 `manifest.config.{yaml,yml,ts,js}` is the **single declaration point** for
@@ -142,10 +153,16 @@ Only `memory` and browser `localStorage` work without runtime store
 configuration. A zero-config generated factory for `postgres`, `supabase`,
 `durable`, or a custom target fails clearly instead of falling back to memory.
 
-> The types cover the config surface that ships **today**. The richer vNext
-> sections (validation, merge integrity, provenance, runtime, drift gates) are a
+> The types cover the config surface that ships **today**, including Config G5
+> (`projections.enabled` / `projections.defaults`). Richer vNext sections
+> (validation, merge integrity, provenance, runtime, drift gates) remain a
 > [design proposal](../../internal/proposals/config/manifest-config-vnext.md),
 > not implemented, and are intentionally not modelled by `defineConfig`.
+>
+> ~~The richer vNext sections (validation, merge integrity, provenance, runtime,
+> drift gates) are a design proposal, not implemented~~ — **Correction
+> (2026-07-15):** G5 (`projections.enabled` / `defaults`) shipped; G2/G10 and
+> the other Part-2 keys remain unbuilt.
 
 ---
 
@@ -156,11 +173,37 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 | `src`          | `**/*.manifest`   | string | Glob for source `.manifest` files.                                                                                                                        |
 | `output`       | `ir/`             | string | Directory for compiled IR JSON.                                                                                                                           |
 | `prismaSchema` | (auto-discovered) | string | Optional path to a Prisma schema for property alignment scans. When omitted, Manifest checks `prisma/schema.prisma`, `schema.prisma`, `db/schema.prisma`. |
-| `projections`  | `{}`              | object | Per-projection config blocks.                                                                                                                             |
+| `projections`  | `{}`              | object | Per-projection config blocks, plus optional G5 `enabled` / `defaults` (see below).                                                                         |
 | `env`          | `{}`              | object | Environment-variable declarations for `manifest preflight`. Grouped under `stores`, `auth`, `adapters`, `custom`.                                         |
 | `hooks`        | (see below)       | object | Git pre-commit hook settings consumed by `manifest install-hooks`.                                                                                        |
 | `plugins`      | `[]`              | array  | Third-party plugin declarations loaded by the CLI; inspected via `manifest plugins`.                                                                      |
 | `naming`       | (off)             | mixed  | Identifier naming policy. Legacy physical convention and/or opt-in normalization — see **`naming`**.                                                      |
+
+---
+
+## `projections.enabled` / `projections.defaults` (Config G5)
+
+Added 2026-07-15. These are **meta keys** under `projections` — not projection
+targets. `manifest config validate` accepts them; `manifest generate --all`
+honors them.
+
+```yaml
+projections:
+  enabled: [nextjs, zod]       # opt-in list (order preserved); omit = all declared targets
+  defaults:                    # shared options under every target's options
+    includeComments: true
+  nextjs:
+    output: apps/api/
+    options:
+      authProvider: clerk      # wins over defaults for the same key
+  zod:
+    output: schemas/
+```
+
+| Key        | Default                         | Type     | Behavior                                                                                                                                 |
+| ---------- | ------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`  | (absent = all declared targets) | string[] | When set, `manifest generate --all` runs only these names. Declared blocks not listed are skipped. Names without `output` still warn-skip. |
+| `defaults` | `{}`                            | object   | Shallow-merged under each projection's `options` via `resolveProjectionOptions` (per-projection keys win; then global `naming` inheritance). |
 
 ---
 
@@ -492,7 +535,7 @@ projections:
 individually validated by the JSON schema. An unknown projection **name** is
 still rejected by `manifest config validate` (`projections` is a closed set).
 The allowed set is derived from the projection registry; the schema's
-`projections` block is regenerated by `scripts/generate-config-schema.mjs` and
+`projections` block is regenerated by `testing/scripts/generate-config-schema.mjs` and
 guarded against drift by `src/manifest/config-schema-registry.test.ts`.
 
 ---
@@ -599,7 +642,7 @@ projections:
 executor and delegates to it. The emitted handler no longer contains
 `createManifestRuntime` or `runtime.runCommand`.
 
-```ts
+```ts fragment
 // Generated output (excerpt) under externalExecutor mode:
 import { executeManifestCommand } from "@my-app/manifest-executor";
 ...
