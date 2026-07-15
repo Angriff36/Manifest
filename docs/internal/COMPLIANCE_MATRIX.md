@@ -56,7 +56,7 @@ When completion status changes: update this matrix first, then reconcile `docs/T
 | [x] | Static `RuntimeOptions.flags` map for `flag()` | builtins.md / semantics | FULLY_IMPLEMENTED | RuntimeOptions + flag builtin | `src/manifest/runtime-engine.ts:255-261,1894-1898` @ `3052dc56c45639f587a687017a13240d34dec997` |
 | [x] | Hono & Express `authProvider` option | projection companions | FULLY_IMPLEMENTED | hono/express types + generators | `src/manifest/projections/hono/types.ts:30` @ `1b1e2be9e059e5524021a671dd45eeddf3c7026f`; `src/manifest/projections/express/types.ts:37` @ same |
 | [x] | `manifest db init` for shipped Postgres adapter `.sql` | CLI / distribution | FULLY_IMPLEMENTED | db-init command | `packages/cli/src/commands/db-init.ts:1-195` @ `2b4f30cf6010e89d3e3e3000c704212fd0574aff`; registered `packages/cli/src/index.ts:157-183` @ same |
-| [x] | Doctest gate for TypeScript fenced blocks (`check`/`invalid`) | CI `docs:check:snippets` | FULLY_IMPLEMENTED | check-doc-snippets | `scripts/check-doc-snippets.mjs:95-117` @ pending-commit — unannotated ```typescript still skipped (opt-in `check`) |
+| [x] | Doctest gate for TypeScript fenced blocks (`check`/`invalid`) | CI `docs:check:snippets` | FULLY_IMPLEMENTED | check-doc-snippets | `scripts/check-doc-snippets.mjs:94-117` @ `6ed6549fc70c86cd7e586818175d44715e1332d5` — unannotated ```typescript still skipped (opt-in `check`) |
 | [x] | RedisEventBus injectable via `RuntimeOptions.eventBus` | adapters / EventBus | FULLY_IMPLEMENTED | option hook + Redis adapter | `src/manifest/runtime-engine.ts:307` @ `61d5ab6fb1da4dca32e683b45f9934e56dba141c`; `src/manifest/events/redis.ts:55-60` @ same — auto-construct from env intentionally absent |
 
 ---
