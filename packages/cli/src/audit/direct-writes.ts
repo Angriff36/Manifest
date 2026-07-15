@@ -1,10 +1,10 @@
 /**
  * Direct-writes detector.
  *
- * Direct ORM writes (e.g. `prisma.X.create/update/delete/upsert/*Many`) in
- * routes, server actions, jobs, etc. bypass the governed runtime command
- * path. They are flagged unless the path is explicitly listed in the
- * approved bypass registry.
+ * Direct ORM writes (Prisma `receiver.model.create`, Drizzle `db.insert`,
+ * Kysely `db.insertInto`, raw SQL DML templates) in routes, server actions,
+ * jobs, etc. bypass the governed runtime command path. They are flagged
+ * unless the path is explicitly listed in the approved bypass registry.
  *
  * This detector only finds the direct writes; the bypass-violations
  * detector composes this output with a bypass registry to determine which
@@ -15,7 +15,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { glob } from 'glob';
 import type { AuditFinding, Detector, DetectorContext } from './types.js';
-import { buildDirectWriteRegex, DEFAULT_WRITE_RECEIVER } from './write-receiver.js';
+import { DEFAULT_WRITE_RECEIVER, DirectWriteScanner } from './write-receiver.js';
 
 const ROUTE_GLOBS = [
   'app/api/**/route.{ts,js,mjs,cjs}',
@@ -43,22 +43,29 @@ function isAllowlisted(filePath: string, root: string): boolean {
 async function scanFile(
   filePath: string,
   root: string,
-  re: RegExp,
-  receiver: string,
+  scanner: DirectWriteScanner,
 ): Promise<AuditFinding[]> {
   if (isAllowlisted(filePath, root)) return [];
   const content = await fs.readFile(filePath, 'utf-8');
-  const match = re.exec(content);
-  if (!match) return [];
-  return [
-    {
+  const hits = scanner.scan(content);
+  if (hits.length === 0) return [];
+  const rel = path.relative(root, filePath).replace(/\\/g, '/');
+  // One finding per distinct label so a file with create+update is reported
+  // once per shape without flooding on repeated identical calls.
+  const seen = new Set<string>();
+  const findings: AuditFinding[] = [];
+  for (const hit of hits) {
+    if (seen.has(hit.label)) continue;
+    seen.add(hit.label);
+    findings.push({
       severity: 'error',
       code: 'DIRECT_WRITE',
-      message: `Direct ${receiver}.${match[1]} call outside runtime adapters`,
-      file: path.relative(root, filePath).replace(/\\/g, '/'),
+      message: `Direct ${hit.label} call outside runtime adapters`,
+      file: rel,
       detector: 'direct-writes',
-    },
-  ];
+    });
+  }
+  return findings;
 }
 
 export const directWritesDetector: Detector = {
@@ -67,7 +74,7 @@ export const directWritesDetector: Detector = {
   async run(ctx: DetectorContext): Promise<AuditFinding[]> {
     const findings: AuditFinding[] = [];
     const receiver = ctx.writeReceiver ?? DEFAULT_WRITE_RECEIVER;
-    const directWriteRe = buildDirectWriteRegex(receiver);
+    const scanner = new DirectWriteScanner(receiver);
     const scanPatterns = [...ROUTE_GLOBS, ...(ctx.includeGlobs ?? [])];
     const ignorePatterns = ctx.excludeGlobs;
     // Default globs and user --include patterns may overlap (e.g. defaults
@@ -86,7 +93,7 @@ export const directWritesDetector: Detector = {
       for (const file of matches) {
         if (seen.has(file)) continue;
         seen.add(file);
-        findings.push(...(await scanFile(file, ctx.root, directWriteRe, receiver)));
+        findings.push(...(await scanFile(file, ctx.root, scanner)));
       }
     }
     return findings;

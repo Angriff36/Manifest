@@ -114,9 +114,13 @@ forensics: Appendix D in
       `scripts/check-doc-snippets.mjs` typechecks ```typescript check` /
       ```ts check` (and `invalid`) via `typescript.transpileModule`; unannotated
       TS fences remain skipped until migrated. Manifest fences unchanged.
-- [ ] **enforce-surface ORM coverage** — `--write-receiver` only renames the
-      receiver; Drizzle (`db.insert(t).values()`) and Kysely (`.insertInto()`)
-      call shapes and raw-SQL template-literal writes are still undetected.
+- [x] **enforce-surface ORM coverage** — fixed 2026-07-15: `DirectWriteScanner`
+      flags Prisma-style writes plus Drizzle (`insert`/`update`/`delete`),
+      Kysely (`insertInto`/`updateTable`/`deleteFrom`), and raw SQL template
+      DML (`INSERT`/`UPDATE`/`DELETE`). Evidence:
+      `packages/cli/src/audit/write-receiver.ts`, `direct-writes.test.ts`.
+      ~~`--write-receiver` only renames the receiver; Drizzle/Kysely/raw-SQL
+      undetected~~
 - [ ] **`newguard.json` spec-of-truth lost** — the enforce-surface plan's contract
       file was never committed (checked `git log --all`); recreate it somewhere
       durable if that contract still matters.

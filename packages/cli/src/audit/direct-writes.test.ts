@@ -102,3 +102,38 @@ describe('unregisteredEntityWriteDetector — configurable write receiver', () =
     expect(findings).toEqual([]);
   });
 });
+
+describe('directWritesDetector — Drizzle / Kysely / raw SQL', () => {
+  it('flags Drizzle db.insert / db.update / db.delete', async () => {
+    const root = await tempDir();
+    await writeFile(
+      root,
+      'app/api/x/route.ts',
+      `export async function POST(){ return db.insert(users).values({}); }`,
+    );
+    const findings = await directWritesDetector.run({ root, writeReceiver: 'db' });
+    expect(findings.some((f) => f.message.includes('drizzle.insert'))).toBe(true);
+  });
+
+  it('flags Kysely db.insertInto / updateTable / deleteFrom', async () => {
+    const root = await tempDir();
+    await writeFile(
+      root,
+      'app/api/x/route.ts',
+      `export async function POST(){ return db.insertInto('users').values({}).execute(); }`,
+    );
+    const findings = await directWritesDetector.run({ root, writeReceiver: 'db' });
+    expect(findings.some((f) => f.message.includes('kysely.insertInto'))).toBe(true);
+  });
+
+  it('flags raw SQL template literals with INSERT/UPDATE/DELETE', async () => {
+    const root = await tempDir();
+    await writeFile(
+      root,
+      'app/api/x/route.ts',
+      'export async function POST(){ return sql`INSERT INTO users (id) VALUES (1)`; }',
+    );
+    const findings = await directWritesDetector.run({ root });
+    expect(findings.some((f) => f.message.includes('raw-sql.insert'))).toBe(true);
+  });
+});
