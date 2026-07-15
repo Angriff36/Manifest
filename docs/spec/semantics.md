@@ -212,7 +212,14 @@ database FK engine:
 - On create, the runtime persists the instance under its composite identity string (assigned to `id`), so a composite-key entity is addressable by that string via `getInstance`/`updateInstance`/`deleteInstance` and `runCommand`'s `instanceId`. A composite-key entity is not required to declare a separate `id` property.
 - Two instances differing in any key component are distinct, even if they share another column's value; this makes per-tenant/region reuse of a code safe when the discriminator is part of `key`.
 - A `belongsTo`/`ref` relationship whose foreign key spans multiple columns resolves the target by matching every mapped `foreignKey.fields`/`references` column (see Relationship Resolution Rules).
-- `alternateKeys` remain projection-level unique constraints; the runtime does not enforce alternate-key uniqueness in this version.
+- ~~`alternateKeys` remain projection-level unique constraints; the runtime does not enforce alternate-key uniqueness in this version.~~
+- **Update (2026-07-15):** each `alternateKeys` group is a multi-column uniqueness
+  constraint. On create and update, if every column in a group has a non-null
+  value and another instance (excluding self) matches all those columns, the
+  write MUST fail closed with a blocking constraint outcome (`E_ALTERNATE_KEY`).
+  A group with any null/undefined column is not uniqueness-checked (same rule as
+  single-column `unique`). Lookup by alternate key is not required; identity
+  addressing remains `id` / composite `key`.
 
 #### State Transitions (vNext)
 

@@ -41,14 +41,16 @@ forensics: Appendix D in
       `updateInstance` enforce child-side `onDelete`/`onUpdate`
       (`cascade`/`restrict`/`setNull`/`setDefault`/`noAction`); evidence in
       `runtime-referential-actions.test.ts`; semantics.md § Referential Actions.
-- [ ] **`alternateKeys` runtime-unused**;
-      **entity-level constraint overrides never evaluated**; **`command.returns`
+- [ ] **entity-level constraint overrides never evaluated**; **`command.returns`
       projection-only** — see the reconciled matrix
-      `docs/internal/plans/2026-07-06-ir-wiring-audit-matrix.md` (~50 rows still open).
+      `docs/internal/plans/2026-07-06-ir-wiring-audit-matrix.md`.
+- [x] **`alternateKeys` runtime uniqueness** — fixed 2026-07-15: create/update
+      enforce multi-column groups (`E_ALTERNATE_KEY`); semantics.md § Composite
+      Keys updated. Lookup-by-AK not required.
+      ~~`alternateKeys` runtime-unused~~
       ~~`optional` modifier never read by runtime~~ **Clarified 2026-07-15:**
-      semantics.md § Properties — `optional` (with `indexed`/`searchable`) is a
-      projection hint with no independent runtime behavior; `required` is the
-      enforced create-time gate.
+      semantics.md § Properties — `optional` is a projection hint; `required`
+      is the enforced create-time gate.
 - [x] **Rate limiting durable store** — fixed 2026-07-15:
       `RateLimitStore` + `MemoryRateLimitStore` (default) +
       `PostgresRateLimitStore` (`@angriff36/manifest/rate-limit/postgres`);

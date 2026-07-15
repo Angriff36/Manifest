@@ -202,7 +202,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | IdempotencyStore                                                              | CLAIMED_NEEDS_PROOF            |                                                                                                  |
 | [~]    | JobQueue / async worker path                                                  | CLAIMED_NEEDS_PROOF            | fixture `69`                                                                                     |
 | [x]    | `optional` modifier (projection hint; no runtime gate)                        | OUT_OF_SCOPE / by design   | semantics.md § Properties — enforced via `required` only                                         |
-| [ ]    | Runtime uses `alternateKeys`                                                  | NOT_IMPLEMENTED                |                                                                                                  |
+| [x]    | Runtime uses `alternateKeys`                                                  | FULLY_IMPLEMENTED              | §1 after commit — uniqueness on create/update                                    |
 | [ ]    | `command.returns` runtime/projection-complete                                 | PARTIAL                        | projection-only                                                                                  |
 | [x]    | Durable rate-limit (Postgres store)                                           | FULLY_IMPLEMENTED              | §1                                                                                               |
 

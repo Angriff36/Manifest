@@ -2823,6 +2823,46 @@ export class RuntimeEngine {
     return outcomes;
   }
 
+  /**
+   * `alternateKeys` multi-column uniqueness (semantics.md § Composite Keys).
+   * For each key group, if every column is non-null on the candidate and another
+   * instance matches all columns, emit E_ALTERNATE_KEY. Groups with any
+   * null/undefined column are skipped.
+   */
+  private async alternateKeyOutcomes(
+    entityName: string,
+    entity: IREntity,
+    candidate: Record<string, unknown>,
+    excludeId?: string,
+  ): Promise<ConstraintOutcome[]> {
+    const groups = entity.alternateKeys;
+    if (!groups || groups.length === 0) return [];
+    const existing = await this.getAllInstancesRaw(entityName);
+    const outcomes: ConstraintOutcome[] = [];
+    for (const columns of groups) {
+      if (columns.length === 0) continue;
+      const values = columns.map((c) => candidate[c]);
+      if (values.some((v) => v === undefined || v === null)) continue;
+      const collides = existing.some(
+        (row) =>
+          row.id !== excludeId && columns.every((c, i) => row[c] === values[i]),
+      );
+      if (collides) {
+        const message = `Alternate key [${columns.join(', ')}] must be unique; matching values already exist`;
+        outcomes.push({
+          code: 'E_ALTERNATE_KEY',
+          constraintName: columns.join('+'),
+          severity: 'block',
+          passed: false,
+          formatted: message,
+          message,
+          details: { columns, modifier: 'alternateKeys', values },
+        });
+      }
+    }
+    return outcomes;
+  }
+
   private async persistPreparedCreate(
     entityName: string,
     entity: IREntity,
@@ -2833,6 +2873,7 @@ export class RuntimeEngine {
       ...requiredOutcomes,
       ...this.validateDateTimeTypes(entity, mergedData),
       ...(await this.uniqueModifierOutcomes(entityName, entity, mergedData)),
+      ...(await this.alternateKeyOutcomes(entityName, entity, mergedData)),
       ...(await this.validateConstraints(entity, mergedData)),
     ];
     if (!this.reportConstraintOutcomes(constraintOutcomes)) {
@@ -2917,6 +2958,18 @@ export class RuntimeEngine {
           code: first.code ?? 'E_UNIQUE',
           property: first.constraintName,
           message: first.message ?? first.formatted ?? 'unique constraint violation',
+        };
+        return undefined;
+      }
+
+      const mergedForAk = { ...existing, ...data };
+      const akOutcomes = await this.alternateKeyOutcomes(entityName, entity, mergedForAk, id);
+      if (akOutcomes.length > 0) {
+        const first = akOutcomes[0];
+        this.lastWriteRejection = {
+          code: first.code ?? 'E_ALTERNATE_KEY',
+          property: first.constraintName,
+          message: first.message ?? first.formatted ?? 'alternate key constraint violation',
         };
         return undefined;
       }
