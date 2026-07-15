@@ -4,6 +4,30 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.4] - 2026-07-15
+
+### Added
+
+- **Opt-in identifier naming normalization** via top-level `naming` in
+  Manifest config (`naming.normalization`, default `false` for back-compat).
+  When enabled: per-category casing + `mismatch` (`off`/`warn`/`error`/`fix`),
+  aliases, irregular plurals, ambiguous word-boundary diagnostics, and
+  projection-only legacy storage remaps under `naming.projections.*`.
+  Public helpers: `resolveNamingConfig` / `resolveBuildNaming` /
+  `detectStorageNameChanges` on `@angriff36/manifest/config`. Spec:
+  `docs/spec/config/manifest.config.md` § naming.
+
+### Fixed
+
+- **Convex auth safety:** when tenant filtering or `policyMode: 'enforce'`
+  with policies would otherwise read ineffective `(ctx as any).auth`,
+  generation now requires `options.authContextImport` and emits
+  `CONVEX_AUTH_CONTEXT_REQUIRED` instead of a silent broken identity path.
+- **Convex naming precedence:** with app-wide `naming.normalization` on,
+  Convex-local `options.naming` is ignored (`CONVEX_LOCAL_NAMING_IGNORED`)
+  so one projection cannot invent a second spelling; `tableMappings` /
+  `references` remain legacy storage escape hatches.
+
 ## [3.6.3] - 2026-07-14
 
 ### Added
