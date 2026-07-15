@@ -4,6 +4,21 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.7] - 2026-07-15
+
+### Fixed
+
+- **Convex G7 emits:** map `self.id` to Convex identity (`_id` on create, `docId`
+  on update) and `previous{Field}` emit fields to the pre-update document
+  (`doc.status`, etc.) so event payloads are not stored without entity IDs or
+  previous values (Convex strips `undefined`).
+- **Convex react:** default `api` import is `../../convex/_generated/api` for
+  `src/lib/manifest-convex-react.ts`; with `authContextImport`, read-gated
+  entities emit public `query` + `useQuery` hooks (tenant via auth seam).
+- **Seed-pack Convex binding:** heuristically fill blank/`{{fill}}` cells and
+  never emit `mutation(..., {} as any)`; assembly verify rejects empty seed args
+  and the broken `../convex/_generated/api` react import.
+
 ## [3.6.6] - 2026-07-15
 
 ### Fixed

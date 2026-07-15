@@ -432,6 +432,26 @@ describe('convex.queries — read-policy lockdown', () => {
     expect(res.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_READ_POLICY')).toBe(true);
   });
 
+  it('emits public query for read-gated entities when authContextImport is set', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Secret', [prop('name', 'string', ['required'])])];
+    ir.stores = [durable('Secret')];
+    ir.policies = [
+      {
+        name: 'canReadSecret',
+        entity: 'Secret',
+        action: 'read',
+        expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+      },
+    ] as IRPolicy[];
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { authContextImport: './lib/authContext' },
+    }).artifacts[0].code;
+    expect(code).toContain('export const listSecret = query({');
+    expect(code).not.toContain('= internalQuery({');
+  });
+
   it('a global (entity-less) read policy locks down every entity, runtime-parity', () => {
     const ir = emptyIR();
     ir.entities = [entity('Doc', [prop('name', 'string', ['required'])])];
@@ -1135,6 +1155,66 @@ describe('convex.mutations — G7 emit payloads (`emit Event { field: expr }`)',
     // __after holds the post-patch instance; G7 reads it (not the pre-patch doc)
     expect(code).toContain('const __after: Record<string, any> = { ...doc, ...updates };');
     expect(code).toContain('payload: { newCount: __after.count }');
+  });
+
+  it('maps self.id to docId and previousStatus to doc.status on mutate emits', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Task', [prop('status', 'string', ['required'])])];
+    ir.stores = [durable('Task')];
+    ir.commands = [
+      {
+        name: 'close',
+        entity: 'Task',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'status',
+            expression: { kind: 'literal', value: { kind: 'string', value: 'done' } },
+          },
+        ],
+        emits: ['TaskClosed'],
+        emitPayloads: [
+          {
+            eventName: 'TaskClosed',
+            fields: [
+              {
+                name: 'taskId',
+                expression: {
+                  kind: 'member',
+                  object: { kind: 'identifier', name: 'self' },
+                  property: 'id',
+                },
+              },
+              {
+                name: 'previousStatus',
+                expression: {
+                  kind: 'member',
+                  object: { kind: 'identifier', name: 'self' },
+                  property: 'previousStatus',
+                },
+              },
+              {
+                name: 'status',
+                expression: {
+                  kind: 'member',
+                  object: { kind: 'identifier', name: 'self' },
+                  property: 'status',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const code = mutations(ir).artifacts[0].code;
+    expect(code).toContain('taskId: docId');
+    expect(code).toContain('previousStatus: doc.status');
+    expect(code).toContain('status: __after.status');
+    expect(code).not.toContain('__after.id');
+    expect(code).not.toContain('__after.previousStatus');
   });
 
   it('does not introduce __after or populate payload when no emitPayloads are declared (no churn)', () => {

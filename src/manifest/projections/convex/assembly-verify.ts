@@ -130,13 +130,32 @@ export function verifyConvexApplicationAssembly(
   }
 
   const reactCode = codes.get('convex.react') ?? '';
+  const brokenReactApiImport = /from\s+["']\.\.\/convex\/_generated\/api["']/.test(reactCode);
+  const reactOk =
+    reactCode.includes('convex/react') &&
+    reactCode.includes('useMutation') &&
+    !brokenReactApiImport;
   checks.push({
     id: 'frontend-convex-api',
-    pass: reactCode.includes('convex/react') && reactCode.includes('useMutation'),
-    detail: reactCode.includes('convex/react')
-      ? 'convex.react client surface present'
-      : 'convex.react artifact does not look like a Convex React client',
+    pass: reactOk,
+    detail: !reactCode.includes('convex/react')
+      ? 'convex.react artifact does not look like a Convex React client'
+      : brokenReactApiImport
+        ? 'convex.react api import ../convex/_generated/api is wrong for src/lib (need ../../convex/_generated/api)'
+        : 'convex.react client surface present with resolvable api import',
   });
+
+  const seedCode = codes.get('scripts/seed-convex.ts') ?? '';
+  if (seedCode.length > 0) {
+    const emptyArgs = /\.mutation\([^,]+,\s*\{\s*\}\s*as any\)/.test(seedCode);
+    checks.push({
+      id: 'seed-script-args',
+      pass: !emptyArgs,
+      detail: emptyArgs
+        ? 'seed script calls create mutations with empty {} args'
+        : 'seed script has no empty mutation arg objects',
+    });
+  }
 
   return { ok: checks.every((c) => c.pass), checks };
 }

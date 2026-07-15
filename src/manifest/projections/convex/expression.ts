@@ -38,6 +38,26 @@ export interface RenderScope {
   globals?: readonly string[];
   /** Already-bound local names (e.g. command parameters) that render verbatim. */
   locals?: readonly string[];
+  /**
+   * Convex document identity for `self.id` / `this.id` / bare `id`
+   * (e.g. `_id` after insert, `docId` on updates). Schema has no `id` field —
+   * only Convex `_id` — so without this, emit payloads serialize `undefined`.
+   */
+  idExpr?: string;
+  /**
+   * Pre-update instance for `previous{Field}` emit fields (e.g. `doc`).
+   * `previousStatus` → `${beforeVar}.status`. Post-update `selfVar` keeps
+   * current fields (`status`, etc.).
+   */
+  beforeVar?: string;
+}
+
+/** Map `previousStatus` → `status` (emit previous-value convention). */
+export function previousPropertyName(property: string): string | undefined {
+  const m = /^previous([A-Z][a-zA-Z0-9]*)$/.exec(property);
+  if (!m) return undefined;
+  const rest = m[1]!;
+  return rest.charAt(0).toLowerCase() + rest.slice(1);
 }
 
 export interface RenderResult {
@@ -118,15 +138,25 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
         if (e.name === 'uuid') return 'crypto.randomUUID()';
         if (e.name === 'self' || e.name === 'this') return scope.selfVar;
         if (globals.has(e.name) || locals.has(e.name)) return e.name;
+        if (e.name === 'id' && scope.idExpr) return scope.idExpr;
+        if (bareIsSelf && scope.beforeVar) {
+          const prev = previousPropertyName(e.name);
+          if (prev) return `${scope.beforeVar}.${prev}`;
+        }
         return bareIsSelf ? `${scope.selfVar}.${e.name}` : e.name;
       }
 
       case 'member': {
-        // self.x / this.x → <selfVar>.x
+        // self.x / this.x → <selfVar>.x (with Convex id / previous* rewrites)
         if (
           e.object.kind === 'identifier' &&
           (e.object.name === 'self' || e.object.name === 'this')
         ) {
+          if (e.property === 'id' && scope.idExpr) return scope.idExpr;
+          if (scope.beforeVar) {
+            const prev = previousPropertyName(e.property);
+            if (prev) return `${scope.beforeVar}.${prev}`;
+          }
           return `${scope.selfVar}.${e.property}`;
         }
         return `${go(e.object)}.${e.property}`;

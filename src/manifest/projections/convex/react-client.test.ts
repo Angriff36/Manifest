@@ -73,6 +73,7 @@ describe('convex.react', () => {
 
     const code = react(ir).artifacts[0]!.code;
     expect(code).toContain('from "convex/react"');
+    expect(code).toContain('../../convex/_generated/api');
     expect(code).toContain('useListOrder');
     expect(code).toContain('useGetOrder');
     expect(code).toContain('api.queries.listOrder');
@@ -112,5 +113,25 @@ describe('convex.react', () => {
     expect(code).not.toContain('useGetSecret');
     expect(code).toContain('useSecretRotate');
     expect(res.diagnostics.some((d) => d.code === 'CONVEX_REACT_INTERNAL_QUERY')).toBe(true);
+  });
+
+  it('emits useQuery for read-gated entities when authContextImport is set', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Secret', [prop('token', 'string', ['required'])])];
+    ir.stores = [durable('Secret')];
+    ir.policies = [
+      {
+        name: 'denyRead',
+        action: 'read',
+        entity: 'Secret',
+        expression: { kind: 'literal', value: { kind: 'boolean', value: false } },
+      },
+    ] as IRPolicy[];
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.react',
+      options: { authContextImport: './lib/authContext' },
+    }).artifacts[0]!.code;
+    expect(code).toContain('useListSecret');
+    expect(code).toContain('useGetSecret');
   });
 });

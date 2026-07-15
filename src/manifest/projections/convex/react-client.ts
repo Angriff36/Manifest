@@ -19,14 +19,19 @@ import { hasReadPolicies } from './read-policies.js';
 export const SURFACE_REACT = 'convex.react' as const;
 
 export interface ConvexReactOptions {
-  /** Import path for Convex's generated `api` (default `../convex/_generated/api`). */
+  /** Import path for Convex's generated `api` (default `../../convex/_generated/api`). */
   apiImportPath?: string;
   /** Output path hint (default `src/lib/manifest-convex-react.ts`). */
   output?: string;
+  /**
+   * When set (Convex auth seam), emit useQuery hooks even for read-policy-gated
+   * entities — matching public `query` emission under the same option.
+   */
+  authContextImport?: string;
 }
 
 const DEFAULTS = {
-  apiImportPath: '../convex/_generated/api',
+  apiImportPath: '../../convex/_generated/api',
   output: 'src/lib/manifest-convex-react.ts',
 } as const;
 
@@ -62,9 +67,11 @@ export function generateReactClient(
   lines.push('');
 
   let hookCount = 0;
+  const authSeam =
+    typeof reactOpts.authContextImport === 'string' && reactOpts.authContextImport.length > 0;
   for (const entity of persistentEntities(ir)) {
     const gated = hasReadPolicies(ir, entity.name);
-    if (gated) {
+    if (gated && !authSeam) {
       diagnostics.push({
         severity: 'info',
         code: 'CONVEX_REACT_INTERNAL_QUERY',
@@ -74,6 +81,16 @@ export function generateReactClient(
           `(not client-callable). No useQuery hooks emitted; expose via a policy-enforcing public wrapper.`,
       });
     } else {
+      if (gated && authSeam) {
+        diagnostics.push({
+          severity: 'info',
+          code: 'CONVEX_REACT_AUTH_QUERY',
+          entity: entity.name,
+          message:
+            `Entity '${entity.name}' has read/all policies but authContextImport is set — ` +
+            `emitting useQuery against public queries (tenant via getAuthContext; role policies still partial).`,
+        });
+      }
       lines.push(`/** Reactive list for ${entity.name}. */`);
       lines.push(`export function useList${entity.name}() {`);
       lines.push(`  return useQuery(api.queries.list${entity.name});`);

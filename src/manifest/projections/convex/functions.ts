@@ -279,7 +279,11 @@ export function generateQueries(
   const blocks: string[] = [];
 
   for (const entity of persistentEntities(ir)) {
-    const qfn = hasReadPolicies(ir, entity.name) ? 'internalQuery' : 'query';
+    // With an auth seam, emit public queries (tenant filter uses getAuthContext).
+    // Without auth, keep fail-closed internalQuery for read-/all-gated entities.
+    const policyGated = hasReadPolicies(ir, entity.name);
+    const qfn =
+      policyGated && !options.authContextImport ? 'internalQuery' : 'query';
     const table = resolveConvexTableName(entity.name, options);
     const rf = resolveReadFilter(ir, entity, options);
     const privates = privateFieldNames(entity);
@@ -433,10 +437,11 @@ export function generateQueries(
   // lookups (by_type / by_entity / by_entityId) the schema declares on it.
   if (options.emitEventsTable) {
     // Event rows carry payloads from every entity, so ANY read/all policy in
-    // the program locks the events feed down too (fail-closed).
-    const evq = ir.policies.some((p) => p.action === 'read' || p.action === 'all')
-      ? 'internalQuery'
-      : 'query';
+    // the program locks the events feed down too — unless an auth seam is set
+    // (same rule as entity queries: public + tenant via getAuthContext).
+    const anyReadPolicy = ir.policies.some((p) => p.action === 'read' || p.action === 'all');
+    const evq =
+      anyReadPolicy && !options.authContextImport ? 'internalQuery' : 'query';
     const ev = resolveEventsTableName(ir, options);
     blocks.push(
       `export const listRecentEvents = ${evq}({\n` +
@@ -1040,8 +1045,8 @@ function generateMutation(
     diagnostics.push(...checks.diagnostics);
     // G7 `emit Event { field: expr }`: populate each event-row payload (and the
     // shared reaction payload below) with declared fields evaluated against the
-    // post-action instance. `doc` is the created instance, so `self.X` → doc.X.
-    const g7Scope: RenderScope = { selfVar: 'doc' };
+    // post-action instance. `doc` is the created instance; `self.id` → Convex `_id`.
+    const g7Scope: RenderScope = { selfVar: 'doc', idExpr: '_id' };
     const g7 = unionEmitPayloadFields(cmd, g7Scope);
     diagnostics.push(...g7.diagnostics);
     const events = renderEvents(resolveEventsTableName(ir, options), cmd, '_id', g7Scope);
@@ -1155,8 +1160,14 @@ function generateMutation(
   // against the POST-action instance (fetched doc + applied updates). Introduce
   // `__after` ONLY when the command actually declares emit fields, so commands
   // without G7 emit byte-identical output to before (no unused-var, no churn).
+  // `self.id` → docId (Convex identity); `previousStatus` → doc.status (pre-patch).
   const hasG7 = !!(cmd.emitPayloads && cmd.emitPayloads.length > 0);
-  const g7Scope: RenderScope = { selfVar: hasG7 ? '__after' : 'doc', locals: paramNames };
+  const g7Scope: RenderScope = {
+    selfVar: hasG7 ? '__after' : 'doc',
+    locals: paramNames,
+    idExpr: 'docId',
+    beforeVar: 'doc',
+  };
   const g7 = unionEmitPayloadFields(cmd, g7Scope);
   diagnostics.push(...g7.diagnostics);
   const useAfter = hasG7 && g7.fields.length > 0;

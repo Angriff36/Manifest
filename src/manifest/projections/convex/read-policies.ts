@@ -6,7 +6,9 @@ import type { IR } from '../../ir';
 
 /**
  * True when read/`all` policies (entity-scoped or global) gate this entity.
- * Gated entities emit `internalQuery` and must not get client useQuery hooks.
+ * Without `authContextImport`, gated entities emit `internalQuery` and must not
+ * get client useQuery hooks. With the auth seam, queries are public and React
+ * emits useQuery (tenant via getAuthContext; role policy exprs still partial).
  */
 export function hasReadPolicies(ir: IR, entityName: string): boolean {
   return ir.policies.some(

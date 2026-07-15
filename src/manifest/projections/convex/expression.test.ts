@@ -234,4 +234,11 @@ describe('renderExpression — fail closed', () => {
     expect(sub.unresolved).toEqual([]);
     expect(sub.code).toBe('(doc.code).substring(0, 4)');
   });
+
+  it('maps self.id to idExpr and previousStatus to beforeVar.status', () => {
+    const scope = { selfVar: '__after', idExpr: 'docId', beforeVar: 'doc' };
+    expect(renderExpression(self('id'), scope).code).toBe('docId');
+    expect(renderExpression(self('previousStatus'), scope).code).toBe('doc.status');
+    expect(renderExpression(self('status'), scope).code).toBe('__after.status');
+  });
 });
