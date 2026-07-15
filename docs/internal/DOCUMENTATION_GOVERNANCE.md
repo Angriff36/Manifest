@@ -37,11 +37,13 @@ Style and information-architecture rules for user pages live in
 **Binding source of truth:** `docs/internal/COMPLIANCE_MATRIX.md`
 
 ~~Earlier 2026-07-15 matrix drafts were gap-focused (~40 rows) and were **not** a full feature inventory.~~  
-**Update (2026-07-15):** The matrix must enumerate language, builtins, runtime, stores, **each** registered projection, CLI/SDK/packaging, and gaps. Absence from the matrix is a documentation defect — add the row (even as `CLAIMED_NEEDS_PROOF` / `NOT_IMPLEMENTED`). `FULLY_IMPLEMENTED` still requires filename + line range + commit SHA.
+**Update (2026-07-15):** The matrix enumerates **Manifest-owned** language, builtins, runtime, stores, **each** registered projection, CLI/SDK/packaging, and Manifest gaps. Builder-owned surfaces are `OUT_OF_SCOPE` here. Ownership law: `docs/internal/contracts/manifest-builder-boundary.md`. Builder consumption: `C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md`. Integration states: `MANIFEST_COMPLETE` / `BUILDER_CONSUMED` / `END_TO_END_VERIFIED` (see matrix). `FULLY_IMPLEMENTED` still requires filename + line range + commit SHA.
 
 | Document                             | Role                                                                                                      |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `docs/internal/COMPLIANCE_MATRIX.md` | **Completion SoT** — whether a feature is done, partial, diagnostic-only, rejected, or not implemented    |
+| `docs/internal/COMPLIANCE_MATRIX.md` | **Completion SoT** — whether a **Manifest-owned** feature is done, partial, diagnostic-only, rejected, or not implemented |
+| `docs/internal/contracts/manifest-builder-boundary.md` | **Ownership boundary** — Manifest vs Builder; resolves which matrix owns a gap |
+| `C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md` | **Builder consumption SoT** — Manifest API consumed, pin, Builder location, focused test |
 | `docs/CONFIRMED-FEATURES.md`         | **Existence inventory** — what verifiably exists; must reconcile to the matrix; loses completion disputes |
 | `docs/TODO.md`                       | Working checklist of open items; closing an item requires updating the matrix first                       |
 | `docs/FEATURE-LIST.md`               | Historical roadmap names only — use to find missing matrix rows; never as completion proof                |

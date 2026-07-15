@@ -114,3 +114,19 @@ before making Builder bigger.**
 - Any Manifest semantic decision (guard order, policy meaning, IR shape) implemented in Builder → bug.
 - Any product UI feature growing inside Manifest's diagnostic panels → bug.
 - Builder importing Manifest internals not in the export map → bug.
+
+## Feature-completion matrices (cross-links)
+
+| Document | Role |
+| --- | --- |
+| [`docs/internal/COMPLIANCE_MATRIX.md`](../COMPLIANCE_MATRIX.md) | **Manifest** completion SoT — Manifest-owned capabilities only |
+| `C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md` | **Builder** capability-consumption matrix — which Manifest APIs Builder uses, pin, tests |
+| This file | Ownership boundary; resolves disputes about which matrix a gap belongs in |
+
+Integration states used across both matrices:
+
+- `MANIFEST_COMPLETE` — Manifest proves the capability (hard proof in Manifest matrix / stable SDK)
+- `BUILDER_CONSUMED` — Builder records public API + implementation location
+- `END_TO_END_VERIFIED` — both, plus a focused Builder test proving consumption
+
+Do **not** classify Builder-owned functionality (visual editing, presets, projection orchestration UX, generated-app assembly, consumer wiring UI, verification/debugging UI, generated-app lifecycle) as a missing Manifest implementation.

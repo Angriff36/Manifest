@@ -44,9 +44,13 @@ Any time documentation is encountered that is proven beyond a doubt to be false,
 @RYAN_APPROVED 2026-07-15
 **Feature completion source of truth:** `docs/internal/COMPLIANCE_MATRIX.md`.
 
-- It is the binding inventory of what is complete vs open.
+- It is the binding inventory of what **Manifest owns** is complete vs open.
 - Status `FULLY_IMPLEMENTED` requires hard proof: filename + line range + git commit SHA.
-- Agents must add/update matrix rows when implementing or discovering gaps.
+- Agents must add/update matrix rows when implementing or discovering Manifest gaps.
+- Builder-owned work is `OUT_OF_SCOPE` here — see
+  `docs/internal/contracts/manifest-builder-boundary.md` and
+  `C:/projects/builder/docs/CAPABILITY_CONSUMPTION_MATRIX.md`.
+- Integration states: `MANIFEST_COMPLETE` / `BUILDER_CONSUMED` / `END_TO_END_VERIFIED`.
 - `docs/CONFIRMED-FEATURES.md` is existence inventory; `docs/TODO.md` is a working checklist — both must reconcile to the matrix, and the matrix wins completion disputes.
 @RYAN_APPROVED
 

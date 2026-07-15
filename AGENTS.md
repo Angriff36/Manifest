@@ -4,8 +4,10 @@
 
 **YOU MUST READ THESE FULLY AT THE BEGINNING OF EVERY SESSION**
 
-0. `docs/internal/COMPLIANCE_MATRIX.md` — **source of truth for feature completion**
-   (whether something is done). See Proof Protocol inside that file.
+0. `docs/internal/COMPLIANCE_MATRIX.md` — **source of truth for Manifest feature completion**
+   (whether something Manifest owns is done). See Proof Protocol inside that file.
+   Ownership vs Builder: `docs/internal/contracts/manifest-builder-boundary.md`.
+   Builder consumption matrix (other repo): `C:/projects/builder/docs/CAPABILITY_CONSUMPTION_MATRIX.md`.
 1. `docs/spec/ir/ir-v1.schema.json` (IR shape is the contract)
 2. `docs/spec/semantics.md` (runtime meaning)
 3. `docs/spec/builtins.md` (built-ins)
@@ -17,15 +19,20 @@
 
 @RYAN_APPROVED 2026-07-15
 **Feature completion law:** `docs/internal/COMPLIANCE_MATRIX.md` is the binding
-source of truth for feature completion. Agents MUST:
+source of truth for **Manifest-owned** feature completion. Agents MUST:
 
-- Enter every feature/gap into that matrix using its established table format.
+- Enter every Manifest feature/gap into that matrix using its established table format.
 - NEVER mark a row `FULLY_IMPLEMENTED` without hard proof: **filename**,
   **inclusive line range**, and **git commit SHA**.
+- NEVER classify Builder-owned work (visual editing, presets, projection
+  orchestration UX, app assembly, wiring/debug UI, generated-app lifecycle) as a
+  missing Manifest implementation — use `OUT_OF_SCOPE` and the Builder matrix.
 - When closing a gap: update the matrix first, then reconcile `docs/TODO.md`
   and `docs/CONFIRMED-FEATURES.md` (existence inventory — not completion SoT).
 - Prefer matrix status over roadmaps, FEATURE-LIST, or chat memory when
   deciding if work is done.
+- Integration states (`MANIFEST_COMPLETE` / `BUILDER_CONSUMED` /
+  `END_TO_END_VERIFIED`) are defined in the matrix + boundary contract.
 
 This rule is human-authored (`RYAN_APPROVED`) and must not be deleted or
 weakened without a new dated owner mark.
