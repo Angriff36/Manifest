@@ -87,8 +87,22 @@ event SagaCompleted: "saga.completed" { sagaName: string }
 event SagaFailed: "saga.failed" { sagaName: string }
 event SagaStepCompleted: "saga.step.completed" { sagaName: string }
 
+entity Order {
+  property required id: string
+  command charge() {
+    mutate charged = true
+  }
+  command refund() {
+    mutate charged = false
+  }
+  store in memory
+}
+
 saga ProcessOrder {
-  // ...steps...
+  step chargePayment {
+    command: Order.charge
+    compensate: Order.refund
+  }
   on_failure: "compensate"
   emit SagaStarted
   emit SagaCompleted

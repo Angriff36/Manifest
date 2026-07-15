@@ -14,7 +14,7 @@ Complete API reference for the Manifest runtime and compiler.
 
 Compiles Manifest source code to IR.
 
-```typescript
+```typescript check
 import { compileToIR } from '@angriff36/manifest/ir-compiler';
 
 const { ir, diagnostics } = await compileToIR(`

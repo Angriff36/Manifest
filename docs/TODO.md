@@ -78,9 +78,10 @@ forensics: Appendix D in
 
 ## Tooling / CI
 
-- [ ] **Doctest gate skips TypeScript blocks** — `scripts/check-doc-snippets.mjs`
-      only compiles ```manifest blocks, so TS API drift in docs is invisible.
-      Mintlify `runCommand` examples were corrected 2026-07-15; the gate gap remains.
+- [x] **Doctest gate supports TypeScript blocks** — fixed 2026-07-15:
+      `scripts/check-doc-snippets.mjs` typechecks ```typescript check` /
+      ```ts check` (and `invalid`) via `typescript.transpileModule`; unannotated
+      TS fences remain skipped until migrated. Manifest fences unchanged.
 - [ ] **enforce-surface ORM coverage** — `--write-receiver` only renames the
       receiver; Drizzle (`db.insert(t).values()`) and Kysely (`.insertInto()`)
       call shapes and raw-SQL template-literal writes are still undetected.
