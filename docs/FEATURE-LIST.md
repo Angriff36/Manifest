@@ -346,7 +346,7 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | `searchable` declarations | `CLAIMED_NEEDS_PROOF` | fixture `89` |
 | 2. Language (DSL) — full inventory | Aggregate `count()` in reactions | `CLAIMED_NEEDS_PROOF` | fixture `97` |
 | 2. Language (DSL) — full inventory | Appendix E: `.length` vs `length()` | `NOT_IMPLEMENTED` | backlog |
-| 2. Language (DSL) — full inventory | Appendix E: `map<K,V>` two-param form | `NOT_IMPLEMENTED` | backlog |
+| 2. Language (DSL) — full inventory | Appendix E: `map<K,V>` two-param form | `NOT_IMPLEMENTED` | backlog — arbitrary keys; `map<string,V>` sugar is §1 |
 | 2. Language (DSL) — full inventory | Appendix E: command-body policy clause | `NOT_IMPLEMENTED` | backlog |
 | 2. Language (DSL) — full inventory | Appendix E: retry/rateLimit field-name ergonomics | `NOT_IMPLEMENTED` | backlog |
 | 2. Language (DSL) — full inventory | Approvals (multi-stage, `onTimeout: cancel`) | `CLAIMED_NEEDS_PROOF` | fixture `68` |

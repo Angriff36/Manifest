@@ -116,6 +116,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Convex realtime/cache PARTIAL reclass                 | FULLY_IMPLEMENTED     | `capabilities.ts` @ `03a019efbeddbf2bc177b745957de81c5a9384a1` (`CONVEX_PARTIAL_REALTIME` / `CONVEX_PARTIAL_COMPUTED_CACHE`); `semantics.test.ts` @ same |
 | [x]    | Park unpublished sub-packages (mcp/lsp/stdlib/vscode) | FULLY_IMPLEMENTED   | `packages/*/package.json` `"private": true` @ `500f14712174bee2c989c869980ced8fd1397505`; `parked-packages.test.ts` @ same |
 | [x]    | Language type `timestamp` (= `datetime` alias)        | FULLY_IMPLEMENTED   | `date-time.ts:12-18` @ `22c7792cf045450ab02fdccd982bfbf5551f4978`; `runtime-engine.ts:2676-2694` @ same; `runtime-datetime-validation.test.ts` @ same; typescript-types + projection maps @ same; semantics § Date/Time |
+| [x]    | Appendix E: `map<string,V>` sugar (= `map<V>`)        | FULLY_IMPLEMENTED   | `parser.ts:1316-1341` — SHA pending proof; fixture `73`; semantics Properties |
 | [x]    | enforce-surface Drizzle/Kysely/raw-SQL detection      | FULLY_IMPLEMENTED     | `packages/cli/src/audit/write-receiver.ts:61-105` @ `3d459a1654c53a30af2e1730a0ba9ffe3ea67342`; `direct-writes.ts` + `direct-writes.test.ts` @ same                                                                              |
 
 ---
@@ -177,7 +178,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [ ]    | Realtime subscriptions (language/runtime)                                                                            | PARTIAL / DIAGNOSTIC_ONLY     | Convex diagnostic; Next.js may differ — prove per target            |
 | [x]    | Entity `behavior` blocks                                                                                             | REJECTED_LOUD → proven reject | see §1 / fixture `110`                                              |
 | [ ]    | Language keyword `softDelete`                                                                                        | NOT_IMPLEMENTED               | projection config only                                              |
-| [ ]    | Appendix E: `map<K,V>` two-param form                                                                                | NOT_IMPLEMENTED               | backlog                                                             |
+| [ ]    | Appendix E: `map<K,V>` two-param form                                                                                | NOT_IMPLEMENTED               | backlog — arbitrary keys; `map<string,V>` sugar is §1               |
 | [ ]    | Appendix E: retry/rateLimit field-name ergonomics                                                                    | NOT_IMPLEMENTED               | backlog                                                             |
 | [ ]    | Appendix E: command-body policy clause                                                                               | NOT_IMPLEMENTED               | backlog                                                             |
 | [ ]    | Appendix E: `.length` vs `length()`                                                                                  | NOT_IMPLEMENTED               | backlog                                                             |

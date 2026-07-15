@@ -1315,7 +1315,28 @@ export class Parser {
     }
     if (this.check('OPERATOR', '<')) {
       this.advance();
-      generic = this.parseType();
+      const firstGeneric = this.parseType();
+      // `map<string, V>` is sugar for `map<V>` (keys are always strings).
+      if (name === 'map' && this.check('PUNCTUATION', ',')) {
+        this.advance(); // consume ,
+        this.skipNL();
+        const valueGeneric = this.parseType();
+        const keyOk =
+          firstGeneric.name === 'string' &&
+          !firstGeneric.generic &&
+          !firstGeneric.nullable &&
+          !firstGeneric.params;
+        if (!keyOk) {
+          this.errors.push({
+            message: `map key type must be string (got ${firstGeneric.name}); use map<V> or map<string, V>`,
+            position: this.current()?.position,
+            severity: 'error',
+          });
+        }
+        generic = valueGeneric;
+      } else {
+        generic = firstGeneric;
+      }
       this.consume('OPERATOR', '>');
     }
     const nullable = this.check('OPERATOR', '?') ? (this.advance(), true) : false;

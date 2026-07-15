@@ -81,6 +81,7 @@ not authoritative for Manifest semantics.
 
 - Each property has a type, optional defaultValue, and modifiers.
 - Modifiers are declarative. The runtime enforces the subset listed under "Modifier enforcement" below; the remaining modifiers (`indexed`, `optional`, `searchable`) are projection hints with no independent runtime behavior.
+- Map types: `map<V>` is a string-keyed dictionary of values of type `V`. The two-parameter form `map<string, V>` is sugar for `map<V>` and MUST lower to the same IR (`type.name: "map"`, single `generic` = value type). A two-parameter form whose first type argument is not plain `string` is a compile error. Non-string key types are not supported.
 - When creating an instance, if a property is omitted from the provided data, the runtime MUST apply the property's defaultValue if present, or the type's default value if no defaultValue is specified.
 - If a property is explicitly provided (even with an empty string `""`), that value is used and defaults do not apply.
 

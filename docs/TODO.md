@@ -193,7 +193,9 @@ forensics: Appendix D in
       ~~currently a 2026-06-02 snapshot with a caveat header pointing at
       `docs/CONFIRMED-FEATURES.md`~~
 - [ ] **Appendix E language-design backlog** (recorded, never scheduled):
-      `map<K,V>` two-param form, retry/rateLimit field-name ergonomics,
+      ~~`map<K,V>` two-param form~~ **Done (2026-07-15):** `map<string, V>` sugar
+      for `map<V>` (non-string keys still unsupported),
+      retry/rateLimit field-name ergonomics,
       reserved-word ergonomics, command-body policy clause, `.length` vs
       `length()`.
       ~~no `timestamp` type (note: zod now accepts `timestamp` as a

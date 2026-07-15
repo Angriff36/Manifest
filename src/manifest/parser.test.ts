@@ -140,6 +140,34 @@ module ext {
       expect(result.program.modules[0].entities[0].external).toBe(true);
     });
 
+    it('accepts map<string, V> as sugar for map<V>', () => {
+      const result = new Parser().parse(`
+entity Bag {
+  property flags: map<string, boolean>
+  property plain: map<boolean>
+}
+`);
+      expect(result.errors).toHaveLength(0);
+      const [flags, plain] = result.program.entities[0].properties;
+      expect(flags.dataType).toEqual({
+        type: 'Type',
+        name: 'map',
+        generic: { type: 'Type', name: 'boolean', nullable: false },
+        nullable: false,
+      });
+      expect(plain.dataType).toEqual(flags.dataType);
+    });
+
+    it('rejects map<K, V> when K is not string', () => {
+      const result = new Parser().parse(`
+entity Bag {
+  property bad: map<int, boolean>
+}
+`);
+      expect(result.errors.some((e) => /map key type must be string/.test(e.message))).toBe(true);
+      expect(result.program.entities[0].properties[0].dataType?.generic?.name).toBe('boolean');
+    });
+
     it('should parse entity with properties', () => {
       const source = `
 entity User {

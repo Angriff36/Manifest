@@ -1,6 +1,7 @@
 entity FeatureFlags {
   property required id: string
   property flags: map<boolean> = {}
+  property labeled: map<string, boolean>
   property metadata: map<string>
   property config: map<int>?
 
