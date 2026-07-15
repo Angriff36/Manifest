@@ -49,16 +49,16 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Computed relation aggregates  | Unresolved unless self-only / count via reactions      | `CONVEX_UNRESOLVED_COMPUTED`                                 |
 | Encrypted properties          | Stored/returned as plain strings                       | `CONVEX_ENCRYPTED_UNSUPPORTED` (phase 1; phase 2 needs spec) |
 | `policyMode: 'skip'`          | Omits authorization only                               | Documented escape hatch                                      |
+| `realtime` hint               | Convex queries already reactive; no SSE artifact       | `CONVEX_PARTIAL_REALTIME` (info)                             |
+| Computed `cache` directives   | Helpers stay pure; Manifest cache strategies not lowered | `CONVEX_PARTIAL_COMPUTED_CACHE` (info)                     |
 
 ## Unsupported (diagnostic always emitted when declared)
 
 | IR construct                                  | Diagnostic code                     |
 | --------------------------------------------- | ----------------------------------- |
 | Approvals                                     | `CONVEX_UNSUPPORTED_APPROVAL`       |
-| `realtime` hint                               | `CONVEX_UNSUPPORTED_REALTIME`       |
 | `masked` / `unmask when`                      | `CONVEX_UNSUPPORTED_MASKED`         |
 | `searchable` (non-string types)               | `CONVEX_UNSUPPORTED_SEARCHABLE`     |
-| Computed `cache` directives                   | `CONVEX_UNSUPPORTED_COMPUTED_CACHE` |
 | Command/policy `retry`                        | `CONVEX_UNSUPPORTED_RETRY`          |
 | Command/policy `rateLimit`                    | `CONVEX_UNSUPPORTED_RATE_LIMIT`     |
 | Read/`all` policies on generated queries      | `CONVEX_UNSUPPORTED_READ_POLICY`    |

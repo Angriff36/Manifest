@@ -118,6 +118,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Convex `searchable` → `.searchIndex`               | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/generator.ts:367-441` @ `f8221d44be41a80725ab58981658edf3cfe64f30`; `capabilities.ts` string-gate @ same; `type-mapping.ts:85-87` @ same; `semantics.test.ts` |
 | [x]    | Convex `versionProperty` OCC                       | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/version-occ.ts:1-76` @ `4660059ba17fcc00f06de523b14c361df421fea8`; `functions.ts` create/update OCC @ same; `generator.ts` schema synthesize; `semantics.test.ts` |
 | [x]    | FEATURE-LIST → registry inventory (M12)            | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts:1-301` @ `e0ffb716ffc627fdfe7bdb8df8ea6882be3dff66`; `src/manifest/feature-list-generator.test.ts:1-52` @ same; `package.json` `docs:feature-list` / `docs:check:feature-list`; generated `docs/FEATURE-LIST.md` |
+| [x]    | Convex realtime/cache PARTIAL reclass              | FULLY_IMPLEMENTED     | `capabilities.ts` `CONVEX_PARTIAL_REALTIME` / `CONVEX_PARTIAL_COMPUTED_CACHE` (info); `semantics.test.ts`; `CAPABILITIES.md` — SHA after commit |
 
 ---
 
@@ -294,9 +295,10 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | Projection descriptor API                                                          | FULLY_IMPLEMENTED     | §1                     |
 | [ ]    | `ir.tenant` in all web projections                                                 | PARTIAL               | wiring matrix          |
 | [ ]    | Module-based output splitting                                                      | PARTIAL               |                        |
-| [ ]    | Convex approvals/masking/cache/realtime/retry/rateLimit | DIAGNOSTIC_ONLY       | `CONVEX_UNSUPPORTED_*` (searchable + versionProperty shipped §1) |
+| [ ]    | Convex approvals/masking/retry/rateLimit | DIAGNOSTIC_ONLY       | `CONVEX_UNSUPPORTED_*` (searchable + versionProperty + realtime/cache PARTIAL §1) |
 | [x]    | Convex `searchable` → `.searchIndex`                                   | FULLY_IMPLEMENTED     | §1                                             |
 | [x]    | Convex `versionProperty` OCC                                           | FULLY_IMPLEMENTED     | §1                                             |
+| [x]    | Convex realtime / computed-cache PARTIAL                               | FULLY_IMPLEMENTED     | §1                                             |
 | [ ]    | Convex complete lambda lowering                                                    | PARTIAL               |                        |
 | [ ]    | Hono/Express historically missing authProvider                                     | FULLY_IMPLEMENTED     | fixed §1               |
 
@@ -351,7 +353,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | [x]    | EventSourcedStore                                                      | FULLY_IMPLEMENTED         | §1                                                                       |
 | [ ]    | softDelete language keyword                                            | NOT_IMPLEMENTED           | Manifest language gap (projection config exists)                         |
 | [x]    | Materialized-views SQL expression lowering                             | FULLY_IMPLEMENTED         | §1                                                                       |
-| [ ]    | Convex unsupported surfaces (list in §6; searchable done)              | DIAGNOSTIC_ONLY           |
+| [ ]    | Convex unsupported surfaces (approvals/masking/retry/rateLimit)        | DIAGNOSTIC_ONLY           |
 | [x]    | Config G5 `projections.enabled`/`defaults`                             | FULLY_IMPLEMENTED         | §1                                                                       |
 | [x]    | Config G2 `validation.failOn`                                          | FULLY_IMPLEMENTED         | §1                                                                       |
 | [x]    | Config G10 `driftGates` / `manifest ci-gate`                           | FULLY_IMPLEMENTED         | §1                                                                       |

@@ -104,12 +104,16 @@ forensics: Appendix D in
 - [x] **Convex `versionProperty` OCC** — fixed 2026-07-15: schema synthesizes
       version/versionAt fields; create seeds `version: 1`; updates take optional
       expected version, throw `VERSION_MISMATCH`, then increment.
+- [x] **Convex `realtime` / computed-cache PARTIAL reclass** — fixed 2026-07-15:
+      info diagnostics `CONVEX_PARTIAL_REALTIME` (platform-reactive queries; no
+      SSE) and `CONVEX_PARTIAL_COMPUTED_CACHE` (pure helpers; Manifest cache not
+      lowered). No longer `CONVEX_UNSUPPORTED_*`.
 - [ ] **Convex projection remaining diagnostics-only surfaces** — approvals,
-      masking, computed-cache, realtime, retry, rateLimit emit
-      `CONVEX_UNSUPPORTED_*` (good) but generate no Convex enforcement.
-      ~~Convex projection diagnostics-only surfaces — approvals, masking,
-      searchable, versionProperty, …~~
+      masking, retry, rateLimit emit `CONVEX_UNSUPPORTED_*` (good) but generate
+      no Convex enforcement.
+      ~~approvals, masking, computed-cache, realtime, retry, rateLimit~~
       ~~searchable / versionProperty still diagnostic-only~~
+      ~~realtime / computed-cache still unsupported~~
 - [x] **Config vNext G5** — fixed 2026-07-15: `projections.enabled` (opt-in
       list for `manifest generate --all`) + `projections.defaults` (shared
       options merged under each target via `resolveProjectionOptions`); schema

@@ -40,7 +40,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | --- | --- | --- | --- |
 | `analytics` | `analytics.tracking-plan`, `analytics.events`, `analytics.handlers` | no | undeclared |
 | `contract-tests` | `contract-tests.convex` | yes | undeclared |
-| `convex` | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react` | yes | 19 supported / 8 partial / 8 unsupported |
+| `convex` | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react` | yes | 19 supported / 10 partial / 6 unsupported |
 | `dart` | `dart.entity`, `dart.command`, `dart.models`, `dart.client`, `dart.providers`, `dart.package` | no | undeclared |
 | `drizzle` | `drizzle.schema` | yes | undeclared |
 | `dynamodb` | `dynamodb.cloudformation`, `dynamodb.cdk`, `dynamodb.terraform` | yes | undeclared |
@@ -423,7 +423,7 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 6. Projections — every registered target | analytics | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | contract-tests | `CLAIMED_NEEDS_PROOF` | Convex export name suites |
 | 6. Projections — every registered target | convex | `PARTIAL` | core generate + auth seam; many `CONVEX_UNSUPPORTED_*` (§7) |
-| 6. Projections — every registered target | Convex approvals/masking/cache/realtime/retry/rateLimit | `DIAGNOSTIC_ONLY` | `CONVEX_UNSUPPORTED_*` (searchable + versionProperty shipped §1) |
+| 6. Projections — every registered target | Convex approvals/masking/retry/rateLimit | `DIAGNOSTIC_ONLY` | `CONVEX_UNSUPPORTED_*` (searchable + versionProperty + realtime/cache PARTIAL §1) |
 | 6. Projections — every registered target | Convex complete lambda lowering | `PARTIAL` | See feature matrix |
 | 6. Projections — every registered target | dart | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | drizzle | `CLAIMED_NEEDS_PROOF` | See feature matrix |
@@ -476,7 +476,7 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 8. Open gaps / phantoms (checklist mirror) | `projection.generateRoute` / `generateTypes` / `generateClient` API | `NOT_IMPLEMENTED` | phantom projection API |
 | 8. Open gaps / phantoms (checklist mirror) | ~~Full WASM runtime~~ | `REMOVED 2026-07-15` | Prototype deleted; TypeScript evaluator is the only path |
 | 8. Open gaps / phantoms (checklist mirror) | Config `env(VAR)` / `MANIFEST_ENV` overlays / top-level `stores:` YAML | `NOT_IMPLEMENTED` | phantom config |
-| 8. Open gaps / phantoms (checklist mirror) | Convex unsupported surfaces (list in §6; searchable done) | `DIAGNOSTIC_ONLY` | See feature matrix |
+| 8. Open gaps / phantoms (checklist mirror) | Convex unsupported surfaces (approvals/masking/retry/rateLimit) | `DIAGNOSTIC_ONLY` | See feature matrix |
 | 8. Open gaps / phantoms (checklist mirror) | Default encryption provider (common no-vendor case) | `NOT_IMPLEMENTED` | fail-closed by design until provider set |
 | 8. Open gaps / phantoms (checklist mirror) | Kysely `columnMappings` actually applied | `NOT_IMPLEMENTED / PARTIAL` | option declared, unused |
 | 8. Open gaps / phantoms (checklist mirror) | softDelete language keyword | `NOT_IMPLEMENTED` | Manifest language gap (projection config exists) |

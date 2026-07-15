@@ -44,11 +44,11 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   { feature: 'Encrypted properties', status: 'partial', note: 'Stored and returned as plain strings.' },
   { feature: "policyMode: 'skip'", status: 'partial', note: 'Omits authorization only.' },
   { feature: 'Approvals', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_APPROVAL' },
-  { feature: 'realtime hint', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_REALTIME' },
+  { feature: 'realtime hint', status: 'partial', note: 'CONVEX_PARTIAL_REALTIME — Convex queries are already reactive; no SSE artifact (unlike Next.js).' },
   { feature: 'versionProperty / optimistic concurrency', status: 'supported', note: 'Create seeds version=1; updates optional expected version + increment (VERSION_MISMATCH throw)' },
   { feature: 'masked / unmask when', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_MASKED' },
   { feature: 'searchable (string-like → .searchIndex)', status: 'supported', note: 'Non-string searchable still emits CONVEX_UNSUPPORTED_SEARCHABLE' },
-  { feature: 'Computed cache directives', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_COMPUTED_CACHE' },
+  { feature: 'Computed cache directives', status: 'partial', note: 'CONVEX_PARTIAL_COMPUTED_CACHE — helpers stay pure; Manifest cache strategies are not lowered (platform query caching applies).' },
   { feature: 'Command/policy retry', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_RETRY' },
   { feature: 'Command/policy rateLimit', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_RATE_LIMIT' },
   { feature: 'async commands / job queue', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_ASYNC_COMMAND' },
@@ -82,10 +82,10 @@ export function collectUnsupportedDiagnostics(ir: IR): ProjectionDiagnostic[] {
 
     if (entity.realtime === true && persistent) {
       out.push({
-        severity: 'warning',
-        code: 'CONVEX_UNSUPPORTED_REALTIME',
+        severity: 'info',
+        code: 'CONVEX_PARTIAL_REALTIME',
         entity: entity.name,
-        message: `Entity '${entity.name}' declares realtime; Convex queries are already reactive, but no SSE/subscription artifact is emitted for this hint.`,
+        message: `Entity '${entity.name}' declares realtime; Convex queries are already reactive, so no SSE/subscription artifact is emitted for this hint (unlike the Next.js projection).`,
       });
     }
 
@@ -113,10 +113,10 @@ export function collectUnsupportedDiagnostics(ir: IR): ProjectionDiagnostic[] {
     for (const cp of entity.computedProperties) {
       if (cp.cache) {
         out.push({
-          severity: 'warning',
-          code: 'CONVEX_UNSUPPORTED_COMPUTED_CACHE',
+          severity: 'info',
+          code: 'CONVEX_PARTIAL_COMPUTED_CACHE',
           entity: entity.name,
-          message: `Computed '${entity.name}.${cp.name}' declares cache '${cp.cache.strategy}'; Convex helpers are pure and do not honor cache directives.`,
+          message: `Computed '${entity.name}.${cp.name}' declares cache '${cp.cache.strategy}'; Convex helpers are pure and do not lower Manifest cache directives (rely on Convex query caching).`,
         });
       }
     }

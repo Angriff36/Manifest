@@ -368,6 +368,38 @@ describe('M7 — capability diagnostics', () => {
     expect(diags.some((d) => d.code === 'CONVEX_UNSUPPORTED_RETRY')).toBe(true);
   });
 
+  it('emits CONVEX_PARTIAL_REALTIME info when realtime hint is set (platform-reactive)', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Feed', [prop('title', 'string', ['required'])], { realtime: true })];
+    ir.stores = [durable('Feed')];
+    const diags = gen(ir, 'convex.schema').diagnostics;
+    const hit = diags.find((d) => d.code === 'CONVEX_PARTIAL_REALTIME');
+    expect(hit?.severity).toBe('info');
+    expect(diags.some((d) => d.code === 'CONVEX_UNSUPPORTED_REALTIME')).toBe(false);
+  });
+
+  it('emits CONVEX_PARTIAL_COMPUTED_CACHE info when cache directives are declared', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Item', [prop('price', 'int', ['required'])], {
+        computedProperties: [
+          {
+            name: 'doubled',
+            type: { name: 'int', nullable: false },
+            expression: { kind: 'identifier', name: 'price' },
+            dependencies: ['price'],
+            cache: { strategy: 'request' },
+          } satisfies IRComputedProperty,
+        ],
+      }),
+    ];
+    ir.stores = [durable('Item')];
+    const diags = gen(ir, 'convex.schema').diagnostics;
+    const hit = diags.find((d) => d.code === 'CONVEX_PARTIAL_COMPUTED_CACHE');
+    expect(hit?.severity).toBe('info');
+    expect(diags.some((d) => d.code === 'CONVEX_UNSUPPORTED_COMPUTED_CACHE')).toBe(false);
+  });
+
   it('emits .searchIndex for searchable string properties (no UNSUPPORTED_SEARCHABLE)', () => {
     const ir = emptyIR();
     ir.entities = [
