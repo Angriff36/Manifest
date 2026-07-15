@@ -107,7 +107,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Approval `onTimeout: escalate` (open routing)         | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:748-820` @ `a16d2bf16c54d8d20a4d58323415513163ab0b4e`; `ir-compiler.ts:934-1005` @ same; `runtime-engine.ts:6550-6590` @ same; fixtures `111`, `103`                                                     |
 | [x]    | Convex `searchable` → `.searchIndex`                  | FULLY_IMPLEMENTED     | `generator.ts:367-441` @ `f8221d44be41a80725ab58981658edf3cfe64f30`; `capabilities.ts` string-gate; `type-mapping.ts:85-87`; `semantics.test.ts` @ same |
 | [x]    | Convex `versionProperty` OCC                          | FULLY_IMPLEMENTED     | `version-occ.ts:1-76` @ `4660059ba17fcc00f06de523b14c361df421fea8`; `functions.ts` create/update OCC; schema synthesize; `semantics.test.ts` @ same |
-| [x]    | FEATURE-LIST → registry inventory (M12)               | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts`; `feature-list-generator.test.ts`; `docs:feature-list` scripts; generated `docs/FEATURE-LIST.md` — SHA after commit |
+| [x]    | FEATURE-LIST → registry inventory (M12)               | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts:83-300`; `src/manifest/feature-list-generator.test.ts:9-52`; `package.json:365-367` @ `e0ffb710627c278bd31fe65f2585a688d0603c87` |
 | [x]    | enforce-surface Drizzle/Kysely/raw-SQL detection      | FULLY_IMPLEMENTED     | `packages/cli/src/audit/write-receiver.ts:61-105` @ `3d459a1654c53a30af2e1730a0ba9ffe3ea67342`; `direct-writes.ts` + `direct-writes.test.ts` @ same                                                                              |
 
 ---
@@ -420,4 +420,4 @@ Agents: when auditing a feature page, update the matching row; do not invent com
 
 When a **Manifest-owned** feature is found in any of those sources but missing here: **add a row immediately** (even as `CLAIMED_NEEDS_PROOF` or `NOT_IMPLEMENTED`). When the capability is Builder-owned: mark `OUT_OF_SCOPE` here and add/update the Builder consumption matrix — do **not** treat it as a missing Manifest implementation.
 
-**Still not one-row-per-FEATURE-LIST-entry:** FEATURE-LIST has overlapping/historical names. Prefer CONFIRMED + fixtures + `builtins.ts` + CLI index as the enumeration sources; pull FEATURE-LIST names in when they describe a distinct Manifest capability not already listed.
+`FEATURE-LIST.md` is generated from language metadata, projection descriptors, the CLI command table, conformance fixtures, package exports, and this matrix. `pnpm docs:check:feature-list` fails when it drifts.

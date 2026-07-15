@@ -185,7 +185,7 @@ forensics: Appendix D in
       fixed 2026-07-15: `scripts/generate-feature-list.ts` + `pnpm docs:feature-list` /
       `docs:check:feature-list`; inventory from language metadata, projection
       descriptors, CLI Commander tree, conformance fixtures, package exports, and
-      open gaps from `docs/platform/FEATURE_MATRIX.md`. Matrix remains completion SoT.
+      open gaps from `docs/internal/COMPLIANCE_MATRIX.md`. Matrix remains completion SoT.
       ~~currently a 2026-06-02 snapshot with a caveat header pointing at
       `docs/CONFIRMED-FEATURES.md`~~
 - [ ] **Appendix E language-design backlog** (recorded, never scheduled):
