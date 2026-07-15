@@ -110,6 +110,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Entity-level constraint overrides on create/update | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2625-2642,4958-4995,5934-5985` @ `f36c83dd63690e83812ee286f42379f18d65e0d9`; `src/manifest/runtime-entity-constraint-overrides.test.ts:1-149` @ same                                      |
 | [x]    | Config G5 `projections.enabled`/`defaults`         | FULLY_IMPLEMENTED     | `src/manifest/config.ts:117-168,380-414` @ `505e5051f67b0d1a33f59f7e4d1f48b14e124f2b`; `packages/cli/src/commands/generate.ts:822-895` @ same; schema meta keys in `docs/spec/config/manifest.config.schema.json`     |
 | [x]    | Config G2 `validation.failOn`                      | FULLY_IMPLEMENTED     | `packages/cli/src/utils/validation-gate-policy.ts:1-45` @ `7c3e16a9349af3130ae5408beee5297e33b7200d`; wired in `compile.ts`/`validate.ts`; schema `validation.failOn`                                                                 |
+| [x]    | Config G10 `driftGates` / `manifest ci-gate`       | FULLY_IMPLEMENTED     | `packages/cli/src/commands/ci-gate.ts:1-160` @ `c28e3e437a9d4af3a121e7cbdbf211c09997a98f`; `packages/cli/src/utils/drift-gates.ts:1-59` @ same                                                                                    |
 
 ---
 
@@ -311,7 +312,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [~]    | Config schema + `manifest config *`                 | CLAIMED_NEEDS_PROOF           | G0/G1                                                                 |
 | [x]    | Config G5 `projections.enabled`/`defaults`          | FULLY_IMPLEMENTED             | §1                                                                    |
 | [x]    | Config G2 `validation.failOn`                       | FULLY_IMPLEMENTED             | §1                                                                    |
-| [~]    | Config G10 `driftGates` / `manifest ci-gate`        | CLAIMED_NEEDS_PROOF           | shipped this change — §1 proof follows feat                           |
+| [x]    | Config G10 `driftGates` / `manifest ci-gate`        | FULLY_IMPLEMENTED             | §1                                                                    |
 | [~]    | Published `@angriff36/manifest` npm                 | CLAIMED_NEEDS_PROOF           | pin `package.json` each release                                       |
 | [ ]    | Publish `@manifest/mcp-server`                      | NOT_IMPLEMENTED               | in-repo only                                                          |
 | [ ]    | Publish `@manifest/lsp-server`                      | NOT_IMPLEMENTED               |                                                                       |
@@ -344,7 +345,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | [ ]    | Convex unsupported surfaces (list in §6)                               | DIAGNOSTIC_ONLY           |
 | [x]    | Config G5 `projections.enabled`/`defaults`                             | FULLY_IMPLEMENTED         | §1                                                                       |
 | [x]    | Config G2 `validation.failOn`                                          | FULLY_IMPLEMENTED         | §1                                                                       |
-| [~]    | Config G10 `driftGates` / `manifest ci-gate`                           | CLAIMED_NEEDS_PROOF       | shipped — prove in §1                                                    |
+| [x]    | Config G10 `driftGates` / `manifest ci-gate`                           | FULLY_IMPLEMENTED         | §1                                                                       |
 | [x]    | `createUserResolver` wired into runtime factory                        | FULLY_IMPLEMENTED         | §1                                                                       |
 | [ ]    | Sub-package publish/park                                               | NOT_IMPLEMENTED           | Manifest distribution                                                    |
 | [x]    | ~~Full WASM runtime~~                                                  | REMOVED 2026-07-15        | Prototype deleted; TypeScript evaluator is the only path                 |
