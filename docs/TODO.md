@@ -45,8 +45,12 @@ forensics: Appendix D in
       **entity-level constraint overrides never evaluated**; **`command.returns`
       projection-only** — see the reconciled matrix
       `docs/internal/plans/2026-07-06-ir-wiring-audit-matrix.md` (~50 rows still open).
-- [ ] **Rate limiting is in-memory only** — `runtime-rate-limit.ts` Map-backed;
-      no durable adapter, no projection exposure.
+- [x] **Rate limiting durable store** — fixed 2026-07-15:
+      `RateLimitStore` + `MemoryRateLimitStore` (default) +
+      `PostgresRateLimitStore` (`@angriff36/manifest/rate-limit/postgres`);
+      `RuntimeOptions.rateLimitStore`; `manifest db init` schema id `rate-limit`.
+      Projection exposure of rateLimit remains out of scope (runtime gate only).
+      ~~Rate limiting is in-memory only — no durable adapter.~~
 - [x] **RedisEventBus never wired** — ~~bug~~ **clarified 2026-07-15:**
       `RuntimeOptions.eventBus` already accepts any `EventBus` including
       `RedisEventBus`; there is no missing hook. Auto-constructing Redis from
@@ -66,8 +70,9 @@ forensics: Appendix D in
 - [ ] **Config vNext G5/G2/G10** — `projections.enabled/defaults`,
       `validation.failOn`, drift gates: confirmed unbuilt (`src/manifest/config.ts`).
 - [x] **`manifest db init`** — fixed 2026-07-15: CLI prints/applies the shipped
-      approval/audit/outbox/jobs/idempotency `.sql` schemas (`manifest db init`,
-      `--apply` + `DATABASE_URL` / `--out` / `--only` / `--list`).
+      approval/audit/outbox/jobs/idempotency/rate-limit `.sql` schemas
+      (`manifest db init`, `--apply` + `DATABASE_URL` / `--out` / `--only` /
+      `--list`).
 - [x] **Hono & Express `authProvider` option** — fixed 2026-07-15:
       `authProvider?: 'clerk' | 'custom' | 'none'` on both projections; companion
       middleware templates switch (fail-closed custom stub / Clerk getAuth /

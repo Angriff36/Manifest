@@ -23,7 +23,7 @@ import {
 import { dateOf, timeOf, datetimeOf, isValidDateString, isValidTimeString } from './date-time.js';
 import { applyMaskStrategy } from './masking.js';
 import { constraintExpressionPasses } from './constraint-polarity.js';
-import { RateLimiter } from './runtime-rate-limit.js';
+import { RateLimiter, type RateLimitStore } from './runtime-rate-limit.js';
 import {
   checkRateLimitGate,
   executeWithRetry,
@@ -252,6 +252,16 @@ export interface RuntimeOptions {
    * adapters ship via "./approval/memory" and "./approval/postgres".
    */
   approvalStore?: import('./approval/approval-store').ApprovalStore;
+  /**
+   * Optional durable RateLimitStore for command/policy rate-limit buckets.
+   * When omitted, an in-process {@link MemoryRateLimitStore} is used (limits
+   * reset on process restart and do not span engine instances). When set,
+   * sliding-window state is read/written through this store so multi-instance
+   * deployments share the same counters.
+   * Contract: `RateLimitStore` in `runtime-rate-limit.ts`. Memory + Postgres
+   * adapters: `./rate-limit/memory`, `./rate-limit/postgres`.
+   */
+  rateLimitStore?: RateLimitStore;
   /**
    * Optional static feature-flag map. Checked by `flag(name)` when no
    * `flagProvider` is set (or as a fallback when the provider is absent).
@@ -976,8 +986,8 @@ export class RuntimeEngine {
    */
   private busUnsubscribe: (() => Promise<void>) | undefined;
 
-  /** Per-engine sliding-window rate limiter (in-memory; durable store is a follow-up) */
-  private rateLimiter = new RateLimiter();
+  /** Per-engine sliding-window rate limiter (memory by default; durable via rateLimitStore) */
+  private rateLimiter: RateLimiter;
 
   private readonly profilingBridge: RuntimeProfilingBridge;
   private readonly referentialActions: ReferentialActionApplier;
@@ -1174,6 +1184,7 @@ export class RuntimeEngine {
     this.context = context;
     this.options = options;
     this.profilingBridge = new RuntimeProfilingBridge(options.profiling);
+    this.rateLimiter = new RateLimiter(options.rateLimitStore);
     this.referentialActions = new ReferentialActionApplier({
       getEntity: (name) => this.getEntity(name),
       getAllEntities: () => this.ir.entities,
@@ -2398,7 +2409,7 @@ export class RuntimeEngine {
   ): Promise<boolean> {
     if (policyHasRateLimit(policy) && policy.rateLimit) {
       const tenantValue = this.ir.tenant ? this.resolveTenantValue() : this.context.tenantId;
-      const rl = checkRateLimitGate(
+      const rl = await checkRateLimitGate(
         this.rateLimiter,
         policy.rateLimit,
         evalContext,
@@ -4142,7 +4153,7 @@ export class RuntimeEngine {
 
       if (command.rateLimit) {
         const tenantValue = this.ir.tenant ? this.resolveTenantValue() : this.context.tenantId;
-        const rl = checkRateLimitGate(
+        const rl = await checkRateLimitGate(
           this.rateLimiter,
           command.rateLimit,
           evalContext,
@@ -4803,7 +4814,7 @@ export class RuntimeEngine {
 
     for (const policy of relevantPolicies) {
       if (policyHasRateLimit(policy) && policy.rateLimit) {
-        const rl = checkRateLimitGate(
+        const rl = await checkRateLimitGate(
           this.rateLimiter,
           policy.rateLimit,
           evalContext,

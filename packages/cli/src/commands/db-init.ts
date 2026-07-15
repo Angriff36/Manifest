@@ -1,6 +1,7 @@
 /**
  * `manifest db init` — apply or print the Postgres adapter schemas shipped
- * with `@angriff36/manifest` (approval, audit, outbox, jobs, idempotency).
+ * with `@angriff36/manifest` (approval, audit, outbox, jobs, idempotency,
+ * rate-limit).
  *
  * Default is print-only (safe). Pass `--apply` with `DATABASE_URL` (or
  * `--database-url`) to execute against Postgres via optional peer `pg`.
@@ -24,6 +25,7 @@ export const MANIFEST_DB_SCHEMAS: readonly DbSchemaSpec[] = [
   { id: 'approval', rel: 'src/manifest/approval/stores/postgres.sql' },
   { id: 'jobs', rel: 'src/manifest/jobs/stores/postgres.sql' },
   { id: 'idempotency', rel: 'src/manifest/idempotency/stores/postgres.sql' },
+  { id: 'rate-limit', rel: 'src/manifest/rate-limit/stores/postgres.sql' },
 ] as const;
 
 export interface DbInitOptions {

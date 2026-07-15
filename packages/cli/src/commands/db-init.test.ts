@@ -32,6 +32,7 @@ describe('db init', () => {
       'approval',
       'jobs',
       'idempotency',
+      'rate-limit',
     ]);
   });
 
@@ -39,7 +40,7 @@ describe('db init', () => {
     const root = makeFakePackageRoot();
     try {
       const resolved = resolveDbSchemas(root);
-      expect(resolved).toHaveLength(5);
+      expect(resolved).toHaveLength(6);
       expect(resolved[0].sql).toContain('-- audit');
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -134,7 +135,7 @@ describe('db init', () => {
     const { resolveManifestPackageRoot } = await import('./db-init.js');
     const root = resolveManifestPackageRoot();
     const resolved = resolveDbSchemas(root);
-    expect(resolved).toHaveLength(5);
+    expect(resolved).toHaveLength(6);
     for (const s of resolved) {
       expect(s.sql.length).toBeGreaterThan(20);
       expect(s.sql.toUpperCase()).toContain('CREATE');

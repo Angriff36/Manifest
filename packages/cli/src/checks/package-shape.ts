@@ -108,6 +108,8 @@ const EXPECTED_EXPORTS_BY_SUBPATH: Record<string, string[]> = {
   '@angriff36/manifest/approval/postgres': ['PostgresApprovalStore'],
   '@angriff36/manifest/idempotency/memory': ['MemoryIdempotencyStore'],
   '@angriff36/manifest/idempotency/postgres': ['PostgresIdempotencyStore'],
+  '@angriff36/manifest/rate-limit/memory': ['MemoryRateLimitStore'],
+  '@angriff36/manifest/rate-limit/postgres': ['PostgresRateLimitStore'],
   '@angriff36/manifest/transactions/postgres': ['PostgresTransactionProvider'],
   '@angriff36/manifest/webhooks': ['handleWebhookRequest'],
   '@angriff36/manifest/events': ['MemoryEventBus'],
@@ -168,6 +170,7 @@ const REQUIRED_TARBALL_ENTRIES = [
   'src/manifest/approval/stores/postgres.sql',
   'src/manifest/jobs/stores/postgres.sql',
   'src/manifest/idempotency/stores/postgres.sql',
+  'src/manifest/rate-limit/stores/postgres.sql',
 ];
 
 /** Tarball entry GLOBS — at least one matching file must be present. */

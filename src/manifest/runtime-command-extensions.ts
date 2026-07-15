@@ -41,14 +41,16 @@ export function buildRateLimitScopeKey(
   }
 }
 
-export function checkRateLimitGate(
+export async function checkRateLimitGate(
   limiter: RateLimiter,
   config: IRRateLimit,
   context: Record<string, unknown>,
   tenantValue: string | undefined,
   now: number,
   keyPrefix = '',
-): { allowed: true } | { allowed: false; denial: NonNullable<CommandResult['rateLimitDenial']> } {
+): Promise<
+  { allowed: true } | { allowed: false; denial: NonNullable<CommandResult['rateLimitDenial']> }
+> {
   const scopeKey = buildRateLimitScopeKey(config.scope, context, tenantValue, keyPrefix);
   if (!scopeKey) {
     return {
@@ -63,7 +65,7 @@ export function checkRateLimitGate(
     };
   }
 
-  const result = limiter.checkRateLimit(scopeKey, toRateLimitConfig(config), now);
+  const result = await limiter.checkRateLimit(scopeKey, toRateLimitConfig(config), now);
   if (result.allowed) return { allowed: true };
 
   return {

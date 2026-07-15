@@ -44,6 +44,10 @@ import * as FederationApi from './federation';
 import * as MemoryIdempotencyApi from './idempotency/stores/memory';
 // Subpath: '@angriff36/manifest/idempotency/postgres'
 import * as PostgresIdempotencyApi from './idempotency/stores/postgres';
+// Subpath: '@angriff36/manifest/rate-limit/memory'
+import * as MemoryRateLimitApi from './rate-limit/stores/memory';
+// Subpath: '@angriff36/manifest/rate-limit/postgres'
+import * as PostgresRateLimitApi from './rate-limit/stores/postgres';
 // Subpath: '@angriff36/manifest/jobs/postgres'
 import * as PostgresJobsApi from './jobs/stores/postgres';
 // Subpath: '@angriff36/manifest/jobs/worker'
@@ -114,6 +118,16 @@ describe('Public export surface', () => {
 
   it('exposes the PostgresIdempotencyStore class via idempotency/postgres', () => {
     expect(typeof PostgresIdempotencyApi.PostgresIdempotencyStore).toBe('function');
+  });
+
+  it('exposes the MemoryRateLimitStore class via rate-limit/memory', () => {
+    expect(typeof MemoryRateLimitApi.MemoryRateLimitStore).toBe('function');
+    const store = new MemoryRateLimitApi.MemoryRateLimitStore();
+    expect(store).toBeInstanceOf(MemoryRateLimitApi.MemoryRateLimitStore);
+  });
+
+  it('exposes the PostgresRateLimitStore class via rate-limit/postgres', () => {
+    expect(typeof PostgresRateLimitApi.PostgresRateLimitStore).toBe('function');
   });
 
   it('exposes the postgres job store module via jobs/postgres', () => {

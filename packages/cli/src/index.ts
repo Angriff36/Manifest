@@ -157,20 +157,23 @@ program
  * manifest db init
  *
  * Print or apply the Postgres adapter schemas shipped with @angriff36/manifest
- * (approval, audit, outbox, jobs, idempotency). Default prints SQL to stdout.
+ * (approval, audit, outbox, jobs, idempotency, rate-limit). Default prints SQL to stdout.
  */
 const dbProgram = program.command('db').description('Database adapter schema helpers');
 
 dbProgram
   .command('init')
   .description(
-    'Print or apply Manifest Postgres adapter schemas (audit/outbox/approval/jobs/idempotency)',
+    'Print or apply Manifest Postgres adapter schemas (audit/outbox/approval/jobs/idempotency/rate-limit)',
   )
   .option('--apply', 'Execute SQL against DATABASE_URL (requires the `pg` package)', false)
   .option('--database-url <url>', 'Postgres connection string (default: env DATABASE_URL)')
   .option('--out <file>', 'Write concatenated SQL to a file instead of stdout')
   .option('--list', 'List schema ids and resolved file paths', false)
-  .option('--only <ids>', 'Comma-separated schema ids (audit,outbox,approval,jobs,idempotency)')
+  .option(
+    '--only <ids>',
+    'Comma-separated schema ids (audit,outbox,approval,jobs,idempotency,rate-limit)',
+  )
   .action(async (options) => {
     const code = await dbInitCommand({
       apply: options.apply,

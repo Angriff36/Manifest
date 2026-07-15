@@ -165,7 +165,7 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 - 234 test files (173 under `src/`, 61 under `packages/`); ~3,973 passing + 21 skipped as of the 2026-07-14 SDK wave (counts drift — run `pnpm test` for current)
 - 99 conformance fixtures with expected IR/diagnostics/results — executable semantics
 - 4 benchmark files; coverage floors + dependency-cycle check in CI
-- Docs snippet doctest gate in CI (`.github/workflows/ci.yml` — every fenced `manifest` code block in docs must compile; TypeScript blocks are NOT checked, see docs/TODO.md)
+- Docs snippet doctest gate in CI (`.github/workflows/ci.yml` — every fenced `manifest` code block in docs must compile; ~~TypeScript blocks are NOT checked~~ **Update (2026-07-15):** ` ```typescript check` / ` ```ts check` (and `invalid`) are typechecked via `scripts/check-doc-snippets.mjs`; unannotated TS fences remain skipped)
 - One-button release: `cut-release.yml` (build+typecheck+test gate → version bump → npm publish via OIDC → tag → GitHub Release)
 
 ---
@@ -189,7 +189,12 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 entity-level constraint overrides, `command.returns` (projection-only),
 lambda expressions in the Convex projection, `ir.tenant` in most web
 projections, module-based output splitting, and durable rate-limit storage
-(in-memory Map only).
+(in-memory Map only in committed tree).
+~~**Update (2026-07-15):** durable rate-limit via `RuntimeOptions.rateLimitStore`…~~
+> **Correction (2026-07-15):** `src/manifest/rate-limit/` (Postgres store, etc.)
+> is **uncommitted working-tree WIP** — do not treat as shipped until merged with
+> hard proof on `docs/internal/COMPLIANCE_MATRIX.md`. Rate limiting remains
+> Map-backed in HEAD.
 ~~RedisEventBus exists but is test-only, never wired.~~
 > **Correction (2026-07-15) @RYANSIGNED:** `RuntimeOptions.eventBus` accepts any
 > `EventBus`, including `RedisEventBus`. There is no missing hook. Auto-constructing

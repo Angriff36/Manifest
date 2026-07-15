@@ -480,6 +480,28 @@ normalization is enabled.
 - `schedule` declarations compile to IR `schedules`. Runtimes expose `getSchedules()` and `runSchedule(name)`. The `RuntimeEngine` itself has no timer, so adapters decide when to invoke schedules; the reference package ships an optional worker (`startScheduleWorker` / `runSchedulesOnce` from `@angriff36/manifest/schedule-worker`) that evaluates cron and interval/every triggers on a tick loop and, when the IR declares approvals, sweeps approval expiry. Cron is matched in UTC to the minute (day-of-month and day-of-week follow the standard OR rule when both are restricted).
 - Entity `extends` and `mixin` composition is resolved at compile time. Precedence on name collision: own > later mixin > earlier mixin > parent. Cycles and unknown parents are compile errors.
 
+### Rate Limiting
+
+- Command- and policy-level `rateLimit` use a sliding window: effective limit =
+  `maxRequests + (burstAllowance ?? 0)` within `windowMs`.
+- Scope keys:
+  - `user` — derived from the acting user in evaluation context;
+  - `tenant` — from the IR tenant resolver / runtime tenant id;
+  - `global` — a single shared key (optionally prefixed for policy gates).
+- Default backing store is in-process memory (`MemoryRateLimitStore`). Limits
+  reset on process restart and do not span engine instances unless a shared
+  store is injected.
+- Hosts MAY inject a durable `RateLimitStore` via `RuntimeOptions.rateLimitStore`
+  (first-party: `@angriff36/manifest/rate-limit/postgres` + schema from
+  `manifest db init --only rate-limit`). When set, sliding-window state is
+  read/written through that store. Adapters that implement atomic `mutate`
+  (Postgres does) MUST serialize concurrent consumers of the same scope key.
+- A denied gate MUST surface `rateLimitDenial` on the `CommandResult` (command
+  gate) or fail the policy/read gate (policy gate). Diagnostics MUST NOT
+  compensate by auto-raising limits.
+- Projections are not required to emit transport-level rate-limit middleware;
+  enforcement is a runtime gate over IR `rateLimit` declarations.
+
 ### Command Constraints (vNext)
 
 - Commands may define a `constraints` array for pre-execution validation.
