@@ -1,0 +1,77 @@
+---
+title: 'Health check projection'
+sidebarTitle: 'Health'
+description: 'Generate Manifest health-check handlers from IR — framework-agnostic core plus Next.js and Express wrappers for liveness/readiness probes.'
+---
+
+Created: 2026-07-15. Verified against `src/manifest/projections/health/` this turn.
+
+The health projection generates runtime health-check handlers from compiled Manifest IR. Use it for Kubernetes liveness/readiness probes or load-balancer checks that return structured JSON (`status`, `timestamp`, `checks`).
+
+The projection is registered under the name `health` (`HealthCheckProjection` in `src/manifest/projections/health/generator.ts`, wired via `src/manifest/projections/builtins.ts`). There is **no** dedicated `@angriff36/manifest/projections/health` package export — retrieve it with `getProjection('health')` from `@angriff36/manifest/projections`.
+
+## What it generates
+
+Three surfaces:
+
+| Surface | Default path hint | Artifact |
+| ------- | ----------------- | -------- |
+| `health.handler` | `src/lib/manifest-health-handler.ts` | Framework-agnostic `runHealthCheck()` plus typed `HealthReport` / `ComponentHealth` |
+| `health.nextjs` | `app/api/manifest/health/route.ts` | Next.js App Router `GET` that imports the handler and maps status → HTTP |
+| `health.express` | `src/middleware/manifest-health.ts` | Express `manifestHealthHandler` middleware |
+
+An unknown surface returns diagnostic `UNKNOWN_SURFACE` (error).
+
+`health.handler` bakes IR provenance (`contentHash`, optional `irHash`, `compilerVersion`, `schemaVersion`, `compiledAt`) into `MANIFEST_IR_META`. When enabled, it emits:
+
+- **IR check** — returns healthy with provenance details (placeholder; no live hash recompute yet).
+- **Store checks** — one async function per unique `ir.stores[].target`. `memory` / `localStorage` always healthy; other targets emit a try/catch stub that currently always returns healthy until a real connectivity check is filled in.
+- **Outbox check** — only when a store target is `postgres` or `supabase`; depth is a placeholder `0`.
+
+Aggregation in `runHealthCheck()`: IR failure → overall `unhealthy`; all stores unhealthy → `unhealthy`; some stores unhealthy → `degraded`; outbox unhealthy while otherwise healthy → `degraded`.
+
+`health.nextjs` / `health.express` import `runHealthCheck` from `handlerImportPath` and respond with `healthyStatus` (default 200) when `status === 'healthy'`, otherwise `unhealthyStatus` (default 503) for both `degraded` and `unhealthy`.
+
+## Usage
+
+```ts
+import { getProjection } from '@angriff36/manifest/projections';
+
+const projection = getProjection('health');
+
+const handler = projection.generate(ir, { surface: 'health.handler' });
+const nextjs = projection.generate(ir, { surface: 'health.nextjs' });
+const express = projection.generate(ir, {
+  surface: 'health.express',
+  options: { handlerImportPath: './lib/manifest-health-handler' },
+});
+```
+
+CLI: `manifest generate <ir> -p health` resolves via the projection registry (same path as other non-Next.js projections). Emit each surface you need; wrappers require the handler module at `handlerImportPath`.
+
+## Options
+
+`HealthCheckProjectionOptions` / `HEALTH_DEFAULTS` in `src/manifest/projections/health/types.ts`:
+
+| Option | Default |
+| ------ | ------- |
+| `nextjsPathHint` | `app/api/manifest/health/route.ts` |
+| `expressPathHint` | `src/middleware/manifest-health.ts` |
+| `handlerPathHint` | `src/lib/manifest-health-handler.ts` |
+| `handlerImportPath` | `@/lib/manifest-health-handler` |
+| `healthyStatus` | `200` |
+| `unhealthyStatus` | `503` |
+| `includeIRCheck` | `true` |
+| `includeStoreChecks` | `true` |
+| `includeOutboxCheck` | `true` |
+
+## Notes & limitations
+
+<Note>
+  Generated IR / non-memory store / outbox checks contain explicit `TODO` stubs and currently
+  report healthy. Treat emitted checks as scaffolding until live probes are implemented in the
+  generated (or post-edited) handler. Next.js and Express wrappers do not emit the core handler —
+  generate `health.handler` (or provide an equivalent) at `handlerImportPath`.
+</Note>
+
+Projections are tooling, not runtime semantics; this does not change command execution order or IR meaning.

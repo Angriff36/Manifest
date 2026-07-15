@@ -30,7 +30,7 @@ A **projection** consumes compiled Manifest IR and emits a platform- or tooling-
 | [LLM Context](./llm-context.md) | `llm-context`        | Structured `manifest-context.json` for agents.                                                       |
 | [Product wiring](./wiring.md)   | `wiring`             | Command wiring contract + safe bindings.                                                             |
 | —                               | `storybook`          | Storybook CSF3 stories.                                                                              |
-| —                               | `health`             | Health-check endpoint projection (**undocumented** in product docs — see `docs/TODO.md`).            |
+| [Health](./health.md)           | `health`             | Health-check handlers (IR/store/outbox scaffolding + Next.js/Express wrappers).                      |
 | —                               | `materialized-views` | PostgreSQL `CREATE MATERIALIZED VIEW` DDL.                                                           |
 | —                               | `elasticsearch`      | Elasticsearch index mappings / client stubs.                                                         |
 | —                               | `terraform`          | Terraform HCL infra stubs.                                                                           |

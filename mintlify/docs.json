@@ -71,6 +71,7 @@
               "projections/json-schema",
               "projections/express",
               "projections/hono",
+              "projections/health",
               "projections/mermaid",
               "projections/llm-context",
               "projections/wiring",

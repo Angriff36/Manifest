@@ -103,6 +103,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Config G5 `projections.enabled`/`defaults`            | FULLY_IMPLEMENTED     | `src/manifest/config.ts:117-168,380-414` @ `505e5051f67b0d1a33f59f7e4d1f48b14e124f2b`; `packages/cli/src/commands/generate.ts:822-895` @ same |
 | [x]    | Config G2 `validation.failOn`                         | FULLY_IMPLEMENTED     | `packages/cli/src/utils/validation-gate-policy.ts:1-45` @ `7c3e16a9349af3130ae5408beee5297e33b7200d` |
 | [x]    | Config G10 `driftGates` / `manifest ci-gate`          | FULLY_IMPLEMENTED     | `packages/cli/src/commands/ci-gate.ts:1-160` @ `c28e3e437a9d4af3a121e7cbdbf211c09997a98f`; `drift-gates.ts:1-59` @ same |
+| [x]    | Health projection docs                                | FULLY_IMPLEMENTED     | `docs/projections/health.md:1-68`; `mintlify/projections/health.mdx:1-77`; `src/manifest/projections/health/generator.ts:1-429` @ `f335a74128466feaef1ffde8b14d52b1bbcd5eab` |
 | [x]    | enforce-surface Drizzle/Kysely/raw-SQL detection      | FULLY_IMPLEMENTED     | `packages/cli/src/audit/write-receiver.ts:61-105` @ `3d459a1654c53a30af2e1730a0ba9ffe3ea67342`; `direct-writes.ts` + `direct-writes.test.ts` @ same |
 
 ---
@@ -257,7 +258,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [~]    | mermaid               | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | jsonschema            | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | storybook             | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | health                | CLAIMED_NEEDS_PROOF            | **undocumented** in mintlify/docs (§7)                                         |
+| [~]    | health                | PARTIAL                        | generator registered; live IR/store/outbox checks still TODO stubs; docs §7   |
 | [x]    | materialized-views    | FULLY_IMPLEMENTED              | §1 — computed via `translateExpression`; raw `columns` escape hatch            |
 | [~]    | elasticsearch         | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | terraform             | CLAIMED_NEEDS_PROOF            |                                                                                |
@@ -316,7 +317,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | Doc snippet TS check mode                           | FULLY_IMPLEMENTED             | §1                                    |
 | [x]    | enforce-surface Drizzle/Kysely/raw-SQL              | FULLY_IMPLEMENTED             | §1                                    |
 | [ ]    | Restore `newguard.json`                             | NOT_IMPLEMENTED               |                                       |
-| [ ]    | Health projection docs                              | NOT_IMPLEMENTED               |                                       |
+| [x]    | Health projection docs                              | FULLY_IMPLEMENTED             | §1                                    |
 | [ ]    | FEATURE-LIST → registry inventory (M12)             | NOT_IMPLEMENTED               |                                       |
 | [ ]    | Capsule-V2 / consumer app auth-seam adoption        | OUT_OF_SCOPE                  | Generated-app lifecycle — Builder + consumer apps; not a Manifest gap |
 

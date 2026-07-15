@@ -164,7 +164,8 @@ forensics: Appendix D in
       phantoms, multi-tenancy language gate, first-party outbox). Ledger:
       `docs/internal/plans/2026-07-15-docs-accuracy-loop.md`. Remaining feature/
       guide pages still listed under that ledger for later deep audit.
-- [ ] **Health projection undocumented** in both mintlify and docs/.
+- [x] **Health projection docs** — `docs/projections/health.md` +
+      `mintlify/projections/health.mdx` (2026-07-15; stubs/limitations documented).
 - [ ] **Replace `docs/FEATURE-LIST.md` with a registry-generated inventory** (M12) —
       currently a 2026-06-02 snapshot with a caveat header pointing at
       `docs/CONFIRMED-FEATURES.md` (caveat verified honest 2026-07-15).
