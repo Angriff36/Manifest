@@ -13,6 +13,8 @@ companion_inventory: docs/CONFIRMED-FEATURES.md (existence claims; must reconcil
 companion_checklist: docs/TODO.md
 ---
 
+<!-- Edit 2026-07-15: PB023 Convex count_of(self.hasMany, λ) mutation guards marked FULLY_IMPLEMENTED @ df9bd7a -->
+
 # Manifest Compliance Matrix
 
 > **SOLE SOURCE OF TRUTH — HAND VERIFIED.** This is the only authoritative record of Manifest-owned feature completion. Generated inventories, registries, fixtures, expected artifacts, summaries, and roadmap statuses do not establish completion. A feature counts as `FULLY_IMPLEMENTED` only after a human verifies its end-to-end compile behavior and tests and records exact filenames, inclusive line ranges, and the proving git commit SHA here.
@@ -114,6 +116,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Convex `versionProperty` OCC                          | FULLY_IMPLEMENTED     | `version-occ.ts:1-76` @ `4660059ba17fcc00f06de523b14c361df421fea8`; `functions.ts` create/update OCC; schema synthesize; `semantics.test.ts` @ same |
 | [x]    | FEATURE-LIST → registry inventory (M12)               | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts:1-301` @ `e0ffb716ffc627fdfe7bdb8df8ea6882be3dff66`; `src/manifest/feature-list-generator.test.ts:1-52` @ same; `package.json` `docs:feature-list` / `docs:check:feature-list` |
 | [x]    | Convex realtime/cache PARTIAL reclass                 | FULLY_IMPLEMENTED     | `capabilities.ts` @ `03a019efbeddbf2bc177b745957de81c5a9384a1` (`CONVEX_PARTIAL_REALTIME` / `CONVEX_PARTIAL_COMPUTED_CACHE`); `semantics.test.ts` @ same |
+| [x]    | Convex `count_of(self.hasMany, λ)` mutation guards    | FULLY_IMPLEMENTED     | `expression.ts:227-246` @ `df9bd7a64f0b34fa642eda460a8bb994532979e9`; `count-of-preload.ts:1-113` @ same; `functions.ts:1091-1101,1198` @ same; `count-of-preload.test.ts` @ same |
 | [x]    | Park unpublished sub-packages (mcp/lsp/stdlib/vscode) | FULLY_IMPLEMENTED   | `packages/*/package.json` `"private": true` @ `500f14712174bee2c989c869980ced8fd1397505`; `parked-packages.test.ts` @ same |
 | [x]    | Language type `timestamp` (= `datetime` alias)        | FULLY_IMPLEMENTED   | `date-time.ts:12-18` @ `22c7792cf045450ab02fdccd982bfbf5551f4978`; `runtime-engine.ts:2676-2694` @ same; `runtime-datetime-validation.test.ts` @ same; typescript-types + projection maps @ same; semantics § Date/Time |
 | [x]    | Appendix E: `map<string,V>` sugar (= `map<V>`)        | FULLY_IMPLEMENTED   | `parser.ts:1316-1341` @ `dc52bb5daa23fad540252654862a3b1db5ed23c6`; fixture `73`; semantics Properties |
@@ -299,7 +302,8 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | Convex `searchable` → `.searchIndex`                                   | FULLY_IMPLEMENTED     | §1                                             |
 | [x]    | Convex `versionProperty` OCC                                           | FULLY_IMPLEMENTED     | §1                                             |
 | [x]    | Convex realtime / computed-cache PARTIAL                               | FULLY_IMPLEMENTED     | §1                                             |
-| [ ]    | Convex complete lambda lowering                                                    | PARTIAL               |                        |
+| [x]    | Convex `count_of(self.hasMany, λ)` guards                              | FULLY_IMPLEMENTED     | §1 PB023                                       |
+| [ ]    | Convex complete lambda lowering                                        | PARTIAL               | `count_of`+λ done (PB023); filter/map/sum/avg/… still open |
 | [ ]    | Hono/Express historically missing authProvider                                     | FULLY_IMPLEMENTED     | fixed §1               |
 
 ---
