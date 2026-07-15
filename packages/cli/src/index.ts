@@ -30,6 +30,7 @@ import { preflightCommand } from './commands/preflight.js';
 import { checkCommand } from './commands/check.js';
 import { initCommand } from './commands/init.js';
 import { initCiCommand } from './commands/init-ci.js';
+import { dbInitCommand } from './commands/db-init.js';
 import { scanCommand } from './commands/scan.js';
 import { harnessCommand } from './commands/harness.js';
 import { lintRoutesCommand } from './commands/lint-routes.js';
@@ -150,6 +151,35 @@ program
       return;
     }
     await initCommand(options);
+  });
+
+/**
+ * manifest db init
+ *
+ * Print or apply the Postgres adapter schemas shipped with @angriff36/manifest
+ * (approval, audit, outbox, jobs, idempotency). Default prints SQL to stdout.
+ */
+const dbProgram = program.command('db').description('Database adapter schema helpers');
+
+dbProgram
+  .command('init')
+  .description(
+    'Print or apply Manifest Postgres adapter schemas (audit/outbox/approval/jobs/idempotency)',
+  )
+  .option('--apply', 'Execute SQL against DATABASE_URL (requires the `pg` package)', false)
+  .option('--database-url <url>', 'Postgres connection string (default: env DATABASE_URL)')
+  .option('--out <file>', 'Write concatenated SQL to a file instead of stdout')
+  .option('--list', 'List schema ids and resolved file paths', false)
+  .option('--only <ids>', 'Comma-separated schema ids (audit,outbox,approval,jobs,idempotency)')
+  .action(async (options) => {
+    const code = await dbInitCommand({
+      apply: options.apply,
+      databaseUrl: options.databaseUrl,
+      out: options.out,
+      list: options.list,
+      only: options.only,
+    });
+    process.exitCode = code;
   });
 
 /**

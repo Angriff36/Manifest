@@ -1,7 +1,9 @@
 # TODO — verified open items
 
 Created 2026-07-14 from a full reconciliation of the internal plan docs against
-main @ v3.5.0 (commit 22a19e1). Companion doc: `docs/CONFIRMED-FEATURES.md`.
+main @ v3.5.0 (commit 22a19e1). Companion docs: `docs/CONFIRMED-FEATURES.md`
+(existence) and **`docs/internal/COMPLIANCE_MATRIX.md` (binding feature-completion
+source of truth — update the matrix when closing items here)**.
 AI-generated.
 
 ~~Verified against main @ v3.5.0~~
@@ -63,8 +65,9 @@ forensics: Appendix D in
       `CONVEX_UNSUPPORTED_*` diagnostics (good) but generate no Convex enforcement.
 - [ ] **Config vNext G5/G2/G10** — `projections.enabled/defaults`,
       `validation.failOn`, drift gates: confirmed unbuilt (`src/manifest/config.ts`).
-- [ ] **No `manifest db init`** — approval/audit/outbox/jobs/idempotency `.sql`
-      schemas ship in the npm package but must be applied by hand.
+- [x] **`manifest db init`** — fixed 2026-07-15: CLI prints/applies the shipped
+      approval/audit/outbox/jobs/idempotency `.sql` schemas (`manifest db init`,
+      `--apply` + `DATABASE_URL` / `--out` / `--only` / `--list`).
 - [x] **Hono & Express `authProvider` option** — fixed 2026-07-15:
       `authProvider?: 'clerk' | 'custom' | 'none'` on both projections; companion
       middleware templates switch (fail-closed custom stub / Clerk getAuth /
