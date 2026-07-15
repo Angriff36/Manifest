@@ -45,7 +45,7 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   { feature: "policyMode: 'skip'", status: 'partial', note: 'Omits authorization only.' },
   { feature: 'Approvals', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_APPROVAL' },
   { feature: 'realtime hint', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_REALTIME' },
-  { feature: 'versionProperty / optimistic concurrency', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_VERSION' },
+  { feature: 'versionProperty / optimistic concurrency', status: 'supported', note: 'Create seeds version=1; updates optional expected version + increment (VERSION_MISMATCH throw)' },
   { feature: 'masked / unmask when', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_MASKED' },
   { feature: 'searchable (string-like → .searchIndex)', status: 'supported', note: 'Non-string searchable still emits CONVEX_UNSUPPORTED_SEARCHABLE' },
   { feature: 'Computed cache directives', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_COMPUTED_CACHE' },
@@ -86,15 +86,6 @@ export function collectUnsupportedDiagnostics(ir: IR): ProjectionDiagnostic[] {
         code: 'CONVEX_UNSUPPORTED_REALTIME',
         entity: entity.name,
         message: `Entity '${entity.name}' declares realtime; Convex queries are already reactive, but no SSE/subscription artifact is emitted for this hint.`,
-      });
-    }
-
-    if (entity.versionProperty && persistent) {
-      out.push({
-        severity: 'warning',
-        code: 'CONVEX_UNSUPPORTED_VERSION',
-        entity: entity.name,
-        message: `Entity '${entity.name}' declares versionProperty '${entity.versionProperty}'; optimistic concurrency is not enforced in generated Convex mutations.`,
       });
     }
 

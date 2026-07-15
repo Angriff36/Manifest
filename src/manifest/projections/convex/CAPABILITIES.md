@@ -28,6 +28,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Events + G7 emit payloads                        | mutations                    | `manifestEvents` table                                                                     |
 | Reactions (resolve, fanOut, count aggregates)    | mutations                    |                                                                                            |
 | Transitions                                      | mutations                    | Pre-patch legality; always on                                                              |
+| `versionProperty` / `versionAtProperty` OCC      | schema + mutations           | Schema field synthesis; create seeds `1`; updates optional expected version + increment    |
 | Private properties (read strip)                  | queries                      | Always on; mutation path still sees stored values                                          |
 | Computed (self-only)                             | computed (+ optional inline) | `computedProperties: helpers \| inline`                                                    |
 | Schedules                                        | crons                        |                                                                                            |
@@ -55,7 +56,6 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | --------------------------------------------- | ----------------------------------- |
 | Approvals                                     | `CONVEX_UNSUPPORTED_APPROVAL`       |
 | `realtime` hint                               | `CONVEX_UNSUPPORTED_REALTIME`       |
-| `versionProperty` / optimistic concurrency    | `CONVEX_UNSUPPORTED_VERSION`        |
 | `masked` / `unmask when`                      | `CONVEX_UNSUPPORTED_MASKED`         |
 | `searchable` (non-string types)               | `CONVEX_UNSUPPORTED_SEARCHABLE`     |
 | Computed `cache` directives                   | `CONVEX_UNSUPPORTED_COMPUTED_CACHE` |

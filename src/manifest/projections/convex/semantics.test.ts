@@ -423,6 +423,69 @@ describe('M7 — capability diagnostics', () => {
   });
 });
 
+describe('M7 — versionProperty OCC', () => {
+  function versionedIR(): IR {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Doc', [prop('title', 'string', ['required'])], {
+        versionProperty: 'version',
+        versionAtProperty: 'versionAt',
+        commands: ['create', 'rename'],
+      }),
+    ];
+    ir.stores = [durable('Doc')];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Doc',
+        parameters: [],
+        guards: [],
+        actions: [],
+        emits: [],
+      },
+      {
+        name: 'rename',
+        entity: 'Doc',
+        parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }],
+        guards: [],
+        actions: [{ kind: 'mutate', target: 'title', expression: id('title') }],
+        emits: [],
+      },
+    ];
+    return ir;
+  }
+
+  it('synthesizes version fields in schema and seeds create', () => {
+    const ir = versionedIR();
+    const schema = gen(ir, 'convex.schema');
+    expect(schema.artifacts[0].code).toContain('version: v.number()');
+    expect(schema.artifacts[0].code).toContain('versionAt: v.number()');
+    expect(schema.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_VERSION')).toBe(false);
+
+    const mut = gen(ir, 'convex.mutations').artifacts[0].code;
+    expect(mut).toContain('version: 1');
+    expect(mut).toContain('versionAt: Date.now()');
+    const createBlock = mut.slice(
+      mut.indexOf('export const Doc_create'),
+      mut.indexOf('export const Doc_rename'),
+    );
+    expect(createBlock).not.toMatch(/args:\s*\{[^}]*\bversion:/s);
+  });
+
+  it('emits OCC check + increment on update mutations', () => {
+    const mut = gen(versionedIR(), 'convex.mutations').artifacts[0].code;
+    const rename = mut.slice(mut.indexOf('export const Doc_rename'));
+    expect(rename).toContain('version: v.optional(v.number())');
+    expect(rename).toContain('ConcurrencyConflict: VERSION_MISMATCH');
+    expect(rename).toContain('version: ((doc as any).version ?? 0) + 1');
+    expect(rename).toContain('versionAt: Date.now()');
+    const checkAt = rename.indexOf('VERSION_MISMATCH');
+    const patchAt = rename.indexOf('ctx.db.patch');
+    expect(checkAt).toBeGreaterThan(-1);
+    expect(patchAt).toBeGreaterThan(checkAt);
+  });
+});
+
 describe('working surfaces — smoke fixtures', () => {
   it('schema emits table for durable entity', () => {
     const ir = emptyIR();

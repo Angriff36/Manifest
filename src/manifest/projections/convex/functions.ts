@@ -43,6 +43,11 @@ import {
   type RenderResult,
 } from './expression.js';
 import { renderTransitionChecks } from './transitions.js';
+import {
+  convexCreateVersionDocLines,
+  isConvexVersionManagedField,
+  renderConvexUpdateVersionOcc,
+} from './version-occ.js';
 import { hasReadPolicies } from './read-policies.js';
 import {
   privateFieldNames,
@@ -956,7 +961,11 @@ function generateMutation(
       });
     }
     const mutates = (cmd.actions ?? []).filter(
-      (a) => a.kind === 'mutate' && a.target && !(tenantScoped && a.target === writeTenantProp),
+      (a) =>
+        a.kind === 'mutate' &&
+        a.target &&
+        !(tenantScoped && a.target === writeTenantProp) &&
+        !isConvexVersionManagedField(entity, a.target),
     );
     const targetSet = new Set(mutates.map((a) => a.target as string));
 
@@ -965,6 +974,11 @@ function generateMutation(
       if (tenantScoped && p.name === writeTenantProp) {
         docLines.push(`      ${p.name}: __auth.${p.name}`);
         argNames.add(p.name); // suppress any same-named command param arg
+        continue;
+      }
+      if (isConvexVersionManagedField(entity, p.name)) {
+        // Seeded below — never accept client-supplied version / versionAt.
+        argNames.add(p.name);
         continue;
       }
       if (p.name === 'id' || targetSet.has(p.name)) continue;
@@ -1012,6 +1026,10 @@ function generateMutation(
       docLines.push(`      ${a.target}: ${code}`);
     }
 
+    for (const line of convexCreateVersionDocLines(entity)) {
+      docLines.push(line);
+    }
+
     const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), scope);
     diagnostics.push(...checks.diagnostics);
     // G7 `emit Event { field: expr }`: populate each event-row payload (and the
@@ -1056,11 +1074,15 @@ function generateMutation(
   }
 
   // Non-create mutation
+  const versionOcc = renderConvexUpdateVersionOcc(entity);
   const argLines = [`    docId: v.id("${table}")`];
   for (const p of cmd.parameters ?? []) {
     argLines.push(
       `    ${p.name}: ${p.required ? paramValidator(p.type) : `v.optional(${paramValidator(p.type)})`}`,
     );
+  }
+  if (versionOcc.argLine) {
+    argLines.push(versionOcc.argLine);
   }
 
   // Non-create: command params are destructured locals; self.x → doc.x.
@@ -1078,6 +1100,7 @@ function generateMutation(
   }[] = [];
   for (const a of cmd.actions ?? []) {
     if (a.kind !== 'mutate' || !a.target) continue;
+    if (isConvexVersionManagedField(entity, a.target)) continue;
     const { code, unresolved } = renderActionValue(entity, a.target, a.expression, {
       selfVar: 'doc',
       locals: paramNames,
@@ -1126,8 +1149,21 @@ function generateMutation(
       ? `    const payload: Record<string, any> = { id: docId, ...__after, result: { id: docId, ...__after }${g7Entries ? `, ${g7Entries}` : ''}, ${subjectLiteral} };\n`
       : `    const payload: Record<string, any> = { id: docId, ...doc, ...updates, result: { id: docId, ...doc, ...updates }, ${subjectLiteral} };\n`
     : '';
-  const argDestructure = paramNames.length ? `, ${paramNames.join(', ')}` : '';
-  const bodyText = [...checks.lines, ...transitions.lines, ...updateLines, tail].join('\n');
+  const argDestructureParts = [...paramNames];
+  if (versionOcc.expectedArgName) {
+    argDestructureParts.push(versionOcc.expectedArgName);
+  }
+  const argDestructure = argDestructureParts.length
+    ? `, ${argDestructureParts.join(', ')}`
+    : '';
+  const bodyText = [
+    ...checks.lines,
+    ...transitions.lines,
+    ...versionOcc.checkLines,
+    ...updateLines,
+    ...versionOcc.updateFields,
+    tail,
+  ].join('\n');
   const authLines = authBindings(bodyText, options, tenantScoped);
   // Document-tenancy check: an instance command may only touch documents in
   // the caller's tenant. Same message as the missing-doc throw so a cross-
@@ -1136,6 +1172,7 @@ function generateMutation(
     ? `    if ((doc as any).${writeTenantProp} !== __auth.${writeTenantProp}) throw new Error(${JSON.stringify(`${entity.name} not found`)});\n`
     : '';
 
+  const updateFieldLines = [...updateLines, ...versionOcc.updateFields];
   const body =
     `export const ${name} = mutation({\n` +
     `  args: {\n${argLines.join(',\n')}\n  },\n` +
@@ -1146,7 +1183,8 @@ function generateMutation(
     ownershipLine +
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
     (transitions.lines.length ? transitions.lines.join('\n') + '\n' : '') +
-    `    const updates = {\n${updateLines.join(',\n')}${updateLines.length ? '\n' : ''}    };\n` +
+    (versionOcc.checkLines.length ? versionOcc.checkLines.join('\n') + '\n' : '') +
+    `    const updates = {\n${updateFieldLines.join(',\n')}${updateFieldLines.length ? '\n' : ''}    };\n` +
     `    await ctx.db.patch(docId, updates as any);\n` +
     afterLine +
     payloadBinding +

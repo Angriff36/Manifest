@@ -41,6 +41,7 @@ import { collectEncryptedDiagnostics } from './privacy.js';
 import { collectUnsupportedDiagnostics, CONVEX_PROJECTION_CAPABILITIES } from './capabilities.js';
 import { isPersistentEntity, isPersistentStoreTarget } from './persist.js';
 import { CONVEX_DESCRIPTOR_META } from './descriptor-meta.js';
+import { synthesizeConvexVersionSchemaFields } from './version-occ.js';
 import { generateReactClient } from './react-client.js';
 
 
@@ -371,6 +372,14 @@ function emitTable(entity: IREntity, ir: IR, options: NormalizedOptions): TableE
           filterFields: [],
         });
       }
+    }
+  }
+
+  for (const line of synthesizeConvexVersionSchemaFields(entity)) {
+    const fieldName = line.split(':')[0]!.trim();
+    if (!emittedFieldNames.has(fieldName)) {
+      fieldLines.push(line);
+      emittedFieldNames.add(fieldName);
     }
   }
 

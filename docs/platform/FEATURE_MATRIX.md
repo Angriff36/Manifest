@@ -114,6 +114,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Health projection docs                             | FULLY_IMPLEMENTED     | `docs/projections/health.md:1-68` @ `ebf2164dff1ab0ea648b12cc109ac5eaa0ee332b`; `mintlify/projections/health.mdx:1-77` @ same; generator `src/manifest/projections/health/generator.ts:1-429` @ `f335a74128466feaef1ffde8b14d52b1bbcd5eab` |
 | [x]    | Approval `onTimeout: escalate` (open routing)      | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:748-820` @ `a16d2bf16c54d8d20a4d58323415513163ab0b4e`; `ir-compiler.ts:934-1005` @ same; `runtime-engine.ts:6539-6595` @ same; fixtures `111`, `103`                                                               |
 | [x]    | Convex `searchable` → `.searchIndex`               | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/generator.ts:367-441` @ `f8221d44be41a80725ab58981658edf3cfe64f30`; `capabilities.ts` string-gate @ same; `type-mapping.ts:85-87` @ same; `semantics.test.ts` |
+| [x]    | Convex `versionProperty` OCC                       | FULLY_IMPLEMENTED     | `version-occ.ts`; `functions.ts` create/update; `generator.ts` schema synthesize; `semantics.test.ts` — SHA after commit |
 
 ---
 
@@ -290,8 +291,9 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | Projection descriptor API                                                          | FULLY_IMPLEMENTED     | §1                     |
 | [ ]    | `ir.tenant` in all web projections                                                 | PARTIAL               | wiring matrix          |
 | [ ]    | Module-based output splitting                                                      | PARTIAL               |                        |
-| [ ]    | Convex approvals/masking/versionProperty/cache/realtime/retry/rateLimit | DIAGNOSTIC_ONLY       | `CONVEX_UNSUPPORTED_*` (searchable shipped §1) |
+| [ ]    | Convex approvals/masking/cache/realtime/retry/rateLimit | DIAGNOSTIC_ONLY       | `CONVEX_UNSUPPORTED_*` (searchable + versionProperty shipped §1) |
 | [x]    | Convex `searchable` → `.searchIndex`                                   | FULLY_IMPLEMENTED     | §1                                             |
+| [x]    | Convex `versionProperty` OCC                                           | FULLY_IMPLEMENTED     | §1                                             |
 | [ ]    | Convex complete lambda lowering                                                    | PARTIAL               |                        |
 | [ ]    | Hono/Express historically missing authProvider                                     | FULLY_IMPLEMENTED     | fixed §1               |
 
