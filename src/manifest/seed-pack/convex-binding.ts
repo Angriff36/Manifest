@@ -83,7 +83,9 @@ function seedColumnToParam(entityName: string, ir: IR, col: string): string {
   if (!entity) return col;
   const rel = entity.relationships.find((r) => r.name === col);
   if (!rel) return col;
-  if (rel.fields && rel.fields.length > 0) return rel.fields[0]!;
+  if (rel.foreignKey?.fields && rel.foreignKey.fields.length > 0) {
+    return rel.foreignKey.fields[0]!;
+  }
   return `${rel.name}Id`;
 }
 
