@@ -205,7 +205,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | JobQueue / async worker path                                                  | CLAIMED_NEEDS_PROOF            | fixture `69`                                                                                     |
 | [x]    | `optional` modifier (projection hint; no runtime gate)                        | OUT_OF_SCOPE / by design   | semantics.md § Properties — enforced via `required` only                                         |
 | [x]    | Runtime uses `alternateKeys`                                                  | FULLY_IMPLEMENTED              | §1                                                                                               |
-| [ ]    | `command.returns` runtime/projection-complete                                 | PARTIAL                        | projection-only                                                                                  |
+| [x]    | `command.returns` (projection metadata; no runtime coerce)                    | OUT_OF_SCOPE / by design       | semantics.md § Commands; `ir-v1.schema.json` `returns` @ `ccfaf65071dc1e097fce1f3fe33752e55f3dd8a3` |
 | [x]    | Durable rate-limit (Postgres store)                                           | FULLY_IMPLEMENTED              | §1                                                                                               |
 
 ---
