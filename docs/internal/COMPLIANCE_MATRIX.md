@@ -100,6 +100,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | `EventSourcedStore` for `eventSourced` target         | FULLY_IMPLEMENTED     | `src/manifest/stores/event-sourced.ts:37-140` @ `ca526f02c67d1db7138d6e34a400fe459a87caef`; `runtime-engine.ts:1279-1283` @ same |
 | [x]    | `alternateKeys` uniqueness on create/update           | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2832-2864,2876,2966-2977` @ `a8af116268de8f4329eb2af1a4df82fb5a65fa5b` |
 | [x]    | Entity-level constraint overrides on create/update    | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2625-2642,4958-4995,5934-5985` @ `f36c83dd63690e83812ee286f42379f18d65e0d9`; `src/manifest/runtime-entity-constraint-overrides.test.ts:1-149` @ same |
+| [x]    | Config G5 `projections.enabled`/`defaults`            | FULLY_IMPLEMENTED     | `src/manifest/config.ts:117-168,380-414` @ `505e5051f67b0d1a33f59f7e4d1f48b14e124f2b`; `packages/cli/src/commands/generate.ts:822-895` @ same |
 | [x]    | enforce-surface Drizzle/Kysely/raw-SQL detection      | FULLY_IMPLEMENTED     | `packages/cli/src/audit/write-receiver.ts:61-105` @ `3d459a1654c53a30af2e1730a0ba9ffe3ea67342`; `direct-writes.ts` + `direct-writes.test.ts` @ same |
 
 ---
@@ -300,7 +301,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [~]    | IR version control / versions CLI                   | CLAIMED_NEEDS_PROOF           | `docs/features/ir-version-control.md` |
 | [~]    | Snapshot testing tooling                            | CLAIMED_NEEDS_PROOF           | `docs/features/snapshot-testing.md`   |
 | [~]    | Config schema + `manifest config *`                 | CLAIMED_NEEDS_PROOF           | G0/G1                                 |
-| [~]    | Config G5 `projections.enabled`/`defaults`          | CLAIMED_NEEDS_PROOF           | shipped — §1 proof follows feat       |
+| [x]    | Config G5 `projections.enabled`/`defaults`          | FULLY_IMPLEMENTED             | §1                                    |
 | [ ]    | Config G2/G10 (`validation` / `driftGates`)         | NOT_IMPLEMENTED               |                                       |
 | [~]    | Published `@angriff36/manifest` npm                 | CLAIMED_NEEDS_PROOF           | pin `package.json` each release       |
 | [ ]    | Publish `@manifest/mcp-server`                      | NOT_IMPLEMENTED               | in-repo only                          |
@@ -332,7 +333,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | [ ]    | softDelete language keyword                                                    | NOT_IMPLEMENTED / parked   | projection config intentional; reopen when language work scheduled |
 | [x]    | Materialized-views SQL expression lowering                                     | FULLY_IMPLEMENTED          | §1                                                   |
 | [ ]    | Convex unsupported surfaces (list in §6)                                       | DIAGNOSTIC_ONLY            |
-| [~]    | Config G5 `projections.enabled`/`defaults`                                     | CLAIMED_NEEDS_PROOF        | shipped — prove in §1                                |
+| [x]    | Config G5 `projections.enabled`/`defaults`                                     | FULLY_IMPLEMENTED          | §1                                                   |
 | [ ]    | Config G2/G10 (`validation` / `driftGates`)                                    | NOT_IMPLEMENTED            |
 | [x]    | `createUserResolver` wired into runtime factory                                | FULLY_IMPLEMENTED          | §1                                                   |
 | [x]    | enforce-surface Drizzle/Kysely/raw-SQL                                         | FULLY_IMPLEMENTED          | §1                                                   |
