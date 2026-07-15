@@ -105,16 +105,16 @@ local backends with no auth context configured. Default is `'enforce'`; keep it
 for production. When skipped, the role map / `checkRole` helpers are not emitted
 (no dead code).
 
-**Auth context seam (`authContextImport`):** by default identity is read from an
-inline `(ctx as any).auth` bag — a shape the real Convex runtime never populates
-(`ctx.auth` only exposes `getUserIdentity()`), so role/tenant reads fail closed
-until auth is wired by hand. Set `authContextImport` (e.g. `"./lib/authContext"`)
+**Auth context seam (`authContextImport`):** required whenever tenant filtering
+or policy enforcement is active (the defaults). Generation emits
+`CONVEX_AUTH_CONTEXT_REQUIRED` instead of the old ineffective
+`(ctx as any).auth` bag — Convex only exposes `ctx.auth.getUserIdentity()`, not
+Manifest `{ role, tenantId }`. Set `authContextImport` (e.g. `"./lib/authContext"`)
 to route every identity read through your module's exported `getAuthContext(ctx)`.
-For tenant-scoped entities this also makes `create` derive the tenant column
-server-side (dropped from client args; a create action targeting it is
-overridden with a `CONVEX_TENANT_SERVER_DERIVED` info diagnostic) and makes
-instance mutations throw "not found" on a cross-tenant document (same message as
-a missing doc — no existence oracle). The module must handle identity-less
+For local demos with no auth, set `policyMode: 'skip'` and
+`includeTenantFilter: false`. For tenant-scoped entities the seam also makes
+`create` derive the tenant column server-side and instance mutations throw
+"not found" on a cross-tenant document. The module must handle identity-less
 system calls too (crons/sagas/webhooks run the same mutations).
 
 ## Usage

@@ -32,9 +32,8 @@ import type {
   ProjectionTarget,
 } from '../interface';
 
-import { normalizeOptions, CONVEX_DEFAULT_NAMING, type IndexEntry } from './options.js';
+import { normalizeOptions, type IndexEntry, resolveConvexTableName, collectConvexAuthConfigDiagnostics, collectConvexNamingPrecedenceDiagnostics } from './options.js';
 import { resolveConvexValidator } from './type-mapping.js';
-import { resolveTableName } from '../shared/naming.js';
 import { generateQueries, generateMutations } from './functions.js';
 import { generateCrons, generateHttp, generateSagas } from './orchestration.js';
 import { generateComputedHelpers } from './computed.js';
@@ -46,6 +45,7 @@ import { generateReactClient } from './react-client.js';
 
 
 export { isPersistentEntity } from './persist.js';
+export { resolveConvexTableName } from './options.js';
 
 // ============================================================================
 // Surface identifiers
@@ -83,13 +83,6 @@ function isPersistent(target: IRStore['target']): boolean {
 // ============================================================================
 
 export type NormalizedOptions = ReturnType<typeof normalizeOptions>;
-
-/** Resolve the Convex table key for an entity (override → convention). */
-export function resolveConvexTableName(entityName: string, options: NormalizedOptions): string {
-  const override = options.tableMappings[entityName];
-  if (override) return override;
-  return resolveTableName(entityName, options.naming ?? CONVEX_DEFAULT_NAMING);
-}
 
 /**
  * Map FK column name → target Convex table for an entity's belongsTo/ref
@@ -431,9 +424,12 @@ export class ConvexProjection implements ProjectionTarget {
   readonly descriptorMeta = CONVEX_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
+    const optionsEarly = normalizeOptions(request.options);
     const crossCutting = [
       ...collectEncryptedDiagnostics(ir),
       ...collectUnsupportedDiagnostics(ir),
+      ...collectConvexNamingPrecedenceDiagnostics(request.options, optionsEarly),
+      ...collectConvexAuthConfigDiagnostics(ir, optionsEarly),
     ];
 
     if (request.surface === SURFACE_QUERIES) {

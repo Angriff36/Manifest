@@ -219,16 +219,14 @@ function collectQueryIndexSpecs(ir: IR, entity: IREntity, options: Normalized): 
 }
 
 /**
- * Tenant-id binding for a handler body. With `authContextImport` the id comes
- * from the author-owned auth context; otherwise from the legacy inline
- * `ctx.auth` bag (which the real Convex runtime never populates — kept only
- * for back-compat with pre-seam consumers). `?? null` keeps the filter fail
- * closed: no identity → no rows.
+ * Tenant-id binding for a handler body. Identity comes from the author-owned
+ * `getAuthContext(ctx)` module ({@link NormalizedOptions.authContextImport}).
+ * Generation fails with `CONVEX_AUTH_CONTEXT_REQUIRED` when tenant filtering is
+ * on without that import — this path is never reached for the broken legacy
+ * `(ctx as any).auth` bag.
  */
-function tenantBindingLine(options: Normalized, tenantProp: string): string {
-  return options.authContextImport
-    ? `    const __tenant = ((await getAuthContext(ctx)) as any).${tenantProp} ?? null;`
-    : `    const __tenant = (ctx as any).auth?.${tenantProp} ?? null;`;
+function tenantBindingLine(_options: Normalized, tenantProp: string): string {
+  return `    const __tenant = ((await getAuthContext(ctx)) as any).${tenantProp} ?? null;`;
 }
 
 /** Resolved read-side tenant + soft-delete filtering for an entity (field-aware). */
@@ -243,8 +241,10 @@ interface ReadFilter {
 
 function resolveReadFilter(ir: IR, entity: IREntity, options: Normalized): ReadFilter {
   const tenantProp = options.tenantIdProperty ?? ir.tenant?.property;
+  // Tenant scoping requires a real identity seam — never the ineffective ctx.auth bag.
   const hasTenant =
     options.includeTenantFilter &&
+    !!options.authContextImport &&
     !!tenantProp &&
     entity.properties.some((p) => p.name === tenantProp);
   const deletedProp = options.deletedAtProperty;
@@ -884,16 +884,18 @@ function renderEvents(
 function authBindings(bodyText: string, options: Normalized, forceAuth = false): string[] {
   const lines: string[] = [];
   const refs = (token: string) => new RegExp(`\\b${token}\\b`).test(bodyText);
-  if (options.authContextImport) {
-    if (forceAuth || refs('userRole') || refs('user')) {
+  const needsIdentity = forceAuth || refs('userRole') || refs('user');
+  if (needsIdentity) {
+    if (options.authContextImport) {
       lines.push(`    const __auth = (await getAuthContext(ctx)) as any;`);
+      if (refs('userRole')) lines.push(`    const userRole = __auth.role ?? "anonymous";`);
+      if (refs('user')) lines.push(`    const user = __auth;`);
+    } else {
+      // Diagnostic CONVEX_AUTH_CONTEXT_REQUIRED is emitted at generate(); fail loud in output too.
+      lines.push(
+        `    throw new Error("CONVEX_AUTH_CONTEXT_REQUIRED: set options.authContextImport");`,
+      );
     }
-    if (refs('userRole')) lines.push(`    const userRole = __auth.role ?? "anonymous";`);
-    if (refs('user')) lines.push(`    const user = __auth;`);
-  } else {
-    if (refs('userRole'))
-      lines.push(`    const userRole = (ctx as any).auth?.role ?? "anonymous";`);
-    if (refs('user')) lines.push(`    const user = (ctx as any).auth ?? {};`);
   }
   if (refs('context')) lines.push(`    const context = (ctx as any);`);
   return lines;

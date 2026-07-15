@@ -275,9 +275,11 @@ export function defineConfig(config: ManifestRuntimeConfig): ManifestRuntimeConf
 
 /**
  * Resolve the option bag a projection receives, layering the build-level global
- * `naming` default UNDER the projection's own `options`. A per-projection
- * `options.naming` always wins; the global only fills in when the projection
- * did not specify its own.
+ * physical `naming` convention UNDER the projection's own `options` when the
+ * projection did not set `options.naming`. When app-wide `naming.normalization`
+ * is enabled, the resolved policy is also injected as internal
+ * `__manifestNaming`; Convex ignores local `options.naming` in that case so
+ * one projection cannot silently invent a second spelling.
  *
  * This is the single inheritance contract for the global `naming` default:
  * dispatchers should build `request.options` from this helper so the projection

@@ -216,9 +216,15 @@ describe('convex.queries — tenant + soft-delete read filtering', () => {
       entity('Invoice', [prop('tenantId', 'string', ['required']), prop('deletedAt', 'datetime')]),
     ];
     ir.stores = [durable('Invoice')];
-    const code = queries(ir).artifacts[0].code;
+    const res = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { authContextImport: './lib/authContext' },
+    });
+    const code = res.artifacts[0].code;
     // list is tenant-scoped from auth (NOT a client arg) + drops soft-deleted
-    expect(code).toContain('const __tenant = (ctx as any).auth?.tenantId ?? null;');
+    expect(code).toContain(
+      'const __tenant = ((await getAuthContext(ctx)) as any).tenantId ?? null;',
+    );
     expect(code).toContain('.withIndex("by_tenantId", (q) => q.eq("tenantId", __tenant))');
     expect(code).toContain('rows = rows.filter((d) => (d as any).deletedAt == null);');
     // get returns null on tenant mismatch / soft-deleted
@@ -226,6 +232,20 @@ describe('convex.queries — tenant + soft-delete read filtering', () => {
     expect(code).toContain('if (doc && (doc as any).deletedAt != null) return null;');
     // list() must NOT accept a client-supplied tenant
     expect(code).not.toMatch(/list Invoice[\s\S]*?args:\s*\{\s*tenantId/);
+  });
+
+  it('errors when tenant filtering is on without authContextImport', () => {
+    const ir = emptyIR();
+    ir.tenant = {
+      property: 'tenantId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
+    ir.entities = [entity('Invoice', [prop('tenantId', 'string', ['required'])])];
+    ir.stores = [durable('Invoice')];
+    const res = queries(ir);
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_AUTH_CONTEXT_REQUIRED')).toBe(true);
+    expect(res.artifacts[0].code).not.toContain('(ctx as any).auth');
   });
 
   it('leaves reads unfiltered for entities without tenant/soft-delete columns', () => {
@@ -378,10 +398,11 @@ describe('authContextImport — the auth seam', () => {
     expect(code).not.toContain('(ctx as any).auth');
   });
 
-  it('unset option keeps the legacy inline ctx.auth output (no seam, no import)', () => {
-    const code = queries(tenantIR()).artifacts[0].code;
-    expect(code).toContain('const __tenant = (ctx as any).auth?.tenantId ?? null;');
-    expect(code).not.toContain('getAuthContext');
+  it('unset authContextImport with tenant filtering fails closed (no legacy ctx.auth)', () => {
+    const res = queries(tenantIR());
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_AUTH_CONTEXT_REQUIRED')).toBe(true);
+    expect(res.artifacts[0].code).not.toContain('(ctx as any).auth');
+    expect(res.artifacts[0].code).not.toContain('getAuthContext');
   });
 });
 
@@ -487,23 +508,35 @@ describe('convex.mutations — governance', () => {
   }
 
   it('emits the role map + checkRole helper', () => {
-    const code = mutations(govIR()).artifacts[0].code;
+    const code = new ConvexProjection().generate(govIR(), {
+      surface: 'convex.mutations',
+      options: { authContextImport: './lib/authContext' },
+    }).artifacts[0].code;
     expect(code).toContain('const ROLE_PERMISSIONS');
     expect(code).toContain('"Admin"');
     expect(code).toContain('function checkRole(');
   });
 
   it('renders policy → guard order, binds user, patches the action', () => {
-    const code = mutations(govIR()).artifacts[0].code;
+    const code = new ConvexProjection().generate(govIR(), {
+      surface: 'convex.mutations',
+      options: { authContextImport: './lib/authContext' },
+    }).artifacts[0].code;
     expect(code).toContain('export const Task_close = mutation({');
     expect(code).toContain('docId: v.id("tasks")');
-    expect(code).toContain('const userRole = (ctx as any).auth?.role ?? "anonymous";');
+    expect(code).toContain('const userRole = __auth.role ?? "anonymous";');
     expect(code).toContain('checkRole(userRole, "manageAccess")'); // policy
     expect(code).toContain('if (!((doc.status === "open")))'); // guard
     expect(code).toContain('status: "closed"'); // action
     expect(code).toContain('await ctx.db.patch(docId, updates as any)');
     // policy precedes guard
     expect(code.indexOf('checkRole(userRole')).toBeLessThan(code.indexOf('doc.status === "open"'));
+  });
+
+  it('errors when policyMode enforce has policies but no authContextImport', () => {
+    const res = mutations(govIR());
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_AUTH_CONTEXT_REQUIRED')).toBe(true);
+    expect(res.artifacts[0].code).not.toContain('(ctx as any).auth');
   });
 
   it('policyMode skip omits policy checks but keeps guards', () => {

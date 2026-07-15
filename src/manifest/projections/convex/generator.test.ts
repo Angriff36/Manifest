@@ -475,6 +475,36 @@ describe('ConvexProjection — naming and determinism', () => {
     );
   });
 
+  it('app-wide normalization owns table spelling; local naming is ignored', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('CateringEvent', { properties: [prop('a', 'string', ['required'])] })];
+    ir.stores = [durableStore('CateringEvent')];
+    const res = generate(ir, {
+      naming: 'snake_case',
+      __manifestNaming: {
+        normalization: true,
+        entities: { casing: 'pascal', mismatch: 'fix' },
+        fields: { casing: 'camel', mismatch: 'fix' },
+        relationships: { casing: 'camel', idSuffix: 'Id', mismatch: 'fix' },
+        commands: { casing: 'camel', mismatch: 'fix' },
+        events: { casing: 'pascal', mismatch: 'fix' },
+        collections: { casing: 'camel', pluralization: 'automatic', mismatch: 'fix' },
+        tables: { casing: 'snake', pluralization: 'automatic', mismatch: 'fix' },
+        separators: { normalize: ['underscore', 'hyphen', 'whitespace'] },
+        collisions: 'error',
+        conflictingDefinitions: 'error',
+        ambiguousWordBoundaries: 'warn',
+        irregularPlurals: {},
+        aliases: {},
+        projections: {},
+        storageNameChange: 'error',
+      },
+    });
+    expect(res.artifacts[0].code).toContain('catering_events: defineTable');
+    expect(res.artifacts[0].code).not.toContain('cateringEvents: defineTable');
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_LOCAL_NAMING_IGNORED')).toBe(true);
+  });
+
   it('is deterministic: identical input → byte-identical output', () => {
     const build = () => {
       const ir = emptyIR();
