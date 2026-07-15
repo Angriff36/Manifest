@@ -122,7 +122,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | FEATURE-LIST → registry inventory (M12)            | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts:1-301` @ `e0ffb716ffc627fdfe7bdb8df8ea6882be3dff66`; `src/manifest/feature-list-generator.test.ts:1-52` @ same; `package.json` `docs:feature-list` / `docs:check:feature-list`; generated `docs/FEATURE-LIST.md` |
 | [x]    | Convex realtime/cache PARTIAL reclass              | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/capabilities.ts` @ `03a019efbeddbf2bc177b745957de81c5a9384a1` (`CONVEX_PARTIAL_REALTIME` / `CONVEX_PARTIAL_COMPUTED_CACHE`); `semantics.test.ts` @ same; `CAPABILITIES.md` |
 | [x]    | Park unpublished sub-packages (mcp/lsp/stdlib/vscode) | FULLY_IMPLEMENTED  | `packages/mcp-server/package.json` (+ lsp/stdlib/vscode) `"private": true` @ `500f14712174bee2c989c869980ced8fd1397505`; `src/manifest/parked-packages.test.ts:1-28` @ same; `docs/reference/packages-and-distribution.md` |
-| [x]    | Language type `timestamp` (= `datetime` alias)     | FULLY_IMPLEMENTED     | `src/manifest/date-time.ts:12-18`; `runtime-engine.ts:2676-2694`; `runtime-datetime-validation.test.ts`; `projections/shared/typescript-types.ts:21-24`; semantics § Date/Time — SHA pending proof commit |
+| [x]    | Language type `timestamp` (= `datetime` alias)     | FULLY_IMPLEMENTED     | `src/manifest/date-time.ts:12-18` @ `22c7792cf045450ab02fdccd982bfbf5551f4978`; `runtime-engine.ts:2676-2694` @ same; `runtime-datetime-validation.test.ts` @ same; `projections/shared/typescript-types.ts:21-24` @ same; semantics § Date/Time |
 
 ---
 
