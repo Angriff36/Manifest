@@ -111,7 +111,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Config G5 `projections.enabled`/`defaults`         | FULLY_IMPLEMENTED     | `src/manifest/config.ts:117-168,380-414` @ `505e5051f67b0d1a33f59f7e4d1f48b14e124f2b`; `packages/cli/src/commands/generate.ts:822-895` @ same; schema meta keys in `docs/spec/config/manifest.config.schema.json`     |
 | [x]    | Config G2 `validation.failOn`                      | FULLY_IMPLEMENTED     | `packages/cli/src/utils/validation-gate-policy.ts:1-45` @ `7c3e16a9349af3130ae5408beee5297e33b7200d`; wired in `compile.ts`/`validate.ts`; schema `validation.failOn`                                                                 |
 | [x]    | Config G10 `driftGates` / `manifest ci-gate`       | FULLY_IMPLEMENTED     | `packages/cli/src/commands/ci-gate.ts:1-160` @ `c28e3e437a9d4af3a121e7cbdbf211c09997a98f`; `packages/cli/src/utils/drift-gates.ts:1-59` @ same                                                                                    |
-| [x]    | Health projection docs                             | FULLY_IMPLEMENTED     | `docs/projections/health.md:1-68`; `mintlify/projections/health.mdx:1-77`; generator `src/manifest/projections/health/generator.ts:1-429` @ `f335a74128466feaef1ffde8b14d52b1bbcd5eab`; `types.ts:1-91` @ same |
+| [x]    | Health projection docs                             | FULLY_IMPLEMENTED     | `docs/projections/health.md:1-68` @ `ebf2164dff1ab0ea648b12cc109ac5eaa0ee332b`; `mintlify/projections/health.mdx:1-77` @ same; generator `src/manifest/projections/health/generator.ts:1-429` @ `f335a74128466feaef1ffde8b14d52b1bbcd5eab` |
 
 ---
 
