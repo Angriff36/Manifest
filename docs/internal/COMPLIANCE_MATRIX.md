@@ -120,7 +120,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | Array types `T[]` / `array<T>`                                                                                       | CLAIMED_NEEDS_PROOF           | fixture `40`                                                        |
 | [~]    | `date` / `time` / `datetime` / `duration`                                                                            | CLAIMED_NEEDS_PROOF           | fixture `92`                                                        |
 | [~]    | Composite primary keys (`key`)                                                                                       | CLAIMED_NEEDS_PROOF           | fixture `109`                                                       |
-| [~]    | `alternateKeys` (compile into IR)                                                                                    | CLAIMED_NEEDS_PROOF / PARTIAL | runtime unused (§6)                                                 |
+| [~]    | `alternateKeys` (compile into IR)                                                                                    | FULLY_IMPLEMENTED             | §1 uniqueness; compile still CLAIMED_NEEDS_PROOF for parser path                |
 | [~]    | Relationships `hasMany` / `hasOne` / `belongsTo` / `ref`                                                             | CLAIMED_NEEDS_PROOF           | fixtures `02`, `98`, `99`                                           |
 | [x]    | Referential actions `onDelete`/`onUpdate`                                                                            | FULLY_IMPLEMENTED             | see §1                                                              |
 | [x]    | Many-to-many `through`                                                                                               | FULLY_IMPLEMENTED             | see §1                                                              |
@@ -203,7 +203,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | IdempotencyStore                                                              | CLAIMED_NEEDS_PROOF            |                                                                                                  |
 | [~]    | JobQueue / async worker path                                                  | CLAIMED_NEEDS_PROOF            | fixture `69`                                                                                     |
 | [x]    | `optional` modifier (projection hint; no runtime gate)                        | OUT_OF_SCOPE / by design   | semantics.md § Properties — enforced via `required` only                                         |
-| [x]    | Runtime uses `alternateKeys`                                                  | FULLY_IMPLEMENTED              | §1 after commit — uniqueness on create/update                                    |
+| [x]    | Runtime uses `alternateKeys`                                                  | FULLY_IMPLEMENTED              | §1                                                                                               |
 | [ ]    | `command.returns` runtime/projection-complete                                 | PARTIAL                        | projection-only                                                                                  |
 | [x]    | Durable rate-limit (Postgres store)                                           | FULLY_IMPLEMENTED              | §1                                                                                               |
 
@@ -323,7 +323,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | ------ | ------------------------------------------------------------------------------ | -------------------------- |
 | [ ]    | Approval escalate timeout                                                      | REJECTED_LOUD              | Manifest language gap — preserve |
 | [ ]    | `optional` runtime gate (beyond `required`)                                    | OUT_OF_SCOPE               | by design — see §4; not a missing Manifest feature |
-| [ ]    | `alternateKeys` runtime use / entity constraint overrides / `command.returns`  | NOT_IMPLEMENTED or PARTIAL | Manifest gaps — preserve until closed              |
+| [ ]    | entity constraint overrides / `command.returns`                                | NOT_IMPLEMENTED or PARTIAL | Manifest gaps — preserve until closed              |
 | [x]    | EventSourcedStore                                                              | FULLY_IMPLEMENTED          | §1                                                   |
 | [ ]    | softDelete language keyword                                                    | NOT_IMPLEMENTED            | Manifest language gap (projection config exists)   |
 | [x]    | Materialized-views SQL expression lowering                                     | FULLY_IMPLEMENTED          | §1                                                   |
