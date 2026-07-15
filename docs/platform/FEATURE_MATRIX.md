@@ -17,6 +17,8 @@ companion_inventory: docs/platform/CONFIRMED-FEATURES.md (existence claims; must
 companion_checklist: docs/TODO.md
 ---
 
+RYAN_APPROVED MESSAGE: If it doesnt have my mark next to it, its NOT out of scope,
+
 # Manifest Feature Matrix
 
 ~~Former path/title: `docs/internal/COMPLIANCE_MATRIX.md` / “Compliance Matrix”.~~  
@@ -115,7 +117,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Approval `onTimeout: escalate` (open routing)      | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:748-820` @ `a16d2bf16c54d8d20a4d58323415513163ab0b4e`; `ir-compiler.ts:934-1005` @ same; `runtime-engine.ts:6539-6595` @ same; fixtures `111`, `103`                                                               |
 | [x]    | Convex `searchable` → `.searchIndex`               | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/generator.ts:367-441` @ `f8221d44be41a80725ab58981658edf3cfe64f30`; `capabilities.ts` string-gate @ same; `type-mapping.ts:85-87` @ same; `semantics.test.ts` |
 | [x]    | Convex `versionProperty` OCC                       | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/version-occ.ts:1-76` @ `4660059ba17fcc00f06de523b14c361df421fea8`; `functions.ts` create/update OCC @ same; `generator.ts` schema synthesize; `semantics.test.ts` |
-| [x]    | FEATURE-LIST → registry inventory (M12)            | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts`; `src/manifest/feature-list-generator.test.ts`; `package.json` `docs:feature-list` / `docs:check:feature-list`; generated `docs/FEATURE-LIST.md` — SHA after commit |
+| [x]    | FEATURE-LIST → registry inventory (M12)            | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts:1-301` @ `e0ffb716ffc627fdfe7bdb8df8ea6882be3dff66`; `src/manifest/feature-list-generator.test.ts:1-52` @ same; `package.json` `docs:feature-list` / `docs:check:feature-list`; generated `docs/FEATURE-LIST.md` |
 
 ---
 
