@@ -100,7 +100,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | `EventSourcedStore` for `eventSourced` target         | FULLY_IMPLEMENTED     | `src/manifest/stores/event-sourced.ts:37-140` @ `ca526f02c67d1db7138d6e34a400fe459a87caef`; `runtime-engine.ts:1279-1283` @ same |
 | [x]    | `alternateKeys` uniqueness on create/update           | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2832-2864,2876,2966-2977` @ `a8af116268de8f4329eb2af1a4df82fb5a65fa5b` |
 | [x]    | Entity-level constraint overrides on create/update    | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2625-2642,4958-4995,5934-5985` @ `f36c83dd63690e83812ee286f42379f18d65e0d9`; `src/manifest/runtime-entity-constraint-overrides.test.ts:1-149` @ same |
-| [x]    | enforce-surface Drizzle/Kysely/raw-SQL detection      | FULLY_IMPLEMENTED     | `packages/cli/src/audit/write-receiver.ts:61-105` @ `PENDING_COMMIT`; `direct-writes.ts` + `direct-writes.test.ts` @ same |
+| [x]    | enforce-surface Drizzle/Kysely/raw-SQL detection      | FULLY_IMPLEMENTED     | `packages/cli/src/audit/write-receiver.ts:61-105` @ `3d459a1654c53a30af2e1730a0ba9ffe3ea67342`; `direct-writes.ts` + `direct-writes.test.ts` @ same |
 
 ---
 
