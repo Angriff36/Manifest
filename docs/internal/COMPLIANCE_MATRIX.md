@@ -218,7 +218,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | Turso / libSQL store                           | CLAIMED_NEEDS_PROOF   |                          |
 | [~]    | DynamoDB store                                 | CLAIMED_NEEDS_PROOF   |                          |
 | [~]    | GenericPrismaStore                             | CLAIMED_NEEDS_PROOF   | `stores/prisma-generic/` |
-| [ ]    | EventSourcedStore                              | NOT_IMPLEMENTED       | IR passthrough only      |
+| [x]    | EventSourcedStore                              | FULLY_IMPLEMENTED     | §1 — in-process event log + projection |
 | [~]    | Outbox: memory/postgres/redis/mongodb/dynamodb | CLAIMED_NEEDS_PROOF   | `outbox/stores/*`        |
 | [~]    | Approval store memory/postgres                 | CLAIMED_NEEDS_PROOF   |                          |
 | [~]    | Idempotency store memory/postgres              | CLAIMED_NEEDS_PROOF   |                          |
@@ -322,7 +322,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | [ ]    | Approval escalate timeout                                                      | REJECTED_LOUD              | Manifest language gap — preserve |
 | [ ]    | `optional` runtime gate (beyond `required`)                                    | OUT_OF_SCOPE               | by design — see §4; not a missing Manifest feature |
 | [ ]    | `alternateKeys` runtime use / entity constraint overrides / `command.returns`  | NOT_IMPLEMENTED or PARTIAL | Manifest gaps — preserve until closed              |
-| [ ]    | EventSourcedStore                                                              | NOT_IMPLEMENTED            |
+| [x]    | EventSourcedStore                                                              | FULLY_IMPLEMENTED          | §1                                                   |
 | [ ]    | softDelete language keyword                                                    | NOT_IMPLEMENTED            | Manifest language gap (projection config exists)   |
 | [x]    | Materialized-views SQL expression lowering                                     | FULLY_IMPLEMENTED          | §1                                                   |
 | [ ]    | Convex unsupported surfaces (list in §6)                                       | DIAGNOSTIC_ONLY            |

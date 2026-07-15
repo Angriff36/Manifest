@@ -788,7 +788,7 @@
         },
         "target": {
           "type": "string",
-          "description": "Built-in targets: memory, localStorage, postgres, supabase, durable. Custom adapter schemes (e.g. redis, dynamodb) are valid when a matching StoreAdapterPlugin is registered."
+          "description": "Built-in targets: memory, localStorage, postgres, supabase, durable, mongodb, eventSourced. Custom adapter schemes (e.g. redis, dynamodb) are valid when a matching StoreAdapterPlugin is registered."
         },
         "config": {
           "type": "object",

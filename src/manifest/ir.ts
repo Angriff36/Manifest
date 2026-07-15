@@ -308,13 +308,27 @@ export interface IRSchedule {
 
 /** Built-in store target names. */
 export type BuiltinStoreTarget =
-  'memory' | 'localStorage' | 'postgres' | 'supabase' | 'durable' | 'mongodb';
+  | 'memory'
+  | 'localStorage'
+  | 'postgres'
+  | 'supabase'
+  | 'durable'
+  | 'mongodb'
+  | 'eventSourced';
+
+export interface IREventSourcedConfig {
+  snapshotInterval?: number;
+  snapshotStoreTarget?: string;
+  exposeEventLog?: boolean;
+}
 
 export interface IRStore {
   entity: string;
   /** Built-in targets or custom adapter scheme registered via plugin API. */
   target: BuiltinStoreTarget | (string & {});
   config: Record<string, IRValue>;
+  /** Optional parsed event-sourced settings (also present as raw config values). */
+  eventSourced?: IREventSourcedConfig;
 }
 
 export interface IREvent {

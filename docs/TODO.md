@@ -59,13 +59,18 @@ forensics: Appendix D in
       `RuntimeOptions.eventBus` already accepts any `EventBus` including
       `RedisEventBus`; there is no missing hook. Auto-constructing Redis from
       env is intentionally not a core default.
-- [ ] **`EventSourcedStore` doesn't exist** — IR accepts `eventSourced` store kind
-      as passthrough only (zero grep hits for an implementation).
+- [x] **`EventSourcedStore`** — fixed 2026-07-15: reference runtime auto-
+      instantiates `EventSourcedStore` for `store … in eventSourced` (append-only
+      log + projected state + optional snapshots / `exposeEventLog`). Fixture
+      `83-event-sourced`. Not a durable DB adapter — in-process event log.
+      ~~`EventSourcedStore` doesn't exist — IR passthrough only.~~
 - [x] **`flag()` has no static flags map** — fixed 2026-07-15:
       `RuntimeOptions.flags?: Record<string, unknown>`; `flagProvider` still wins
       when both are set.
 - [ ] **`softDelete` is not a language keyword** — only a prisma-store / projection
-      config option (by design unless language work is scheduled).
+      config option. **Clarified 2026-07-15:** still open only if language-level
+      soft-delete is scheduled; projection-config softDelete is intentional and
+      not a runtime gap.
 - [x] **Materialized-views uses `expression-to-sql.ts`** — fixed 2026-07-15:
       default SELECT emits stored props plus IR `computedProperties` lowered
       via `translateExpression`; `self`/`this` members map to columns; raw

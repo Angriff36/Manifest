@@ -19,7 +19,17 @@ A conforming runtime MAY support:
 - `localStorage`
 - `postgres`
 - `supabase`
+- `mongodb`
+- `durable` (backend-neutral; requires `storeProvider`)
+- `eventSourced` (reference runtime auto-instantiates in-process `EventSourcedStore`)
 - **Custom stores** (via `storeProvider` hook)
+
+### Reference runtime instantiation (2026-07-15)
+
+- `memory` / `localStorage`: auto-instantiated.
+- `postgres` / `supabase` / `mongodb`: browser engine throws; supply `storeProvider` (or Node store imports).
+- `durable`: always requires `storeProvider`.
+- `eventSourced`: auto-instantiated as append-only log + projected state (+ optional snapshots / `exposeEventLog`). Not a durable DB.
 
 ### Default Behavior
 
@@ -33,8 +43,10 @@ A conforming runtime MAY support:
 ### Nonconformance
 
 - ~~The IR runtime currently supports `memory` and `localStorage` only and falls back to `memory` for other targets without emitting diagnostics.~~
-- **RESOLVED (2026-02-05)**: Runtime now throws clear errors for unsupported storage targets (`postgres`, `supabase` in browser) at runtime-engine.ts:312-323.
+- **RESOLVED (2026-02-05)**: Runtime now throws clear errors for unsupported storage targets (`postgres`, `supabase` in browser).
 - **RESOLVED (2026-02-05)**: PostgresStore and SupabaseStore are fully implemented in `src/manifest/stores.node.ts`. Server-side applications can use these stores via the `storeProvider` option in RuntimeOptions.
+- ~~`eventSourced` was IR-only / storeProvider-required with no reference implementation.~~
+- **RESOLVED (2026-07-15)**: `EventSourcedStore` auto-instantiates for `store … in eventSourced`.
 
 ## Implementing Custom Adapters
 

@@ -25,6 +25,11 @@ import { applyMaskStrategy } from './masking.js';
 import { constraintExpressionPasses } from './constraint-polarity.js';
 import { RateLimiter, type RateLimitStore } from './runtime-rate-limit.js';
 import {
+  EventSourcedStore,
+  eventSourcedOptionsFromConfig,
+} from './stores/event-sourced.js';
+
+import {
   checkRateLimitGate,
   executeWithRetry,
   policyHasRateLimit,
@@ -1271,6 +1276,11 @@ export class RuntimeEngine {
               `Entity '${entity.name}' declares 'store ... in durable' but no storeProvider is bound. ` +
                 `'durable' is backend-neutral and requires a runtime store adapter supplied via the storeProvider option.`,
             );
+          case 'eventSourced':
+            store = new EventSourcedStore(
+              eventSourcedOptionsFromConfig(storeConfig.config, this.options.generateId),
+            );
+            break;
           default:
             // Custom store adapter scheme — requires a storeProvider that handles this target.
             // Plugin-registered adapters (e.g. 'redis', 'dynamodb') are resolved through the
