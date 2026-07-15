@@ -4,6 +4,22 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.6] - 2026-07-15
+
+### Fixed
+
+- **Convex mutations:** when a G7 emit payload field is named `result`, omit the
+  reserved command-result envelope from the reaction payload object literal
+  (business `result` kept; entity identity via `_subject`) so generated Capsule
+  apps no longer hit TS1117 duplicate-property errors. Emits
+  `CONVEX_PAYLOAD_FIELD_COLLISION` instead of silently renaming domain fields.
+- **Wiring inspect (browser):** `ConsumerTracer` no longer reads `process.platform`
+  without a `typeof process` guard — Builder’s in-browser Assemble path no longer
+  throws `ReferenceError: process is not defined` when the Convex application
+  preset runs wiring consumer inspection.
+- **Convex:** drop a duplicate `ReactionPayloadCollisionPlanner` import that
+  broke `tsc` on main after the payload-collision fix landed.
+
 ## [3.6.5] - 2026-07-15
 
 ### Added
