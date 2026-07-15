@@ -34,6 +34,7 @@ export default tseslint.config(
       // Vitest coverage output (lcov-report ships pre-built JS with its own
       // eslint-disable banners that trip reportUnusedDisableDirectives).
       'coverage/**',
+      'testing/coverage/**',
     ],
   },
   // Default rule set for everything else.

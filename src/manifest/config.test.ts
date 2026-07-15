@@ -14,6 +14,7 @@ import {
   isProjectionMetaKey,
   createUserResolver,
   hasUserResolver,
+  getProjectionBlock,
   type ManifestRuntimeConfig,
 } from './config';
 
@@ -51,7 +52,7 @@ describe('defineConfig', () => {
     expect(config.resolveUser).toBe(resolveUser);
     expect(config.build?.hooks?.provider).toBe('husky');
     expect(config.build?.plugins?.[0].module).toBe('@acme/manifest-audit');
-    expect(config.build?.projections?.nextjs?.output).toBe('app/api');
+    expect(getProjectionBlock(config.build?.projections, 'nextjs')?.output).toBe('app/api');
   });
 });
 

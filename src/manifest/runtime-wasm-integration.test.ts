@@ -1,21 +1,15 @@
 /**
- * Runtime Engine + WASM Integration Tests
+ * Runtime Engine expression evaluation (TypeScript path).
  *
- * Verifies that the RuntimeEngine properly integrates with the WASM
- * expression evaluator:
- * - WASM is used when available and expression is compatible
- * - Falls back to TypeScript when WASM is unavailable
- * - Results are semantically identical
+ * ~~Historically also covered a RuntimeOptions.wasmEvaluator seam.~~
+ * **Correction (2026-07-15):** WASM was removed from RuntimeOptions / the
+ * default engine path (never shipped a `.wasm` artifact). These tests keep
+ * the TypeScript evaluator coverage that remains.
  */
 
 import { describe, expect, it, beforeEach } from 'vitest';
 import { RuntimeEngine, type RuntimeContext } from './runtime-engine';
-import { WasmExpressionEvaluator } from './wasm/wasm-evaluator';
 import type { IR, IRExpression } from './ir';
-
-// ============================================================================
-// Helpers
-// ============================================================================
 
 function createTestIR(): IR {
   return {
@@ -52,12 +46,8 @@ function ident(name: string): IRExpression {
   return { kind: 'identifier', name };
 }
 
-// ============================================================================
-// Tests
-// ============================================================================
-
-describe('RuntimeEngine with WASM evaluator', () => {
-  describe('Without WASM evaluator', () => {
+describe('RuntimeEngine expression evaluation (TypeScript)', () => {
+  describe('Basic evaluation', () => {
     it('should evaluate normally (TypeScript path)', async () => {
       const ir = createTestIR();
       const engine = new RuntimeEngine(ir, {}, { now: () => 1234567890 });
@@ -76,22 +66,11 @@ describe('RuntimeEngine with WASM evaluator', () => {
     });
   });
 
-  describe('With WASM evaluator (fallback to TypeScript when WASM unavailable)', () => {
+  describe('Repeated evaluation on one engine', () => {
     let engine: RuntimeEngine;
 
     beforeEach(() => {
-      const ir = createTestIR();
-      // Create a WASM evaluator but don't init it (no bytes available)
-      // The runtime engine should handle this gracefully
-      const wasmEvaluator = new WasmExpressionEvaluator();
-      engine = new RuntimeEngine(
-        ir,
-        {},
-        {
-          now: () => 1234567890,
-          wasmEvaluator,
-        },
-      );
+      engine = new RuntimeEngine(createTestIR(), {}, { now: () => 1234567890 });
     });
 
     it('should evaluate literal expressions correctly', async () => {
@@ -118,11 +97,10 @@ describe('RuntimeEngine with WASM evaluator', () => {
   });
 
   describe('Constraint evaluation', () => {
-    it('should evaluate constraints correctly without WASM', async () => {
+    it('should evaluate constraints correctly', async () => {
       const ir = createTestIR();
       const engine = new RuntimeEngine(ir, {}, { now: () => 1234567890 });
 
-      // checkConstraints requires an entity
       ir.entities.push({
         name: 'TestEntity',
         module: 'test',
@@ -166,25 +144,22 @@ describe('RuntimeEngine with WASM evaluator', () => {
             code: 'hasErrorCheck',
             expression: ident('hasError'),
             severity: 'warn',
-            // failWhen: true means expression=true → VIOLATION (passed=false)
             failWhen: true,
           },
         ],
         policies: [],
       });
 
-      // hasError = true → violation (failWhen reverses polarity)
       const failed = await engine.checkConstraints('TestEntity', { hasError: true });
       expect(failed).toHaveLength(1);
 
-      // hasError = false → passes
       const passed = await engine.checkConstraints('TestEntity', { hasError: false });
       expect(passed).toEqual([]);
     });
   });
 });
 
-describe('RuntimeContext with WASM', () => {
+describe('RuntimeContext in expression evaluation', () => {
   it('should pass user context through to expression evaluation', async () => {
     const ir = createTestIR();
     const context: RuntimeContext = {
@@ -193,7 +168,6 @@ describe('RuntimeContext with WASM', () => {
     };
     const engine = new RuntimeEngine(ir, context, { now: () => 1234567890 });
 
-    // user.role should resolve to 'admin'
     const result = await engine.evaluateExpression(ident('user'), {
       user: { id: 'user-1', role: 'admin' },
     });

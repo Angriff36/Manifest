@@ -5968,7 +5968,7 @@ export class RuntimeEngine {
       const policy = this.ir.policies.find((p) => p.name === constraint.overridePolicyRef);
       if (policy && policy.action === 'override') {
         const policyResult = await this.evaluateExpression(policy.expression, evalContext);
-        if (Boolean(policyResult)) {
+        if (policyResult) {
           outcome.overridden = true;
           outcome.overriddenBy = 'policy:' + policy.name;
           const actingUser = (evalContext.user as { id?: string } | null | undefined)?.id;

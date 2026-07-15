@@ -82,6 +82,7 @@ import {
   resolveNextJsProjectionOptions,
   resolveProjectionOptions,
 } from './utils/config.js';
+import { getProjectionBlock } from '@angriff36/manifest/config';
 import { registerPluginCliCommands } from '@angriff36/manifest/plugin-loader';
 import type { CliProgramLike } from '@angriff36/manifest/plugin-api';
 import { loadDeclaredPlugins, reportPluginDiagnostics } from './utils/plugins.js';
@@ -358,7 +359,9 @@ program
       ...options,
       irOutput: options.irOutput || config?.output || 'ir/',
       codeOutput:
-        options.codeOutput || config?.projections?.[options.projection]?.output || 'generated/',
+        options.codeOutput ||
+        getProjectionBlock(config?.projections, options.projection)?.output ||
+        'generated/',
       projectionOptionsFromConfig,
     };
 
@@ -598,8 +601,7 @@ program
       irOutput: options.irOutput || config?.output || 'ir/',
       codeOutput:
         options.codeOutput ||
-        config?.projections?.nextjs?.output ||
-        config?.projections?.['nextjs']?.output ||
+        getProjectionBlock(config?.projections, 'nextjs')?.output ||
         'generated/',
       debounce: parseInt(options.debounce, 10) || 300,
       projectionOptionsFromConfig,

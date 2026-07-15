@@ -14,9 +14,9 @@
  */
 
 import chalk from 'chalk';
-import { getActiveConfigPath, loadAllConfigs, type ManifestConfig } from '../utils/config.js';
+import { getActiveConfigPath, loadAllConfigs } from '../utils/config.js';
 import { validateConfig, formatDiagnostic } from '../utils/config-validate.js';
-import { resolveBuildNaming } from '@angriff36/manifest/config';
+import { resolveBuildNaming, getProjectionBlock } from '@angriff36/manifest/config';
 
 interface ConfigCommandOptions {
   json?: boolean;
@@ -184,18 +184,8 @@ export async function loadEffectiveConfig(
   const { build } = await loadAllConfigs(cwd);
   const snapshot = await loadDefaultsSnapshot();
 
-  const userNextJsOptions = build.projections?.nextjs?.options as
-    Record<string, unknown> | undefined;
-  const userRoutesOptions = (
-    build.projections as Record<
-      string,
-      ManifestConfig['projections'] extends infer P
-        ? P extends Record<string, infer V>
-          ? V
-          : never
-        : never
-    >
-  )?.routes?.options as Record<string, unknown> | undefined;
+  const userNextJsOptions = getProjectionBlock(build.projections, 'nextjs')?.options;
+  const userRoutesOptions = getProjectionBlock(build.projections, 'routes')?.options;
 
   const nextjsDefaults: Record<string, unknown> = {
     ...snapshot.nextjs,
@@ -214,7 +204,7 @@ export async function loadEffectiveConfig(
     naming: resolveBuildNaming(build) as unknown as Record<string, unknown>,
     projections: {
       nextjs: {
-        output: build.projections?.nextjs?.output ?? 'generated/',
+        output: getProjectionBlock(build.projections, 'nextjs')?.output ?? 'generated/',
         options: mergeNextJsOptions(nextjsDefaults, userNextJsOptions),
       },
       routes: {

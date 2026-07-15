@@ -13,7 +13,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import yaml from 'js-yaml';
 import { pathToFileURL } from 'url';
-import { resolveProjectionOptions as resolveProjectionOptionsForBuild } from '@angriff36/manifest/config';
+import { resolveProjectionOptions as resolveProjectionOptionsForBuild, getProjectionBlock } from '@angriff36/manifest/config';
 import type { ManifestBuildConfig } from '@angriff36/manifest/config';
 
 // ============================================================================
@@ -491,8 +491,7 @@ export async function getNextJsOptions(cwd: string = process.cwd()): Promise<{
   appDir: string;
 }> {
   const { build } = await loadAllConfigs(cwd);
-  const options =
-    build.projections?.nextjs?.options || build.projections?.['nextjs']?.options || {};
+  const options = getProjectionBlock(build.projections, 'nextjs')?.options ?? {};
 
   return {
     authProvider: (options.authProvider as string) || 'none',
@@ -525,9 +524,9 @@ export async function resolveNextJsProjectionOptions(
   cwd: string = process.cwd(),
 ): Promise<Record<string, unknown>> {
   const { build } = await loadAllConfigs(cwd);
-  const options = (build.projections?.nextjs?.options ?? {}) as Record<string, unknown>;
+  const options = { ...(getProjectionBlock(build.projections, 'nextjs')?.options ?? {}) };
   // Shallow clone so callers can mutate without disturbing cached config.
-  return { ...options };
+  return options;
 }
 
 /**
@@ -575,8 +574,7 @@ export async function getOutputPaths(cwd: string = process.cwd()): Promise<{
 
   return {
     irOutput: build.output || 'ir/',
-    codeOutput:
-      build.projections?.nextjs?.output || build.projections?.['nextjs']?.output || 'generated/',
+    codeOutput: getProjectionBlock(build.projections, 'nextjs')?.output || 'generated/',
   };
 }
 

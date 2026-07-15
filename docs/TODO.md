@@ -19,6 +19,9 @@ forensics: Appendix D in
 ## Bugs
 
 - [x] **WASM evaluator polarity aligned** — fixed 2026-07-14.
+      ~~WASM path still in RuntimeOptions~~ **Correction (2026-07-15):** WASM
+      removed from the default RuntimeEngine path (never shipped `.wasm`);
+      TypeScript evaluator + `constraint-polarity` remain the proof.
 - [x] **Entity `behaviors` loudly rejected** — fixed 2026-07-14 (fixture 110).
 - [x] **Structured diagnostic codes** — fixed 2026-07-15: optional `IRDiagnostic.code`;
       seeded on `ENTITY_BEHAVIOR_UNSUPPORTED`, `RELATION_FK_THROUGH_EXCLUSIVE`,
