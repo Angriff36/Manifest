@@ -109,6 +109,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | `alternateKeys` uniqueness on create/update        | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2832-2864,2876,2966-2977` @ `a8af116268de8f4329eb2af1a4df82fb5a65fa5b`                                                                                                                    |
 | [x]    | Entity-level constraint overrides on create/update | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2625-2642,4958-4995,5934-5985` @ `f36c83dd63690e83812ee286f42379f18d65e0d9`; `src/manifest/runtime-entity-constraint-overrides.test.ts:1-149` @ same                                      |
 | [x]    | Config G5 `projections.enabled`/`defaults`         | FULLY_IMPLEMENTED     | `src/manifest/config.ts:117-168,380-414` @ `505e5051f67b0d1a33f59f7e4d1f48b14e124f2b`; `packages/cli/src/commands/generate.ts:822-895` @ same; schema meta keys in `docs/spec/config/manifest.config.schema.json`     |
+| [x]    | Config G2 `validation.failOn`                      | FULLY_IMPLEMENTED     | `packages/cli/src/utils/validation-gate-policy.ts:1-45` @ `7c3e16a9349af3130ae5408beee5297e33b7200d`; wired in `compile.ts`/`validate.ts`; schema `validation.failOn`                                                                 |
 
 ---
 
@@ -309,7 +310,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [~]    | Snapshot testing tooling                            | CLAIMED_NEEDS_PROOF           | `docs/internal/features/snapshot-testing.md`                          |
 | [~]    | Config schema + `manifest config *`                 | CLAIMED_NEEDS_PROOF           | G0/G1                                                                 |
 | [x]    | Config G5 `projections.enabled`/`defaults`          | FULLY_IMPLEMENTED             | §1                                                                    |
-| [~]    | Config G2 `validation.failOn`                       | CLAIMED_NEEDS_PROOF           | shipped this change — §1 proof follows feat                           |
+| [x]    | Config G2 `validation.failOn`                       | FULLY_IMPLEMENTED             | §1                                                                    |
 | [ ]    | Config G10 (`driftGates`)                           | NOT_IMPLEMENTED               |                                                                       |
 | [~]    | Published `@angriff36/manifest` npm                 | CLAIMED_NEEDS_PROOF           | pin `package.json` each release                                       |
 | [ ]    | Publish `@manifest/mcp-server`                      | NOT_IMPLEMENTED               | in-repo only                                                          |
@@ -342,7 +343,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | [x]    | Materialized-views SQL expression lowering                             | FULLY_IMPLEMENTED         | §1                                                                       |
 | [ ]    | Convex unsupported surfaces (list in §6)                               | DIAGNOSTIC_ONLY           |
 | [x]    | Config G5 `projections.enabled`/`defaults`                             | FULLY_IMPLEMENTED         | §1                                                                       |
-| [~]    | Config G2 `validation.failOn`                                          | CLAIMED_NEEDS_PROOF       | shipped — prove in §1                                                    |
+| [x]    | Config G2 `validation.failOn`                                          | FULLY_IMPLEMENTED         | §1                                                                       |
 | [ ]    | Config G10 (`driftGates`)                                              | NOT_IMPLEMENTED           |
 | [x]    | `createUserResolver` wired into runtime factory                        | FULLY_IMPLEMENTED         | §1                                                                       |
 | [ ]    | Sub-package publish/park                                               | NOT_IMPLEMENTED           | Manifest distribution                                                    |
