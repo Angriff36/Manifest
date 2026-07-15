@@ -61,6 +61,7 @@ const DEFAULT_TYPE_MAPPING: Readonly<Record<string, MongooseSchemaType>> = Objec
   // Temporal
   date: { schemaType: 'Date' },
   datetime: { schemaType: 'Date' },
+  timestamp: { schemaType: 'Date' }, // alias of datetime
 
   // Structured
   json: { schemaType: 'Schema.Types.Mixed' },

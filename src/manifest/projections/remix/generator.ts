@@ -300,6 +300,7 @@ function irTypeToTsType(irType: { name: string; nullable: boolean }): string {
     boolean: 'boolean',
     date: 'Date',
     datetime: 'Date',
+    timestamp: 'Date', // alias of datetime
     any: 'unknown',
     void: 'void',
   };

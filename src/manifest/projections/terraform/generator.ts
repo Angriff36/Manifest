@@ -106,6 +106,7 @@ function irTypeToHclColumnType(
     float: 'DOUBLE PRECISION',
     boolean: 'BOOLEAN',
     datetime: 'TIMESTAMP WITH TIME ZONE',
+    timestamp: 'TIMESTAMP WITH TIME ZONE', // alias of datetime
     uuid: 'UUID',
     money: 'NUMERIC(19,4)',
     decimal: 'NUMERIC',

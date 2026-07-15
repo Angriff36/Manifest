@@ -56,6 +56,7 @@ function irTypeToTsParam(typeName: string): string {
     boolean: 'boolean',
     date: 'string',
     datetime: 'string',
+    timestamp: 'string', // alias of datetime
     any: 'string',
   };
   return map[typeName] || 'string';

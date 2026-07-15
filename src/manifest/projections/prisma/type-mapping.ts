@@ -45,6 +45,7 @@ export const DEFAULT_TYPE_MAPPING: Readonly<Record<string, string>> = Object.fre
   // Temporal.
   date: 'DateTime',
   datetime: 'DateTime',
+  timestamp: 'DateTime', // alias of datetime
   time: 'DateTime',
   duration: 'Float',
 

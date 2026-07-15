@@ -1,8 +1,8 @@
 /**
- * Write-time validation for date/time/datetime/duration properties
+ * Write-time validation for date/time/datetime/timestamp/duration properties
  * (docs/spec/semantics.md, Date/Time Types).
  *
- * On create and update, malformed values for date/time/datetime/duration
+ * On create and update, malformed values for date/time/datetime/timestamp/duration
  * typed properties produce a blocking constraint outcome (E_TYPE_DATE,
  * E_TYPE_TIME, E_TYPE_DATETIME, E_TYPE_DURATION), so createInstance /
  * updateInstance return undefined. null/undefined values pass (nullability
@@ -26,6 +26,7 @@ entity Event {
   property day: date
   property startsAt: time
   property due: datetime
+  property stamped: timestamp
   property runtime: duration
   property maybeDay: date?
 
@@ -42,6 +43,7 @@ const validData = {
   day: '2026-06-09',
   startsAt: '09:30:00',
   due: 1000000000000,
+  stamped: 1000000000000,
   runtime: 86400000,
 };
 
@@ -89,6 +91,36 @@ describe('Date/time write-time validation', () => {
     const engine = await setup();
     expect(await engine.createInstance('Event', { ...validData, due: Infinity })).toBeUndefined();
     expect(await engine.createInstance('Event', { ...validData, due: 'soon' })).toBeUndefined();
+  });
+
+  it('treats timestamp like datetime for write-time validation (E_TYPE_DATETIME)', async () => {
+    const engine = await setup();
+    expect(await engine.createInstance('Event', validData)).toBeDefined();
+    expect(
+      await engine.createInstance('Event', { ...validData, stamped: Infinity }),
+    ).toBeUndefined();
+    expect(
+      await engine.createInstance('Event', { ...validData, stamped: 'soon' }),
+    ).toBeUndefined();
+    expect(await engine.createInstance('Event', { ...validData, stamped: 1e16 })).toBeUndefined();
+
+    const result = await engine.runCommand(
+      'create',
+      { ...validData, stamped: 'soon' },
+      { entityName: 'Event' },
+    );
+    expect(result.success).toBe(false);
+    expect(result.constraintOutcomes?.find((o) => o.code === 'E_TYPE_DATETIME')).toMatchObject({
+      code: 'E_TYPE_DATETIME',
+      details: { property: 'stamped', expectedType: 'timestamp', value: 'soon' },
+    });
+  });
+
+  it('preserves IR type.name "timestamp" (does not normalize to datetime)', async () => {
+    const { ir, diagnostics } = await compileToIR(source);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    const stamped = ir!.entities[0].properties.find((p) => p.name === 'stamped');
+    expect(stamped?.type?.name).toBe('timestamp');
   });
 
   it('blocks create on a finite datetime outside the representable Date range', async () => {

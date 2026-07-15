@@ -632,6 +632,7 @@ function irTypeToTs(type: IRType): string {
     case 'uuid':
     case 'date':
     case 'datetime':
+    case 'timestamp':
       return 'string';
     case 'int':
     case 'bigint':

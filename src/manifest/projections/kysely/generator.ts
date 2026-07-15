@@ -342,7 +342,11 @@ export class KyselyProjection implements ProjectionTarget {
       entity.properties.some((p) => {
         const effectiveTypeName =
           p.type.name === 'array' && p.type.generic ? p.type.generic.name : p.type.name;
-        return effectiveTypeName === 'date' || effectiveTypeName === 'datetime';
+        return (
+          effectiveTypeName === 'date' ||
+          effectiveTypeName === 'datetime' ||
+          effectiveTypeName === 'timestamp'
+        );
       }),
     );
 

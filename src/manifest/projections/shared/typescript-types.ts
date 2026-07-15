@@ -20,7 +20,8 @@ const SCALARS: Readonly<Record<string, string>> = Object.freeze({
   bool: 'boolean',
   date: 'Date',
   datetime: 'Date',
-  timestamp: 'number',
+  /** Alias of `datetime` (docs/spec/semantics.md § Date/Time Types). */
+  timestamp: 'Date',
   json: 'unknown',
   any: 'unknown',
   bytes: 'Uint8Array',

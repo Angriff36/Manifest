@@ -69,6 +69,7 @@ const DEFAULT_TYPE_MAPPING: Readonly<Record<string, KyselyColumnType>> = Object.
   // Temporal — use ColumnType for Date columns that may accept strings on insert
   date: { tsType: 'Date', columnType: true },
   datetime: { tsType: 'Date', columnType: true },
+  timestamp: { tsType: 'Date', columnType: true }, // alias of datetime
 
   // Structured
   json: { tsType: 'unknown' },

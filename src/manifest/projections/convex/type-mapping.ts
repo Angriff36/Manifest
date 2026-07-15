@@ -48,6 +48,7 @@ export const DEFAULT_TYPE_MAPPING: Readonly<Record<string, string>> = Object.fre
   // Temporal → epoch milliseconds (Convex-idiomatic).
   date: 'v.number()',
   datetime: 'v.number()',
+  timestamp: 'v.number()', // alias of datetime
   time: 'v.number()',
   duration: 'v.number()',
 

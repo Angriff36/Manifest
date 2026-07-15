@@ -1,10 +1,16 @@
 # Date and Time Types
 
 > **Audited (2026-07-15) @RYANSIGNED:** Spot-check OK against builtins /
-> `autoNow` / fixture `92-date-time-types.manifest` on package **3.6.4**. No
-> phantom `timestamp` language type (Zod may alias `timestamp` → datetime).
+> `autoNow` / fixture `92-date-time-types.manifest` on package **3.6.4**.
+>
+> ~~No phantom `timestamp` language type (Zod may alias `timestamp` → datetime).~~
+> **Correction (2026-07-15):** `timestamp` is a first-class language/runtime alias
+> of `datetime` (same epoch-ms representation and `E_TYPE_DATETIME` validation).
+> IR may preserve `type.name: "timestamp"`. Prefer `datetime` in new examples.
 
-Manifest provides primitive types `date`, `time`, `datetime`, and `duration`, plus built-ins for date extraction and duration arithmetic. See conformance fixture `92-date-time-types.manifest`.
+Manifest provides primitive types `date`, `time`, `datetime`, `timestamp` (alias of
+`datetime`), and `duration`, plus built-ins for date extraction and duration
+arithmetic. See conformance fixture `92-date-time-types.manifest`.
 
 ## Syntax
 
@@ -15,6 +21,7 @@ module Scheduling {
     property day: date
     property startsAt: time
     property due: datetime
+    property stamped: timestamp
     property length: duration
 
     computed dayLabel: string = dateOf(due)

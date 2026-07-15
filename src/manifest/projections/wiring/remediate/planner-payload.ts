@@ -220,6 +220,7 @@ export function planEmptyDate(
   const preferIsoString =
     paramDesc?.constraints.dateLike === true ||
     paramDesc?.irTypeName === 'datetime' ||
+    paramDesc?.irTypeName === 'timestamp' ||
     paramDesc?.irTypeName === 'date';
   const proven = adapter.findLocalValueSource(content, param, file, {
     preferDate: true,

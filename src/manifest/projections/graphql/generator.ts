@@ -83,6 +83,7 @@ function irTypeToGraphQL(irType: IRType): string {
     bool: 'Boolean',
     date: 'Date',
     datetime: 'DateTime',
+    timestamp: 'DateTime', // alias of datetime
     uuid: 'UUID',
     email: 'String',
     url: 'String',

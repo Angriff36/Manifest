@@ -173,6 +173,7 @@ function irTypeToTs(irType: IRType): string {
     bool: 'boolean',
     date: 'string',
     datetime: 'string',
+    timestamp: 'string', // alias of datetime
     uuid: 'string',
     email: 'string',
     url: 'string',

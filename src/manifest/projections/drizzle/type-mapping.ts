@@ -63,6 +63,7 @@ const DEFAULT_TYPE_MAPPING: Readonly<Record<string, DrizzleColumnType>> = Object
   // Temporal
   date: { builder: 'date' },
   datetime: { builder: 'timestamp' },
+  timestamp: { builder: 'timestamp' }, // alias of datetime
 
   // Structured
   json: { builder: 'jsonb' },

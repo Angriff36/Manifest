@@ -111,6 +111,7 @@ function irTypeToJsonSchemaType(type: IRType): string {
     case 'uri':
     case 'date':
     case 'datetime':
+    case 'timestamp':
     case 'uuid':
       return 'string';
     case 'int':
@@ -154,7 +155,7 @@ function irTypeToJsonSchema(type: IRType): Record<string, unknown> {
   if (type.name === 'date') {
     result.format = 'date';
   }
-  if (type.name === 'datetime') {
+  if (type.name === 'datetime' || type.name === 'timestamp') {
     result.format = 'date-time';
   }
   if (type.name === 'uuid') {
@@ -195,6 +196,7 @@ function irTypeToTs(type: IRType): string {
       return 'boolean';
     case 'date':
     case 'datetime':
+    case 'timestamp':
       return 'string';
     case 'json':
     case 'object':

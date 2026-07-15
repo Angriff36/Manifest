@@ -59,6 +59,7 @@ function irTypeToMermaidType(typeName: string): string {
     boolean: 'boolean',
     date: 'date',
     datetime: 'datetime',
+    timestamp: 'datetime', // alias of datetime
     decimal: 'decimal',
     any: 'any',
   };

@@ -37,7 +37,7 @@ function irTypeToTs(type: IRType, enums: Map<string, IREnum>, dateAsString: bool
     const base = `Record<string, ${inner}>`;
     return type.nullable ? `${base} | null` : base;
   }
-  if (dateAsString && (type.name === 'date' || type.name === 'datetime')) {
+  if (dateAsString && (type.name === 'date' || type.name === 'datetime' || type.name === 'timestamp')) {
     return type.nullable ? 'string | null' : 'string';
   }
   const enumDef = enums.get(type.name);
@@ -59,6 +59,7 @@ function irTypeToTs(type: IRType, enums: Map<string, IREnum>, dateAsString: bool
     bool: 'boolean',
     date: 'Date',
     datetime: 'Date',
+    timestamp: 'Date', // alias of datetime
     time: 'string',
     duration: 'number',
     uuid: 'string',
@@ -109,7 +110,7 @@ function constraintsForParam(
   if (enumDef) {
     out.enumValues = enumDef.values.map((v) => v.name);
   }
-  if (param.type.name === 'date' || param.type.name === 'datetime') {
+  if (param.type.name === 'date' || param.type.name === 'datetime' || param.type.name === 'timestamp') {
     out.dateLike = true;
     if (param.required) {
       out.rejectEmptyString = true;

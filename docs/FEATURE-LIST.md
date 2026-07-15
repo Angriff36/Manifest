@@ -19,14 +19,14 @@ Generated sources:
 
 ## Language discovery surface
 
-The public language-metadata registry currently reports 19 top-level constructs, 13 primitive types, 9 property modifiers, and 47 runtime built-ins.
+The public language-metadata registry currently reports 19 top-level constructs, 14 primitive types, 9 property modifiers, and 47 runtime built-ins.
 
 | Registry | Values |
 | --- | --- |
 | Top-level constructs | `entity`, `enum`, `command`, `module`, `policy`, `store`, `event`, `saga`, `tenant`, `webhook`, `use`, `flow`, `effect`, `expose`, `compose`, `on`, `value`, `role`, `schedule` |
 | Relationship kinds | `hasMany`, `hasOne`, `belongsTo`, `ref` |
 | Command/action constructs | `guard`, `when`, `mutate`, `emit`, `publish`, `persist`, `compute`, `effect`, `returns`, `async` |
-| Primitive types | `any`, `boolean`, `date`, `datetime`, `decimal`, `duration`, `list`, `map`, `money`, `number`, `string`, `time`, `void` |
+| Primitive types | `any`, `boolean`, `date`, `datetime`, `decimal`, `duration`, `list`, `map`, `money`, `number`, `string`, `time`, `timestamp`, `void` |
 | Property modifiers | `required`, `unique`, `indexed`, `private`, `readonly`, `optional`, `searchable`, `encrypted`, `masked` |
 | Contextual keywords | `compensate`, `count`, `cron`, `every`, `external`, `interval`, `masked`, `method`, `mixin`, `on_failure`, `on_timeout`, `policies`, `rateLimit`, `realtime`, `retry`, `role`, `schedule`, `stage`, `step`, `unmask`, `value` |
 | Operators | `!`, `!=`, `%`, `&`, `&&`, `*`, `+`, `-`, `->`, `.`, `..`, `/`, `:`, `<`, `<=`, `=`, `==`, `=>`, `>`, `>=`, `?`, `?.`, `|`, `||` |
@@ -368,7 +368,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Federation | `NOT_IMPLEMENTED or PARTIAL` | `docs/internal/features/federation.md` — prove or strike |
 | 2. Language (DSL) — full inventory | Generic / parameterized entities `Entity<T>` | `NOT_IMPLEMENTED` | fixtures `84`–`85` negative only |
 | 2. Language (DSL) — full inventory | Language keyword `softDelete` | `NOT_IMPLEMENTED` | projection config only |
-| 2. Language (DSL) — full inventory | Language type `timestamp` (vs `datetime`) | `NOT_IMPLEMENTED` | zod alias only |
 | 2. Language (DSL) — full inventory | Modules + `use` imports | `CLAIMED_NEEDS_PROOF` | module-resolver tests |
 | 2. Language (DSL) — full inventory | Multi-tenancy (`tenant`) | `CLAIMED_NEEDS_PROOF` | fixture `61` |
 | 2. Language (DSL) — full inventory | Optimistic concurrency `versionProperty` | `CLAIMED_NEEDS_PROOF` | fixture `24` |

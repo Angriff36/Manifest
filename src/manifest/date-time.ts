@@ -10,7 +10,12 @@ const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIME_RE = /^(\d{2}):(\d{2}):(\d{2})$/;
 
 /** Authoritative date/time primitive type names (docs/spec/semantics.md § Date/Time Types). */
-export const DATE_TIME_TYPE_NAMES = ['date', 'time', 'datetime', 'duration'] as const;
+export const DATE_TIME_TYPE_NAMES = ['date', 'time', 'datetime', 'timestamp', 'duration'] as const;
+
+/** True when the IR type name is datetime or its `timestamp` alias. */
+export function isDatetimeTypeName(typeName: string): boolean {
+  return typeName === 'datetime' || typeName === 'timestamp';
+}
 
 export function isValidDateString(value: unknown): boolean {
   if (typeof value !== 'string') return false;

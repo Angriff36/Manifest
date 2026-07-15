@@ -37,6 +37,7 @@ export const ES_TYPE_MAPPING: Readonly<Record<string, ESFieldType>> = Object.fre
   boolean: { type: 'boolean' },
   date: { type: 'date' },
   datetime: { type: 'date' },
+  timestamp: { type: 'date' }, // alias of datetime
   json: { type: 'object', doc_values: false, index: false },
   // 'number' is deliberately absent — see file header.
 });

@@ -146,6 +146,7 @@ function irTypeToJsonSchema(
     bool: { type: 'boolean' },
     date: { type: 'string', format: 'date' },
     datetime: { type: 'string', format: 'date-time' },
+    timestamp: { type: 'string', format: 'date-time' }, // alias of datetime
     time: { type: 'string', format: 'time' },
     duration: { type: 'number' },
     uuid: { type: 'string', format: 'uuid' },

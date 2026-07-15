@@ -20,7 +20,7 @@ import {
   JobQueue,
   JobRecord,
 } from './ir';
-import { dateOf, timeOf, datetimeOf, isValidDateString, isValidTimeString } from './date-time.js';
+import { dateOf, timeOf, datetimeOf, isValidDateString, isValidTimeString, isDatetimeTypeName } from './date-time.js';
 import { applyMaskStrategy } from './masking.js';
 import { constraintExpressionPasses } from './constraint-polarity.js';
 import { RateLimiter, type RateLimitStore } from './runtime-rate-limit.js';
@@ -2675,7 +2675,8 @@ export class RuntimeEngine {
     const outcomes: ConstraintOutcome[] = [];
     for (const prop of entity.properties) {
       const t = prop.type?.name;
-      if (t !== 'date' && t !== 'time' && t !== 'datetime' && t !== 'duration') continue;
+      if (t !== 'date' && t !== 'time' && t !== 'datetime' && t !== 'timestamp' && t !== 'duration')
+        continue;
       if (!(prop.name in data)) continue;
       const value = data[prop.name];
       if (value === null || value === undefined) continue;
@@ -2687,7 +2688,7 @@ export class RuntimeEngine {
       } else if (t === 'time') {
         ok = isValidTimeString(value);
         code = 'E_TYPE_TIME';
-      } else if (t === 'datetime') {
+      } else if (isDatetimeTypeName(t)) {
         // Must be within the representable Date range (±8,640,000,000,000,000 ms).
         ok = typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 8.64e15;
         code = 'E_TYPE_DATETIME';

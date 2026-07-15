@@ -3,8 +3,9 @@ title: Manifest Feature Completion Compliance Matrix
 created: 2026-02-28
 updated: 2026-07-15
 source_of_truth: true
+source_of_truth_for: Manifest-owned feature completion; this is the sole completion authority
 scope: Manifest-owned feature completion only — language/syntax, compiler/AST/IR, runtime semantics, projections, analysis/verification APIs, stable public SDK contracts
-authority: Binding — agents and humans MUST treat this file as the source of truth for whether a Manifest-owned feature is complete
+authority: Binding and exclusive — only this file determines whether a Manifest-owned feature is complete
 companion_boundary: docs/internal/contracts/manifest-builder-boundary.md
 companion_builder_matrix: ../../../builder/docs/CAPABILITY_CONSUMPTION_MATRIX.md
 companion_semantics: docs/spec/ir/ir-v1.schema.json → docs/spec/semantics.md → docs/spec/builtins.md → docs/spec/adapters.md → conformance fixtures
@@ -14,7 +15,9 @@ companion_checklist: docs/TODO.md
 
 # Manifest Compliance Matrix
 
-**Authority:** Binding for **Manifest-owned** feature-completion claims.  
+> **SOLE SOURCE OF TRUTH — HAND VERIFIED.** This is the only authoritative record of Manifest-owned feature completion. Generated inventories, registries, fixtures, expected artifacts, summaries, and roadmap statuses do not establish completion. A feature counts as `FULLY_IMPLEMENTED` only after a human verifies its end-to-end compile behavior and tests and records exact filenames, inclusive line ranges, and the proving git commit SHA here.
+
+**Authority:** Binding and exclusive for **Manifest-owned** feature-completion claims.
 **Enforced by:** `AGENTS.md` / `CLAUDE.md` / `docs/internal/DOCUMENTATION_GOVERNANCE.md` (`@RYAN_APPROVED 2026-07-15`).
 
 **Ownership boundary (canonical):** [`docs/internal/contracts/manifest-builder-boundary.md`](./contracts/manifest-builder-boundary.md)
@@ -35,7 +38,7 @@ Builder consumption / end-to-end proof lives in Builder’s matrix:
 
 | Status                | Meaning                                                                          |
 | --------------------- | -------------------------------------------------------------------------------- |
-| `FULLY_IMPLEMENTED`   | Manifest end-to-end + tests; **requires** filename + line range + git commit SHA |
+| `FULLY_IMPLEMENTED`   | Hand-verified Manifest end-to-end compile + tests; **requires** exact filename, inclusive line range, and git commit SHA |
 | `PARTIAL`             | Present but incomplete across Manifest consumers/layers                          |
 | `DIAGNOSTIC_ONLY`     | Loud unsupported path; no full enforcement                                       |
 | `REJECTED_LOUD`       | Compile/schema rejects until designed                                            |
@@ -44,6 +47,8 @@ Builder consumption / end-to-end proof lives in Builder’s matrix:
 | `CLAIMED_NEEDS_PROOF` | Exists in inventory/fixtures but **no** commit proof yet — **not** “done”        |
 
 Update this matrix first when closing Manifest work; then reconcile `docs/TODO.md` and `docs/CONFIRMED-FEATURES.md`.
+
+No generated document or automated inventory may promote a feature to `FULLY_IMPLEMENTED`. Registration, source presence, a fixture, or an expected output is discovery evidence only until the end-to-end compile and tests have been hand verified and the full proof tuple is recorded here.
 
 ## Integration status (Manifest × Builder)
 
@@ -110,6 +115,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | FEATURE-LIST → registry inventory (M12)               | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts:1-301` @ `e0ffb716ffc627fdfe7bdb8df8ea6882be3dff66`; `src/manifest/feature-list-generator.test.ts:1-52` @ same; `package.json` `docs:feature-list` / `docs:check:feature-list` |
 | [x]    | Convex realtime/cache PARTIAL reclass                 | FULLY_IMPLEMENTED     | `capabilities.ts` @ `03a019efbeddbf2bc177b745957de81c5a9384a1` (`CONVEX_PARTIAL_REALTIME` / `CONVEX_PARTIAL_COMPUTED_CACHE`); `semantics.test.ts` @ same |
 | [x]    | Park unpublished sub-packages (mcp/lsp/stdlib/vscode) | FULLY_IMPLEMENTED   | `packages/*/package.json` `"private": true` @ `500f14712174bee2c989c869980ced8fd1397505`; `parked-packages.test.ts` @ same |
+| [x]    | Language type `timestamp` (= `datetime` alias)        | FULLY_IMPLEMENTED   | `date-time.ts:12-18`; `runtime-engine.ts:2676-2694`; `runtime-datetime-validation.test.ts`; typescript-types + projection maps; semantics § Date/Time — SHA pending proof commit |
 | [x]    | enforce-surface Drizzle/Kysely/raw-SQL detection      | FULLY_IMPLEMENTED     | `packages/cli/src/audit/write-receiver.ts:61-105` @ `3d459a1654c53a30af2e1730a0ba9ffe3ea67342`; `direct-writes.ts` + `direct-writes.test.ts` @ same                                                                              |
 
 ---
@@ -175,7 +181,8 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [ ]    | Appendix E: retry/rateLimit field-name ergonomics                                                                    | NOT_IMPLEMENTED               | backlog                                                             |
 | [ ]    | Appendix E: command-body policy clause                                                                               | NOT_IMPLEMENTED               | backlog                                                             |
 | [ ]    | Appendix E: `.length` vs `length()`                                                                                  | NOT_IMPLEMENTED               | backlog                                                             |
-| [ ]    | Language type `timestamp` (vs `datetime`)                                                                            | NOT_IMPLEMENTED               | zod alias only                                                      |
+
+~~Language type `timestamp` (vs `datetime`) — NOT_IMPLEMENTED / zod alias only~~ → **FULLY_IMPLEMENTED** §1 (2026-07-15).
 
 ---
 

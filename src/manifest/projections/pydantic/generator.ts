@@ -59,6 +59,7 @@ const TYPE_MAP: Record<string, string> = {
   bigint: 'int',
   date: 'date',
   datetime: 'datetime',
+  timestamp: 'datetime', // alias of datetime
   uuid: 'UUID',
   email: 'str',
   url: 'str',
@@ -76,7 +77,7 @@ const DECIMAL_TYPES = new Set(['decimal', 'money']);
 const UUID_TYPES = new Set(['uuid']);
 
 /** Types that need date/datetime import from datetime module */
-const DATETIME_TYPES = new Set(['date', 'datetime']);
+const DATETIME_TYPES = new Set(['date', 'datetime', 'timestamp']);
 
 // ============================================================================
 // Helper types for tracking imports

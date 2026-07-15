@@ -195,8 +195,11 @@ forensics: Appendix D in
 - [ ] **Appendix E language-design backlog** (recorded, never scheduled):
       `map<K,V>` two-param form, retry/rateLimit field-name ergonomics,
       reserved-word ergonomics, command-body policy clause, `.length` vs
-      `length()`, no `timestamp` type (note: zod now accepts `timestamp` as a
-      datetime alias; language/spec still use `datetime`).
+      `length()`.
+      ~~no `timestamp` type (note: zod now accepts `timestamp` as a
+      datetime alias; language/spec still use `datetime`).~~
+      **Done (2026-07-15):** `timestamp` is a language/runtime alias of
+      `datetime` (IR preserves spelling; `E_TYPE_DATETIME`).
 
 ## Distribution
 

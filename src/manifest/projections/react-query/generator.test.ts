@@ -171,7 +171,7 @@ describe('ReactQueryProjection', () => {
       const code = firstCode(projection.generate(result.ir!, { surface: 'react-query.hooks' }));
       expect(code).toContain('id: string;');
       expect(code).toContain('metadata: unknown;');
-      expect(code).toContain('createdAt: number;');
+      expect(code).toContain('createdAt: Date;');
       expect(code).toContain('content: Uint8Array;');
     });
 

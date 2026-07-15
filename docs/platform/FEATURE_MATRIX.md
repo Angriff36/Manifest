@@ -2,10 +2,10 @@
 title: Manifest Feature Matrix
 created: 2026-02-28
 updated: 2026-07-15
-source_of_truth: true
-source_of_truth_for: 'Whether a Manifest-owned feature is complete (done vs open) — language, runtime, projections, SDK/CLI'
+source_of_truth: false
+source_of_truth_for: none — canonical completion status lives in docs/internal/COMPLIANCE_MATRIX.md
 scope: Manifest-owned feature completion only — language/syntax, compiler/AST/IR, runtime semantics, projections, analysis/verification APIs, stable public SDK contracts
-authority: Binding — agents and humans MUST treat this file as the source of truth for whether a Manifest-owned feature is complete
+authority: Non-binding mirror — docs/internal/COMPLIANCE_MATRIX.md is the sole completion source of truth
 must_reconcile_to:
   - docs/spec/ir/ir-v1.schema.json
   - docs/spec/semantics.md
@@ -21,11 +21,13 @@ RYAN_APPROVED MESSAGE: If it doesnt have my mark next to it, its NOT out of scop
 
 # Manifest Feature Matrix
 
-~~Former path/title: `docs/internal/COMPLIANCE_MATRIX.md` / “Compliance Matrix”.~~  
-**Rename (2026-07-15):** Tier-1 SoT at `docs/platform/FEATURE_MATRIX.md` — format and proof protocol unchanged.
+~~Earlier claim (2026-07-15): this file replaced `docs/internal/COMPLIANCE_MATRIX.md` as the Tier-1 source of truth.~~
+**Correction (2026-07-15):** This file is a non-binding working mirror. [`docs/internal/COMPLIANCE_MATRIX.md`](../internal/COMPLIANCE_MATRIX.md) remains the sole source of truth for Manifest-owned feature completion.
 
-**Authority:** Binding for **Manifest-owned** feature-completion claims.  
-**Enforced by:** `AGENTS.md` / `CLAUDE.md` / `docs/platform/DOCUMENTATION_GOVERNANCE.md` (`@RYAN_APPROVED 2026-07-15`).
+> **NOT THE SOURCE OF TRUTH.** Statuses here are informational copies only. A feature counts as `FULLY_IMPLEMENTED` only when the canonical compliance matrix records a hand-verified end-to-end compile and tests with exact filenames, inclusive line ranges, and the proving git commit SHA.
+
+**Authority:** Non-binding mirror for navigation and working notes.
+**Canonical authority:** `docs/internal/COMPLIANCE_MATRIX.md`, enforced by `AGENTS.md` / `CLAUDE.md` / `docs/internal/DOCUMENTATION_GOVERNANCE.md` (`@RYAN_APPROVED 2026-07-15`).
 
 **Ownership boundary (canonical):** [`docs/internal/contracts/manifest-builder-boundary.md`](../internal/contracts/manifest-builder-boundary.md)
 
@@ -45,7 +47,7 @@ Builder consumption / end-to-end proof lives in Builder’s matrix:
 
 | Status                | Meaning                                                                          |
 | --------------------- | -------------------------------------------------------------------------------- |
-| `FULLY_IMPLEMENTED`   | Manifest end-to-end + tests; **requires** filename + line range + git commit SHA |
+| `FULLY_IMPLEMENTED`   | Mirrored only from the canonical matrix after hand-verified end-to-end compile + tests with exact filename, inclusive line range, and git commit SHA |
 | `PARTIAL`             | Present but incomplete across Manifest consumers/layers                          |
 | `DIAGNOSTIC_ONLY`     | Loud unsupported path; no full enforcement                                       |
 | `REJECTED_LOUD`       | Compile/schema rejects until designed                                            |
@@ -53,7 +55,7 @@ Builder consumption / end-to-end proof lives in Builder’s matrix:
 | `OUT_OF_SCOPE`        | Not a Manifest-core deliverable (often Builder-owned)                            |
 | `CLAIMED_NEEDS_PROOF` | Exists in inventory/fixtures but **no** commit proof yet — **not** “done”        |
 
-Update this matrix first when closing Manifest work; then reconcile `docs/TODO.md` and `docs/platform/CONFIRMED-FEATURES.md`.
+Update `docs/internal/COMPLIANCE_MATRIX.md` first when closing Manifest work; then reconcile this mirror, `docs/TODO.md`, and `docs/platform/CONFIRMED-FEATURES.md`.
 
 ## Integration status (Manifest × Builder)
 
@@ -120,6 +122,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | FEATURE-LIST → registry inventory (M12)            | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts:1-301` @ `e0ffb716ffc627fdfe7bdb8df8ea6882be3dff66`; `src/manifest/feature-list-generator.test.ts:1-52` @ same; `package.json` `docs:feature-list` / `docs:check:feature-list`; generated `docs/FEATURE-LIST.md` |
 | [x]    | Convex realtime/cache PARTIAL reclass              | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/capabilities.ts` @ `03a019efbeddbf2bc177b745957de81c5a9384a1` (`CONVEX_PARTIAL_REALTIME` / `CONVEX_PARTIAL_COMPUTED_CACHE`); `semantics.test.ts` @ same; `CAPABILITIES.md` |
 | [x]    | Park unpublished sub-packages (mcp/lsp/stdlib/vscode) | FULLY_IMPLEMENTED  | `packages/mcp-server/package.json` (+ lsp/stdlib/vscode) `"private": true` @ `500f14712174bee2c989c869980ced8fd1397505`; `src/manifest/parked-packages.test.ts:1-28` @ same; `docs/reference/packages-and-distribution.md` |
+| [x]    | Language type `timestamp` (= `datetime` alias)     | FULLY_IMPLEMENTED     | `src/manifest/date-time.ts:12-18`; `runtime-engine.ts:2676-2694`; `runtime-datetime-validation.test.ts`; `projections/shared/typescript-types.ts:21-24`; semantics § Date/Time — SHA pending proof commit |
 
 ---
 
@@ -184,7 +187,8 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [ ]    | Appendix E: retry/rateLimit field-name ergonomics                                                                    | NOT_IMPLEMENTED               | backlog                                                                      |
 | [ ]    | Appendix E: command-body policy clause                                                                               | NOT_IMPLEMENTED               | backlog                                                                      |
 | [ ]    | Appendix E: `.length` vs `length()`                                                                                  | NOT_IMPLEMENTED               | backlog                                                                      |
-| [ ]    | Language type `timestamp` (vs `datetime`)                                                                            | NOT_IMPLEMENTED               | zod alias only                                                               |
+
+~~Language type `timestamp` (vs `datetime`) — NOT_IMPLEMENTED / zod alias only~~ → **FULLY_IMPLEMENTED** §1 (2026-07-15).
 
 ---
 
@@ -343,7 +347,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 
 ## 8. Open gaps / phantoms (checklist mirror)
 
-Keep in sync with `docs/TODO.md`. Matrix wins disputes.
+Keep in sync with `docs/TODO.md`. The canonical `docs/internal/COMPLIANCE_MATRIX.md` wins disputes.
 
 | Status | Gap                                                                    | Implementation Status     |
 | ------ | ---------------------------------------------------------------------- | ------------------------- |

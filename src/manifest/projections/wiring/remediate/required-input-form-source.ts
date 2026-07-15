@@ -82,7 +82,8 @@ export function collectFormDataSources(
   if (
     param.constraints.dateLike ||
     param.irTypeName === 'date' ||
-    param.irTypeName === 'datetime'
+    param.irTypeName === 'datetime' ||
+    param.irTypeName === 'timestamp'
   ) {
     const converted = findFormDateConversion(content, name);
     if (converted) {
