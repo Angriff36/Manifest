@@ -449,8 +449,11 @@
       "items": { "$ref": "#/definitions/PluginDeclaration" }
     },
     "naming": {
-      "$ref": "#/definitions/NamingConvention",
-      "description": "Global identifier-casing convention inherited by projections that map IR names to physical database names (currently Prisma). A per-projection `projections.<name>.options.naming` overrides it."
+      "description": "Identifier naming policy. Legacy: 'snake_case' or { table, column, pluralizeTables } (physical projection convention only; normalization off). Expanded: { normalization, entities, fields, … } — see NamingNormalizationConfig.",
+      "oneOf": [
+        { "$ref": "#/definitions/NamingConvention" },
+        { "$ref": "#/definitions/NamingNormalizationConfig" }
+      ]
     }
   },
   "definitions": {
@@ -1304,6 +1307,119 @@
           }
         }
       ]
+    },
+    "NamingRuleSeverity": {
+      "type": "string",
+      "enum": ["off", "warn", "error", "fix"],
+      "description": "off=ignore; warn=keep source name + warn; error=fail compile; fix=normalize generated output (never rewrites source files)."
+    },
+    "NamingCasing": {
+      "type": "string",
+      "enum": ["preserve", "camel", "pascal", "snake", "kebab", "upper", "lower"]
+    },
+    "NamingCategoryRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "casing": { "$ref": "#/definitions/NamingCasing" },
+        "mismatch": { "$ref": "#/definitions/NamingRuleSeverity" }
+      }
+    },
+    "NamingNormalizationConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Expanded naming policy. normalization defaults to false (backward compatible).",
+      "properties": {
+        "normalization": {
+          "type": "boolean",
+          "default": false,
+          "description": "Master switch. false preserves current verbatim IR spelling."
+        },
+        "convention": {
+          "$ref": "#/definitions/NamingConvention",
+          "description": "Physical projection convention (former top-level naming value)."
+        },
+        "entities": { "$ref": "#/definitions/NamingCategoryRule" },
+        "fields": { "$ref": "#/definitions/NamingCategoryRule" },
+        "relationships": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "casing": { "$ref": "#/definitions/NamingCasing" },
+            "mismatch": { "$ref": "#/definitions/NamingRuleSeverity" },
+            "idSuffix": { "type": "string", "default": "Id" }
+          }
+        },
+        "commands": { "$ref": "#/definitions/NamingCategoryRule" },
+        "events": { "$ref": "#/definitions/NamingCategoryRule" },
+        "collections": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "casing": { "$ref": "#/definitions/NamingCasing" },
+            "mismatch": { "$ref": "#/definitions/NamingRuleSeverity" },
+            "pluralization": { "type": "string", "enum": ["preserve", "automatic", "explicit"] }
+          }
+        },
+        "tables": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "casing": { "$ref": "#/definitions/NamingCasing" },
+            "mismatch": { "$ref": "#/definitions/NamingRuleSeverity" },
+            "pluralization": { "type": "string", "enum": ["preserve", "automatic", "explicit"] }
+          }
+        },
+        "separators": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "normalize": {
+              "type": "array",
+              "items": { "type": "string", "enum": ["underscore", "hyphen", "whitespace"] }
+            }
+          }
+        },
+        "collisions": { "type": "string", "enum": ["off", "warn", "error"] },
+        "conflictingDefinitions": { "type": "string", "enum": ["off", "warn", "error"] },
+        "ambiguousWordBoundaries": { "$ref": "#/definitions/NamingRuleSeverity" },
+        "storageNameChange": { "type": "string", "enum": ["off", "warn", "error"] },
+        "irregularPlurals": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Canonical singular → plural form for generated collection/table names only."
+        },
+        "aliases": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Semantic aliases (writer → author). Not guessed automatically."
+        },
+        "projections": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Projection-only legacy storage remaps; Manifest canonical names unchanged.",
+          "properties": {
+            "convex": { "$ref": "#/definitions/NamingProjectionStorageMappings" },
+            "prisma": { "$ref": "#/definitions/NamingProjectionStorageMappings" }
+          }
+        }
+      }
+    },
+    "NamingProjectionStorageMappings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tables": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Canonical entity name → deployed table name."
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Entity.field or Entity.relationship → deployed column name."
+        }
+      }
     }
   }
 }

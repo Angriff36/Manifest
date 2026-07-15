@@ -1,7 +1,13 @@
-import { Parser } from './parser.js';
-import { IRCompiler, computeIRHash } from './ir-compiler.js';
-import { resolveModuleGraph, ResolverHost } from './module-resolver.js';
-import { checkReactionCompleteness } from './reaction-completeness.js';
+import {
+  collectCanonicalDeclarations,
+  canonicalizeProgramNames,
+} from './canonicalize-program.js';
+import { CanonicalNameRegistry } from './canonical-names.js';
+import {
+  resolveNamingConfig,
+  type ManifestNamingInput,
+  type ResolvedNamingConfig,
+} from './naming-config.js';
 import type { EntityIndex } from './entity-composition.js';
 import {
   IR,
@@ -23,7 +29,11 @@ import {
   IRWebhook,
   IRSchedule,
 } from './ir';
-import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
+import { COMPILER_VERSION, SCHEMA_VERSION } from './version';
+import { Parser } from './parser';
+import { IRCompiler, computeIRHash } from './ir-compiler';
+import { resolveModuleGraph, ResolverHost } from './module-resolver';
+import { checkReactionCompleteness } from './reaction-completeness';
 
 export interface CompileProjectOptions {
   /** Absolute paths of entry .manifest files */
@@ -34,6 +44,8 @@ export interface CompileProjectOptions {
   useCache?: boolean;
   /** Base path for computing relative source paths in provenance */
   basePath?: string;
+  /** Naming policy (raw or resolved). Default: normalization off. */
+  naming?: ManifestNamingInput | ResolvedNamingConfig;
 }
 
 export interface MultiCompileResult {
@@ -77,17 +89,32 @@ export async function compileProjectToIR(
   }
 
   // Phase 1.5: Build a project-wide composition index so that an entity can
-  // `extends` or `mixin` a base declared in a different file. We parse every file
-  // once and collect all entity AST nodes (root + module level) by name. The
-  // per-file compile consults this only for parent/mixin resolution; each file
-  // still emits exactly its own entities, and cross-file duplicates are caught in
-  // Phase 3 below.
-  const compositionContext: EntityIndex = {};
+  // `extends` or `mixin` a base declared in a different file. When naming
+  // normalization is enabled, fold spellings first so cross-file aliases match.
+  const namingPolicy =
+    options.naming && typeof options.naming === 'object' && 'entities' in options.naming
+      ? (options.naming as ResolvedNamingConfig)
+      : resolveNamingConfig(options.naming as ManifestNamingInput | undefined);
+
+  const parsedPrograms: Array<{ absPath: string; program: ReturnType<Parser['parse']>['program'] }> =
+    [];
   for (const file of resolution.order) {
     const { program } = parser.parse(file.source);
+    parsedPrograms.push({ absPath: file.absPath, program });
+  }
+
+  const nameRegistry = namingPolicy.normalization
+    ? collectCanonicalDeclarations(
+        parsedPrograms.map((p) => p.program),
+        new CanonicalNameRegistry(namingPolicy),
+      )
+    : undefined;
+  const compositionContext: EntityIndex = {};
+  for (const { program } of parsedPrograms) {
+    if (nameRegistry) {
+      canonicalizeProgramNames(program, nameRegistry, namingPolicy);
+    }
     for (const entity of program.entities) {
-      // First declaration wins for the lookup index; genuine cross-file duplicates
-      // are reported as errors in Phase 3.
       if (!compositionContext[entity.name]) compositionContext[entity.name] = entity;
     }
     for (const mod of program.modules) {
@@ -115,6 +142,8 @@ export async function compileProjectToIR(
       useCache,
       sourcePath: file.absPath,
       compositionContext,
+      nameRegistry,
+      naming: namingPolicy,
       // Reaction completeness is whole-program (a reaction can listen for an
       // event emitted by a command in another file). Defer it to the merged-IR
       // pass below so cross-file reactions aren't falsely flagged.

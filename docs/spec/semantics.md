@@ -1,6 +1,6 @@
 # Manifest IR v1 Semantics
 
-Last updated: 2026-05-20
+Last updated: 2026-07-15
 Status: Active
 Authority: Binding
 Enforced by: src/manifest/conformance/**, npm test
@@ -363,12 +363,45 @@ In this example:
 - The IR for `complete` will include the inherited default policy name in its `policies` array
 - The IR for `reassign` will include the same inherited default policy name in its `policies` array
 
+## Identifier canonicalization (house spelling)
+
+~~Manifest owns final generated names. Agents MAY write casing and separator
+variants; the compiler MUST fold them to one house form before IR emission so
+every projection sees the same spelling.~~
+
+**2026-07-15:** Identifier normalization is **opt-in** via `naming.normalization`
+in `manifest.config.yaml` / `build.naming` (default **`false`** — verbatim IR
+spelling, backward compatible). When enabled, agents MAY write casing and
+separator variants; the compiler folds them per configured rules so every
+projection sees one spelling. Source files are never rewritten.
+
+- Master switch: `naming.normalization` (`false` by default).
+- Per-category `mismatch`: `off` | `warn` | `error` | `fix` (fix normalizes
+  generated output only).
+- Identity key: lowercase alphanumeric only (`eventdate` ≡ `EventDate` ≡
+  `event_date`).
+- When multiple spellings share a key, the spelling with the clearest word
+  boundaries wins (`EventDate` beats `EVENTDATE`). Flat spellings with no
+  proven split follow `naming.ambiguousWordBoundaries` (default `warn`).
+- Semantic aliases (`writer` → `author`) are config-only; never guessed.
+- Projection-only legacy storage remaps live under `naming.projections.<name>`
+  and do not change Manifest canonical names.
+- Full key reference: `docs/spec/config/manifest.config.md` § naming.
+
+Applies across all loaded `.manifest` source files in a compile unit when
+normalization is enabled.
+
+---
+
 ## Commands
 
 - The IR root `commands` array is the authoritative command definition list.
 - `IREntity.commands` is a list of command names that reference definitions in the root `commands` array.
 - A command referenced by an entity MUST have its `entity` field equal to that entity's name.
-- Command name matching is case-sensitive.
+- ~~Command name matching is case-sensitive.~~
+- Command name matching uses Manifest house spelling after identifier
+  canonicalization (casing and separator variants of the same name are one
+  command). Exact matching applies to the canonical form.
 - Command names in the root `commands` array MUST be unique.
 - During compilation, the compiler MUST reject duplicate command intent within the same entity before IR emission. This includes:
   - exact duplicate `entity.command` names across all loaded manifest source files;

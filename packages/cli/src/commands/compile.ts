@@ -272,12 +272,16 @@ async function compileMerged(source: string | undefined, options: CompileOptions
     const host = createFsHost();
     const basePath = process.cwd();
 
+    const { loadConfig } = await import('../utils/config.js');
+    const cfg = await loadConfig(basePath);
+
     const mergeSpinner = ora('Compiling and merging...').start();
     const result = await compileProjectToIR({
       entries,
       host,
       useCache: true,
       basePath,
+      naming: cfg?.naming,
     });
 
     // Print diagnostics

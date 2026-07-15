@@ -3,6 +3,16 @@ import { expandEntityComposition, type EntityIndex } from './entity-composition.
 import { checkDomainCompleteness } from './domain-completeness.js';
 import { checkReactionCompleteness } from './reaction-completeness.js';
 import { parseDurationToMs, isValidCronExpression } from './schedule-utils.js';
+import { CanonicalNameRegistry } from './canonical-names.js';
+import {
+  collectCanonicalDeclarations,
+  canonicalizeProgramNames,
+} from './canonicalize-program.js';
+import {
+  resolveNamingConfig,
+  type ManifestNamingInput,
+  type ResolvedNamingConfig,
+} from './naming-config.js';
 import {
   ManifestProgram,
   EntityNode,
@@ -337,16 +347,21 @@ export class IRCompiler {
       sourcePath?: string;
       compositionContext?: EntityIndex;
       skipReactionCompleteness?: boolean;
+      /** Project-wide spelling registry (multi-file). When set, cache is bypassed. */
+      nameRegistry?: CanonicalNameRegistry;
+      /** Resolved or raw naming config. Default: normalization off. */
+      naming?: ManifestNamingInput | ResolvedNamingConfig;
     },
   ): Promise<CompileToIRResult> {
     this.diagnostics = [];
 
     // vNext: Check cache before compilation.
     // The content-hash cache keys on THIS file's source only. When a
-    // compositionContext is supplied (multi-file build), the compiled IR also
-    // depends on entities declared in OTHER files, so caching by this file's hash
-    // alone would be incorrect — bypass the cache entirely in that mode.
-    const useCache = (options?.useCache ?? true) && !options?.compositionContext;
+    // compositionContext or nameRegistry is supplied (multi-file build), the
+    // compiled IR also depends on entities declared in OTHER files, so caching
+    // by this file's hash alone would be incorrect — bypass the cache.
+    const useCache =
+      (options?.useCache ?? true) && !options?.compositionContext && !options?.nameRegistry;
     if (useCache) {
       const contentHash = await computeContentHash(source);
       const cached = this.cache.get(contentHash);
@@ -371,12 +386,19 @@ export class IRCompiler {
       return { ir: null, diagnostics: this.diagnostics };
     }
 
+    const namingPolicy =
+      options?.naming && typeof options.naming === 'object' && 'entities' in options.naming
+        ? (options.naming as ResolvedNamingConfig)
+        : resolveNamingConfig(options?.naming as ManifestNamingInput | undefined);
+
     const ir = await this.transformProgram(
       program,
       source,
       options?.sourcePath,
       options?.compositionContext,
       options?.skipReactionCompleteness,
+      options?.nameRegistry,
+      namingPolicy,
     );
 
     // Check for semantic errors emitted during transformation (e.g., duplicate constraint codes)
@@ -399,7 +421,18 @@ export class IRCompiler {
     sourcePath?: string,
     compositionContext?: EntityIndex,
     skipReactionCompleteness?: boolean,
+    nameRegistry?: CanonicalNameRegistry,
+    namingPolicy: ResolvedNamingConfig = resolveNamingConfig(undefined),
   ): Promise<IR> {
+    // Optional identifier normalization (off by default for back-compat).
+    if (namingPolicy.normalization) {
+      const registry = nameRegistry ?? collectCanonicalDeclarations([program], new CanonicalNameRegistry(namingPolicy));
+      registry.setPolicy(namingPolicy);
+      for (const d of canonicalizeProgramNames(program, registry, namingPolicy)) {
+        this.emitDiagnostic(d.severity, d.message);
+      }
+    }
+
     // Expand entity composition (extends, mixin, policies). The optional
     // compositionContext lets cross-file `extends`/`mixin` bases resolve in
     // multi-file builds.
@@ -2061,7 +2094,11 @@ export class IRCompiler {
 
 export async function compileToIR(
   source: string,
-  options?: { useCache?: boolean; sourcePath?: string },
+  options?: {
+    useCache?: boolean;
+    sourcePath?: string;
+    naming?: ManifestNamingInput | ResolvedNamingConfig;
+  },
 ): Promise<CompileToIRResult> {
   const compiler = new IRCompiler();
   return compiler.compileToIR(source, options);

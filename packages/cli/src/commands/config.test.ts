@@ -159,6 +159,7 @@ describe('manifest config inspect (print-effective)', () => {
 
     expect(parsed.configPath).toBeNull();
     expect(parsed.build.src).toBe('**/*.manifest');
+    expect(parsed.naming.normalization).toBe(false);
     expect(parsed.projections.nextjs.options.authProvider).toBe('none');
     expect(parsed.projections.nextjs.options.dispatcher.executionMode).toBe('inline');
   });

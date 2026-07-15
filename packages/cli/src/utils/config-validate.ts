@@ -18,6 +18,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv, { type ErrorObject } from 'ajv';
+import { validateNamingConfig } from '@angriff36/manifest/config';
 
 import type { ManifestConfig } from './config.js';
 
@@ -122,13 +123,18 @@ export async function validateConfig(
   const ajv = new Ajv({ allErrors: true, strict: false, useDefaults: false });
   const validate = ajv.compile(schema);
   const valid = validate(config);
-  if (valid) {
-    return { ok: true, diagnostics: [] };
+  const diagnostics = valid ? [] : (validate.errors ?? []).map(toDiagnostic);
+
+  // Semantic naming checks beyond JSON Schema (alias cycles, invalid casing combos).
+  for (const d of validateNamingConfig(config.naming)) {
+    diagnostics.push({
+      path: 'naming',
+      message: d.message,
+    });
   }
-  return {
-    ok: false,
-    diagnostics: (validate.errors ?? []).map(toDiagnostic),
-  };
+
+  const ok = diagnostics.length === 0;
+  return { ok, diagnostics };
 }
 
 /**

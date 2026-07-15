@@ -29,8 +29,37 @@
  */
 
 import type { NamingConventionInput } from './projections/shared/naming.js';
+import {
+  resolveNamingConfig,
+  extractNamingConvention,
+  type ManifestNamingInput,
+  type ResolvedNamingConfig,
+} from './naming-config.js';
 
 export type { NamingConventionInput };
+export {
+  resolveNamingConfig,
+  extractNamingConvention,
+  validateNamingConfig,
+  type ManifestNamingInput,
+  type ResolvedNamingConfig,
+  type NamingRuleSeverity,
+  type NamingCasing,
+  type NamingNormalizationConfig,
+} from './naming-config.js';
+export {
+  detectStorageNameChanges,
+  type PriorStorageSnapshot,
+  type ProposedStorageNames,
+} from './naming-storage-guard.js';
+export {
+  nameKey,
+  canonicalEntityName,
+  canonicalFieldName,
+  canonicalTableName,
+  relationshipIdField,
+  CanonicalNameRegistry,
+} from './canonical-names.js';
 
 /** A single environment-variable declaration used by `manifest preflight`. */
 export interface ManifestEnvVarDefinition {
@@ -178,17 +207,15 @@ export interface ManifestBuildConfig {
   /** Third-party plugin declarations loaded by the CLI. */
   plugins?: ManifestPluginDeclaration[];
   /**
-   * Global identifier-casing convention inherited by projections that map IR
-   * names to physical database names (currently the Prisma projection). Opt-in;
-   * when omitted, projections emit IR names verbatim.
+   * Identifier naming policy.
    *
-   * A per-projection `projections.<name>.options.naming` always overrides this
-   * global default. See {@link resolveProjectionOptions}.
+   * Legacy (still supported): `'snake_case'` or `{ table, column, pluralizeTables }`
+   * — physical projection convention only; normalization stays off.
    *
-   * Example:
-   *   naming: 'snake_case'   # createdAt → @map("created_at"), Widget → @@map("widgets")
+   * Expanded: `{ normalization: true, entities: { casing: 'pascal', mismatch: 'fix' }, … }`
+   * — see `docs/spec/config/manifest.config.md` § naming.
    */
-  naming?: NamingConventionInput;
+  naming?: ManifestNamingInput;
 }
 
 /** User context resolved from authentication. */
@@ -265,8 +292,20 @@ export function resolveProjectionOptions(
   projectionName: string,
 ): Record<string, unknown> {
   const projectionOptions = { ...(build?.projections?.[projectionName]?.options ?? {}) };
-  if (build?.naming !== undefined && projectionOptions.naming === undefined) {
-    projectionOptions.naming = build.naming;
+  const convention = extractNamingConvention(build?.naming);
+  if (convention !== undefined && projectionOptions.naming === undefined) {
+    projectionOptions.naming = convention;
+  }
+  // Surface resolved normalization policy for projections that honor legacy
+  // storage mappings (e.g. Convex table/field remaps under naming.projections).
+  const resolved = resolveNamingConfig(build?.naming);
+  if (resolved.normalization || Object.keys(resolved.projections).length > 0) {
+    projectionOptions.__manifestNaming = resolved;
   }
   return projectionOptions;
+}
+
+/** Public helper for Builder / `manifest config inspect`. */
+export function resolveBuildNaming(build: ManifestBuildConfig | undefined): ResolvedNamingConfig {
+  return resolveNamingConfig(build?.naming);
 }

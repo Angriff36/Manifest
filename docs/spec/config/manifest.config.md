@@ -160,6 +160,7 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 | `env`          | `{}`              | object | Environment-variable declarations for `manifest preflight`. Grouped under `stores`, `auth`, `adapters`, `custom`.                                         |
 | `hooks`        | (see below)       | object | Git pre-commit hook settings consumed by `manifest install-hooks`.                                                                                        |
 | `plugins`      | `[]`              | array  | Third-party plugin declarations loaded by the CLI; inspected via `manifest plugins`.                                                                      |
+| `naming`       | (off)             | mixed  | Identifier naming policy. Legacy physical convention and/or opt-in normalization — see **`naming`**.                                                    |
 
 ---
 
@@ -204,6 +205,62 @@ plugins:
 | `module`  | yes      | —       | string  | npm package name or relative file path to the plugin module. |
 | `options` | no       | —       | object  | Plugin-specific options passed to the plugin at load time.   |
 | `enabled` | no       | `true`  | boolean | Whether the plugin is active.                                |
+
+---
+
+## `naming`
+
+Controls identifier spelling. **Normalization is off by default** so existing
+projects keep verbatim IR names.
+
+### Legacy (unchanged)
+
+```yaml
+naming: snake_case
+# or
+naming:
+  table: snake_case
+  column: snake_case
+  pluralizeTables: true
+```
+
+Inherited by projections as a physical `@map` / table convention only.
+
+### Expanded (opt-in normalization)
+
+```yaml
+naming:
+  normalization: true # master switch (default false)
+  convention: snake_case # optional physical convention for projections
+  entities: { casing: pascal, mismatch: fix }
+  fields: { casing: camel, mismatch: fix }
+  relationships: { casing: camel, idSuffix: Id, mismatch: fix }
+  commands: { casing: camel, mismatch: fix }
+  events: { casing: pascal, mismatch: fix }
+  collections: { casing: camel, pluralization: automatic, mismatch: fix }
+  tables: { casing: camel, pluralization: automatic, mismatch: fix }
+  ambiguousWordBoundaries: warn
+  aliases:
+    writer: author
+  irregularPlurals:
+    Person: people
+  projections:
+    convex:
+      tables:
+        CateringEvent: events
+      fields:
+        Article.author: writerId
+```
+
+| `mismatch` | Behavior |
+| ---------- | -------- |
+| `off` | Ignore |
+| `warn` | Keep source spelling; warn |
+| `error` | Fail compile |
+| `fix` | Normalize generated output only (never rewrites `.manifest` sources) |
+
+`resolveNamingConfig` / `resolveBuildNaming` from `@angriff36/manifest/config`
+expose the resolved policy for Builder and tooling.
 
 ---
 

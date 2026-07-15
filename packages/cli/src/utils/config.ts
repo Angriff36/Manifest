@@ -44,11 +44,8 @@ export interface ManifestConfig {
   >;
 
   /**
-   * Optional: Global identifier-casing convention inherited by projections
-   * that map IR names to physical database names (currently Prisma). A
-   * per-projection `projections.<name>.options.naming` overrides it.
-   * String shorthand `'snake_case'` or an object form
-   * `{ table, column, pluralizeTables }`.
+   * Identifier naming policy. Legacy: `'snake_case'` / `{ table, column,
+   * pluralizeTables }`. Expanded: `{ normalization?: boolean, entities?, … }`.
    */
   naming?:
     | 'snake_case'
@@ -56,7 +53,9 @@ export interface ManifestConfig {
         table?: 'snake_case' | 'camelCase' | 'PascalCase' | 'preserve';
         column?: 'snake_case' | 'camelCase' | 'preserve';
         pluralizeTables?: boolean;
-      };
+      }
+    | Record<string, unknown>;
+
 
   /** Environment variable mapping for store/auth/adapter configuration */
   env?: EnvMapping;

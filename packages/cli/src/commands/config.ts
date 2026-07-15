@@ -16,6 +16,7 @@
 import chalk from 'chalk';
 import { getActiveConfigPath, loadAllConfigs, type ManifestConfig } from '../utils/config.js';
 import { validateConfig, formatDiagnostic } from '../utils/config-validate.js';
+import { resolveBuildNaming } from '@angriff36/manifest/config';
 
 interface ConfigCommandOptions {
   json?: boolean;
@@ -162,6 +163,8 @@ interface EffectiveConfig {
     output: string;
     prismaSchema?: string;
   };
+  /** Resolved naming policy (normalization off by default). */
+  naming: Record<string, unknown>;
   projections: {
     nextjs: {
       output: string;
@@ -210,6 +213,7 @@ export async function configInspectCommand(options: ConfigCommandOptions = {}): 
       output: build.output ?? 'ir/',
       ...(build.prismaSchema ? { prismaSchema: build.prismaSchema } : {}),
     },
+    naming: resolveBuildNaming(build) as unknown as Record<string, unknown>,
     projections: {
       nextjs: {
         output: build.projections?.nextjs?.output ?? 'generated/',

@@ -231,14 +231,36 @@ export function normalizeOptions(
   >
 > &
   Pick<ConvexProjectionOptions, 'naming' | 'tenantIdProperty' | 'authContextImport'> {
-  const input = (raw ?? {}) as Partial<ConvexProjectionOptions>;
+  const input = (raw ?? {}) as Partial<ConvexProjectionOptions> & {
+    __manifestNaming?: {
+      projections?: { convex?: { tables?: Record<string, string>; fields?: Record<string, string> } };
+    };
+  };
+  const tableMappings = { ...(input.tableMappings ?? {}) };
+  const references = { ...(input.references ?? {}) };
+  const legacy = input.__manifestNaming?.projections?.convex;
+  if (legacy?.tables) {
+    for (const [entity, table] of Object.entries(legacy.tables)) {
+      if (tableMappings[entity] === undefined) tableMappings[entity] = table;
+    }
+  }
+  if (legacy?.fields) {
+    for (const [key, col] of Object.entries(legacy.fields)) {
+      const dot = key.indexOf('.');
+      if (dot <= 0) continue;
+      const entity = key.slice(0, dot);
+      const rel = key.slice(dot + 1);
+      if (!references[entity]) references[entity] = {};
+      if (references[entity]![rel] === undefined) references[entity]![rel] = col;
+    }
+  }
   return {
     output: input.output ?? CONVEX_PROJECTION_DEFAULTS.output,
     referenceMode: input.referenceMode ?? CONVEX_PROJECTION_DEFAULTS.referenceMode,
-    tableMappings: input.tableMappings ?? {},
+    tableMappings,
     typeMappings: input.typeMappings ?? {},
     indexes: input.indexes ?? {},
-    references: input.references ?? {},
+    references,
     emitEventsTable: input.emitEventsTable ?? CONVEX_PROJECTION_DEFAULTS.emitEventsTable,
     eventsTable: input.eventsTable ?? CONVEX_PROJECTION_DEFAULTS.eventsTable,
     idempotencyTable: input.idempotencyTable ?? CONVEX_PROJECTION_DEFAULTS.idempotencyTable,
@@ -251,7 +273,6 @@ export function normalizeOptions(
     computedProperties: input.computedProperties ?? CONVEX_PROJECTION_DEFAULTS.computedProperties,
     tenantIdProperty: input.tenantIdProperty,
     authContextImport: input.authContextImport,
-    // Absent → Convex-idiomatic default applied by the generator.
     naming: input.naming,
   };
 }
