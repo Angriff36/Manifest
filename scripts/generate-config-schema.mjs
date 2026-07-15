@@ -36,7 +36,7 @@
  * order for a stable diff regardless of registry declaration order.
  *
  * Run after adding or renaming a projection:
- *   node scripts/generate-config-schema.mjs
+ *   node testing/scripts/generate-config-schema.mjs
  *
  * The drift test (src/manifest/config-schema-registry.test.ts) fails CI if the
  * committed schema falls out of sync with the registry.
@@ -83,21 +83,71 @@ export function genericProjectionEntry(name) {
  * (source of the verbatim detailed $ref entries) and the registered projection
  * names. Pure — the drift test calls this with the committed schema + registry
  * names and asserts deep-equality with the committed block.
+ *
+ * Always includes Config G5 meta keys `defaults` and `enabled` (not projection
+ * targets). When the committed schema already defines them, those definitions
+ * are preserved; otherwise the canonical meta schemas below are used.
  */
+export const PROJECTION_META_SCHEMAS = {
+  defaults: {
+    type: 'object',
+    additionalProperties: true,
+    description:
+      'Shared options merged under every named projection options bag (per-projection keys win). ' +
+      'Consumed by resolveProjectionOptions / manifest generate --all. Not a projection target.',
+  },
+  enabled: {
+    type: 'array',
+    items: { type: 'string', minLength: 1 },
+    description:
+      'When set, manifest generate --all runs only these projection names (order preserved). ' +
+      'Absent = every declared projection block. Not a projection target.',
+  },
+};
+
 export function buildProjectionsProperties(currentSchema, projectionNames) {
   const existing = currentSchema?.properties?.projections?.properties ?? {};
-  const out = {};
+  // Inline meta schemas here so Vitest/ESM interop cannot drop the exported
+  // PROJECTION_META_SCHEMAS binding when this function is imported alone.
+  const metaSchemas = {
+    defaults: {
+      type: 'object',
+      additionalProperties: true,
+      description:
+        'Shared options merged under every named projection options bag (per-projection keys win). ' +
+        'Consumed by resolveProjectionOptions / manifest generate --all. Not a projection target.',
+    },
+    enabled: {
+      type: 'array',
+      items: { type: 'string', minLength: 1 },
+      description:
+        'When set, manifest generate --all runs only these projection names (order preserved). ' +
+        'Absent = every declared projection block. Not a projection target.',
+    },
+  };
+  const meta = {};
+  for (const metaKey of Object.keys(metaSchemas).sort()) {
+    meta[metaKey] = existing[metaKey] ?? metaSchemas[metaKey];
+  }
+
+  const projections = {};
   for (const name of [...projectionNames].sort()) {
     const current = existing[name];
     // Keep a hand-written detailed sub-schema ($ref) verbatim; generate the
     // generic entry for everything else.
     if (current && typeof current.$ref === 'string' && Object.keys(current).length === 1) {
-      out[name] = current;
+      projections[name] = current;
     } else {
-      out[name] = genericProjectionEntry(name);
+      projections[name] = genericProjectionEntry(name);
     }
   }
-  return out;
+
+  // Alphabetical across meta + projection names for a stable schema diff.
+  return Object.fromEntries(
+    [...Object.keys(meta), ...Object.keys(projections)]
+      .sort()
+      .map((key) => [key, meta[key] ?? projections[key]]),
+  );
 }
 
 // Indentation the hand-authored schema uses inside properties.projections:
@@ -202,7 +252,7 @@ async function main() {
   );
 }
 
-// Only run when invoked directly (node scripts/generate-config-schema.mjs), not
+// Only run when invoked directly (node testing/scripts/generate-config-schema.mjs), not
 // when imported by the drift test.
 const invokedDirectly =
   process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);

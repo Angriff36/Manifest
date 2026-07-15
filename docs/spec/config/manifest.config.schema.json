@@ -25,6 +25,19 @@
       "type": "string",
       "description": "Optional path to a Prisma schema file used for property alignment checks. When omitted, Manifest searches prisma/schema.prisma, schema.prisma, and db/schema.prisma."
     },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Config G2 — CI exit policy for compile/validate. Does not change language diagnostic severities (a block is still a block).",
+      "properties": {
+        "failOn": {
+          "type": "string",
+          "enum": ["block", "warn", "never"],
+          "default": "block",
+          "description": "When to exit non-zero: 'block' = errors only (default); 'warn' = errors or warnings; 'never' = always exit 0 after reporting (report-only)."
+        }
+      }
+    },
     "projections": {
       "type": "object",
       "description": "Per-projection configuration. Each key matches a registered projection name (e.g. 'nextjs', 'routes').",

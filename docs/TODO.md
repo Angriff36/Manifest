@@ -100,8 +100,12 @@ forensics: Appendix D in
       options merged under each target via `resolveProjectionOptions`); schema
       meta keys; evidence in `config.test.ts`, `generate.test.ts`,
       `config-validate.test.ts`.
-- [ ] **Config vNext G2/G10** — `validation.failOn`, drift gates: confirmed
-      unbuilt (`src/manifest/config.ts` still notes them as proposal-only).
+- [x] **Config vNext G2 (`validation.failOn`)** — fixed 2026-07-15: CI exit
+      policy for `compile`/`validate` (`block`/`warn`/`never`); `--fail-on` CLI
+      + `validate --strict` alias; does not change language severities. Rule
+      registries / requireDescriptions remain open.
+- [ ] **Config vNext G10** — drift gates: confirmed unbuilt.
+      ~~Config vNext G2/G10~~
       ~~Config vNext G5/G2/G10~~
 - [x] **`manifest db init`** — fixed 2026-07-15: CLI prints/applies the shipped
       approval/audit/outbox/jobs/idempotency/rate-limit `.sql` schemas

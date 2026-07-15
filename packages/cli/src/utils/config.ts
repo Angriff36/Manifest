@@ -34,6 +34,11 @@ export interface ManifestConfig {
   // Defaults to: prisma/schema.prisma, schema.prisma, or db/schema.prisma
   prismaSchema?: string;
 
+  /** Config G2 — CI exit policy for compile/validate. */
+  validation?: {
+    failOn?: 'block' | 'warn' | 'never';
+  };
+
   // Optional: Projection settings for code generation (plus G5 enabled/defaults)
   projections?: {
     /** When set, `manifest generate --all` runs only these projection names. */

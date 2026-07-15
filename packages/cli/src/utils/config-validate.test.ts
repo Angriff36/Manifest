@@ -360,6 +360,21 @@ describe('validateConfig', () => {
     expect(result.diagnostics.some((d) => d.message.includes('version'))).toBe(true);
   });
 
+  it('accepts validation.failOn (Config G2)', async () => {
+    const result = await validateConfig({
+      validation: { failOn: 'warn' },
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects invalid validation.failOn', async () => {
+    const result = await validateConfig({
+      validation: { failOn: 'error' },
+    } as unknown as ManifestConfig);
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics.some((d) => d.path.includes('failOn'))).toBe(true);
+  });
+
   it('accepts projections.enabled and projections.defaults (Config G5)', async () => {
     const result = await validateConfig({
       projections: {

@@ -28,6 +28,23 @@ interface CompileOptions {
   pretty?: boolean;
   merge?: boolean;
   entry?: string | string[];
+  /** Config G2 / CLI — overrides config `validation.failOn`. */
+  failOn?: string;
+}
+
+async function resolveCompileGate(options: CompileOptions) {
+  const { ValidationGatePolicy, resolveValidationFailOn } = await import(
+    '../utils/validation-gate-policy.js'
+  );
+  let configFailOn: unknown;
+  try {
+    const { loadAllConfigs } = await import('../utils/config.js');
+    const { build } = await loadAllConfigs(process.cwd());
+    configFailOn = build.validation?.failOn;
+  } catch {
+    // no config file — defaults apply
+  }
+  return new ValidationGatePolicy(resolveValidationFailOn(options.failOn, configFailOn));
 }
 
 /**
@@ -293,9 +310,14 @@ async function compileMerged(source: string | undefined, options: CompileOptions
       printDiagnostics(diagnostics);
     }
 
+    const gate = await resolveCompileGate(options);
+
     if (errors.length > 0 || !result.ir) {
       mergeSpinner.fail(`Merge compilation failed with ${errors.length} error(s)`);
-      process.exit(1);
+      if (gate.shouldExitNonZero(errors.length, warnings.length)) {
+        process.exit(1);
+      }
+      return;
     }
 
     // Write merged output
@@ -322,6 +344,10 @@ async function compileMerged(source: string | undefined, options: CompileOptions
     if (warnings.length > 0) {
       console.log(chalk.yellow(`  ${warnings.length} warning(s)`));
     }
+
+    if (gate.shouldExitNonZero(0, warnings.length)) {
+      process.exit(1);
+    }
   } catch (error: unknown) {
     spinner.fail(
       `Merge compilation failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -345,7 +371,7 @@ async function compileMerged(source: string | undefined, options: CompileOptions
  * directory (writes `<output>/merged.ir.json`).
  */
 export async function compileAllFromConfig(
-  options: Pick<CompileOptions, 'diagnostics' | 'pretty'> = {},
+  options: Pick<CompileOptions, 'diagnostics' | 'pretty' | 'failOn'> = {},
 ): Promise<void> {
   const { getConfig } = await import('../utils/config.js');
   const config = await getConfig(process.cwd());
@@ -430,9 +456,15 @@ export async function compileCommand(
       printDiagnostics([...allDiagnostics, ...registryDiagnostics]);
     }
 
+    const gate = await resolveCompileGate(options);
+    const warningCount = allDiagnostics.filter((d) => d.severity === 'warning').length;
+
     if (errorCount > 0 || allErrors.length > 0) {
       spinner.warn(`Compiled 0 file(s), ${errorCount + allErrors.length} failed`);
-      process.exit(1);
+      if (gate.shouldExitNonZero(errorCount + allErrors.length, warningCount)) {
+        process.exit(1);
+      }
+      return;
     }
 
     let successCount = 0;
@@ -445,6 +477,9 @@ export async function compileCommand(
     // Summary
     console.log('');
     spinner.succeed(`Compiled ${successCount} file(s)`);
+    if (gate.shouldExitNonZero(0, warningCount)) {
+      process.exit(1);
+    }
   } catch (error: unknown) {
     spinner.fail(`Compilation failed: ${error instanceof Error ? error.message : String(error)}`);
     console.error(error);

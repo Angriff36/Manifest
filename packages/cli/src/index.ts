@@ -204,10 +204,18 @@ program
     'Compile every source in manifest.config.yaml into one merged IR (config-driven; resolves use/mixin; ignores [source]/-o)',
   )
   .option('--entry <files...>', 'Entry file(s) for merge compilation (auto-detected if omitted)')
+  .option(
+    '--fail-on <policy>',
+    'CI exit policy: block (errors only) | warn (errors or warnings) | never (report-only)',
+  )
   .action(async (source, options = {}) => {
     // --all: merged, config-driven compile — the partner to `generate --all`.
     if (options.all) {
-      await compileAllFromConfig({ diagnostics: options.diagnostics, pretty: options.pretty });
+      await compileAllFromConfig({
+        diagnostics: options.diagnostics,
+        pretty: options.pretty,
+        failOn: options.failOn,
+      });
       return;
     }
     const config = (await getConfig()) ?? {};
@@ -609,7 +617,11 @@ program
   .description('Validate IR against schema')
   .argument('[ir]', 'IR file or glob pattern')
   .option('--schema <path>', 'Schema path (default: docs/spec/ir/ir-v1.schema.json)')
-  .option('--strict', 'Fail on warnings', false)
+  .option('--strict', 'Alias for --fail-on warn (fail the process on warnings)', false)
+  .option(
+    '--fail-on <policy>',
+    'CI exit policy: block (errors only) | warn (errors or warnings) | never (report-only)',
+  )
   .action(validateCommand);
 
 /**

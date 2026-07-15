@@ -21,11 +21,11 @@
  *
  * Scope note: these types describe the config surface that ACTUALLY ships today
  * (see docs/spec/config/manifest.config.md). Config G5 (`projections.enabled` /
- * `projections.defaults`) is modelled and honored by `manifest generate --all`.
+ * `projections.defaults`) and Config G2 (`validation.failOn`) are modelled.
  * Richer vNext sections still proposed only
- * (docs/internal/proposals/config/manifest-config-vnext.md: validation,
- * mergeIntegrity, provenance, runtime, driftGates) are NOT modelled here —
- * they are not implemented. The JSON schema at
+ * (docs/internal/proposals/config/manifest-config-vnext.md: mergeIntegrity,
+ * provenance, runtime, driftGates, and G2 rule registries beyond failOn) are
+ * NOT fully modelled here. The JSON schema at
  * docs/spec/config/manifest.config.schema.json remains the executable contract
  * that `manifest config validate` enforces for the YAML/build config.
  */
@@ -100,6 +100,19 @@ export interface ManifestPluginDeclaration {
   options?: Record<string, unknown>;
   /** Whether the plugin is active. Default: true. */
   enabled?: boolean;
+}
+
+/** Config G2 — CI exit policy (does not alter language severities). */
+export type ManifestValidationFailOn = 'block' | 'warn' | 'never';
+
+export interface ManifestValidationConfig {
+  /**
+   * When compile/validate should exit non-zero after reporting diagnostics.
+   * - `block` (default): errors only
+   * - `warn`: errors or warnings
+   * - `never`: always exit 0 (report-only)
+   */
+  failOn?: ManifestValidationFailOn;
 }
 
 /** Per-projection config block (e.g. nextjs, routes, prisma). */
@@ -257,6 +270,11 @@ export interface ManifestBuildConfig {
   output?: string;
   /** Optional path to a Prisma schema for property-alignment scans. */
   prismaSchema?: string;
+  /**
+   * Config G2 — CI exit policy for compile/validate.
+   * Does not change language diagnostic severities.
+   */
+  validation?: ManifestValidationConfig;
   /**
    * Per-projection config blocks, keyed by projection name, plus optional
    * Config G5 `enabled` / `defaults` meta keys.

@@ -46,6 +46,21 @@ function bundledSchemaPath(): string {
 interface ValidateOptions {
   schema?: string;
   strict: boolean;
+  /** Config G2 / CLI — overrides config `validation.failOn`. */
+  failOn?: string;
+}
+
+/**
+ * Load failOn from manifest.config when CLI did not set it.
+ */
+async function loadConfiguredFailOn(): Promise<unknown> {
+  try {
+    const { loadAllConfigs } = await import('../utils/config.js');
+    const { build } = await loadAllConfigs(process.cwd());
+    return build.validation?.failOn;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -201,12 +216,14 @@ export async function validateCommand(
     // Validate each file
     let validCount = 0;
     let invalidCount = 0;
+    let totalWarnings = 0;
     const allErrors: string[] = [];
 
     for (const irFile of irFiles) {
       const fileSpinner = ora(`Validating ${path.relative(process.cwd(), irFile)}`).start();
 
       const result = await validateIR(irFile, schema, options.strict);
+      totalWarnings += result.warnings.length;
 
       if (result.valid) {
         fileSpinner.succeed(chalk.green(`✓ ${path.relative(process.cwd(), irFile)}`));
@@ -240,6 +257,14 @@ export async function validateCommand(
 
     // Summary
     const summarySpinner = ora('Validation summary').start();
+    const { ValidationGatePolicy, resolveValidationFailOn } = await import(
+      '../utils/validation-gate-policy.js'
+    );
+    const configFailOn = await loadConfiguredFailOn();
+    // --strict is the historical alias for failOn: warn
+    const cliFailOn = options.failOn ?? (options.strict ? 'warn' : undefined);
+    const failOn = resolveValidationFailOn(cliFailOn, configFailOn);
+    const gate = new ValidationGatePolicy(failOn);
 
     if (invalidCount === 0) {
       summarySpinner.succeed(`All ${validCount} file(s) valid`);
@@ -250,6 +275,9 @@ export async function validateCommand(
       for (const error of allErrors) {
         console.error(chalk.red(`  - ${error}`));
       }
+    }
+
+    if (gate.shouldExitNonZero(invalidCount, totalWarnings)) {
       process.exit(1);
     }
   } catch (error: unknown) {

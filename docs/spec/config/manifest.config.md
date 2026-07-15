@@ -154,15 +154,18 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 `durable`, or a custom target fails clearly instead of falling back to memory.
 
 > The types cover the config surface that ships **today**, including Config G5
-> (`projections.enabled` / `projections.defaults`). Richer vNext sections
-> (validation, merge integrity, provenance, runtime, drift gates) remain a
-> [design proposal](../../internal/proposals/config/manifest-config-vnext.md),
-> not implemented, and are intentionally not modelled by `defineConfig`.
+> (`projections.enabled` / `projections.defaults`) and Config G2
+> (`validation.failOn`). Richer vNext sections (merge integrity, provenance,
+> runtime, drift gates, and G2 rule registries beyond `failOn`) remain a
+> [design proposal](../../internal/proposals/config/manifest-config-vnext.md).
 >
 > ~~The richer vNext sections (validation, merge integrity, provenance, runtime,
 > drift gates) are a design proposal, not implemented~~ — **Correction
-> (2026-07-15):** G5 (`projections.enabled` / `defaults`) shipped; G2/G10 and
-> the other Part-2 keys remain unbuilt.
+> (2026-07-15):** G5 shipped; G2 `failOn` shipped (rules registry still open);
+> G10 and other Part-2 keys remain unbuilt.
+>
+> ~~Correction (2026-07-15): G5 shipped; G2/G10 remain~~ — **Update
+> (2026-07-15):** G2 `validation.failOn` also shipped.
 
 ---
 
@@ -173,11 +176,37 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 | `src`          | `**/*.manifest`   | string | Glob for source `.manifest` files.                                                                                                                        |
 | `output`       | `ir/`             | string | Directory for compiled IR JSON.                                                                                                                           |
 | `prismaSchema` | (auto-discovered) | string | Optional path to a Prisma schema for property alignment scans. When omitted, Manifest checks `prisma/schema.prisma`, `schema.prisma`, `db/schema.prisma`. |
+| `validation`   | (see G2)          | object | Config G2 CI exit policy (`failOn`). Does not change language severities.                                                                                 |
 | `projections`  | `{}`              | object | Per-projection config blocks, plus optional G5 `enabled` / `defaults` (see below).                                                                         |
 | `env`          | `{}`              | object | Environment-variable declarations for `manifest preflight`. Grouped under `stores`, `auth`, `adapters`, `custom`.                                         |
 | `hooks`        | (see below)       | object | Git pre-commit hook settings consumed by `manifest install-hooks`.                                                                                        |
 | `plugins`      | `[]`              | array  | Third-party plugin declarations loaded by the CLI; inspected via `manifest plugins`.                                                                      |
 | `naming`       | (off)             | mixed  | Identifier naming policy. Legacy physical convention and/or opt-in normalization — see **`naming`**.                                                      |
+
+---
+
+## `validation.failOn` (Config G2)
+
+Added 2026-07-15. Controls whether `manifest compile` / `manifest validate`
+exit non-zero after reporting diagnostics. **Does not** change language
+diagnostic severities (a `block` diagnostic remains a block).
+
+```yaml
+validation:
+  failOn: warn   # block | warn | never  (default: block)
+```
+
+| Value   | Exit non-zero when                         |
+| ------- | ------------------------------------------ |
+| `block` | Error-severity diagnostics only (default)  |
+| `warn`  | Errors **or** warnings                     |
+| `never` | Never (report-only; still prints findings) |
+
+CLI overrides: `--fail-on <policy>` on `compile` / `validate`. `validate --strict`
+is an alias for `--fail-on warn`.
+
+Rule registries / `requireDescriptions` / conformance knobs from the vNext
+proposal remain unbuilt.
 
 ---
 
