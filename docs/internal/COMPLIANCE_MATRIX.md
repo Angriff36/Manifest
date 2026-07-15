@@ -98,6 +98,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | `createUserResolver` in config + runtime factory      | FULLY_IMPLEMENTED     | `src/manifest/config.ts:280-299` @ `3c1a4e61f845867cf3881edf42ea63005c17ea4d`; `src/manifest/projections/shared/companions.ts:225-280` @ same |
 | [x]    | Materialized-views computed → SQL                     | FULLY_IMPLEMENTED     | `src/manifest/projections/materialized-views/generator.ts:215-265` @ `7ce53859bdc162263384825043b2ecbb0ab96191`; `expression-to-sql.ts:67-88` @ same |
 | [x]    | `EventSourcedStore` for `eventSourced` target         | FULLY_IMPLEMENTED     | `src/manifest/stores/event-sourced.ts:37-140` @ `ca526f02c67d1db7138d6e34a400fe459a87caef`; `runtime-engine.ts:1279-1283` @ same |
+| [x]    | `alternateKeys` uniqueness on create/update           | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2832-2864,2876,2966-2977` @ `a8af116268de8f4329eb2af1a4df82fb5a65fa5b` |
 
 ---
 
