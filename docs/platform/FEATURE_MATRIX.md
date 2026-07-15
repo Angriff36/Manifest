@@ -112,7 +112,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Config G2 `validation.failOn`                      | FULLY_IMPLEMENTED     | `packages/cli/src/utils/validation-gate-policy.ts:1-45` @ `7c3e16a9349af3130ae5408beee5297e33b7200d`; wired in `compile.ts`/`validate.ts`; schema `validation.failOn`                                                                 |
 | [x]    | Config G10 `driftGates` / `manifest ci-gate`       | FULLY_IMPLEMENTED     | `packages/cli/src/commands/ci-gate.ts:1-160` @ `c28e3e437a9d4af3a121e7cbdbf211c09997a98f`; `packages/cli/src/utils/drift-gates.ts:1-59` @ same                                                                                    |
 | [x]    | Health projection docs                             | FULLY_IMPLEMENTED     | `docs/projections/health.md:1-68` @ `ebf2164dff1ab0ea648b12cc109ac5eaa0ee332b`; `mintlify/projections/health.mdx:1-77` @ same; generator `src/manifest/projections/health/generator.ts:1-429` @ `f335a74128466feaef1ffde8b14d52b1bbcd5eab` |
-| [x]    | Approval `onTimeout: escalate` (open routing)      | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:748-820` @ PENDING; `ir-compiler.ts:934-1005`; `runtime-engine.ts:6539-6595`; fixtures `111`, `103` |
+| [x]    | Approval `onTimeout: escalate` (open routing)      | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:748-820` @ `a16d2bf16c54d8d20a4d58323415513163ab0b4e`; `ir-compiler.ts:934-1005` @ same; `runtime-engine.ts:6539-6595` @ same; fixtures `111`, `103` |
 
 ---
 
