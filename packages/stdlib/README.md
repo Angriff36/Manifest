@@ -1,13 +1,22 @@
 # @manifest/stdlib
 
+**Parked (2026-07-15):** in-repo workspace package only (`"private": true`).
+Not published to npm. Consume via workspace / path `use` until an explicit
+unpark + publish decision.
+
+~~## Install
+
+```bash
+pnpm add @manifest/stdlib
+```
+~~
+
+> **Correction (2026-07-15):** Do not `pnpm add @manifest/stdlib` from the public
+> registry — the package is parked and unpublished. Point `use` at the in-repo
+> `packages/stdlib/manifest/...` paths (or a local file: dependency) instead.
+
 Curated standard library of reusable entity archetypes, property types, and
 constraint definitions for the [Manifest DSL](../../).
-
-Ship a curated set of common patterns so every Manifest project doesn't
-re-invent the wheel for `Money`, `Address`, soft-delete, audit trails, and
-state machines.
-
-## What's in the box
 
 | Kind      | Name            | Use case                                        |
 | --------- | --------------- | ----------------------------------------------- |
@@ -25,19 +34,14 @@ state machines.
 | archetype | `Auditable`     | full actor + action + timestamp audit trail     |
 | archetype | `StateMachine`  | status transition table enforced at runtime     |
 
-## Install
-
-```bash
-pnpm add @manifest/stdlib
-```
-
 ## Usage
 
-In your own `.manifest` file, `use` the pieces you need:
+In your own `.manifest` file, `use` the pieces you need from the in-repo package
+(or a path dependency), for example:
 
 ```manifest
-use "./node_modules/@manifest/stdlib/manifest/values/money.manifest"
-use "./node_modules/@manifest/stdlib/manifest/enums/status.manifest"
+use "../../packages/stdlib/manifest/values/money.manifest"
+use "../../packages/stdlib/manifest/enums/status.manifest"
 
 entity Product {
   property required id: string

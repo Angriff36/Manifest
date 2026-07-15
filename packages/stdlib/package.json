@@ -1,6 +1,7 @@
 {
   "name": "@manifest/stdlib",
   "version": "0.1.0",
+  "private": true,
   "description": "Curated standard library of reusable entity archetypes, property types, and constraint definitions for the Manifest DSL",
   "type": "module",
   "main": "./src/index.ts",

@@ -1,6 +1,7 @@
 {
   "name": "@manifest/mcp-server",
   "version": "0.1.0",
+  "private": true,
   "description": "MCP server for the Manifest DSL — compile, execute, validate, and introspect Manifest programs",
   "type": "module",
   "bin": {

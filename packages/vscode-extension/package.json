@@ -3,6 +3,7 @@
   "displayName": "Manifest Language",
   "description": "Language support for the Manifest DSL — syntax highlighting, diagnostics, autocomplete, and more",
   "version": "0.3.0",
+  "private": true,
   "publisher": "angriff36",
   "license": "MIT",
   "repository": {

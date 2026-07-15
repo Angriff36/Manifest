@@ -1,6 +1,6 @@
 # Manifest Packages and Distribution
 
-Last updated: 2026-06-24
+Last updated: 2026-07-15
 Status: Active
 Authority: Advisory
 Enforced by: None
@@ -36,6 +36,20 @@ Inside this repo there is an internal workspace package:
 - `@manifest/cli` (under `packages/cli`)
 
 Consumers do **not** install it directly. Production installs use `@angriff36/manifest` from the public npm registry.
+
+## Parked workspace packages (2026-07-15)
+
+These packages are **intentionally unpublished**. Each has `"private": true` so
+`pnpm publish` / npm will refuse to ship them until an explicit unpark decision.
+
+| Package | Path | Notes |
+| --- | --- | --- |
+| `@manifest/mcp-server` | `packages/mcp-server` | MCP tooling — develop in-repo |
+| `@manifest/lsp-server` | `packages/lsp-server` | LSP — develop in-repo |
+| `@manifest/stdlib` | `packages/stdlib` | Stdlib `.manifest` sources — path/`use` only |
+| `manifest-lang` | `packages/vscode-extension` | VS Code extension — not on Marketplace |
+
+The only consumer-facing npm package remains `@angriff36/manifest`.
 
 ## Registry
 

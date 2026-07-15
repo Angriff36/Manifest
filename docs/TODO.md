@@ -201,10 +201,11 @@ forensics: Appendix D in
 ## Distribution
 
 - [x] **`getLanguageMetadata()` platform export** — shipped.
-- [ ] **Publish or officially park the sub-packages** — `@manifest/mcp-server`,
-      `@manifest/lsp-server`, `@manifest/stdlib` (all 0.1.0), VS Code extension
-      `manifest-lang` 0.3.0: built and tested in-repo, published nowhere
-      (npm 404 verified 2026-07-14; marketplace unverified).
+- [x] **Publish or officially park the sub-packages** — parked 2026-07-15:
+      `@manifest/mcp-server`, `@manifest/lsp-server`, `@manifest/stdlib`, and
+      VS Code `manifest-lang` are `"private": true` (unpublished / not on
+      Marketplace). Documented in `docs/reference/packages-and-distribution.md`.
+      ~~built and tested in-repo, published nowhere (npm 404 verified 2026-07-14)~~
 - [x] **Projection capability descriptors API** — shipped.
 - [x] **Stable Builder export contract (semver subset)** — declared in
       `docs/spec/sdk-stability.md`.

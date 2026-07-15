@@ -119,6 +119,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Convex `versionProperty` OCC                       | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/version-occ.ts:1-76` @ `4660059ba17fcc00f06de523b14c361df421fea8`; `functions.ts` create/update OCC @ same; `generator.ts` schema synthesize; `semantics.test.ts` |
 | [x]    | FEATURE-LIST → registry inventory (M12)            | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts:1-301` @ `e0ffb716ffc627fdfe7bdb8df8ea6882be3dff66`; `src/manifest/feature-list-generator.test.ts:1-52` @ same; `package.json` `docs:feature-list` / `docs:check:feature-list`; generated `docs/FEATURE-LIST.md` |
 | [x]    | Convex realtime/cache PARTIAL reclass              | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/capabilities.ts` @ `03a019efbeddbf2bc177b745957de81c5a9384a1` (`CONVEX_PARTIAL_REALTIME` / `CONVEX_PARTIAL_COMPUTED_CACHE`); `semantics.test.ts` @ same; `CAPABILITIES.md` |
+| [x]    | Park unpublished sub-packages (mcp/lsp/stdlib/vscode) | FULLY_IMPLEMENTED  | `packages/*/package.json` `"private": true`; `src/manifest/parked-packages.test.ts`; `docs/reference/packages-and-distribution.md` — SHA after commit |
 
 ---
 
@@ -325,10 +326,10 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | Config G2 `validation.failOn`                       | FULLY_IMPLEMENTED             | §1                                                                    |
 | [x]    | Config G10 `driftGates` / `manifest ci-gate`        | FULLY_IMPLEMENTED             | §1                                                                    |
 | [~]    | Published `@angriff36/manifest` npm                 | CLAIMED_NEEDS_PROOF           | pin `package.json` each release                                       |
-| [ ]    | Publish `@manifest/mcp-server`                      | NOT_IMPLEMENTED               | in-repo only                                                          |
-| [ ]    | Publish `@manifest/lsp-server`                      | NOT_IMPLEMENTED               |                                                                       |
-| [ ]    | Publish `@manifest/stdlib`                          | NOT_IMPLEMENTED               |                                                                       |
-| [ ]    | Publish VS Code `manifest-lang`                     | NOT_IMPLEMENTED               |                                                                       |
+| [x]    | Park `@manifest/mcp-server` (unpublished)           | FULLY_IMPLEMENTED             | §1 — `"private": true`; in-repo only                                  |
+| [x]    | Park `@manifest/lsp-server` (unpublished)           | FULLY_IMPLEMENTED             | §1                                                                    |
+| [x]    | Park `@manifest/stdlib` (unpublished)               | FULLY_IMPLEMENTED             | §1                                                                    |
+| [x]    | Park VS Code `manifest-lang` (unpublished)          | FULLY_IMPLEMENTED             | §1                                                                    |
 | [x]    | SDK stability policy                                | FULLY_IMPLEMENTED             | §1                                                                    |
 | [~]    | Conformance suite (~99 fixtures)                    | CLAIMED_NEEDS_PROOF           | `src/manifest/conformance/`                                           |
 | [x]    | Doc snippet TS check mode                           | FULLY_IMPLEMENTED             | §1                                                                    |
@@ -358,7 +359,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | [x]    | Config G2 `validation.failOn`                                          | FULLY_IMPLEMENTED         | §1                                                                       |
 | [x]    | Config G10 `driftGates` / `manifest ci-gate`                           | FULLY_IMPLEMENTED         | §1                                                                       |
 | [x]    | `createUserResolver` wired into runtime factory                        | FULLY_IMPLEMENTED         | §1                                                                       |
-| [ ]    | Sub-package publish/park                                               | NOT_IMPLEMENTED           | Manifest distribution                                                    |
+| [x]    | Sub-package publish/park                                               | FULLY_IMPLEMENTED         | §1 — parked unpublished (`private: true`)                                |
 | [x]    | ~~Full WASM runtime~~                                                  | REMOVED 2026-07-15        | Prototype deleted; TypeScript evaluator is the only path                 |
 | [ ]    | Time-travel / product debugger UI                                      | OUT_OF_SCOPE              | Builder-owned                                                            |
 | [x]    | Durable `RateLimitStore` / Postgres adapter                            | FULLY_IMPLEMENTED         | §1                                                                       |

@@ -1,6 +1,7 @@
 {
   "name": "@manifest/lsp-server",
   "version": "0.1.0",
+  "private": true,
   "description": "Language Server Protocol (LSP) server for the Manifest DSL",
   "type": "module",
   "bin": {

@@ -463,10 +463,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 7. CLI, SDK, config, packaging, docs tooling | enforce-surface / audit-* / lint-routes | `CLAIMED_NEEDS_PROOF / PARTIAL` | ORM shapes incomplete |
 | 7. CLI, SDK, config, packaging, docs tooling | enforce-surface Drizzle/Kysely/raw-SQL | `PARTIAL` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | IR version control / versions CLI | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/ir-version-control.md` |
-| 7. CLI, SDK, config, packaging, docs tooling | Publish `@manifest/lsp-server` | `NOT_IMPLEMENTED` | See feature matrix |
-| 7. CLI, SDK, config, packaging, docs tooling | Publish `@manifest/mcp-server` | `NOT_IMPLEMENTED` | in-repo only |
-| 7. CLI, SDK, config, packaging, docs tooling | Publish `@manifest/stdlib` | `NOT_IMPLEMENTED` | See feature matrix |
-| 7. CLI, SDK, config, packaging, docs tooling | Publish VS Code `manifest-lang` | `NOT_IMPLEMENTED` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | Published `@angriff36/manifest` npm | `CLAIMED_NEEDS_PROOF` | pin `package.json` each release |
 | 7. CLI, SDK, config, packaging, docs tooling | Restore `newguard.json` | `NOT_IMPLEMENTED` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | Snapshot testing tooling | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/snapshot-testing.md` |
@@ -480,4 +476,3 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 8. Open gaps / phantoms (checklist mirror) | Default encryption provider (common no-vendor case) | `NOT_IMPLEMENTED` | fail-closed by design until provider set |
 | 8. Open gaps / phantoms (checklist mirror) | Kysely `columnMappings` actually applied | `NOT_IMPLEMENTED / PARTIAL` | option declared, unused |
 | 8. Open gaps / phantoms (checklist mirror) | softDelete language keyword | `NOT_IMPLEMENTED` | Manifest language gap (projection config exists) |
-| 8. Open gaps / phantoms (checklist mirror) | Sub-package publish/park | `NOT_IMPLEMENTED` | Manifest distribution |
