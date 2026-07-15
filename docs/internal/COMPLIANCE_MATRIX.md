@@ -251,7 +251,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [~]    | jsonschema            | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | storybook             | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | health                | CLAIMED_NEEDS_PROOF            | **undocumented** in mintlify/docs (§7)                                         |
-| [x]    | materialized-views    | FULLY_IMPLEMENTED              | computed → `translateExpression`; raw `columns` escape hatch (§1 after commit) |
+| [x]    | materialized-views    | FULLY_IMPLEMENTED              | §1 — computed via `translateExpression`; raw `columns` escape hatch            |
 | [~]    | elasticsearch         | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | terraform             | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | analytics             | CLAIMED_NEEDS_PROOF            |                                                                                |
@@ -324,7 +324,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | [ ]    | `alternateKeys` runtime use / entity constraint overrides / `command.returns`  | NOT_IMPLEMENTED or PARTIAL | Manifest gaps — preserve until closed              |
 | [ ]    | EventSourcedStore                                                              | NOT_IMPLEMENTED            |
 | [ ]    | softDelete language keyword                                                    | NOT_IMPLEMENTED            | Manifest language gap (projection config exists)   |
-| [x]    | Materialized-views SQL expression lowering                                     | FULLY_IMPLEMENTED          | landing — §1 with SHA |
+| [x]    | Materialized-views SQL expression lowering                                     | FULLY_IMPLEMENTED          | §1                                                   |
 | [ ]    | Convex unsupported surfaces (list in §6)                                       | DIAGNOSTIC_ONLY            |
 | [ ]    | Config G5/G2/G10                                                               | NOT_IMPLEMENTED            |
 | [x]    | `createUserResolver` wired into runtime factory                                | FULLY_IMPLEMENTED          | §1                                                   |
