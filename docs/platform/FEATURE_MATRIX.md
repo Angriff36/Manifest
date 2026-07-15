@@ -311,7 +311,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [~]    | Config schema + `manifest config *`                 | CLAIMED_NEEDS_PROOF           | G0/G1                                                                 |
 | [x]    | Config G5 `projections.enabled`/`defaults`          | FULLY_IMPLEMENTED             | §1                                                                    |
 | [x]    | Config G2 `validation.failOn`                       | FULLY_IMPLEMENTED             | §1                                                                    |
-| [ ]    | Config G10 (`driftGates`)                           | NOT_IMPLEMENTED               |                                                                       |
+| [~]    | Config G10 `driftGates` / `manifest ci-gate`        | CLAIMED_NEEDS_PROOF           | shipped this change — §1 proof follows feat                           |
 | [~]    | Published `@angriff36/manifest` npm                 | CLAIMED_NEEDS_PROOF           | pin `package.json` each release                                       |
 | [ ]    | Publish `@manifest/mcp-server`                      | NOT_IMPLEMENTED               | in-repo only                                                          |
 | [ ]    | Publish `@manifest/lsp-server`                      | NOT_IMPLEMENTED               |                                                                       |
@@ -344,7 +344,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | [ ]    | Convex unsupported surfaces (list in §6)                               | DIAGNOSTIC_ONLY           |
 | [x]    | Config G5 `projections.enabled`/`defaults`                             | FULLY_IMPLEMENTED         | §1                                                                       |
 | [x]    | Config G2 `validation.failOn`                                          | FULLY_IMPLEMENTED         | §1                                                                       |
-| [ ]    | Config G10 (`driftGates`)                                              | NOT_IMPLEMENTED           |
+| [~]    | Config G10 `driftGates` / `manifest ci-gate`                           | CLAIMED_NEEDS_PROOF       | shipped — prove in §1                                                    |
 | [x]    | `createUserResolver` wired into runtime factory                        | FULLY_IMPLEMENTED         | §1                                                                       |
 | [ ]    | Sub-package publish/park                                               | NOT_IMPLEMENTED           | Manifest distribution                                                    |
 | [x]    | ~~Full WASM runtime~~                                                  | REMOVED 2026-07-15        | Prototype deleted; TypeScript evaluator is the only path                 |

@@ -367,6 +367,25 @@ describe('validateConfig', () => {
     expect(result.ok).toBe(true);
   });
 
+  it('accepts driftGates (Config G10)', async () => {
+    const result = await validateConfig({
+      driftGates: {
+        effectiveConfigSnapshot: '.manifest/effective-config.snapshot.json',
+        failOnConfigDrift: true,
+        failOnGeneratedDrift: false,
+        pinIrSchemaVersion: '1.0',
+      },
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects unknown driftGates keys', async () => {
+    const result = await validateConfig({
+      driftGates: { mystery: true },
+    } as unknown as ManifestConfig);
+    expect(result.ok).toBe(false);
+  });
+
   it('rejects invalid validation.failOn', async () => {
     const result = await validateConfig({
       validation: { failOn: 'error' },

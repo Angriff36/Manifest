@@ -168,11 +168,12 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 - JSON schema: `docs/spec/config/manifest.config.schema.json` (+ Prisma projection schema)
 - `src/manifest/config.ts` wired to `manifest config validate/print-defaults/inspect`
 - `executionMode` dispatcher is a **Next.js-projection** setting, not a global runtime concept
-- config-vNext: G0+G1+G5+G2(`failOn`) shipped; G10 (`driftGates`) and G2 rule
-  registries still unbuilt
+- config-vNext: G0+G1+G5+G2(`failOn`)+G10(`ci-gate`) shipped; G2 rule
+  registries still open
   ~~G5/G2/G10 still unbuilt (stated in `config.ts` comments)~~
   **Correction (2026-07-15):** G5 shipped.
-  **Update (2026-07-15):** G2 `validation.failOn` shipped (rules registry open).
+  **Update (2026-07-15):** G2 `validation.failOn` shipped.
+  **Update (2026-07-15):** G10 `driftGates` / `manifest ci-gate` shipped.
 
 ## 9. Testing & Release Infrastructure
 

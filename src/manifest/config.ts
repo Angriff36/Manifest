@@ -24,8 +24,9 @@
  * `projections.defaults`) and Config G2 (`validation.failOn`) are modelled.
  * Richer vNext sections still proposed only
  * (docs/internal/proposals/config/manifest-config-vnext.md: mergeIntegrity,
- * provenance, runtime, driftGates, and G2 rule registries beyond failOn) are
- * NOT fully modelled here. The JSON schema at
+ * provenance, runtime, and G2 rule registries beyond failOn) are
+ * NOT fully modelled here. Config G10 (`driftGates`) is modelled and honored
+ * by `manifest ci-gate`. The JSON schema at
  * docs/spec/config/manifest.config.schema.json remains the executable contract
  * that `manifest config validate` enforces for the YAML/build config.
  */
@@ -113,6 +114,18 @@ export interface ManifestValidationConfig {
    * - `never`: always exit 0 (report-only)
    */
   failOn?: ManifestValidationFailOn;
+}
+
+/** Config G10 — declarative CI drift gates (`manifest ci-gate`). */
+export interface ManifestDriftGatesConfig {
+  /** Committed effective-config snapshot path (`manifest config inspect --json`). */
+  effectiveConfigSnapshot?: string;
+  /** Compare live effective config to the snapshot. Default true when path set. */
+  failOnConfigDrift?: boolean;
+  /** Fail when `generate --all --check` reports artifact drift. Default false. */
+  failOnGeneratedDrift?: boolean;
+  /** Require every IR file's `version` to equal this string. */
+  pinIrSchemaVersion?: string;
 }
 
 /** Per-projection config block (e.g. nextjs, routes, prisma). */
@@ -275,6 +288,8 @@ export interface ManifestBuildConfig {
    * Does not change language diagnostic severities.
    */
   validation?: ManifestValidationConfig;
+  /** Config G10 — declarative drift gates for `manifest ci-gate`. */
+  driftGates?: ManifestDriftGatesConfig;
   /**
    * Per-projection config blocks, keyed by projection name, plus optional
    * Config G5 `enabled` / `defaults` meta keys.

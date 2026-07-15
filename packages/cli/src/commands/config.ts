@@ -177,8 +177,9 @@ interface EffectiveConfig {
   };
 }
 
-export async function configInspectCommand(options: ConfigCommandOptions = {}): Promise<void> {
-  const cwd = options.cwd ?? process.cwd();
+export async function loadEffectiveConfig(
+  cwd: string = process.cwd(),
+): Promise<{ configPath: string | null; effective: EffectiveConfig; json: string }> {
   const activePath = await getActiveConfigPath(cwd);
   const { build } = await loadAllConfigs(cwd);
   const snapshot = await loadDefaultsSnapshot();
@@ -196,9 +197,6 @@ export async function configInspectCommand(options: ConfigCommandOptions = {}): 
     >
   )?.routes?.options as Record<string, unknown> | undefined;
 
-  // Nested defaults inlined under nextjs options so the merge picks them
-  // up at the right level (the dispatcher block is a sibling of authProvider,
-  // not a top-level key).
   const nextjsDefaults: Record<string, unknown> = {
     ...snapshot.nextjs,
     tenantProvider: snapshot.tenantProvider,
@@ -228,9 +226,15 @@ export async function configInspectCommand(options: ConfigCommandOptions = {}): 
     },
   };
 
+  return { configPath: activePath, effective, json: stableStringify(effective) + '\n' };
+}
+
+export async function configInspectCommand(options: ConfigCommandOptions = {}): Promise<void> {
+  const cwd = options.cwd ?? process.cwd();
+  const { configPath: activePath, json } = await loadEffectiveConfig(cwd);
+
   if (options.json !== false) {
-    // Default to JSON for inspect — the output is meant for CI snapshots.
-    process.stdout.write(stableStringify(effective) + '\n');
+    process.stdout.write(json);
     return;
   }
 
@@ -241,5 +245,5 @@ export async function configInspectCommand(options: ConfigCommandOptions = {}): 
     console.log(chalk.gray('Source: defaults only (no config file found)'));
   }
   console.log('');
-  console.log(stableStringify(effective));
+  console.log(json.trimEnd());
 }

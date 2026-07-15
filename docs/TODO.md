@@ -104,7 +104,11 @@ forensics: Appendix D in
       policy for `compile`/`validate` (`block`/`warn`/`never`); `--fail-on` CLI
       + `validate --strict` alias; does not change language severities. Rule
       registries / requireDescriptions remain open.
-- [ ] **Config vNext G10** — drift gates: confirmed unbuilt.
+- [x] **Config vNext G10 (`driftGates`)** — fixed 2026-07-15: `manifest ci-gate`
+      enforces `effectiveConfigSnapshot` / `failOnConfigDrift` /
+      `failOnGeneratedDrift` / `pinIrSchemaVersion`; `--write-snapshot` refreshes
+      the committed effective-config snapshot.
+      ~~Config vNext G10 — drift gates: confirmed unbuilt.~~
       ~~Config vNext G2/G10~~
       ~~Config vNext G5/G2/G10~~
 - [x] **`manifest db init`** — fixed 2026-07-15: CLI prints/applies the shipped

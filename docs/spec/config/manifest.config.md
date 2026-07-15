@@ -177,6 +177,7 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 | `output`       | `ir/`             | string | Directory for compiled IR JSON.                                                                                                                           |
 | `prismaSchema` | (auto-discovered) | string | Optional path to a Prisma schema for property alignment scans. When omitted, Manifest checks `prisma/schema.prisma`, `schema.prisma`, `db/schema.prisma`. |
 | `validation`   | (see G2)          | object | Config G2 CI exit policy (`failOn`). Does not change language severities.                                                                                 |
+| `driftGates`   | (see G10)         | object | Config G10 declarative CI gates for `manifest ci-gate`.                                                                                                   |
 | `projections`  | `{}`              | object | Per-projection config blocks, plus optional G5 `enabled` / `defaults` (see below).                                                                         |
 | `env`          | `{}`              | object | Environment-variable declarations for `manifest preflight`. Grouped under `stores`, `auth`, `adapters`, `custom`.                                         |
 | `hooks`        | (see below)       | object | Git pre-commit hook settings consumed by `manifest install-hooks`.                                                                                        |
@@ -207,6 +208,33 @@ is an alias for `--fail-on warn`.
 
 Rule registries / `requireDescriptions` / conformance knobs from the vNext
 proposal remain unbuilt.
+
+---
+
+## `driftGates` (Config G10)
+
+Added 2026-07-15. Declarative CI integrity gates enforced by
+`manifest ci-gate`.
+
+```yaml
+driftGates:
+  effectiveConfigSnapshot: .manifest/effective-config.snapshot.json
+  failOnConfigDrift: true          # default true when snapshot path is set
+  failOnGeneratedDrift: false      # runs generate --all --check when true
+  pinIrSchemaVersion: "1.0"        # optional IR version pin
+```
+
+```bash
+# Refresh the committed effective-config snapshot
+manifest ci-gate --write-snapshot
+
+# Run all configured gates (exits non-zero on failure)
+manifest ci-gate
+```
+
+This replaces the prose four-step recipe below with a single command when
+`driftGates` is configured. The manual recipe remains valid for repos that
+prefer explicit steps.
 
 ---
 
@@ -700,10 +728,18 @@ manifest config inspect --json | jq '.projections.nextjs.options.dispatcher'
 
 ## CI / drift guidance
 
-Downstream repos should commit their `manifest.config.yaml` and pin
-generation output. Recommended CI gate:
+~~Recommended CI gate (manual four-step flow):~~
+**Update (2026-07-15):** Prefer Config G10 — declare `driftGates` and run
+`manifest ci-gate` (see **`driftGates`** above). The manual recipe below still
+works for repos that opt out of `ci-gate`.
 
 ```bash
+# Prefer:
+manifest ci-gate
+# or refresh snapshot:
+manifest ci-gate --write-snapshot
+
+# Manual equivalent (still valid):
 # 1. Fail on invalid config.
 manifest config validate
 

@@ -495,7 +495,7 @@ conformance / IR-shape changes that require schema + fixture + runtime updates.
 | **G7**              | `runtime` block                      | Runtime opts in code; dispatcher mode under nextjs          | Central runtime config consumed by runtime factory + dispatcher; determinism guards                                                                                                                  | `runtime-engine.ts`, CLI runtime wiring, schema                                                                        | Med–High. **Danger Zone (runtime).**                                    |
 | **G8**              | `hooks.lifecycle`                    | git pre-commit only                                         | Lifecycle hook runner around compile/generate                                                                                                                                                        | `packages/cli/src/commands/{build,generate}.ts`, `install-hooks.ts`                                                    | Med                                                                     |
 | **G9**              | `plugins.order`/capabilities         | `module/options/enabled` read-only listing                  | Deterministic ordering + capability registration in plugin loader                                                                                                                                    | `src/manifest/plugin-api.ts`, loader, schema                                                                           | Med                                                                     |
-| **G10**             | `driftGates`                         | Prose CI recipe                                             | `manifest ci-gate` reading declarative gates; config + generated drift checks                                                                                                                        | new `packages/cli/src/commands/ci-gate.ts`, schema                                                                     | Med                                                                     |
+| **G10**             | `driftGates`                         | Prose CI recipe                                             | ~~`manifest ci-gate` reading declarative gates~~ **DONE 2026-07-15:** `driftGates` schema + `manifest ci-gate` (config snapshot, generated `--check`, IR version pin) | `packages/cli/src/commands/ci-gate.ts`, schema                                                                     | Shipped                                                                 |
 
 ## Recommended sequencing
 
@@ -505,7 +505,7 @@ conformance / IR-shape changes that require schema + fixture + runtime updates.
    `splitFiles` deferred) — ✅ **G5 DONE 2026-07-15** (`projections.enabled` /
    `defaults`). Original framing: contained to the
    projection layer, no IR/semantics risk.
-3. **G2 + G10** (validation policy + drift gates): CI-facing, high leverage.
+3. **G2 + G10** ✅ **G2 failOn DONE** + ✅ **G10 DONE 2026-07-15** (`manifest ci-gate`).
 4. **G4 + G3 + G7** (provenance, merge integrity, runtime): the Danger-Zone IR/
    semantics work — spec-first, fixtures, then implementation, one at a time.
 

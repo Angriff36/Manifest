@@ -39,6 +39,14 @@ export interface ManifestConfig {
     failOn?: 'block' | 'warn' | 'never';
   };
 
+  /** Config G10 — declarative CI drift gates for `manifest ci-gate`. */
+  driftGates?: {
+    effectiveConfigSnapshot?: string;
+    failOnConfigDrift?: boolean;
+    failOnGeneratedDrift?: boolean;
+    pinIrSchemaVersion?: string;
+  };
+
   // Optional: Projection settings for code generation (plus G5 enabled/defaults)
   projections?: {
     /** When set, `manifest generate --all` runs only these projection names. */

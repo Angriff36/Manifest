@@ -38,6 +38,30 @@
         }
       }
     },
+    "driftGates": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Config G10 — declarative CI drift gates enforced by `manifest ci-gate`.",
+      "properties": {
+        "effectiveConfigSnapshot": {
+          "type": "string",
+          "description": "Path to a committed effective-config snapshot (from `manifest config inspect --json`)."
+        },
+        "failOnConfigDrift": {
+          "type": "boolean",
+          "description": "Compare live effective config to the snapshot. Defaults to true when effectiveConfigSnapshot is set."
+        },
+        "failOnGeneratedDrift": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run generate --all --check and fail when committed artifacts drift."
+        },
+        "pinIrSchemaVersion": {
+          "type": "string",
+          "description": "When set, every *.ir.json under the config output must declare this version string."
+        }
+      }
+    },
     "projections": {
       "type": "object",
       "description": "Per-projection configuration. Each key matches a registered projection name (e.g. 'nextjs', 'routes').",

@@ -23,6 +23,7 @@ import { profileCommand } from './commands/profile.js';
 import { packCommand, unpackCommand } from './commands/pack-unpack.js';
 import { watchCommand } from './commands/watch.js';
 import { validateCommand } from './commands/validate.js';
+import { ciGateCommand } from './commands/ci-gate.js';
 import { validateAICommand } from './commands/validate-ai.js';
 import { docsCommand } from './commands/docs.js';
 import { diagramCommand } from './commands/diagram.js';
@@ -623,6 +624,35 @@ program
     'CI exit policy: block (errors only) | warn (errors or warnings) | never (report-only)',
   )
   .action(validateCommand);
+
+/**
+ * manifest ci-gate
+ *
+ * Config G10 — run declarative driftGates from manifest.config.
+ */
+program
+  .command('ci-gate')
+  .description(
+    'Run declarative drift gates (config snapshot, generated drift, IR schema pin)',
+  )
+  .option(
+    '--write-snapshot',
+    'Write the live effective config to driftGates.effectiveConfigSnapshot',
+    false,
+  )
+  .option('--snapshot <path>', 'Override driftGates.effectiveConfigSnapshot')
+  .option('--fail-on-config-drift', 'Force failOnConfigDrift=true')
+  .option('--fail-on-generated-drift', 'Force failOnGeneratedDrift=true')
+  .option('--pin-ir-schema-version <version>', 'Override driftGates.pinIrSchemaVersion')
+  .action(async (options = {}) => {
+    await ciGateCommand({
+      writeSnapshot: !!options.writeSnapshot,
+      effectiveConfigSnapshot: options.snapshot,
+      failOnConfigDrift: options.failOnConfigDrift ? true : undefined,
+      failOnGeneratedDrift: options.failOnGeneratedDrift ? true : undefined,
+      pinIrSchemaVersion: options.pinIrSchemaVersion,
+    });
+  });
 
 /**
  * manifest fmt [source]
