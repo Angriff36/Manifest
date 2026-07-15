@@ -6,6 +6,11 @@ description: 'Kysely, Terraform, materialized views, analytics, Elasticsearch, S
 
 Beyond the primary framework and ORM projections, Manifest ships several specialized projections for infrastructure, analytics, search, and developer tooling targets. Each follows the same `ProjectionTarget` interface and deterministic output contract.
 
+> **Verified (2026-07-15) @RYANSIGNED:** Names `kysely`, `terraform`, `materialized-views`,
+> `analytics`, `elasticsearch`, `storybook`, and `pydantic` (client via `pydantic.client`) are
+> registered in `src/manifest/projections/builtins.ts`. Invoke with
+> `manifest generate -p <name>`. Package pin **3.6.4**.
+
 ### Kysely
 
 The Kysely projection generates TypeScript type definitions for the [Kysely](https://kysely.dev) type-safe SQL query builder. It produces per-table TypeScript interfaces (e.g., `TaskTable`), a `Database` interface mapping table names to those interfaces, and a `createDb()` factory function for creating configured `Kysely<Database>` instances.

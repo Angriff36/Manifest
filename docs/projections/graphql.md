@@ -8,6 +8,11 @@ The projection registers under the name `graphql` and declares two surfaces, `gr
 
 The SDL contains entity object types, a `type Query` with per-entity read fields, a `type Mutation` with one field per command, a `type Subscription` derived from IR events, `input` types for command parameters, `enum` definitions from IR enums, and `scalar` declarations for any custom scalars detected (such as `DateTime`, `UUID`, `JSON`). The resolver stubs wire queries to direct database reads and mutations to the Manifest runtime.
 
+> **Correction (2026-07-15) @RYANSIGNED:** Generated mutation stubs call a **phantom** 3-arg form
+> `runtime.runCommand(entity, command, input)` on whatever `createManifestRuntime(context)` returns.
+> That is **not** `RuntimeEngine.runCommand(commandName, input, options?)`. Treat resolvers as
+> scaffolding you must finish against a real runtime adapter.
+
 ## Usage
 
 ```ts

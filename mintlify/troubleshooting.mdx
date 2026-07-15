@@ -151,11 +151,15 @@ The issues below cover the most common problems reported when working with Manif
 
     **How to fix it**
 
-    Upgrade to the latest release (the fix has shipped since `0.3.10`):
+    Upgrade to the latest release (current package pin for this audit: **3.6.4**; the Windows shim fix has shipped since `0.3.10`):
 
     ```bash
     pnpm add @angriff36/manifest@latest
     ```
+
+    ~~If you are still on a pre-0.3.10 build, treat silent exit-0 as the known Windows shim bug.~~
+
+    > **Note (2026-07-15) @RYANSIGNED:** `@angriff36/manifest` requires **Node.js >= 20** (`package.json` engines). Historical `0.3.x` version numbers below describe when CLI bugs were fixed; they are not current release pins.
 
     If you cannot upgrade immediately, use one of these workarounds to verify the CLI is reachable:
 

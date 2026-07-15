@@ -1,5 +1,9 @@
 # Enum Types
 
+> **Audited (2026-07-15) @RYANSIGNED:** Deep pass — Zod `z.enum` emit
+> corrected below; no enum transition constraints / undeclared-name rejection
+> in compiler. Package **3.6.4**.
+
 First-class `enum` declarations define a closed, named set of values that properties can reference. Each member may carry an optional display label and an optional ordinal, giving entities a typed vocabulary for status fields, priorities, and other fixed value sets.
 
 ## Syntax
@@ -40,7 +44,16 @@ Enum-typed properties are stored as a `TypeNode` whose `name` is the enum name. 
 
 ## How it maps to projections
 
-The IR carries the full enum definition (names, labels, ordinals), which is the input downstream projections use to emit database enum columns and TypeScript union types. The summary notes describe this as future projection work; the verified, present behavior is the IR-level representation, not a specific generator output.
+~~The summary notes describe this as future projection work; the verified, present behavior is the IR-level representation, not a specific generator output.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** The IR still carries the full enum
+> definition (names, labels, ordinals). At least one shipped projection consumes
+> it today: the Zod projection resolves IR enum type names to
+> `z.enum([...])` from `ir.enums` (member **names** as string literals — see
+> `src/manifest/projections/zod/generator.ts`). Wiring contract / OpenAPI also
+> surface finite enum values when statically derivable. Treat “no projection
+> support” as outdated; treat “every SQL projection emits native DB enums” as
+> still projection-specific and not universally true.
 
 ## Notes & limitations
 

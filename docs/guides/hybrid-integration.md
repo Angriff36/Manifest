@@ -4,6 +4,11 @@ Authority: Advisory
 Enforced by: None
 Last updated: 2026-02-12
 
+> **Audited (2026-07-15) @RYANSIGNED:** `runCommand(command, input, { entityName })`
+> signature matches `RuntimeEngine` on package **3.6.4**. Normative semantics
+> remain in `docs/spec/semantics.md` (repo-relative). Examples are illustrative
+> (Clerk/Prisma host wiring), not language SoT.
+
 This guide shows how to combine **projections** and **embedded runtime** for real-world applications.
 
 Most production applications use BOTH patterns together.

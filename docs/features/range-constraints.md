@@ -42,14 +42,23 @@ event DiscountApplied: "product.discount.applied" {
 store Product in memory
 ```
 
-`between(value, low, high)` is inclusive on both ends. `length(value)` returns a string's length, which is then compared with ordinary operators (`>= 1`, `<= 255`). `min` and `max` are used here as boundary checks against a single bound.
+`between(value, low, high)` is inclusive on both ends. `length(value)` returns a string's length, which is then compared with ordinary operators (`>= 1`, `<= 255`).
+
+> **Correction (2026-07-15) @RYANSIGNED:** Do **not** write
+> `constraint x: min(self.n, 0)` / `max(self.n, 100)` expecting a lower/upper-bound
+> check. `min`/`max` are variadic numeric reducers (`Math.min` / `Math.max`),
+> **not** boolean boundary predicates. Constraint polarity is `!!result` (unless
+> `failWhen`). `min(5, 0)` → `0` → **fails**; `min(-1, 0)` → `-1` → **passes**.
+> Use comparisons (`self.quantity >= 0`) or `between(...)` for bounds. Fixture
+> `57-range-constraint-builtins.manifest` still contains the old `min`/`max`
+> forms — they exercise the reducer, not a dedicated bounds API.
 
 ## Behavior
 
 The built-ins are implemented in the runtime engine's `getBuiltins()` (`src/manifest/runtime-engine.ts`):
 
 - `between(value, low, high)` returns `true` only when all three are numbers and `value >= low && value <= high`; otherwise it returns `false`.
-- `min(...args)` and `max(...args)` are variadic: they filter their arguments to numbers and return `Math.min` / `Math.max` of those, or `undefined` if none are numeric. Used as `min(self.quantity, 0)` they yield a number, so the constraint passing depends on how that result is interpreted by the constraint evaluator.
+- `min(...args)` and `max(...args)` are variadic: they filter their arguments to numbers and return `Math.min` / `Math.max` of those, or `undefined` if none are numeric — **not** boolean boundary predicates (see correction above).
 - `length(value)` returns the length of a string (it is the same `length` built-in used for strings generally).
 
 Because these are plain boolean- or number-returning expressions, they slot into the existing constraint and guard evaluation paths unchanged. In a guard, a falsey result halts command execution in order, consistent with Manifest's strict guard semantics. In a constraint, the result drives the constraint's configured outcome.
@@ -62,4 +71,4 @@ The constraint-analysis converters feed projections: numeric ranges become SQL `
 
 ## Notes & limitations
 
-Note the difference in shape: `between` returns a boolean directly, while `min` and `max` return a number. The fixture uses `min(self.quantity, 0)` and `max(self.discount, 100)` as constraint expressions whose numeric result the constraint checker evaluates, whereas `length(...)` is paired with an explicit comparison operator. `between` returns `false` for any non-numeric operand, so a constraint over a null field registers as a failure rather than being skipped. The summary's mention of "compile-time constant folding" refers to the static bound extraction in `constraint-analysis.ts` used for projection, not to rewriting of the runtime expression.
+Note the difference in shape: `between` returns a boolean directly, while `min` and `max` return a number. At **runtime**, `!!min(...)` / `!!max(...)` polarity is not a bounds check (see correction above). Separately, `constraint-analysis.ts` **statically** interprets the call shapes `min(self.prop, N)` / `max(self.prop, N)` as lower/upper bounds for SQL/Zod/OpenAPI projection emit — that analysis path does not change runtime evaluation. Prefer `self.prop >= N` / `between(...)` in new code so runtime and projection agree. `between` returns `false` for any non-numeric operand, so a constraint over a null field registers as a failure rather than being skipped.

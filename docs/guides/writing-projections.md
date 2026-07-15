@@ -53,7 +53,10 @@ options, prerequisites, and companion facts.
 
 ## Related
 
-- `C:/Projects/Manifest/docs/spec/semantics.md`
-- `C:/Projects/Manifest/docs/spec/adapters.md`
-- `C:/Projects/Manifest/docs/spec/projection-descriptors.md`
-- `C:/Projects/Manifest/src/manifest/projections/nextjs/README.md`
+- ~~`C:/Projects/Manifest/docs/spec/semantics.md`~~ → `docs/spec/semantics.md`
+- ~~`C:/Projects/Manifest/docs/spec/adapters.md`~~ → `docs/spec/adapters.md`
+- ~~`C:/Projects/Manifest/docs/spec/projection-descriptors.md`~~ → `docs/spec/projection-descriptors.md`
+- ~~`C:/Projects/Manifest/src/manifest/projections/nextjs/README.md`~~ → `src/manifest/projections/nextjs/README.md`
+
+> **Correction (2026-07-15) @RYANSIGNED:** Absolute machine paths replaced with
+> repo-relative paths. Package pin SoT: **3.6.4**.

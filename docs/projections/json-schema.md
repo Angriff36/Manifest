@@ -46,4 +46,7 @@ Property defaults are emitted as `default`, and the `readonly` modifier sets `re
 
 ## Notes & limitations
 
-The projection is self-contained and adds no new dependencies; it relies only on existing IR types and the shared constraint-analysis utility. Pattern constraints are collapsed to a single `pattern` keyword — when a property has multiple pattern constraints, only the first is emitted. The nullable handling uses the array-type-union form across all three drafts rather than draft-specific idioms such as `oneOf`. There is no dedicated CLI command; invoke the projection programmatically through `getProjection('jsonschema')`.
+The projection is self-contained and adds no new dependencies; it relies only on existing IR types and the shared constraint-analysis utility. Pattern constraints are collapsed to a single `pattern` keyword — when a property has multiple pattern constraints, only the first is emitted. The nullable handling uses the array-type-union form across all three drafts rather than draft-specific idioms such as `oneOf`. ~~There is no dedicated CLI command; invoke the projection programmatically through `getProjection('jsonschema')`.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** CLI name is `jsonschema` —
+> `manifest generate <ir> -p jsonschema`. Programmatic `getProjection('jsonschema')` remains valid.

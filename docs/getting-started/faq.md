@@ -2,7 +2,7 @@
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-12
+Last updated: 2026-07-15
 
 Frequently asked questions about Manifest DSL, its architecture, and integration patterns.
 
@@ -133,15 +133,23 @@ Authentication is handled by your application layer (Clerk, Auth0, NextAuth, etc
 
 ### What is the execution order for commands?
 
-Fixed order (defined in `docs/spec/semantics.md`):
+~~Fixed order (defined in `docs/spec/semantics.md`):
+1. Build evaluation context → 2. Policy check → 3. Command-level constraints →
+4. Guard evaluation → 5. Action execution → 6. Event emission → 7. Return~~
 
-1. **Build evaluation context** (`self`, params, runtime context)
-2. **Policy check** (scoped to `execute` or `all`)
-3. **Command-level constraints** (severity: `block`, `warn`, `ok`)
-4. **Guard evaluation** (in order, short-circuit on first falsey)
-5. **Action execution** (`mutate`, `compute`, `persist`, etc.)
-6. **Event emission** (in declaration order)
-7. **Return** `CommandResult`
+> **Correction (2026-07-15) @RYANSIGNED:** Normative order in `docs/spec/semantics.md` § Commands:
+>
+> 1. **Build evaluation context** (`self`/`this`, params with defaults, runtime context)
+> 2. **Command `rateLimit` gate** (if declared; denial → `rateLimitDenial`)
+> 3. **Policy check** (`execute` / `all`; policy-level `rateLimit` before each expression)
+> 4. **Command-level constraints** (severity: `block`, `warn`, `ok`)
+> 5. **Guard evaluation** (in order, short-circuit on first falsey)
+> 6. **Action execution** (`mutate`, `compute`, `persist`, etc.)
+> 7. **Event emission** (in declaration order)
+> 8. **Return** `CommandResult`
+>
+> Policies are **not** declared inside command bodies; they are top-level `policy`
+> decls referenced by name on the command / entity `defaultPolicies`.
 
 ### What happens if a guard fails?
 
@@ -189,9 +197,13 @@ Projections MUST remain aligned with IR/runtime semantics and MUST NOT redefine 
 
 ### What projections are available?
 
-Built-in: `nextjs` (App Router API routes with Prisma)
+~~Built-in: `nextjs` (App Router API routes with Prisma). Planned: `hono`, `express`.~~
 
-Planned: `hono`, `express`
+> **Correction (2026-07-15) @RYANSIGNED:** 29 registered projections in
+> `registerBuiltinProjections()` (`src/manifest/projections/builtins.ts`), including
+> `nextjs`, `prisma`, `convex`, `express`, `hono`, `drizzle`, `openapi`, `zod`,
+> `graphql`, `react-query`, `jsonschema`, `remix`, `sveltekit`, and others.
+> See `docs/CONFIRMED-FEATURES.md` §5 and `docs/projections/README.md`.
 
 ### Do projections bypass the runtime?
 
@@ -203,14 +215,15 @@ See: `docs/guides/usage-patterns.md`
 
 ### Can I add a runtime `query()` or `get()` method for reads?
 
-**Don't.** If you want runtime-level read APIs, you are defining new execution semantics. This requires:
+~~**Don't.** If you want runtime-level read APIs, you are defining new execution
+semantics… Unless you need language-level read policies, use adapters or go
+direct to storage.~~
 
-1. Update `docs/spec/semantics.md` with read execution order
-2. Define policy enforcement behavior for `read` scope
-3. Write conformance tests in `src/manifest/conformance/`
-4. Update conformance tests in `src/manifest/conformance/`
-
-Unless you need language-level read policies, use adapters or go direct to storage.
+> **Correction (2026-07-15) @RYANSIGNED:** The reference runtime already exposes
+> gated reads: `getInstance` / `getAllInstances` enforce `read` / `all` policies
+> (`docs/spec/semantics.md` § Policies). Do not invent a parallel `query()`/`get()`
+> API. Projection GET routes that hit the DB directly still bypass the engine —
+> that is intentional for those surfaces, not a missing language feature.
 
 ---
 
@@ -244,7 +257,11 @@ pnpm run conformance:regen
 
 ### What is the current version?
 
-v2.3.0 (see root `package.json`)
+~~v2.3.0 (see root `package.json`)~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Root `package.json` / published npm
+> SoT is **`@angriff36/manifest` v3.6.4**. `engines.node` is `>=20`. Pin exact
+> versions (see `docs/spec/sdk-stability.md`).
 
 ### What are vNext features?
 
@@ -260,7 +277,8 @@ See: `docs/spec/manifest-vnext.md` and `docs/guides/migration/v0.3.8.md`
 
 ### How do I migrate to vNext?
 
-See: `docs/guides/migration/v0.3.8.md`
+See: `docs/guides/migration/v0.3.8.md` (historical v0.3.8 notes) and
+`docs/guides/migration/vnext.md`.
 
 ---
 
@@ -286,7 +304,14 @@ Check the severity level. Only `block` severity stops execution. Use `severity: 
 
 ### Why are my `read` policies not being enforced?
 
-This is correct behavior. `read` policies are NOT enforced by default. Use `execute` or `all` for policies that must be enforced during command execution.
+~~This is correct behavior. `read` policies are NOT enforced by default. Use
+`execute` or `all` for policies that must be enforced during command execution.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `read` / `all` policies **are** enforced
+> at the runtime read gate (`getInstance` / `getAllInstances`), fail-closed.
+> They are **not** applied during command execution (use `execute` / `all` for
+> that). If reads go through a generated direct-DB projection route, the engine
+> gate never runs — switch to engine reads or enforce auth in the app layer.
 
 ### Can I edit IR at runtime?
 

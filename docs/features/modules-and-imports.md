@@ -48,3 +48,5 @@ Multi-file behavior is covered by `module-resolver.test.ts` and parser tests usi
 
 - `use` must appear before other declarations in a file
 - Only relative paths ending in `.manifest` are valid
+>
+> **Correction (2026-07-15) @RYANSIGNED:** Multi-file merge does **not** path-prefix entity/enum/event names. Duplicate top-level names across `use`d files are a **compile error**. Keep declaration names unique across the merged project (`src/manifest/multi-compiler.test.ts`).

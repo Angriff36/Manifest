@@ -15,6 +15,11 @@ A saga declares a sequence of steps that execute across entities or services. Ea
 Use the `saga` keyword at the program or module level. Each `step` is a block naming its `command` and optional `compensate` as `Entity.command` references. The `on_failure` clause takes a single identifier — `compensate` (the default) or `abort` — and `emit` declares the saga's lifecycle events:
 
 ```manifest
+event SagaStarted: "saga.started" { sagaName: string }
+event SagaCompleted: "saga.completed" { sagaName: string }
+event SagaFailed: "saga.failed" { sagaName: string }
+event SagaStepCompleted: "saga.step.completed" { sagaName: string }
+
 saga ProcessOrder {
   step reserveInventory {
     command: Inventory.reserve
@@ -31,16 +36,23 @@ saga ProcessOrder {
   }
 
   on_failure: "compensate"
-  emit OrderProcessingFailed
+  ~~emit OrderProcessingFailed~~
+  emit SagaStarted
+  emit SagaCompleted
+  emit SagaFailed
+  emit SagaStepCompleted
 }
 ```
+
+> **Correction (2026-07-15) @RYANSIGNED:** List the fixed lifecycle event names you want emitted (and declare matching `event`s). A single custom `emit OrderProcessingFailed` does **not** substitute for `SagaFailed` / `SagaCompleted`. Start with `runtime.runSaga('ProcessOrder', stepInputs)`.
 
 ### Saga lifecycle
 
 <Steps>
   <Step title="Start">
-    The saga begins when the first step's command is invoked. The runtime creates a saga execution
-    record tracking the current step index.
+    ~~The saga begins when the first step's command is invoked.~~ **Correction (2026-07-15)
+    @RYANSIGNED:** The saga begins when the host calls `runSaga(name, stepInputs)`. Steps then run
+    in declaration order via `runCommand`.
   </Step>
   <Step title="Execute steps">
     Each step's command runs in sequence. If the command succeeds, the saga advances to the next
@@ -62,17 +74,32 @@ Compensation is best-effort. If a compensate command itself fails, the saga logs
 
 ### Saga lifecycle events
 
-| Event                       | When emitted                                        |
-| --------------------------- | --------------------------------------------------- |
-| `{SagaName}Started`         | Saga execution begins                               |
-| `{SagaName}StepCompleted`   | Each step's command succeeds                        |
-| `{SagaName}Completed`       | All steps complete                                  |
-| `{SagaName}StepCompensated` | Each compensate step completes                      |
-| `{SagaName}Failed`          | Saga enters compensation mode or compensation fails |
+~~| Event | When emitted |
+| --- | --- |
+| `{SagaName}Started` | … |
+| `{SagaName}StepCompensated` | … |~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Lifecycle event names are **fixed** (`SagaStarted`, `SagaStepCompleted`, `SagaCompleted`, `SagaFailed`) — not `{SagaName}…`. The runtime emits a lifecycle event **only if** that name appears in the saga's `emit` list **and** a matching `event` is declared in the IR (`emitSagaLifecycle`). There is **no** `SagaStepCompensated` lifecycle emission. Invoke with `runtime.runSaga(name, stepInputs)`.
+
+```manifest
+event SagaStarted: "saga.started" { sagaName: string }
+event SagaCompleted: "saga.completed" { sagaName: string }
+event SagaFailed: "saga.failed" { sagaName: string }
+event SagaStepCompleted: "saga.step.completed" { sagaName: string }
+
+saga ProcessOrder {
+  // ...steps...
+  on_failure: "compensate"
+  emit SagaStarted
+  emit SagaCompleted
+  emit SagaFailed
+  emit SagaStepCompleted
+}
+```
 
 <Note>
-  Saga events carry `correlationId` and `causationId` from the originating command, enabling
-  cross-service tracing through the entire workflow.
+  Declared saga lifecycle events carry `correlationId` / `causationId` like other emissions when
+  present on the emitted record.
 </Note>
 
 ## Scheduled commands
@@ -157,29 +184,6 @@ entity Cache {
 
 ## Combining sagas and schedules
 
-Sagas and schedules can work together. A scheduled command can initiate a saga, enabling periodic batch workflows:
+~~Sagas and schedules can work together. A scheduled command can initiate a saga…~~
 
-```manifest
-entity DailyReconciliation {
-  schedule runReconciliation
-    cron "0 2 * * *"
-    run startReconciliation
-
-  command startReconciliation() {
-    emit ReconciliationRequested
-  }
-}
-
-saga ReconcileAccounts {
-  step fetchTransactions {
-    command: Transaction.fetchPending
-  }
-
-  step matchRecords {
-    command: Ledger.match
-  }
-
-  on_failure: "compensate"
-  emit ReconciliationFailed
-}
-```
+> **Correction (2026-07-15) @RYANSIGNED:** Schedules invoke an entity **command** (`run <command>`). They do **not** call `runSaga` automatically. To start a saga from a schedule, the scheduled command (or a reaction it triggers) must call into host code that invokes `runtime.runSaga(...)`, or model the workflow as ordinary commands/reactions. Emitting an event alone does not start a saga.

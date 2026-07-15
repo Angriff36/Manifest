@@ -1,163 +1,81 @@
 ---
 title: 'AI tooling: test generator, IR validator, and natural language transpiler'
-description: 'AI-powered developer tools that generate conformance tests from IR, validate and repair IR produced by LLMs, and transpile natural language descriptions into Manifest source.'
+description: 'AI-powered CLI tools that generate conformance fixtures, score IR/source for agents, and transpile natural language into Manifest source.'
 sidebarTitle: 'AI tooling'
 ---
 
-Manifest ships with three AI-powered tools designed to accelerate development workflows involving LLMs and AI agents. These tools bridge the gap between AI-generated content and the Manifest type system.
+Manifest ships LLM-backed CLI tools for generating fixtures and source from prompts, plus agent-oriented validation. Verified against `packages/cli/src/index.ts` and `@angriff36/manifest@3.6.4`.
 
 ## AI-assisted conformance test generator
 
-The test generator analyzes compiled IR and produces conformance test cases — runtime scenarios that exercise entity commands, guards, constraints, and computed properties. It uses the IR's structural information (entity properties, command parameters, guard expressions, constraint expressions) to derive representative test inputs.
+~~```bash
+manifest generate-tests ir/app.ir.json --per-entity 5 --include-negative --format vitest
+```~~
 
-### Usage
-
-```bash
-# Generate tests from a compiled IR
-manifest generate-tests ir/app.ir.json --output tests/
-
-# Generate tests from source
-manifest generate-tests src/app.manifest --output tests/
-
-# Specify the number of test cases per entity
-manifest generate-tests ir/app.ir.json --per-entity 5 --output tests/
-```
-
-### Options
-
-| Option               | Default            | Description                                                                 |
-| -------------------- | ------------------ | --------------------------------------------------------------------------- |
-| `--output`           | `generated-tests/` | Output directory for test files                                             |
-| `--per-entity`       | `3`                | Number of test cases to generate per entity                                 |
-| `--include-negative` | `true`             | Generate negative test cases (guard failures, constraint violations)        |
-| `--format`           | `conformance`      | Output format: `conformance` (fixture files) or `vitest` (`.test.ts` files) |
-
-### What it generates
-
-For each entity with commands, the generator produces:
-
-1. **Happy-path tests** — valid inputs that should succeed
-2. **Guard violation tests** — inputs that trigger each declared guard
-3. **Constraint violation tests** — inputs that violate block-level constraints
-4. **Computed property tests** — verifies computed values after mutations
-
-<Note>
-  Generated tests are starting points, not exhaustive coverage. Review and supplement them with
-  domain-specific edge cases that the structural analysis cannot infer from the IR alone.
-</Note>
-
-## LLM-generated IR validator and repair tool
-
-When LLMs generate Manifest IR directly (rather than going through the compiler), the output may contain structural errors, missing required fields, or type mismatches. The IR validator checks the generated IR against the schema and can attempt automatic repairs.
-
-### Usage
+> **Correction (2026-07-15) @RYANSIGNED:** `manifest generate-tests` (alias `gen-tests`) is an
+> **LLM** fixture generator. Flags are `--feature`, `--category`, `--count`, `--output`,
+> `--api-key`, `--model`, `--temperature`, `--max-retries`, `--dry-run`, `--verbose` — not
+> `--per-entity` / `--include-negative` / `--format`. Requires `ANTHROPIC_API_KEY`.
 
 ```bash
-# Validate an IR file (report issues only)
-manifest validate-ir generated.ir.json
-
-# Validate and attempt repairs
-manifest validate-ir generated.ir.json --repair --output repaired.ir.json
-
-# Validate with strict mode (warnings become errors)
-manifest validate-ir generated.ir.json --strict
+manifest generate-tests src/app.manifest --count 5 --category edge-cases --dry-run
+manifest generate-tests --feature "computed properties" --count 3 --output src/manifest/conformance/fixtures
 ```
 
-### Repair capabilities
+| Option | Default | Description |
+| ------ | ------- | ----------- |
+| `--feature <text>` | — | Focus description for generation |
+| `--category <type>` | `edge-cases` | `edge-cases`, `boundary`, `adversarial`, `coverage` |
+| `--count <n>` | `3` | Number of fixtures to generate |
+| `--output <path>` | conformance fixtures dir | Where to write fixtures |
+| `--api-key` / `--model` / `--temperature` | env / defaults | Anthropic settings |
+| `--dry-run` | `false` | Preview without writing |
+| `--verbose` | `false` | Iteration logs |
 
-The repair tool can fix common LLM mistakes:
+Generated fixtures are compiled/validated before write. They are starting points — review them.
 
-| Issue                      | Repair strategy                                                  |
-| -------------------------- | ---------------------------------------------------------------- |
-| Missing required IR fields | Insert defaults (e.g., empty arrays for `events`, `modules`)     |
-| Invalid type references    | Normalize to closest valid primitive                             |
-| Duplicate entity names     | Append numeric suffix                                            |
-| Missing property type      | Default to `string` with a warning                               |
-| Malformed expressions      | Replace with safe fallback (`true` for guards, `0` for computed) |
+## LLM-oriented IR / source validation
 
-### Integration with AI agents
+~~`manifest validate-ir`~~ / ~~`validateIR` / `repairIR` from `@angriff36/manifest/ir-validator`~~
 
-```typescript
-import { validateIR, repairIR } from '@angriff36/manifest/ir-validator';
+> **Correction (2026-07-15) @RYANSIGNED — Documentation gap:** There is **no** `validate-ir`
+> command and **no** `@angriff36/manifest/ir-validator` export. Use:
 
-// Validate IR produced by an LLM
-const result = validateIR(llmGeneratedIR);
+```bash
+# Schema validation of compiled IR
+manifest validate ir/app.ir.json --strict
 
-if (!result.valid) {
-  console.log(`Found ${result.errors.length} issues:`);
-  result.errors.forEach((e) => console.log(`  [${e.severity}] ${e.path}: ${e.message}`));
-
-  // Attempt repair
-  const repaired = repairIR(llmGeneratedIR, { strict: false });
-  // repaired.ir — the fixed IR
-  // repaired.repairs — list of changes made
-}
+# Agent-scored diagnostics (text or json)
+manifest validate-ai src/app.manifest --format json --min-score 80
 ```
 
-<Warning>
-  IR repair is best-effort and should always be reviewed. The tool prioritizes producing valid IR
-  over preserving the LLM's original intent. Always validate repaired IR against your domain
-  expectations.
-</Warning>
+Automatic “repair IR then continue” is not a shipped public API. Prefer re-emitting source via
+`manifest generate-from-prompt` or fixing diagnostics by hand.
 
 ## Natural language to Manifest transpiler
 
-The natural language transpiler converts plain English descriptions of business rules into Manifest source code. It is designed for rapid prototyping and onboarding — not for generating production-ready rules without review.
+~~```bash
+manifest generate --from-prompt "…"
+```~~
 
-### Usage
-
-```bash
-# Generate from a prompt
-manifest generate --from-prompt "An order entity with status tracking, a submit command that requires manager approval for orders over $1000, and a policy that only the order owner can cancel"
-
-# Generate with a specific output file
-manifest generate --from-prompt "A task management system with assignees and due dates" --output generated.manifest
-
-# Generate from a file containing the description
-manifest generate --from-prompt @requirements.txt --output src/app.manifest
-```
-
-### Command options
-
-| Option                 | Description                                                 |
-| ---------------------- | ----------------------------------------------------------- |
-| `--from-prompt <text>` | Natural language description (or `@file` to read from file) |
-| `--output <path>`      | Output path for generated `.manifest` file                  |
-| `--format`             | Output format: `manifest` (source) or `ir` (compiled IR)    |
-| `--model`              | LLM model hint for the transpiler backend                   |
-
-### Example: generating from a prompt
+> **Correction (2026-07-15) @RYANSIGNED:** The shipped command is the separate CLI entry
+> `manifest generate-from-prompt <prompt>` (not a flag on `manifest generate`). Requires
+> `ANTHROPIC_API_KEY`. Options: `--model`, `-o/--output`, `--max-retries`, `--temperature`,
+> `--api-key`, `--skip-validation`, `--verbose`. There is no `--format ir` flag.
 
 ```bash
-manifest generate --from-prompt "Customer entity with email, name, and subscription tier. A command to upgrade tier that checks payment is valid. Events for tier changes."
+manifest generate-from-prompt "An order entity with status tracking and manager approval over 1000" -o generated.manifest
+manifest generate-from-prompt "A task tracker with assignees" --model claude-sonnet-4-20250514 --verbose
 ```
 
-Generates:
+Always compile and validate the result:
 
-```manifest
-entity Customer {
-  property required id: string
-  property required email: string
-  property required name: string
-  property subscriptionTier: string = "free"
-
-  command upgradeTier(newTier: string) {
-    guard self.subscriptionTier != newTier
-    mutate subscriptionTier = newTier
-    emit TierChanged
-  }
-}
-
-event TierChanged: "customer.tier.changed" {
-  customerId: string
-  newTier: string
-}
-
-store Customer in memory
+```bash
+manifest compile generated.manifest --diagnostics
+manifest validate-ai generated.manifest --min-score 80
 ```
 
 <Note>
-  The natural language transpiler produces reasonable defaults based on the prompt. Review the
-  output for accuracy — LLM interpretation of business rules may differ from your intent. Always
-  validate the generated source with `manifest compile` and `manifest validate`.
+  LLM output is an emitter, not a validator. Review guards, policies, and domain completeness
+  before shipping. Package pin: `@angriff36/manifest@3.6.4`.
 </Note>

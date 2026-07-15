@@ -5,6 +5,12 @@ Status: Active
 Authority: Advisory
 Enforced by: None
 
+> **Audited (2026-07-15) @RYANSIGNED:** `runCommand` / `RuntimeOptions` shapes
+> match package **3.6.4**. Entity-scoped `store Entity in memory` inside an
+> entity body is valid parser syntax. Imports from `@capsule/manifest-adapters`
+> are Capsule Pro host examples, not `@angriff36/manifest` exports. Normative
+> workflow metadata: `docs/spec/manifest-vnext.md`.
+
 This guide demonstrates how to use Manifest's embedded runtime for complex, multi-step business workflows. All examples use the Capsule Pro catering operations domain.
 
 Normative semantics are defined in `docs/spec/semantics.md`. Workflow metadata is defined in `docs/spec/manifest-vnext.md` § "Workflow Metadata (Normative)".

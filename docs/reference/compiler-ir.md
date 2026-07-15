@@ -3,16 +3,13 @@ title: 'Compilation and IR'
 description: 'Understand how Manifest source becomes a canonical IR and why that IR is the center of the system.'
 ---
 
-> **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
-> code-derived reference snapshot of repository structure and signatures.
-> It is intended for tooling (Context7, search indexers, etc.) and is
-> NOT verified prose on every regeneration. For normative, hand-curated
-> documentation see [`docs/spec/`](../spec/) — in particular
-> [`docs/spec/manifest-vnext.md`](../spec/manifest-vnext.md) for language
-> semantics and [`docs/spec/config/manifest.config.md`](../spec/config/manifest.config.md)
-> for projection configuration. Projections are described here as
-> **tooling, not language semantics** — they consume IR and emit
-> artifacts; they do not redefine policy/guard/constraint behaviour.
+> ~~**AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` …~~
+>
+> **Correction (2026-07-15) @RYANSIGNED:** This page lives at
+> `docs/reference/compiler-ir.md` (not `docs/codedocs/`). Advisory compiler/IR
+> tour; normative contract is [`docs/spec/ir/ir-v1.schema.json`](../spec/ir/ir-v1.schema.json)
+> plus [`docs/spec/semantics.md`](../spec/semantics.md). Package pin SoT:
+> `package.json` = **3.6.4**.
 
 Compilation is the boundary between Manifest's language syntax and everything that runs after it. The compiler does not just validate source text; it turns the text into a stable intermediate representation that runtime execution, projections, and governance tooling can all consume consistently.
 

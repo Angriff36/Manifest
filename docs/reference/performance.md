@@ -3,7 +3,10 @@
 Authority: Advisory
 Enforced by: None
 Last updated: 2026-05-20
-Applies to: `@angriff36/manifest@2.3.0+`
+~~Applies to: `@angriff36/manifest@2.3.0+`~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Performance guidance applies to current
+> `@angriff36/manifest` (**3.6.4**+). The `2.3.0+` floor is obsolete.
 
 Performance characteristics and optimization strategies for Manifest.
 

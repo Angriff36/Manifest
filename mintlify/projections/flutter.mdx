@@ -18,7 +18,11 @@ The projection exposes six surfaces.
 
 `dart.models` emits all entity and command models in a single library file with barrel exports.
 
-`dart.client` emits a Dio-based async HTTP client class with CRUD methods (`list`, `get`, `delete`) for each entity and typed command invocation methods. The client uses `httpx.AsyncClient`-equivalent Dio patterns with optional bearer token authentication.
+`dart.client` emits a Dio-based async HTTP client class with CRUD methods (`list`, `get`, `delete`) for each entity and typed command invocation methods. ~~The client uses `httpx.AsyncClient`-equivalent Dio patterns with optional bearer token authentication.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Registry name is **`dart`** (not `flutter`). Client
+> networking is **Dio** only — there is no Python `httpx` dependency. CLI:
+> `manifest generate … -p dart`.
 
 `dart.providers` emits state management hooks supporting Riverpod (`Provider`, `FutureProvider`, `FutureProvider.family`) or classic Provider (`ChangeNotifier`). Choose the pattern via the `stateManagement` option.
 

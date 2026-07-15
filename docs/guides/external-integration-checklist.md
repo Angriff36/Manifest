@@ -6,9 +6,14 @@ Use this as a process template. Do not treat it as normative language spec.
 
 ## Preconditions
 
-- Read and accept `C:/Projects/Manifest/docs/spec/*` as authoritative.
+- ~~Read and accept `C:/Projects/Manifest/docs/spec/*` as authoritative.~~
+- Read and accept `docs/spec/*` as authoritative (repo-relative; do not hard-code machine paths).
 - Confirm target app can supply required runtime context used by guards/policies (`user`, `context`, etc.).
 - Confirm mutation paths can execute through runtime command execution (`runCommand`).
+
+> **Correction (2026-07-15) @RYANSIGNED:** Absolute `C:/Projects/Manifest/...`
+> paths are not portable. Package pin SoT: `package.json` = **3.6.4**;
+> `engines.node` = `>=20`.
 
 ## Integration Steps
 
@@ -22,7 +27,8 @@ Use this as a process template. Do not treat it as normative language spec.
 
 ## Verification
 
-- Run repository tests (`npm test`) after integration updates in this repo.
+- ~~Run repository tests (`npm test`) after integration updates in this repo.~~
+- Run repository tests (`pnpm test`) after integration updates in this repo.
 - Add application-level tests in the external app for auth/context mapping and response contracts.
 - Confirm deterministic behavior in tests via injectable time/id options when relevant.
 

@@ -118,6 +118,11 @@ The watcher traps `SIGINT` and `SIGTERM` and shuts down cleanly. Build errors do
 
 The Manifest VS Code extension provides syntax highlighting, autocomplete, hover documentation, go-to-definition, and real-time diagnostics. It is available as a bundled extension with an embedded LSP server -- no separate install needed.
 
+> **Correction (2026-07-15) @RYANSIGNED:** Extension id `manifest-lang` (in-repo `0.3.0`) and
+> `@manifest/lsp-server@0.1.0` are **built in-repo / not published** to npm or the VS Code
+> Marketplace (see `docs/TODO.md`). Use the VSIX build path below, or the published
+> `manifest-lsp` bin on `@angriff36/manifest@3.6.4` for editor stdio wiring.
+
 ### Installation
 
 Build and install the extension from source:
@@ -189,21 +194,25 @@ The server communicates over stdio and is launched by the editor client. Each fe
 
 ### Connecting a custom editor
 
-The LSP server binary is `packages/lsp-server/bin/manifest-lsp.js`. Configure your editor to launch it as a language server over stdio:
+~~only `packages/lsp-server/bin/manifest-lsp.js` from source~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Prefer the published bin from the main package:
+> `npx --package @angriff36/manifest manifest-lsp --stdio` (or the path under
+> `node_modules/@angriff36/manifest/...`). The workspace package `@manifest/lsp-server` is not
+> on npm.
 
 ```json
 {
   "languageserver": {
     "manifest": {
-      "command": "node",
-      "args": ["path/to/packages/lsp-server/bin/manifest-lsp.js", "--stdio"],
+      "command": "npx",
+      "args": ["--package", "@angriff36/manifest", "manifest-lsp", "--stdio"],
       "filetypes": ["manifest"],
       "rootPatterns": ["manifest.config.yaml", "manifest.config.yml"]
     }
   }
 }
 ```
-
 <Tip>
   The LSP server bundles the Manifest compiler, so no separate compile step is needed. It reads
   `.manifest` files directly from disk and compiles them on every document change.

@@ -39,7 +39,13 @@ manifest generate ir/recipe.ir.json --projection zod --surface zod.schemas --out
 
 ## Type mapping & behavior
 
-IR types map to Zod expressions through `TYPE_MAP`. `string` and `text` become `z.string()`; `boolean`/`bool` become `z.boolean()`; `number`, `float`, `decimal`, and `money` become `z.number()`; `int`/`integer` become `z.number().int()`; `bigint` becomes `z.bigint()`; `date`/`datetime` become `z.coerce.date()`; `uuid` becomes `z.string().uuid()`; `email` becomes `z.string().email()`; `url`/`uri` become `z.string().url()`; `json` and `any` become `z.unknown()`; `bytes` becomes `z.instanceof(Uint8Array)`; and `object` becomes `z.record(z.unknown())`. Arrays and maps with a generic recurse into `z.array(...)` and `z.record(...)`. An unknown type emits a `ZOD_UNKNOWN_TYPE` warning and falls back to `z.unknown()`.
+~~IR types map to Zod expressions through `TYPE_MAP`. `string` and `text` become `z.string()`; `boolean`/`bool` become `z.boolean()`; `number`, `float`, `decimal`, and `money` become `z.number()`; `int`/`integer` become `z.number().int()`; `bigint` becomes `z.bigint()`; `date`/`datetime` become `z.coerce.date()`; `uuid` becomes `z.string().uuid()`; `email` becomes `z.string().email()`; `url`/`uri` become `z.string().url()`; `json` and `any` become `z.unknown()`; `bytes` becomes `z.instanceof(Uint8Array)`; and `object` becomes `z.record(z.unknown())`. Arrays and maps with a generic recurse into `z.array(...)` and `z.record(...)`. An unknown type emits a `ZOD_UNKNOWN_TYPE` warning and falls back to `z.unknown()`.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Same base map, plus: `timestamp` aliases `datetime`
+> (`z.coerce.date()`); `time` → regex-validated `z.string()`; `duration` → `z.number()`;
+> `list<T>` aliases `array<T>`; IR enum type names resolve to `z.enum([...])` from `ir.enums`
+> (member **names** as string literals). Value objects inline as `z.object({...})`. Truly unknown
+> types still emit `ZOD_UNKNOWN_TYPE` → `z.unknown()` (`src/manifest/projections/zod/generator.ts`).
 
 Note that, unlike [Prisma](/integration/prisma) and [Drizzle](/projections/drizzle), the Zod projection maps bare `number` to `z.number()` without an ambiguity diagnostic — Zod has no distinct integer-versus-decimal concern at this layer. Constraints on an entity are analyzed (via `src/manifest/constraint-analysis.ts`) and emitted as `.min()` / `.max()` refinement chains.
 

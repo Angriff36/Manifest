@@ -42,7 +42,16 @@ The IR `type.name` string is translated to a Prisma scalar through `DEFAULT_TYPE
 
 Bare `number` is intentionally absent from the table. Because Manifest's `number` is ambiguous between integers, reals, and money, the projection emits a `PRISMA_AMBIGUOUS_NUMBER` diagnostic and skips the column rather than silently mapping it to `Float`. Authors must pick `int`, `bigint`, `float`, `decimal`, or `money`. Decimal-family columns resolve precision and scale in this order: (1) `options.precision[Entity][prop]` — explicit consumer override; (2) `IRType.params` — precision/scale compiled into the IR for the property (e.g. from a compiler that annotates the type); (3) default `@db.Decimal(12, 2)`. Properties carrying the `indexed` modifier emit a `@@index([prop])` model-level attribute in addition to any `options.indexes` entries; if the property is already covered by `options.indexes` no duplicate is emitted.
 
-Properties named `id` get `@id`; `@unique` comes from a modifier, `@default(...)` from a default value, and `@map(...)` from a column-name override. Relationships drive `@relation` wiring: `belongsTo` and `ref` emit an FK scalar plus a relation field, while `hasMany` / `hasOne` emit the opposite side. The projection emits diagnostics for shapes Prisma cannot accept on its own — one-sided relations, ambiguous multi-relation pairs that need named relations, and missing keys.
+~~Properties named `id` get `@id`;~~ `@unique` comes from a modifier, `@default(...)` from a default value, and `@map(...)` from a column-name override.
+
+> **Correction (2026-07-15) @RYANSIGNED:** A property literally named `id` becomes
+> `@id` **unless** the entity declares a composite `key [...]`, which emits
+> `@@id([...])` and suppresses `PRISMA_NO_ID_PROPERTY`. That diagnostic fires
+> only when there is **neither** an `id` property **nor** a composite key
+> (`src/manifest/projections/prisma/generator.ts`). There is still no grammar
+> `@id` modifier.
+
+Relationships drive `@relation` wiring: `belongsTo` and `ref` emit an FK scalar plus a relation field, while `hasMany` / `hasOne` emit the opposite side. The projection emits diagnostics for shapes Prisma cannot accept on its own — one-sided relations, ambiguous multi-relation pairs that need named relations, and missing keys.
 
 ## Options
 

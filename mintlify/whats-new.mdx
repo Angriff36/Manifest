@@ -4,6 +4,11 @@ sidebarTitle: "What's new (3.0)"
 description: 'Manifest 3.0 makes generated backends runnable with zero hand-written glue: emitted companions, shipped outbox/job/schedule workers, an atomic transaction boundary, coherent routes and clients, webhooks, and a runtime event bus. Includes breaking changes.'
 ---
 
+> **Note (2026-07-15):** This page is a **3.0 release note**, not the current package pin.
+> Repo / npm `@angriff36/manifest` is **v3.6.4** at verification time. Prefer
+> `manifest compile --all` / `generate --all` / `build --all` / `watch --all` for
+> config-driven projects (those flags remain valid).
+
 Manifest 3.0 closes the gap between "code was generated" and "the backend actually
 runs." Where earlier releases emitted types and route bodies but left you to
 hand-write the runtime factory, response helpers, drain loops, and worker wiring,
@@ -18,12 +23,33 @@ on one contract.
 
 ## Docs are now gated against the compiler
 
-Every ` ```manifest ` snippet in the published docs is compiled by the real
+~~Every ` ```manifest ` snippet in the published docs is compiled by the real
 compiler in CI (`scripts/check-doc-snippets.mjs`), internal links are resolved
 (`check-doc-links.mjs`), and page frontmatter and spec headers are enforced
 (`check-doc-metadata.mjs`, `check-spec-integrity.mjs`). Doc examples that stop
 compiling now fail the build, so what you read here matches what the compiler
-accepts.
+accepts.~~
+
+**Correction (2026-07-15):** CI does run `pnpm run docs:check` (metadata + links +
+spec integrity + snippets) via `.github/workflows/ci.yml`. Scope and limits:
+
+- **`check-doc-snippets.mjs`** compiles ` ```manifest ` blocks with the real
+  compiler (`compileToIR` via jiti) for `mintlify/**` plus selected `docs/`
+  trees — **not** every snippet, and **not** all docs. ` ```manifest fragment `
+  blocks are skipped; ` ```manifest invalid ` blocks must fail to compile.
+  `docs/internal` and `docs/spec` are out of snippet scope. TypeScript /
+  runtime API examples are **not** typechecked.
+- **`check-doc-links.mjs`** resolves internal markdown link *paths* only
+  (anchors and external URLs are ignored).
+- **`check-doc-metadata.mjs`** requires Mintlify `title` frontmatter and the
+  codedocs AUTO-GENERATED banner — not full frontmatter on every page, and not
+  YAML frontmatter on `docs/spec/`.
+- **`check-spec-integrity.mjs`** enforces plaintext headers (`Last updated`,
+  `Status`, `Authority`) and relative links under `docs/spec/*.md`.
+
+So the gate keeps standalone Manifest source examples honest for compile
+errors; it does **not** guarantee that everything you read matches the
+compiler or runtime API.
 
 ## Generated companions: zero hand-written files
 

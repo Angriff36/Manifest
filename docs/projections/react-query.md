@@ -58,4 +58,7 @@ const result = projection.generate(ir, {
 
 Two declared options are currently inert. `optimisticUpdates` is accepted and normalized but is never read during generation — the generated mutation hooks use a cache-invalidation strategy (`invalidateQueries`) only, with no optimistic update helpers emitted, despite the module's header comment mentioning them. `typesImportPath` is likewise accepted but unused; entity and command-input types are inlined directly into the hooks file rather than imported, so the hooks module is fully self-contained.
 
-There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only; to emit React Query hooks, invoke the projection programmatically through `getProjection('react-query')` as shown above.
+~~There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only; to emit React Query hooks, invoke the projection programmatically through `getProjection('react-query')` as shown above.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `manifest generate <ir> -p react-query` works via the
+> projection registry (`CLI -p` / `getProjection('react-query')`).

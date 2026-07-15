@@ -33,9 +33,12 @@ entity FlagInspector {
   computed isNewUIEnabled: boolean = flag("new-ui")
 }
 
-store FeatureGatedEntity in memory
+~~store FeatureGatedEntity in memory~~
+store ViewerGatedEntity in memory
 store FlagInspector in memory
 ```
+
+> **Correction (2026-07-15) @RYANSIGNED:** Store name must match the entity (`ViewerGatedEntity`), not a non-existent `FeatureGatedEntity`.
 
 ## Behavior
 

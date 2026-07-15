@@ -344,10 +344,18 @@ Every `runCommand` call follows this fixed order. No primitive changes it:
 4. Policies                → authorization (deny = immediate failure)
 5. Command constraints     → severity-based (block = failure unless overridden)
 6. Guards                  → preconditions (first false = failure)
-7. Actions                 → mutations (transition validation during mutate), effects
+~~7. Actions                 → mutations (transition validation during mutate), effects
 8. Events                  → emitted in declaration order
-9. Return CommandResult
+9. Return CommandResult~~
+7. Approval gate           → when entity declares `approval` for this command (see docs/features/approval-workflows.md)
+8. Actions                 → mutations (transition validation during mutate), effects
+9. Events                  → emitted in declaration order
+10. Return CommandResult
 ```
+
+> **Correction (2026-07-15) @RYANSIGNED:** Approval runs **after** guards and **before** actions
+> (`runtime-engine.ts` approvalGate phase). Spec numbered list in `semantics.md` § Commands still
+> omits this step; runtime + feature page are authoritative until the spec list is updated.
 
 Budget tracking (`EvaluationLimits`) wraps the entire flow. If any expression evaluation exceeds the budget during steps 2–7, the command fails.
 

@@ -69,7 +69,9 @@ entity Article mixin Timestampable, SoftDeletable {
 
 - Multiple mixins are listed comma-separated: `entity Foo mixin A, B, C { ... }`.
 - The `IREntity` stores `mixins?: string[]` for traceability only — all members are pre-flattened by the IR compiler; no projection reads the `mixins` field for member resolution. Mixin source entities remain as standalone entries in `ir.entities`.
-- Resolution order for a given member name: own declarations first, then mixins in declaration order, then inherited parent.
+- ~~Resolution order for a given member name: own declarations first, then mixins in declaration order, then inherited parent.~~
+>
+> **Correction (2026-07-15) @RYANSIGNED:** Composition merge order is **parent → mixins → own**; **own wins** on name conflict (`src/manifest/entity-composition.ts`). Mixin–mixin name clashes are not a dedicated compile error — prefer disjoint mixin surfaces.
 
 **Validation:**
 

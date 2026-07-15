@@ -65,25 +65,40 @@ const ttl = await store.getTTL(); // Remaining TTL in seconds for the namespace
 
 When `defaultTTL` is configured, newly created entity keys receive the TTL automatically via `EXPIRE`.
 
-## Pub/Sub event propagation
+## Pub/Sub — use `RedisEventBus`, not `RedisStore`
 
-`RedisStore` includes pub/sub helpers for event propagation:
+~~`RedisStore` includes pub/sub helpers for event propagation:~~
+
+~~```typescript
+await store.publishEvent('OrderCreated', { orderId: 'order-123', total: 99.99 });
+await store.subscribe('OrderCreated', (event) => { ... });
+```~~
+
+~~Treat the pub/sub helpers as a building block, not a turnkey event bus.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `RedisStore.publishEvent` and `RedisStore.subscribe`
+> were silent no-ops and now **throw**, pointing callers at `RedisEventBus`. Cross-process event
+> fan-out is `RuntimeOptions.eventBus` + `RedisEventBus` from `@angriff36/manifest/events/redis`
+> (see below). There is no auto-construct from env — wire the bus yourself.
+
+## `RedisEventBus` (cross-process fan-out)
 
 ```typescript
-// Publish an event to a Redis channel
-await store.publishEvent('OrderCreated', { orderId: 'order-123', total: 99.99 });
+import { RuntimeEngine } from '@angriff36/manifest';
+import { RedisEventBus } from '@angriff36/manifest/events/redis';
 
-// Register a local subscriber callback for a channel
-await store.subscribe('OrderCreated', (event) => {
-  console.log('Received event:', event);
+const eventBus = new RedisEventBus({
+  url: process.env.REDIS_URL, // default redis://localhost:6379
+  channel: 'manifest:events', // default
 });
+
+const runtime = new RuntimeEngine(ir, context, { eventBus });
+await runtime.connectEventBus(); // subscribe this process to remote envelopes
 ```
 
-<Note>
-  `publishEvent` issues a real Redis `PUBLISH`. `subscribe` currently registers the callback
-  locally; a production deployment that needs cross-process delivery should wire a dedicated
-  subscriber connection. Treat the pub/sub helpers as a building block, not a turnkey event bus.
-</Note>
+`RedisEventBus` implements the same `EventBus` contract as `MemoryEventBus`
+(`@angriff36/manifest/events`). Optional peer: `ioredis`. Inject `client` in tests to avoid loading
+ioredis. Call `close()` to quit bus-owned connections.
 
 ## Outbox delivery
 
@@ -135,6 +150,8 @@ const runtime = new RuntimeEngine(
 | What                                     | Import path                           |
 | ---------------------------------------- | ------------------------------------- |
 | `RedisStore` class and `RedisConfig`     | `@angriff36/manifest/stores`          |
+| `RedisEventBus`                          | `@angriff36/manifest/events/redis`    |
+| `MemoryEventBus`                         | `@angriff36/manifest/events`          |
 | `RedisOutboxStore`                       | `@angriff36/manifest/outbox/redis`    |
 | `MemoryOutboxStore`                      | `@angriff36/manifest/outbox/memory`   |
 | `PostgresOutboxStore`                    | `@angriff36/manifest/outbox/postgres` |
@@ -143,8 +160,7 @@ const runtime = new RuntimeEngine(
 ## Notes & limitations
 
 <Note>
-  `ioredis` is loaded lazily and is optional. If it is not installed, the store cannot connect to
-  Redis. For production use, consider TLS for secure connections (`rediss://` URL scheme) and a
-  managed/clustered Redis for scaling. The pub/sub `subscribe` helper registers callbacks locally
-  and does not yet open a dedicated subscriber connection.
+  `ioredis` is loaded lazily and is optional for `RedisStore`, `RedisOutboxStore`, and
+  `RedisEventBus`. If it is not installed, those adapters throw a clear install hint. Prefer TLS
+  (`rediss://`) in production. Package pin for the main SDK: `@angriff36/manifest@3.6.4`.
 </Note>

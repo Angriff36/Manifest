@@ -39,10 +39,16 @@ entity PurchaseOrder {
 }
 ```
 
+> **Correction (2026-07-15) @RYANSIGNED:** Only `on_timeout: "cancel"` is supported.
+> `on_timeout: "escalate"` is **rejected at compile time** with
+> `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` (fixture `103-approval-escalate-unsupported.manifest`).
+> IR schema `IRApproval.onTimeout` enum is `["cancel"]` only.
+
 ## IR Schema Changes
 
 - `IRApprovalStage`: name, policy (IRExpression), required (number), optional when (IRExpression)
-- `IRApproval`: name, command (string), stages (IRApprovalStage[]), optional timeout/onTimeout, emits
+- `IRApproval`: name, command (string), stages (IRApprovalStage[]), optional timeout/onTimeout ~~, emits~~
+  (`onTimeout` is `"cancel"` only — see escalate correction above), emits
 - `IREntity.approvals`: optional array of IRApproval
 
 ## Runtime Behavior

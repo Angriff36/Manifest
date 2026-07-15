@@ -893,7 +893,7 @@ Skip flags (opt-in only):
 - `--skip-package-shape` — don't run subpath imports / tarball
 - `--skip-tarball` — keep subpath imports but skip `pnpm pack`
 
-See [`docs/tools/integration-check.md`](./integration-check.md) for the
+See ~~[`docs/tools/integration-check.md`](./integration-check.md)~~ [`docs/internal/tools/integration-check.md`](./integration-check.md) for the
 deeper integration guide.
 
 ### `manifest enforce-surface`
@@ -1054,8 +1054,8 @@ warning APPROVED_BYPASS_REQUIRED app/api/migration/route.ts — Direct write at 
 - **Canonical reading order**: `docs/README.md`
 - **Spec**: `docs/spec/README.md`
 - **Adapter contracts**: `docs/spec/adapters.md`
-- **Integration check guide**: `docs/tools/integration-check.md`
+- **Integration check guide**: ~~`docs/tools/integration-check.md`~~ `docs/internal/tools/integration-check.md`
 - **Project Scaffolding**: `docs/MANIFEST_PROJECT_SCAFFOLDING.md`
 - **Quick Start**: `docs/QUICKSTART.md`
 - **Projections**: `docs/guides/writing-projections.md`
-- **API Reference**: `docs/tools/API_REFERENCE.md`
+- **API Reference**: ~~`docs/tools/API_REFERENCE.md`~~ `docs/internal/tools/API_REFERENCE.md`

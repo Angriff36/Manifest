@@ -37,16 +37,25 @@ sequenceDiagram
   Runtime->>Policy: evaluate command policies
   Runtime->>Runtime: evaluate command constraints
   Runtime->>Guard: run guards in order
+  ~~Runtime->>Store: execute mutate or compute actions~~
+  Runtime->>Runtime: approval gate (if entity approval gates command)
   Runtime->>Store: execute mutate or compute actions
   Runtime->>Emit: append emitted events
   Runtime-->>App: CommandResult
 ```
 
+> **Correction (2026-07-15) @RYANSIGNED:** Sequence omitted the approval gate. It runs after
+> guards and before actions (`approvalGate` in `runtime-engine.ts`).
+
 ## How It Works Internally
 
 The constructor builds store instances up front. `initializeStores()` walks every IR entity and either uses `RuntimeOptions.storeProvider` or falls back to the built-in memory or `localStorage` stores. This is why the root runtime stays browser-safe: server-only stores are injected, not imported directly.
 
-The main entry point is `runCommand()`. It first enforces `requireTenantContext`, then consults `idempotencyStore` if one is configured. The actual domain work happens in `_executeCommandInternal()`, which clears relationship memoization, resets concurrency tracking, resolves the command, builds the evaluation context, enforces rate-limit (if declared), checks policies, evaluates command constraints, runs guards, executes actions, and then emits declared command events.
+The main entry point is `runCommand()`. It first enforces `requireTenantContext`, then consults `idempotencyStore` if one is configured. The actual domain work happens in `_executeCommandInternal()`, which clears relationship memoization, resets concurrency tracking, resolves the command, builds the evaluation context, enforces rate-limit (if declared), checks policies, evaluates command constraints, runs guards, ~~executes actions, and then emits declared command events.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** After guards, the approval gate runs (when an entity
+> `approval` targets the command); then actions; then emits. Signature:
+> `runCommand(commandName, input, options?)` — not entity-first.
 
 Expression evaluation is handled by `evaluateExpression()`. It supports literals, identifiers, member access, binary and unary operators, calls, conditionals, arrays, objects, and lambdas. Built-ins such as `now()` and `uuid()` are injected by `getBuiltins()`. Member access on `self.someRelation` can trigger relationship resolution through `resolveRelationship()`, which indexes relationships once and memoizes resolved lookups per command execution.
 

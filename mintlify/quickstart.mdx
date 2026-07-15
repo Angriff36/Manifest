@@ -10,7 +10,9 @@ This guide walks you from a blank project to a running Manifest program. You wil
 
 <Step title="Install the package">
 
-Add `@angriff36/manifest` to your project. Node.js 18 or later is required.
+~~Add `@angriff36/manifest` to your project. Node.js 18 or later is required.~~
+
+> **Correction (2026-07-15):** `package.json` `engines.node` is `>=20`. Use Node.js 20 or later.
 
 <CodeGroup>
 
@@ -177,24 +179,31 @@ const unsubscribe = runtime.onEvent((event) => {
 If you prefer a command-line workflow, use the `manifest` CLI that ships with the package:
 
 ```bash
-# Compile a .manifest file to IR
-manifest compile my-program.manifest --output ir/
-
-# Compile and generate Next.js routes in one step
-manifest build my-program.manifest --projection nextjs --code-output app/api/
-
 # Interactive project setup (creates manifest.config.yaml)
 manifest init
+
+# Config-driven whole project (preferred after init)
+manifest compile --all
+manifest generate --all
+# or: manifest build --all / manifest watch --all
+
+# Single-file compile / one-shot build still work
+manifest compile my-program.manifest --output ir/
+manifest build my-program.manifest --projection nextjs --code-output app/api/
 ```
 
 <Tip>
-  Run `manifest init` once to create a `manifest.config.yaml` for your project. After that,
-  `manifest build` uses your config defaults and you don't need to repeat flags on every invocation.
+  Run `manifest init` once to create a `manifest.config.yaml`. After that, prefer
+  `manifest build --all` (or `compile --all` + `generate --all`) so every configured projection
+  stays in sync — verified CLI flags @ v3.6.4.
 </Tip>
 
 ## Troubleshooting
 
-**"Entity not found in IR"** — Entity names are case-sensitive. Make sure the name you pass to `runCommand` exactly matches the `entity` declaration in your source file.
+~~**"Entity not found in IR"** — Entity names are case-sensitive. Make sure the name you pass to `runCommand` exactly matches the `entity` declaration in your source file.~~
+
+> **Correction (2026-07-15):** `runCommand`'s first argument is the **command** name. Pass the
+> entity as `options.entityName` (case-sensitive match to the `entity` declaration).
 
 **"Guard failed but no detail"** — Check that you aren't silently catching errors before inspecting `result.guardFailure`. The runtime populates it for every guard failure, including the guard index, the formatted expression, and resolved sub-expression values.
 

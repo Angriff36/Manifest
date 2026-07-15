@@ -111,7 +111,16 @@ interface CommandResult {
   constraintOutcomes?: ConstraintOutcome[]; // Constraint evaluation results
   emittedEvents: EmittedEvent[]; // Events emitted during execution
 }
+```
 
+> **Correction (2026-07-15) @RYANSIGNED:** The snippet above is incomplete.
+> Live `CommandResult` in `src/manifest/runtime-engine.ts` (package **3.6.4**)
+> also includes `instance?`, `deniedBy?`, `parameterFailure?`,
+> `overrideRequests?`, `concurrencyConflict?`, `approvalRequired?`,
+> `correlationId?`, `causationId?`, `retry?`, and `rateLimitDenial?`. Prefer
+> the TypeScript export over this page when shapes disagree.
+
+```typescript
 interface GuardFailure {
   index: number; // 1-based guard index
   expression: IRExpression; // Guard expression AST

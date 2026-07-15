@@ -109,17 +109,21 @@ Manifest is an IR-first domain-specific language for encoding business rules, au
   </Accordion>
 
   <Accordion title="What is the execution order for commands?">
-    Manifest commands execute in a fixed, deterministic order defined in the language specification:
+    Manifest commands execute in a fixed, deterministic order defined in the language specification (`docs/spec/semantics.md`):
 
-    1. **Rate-limit check** — per-user, per-tenant, or global limits declared on the command; returns `rateLimitExceeded` immediately if exceeded
-    2. **Policy check** — evaluated for `execute` or `all` scope
-    3. **Constraint validation** — checked by severity (`block`, `warn`, `ok`); `block`-severity violations halt execution
-    4. **Guard evaluation** — evaluated in declaration order; halts on the first falsey result
-    5. **Action execution** — actions run in order
-    6. **Event emission** — events emitted in declaration order
-    7. **Return** — `CommandResult` is returned to the caller
+    ~~1. Rate-limit → 2. Policy → 3. Constraint → 4. Guard → 5. Action → 6. Emit → 7. Return (as previously listed without the pre-gates)~~
 
-    This order is not configurable. If a step fails, execution halts immediately and the result includes the relevant failure details.
+    > **Correction (2026-07-15) @RYANSIGNED:** Full command path:
+    > 1. **Build evaluation context** — apply parameter defaults; fail closed on missing required parameters (`MISSING_REQUIRED_PARAMETER`) before later gates
+    > 2. **Rate-limit check** — per-user, per-tenant, or global limits declared on the command; stop with `rateLimitDenial` if exceeded
+    > 3. **Policy check** — evaluated for `execute` or `all` scope (policy-level rate limits run before each policy expression)
+    > 4. **Command-level constraint validation** — severity `block` / `warn` / `ok`; unauthorized `block` failures halt execution
+    > 5. **Guard evaluation** — declaration order; halts on the first falsey result
+    > 6. **Action execution** — actions run in order
+    > 7. **Event emission** — events emitted in declaration order
+    > 8. **Return** — `CommandResult` is returned to the caller
+    >
+    > This order is not configurable. Tenant / idempotency gates (when configured) run before evaluation. Entity-level constraints and transitions are enforced on create/update mutations, not as a substitute for step 4.
 
   </Accordion>
 

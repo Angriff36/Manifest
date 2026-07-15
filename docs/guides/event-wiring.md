@@ -212,7 +212,9 @@ export async function publishOutboxEvents() {
 
 ## In-Engine vs Host-Side Wiring
 
-The patterns below wire events **host-side** via `runtime.onEvent` — the right tool for _external_ infrastructure (Ably, queues, webhooks, the outbox). But when an event should simply dispatch **another Manifest command**, prefer a **declarative reaction** in the `.manifest` source instead of a host-side handler. Reactions are part of the IR, run synchronously inside the same command turn, propagate `correlationId`/`causationId` automatically, and are covered by conformance tests:
+The patterns below wire events **host-side** via `runtime.onEvent` — the right tool for _external_ infrastructure (Ably, queues, webhooks, the outbox). But when an event should simply dispatch **another Manifest command**, prefer a **declarative reaction** in the `.manifest` source instead of a host-side handler. Reactions are part of the IR, run synchronously inside the same command turn, ~~propagate `correlationId`/`causationId` automatically,~~ and are covered by conformance tests:
+
+> **Correction (2026-07-15) @RYANSIGNED:** Reactions preserve `correlationId`. Runtime `causationId` on each reaction hop is the triggering event **name** (`emitted.name`), not a host-invented emit id. Host `onEvent` handlers may set their own causation strings when calling `runCommand` — that is host wiring, not reaction semantics.
 
 ```manifest fragment
 // Declarative: order completes -> create its invoice (no host-side onEvent needed)

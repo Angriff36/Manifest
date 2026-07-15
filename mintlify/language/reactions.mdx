@@ -56,7 +56,9 @@ on TaskAssigned run Notification.sendAssigned
   }
 ```
 
-The runtime looks up the `Notification` instance whose `id` matches the resolved value. If no instance with that ID exists, the reaction is skipped silently — no error is raised.
+~~The runtime looks up the `Notification` instance whose `id` matches the resolved value. If no instance with that ID exists, the reaction is skipped silently — no error is raised.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** The runtime always dispatches `runCommand` with the resolved `instanceId` (`docs/spec/semantics.md` § Reactions). There is **no** silent skip when the instance is missing — the target command still runs; `self`/`this` are unbound when lookup fails, so mutates that need an instance do not persist. Seed target instances (or use a `create` target command) before relying on a reaction.
 
 Use a literal string when the target instance is fixed at design time (a singleton handler, a system processor, etc.):
 
@@ -229,7 +231,11 @@ Reactions can be declared at three levels:
 | ------- | ----------------------------- | ------------------------------------- |
 | Program | Top-level in `.manifest` file | Global — fires for any matching event |
 | Module  | Inside a `module` block       | Scoped to the module                  |
-| Entity  | Inside an `entity` block      | Targets the entity's own commands     |
+| Entity  | Inside an `entity` block (`on Event run …` / `fanOut`) | Collected into IR with an `entity` field |
+
+~~(Implied: any `on Event { … }` body inside an entity is a valid reaction.)~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Entity-scoped reactions must use the `on Event run …` / `fanOut` form. Bare `behavior` / `on Event { … }` blocks inside an entity are a hard compile error (conformance fixture 110; `docs/spec/semantics.md` § Entities).
 
 ```manifest
 event OrderSubmitted: "order.submitted" {
@@ -307,7 +313,9 @@ The runtime enforces a maximum reaction depth (`MAX_REACTION_DEPTH = 10`). If a 
 Reactions propagate workflow metadata through the chain:
 
 - **`correlationId`** stays the same across the entire workflow. It is set on the initial event and carried through every subsequent reaction.
-- **`causationId`** is set to the triggering event's emit ID on each reaction. This changes with each hop, creating a causal chain.
+- ~~**`causationId`** is set to the triggering event's emit ID on each reaction. This changes with each hop, creating a causal chain.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `causationId` on each reaction-triggered command is the triggering event's **name** (`emitted.name`), not an emit/instance ID (`docs/spec/semantics.md` § Reactions).
 
 This enables cross-reaction tracing for debugging distributed workflows. See [Events](/language/events) for how `correlationId` and `causationId` are attached to emitted events.
 
@@ -389,6 +397,16 @@ on InvoiceCreated run Shipping.prepareShipment
   }
 ```
 
+~~```typescript
+const result = await runtime.runCommand('Order', 'submit', {
+  instanceId: 'order-001',
+  amount: 250,
+});
+```~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `runCommand(commandName, input, options?)` — not
+> entity-first. `amount` is command input; `entityName` / `instanceId` go in options.
+
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';
 import { ir } from './compiled.ir.json';
@@ -402,10 +420,11 @@ runtime.createInstance('Invoice', { id: 'invoice-auto' });
 runtime.createInstance('Shipping', { id: 'shipping-auto' });
 
 // Emitting OrderSubmitted triggers the reaction chain
-const result = await runtime.runCommand('Order', 'submit', {
-  instanceId: 'order-001',
-  amount: 250,
-});
+const result = await runtime.runCommand(
+  'submit',
+  { amount: 250 },
+  { entityName: 'Order', instanceId: 'order-001' },
+);
 
 // The reaction chain fires automatically:
 // OrderSubmitted -> Invoice.createFromOrder -> InvoiceCreated -> Shipping.prepareShipment

@@ -5,9 +5,17 @@
 >
 > **Note (2026-07-14):** this is a historical roadmap snapshot; its status labels
 > are NOT verified (a prior audit found 16/116 ".automaker verified" features
-> phantom). For the current, evidence-verified capability list see
-> **[docs/CONFIRMED-FEATURES.md](CONFIRMED-FEATURES.md)** (verified against
-> main @ v3.5.0).
+> phantom — Appendix D in
+> `docs/internal/plans/2026-07-01-docs-feature-reconciliation-audit.md`).
+>
+> ~~16/116 still the live count~~
+> **Update (2026-07-15):** of those 16, **`transactional-outbox` is no longer
+> phantom**; the other 15 still lack a matching first-class implementation
+> (generics fixtures 84–85 still pin parse failure; tutorial UI still unwired).
+> Automaker `status: verified` is still not trustworthy. For the evidence-verified
+> capability list see **[docs/CONFIRMED-FEATURES.md](CONFIRMED-FEATURES.md)**.
+> npm/`package.json` are at **v3.6.4** — do not treat “Implemented, unreleased”
+> below as “not in the product.”
 
 ---
 

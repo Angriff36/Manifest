@@ -2,7 +2,10 @@
 
 Use this pattern when your application owns request handling and orchestrates Manifest command execution directly.
 
-Normative semantics are defined in `C:/Projects/Manifest/docs/spec/semantics.md`.
+~~Normative semantics are defined in `C:/Projects/Manifest/docs/spec/semantics.md`.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Normative semantics are in
+> `docs/spec/semantics.md` (repo-relative). Package pin SoT: **3.6.4**.
 
 ## Minimal Flow
 
@@ -84,7 +87,7 @@ This is required for stable conformance-style assertions.
 
 ## Related
 
-- `C:/Projects/Manifest/docs/spec/semantics.md`
-- `C:/Projects/Manifest/docs/spec/builtins.md`
-- `C:/Projects/Manifest/docs/spec/adapters.md`
-- `C:/Projects/Manifest/src/manifest/conformance/conformance.test.ts`
+- ~~`C:/Projects/Manifest/docs/spec/semantics.md`~~ → `docs/spec/semantics.md`
+- ~~`C:/Projects/Manifest/docs/spec/builtins.md`~~ → `docs/spec/builtins.md`
+- ~~`C:/Projects/Manifest/docs/spec/adapters.md`~~ → `docs/spec/adapters.md`
+- ~~`C:/Projects/Manifest/src/manifest/conformance/conformance.test.ts`~~ → `src/manifest/conformance/conformance.test.ts`

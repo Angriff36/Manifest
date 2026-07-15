@@ -10,8 +10,13 @@ The runtime middleware pipeline allows registering hooks at specific points in t
 | --------------- | ------------------------ |
 | `before-policy` | Before policy evaluation |
 | `before-guard`  | Before guard evaluation  |
-| `before-action` | Before action execution  |
-| `after-emit`    | After event emission     |
+| `before-action` | Before each action in the action loop |
+| `after-emit`    | After event emission                  |
+
+> **Correction (2026-07-15) @RYANSIGNED:** `before-action` runs **once per
+> action** inside the action loop (`runtime-engine.ts`), not once per command.
+> Constructor remains `(ir, context?, options?)` with
+> `options.middleware` — verified against `package.json` **3.6.4**.
 
 ## Usage
 

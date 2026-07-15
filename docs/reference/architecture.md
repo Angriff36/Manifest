@@ -3,16 +3,15 @@ title: 'Architecture'
 description: "A source-driven tour of Manifest's compiler, IR, runtime, adapters, and projection pipeline."
 ---
 
-> **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
-> code-derived reference snapshot of repository structure and signatures.
-> It is intended for tooling (Context7, search indexers, etc.) and is
-> NOT verified prose on every regeneration. For normative, hand-curated
-> documentation see [`docs/spec/`](../spec/) — in particular
-> [`docs/spec/manifest-vnext.md`](../spec/manifest-vnext.md) for language
-> semantics and [`docs/spec/config/manifest.config.md`](../spec/config/manifest.config.md)
-> for projection configuration. Projections are described here as
-> **tooling, not language semantics** — they consume IR and emit
-> artifacts; they do not redefine policy/guard/constraint behaviour.
+> ~~**AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` …~~
+>
+> **Correction (2026-07-15) @RYANSIGNED:** This page lives at
+> `docs/reference/architecture.md` (not `docs/codedocs/`). Treat it as
+> advisory architecture prose. Normative semantics remain in
+> [`docs/spec/`](../spec/) — especially
+> [`docs/spec/manifest-vnext.md`](../spec/manifest-vnext.md) and
+> [`docs/spec/semantics.md`](../spec/semantics.md). Package pin SoT:
+> `package.json` = **3.6.4**.
 
 Manifest is organized around one central contract: the IR defined in `src/manifest/ir.ts`. Everything else either produces that contract, consumes it, or validates drift around it.
 
@@ -49,7 +48,17 @@ The most important decision is that Manifest does not execute the AST directly. 
 
 ### Runtime semantics are fixed, transport is not
 
-`RuntimeEngine.runCommand()` in `src/manifest/runtime-engine.ts` treats command execution as a deterministic pipeline. It does the tenant gate before idempotency writes, resolves the command from IR, checks policies, evaluates command constraints, runs guards in order, executes actions, and then emits declared events. The runtime accepts data, context, and options; it does not assume HTTP, a framework, or a database library. That is why the canonical dispatcher emitted by the Next.js projection is a projection concern, not a runtime concern.
+`RuntimeEngine.runCommand()` in `src/manifest/runtime-engine.ts` treats command execution as a deterministic pipeline. ~~It does the tenant gate before idempotency writes, resolves the command from IR, checks policies, evaluates command constraints, runs guards in order, executes actions, and then emits declared events.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Normative order
+> (`docs/spec/semantics.md`): build eval context (with parameter defaults /
+> trusted-source injection) → command `rateLimit` → policies (incl. policy
+> `rateLimit`) → command constraints → guards → **approval gate** (when an
+> entity `approval` targets the command) → actions → emits → `CommandResult`.
+> Tenant / idempotency gates still apply around this pipeline as implemented
+> in `runtime-engine.ts`.
+
+The runtime accepts data, context, and options; it does not assume HTTP, a framework, or a database library. That is why the canonical dispatcher emitted by the Next.js projection is a projection concern, not a runtime concern.
 
 ### Adapters extend the runtime without changing the language
 
@@ -73,7 +82,7 @@ sequenceDiagram
   Caller->>Compiler: compile Manifest source
   Compiler-->>Caller: IR + diagnostics
   Caller->>Runtime: runCommand(command, input, options)
-  Runtime->>Runtime: tenant gate, idempotency, policy, constraint, guard
+  Runtime->>Runtime: tenant/idempotency, rateLimit, policy, constraint, guard, approval
   Runtime->>Store: create/update/delete as actions require
   Runtime->>Runtime: emit declared events
   Runtime->>Outbox: enqueue emitted events on success

@@ -4,7 +4,12 @@ description: 'Declare named operations on entities that enforce guards and polic
 sidebarTitle: 'Commands'
 ---
 
-A command is a named operation bound to an entity. When you call `runCommand`, the runtime executes the command in a strict, deterministic order: rate-limit → policies → constraints → guards → actions → emits → return. Nothing in that order can be rearranged or skipped.
+A command is a named operation bound to an entity. When you call `runCommand`, the runtime executes the command in a strict, deterministic order:
+~~rate-limit → policies → constraints → guards → actions → emits → return~~
+
+> **Correction (2026-07-15):** parameters/context → rate-limit → policies → constraints → guards →
+> approval gate (when declared) → actions → declared `emits` → return. Nothing in that order can be
+> rearranged or skipped.
 
 ## Declaring a command
 
@@ -48,8 +53,14 @@ The runtime executes every command in exactly this order:
     window. If the limit is exceeded, execution stops immediately with a `rateLimitDenial` result.
   </Step>
   <Step title="Evaluate policies">
-    Check every applicable policy (entity-level defaults first, then command-level). If any policy
-    denies, execution stops immediately with a `policyDenial` result.
+    ~~Check every applicable policy (entity-level defaults first, then command-level). If any policy
+    denies, execution stops immediately with a `policyDenial` result.~~
+
+    **Correction (2026-07-15):** Evaluate the command's effective policy list only. Entity
+    `default policy` values are expanded into `IRCommand.policies` at compile time; when a command
+    already has an explicit IR `policies` array, defaults are **not** merged. If any policy denies,
+    execution stops with a `policyDenial` result. (Source has no command-body policy clause —
+    per-command stricter checks use guards.)
   </Step>
   <Step title="Evaluate command constraints">
     Evaluate any `block` constraints declared inside the command. If any fail without an authorized
@@ -58,6 +69,11 @@ The runtime executes every command in exactly this order:
   <Step title="Evaluate guards">
     Evaluate each guard expression in declaration order. Execution halts on the first falsey result
     and returns a `guardFailure` with the failing guard's index and expression.
+  </Step>
+  <Step title="Check approval gate (when declared)">
+    **Added (2026-07-15):** If the entity declares an approval for this command and applicable
+    stages are not fully granted, execution stops with `approvalRequired` instead of running
+    actions. See [Approvals](/language/approvals).
   </Step>
   <Step title="Execute actions">
     Run each action (`mutate`, `emit`, `compute`, `publish`, `persist`, `effect`) in declaration
@@ -203,14 +219,17 @@ interface CommandResult {
   // All events emitted during this run
   emittedEvents: EmittedEvent[];
 
-  // The return value of the last action
-  lastActionResult?: unknown;
+  // ~~lastActionResult?: unknown;~~
+  result?: unknown; // last action value
 }
 ```
 
+> **Correction (2026-07-15):** The field is `result?: unknown`. There is no `lastActionResult` on
+> `CommandResult` in `runtime-engine.ts` @ v3.6.4.
+
 ## Calling `runCommand` from TypeScript
 
-```typescript
+~~```typescript
 import { RuntimeEngine } from '@angriff36/manifest';
 import { ir } from './compiled.ir.json';
 
@@ -222,12 +241,31 @@ const result = await runtime.runCommand('Order', 'updateStatus', {
   instanceId: 'order-abc',
   newStatus: 'processing',
 });
+```~~
+
+> **Correction (2026-07-15):** Real signature is
+> `runCommand(commandName, input, options?)` — not entity-first
+> `runCommand(Entity, cmd, args)`. Pass `entityName` / `instanceId` in `options`.
+
+```typescript
+import { RuntimeEngine } from '@angriff36/manifest';
+import { ir } from './compiled.ir.json';
+
+const runtime = new RuntimeEngine(ir, {
+  user: { id: 'user-123', role: 'admin' },
+});
+
+const result = await runtime.runCommand(
+  'updateStatus',
+  { newStatus: 'processing' },
+  { entityName: 'Order', instanceId: 'order-abc' },
+);
 
 if (!result.success) {
   if (result.policyDenial) {
     console.error('Denied by policy:', result.policyDenial.policyName);
   } else if (result.guardFailure) {
-    console.error(`Guard ${result.guardFailure.index} failed:`, result.guardFailure.expression);
+    console.error(`Guard ${result.guardFailure.index} failed:`, result.guardFailure.formatted);
   } else if (result.constraintOutcomes) {
     const blocked = result.constraintOutcomes.filter((o) => o.severity === 'block' && !o.passed);
     console.error(
@@ -261,40 +299,50 @@ entity Notification {
 
 ### Retry configuration
 
-| Field          | Description                                                     |
-| -------------- | --------------------------------------------------------------- |
-| `maxAttempts`  | Maximum number of retry attempts                                |
-| `backoff`      | Strategy: `fixed`, `exponential`, or `linear`                   |
-| `initialDelay` | First retry delay in milliseconds                               |
-| `maxDelay`     | Cap on retry delay                                              |
-| `jitter`       | Add random jitter to prevent thundering herd (default: `false`) |
+| Field         | Description                                                                   |
+| ------------- | ----------------------------------------------------------------------------- |
+| `maxAttempts` | Maximum number of retry attempts                                              |
+| `backoff`     | Strategy: `fixed`, `exponential`, or `linear`                                 |
+| `delay`       | Base delay in milliseconds (compiles to IR `delayMs`)                         |
+| `jitter`      | Add random jitter to prevent thundering herd (default: `false`)               |
+| `retryOn`     | One or more error codes that trigger retry (repeat the field per code)        |
+
+~~| `initialDelay` | First retry delay in milliseconds |~~
+~~| `maxDelay` | Cap on retry delay |~~
+
+> **Correction (2026-07-15):** Source field is `delay:` (see fixture `72-command-retry-policy.manifest`).
+> IR stores `delayMs`. There is no `initialDelay` / `maxDelay` field on the retry block in IR v1.
 
 ### Backoff strategies
 
-| Strategy      | Behavior                                                           |
-| ------------- | ------------------------------------------------------------------ |
-| `fixed`       | Constant delay between retries (e.g., 1000ms, 1000ms, 1000ms)      |
-| `exponential` | Doubles each time (e.g., 1000ms, 2000ms, 4000ms)                   |
-| `linear`      | Increases by initialDelay each time (e.g., 1000ms, 2000ms, 3000ms) |
+| Strategy      | Behavior                                                      |
+| ------------- | ------------------------------------------------------------- |
+| `fixed`       | Constant delay between retries (e.g., 1000ms, 1000ms, 1000ms) |
+| `exponential` | Doubles each time (e.g., 1000ms, 2000ms, 4000ms)              |
+| `linear`      | Increases by `delay` each time (e.g., 1000ms, 2000ms, 3000ms) |
 
 ### Retry events
 
-The runtime emits events for each retry attempt and when retries are exhausted:
+~~The runtime emits events for each retry attempt and when retries are exhausted:~~
 
-| Event                     | When emitted                            |
-| ------------------------- | --------------------------------------- |
+~~| Event | When emitted |
 | `{Command}RetryAttempted` | Each retry attempt, with attempt number |
-| `{Command}RetryExhausted` | All retries failed, with total attempts |
+| `{Command}RetryExhausted` | All retries failed, with total attempts |~~
+
+> **Correction (2026-07-15):** No `{Command}RetryAttempted` / `{Command}RetryExhausted` events exist
+> in the reference runtime. Retry status is returned on `CommandResult.retry`
+> (`{ attempts, exhausted, lastErrorCode?, delaysMs }`).
 
 <Note>
-  Retry policies only apply to action execution failures. Guard failures, policy denials, and
-  constraint blocks are never retried — they represent intentional business rule enforcement, not
-  transient errors.
+  Retry policies only apply when the failed attempt's derived error code appears in `retryOn`.
+  Guard failures, policy denials, and blocking constraint outcomes are never retried — they
+  represent intentional business rule enforcement, not transient errors.
 </Note>
 
 ## Rate limiting
 
-Rate limiting policies constrain how frequently a command can be invoked per user, tenant, or globally. When the limit is exceeded, the command returns a `rateLimitExceeded` result.
+Rate limiting constrains how frequently a command can be invoked per user, tenant, or globally.
+When the limit is exceeded, the command returns a `rateLimitDenial` on `CommandResult`.
 
 ```manifest fragment
 entity ApiKey {
@@ -313,16 +361,23 @@ entity ApiKey {
 
 ### Rate limit configuration
 
-| Field         | Description                                    |
-| ------------- | ---------------------------------------------- |
-| `window`      | Time window in milliseconds                    |
-| `maxRequests` | Maximum allowed requests within the window     |
-| `scope`       | `user.id`, `tenant.id`, or `global`            |
-| `strategy`    | `fixed` or `sliding` window (default: `fixed`) |
+| Field         | Description                                                |
+| ------------- | ---------------------------------------------------------- |
+| `windowMs`    | Time window in milliseconds                                |
+| `maxRequests` | Maximum allowed requests within the window                 |
+| `scope`       | `user`, `tenant`, or `global` (IR enum; not `user.id`)     |
+
+~~| `window` | Time window in milliseconds |~~
+~~| `scope` | `user.id`, `tenant.id`, or `global` |~~
+~~| `strategy` | `fixed` or `sliding` window (default: `fixed`) |~~
+
+> **Correction (2026-07-15):** IR `IRRateLimit` requires `maxRequests`, `windowMs`, and
+> `scope: "user" | "tenant" | "global"`. Optional `burstAllowance` exists. There is no `strategy`
+> field on the rate-limit block.
 
 When the rate limit is exceeded, the `CommandResult` includes:
 
-```typescript
+~~```typescript
 {
   success: false,
   rateLimitExceeded: {
@@ -332,15 +387,33 @@ When the rate limit is exceeded, the `CommandResult` includes:
     retryAfterMs: 45000
   }
 }
+```~~
+
+```typescript
+{
+  success: false,
+  rateLimitDenial: {
+    scope: 'user', // 'user' | 'tenant' | 'global'
+    scopeKey: 'user:user-123',
+    limit: 100,
+    windowMs: 60000,
+    retryAfterMs: 45000,
+  },
+}
 ```
 
+> **Correction (2026-07-15):** Field name is `rateLimitDenial`, not `rateLimitExceeded`
+> (`runtime-engine.ts` `CommandResult`).
+
 <Warning>
-  Rate limiting is enforced by the runtime engine before command execution begins. It is not a
+  Rate limiting is enforced by the runtime engine before policies/guards run. It is not a
   network-level rate limiter — it operates within the Manifest runtime context. For HTTP-level rate
-  limiting, configure your API gateway or middleware.
+  limiting, configure your API gateway or middleware. The reference limiter is in-memory only
+  (no durable adapter).
 </Warning>
 
 <Note>
-  The `instanceId` is passed inside the options object to `runCommand`, not as a command parameter.
-  Command parameters are the named values declared in the command signature.
+  Call shape: `runCommand(commandName, input, { entityName?, instanceId?, ... })`. `instanceId` and
+  `entityName` belong in **options**, not in the command parameter object. Command parameters are
+  only the named values declared in the command signature.
 </Note>

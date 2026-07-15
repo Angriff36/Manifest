@@ -71,7 +71,11 @@ entity WorkflowStep {
 
 ## When computed properties re-evaluate
 
-Computed properties are evaluated fresh each time they are accessed — there is no caching layer in the default runtime. They reflect the state of the instance at the moment of access. This means:
+~~Computed properties are evaluated fresh each time they are accessed — there is no caching layer in the default runtime.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Without a `cache` clause, values are recomputed on each access. Optional `cache request` / `cache session` / `cache ttl <seconds>` strategies are documented in [Computed caching](/language/computed-caching).
+
+They reflect the state of the instance at the moment of access (or the cached entry when a strategy applies). This means:
 
 - After a `mutate` action inside a command, any subsequent access to a computed property reflects the updated field values.
 - Computed properties based on `now()` return a different value on each evaluation if the time source advances.
@@ -105,9 +109,12 @@ entity Task {
   property required assigneeId: string = ""
   property required createdAt: number = 0
 
+  property priority: number = 0
+
   computed isOverdue: boolean = (now() - self.createdAt) > 86400000 and self.status != "done"
   computed assignedUser: string = self.assigneeId != "" ? self.assigneeId : "Unassigned"
-  computed isHighPriority: boolean = self.priority != null and self.priority >= 3
+  ~~computed isHighPriority: boolean = self.priority != null and self.priority >= 3~~
+  computed isHighPriority: boolean = self.priority >= 3
 
   command updateStatus(newStatus: string) {
     guard newStatus != null and newStatus != ""
@@ -137,6 +144,7 @@ interface Task {
   status: string;
   assigneeId: string;
   createdAt: number;
+  priority: number;
   // Computed — derived at read time
   readonly isOverdue: boolean;
   readonly assignedUser: string;

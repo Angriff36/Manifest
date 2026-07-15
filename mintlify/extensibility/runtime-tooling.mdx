@@ -22,36 +22,43 @@ manifest repl src/app.manifest
 
 ### Available commands
 
-| Command                         | Description                       |
-| ------------------------------- | --------------------------------- |
-| `load <path>`                   | Load IR or source file            |
-| `create <Entity> <json>`        | Create an entity instance         |
-| `run <Entity>.<command> <json>` | Execute a command                 |
-| `get <Entity> <id>`             | Retrieve an instance              |
-| `list <Entity>`                 | List all instances of an entity   |
-| `eval <expression>`             | Evaluate an expression in context |
-| `events`                        | Show the event log                |
-| `reset`                         | Clear all state                   |
-| `help`                          | Show available commands           |
-| `exit`                          | Exit the REPL                     |
+~~`load`, `create`, `run Entity.command`, `reset`~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Verified against `packages/cli/src/commands/repl.ts`.
+> The REPL loads source at startup (`manifest repl <path>`); there is no `load` / `create` /
+> `reset`. `run` takes **two** positional args (`run <entity> <command> [json]`), not
+> `Entity.command` dotted form. `eval` is stubbed (“not yet implemented”).
+
+| Command | Description |
+| ------- | ----------- |
+| `help` | Show available commands |
+| `list` | List entities (or instances when scoped) |
+| `inspect` / `show` / `info` | Inspect IR / entity / runtime info |
+| `get <Entity> <id>` | Retrieve an instance |
+| `run <entity> <command> [json]` | Execute a command via `runCommand` |
+| `cmds` | List commands |
+| `eval <expression>` | Stub — expression eval not implemented yet |
+| `set` | Set REPL context (e.g. tenant) |
+| `policies` | Show policies |
+| `events` | Show `runtime.getEventLog()` |
+| `clear` | Clear console / event log helpers |
+| `reload` | Recompile and reload the startup manifest |
+| `json` | Toggle JSON output mode |
+| `exit` | Exit the REPL |
 
 ### Usage example
 
 ```
-manifest> load ir/app.ir.json
-Loaded IR with 3 entities: Order, LineItem, Product
-
-manifest> create Order { "id": "order-1", "status": "pending" }
-Created Order(order-1)
-
-manifest> run Order.addItem { "amount": 29.99 }
-→ CommandResult { success: true, emittedEvents: [OrderUpdated] }
+$ manifest repl src/app.manifest
+manifest> run Order addItem {"amount": 29.99}
+✓ Command Order.addItem succeeded
 
 manifest> get Order order-1
 { id: "order-1", status: "pending", total: 29.99 }
 
 manifest> events
-[0] OrderUpdated { orderId: "order-1", total: 29.99 }
+Event Log (1 events):
+  OrderUpdated …
 ```
 
 <Note>
@@ -65,61 +72,63 @@ The time-travel debugger records every state mutation during command execution a
 
 ### Enabling time-travel
 
-```typescript
-import { RuntimeEngine } from '@angriff36/manifest';
+~~```typescript
 import { TimeTravelDebugger } from '@angriff36/manifest/debug';
-
-const runtime = new RuntimeEngine(ir, {/* options */});
 const debugger_ = new TimeTravelDebugger(runtime);
-
-// Run a command — debugger captures the full timeline
 const result = await debugger_.runCommand('Order', 'complete', {
   instanceId: 'order-1',
 });
+```~~
 
-// Inspect the timeline
-const timeline = debugger_.getTimeline();
-// [
-//   { step: 0, action: 'before-policy', state: { ... } },
-//   { step: 1, action: 'before-guard', state: { ... } },
-//   { step: 2, action: 'before-action', state: { ... } },
-//   { step: 3, action: 'after-mutate', state: { status: 'completed' } },
-//   { step: 4, action: 'after-emit', state: { ... } },
-// ]
+> **Correction (2026-07-15) @RYANSIGNED:** Shipped debug API is `CommandTraceRecorder` from
+> `@angriff36/manifest/debug`. Its `runCommand` matches
+> `RuntimeEngine.runCommand(commandName, input, options?)` — not entity-first.
+> There is no exported `TimeTravelDebugger` class.
+
+```typescript
+import { RuntimeEngine } from '@angriff36/manifest';
+import { CommandTraceRecorder } from '@angriff36/manifest/debug';
+
+const runtime = new RuntimeEngine(ir, {/* options */});
+const tracer = new CommandTraceRecorder(runtime);
+
+const result = await tracer.runCommand('complete', {}, {
+  entityName: 'Order',
+  instanceId: 'order-1',
+});
+
+const steps = tracer.getSteps();
+// [{ index: 0, label: 'before', snapshot: { ... } }, { index: 1, label: 'after', ... }]
 ```
 
 ### Stepping through execution
 
-```typescript
-// Navigate to a specific step
+~~```typescript
 const stateAtStep2 = debugger_.getStateAt(2);
-
-// Step forward
 debugger_.stepForward();
-
-// Step backward
 debugger_.stepBack();
-
-// Get the diff between two steps
 const diff = debugger_.diff(0, 3);
-// { status: { from: 'pending', to: 'completed' }, total: { from: 0, to: 29.99 } }
+```~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `CommandTraceRecorder` exposes `getSteps()` and
+> `restoreToStep(stepIndex)` (via `RuntimeEngine.restore`). There is no `getStateAt` /
+> `stepForward` / `stepBack` / `diff` API.
+
+```typescript
+const steps = tracer.getSteps();
+await tracer.restoreToStep(0); // restore pre-command snapshot
 ```
 
 ### Timeline entries
 
-Each timeline entry contains:
+~~Each timeline entry contains `step`, `action`, `state`, `timestamp`.~~
 
-| Field       | Description                                                          |
-| ----------- | -------------------------------------------------------------------- |
-| `step`      | Zero-based step index                                                |
-| `action`    | Label for the execution phase (e.g., `before-guard`, `after-mutate`) |
-| `state`     | Complete entity state snapshot at this point                         |
-| `timestamp` | Millisecond timestamp when the step was captured                     |
+> **Correction (2026-07-15) @RYANSIGNED:** Each `CommandTraceStep` has `index`, `label`, and
+> `snapshot` (`SerializedRuntimeSnapshot`).
 
 <Warning>
-  Time-travel captures full entity state at each step. For entities with large data or
-  high-frequency command execution, this can consume significant memory. Use it in development and
-  testing only.
+  Trace snapshots capture store state. For large datasets or high-frequency command execution,
+  this can consume significant memory. Use it in development and testing only.
 </Warning>
 
 ## Performance profiler
@@ -128,61 +137,34 @@ The runtime profiler measures execution time for each phase of command execution
 
 ### Running the profiler
 
-```typescript
-import { RuntimeEngine } from '@angriff36/manifest';
+~~```typescript
 import { RuntimeProfiler } from '@angriff36/manifest/profiler';
-
-const runtime = new RuntimeEngine(ir, {/* options */});
 const profiler = new RuntimeProfiler(runtime);
-
-// Run a command — profiler records timing
 const result = await profiler.runCommand('Order', 'complete', {
   instanceId: 'order-1',
 });
+```~~
 
-// Get the profile report
-const report = profiler.getReport();
+> **Correction (2026-07-15) @RYANSIGNED:** There is no `@angriff36/manifest/profiler` export /
+> `RuntimeProfiler` class. Profile timing via your own harness around
+> `runtime.runCommand(commandName, input, options?)` (Kitchen FlameGraph UI is separate).
+
+```typescript
+const result = await runtime.runCommand('complete', {}, {
+  entityName: 'Order',
+  instanceId: 'order-1',
+});
 ```
 
 ### Profile report shape
 
-```typescript
-interface ProfileReport {
-  commandName: string;
-  entityName: string;
-  totalMs: number;
-  phases: {
-    policy: number; // ms spent evaluating policies
-    constraints: number; // ms spent evaluating constraints
-    guards: number; // ms spent evaluating guards
-    actions: number; // ms spent executing actions
-    emits: number; // ms spent emitting events
-  };
-  computedEvaluations: {
-    name: string;
-    durationMs: number;
-  }[];
-}
-```
+~~`ProfileReport` interface with per-phase `policy` / `constraints` / `guards` / `actions` /
+`emits` timings and `computedEvaluations`.~~
 
-### Usage example
-
-```typescript
-console.log(`Total: ${report.totalMs.toFixed(2)}ms`);
-console.log(`  Policies:    ${report.phases.policy.toFixed(2)}ms`);
-console.log(`  Constraints: ${report.phases.constraints.toFixed(2)}ms`);
-console.log(`  Guards:      ${report.phases.guards.toFixed(2)}ms`);
-console.log(`  Actions:     ${report.phases.actions.toFixed(2)}ms`);
-console.log(`  Emits:       ${report.phases.emits.toFixed(2)}ms`);
-
-// Identify slow computed properties
-report.computedEvaluations
-  .filter((e) => e.durationMs > 1)
-  .forEach((e) => console.log(`  Slow computed: ${e.name} (${e.durationMs.toFixed(2)}ms)`));
-```
+> **Correction (2026-07-15) @RYANSIGNED — Documentation gap:** No shipped `ProfileReport` type
+> or runtime profiler package. Use host-level timing around `runCommand` if needed.
 
 <Note>
-  The profiler wraps the runtime engine and adds instrumentation overhead. Absolute timing values
-  are useful for relative comparison between phases, not as production benchmarks. For production
-  performance testing, use load testing fixtures without the profiler wrapper.
+  Kitchen's FlameGraph profiler tab is a UI surface, not a public `@angriff36/manifest/profiler`
+  API.
 </Note>

@@ -53,7 +53,12 @@ event CounterReset: "counter.reset" {
 }
 ```
 
-A command can emit multiple events. They are emitted in declaration order after all actions complete successfully.
+~~A command can emit multiple events. They are emitted in declaration order after all actions complete successfully.~~
+
+> **Correction (2026-07-15):** `emit` / `publish` **actions** run in action order during the
+> actions phase (not after). Separately, a command's declared `emits` list is processed after
+> actions succeed (`semantics.md` steps 6–7). Multiple emissions keep declaration / action order
+> within that phase.
 
 ## EmittedEvent shape
 
@@ -79,12 +84,28 @@ The `payload` object contains the command's input parameters and the last action
 
 Pass `correlationId` and `causationId` in the command options to propagate identifiers across a multi-step workflow. The runtime attaches them to every event emitted during that invocation.
 
-```typescript
+~~```typescript
 const result = await runtime.runCommand(
   'Order',
   'complete',
   { instanceId: 'order-123' },
   {
+    correlationId: 'workflow-abc',
+    causationId: 'step-2',
+  },
+);
+```~~
+
+> **Correction (2026-07-15):** Signature is `runCommand(commandName, input, options?)` — three
+> arguments max. `entityName`, `instanceId`, `correlationId`, and `causationId` all go in `options`.
+
+```typescript
+const result = await runtime.runCommand(
+  'complete',
+  {},
+  {
+    entityName: 'Order',
+    instanceId: 'order-123',
     correlationId: 'workflow-abc',
     causationId: 'step-2',
   },
@@ -161,6 +182,14 @@ event OrderCompleted: "order.completed" {
 }
 ```
 
+~~```typescript
+const result = await runtime.runCommand('Order', 'complete', {
+  instanceId: 'order-001',
+});
+```~~
+
+> **Correction (2026-07-15):** Same `runCommand(commandName, input, options)` shape — not entity-first.
+
 ```typescript
 const runtime = new RuntimeEngine(ir);
 
@@ -170,7 +199,8 @@ runtime.onEvent((event) => {
   }
 });
 
-const result = await runtime.runCommand('Order', 'complete', {
+const result = await runtime.runCommand('complete', {}, {
+  entityName: 'Order',
   instanceId: 'order-001',
 });
 
@@ -179,7 +209,7 @@ console.log(result.emittedEvents);
 //   {
 //     name: "OrderCompleted",
 //     channel: "order.completed",
-//     payload: { instanceId: "order-001", ... },
+//     payload: { /* command input + last action result */ },
 //     timestamp: 1748131200000,
 //     emitIndex: 0
 //   }
@@ -259,21 +289,28 @@ A webhook is declared as `webhook <name> "<path>" run [Entity.]<command>`, where
 
 ## Event sourcing store
 
-The `event-sourced` store target persists entity state as an append-only event log rather than overwriting entity records. Each command produces events that are appended to the log, and entity state is reconstructed by replaying events from the beginning.
+~~The `event-sourced` store target persists entity state as an append-only event log rather than overwriting entity records. Each command produces events that are appended to the log, and entity state is reconstructed by replaying events from the beginning.~~
 
-```manifest
+~~```manifest
 store Order in event-sourced
-```
+```~~
 
-The event-sourced store supports:
+~~The event-sourced store supports:~~
 
-- **Append-only writes** — events are never modified or deleted
-- **Snapshotting** — periodic snapshots avoid replaying the full log
-- **Replay** — entity state is reconstructed by replaying events
-- **Projections** — read models can be built by subscribing to the event stream
+~~- **Append-only writes** — events are never modified or deleted~~
+~~- **Snapshotting** — periodic snapshots avoid replaying the full log~~
+~~- **Replay** — entity state is reconstructed by replaying events~~
+~~- **Projections** — read models can be built by subscribing to the event stream~~
 
-<Warning>
+~~<Warning>
   Event sourcing is a storage strategy, not a runtime behavior change. Commands execute identically
   regardless of whether the backing store is memory, postgres, or event-sourced. The difference is
   how state is persisted and recovered.
-</Warning>
+</Warning>~~
+
+> **Correction (2026-07-15) — Documentation gap:** Source may declare
+> `store <Entity> in eventSourced { ... }` and the compiler accepts it into IR (`target: "eventSourced"`,
+> fixture `83-event-sourced.manifest`). There is **no** `EventSourcedStore` implementation in the
+> reference runtime — the kind is passthrough only. Do not document append-only / snapshot / replay
+> behavior as shipped. Use a real store target (`memory`, adapter-backed, etc.) until an
+> implementation lands.

@@ -8,7 +8,21 @@ The Manifest MCP server exposes compilation, execution, validation, and introspe
 
 ## Configuration
 
-The server runs over stdio. The package (`@manifest/mcp-server`) provides a `manifest-mcp` bin. Configure it in an MCP host, for example Claude Desktop's `claude_desktop_config.json`:
+~~```json
+{
+  "mcpServers": {
+    "manifest": {
+      "command": "npx",
+      "args": ["@manifest/mcp-server"]
+    }
+  }
+}
+```~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `@manifest/mcp-server` is an **in-repo** package
+> (`packages/mcp-server`, version `0.1.0`) and is **not published** to npm (404 verified; see
+> `docs/TODO.md`). The published path is the `manifest-mcp` bin on `@angriff36/manifest` (current
+> pin **3.6.4**), also re-exported as `@angriff36/manifest/mcp-server`.
 
 ```json
 {
@@ -40,11 +54,15 @@ State is held in a `SessionStore` singleton: an in-process cache keyed by `conte
 
 ## Reference
 
-- Bin: `manifest-mcp` → `packages/mcp-server/bin/manifest-mcp.js`.
-- Transport: stdio (`StdioServerTransport`).
-- Tools: `compile`, `execute`, `validate`, `explain`.
-- Resources: `manifest://ir/schema`, `manifest://ir/{contentHash}`, `manifest://semantics`.
-- Package: `@manifest/mcp-server`, dependencies `@modelcontextprotocol/sdk` and `zod`. Tool input schemas are defined with zod.
+| Item | Value |
+| ---- | ----- |
+| Published bin | `manifest-mcp` via `@angriff36/manifest` (npm **3.6.4**) |
+| Library export | `@angriff36/manifest/mcp-server` |
+| In-repo package name | `@manifest/mcp-server@0.1.0` (workspace only — **not** on npm) |
+| Transport | stdio (`StdioServerTransport`) |
+| Tools | `compile`, `execute`, `validate`, `explain` |
+| Resources | `manifest://ir/schema`, `manifest://ir/{contentHash}`, `manifest://semantics` |
+| Deps | `@modelcontextprotocol/sdk`, `zod` |
 
 ## Notes and limitations
 
@@ -53,4 +71,4 @@ State is held in a `SessionStore` singleton: an in-process cache keyed by `conte
   `contentHash` from a prior `compile` call in the same session.
 </Warning>
 
-`compile` uses the IR provenance `contentHash` (SHA-256 of source computed by the compiler) as the cache key, so identical source reuses the same entry. `validate` deliberately does not cache, so it cannot be followed by `execute` on the same hash. The package's own version is `0.1.0`; the server identifies itself as `manifest-mcp-server`. The session store caps at 50 entries with FIFO eviction (an implementation detail of `session-store.ts`).
+`compile` uses the IR provenance `contentHash` (SHA-256 of source computed by the compiler) as the cache key, so identical source reuses the same entry. `validate` deliberately does not cache, so it cannot be followed by `execute` on the same hash. The session store caps at 50 entries with FIFO eviction (an implementation detail of `session-store.ts`).

@@ -1,5 +1,10 @@
 # IR Version Control
 
+> **Audited (2026-07-15) @RYANSIGNED:** Spot-check OK — `manifest versions`
+> subcommands + pure store in `ir-version-store.ts` on package **3.6.4**. No
+> public compression / pack-unpack export beyond the CLI store layout (see
+> mintlify `ir-version-control` note).
+
 IR version control persists IR snapshots with semantic version tags, generates changelogs between versions, and verifies integrity via SHA-256 hashing. The pure versioning logic lives in `src/manifest/ir-version-store.ts`; filesystem I/O and the user-facing commands live in the `manifest versions` CLI command group.
 
 ## Usage / Syntax

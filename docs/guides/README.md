@@ -2,6 +2,10 @@
 
 How to integrate Manifest into an application. These are advisory — they describe usage patterns and do not define language semantics (see [`../spec/`](../spec/README.md) for binding rules).
 
+> **Audited (2026-07-15) @RYANSIGNED:** Index links verified. Package pin SoT:
+> `package.json` = **3.6.4**. Prefer repo-relative `docs/spec/*` paths over any
+> machine-absolute paths still lingering inside individual guides.
+
 ## Integration
 
 - [Usage patterns](./usage-patterns.md) — decision guide: projections vs. embedded runtime

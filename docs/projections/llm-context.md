@@ -46,4 +46,7 @@ For entities, a property is reported `required` when it carries the `required` m
 
 ## Notes & limitations
 
-The `emitHeader` option is declared and defaulted to `true`, but the generator emits pure JSON in all three modes and does not write a header comment — the option has no observable effect on output. The `meta.generatedAt` timestamp is taken from `new Date().toISOString()` at generation time, so the full and summary documents are not byte-for-byte reproducible across runs (the `llm-context.ir` surface, which passes the IR through unchanged, is stable). There is no dedicated CLI command; invoke the projection programmatically through `getProjection('llm-context')`.
+The `emitHeader` option is declared and defaulted to `true`, but the generator emits pure JSON in all three modes and does not write a header comment — the option has no observable effect on output. The `meta.generatedAt` timestamp is taken from `new Date().toISOString()` at generation time, so the full and summary documents are not byte-for-byte reproducible across runs (the `llm-context.ir` surface, which passes the IR through unchanged, is stable). ~~There is no dedicated CLI command; invoke the projection programmatically through `getProjection('llm-context')`.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `manifest generate <ir> -p llm-context` works via the
+> registry. Programmatic `getProjection('llm-context')` remains valid.

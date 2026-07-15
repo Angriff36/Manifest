@@ -1,29 +1,37 @@
 ---
 title: 'Turso / libSQL store adapter'
-description: "Persist entity state in Turso's edge-optimized libSQL database with automatic schema generation and low-latency reads."
+description: "Persist entity state in Turso's edge-optimized libSQL database with JSON blob rows and optional schema DDL helper."
 sidebarTitle: 'Turso'
 ---
 
-The Turso adapter persists entity state in a [Turso](https://turso.tech/) edge database using libSQL. It is designed for low-latency reads at the edge, making it a good fit for globally distributed applications.
+The Turso adapter persists entity state in a [Turso](https://turso.tech/) edge database using libSQL. It implements the `Store<T>` interface and stores each entity instance as a JSON blob in a single table.
 
 ## Configuration
 
+`TursoStore` is exported from `@angriff36/manifest/stores` (Node.js only). Optional peer: `@libsql/client`.
+
 ```typescript
-import { TursoStore } from '@angriff36/manifest/stores';
+import { TursoStore, generateTursoSchema } from '@angriff36/manifest/stores';
 
 const store = new TursoStore({
-  url: process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
+  url: process.env.TURSO_DATABASE_URL!,
+  authToken: process.env.TURSO_AUTH_TOKEN, // optional for local SQLite
+  tableName: 'entities', // default
 });
 ```
 
 ### Options
 
-| Option         | Required | Description                                               |
-| -------------- | -------- | --------------------------------------------------------- |
-| `url`          | Yes      | Turso database URL (e.g., `libsql://my-db-xxxx.turso.io`) |
-| `authToken`    | Yes      | Turso authentication token                                |
-| `schemaPrefix` | No       | Prefix for generated table names (default: none)          |
+| Option      | Required | Description                                                              |
+| ----------- | -------- | ------------------------------------------------------------------------ |
+| `url`       | Yes      | Turso / libSQL URL (e.g. `libsql://…` or a local file URL)               |
+| `authToken` | No       | Auth token (optional for local SQLite)                                   |
+| `tableName` | No       | Single table for JSON blobs (default `entities`)                         |
+| `client`    | No       | Pre-built LibSQL client (tests / custom setups)                          |
+
+~~`schemaPrefix`~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** There is no `schemaPrefix` option. Use `tableName`.
 
 ## Wiring into the runtime
 
@@ -35,40 +43,47 @@ const runtime = new RuntimeEngine(
   ir,
   { user: { id: 'user-1' } },
   {
-    storeProvider: () =>
+    storeProvider: (entityName) =>
       new TursoStore({
-        url: process.env.TURSO_DATABASE_URL,
+        url: process.env.TURSO_DATABASE_URL!,
         authToken: process.env.TURSO_AUTH_TOKEN,
+        tableName: entityName.toLowerCase(),
       }),
   },
 );
 ```
 
-## Schema generation
+## Schema helper (not a CLI projection)
 
-The Turso adapter generates libSQL-compatible schema from your entity definitions:
-
-```sql
-CREATE TABLE IF NOT EXISTS manifest_Order (
-  id TEXT PRIMARY KEY,
-  status TEXT NOT NULL DEFAULT 'pending',
-  total REAL NOT NULL DEFAULT 0
-);
-```
-
-Run schema generation via the CLI:
-
-```bash
+~~```bash
 manifest generate ir/ --projection turso --output schema/
+```~~
+
+~~Per-entity columnar DDL like `CREATE TABLE manifest_Order (id, status, total)`~~
+
+> **Correction (2026-07-15) @RYANSIGNED — Documentation gap:** There is **no** `turso`
+> projection in `listBuiltinProjections()`. Schema is a JSON-blob table produced by
+> `generateTursoSchema(tableName)` (or automatically on first use via the store). Apply DDL in
+> your app — there is no `manifest generate --projection turso`.
+
+```typescript
+import { generateTursoSchema } from '@angriff36/manifest/stores';
+
+const ddl = generateTursoSchema('entities');
+// CREATE TABLE IF NOT EXISTS "entities" (
+//   id TEXT PRIMARY KEY,
+//   data TEXT NOT NULL,
+//   created_at TEXT DEFAULT (...),
+//   updated_at TEXT DEFAULT (...)
+// );
 ```
 
 ## Edge deployment
 
 - Turso databases are replicated to edge locations for low-latency reads
 - Writes go to the primary and propagate to replicas
-- For high write throughput, consider embedded replicas for read-heavy patterns
 - Connection pooling is handled by `@libsql/client`
 
 <Note>
-  The Turso adapter requires `@libsql/client` as a peer dependency: `npm install @libsql/client`.
+  Install the peer: `npm install @libsql/client`. Package pin: `@angriff36/manifest@3.6.4`.
 </Note>

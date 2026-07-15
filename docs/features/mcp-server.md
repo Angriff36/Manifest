@@ -4,7 +4,12 @@ The Manifest MCP server exposes compilation, execution, validation, and introspe
 
 ## Usage / Syntax
 
-The server runs over stdio. The package (`@manifest/mcp-server`) provides a `manifest-mcp` bin. Configure it in an MCP host, for example Claude Desktop's `claude_desktop_config.json`:
+The server runs over stdio. ~~The package (`@manifest/mcp-server`) provides a `manifest-mcp` bin.~~
+Configure it in an MCP host, for example Claude Desktop's `claude_desktop_config.json`:
+
+> **Correction (2026-07-15) @RYANSIGNED:** Use the `manifest-mcp` bin on published
+> `@angriff36/manifest` (see `package.json` `bin`). `@manifest/mcp-server` is an in-repo
+> workspace package and is not on npm.
 
 ```json
 {
@@ -40,10 +45,17 @@ State is held in a `SessionStore` singleton: an in-process cache keyed by `conte
 - Transport: stdio (`StdioServerTransport`).
 - Tools: `compile`, `execute`, `validate`, `explain`.
 - Resources: `manifest://ir/schema`, `manifest://ir/{contentHash}`, `manifest://semantics`.
-- Package: `@manifest/mcp-server`, dependencies `@modelcontextprotocol/sdk` and `zod`. Tool input schemas are defined with zod.
+- Package: ~~`@manifest/mcp-server`~~ — **internal workspace package only** (version `0.1.0` in-repo).
+  Dependencies `@modelcontextprotocol/sdk` and `zod`. Tool input schemas are defined with zod.
+
+> **Correction (2026-07-15) @RYANSIGNED:** `@manifest/mcp-server` is **not published to npm**
+> (`docs/TODO.md`). Consumers use the `manifest-mcp` bin shipped on `@angriff36/manifest` (see
+> Usage `npx --package @angriff36/manifest manifest-mcp` above). Do not `npm install @manifest/mcp-server`.
 
 ## Notes & limitations
 
-The session cache is in-process and lost on restart; `execute` and `explain` require a `contentHash` from a prior `compile` call in the same session. `compile` uses the IR provenance `contentHash` (SHA-256 of source computed by the compiler) as the cache key, so identical source reuses the same entry. `validate` deliberately does not cache, so it cannot be followed by `execute` on the same hash. The package's own version is `0.1.0`; the server identifies itself as `manifest-mcp-server`.
+The session cache is in-process and lost on restart; `execute` and `explain` require a `contentHash` from a prior `compile` call in the same session. `compile` uses the IR provenance `contentHash` (SHA-256 of source computed by the compiler) as the cache key, so identical source reuses the same entry. `validate` deliberately does not cache, so it cannot be followed by `execute` on the same hash. The package's own version is `0.1.0` ~~; the server identifies itself as `manifest-mcp-server`~~
+(workspace package only — not on the public registry). The server identifies itself as
+`manifest-mcp-server`.
 
 Note on provenance: the consolidated summary states the session store caps at 50 entries with FIFO eviction; that limit is an implementation detail of `session-store.ts` and not re-verified line-by-line here.

@@ -1,5 +1,9 @@
 # Computed Property Caching
 
+> **Audited (2026-07-15) @RYANSIGNED:** Spot-check OK — `request` / `session` /
+> `ttl` strategies + dependency staleness match runtime on package **3.6.4**;
+> fixture `65-computed-property-caching.manifest`.
+
 A computed property can declare a cache strategy so its value is memoized rather than recomputed on every read. Three strategies are available: per-command (`request`), per-engine-lifetime (`session`), and time-bounded (`ttl`).
 
 ## Syntax

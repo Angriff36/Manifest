@@ -413,4 +413,4 @@ Before deploying to production:
 
 - **Store Implementation**: `docs/guides/implementing-custom-stores.md`
 - **Transactional Outbox**: `docs/guides/transactional-outbox.md`
-- **API Reference**: `docs/tools/API_REFERENCE.md`
+- **API Reference**: ~~`docs/tools/API_REFERENCE.md`~~ `docs/internal/tools/API_REFERENCE.md` (path corrected 2026-07-15 @RYANSIGNED)

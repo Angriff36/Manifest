@@ -216,13 +216,19 @@ async function placeOrder(orderId: string, sku: string, qty: number) {
   }
 
   // Proceed with order creation on the local runtime
-  return localRuntime.runCommand('Order', 'create', {
-    instanceId: orderId,
-    sku,
-    quantity: qty,
-  });
+  return localRuntime.runCommand(
+    'create',
+    { sku, quantity: qty },
+    { entityName: 'Order', instanceId: orderId },
+  );
 }
 ```
+
+~~Phantom (do not use): `localRuntime.runCommand('Order', 'create', { instanceId, sku, quantity })`.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Local `RuntimeEngine.runCommand` is
+> `runCommand(commandName, input, options?)` — not entity-first. The `placeOrder` example
+> above uses the corrected shape.
 
 ## Importing federation
 

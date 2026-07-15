@@ -18,7 +18,11 @@ npx vitest -u src/manifest/projections/snapshot.test.ts
 
 The test file builds a fixed IR fixture in `snapshotIR()` — a small but representative program with two entities (`Task`, `User`), a computed property, relationships (`belongsTo`/`hasMany`), commands with guards and actions, events with channels, a policy, constraints, and a `durable` store for both entities so the ORM projections (Prisma, Drizzle) emit output. The IR provenance is hardcoded (`contentHash: 'snapshot-fixture-hash'`, fixed `compiledAt`) so the input is deterministic.
 
-The suite enumerates projections via `listBuiltinProjections()` and asserts there are exactly 13 built-in projections. For each projection it generates every surface with `generateAllSurfaces`, which runs the projection once per surface and then again per entity, de-duplicating artifacts by `id` and diagnostics by message/entity.
+The suite enumerates projections via `listBuiltinProjections()` and asserts there are exactly ~~13~~ **29** built-in projections.
+
+> **Correction (2026-07-15) @RYANSIGNED:** `snapshot.test.ts` uses
+> `expect(projections.length).toBe(29)` (was 13 in older docs). Updating the set still requires
+> a conscious snapshot refresh.
 
 Non-deterministic content is stabilized before snapshotting: a `stabilize()` helper replaces any ISO-8601 timestamp matching `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z` with the fixed value `2025-01-01T00:00:00.000Z`.
 
@@ -31,7 +35,7 @@ Snapshots are stored in `src/manifest/projections/__snapshots__/snapshot.test.ts
 - Test file: `src/manifest/projections/snapshot.test.ts`.
 - Snapshot file: `src/manifest/projections/__snapshots__/snapshot.test.ts.snap`.
 - Update command: `npx vitest -u src/manifest/projections/snapshot.test.ts`.
-- Coverage guard: `expect(projections.length).toBe(13)` — adding or removing a built-in projection requires updating this count.
+- Coverage guard: `expect(projections.length).toBe(29)` — adding or removing a built-in projection requires updating this count.
 - Stabilization: ISO timestamps normalized to `2025-01-01T00:00:00.000Z`.
 
 ## Notes and limitations
@@ -41,7 +45,7 @@ Snapshots are stored in `src/manifest/projections/__snapshots__/snapshot.test.ts
   snapshot diffs reflect changes against that one program rather than the full feature surface.
 </Note>
 
-The hardcoded projection count (13) is a deliberate tripwire: it fails when the built-in projection set changes, forcing a conscious snapshot update. Only ISO-millisecond timestamps are stabilized; any other non-deterministic output in a generator would make snapshots flaky and must be handled in the generator itself, since the runtime determinism assertion would also catch it.
+The hardcoded projection count (~~13~~ **29**) is a deliberate tripwire: it fails when the built-in projection set changes, forcing a conscious snapshot update. Only ISO-millisecond timestamps are stabilized; any other non-deterministic output in a generator would make snapshots flaky and must be handled in the generator itself, since the runtime determinism assertion would also catch it.
 
 ## Command and guard coverage reporter
 
@@ -71,7 +75,7 @@ manifest coverage --ir ir/app.ir.json --format json
 
 ### Programmatic API
 
-```typescript
+~~```typescript
 import { CoverageReporter } from '@angriff36/manifest/coverage';
 
 const reporter = new CoverageReporter(ir, { root: '.' });
@@ -80,32 +84,32 @@ const report = reporter.compute();
 console.log(`Commands: ${report.commands.covered}/${report.commands.total}`);
 console.log(`Guards: ${report.guards.covered}/${report.guards.total}`);
 console.log(`Overall: ${report.percentage}%`);
+```~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `@angriff36/manifest/coverage` exports
+> `coverageCommand` (and coverage result types), **not** a `CoverageReporter` class.
+
+```typescript
+import { coverageCommand } from '@angriff36/manifest/coverage';
+
+const report = await coverageCommand({
+  ir: 'ir/app.ir.json',
+  root: '.',
+  format: 'json',
+  minCoverage: 80,
+  strict: true,
+});
+console.log(report.overall.percentage);
 ```
 
 ## Property-based testing
 
-Property-based testing generates random valid inputs and verifies that runtime invariants hold across all generated cases. Manifest uses [fast-check](https://github.com/dubzzz/fast-check) under the hood to produce deterministic random IR programs and runtime contexts.
+~~`pnpm test -- --grep "property-based"`~~ / ~~`FC_SEED`~~
 
-### Invariants tested
+> **Correction (2026-07-15) @RYANSIGNED:** In-repo property tests use **fast-check** in
+> `src/manifest/runtime-guard-properties.test.ts` (guard evaluation properties). There is no
+> dedicated `property-based` vitest grep title and no documented `FC_SEED` env contract on this
+> page. Run the file via the normal suite (`pnpm test`) or target that test file explicitly.
 
-| Invariant               | Description                                                                           |
-| ----------------------- | ------------------------------------------------------------------------------------- |
-| Determinism             | Identical IR + identical context + identical input → identical result                 |
-| Guard safety            | Guards never throw — they return true or false                                        |
-| Constraint monotonicity | Raising constraint severity never makes a previously valid program invalid            |
-| Policy isolation        | Policy denial always prevents command execution, regardless of input                  |
-| State consistency       | After a successful command, all computed properties are consistent with the new state |
-
-### Usage
-
-The property-based tests run as part of the normal test suite:
-
-```bash
-pnpm test -- --grep "property-based"
-```
-
-<Note>
-  Property-based tests use a fixed random seed by default for reproducibility. When a test fails,
-  the seed is printed so you can reproduce the exact failing case. To run with a different seed, set
-  the `FC_SEED` environment variable.
-</Note>
+Invariants covered there include guard failure indexing / short-circuit behavior under random
+inputs — not a full “random IR program” generator as previously implied.

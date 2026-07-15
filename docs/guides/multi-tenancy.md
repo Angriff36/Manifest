@@ -12,16 +12,25 @@ Normative semantics are defined in `docs/spec/semantics.md` and `docs/spec/adapt
 
 ## Core Concept
 
-Multi-tenancy in Manifest is **enforced at the store layer**, not the language layer.
+~~Multi-tenancy in Manifest is **enforced at the store layer**, not the language layer.~~
 
-**Why?** Tenant isolation is an infrastructure concern, not a domain semantic.
+~~**Why?** Tenant isolation is an infrastructure concern, not a domain semantic.~~
 
-**How it works:**
+> **Correction (2026-07-15) @RYANSIGNED:** Manifest ships a language-level `tenant`
+> declaration (`tenant <property> : <type> from <context_path>`) and a fail-closed
+> runtime gate (`MISSING_TENANT_CONTEXT` when IR has `tenant` **or**
+> `RuntimeOptions.requireTenantContext` is set). The reference engine also filters
+> `getInstance` / `getAllInstances` by the tenant property. Store-layer isolation
+> (RLS, tenant-scoped adapters, separate DBs) remains **additional** infrastructure
+> hardening — it is not the only enforcement path. See
+> `docs/features/tenant-isolation.md` and fixture `61-tenant-isolation.manifest`.
 
-1. Manifest commands define domain rules (guards, policies, events)
-2. Runtime context provides `tenantId` as an input
-3. Custom stores enforce tenant boundaries at the database level
-4. Guards and policies MAY reference `context.tenantId` for business rules
+**How it works (combined):**
+
+1. Optional `tenant` DSL + runtime context (`context.tenantId` / configured `contextPath`)
+2. Manifest commands define domain rules (guards, policies, events); guards MAY also reference `context.tenantId`
+3. Custom stores / DB RLS can enforce tenant boundaries at the database level (not automatic)
+4. Never trust client-supplied `tenantId` in request bodies — inject from auth
 
 ---
 
@@ -626,4 +635,6 @@ runtime.onEvent((event) => {
 
 ---
 
-**TL;DR**: Multi-tenancy is enforced at the store layer. Pass `tenantId` via runtime context, implement tenant-scoped stores, and use guards/policies for business-level tenant checks. Never trust client-provided tenant IDs.
+~~**TL;DR**: Multi-tenancy is enforced at the store layer. Pass `tenantId` via runtime context, implement tenant-scoped stores, and use guards/policies for business-level tenant checks. Never trust client-provided tenant IDs.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Prefer a `tenant` declaration (or `requireTenantContext`) so the runtime gate + read filtering apply; pass `tenantId` in `RuntimeContext`; optionally add store/DB isolation. Never trust client-provided tenant IDs.

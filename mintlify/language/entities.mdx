@@ -34,7 +34,11 @@ external entity ImportedUser {
 
 ## Properties
 
-Every property has a type. Supported types are `string`, `number`, `boolean`, and `timestamp`. A property without a default is `undefined` unless the caller supplies a value at creation time.
+Every property has a type.
+
+~~Supported types are `string`, `number`, `boolean`, and `timestamp`. A property without a default is `undefined` unless the caller supplies a value at creation time.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** There is **no** `timestamp` property type (language-design backlog; see `docs/TODO.md`). Common scalar types include `string`, `number`, `boolean`, plus date/time primitives `datetime` / `date` / `time` / `duration` (`docs/spec/semantics.md` § Date/Time Types), `decimal` / `money`, collections, enums, and value-object names. When a property is omitted at create time, the runtime applies the property's `defaultValue` if present, otherwise the **type default** (for example `""`, `0`, `false`) — not `undefined`. An explicit `required` modifier is not satisfied by a zero-filled type default alone (`E_REQUIRED`). See [Types](/language/types).
 
 ### Modifiers
 
@@ -266,6 +270,10 @@ belongsTo item: LineItem fields [tenantId, itemId] references [tenantId, id] onD
 
 When no action is declared, the projection emits nothing and the target platform uses its own default.
 
+~~(Implied: declaring `onDelete` / `onUpdate` enforces referential integrity in the reference runtime.)~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Referential actions compile into IR and are emitted by storage projections (for example Prisma). The **reference runtime does not enforce** `onDelete` / `onUpdate` — `deleteInstance()` does not cascade or restrict (`docs/TODO.md`). Do not expect cascade/restrict behavior from `RuntimeEngine` alone.
+
 ## Concurrency controls (vNext)
 
 Entities can declare optimistic concurrency controls using `versionProperty` and `versionAtProperty`. The runtime compares the caller-supplied version against the stored value on every mutation.
@@ -390,12 +398,6 @@ The runtime enriches resolved relationship instances with `_entity` metadata, en
 
 ## Pagination
 
-Entity collections support built-in pagination for list queries. When querying entity instances, you can control the result set size and navigate through pages:
+~~Entity collections support built-in pagination for list queries (limit / offset / cursor). The Next.js projection generates list routes that accept `?limit=N&offset=M` or `?cursor=token` and return `nextCursor` or `hasMore`. Pagination operates after tenant filtering and masking.~~
 
-- **Limit** -- maximum number of instances to return per page
-- **Offset** -- number of instances to skip before returning results
-- **Cursor** -- opaque token identifying the position in the result set (preferred for large collections)
-
-Pagination parameters are passed to the runtime or projection endpoint. The Next.js projection generates list routes that accept `?limit=N&offset=M` or `?cursor=token` query parameters and return a paginated response with the instances and a `nextCursor` or `hasMore` indicator.
-
-Pagination operates after tenant filtering and masking, ensuring that row counts and cursors reflect only the data the caller is authorized to see.
+> **Correction (2026-07-15) @RYANSIGNED:** **Not shipped.** `pagination-api` remains in the no-implementation / backlog inventory (`docs/FEATURE-LIST.md` Category 3). The reference runtime's `getAllInstances` has no limit/offset/cursor API, and the Next.js projection does not emit paginated list query parameters as described above. **Documentation gap — not verified against shipped Manifest.** Paginate in the host application or store query layer if needed.

@@ -1,5 +1,10 @@
 # OpenAPI Projection
 
+> **Audited (2026-07-15) @RYANSIGNED:** Spot-check OK — surface `openapi.spec`,
+> value-object `$ref` path, bare `number` → JSON Schema number (no ambiguity
+> diagnostic). Package **3.6.4**. Historical “1218 tests” note is not a current
+> count.
+
 The OpenAPI projection generates a complete OpenAPI 3.1.0 specification from compiled Manifest IR — entity read operations, command write operations, JSON Schema-typed bodies, security schemes, and constraint error responses. Use it to feed OpenAPI toolchains for SDK generation, mock servers, or API documentation.
 
 ## What it generates

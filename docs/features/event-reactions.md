@@ -76,7 +76,9 @@ on ParentDeactivated fanOut Child where parentId = self.id
 
 - `fanOut <Target> where <field> = <sourceExpr>` selects the collection — `<field>` is a property on the target entity (foreign key preferred), `<sourceExpr>` is evaluated against the event payload (`self.*` / `payload.*`).
 - `run <command>` names the target command (no `Entity.` prefix — the target entity is already given). An optional shared `params { ... }` block applies to every match.
-- Each match runs the target command through the full pipeline (guards, policies, actions, emits). The reaction depth limit and `correlationId`/`causationId` propagation apply per dispatched command.
+- ~~Each match runs the target command through the full pipeline (guards, policies, actions, emits). The reaction depth limit and `correlationId`/`causationId` propagation apply per dispatched command.~~
+>
+> **Correction (2026-07-15) @RYANSIGNED:** Each match dispatches via `RuntimeEngine.runCommand` (policies → constraints → guards → actions → emits; plus rateLimit/approval when declared). `correlationId` is preserved across the chain; `causationId` on each reaction-triggered command is the triggering event's **name** (`emitted.name`), not an emit/instance id (`docs/spec/semantics.md` § Reactions). There is **no** silent skip when the resolved instance is missing — the target command still runs with unbound `self`/`this`.
 - The Convex projection reads matching rows via `withIndex` on the FK and dispatches each through the generated target mutation.
 
 ## Aggregate count expressions
@@ -96,7 +98,7 @@ on ScheduleShiftCreated run Schedule.syncShiftCount
 - Predicate values are expressions resolved against the reaction's event payload (`self.*` / `payload.*`), like any param. Predicates are pure equality, ANDed.
 - At least one predicate (the foreign-key match) is required. `count` is a contextual operator, not a reserved word — it is recognized only in the `count(<Entity> where ...)` shape, so a property may still be named `count`.
 - Scope is deliberately narrow: count only — no group-by, joins, multi-hop traversal, or arbitrary SQL.
-- The runtime scans the collection (deterministic). The Convex projection reads via the FK predicate's `by_<field>` index, applies remaining predicates plus tenant/soft-delete filters, and binds `.length`.
+- The runtime scans the collection (deterministic). The Convex projection reads via the FK predicate's `by_<field>` index, applies remaining predicates plus tenant / `deletedAt` soft-delete filters (Convex projection defaults — not a language `softDelete` keyword; see `docs/TODO.md`).
 
 ## IR Schema Changes
 
@@ -111,7 +113,9 @@ on ScheduleShiftCreated run Schedule.syncShiftCount
 3. Parameter mappings extract values from the event payload
 4. The target command is invoked with the resolved parameters
 5. Cascading depth limit prevents infinite reaction loops
-6. `correlationId` and `causationId` propagate through reaction chains
+6. ~~`correlationId` and `causationId` propagate through reaction chains~~
+>
+> **Correction (2026-07-15) @RYANSIGNED:** `correlationId` propagates unchanged. `causationId` is set to the triggering event **name** on each hop (not a stable chain of emit ids).
 
 ## Scopes
 

@@ -75,4 +75,9 @@ const result = projection.generate(ir, {
   module is fully self-contained.
 </Warning>
 
-There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only; to emit React Query hooks, invoke the projection programmatically through `getProjection('react-query')` as shown above.
+There is ~~no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only; to emit React Query hooks, invoke the projection programmatically through `getProjection('react-query')` as shown above.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `manifest generate` dispatches **any** registered
+> projection via `-p` / `--projection` (non-`nextjs` names walk the registry). Example:
+> `manifest generate ir/recipe.ir.json -p react-query -s react-query.hooks --output .`
+> Programmatic `getProjection('react-query')` still works. Package pin **3.6.4**.

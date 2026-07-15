@@ -1,5 +1,10 @@
 # Automatic Timestamp Fields
 
+> **Audited (2026-07-15) @RYANSIGNED:** Spot-check OK — fixture is
+> `62-timestamp-auto-fields.manifest` (not historical `59-…`); runtime
+> `getNow()` create/update + Prisma `@default(now())` / `@updatedAt`. Package
+> **3.6.4**.
+
 The `timestamps` entity modifier auto-injects `createdAt` and `updatedAt` properties (marked with the `readonly` modifier for projection type-safety) and populates them at runtime, removing the boilerplate of declaring and maintaining audit timestamps by hand.
 
 ## Usage / Syntax

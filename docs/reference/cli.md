@@ -16,12 +16,17 @@ Initialize Manifest configuration interactively, or generate a CI workflow when 
 
 - `-f, --force` — overwrite an existing config or workflow file.
 - `--ci <provider>` — generate a CI workflow for a provider (`github`).
-- `--node-versions <versions>` — comma-separated Node versions for the CI matrix (default `18,20,22`).
+- `--node-versions <versions>` — comma-separated Node versions for the CI matrix (CLI default string is still `18,20,22`).
 
 ```bash
 manifest init
-manifest init --ci github --node-versions 18,20,22
+manifest init --ci github --node-versions 20,22
 ```
+
+> **Correction (2026-07-15) @RYANSIGNED:** Root `package.json` `engines.node` is
+> **`>=20`** (SoT version **3.6.4**). Prefer a CI matrix of `20,22` (or newer)
+> even though `packages/cli` still documents the historical default
+> `18,20,22`. Node 18 is below the package engine floor.
 
 ## compile
 

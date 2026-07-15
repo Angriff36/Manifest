@@ -4,10 +4,15 @@ This guide helps plan migration to vNext capabilities while keeping semantics al
 
 Primary references:
 
-- `C:/Projects/Manifest/docs/spec/manifest-vnext.md`
-- `C:/Projects/Manifest/docs/spec/semantics.md`
-- `C:/Projects/Manifest/docs/spec/ir/ir-v1.schema.json`
-- `C:/Projects/Manifest/src/manifest/conformance/fixtures/`
+~~- `C:/Projects/Manifest/docs/spec/manifest-vnext.md`~~
+~~- `C:/Projects/Manifest/docs/spec/semantics.md`~~
+~~- `C:/Projects/Manifest/docs/spec/ir/ir-v1.schema.json`~~
+~~- `C:/Projects/Manifest/src/manifest/conformance/fixtures/`~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Use repo-relative paths (machine-local
+> absolute paths are not portable): `docs/spec/manifest-vnext.md`,
+> `docs/spec/semantics.md`, `docs/spec/ir/ir-v1.schema.json`,
+> `src/manifest/conformance/fixtures/`. Package pin SoT: `package.json` = **3.6.4**.
 
 ## vNext Features
 
@@ -37,11 +42,14 @@ Primary references:
 ## Validation Commands
 
 ```bash
-npm run conformance:regen
-npm test
-npm run typecheck
-npm run lint
+pnpm run conformance:regen
+pnpm test
+pnpm run typecheck
+pnpm run lint
 ```
+
+> **Correction (2026-07-15) @RYANSIGNED:** This repo is a **pnpm** workspace
+> (`packageManager` in `package.json`). Prefer `pnpm` over `npm` for validation.
 
 ## Fixture References
 

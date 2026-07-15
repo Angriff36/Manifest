@@ -8,7 +8,12 @@ The projection is registered under the name `express` and lives at `src/manifest
 
 The projection exposes four surfaces.
 
-`express.router` emits a complete router module (path hint `routes/manifest-router.ts`, or `routes/<entity>.ts` when an `entity` is supplied). For Express this is an exported `createManifestRouter(): Router`; for Fastify it is an exported `async manifestRoutes(fastify)` plugin. Each entity gets a `GET /{entity}/list` route, a `GET /{entity}/:id` route, and one `POST /{entity}/{command-kebab}` route per entity-scoped command. Read routes call `runtime.list(...)` / `runtime.get(...)` directly; command routes extract an `instanceId` from `body.instanceId ?? body.id` and call `runtime.runCommand(entity, command, { params, instanceId }, context)`.
+`express.router` emits a complete router module (path hint `routes/manifest-router.ts`, or `routes/<entity>.ts` when an `entity` is supplied). For Express this is an exported `createManifestRouter(): Router`; for Fastify it is an exported `async manifestRoutes(fastify)` plugin. Each entity gets a `GET /{entity}/list` route, a `GET /{entity}/:id` route, and one `POST /{entity}/{command-kebab}` route per entity-scoped command. Read routes call `runtime.list(...)` / `runtime.get(...)` directly; command routes extract an `instanceId` from `body.instanceId ?? body.id` and call ~~`runtime.runCommand(entity, command, { params, instanceId }, context)`~~.
+
+> **Correction (2026-07-15) @RYANSIGNED:** Generated Express/Fastify routes call the **companion
+> facade** `runCommand(entity, command, { params, instanceId }, context?)`, which adapts to
+> `RuntimeEngine.runCommand(command, params ?? {}, { entityName, instanceId })`. Do not call
+> `RuntimeEngine` with the 4-arg entity-first form.
 
 `express.entity` emits a single-entity router; with no `entity` set it emits one artifact per entity. `express.types` emits TypeScript request/response interfaces (one `interface` per entity, with computed properties as `readonly`, plus a `<Entity><Command>Params` interface for each command that has parameters). `express.all` emits the router and the types together. An unknown surface returns an `UNKNOWN_SURFACE` error; a missing named entity yields an `EXPRESS_ENTITY_NOT_FOUND` warning.
 
@@ -45,4 +50,8 @@ Entity interface fields are optional unless the property has the `required` modi
 
 The generated module imports the auth middleware and runtime factory from the configured paths; it does not define them. Read routes (`list`/`get`) bypass the runtime engine and call the runtime's read methods directly, while all writes go through `runtime.runCommand`. The `basePath` option is normalized but the entity route paths in the generated handlers are not prefixed with it, so the prefix is applied where you mount the router, not inside the generated route strings.
 
-There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only — emit Express/Fastify output by invoking `getProjection('express')` programmatically. (Per-feature notes referencing `manifest generate <ir> -p express` describe an intended CLI path that is not present in the current `generate` command.)
+~~There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only — emit Express/Fastify output by invoking `getProjection('express')` programmatically. (Per-feature notes referencing `manifest generate <ir> -p express` describe an intended CLI path that is not present in the current `generate` command.)~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `manifest generate <ir> -p express` works via the
+> projection registry (`getProjection('express')`). Next.js still has a specialized path in
+> `generate.ts`; all other registered names (including `express`) use the registry walker.

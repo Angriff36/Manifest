@@ -12,7 +12,12 @@ The projection exposes four surfaces.
 
 `hono.entity` emits a single-entity router (one artifact per entity when no `entity` is set). `hono.types` emits TypeScript types — an `Env` type, an `AuthUser` interface, one `interface` per entity (computed properties as `readonly`), and a `<Entity><Command>Params` interface per parameterized command. `hono.all` emits the router and the types together. An unknown surface returns an `UNKNOWN_SURFACE` error; a missing named entity yields a `HONO_ENTITY_NOT_FOUND` warning.
 
-Read handlers call `runtime.list(...)` / `runtime.get(...)` directly, reading the tenant id from `c.get('user')` when tenant context is enabled. Command handlers parse the body with `c.req.json()`, derive an `instanceId` from `body.instanceId ?? body.id`, and call `runtime.runCommand(entity, command, { params, instanceId }, context)`. Runtime error codes map to HTTP status the same way as the Express projection: `GUARD_FAILED` to 403, `CONSTRAINT_VIOLATION` to 422, `CONCURRENCY_CONFLICT` to 409, `NOT_FOUND` to 404, otherwise 500.
+Read handlers call `runtime.list(...)` / `runtime.get(...)` directly, reading the tenant id from `c.get('user')` when tenant context is enabled. Command handlers parse the body with `c.req.json()`, derive an `instanceId` from `body.instanceId ?? body.id`, and call ~~`runtime.runCommand(entity, command, { params, instanceId }, context)`~~. Runtime error codes map to HTTP status the same way as the Express projection: `GUARD_FAILED` to 403, `CONSTRAINT_VIOLATION` to 422, `CONCURRENCY_CONFLICT` to 409, `NOT_FOUND` to 404, otherwise 500.
+
+> **Correction (2026-07-15) @RYANSIGNED:** Generated Hono routes call the **companion facade**
+> `runCommand(entity, command, { params, instanceId }, context?)`, which adapts to
+> `RuntimeEngine.runCommand(command, params ?? {}, { entityName, instanceId })`. Do not call
+> `RuntimeEngine` with the 4-arg entity-first form.
 
 ## Usage
 
@@ -43,4 +48,7 @@ Entity interface fields are optional unless the property has the `required` modi
 
 The generated app imports its auth middleware and runtime factory from the configured paths rather than defining them, and uses Hono's `c.get('user')` convention (set by that middleware) rather than an Express-style `req.user`. As with the Express projection, the `basePath` option is normalized but not applied to the generated route strings; apply the prefix where you mount or `route()` the app. Read routes bypass the runtime engine; all writes go through `runtime.runCommand`.
 
-There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only, so emit Hono output by invoking `getProjection('hono')` programmatically. Extending the CLI's `generate` to accept `hono` would be separate work.
+~~There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only, so emit Hono output by invoking `getProjection('hono')` programmatically. Extending the CLI's `generate` to accept `hono` would be separate work.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `manifest generate <ir> -p hono` works via the
+> projection registry. Same facade-vs-`RuntimeEngine` caveat as Express.

@@ -102,13 +102,12 @@ entity ArchivedDocument extends BaseEntity {
 store ArchivedDocument in memory
 ```
 
-Members are resolved in this order: entity's own declarations → applied mixins → inherited parent members. Conflicts (same name from multiple mixins) produce a compile error.
+~~Members are resolved in this order: entity's own declarations → applied mixins → inherited parent members. Conflicts (same name from multiple mixins) produce a compile error.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Composition merge order is **parent → mixins → own**; **own wins** on name conflict (`src/manifest/entity-composition.ts`). Mixin–mixin name clashes are **not** a dedicated compile error — colliding inherited members can both be prepended unless an own declaration overrides them. Prefer disjoint mixin surfaces.
 
 ## IR representation
 
-Both features are resolved at compile time. The emitted IR contains:
+~~Both features are resolved at compile time… The `extends` relationship is not preserved… Mixin names are not recorded.~~
 
-- **Inheritance**: A single flattened `IREntity` with all inherited members. The `extends` relationship is not preserved in the IR.
-- **Mixins**: Same as inheritance — members are inlined into the entity. Mixin names are not recorded.
-
-This means downstream projections and the runtime engine see no inheritance or mixin metadata — they operate on flat, fully resolved entities only.
+> **Correction (2026-07-15) @RYANSIGNED:** Members are flattened into the entity for runtime/projections, **and** IR still records lineage: `IREntity.parent` (from `extends`) and `IREntity.mixins` (string array) per `docs/spec/ir/ir-v1.schema.json`. Runtime execution uses the flattened member lists; it does not re-walk inheritance.

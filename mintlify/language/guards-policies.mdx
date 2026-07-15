@@ -128,7 +128,9 @@ In this example, `adminOnly` is a module-level policy. Use `default policy` insi
 
 ### Per-command access restrictions
 
-Policies are entity-level or module-level — there is no inline policy syntax inside a command body. To enforce stricter access on a single command, use a guard inside that command:
+Policies are entity-level or module-level — there is no inline policy syntax inside a command body
+(**confirmed 2026-07-15**; command-body policy clause remains an Appendix E backlog item). To
+enforce stricter access on a single command, use a guard inside that command:
 
 ```manifest
 entity InventoryItem {
@@ -158,7 +160,13 @@ entity InventoryItem {
 
 ## Default policies (vNext)
 
-Use `default policy` on an entity to apply a policy to every command that does not declare its own:
+~~Use `default policy` on an entity to apply a policy to every command that does not declare its own:~~
+
+> **Correction (2026-07-15):** Use `default policy` on an entity to apply a policy to every command
+> on that entity. There is **no** source syntax for a command-body / per-command `policies` clause
+> (Appendix E backlog). Per-command stricter checks use **guards**. Spec/IR may carry
+> `IRCommand.policies`, but the compiler today only expands entity `default policy` names into that
+> array.
 
 ```manifest
 entity Task {
@@ -185,8 +193,9 @@ Both `complete` and `reassign` inherit `RequireAuth`. Add a guard inside any com
 
 ### Inheritance rules
 
-1. If the entity declares a `default policy`, every command on that entity inherits it.
-2. If no default policy applies, no policy check runs (the scanner will warn).
+1. If the entity declares a `default policy`, every command on that entity inherits it (expanded into IR at compile time).
+2. ~~If a command declares its own policies, those replace defaults (not merged).~~ **Correction (2026-07-15):** No `.manifest` syntax currently declares per-command policies; use guards for stricter per-command checks.
+3. If no default policy applies, no policy check runs (the scanner will warn).
 
 The IR compiler expands default policies into each command's effective policy list at compile time. The runtime always evaluates an explicit, expanded list — it does not perform inheritance at runtime.
 

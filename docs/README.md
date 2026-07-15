@@ -30,13 +30,23 @@ Full reference for every shipped capability lives in [`features/`](./features/RE
 - **Computed properties** — [memoization & caching](./features/computed-property-caching.md)
 - **Entities** — [timestamps](./features/timestamp-fields.md), [tenant isolation](./features/tenant-isolation.md)
 - **Extensibility** — [plugin API: custom stores & expression functions](./features/plugin-api.md)
-- **AI surfaces** — [agent SDK](./features/agent-sdk.md), [MCP server](./features/mcp-server.md), [LLM context export](./projections/llm-context.md)
+- **AI surfaces** — [agent SDK](./features/agent-sdk.md), ~~[MCP server](./features/mcp-server.md)~~,
+  [LLM context export](./projections/llm-context.md)
+  > **Correction (2026-07-15) @RYANSIGNED:** `@manifest/mcp-server` is built in-repo
+  > but **not published to npm** (see `docs/CONFIRMED-FEATURES.md` §7 / Gaps). Use
+  > the main package CLI / agent SDK exports; do not `npm i @manifest/mcp-server`.
 
 ## Projections
 
 Generate platform artifacts from IR. One page each in [`projections/`](./projections/README.md):
 
-[Next.js](./projections/nextjs.md) · [Prisma](./projections/prisma.md) · [Drizzle](./projections/drizzle.md) · [OpenAPI 3.1](./projections/openapi.md) · [GraphQL](./projections/graphql.md) · [Zod](./projections/zod.md) · [TanStack Query](./projections/react-query.md) · [JSON Schema](./projections/json-schema.md) · [Express](./projections/express.md) · [Hono](./projections/hono.md) · [Mermaid diagrams](./projections/mermaid.md) · [LLM context](./projections/llm-context.md)
+~~[Next.js](./projections/nextjs.md) · [Prisma](./projections/prisma.md) · [Drizzle](./projections/drizzle.md) · [OpenAPI 3.1](./projections/openapi.md) · [GraphQL](./projections/graphql.md) · [Zod](./projections/zod.md) · [TanStack Query](./projections/react-query.md) · [JSON Schema](./projections/json-schema.md) · [Express](./projections/express.md) · [Hono](./projections/hono.md) · [Mermaid diagrams](./projections/mermaid.md) · [LLM context](./projections/llm-context.md)~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Docs tree pages above remain; **29**
+> projections are registered (incl. **Convex**, Remix, SvelteKit, health, wiring,
+> contract-tests, etc.). Full inventory: `docs/CONFIRMED-FEATURES.md` §5. Mintlify
+> covers Convex / Remix / SvelteKit; some lack a `docs/projections/*.md` page —
+> that is a doc gap, not a missing projection.
 
 ## Language reference (binding)
 

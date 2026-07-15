@@ -53,18 +53,24 @@ The `async` modifier is available at program-level, module-level, and entity-lev
 
 ## Return value
 
-An async command returns a different shape than a synchronous command. Instead of the normal `CommandResult`, the caller receives:
+~~An async command returns a different shape than a synchronous command. Instead of the normal `CommandResult`, the caller receives:~~
+
+```typescript
+// Incorrect flat shape (do not use):
+// { success: true, jobId, status: "pending", enqueuedAt }
+```
+
+> **Correction (2026-07-15) @RYANSIGNED:** Async enqueue still returns a normal `CommandResult`. The job metadata is nested under `result`:
 
 ```typescript
 {
   success: true,
-  jobId: "job-abc123",
-  status: "pending",
-  enqueuedAt: 1748131200000
+  result: { jobId: "job-abc123", status: "pending", enqueuedAt: 1748131200000 },
+  emittedEvents: []
 }
 ```
 
-The `jobId` can be used to track the job's status and correlate with the synthesized completion/failure events.
+Read `result.result.jobId` / `result.result.status`. The `jobId` correlates with the synthesized completion/failure events.
 
 ## Auto-synthesized events
 
@@ -75,13 +81,25 @@ The compiler automatically creates two events for each async command:
 | `{CommandName}Completed` | After the job executes successfully |
 | `{CommandName}Failed`    | If the job execution fails          |
 
-```manifest
+~~```manifest
 // You don't declare these — the compiler creates them:
 // event ProcessOrderCompleted: "order.processOrder.completed" { jobId: string; result: object }
 // event ProcessOrderFailed: "order.processOrder.failed" { jobId: string; error: string }
+```~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Synthesized events use channel `jobs.<commandName>` (not a domain-style channel), and payloads include timestamps:
+
+```manifest
+// Compiler-synthesized (illustrative):
+// event ProcessOrderCompleted: "jobs.processOrder" {
+//   jobId: string; result: any; completedAt: number
+// }
+// event ProcessOrderFailed: "jobs.processOrder" {
+//   jobId: string; error: string; failedAt: number
+// }
 ```
 
-These synthesized events are appended to the IR's `events` array at compile time. They follow the naming convention `{commandName}Completed` and `{commandName}Failed`.
+Names are `{commandName}Completed` / `{commandName}Failed`, appended to the IR `events` array.
 
 <Warning>
   If you declare an event with the same name as a synthesized event, the compiler produces an error
@@ -97,19 +115,38 @@ import { RuntimeEngine, MemoryJobQueue } from '@angriff36/manifest';
 
 const jobQueue = new MemoryJobQueue();
 
-const runtime = new RuntimeEngine(ir, {
+~~const runtime = new RuntimeEngine(ir, {
   user: { id: 'system', role: 'worker' },
   jobQueue,
-});
+});~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Constructor is `(ir, context, options)`. Put `user` in context and `jobQueue` in options:
+
+```typescript
+const runtime = new RuntimeEngine(
+  ir,
+  { user: { id: 'system', role: 'worker' } },
+  { jobQueue },
+);
 ```
 
 The `JobQueue` interface defines three methods:
 
-```typescript
+~~```typescript
 interface JobQueue {
   enqueue(record: JobRecord): Promise<string>;
   drainPending(): Promise<JobRecord[]>;
   updateStatus(jobId: string, status: string): Promise<void>;
+}
+```~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `enqueue` returns `Promise<void>` (the runtime allocates `jobId` before enqueue). Optional second arg is an opaque transaction handle:
+
+```typescript
+interface JobQueue {
+  enqueue(job: JobRecord, tx?: unknown): Promise<void>;
+  drainPending(): Promise<JobRecord[]>;
+  updateStatus(jobId: string, status: string, error?: string): Promise<void>;
 }
 ```
 
@@ -119,7 +156,7 @@ A `JobRecord` carries:
 interface JobRecord {
   jobId: string;
   commandName: string;
-  entityName: string;
+  entityName?: string;
   instanceId?: string;
   input: Record<string, unknown>;
   correlationId?: string;
@@ -169,28 +206,46 @@ single pass instead of a loop, call `drainJobsOnce(runtime)`.
 
 The `drainJobs()` method processes pending jobs in FIFO order, making async commands fully testable without real message queues:
 
+~~```typescript
+const result = await runtime.runCommand('Order', 'processOrder', {
+  instanceId: 'order-1',
+  amount: 50,
+});
+```~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `runCommand(commandName, input, options?)` — not
+> entity-first. Command params belong in `input`; `entityName` / `instanceId` in `options`.
+
 ```typescript
 import { RuntimeEngine, MemoryJobQueue } from '@angriff36/manifest';
 import { ir } from './compiled.ir.json';
 
 const jobQueue = new MemoryJobQueue();
-const runtime = new RuntimeEngine(ir, {
+~~const runtime = new RuntimeEngine(ir, {
   user: { id: 'system', role: 'worker' },
   jobQueue,
-});
+});~~
+const runtime = new RuntimeEngine(
+  ir,
+  { user: { id: 'system', role: 'worker' } },
+  { jobQueue },
+);
 
 // Seed an order instance
 runtime.createInstance('Order', { id: 'order-1', status: 'pending' });
 
 // Invoke the async command
-const result = await runtime.runCommand('Order', 'processOrder', {
-  instanceId: 'order-1',
-  amount: 50,
-});
+const result = await runtime.runCommand(
+  'processOrder',
+  { amount: 50 },
+  { entityName: 'Order', instanceId: 'order-1' },
+);
 
 console.log(result.success); // true
-console.log(result.status); // "pending"
-console.log(result.jobId); // "job-abc123"
+~~console.log(result.status); // "pending"
+console.log(result.jobId); // "job-abc123"~~
+console.log(result.result.status); // "pending"
+console.log(result.result.jobId); // runtime-allocated id
 
 // The instance has NOT changed yet
 const before = runtime.getInstance('Order', 'order-1');
@@ -241,30 +296,52 @@ entity Order {
 }
 ```
 
+~~```typescript
+await runtime.runCommand('Order', 'submit', {
+  instanceId: 'order-42',
+  amount: 250,
+});
+const result = await runtime.runCommand('Order', 'processOrder', {
+  instanceId: 'order-42',
+});
+```~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Same `runCommand(commandName, input, options?)` shape.
+
 ```typescript
 import { RuntimeEngine, MemoryJobQueue } from '@angriff36/manifest';
 import { ir } from './compiled.ir.json';
 
 const jobQueue = new MemoryJobQueue();
-const runtime = new RuntimeEngine(ir, {
+~~const runtime = new RuntimeEngine(ir, {
   user: { id: 'system', role: 'worker' },
   jobQueue,
-});
+});~~
+const runtime = new RuntimeEngine(
+  ir,
+  { user: { id: 'system', role: 'worker' } },
+  { jobQueue },
+);
 
 // Submit the order synchronously
 runtime.createInstance('Order', { id: 'order-42', status: 'pending' });
-await runtime.runCommand('Order', 'submit', {
-  instanceId: 'order-42',
-  amount: 250,
-});
+await runtime.runCommand(
+  'submit',
+  { amount: 250 },
+  { entityName: 'Order', instanceId: 'order-42' },
+);
 
 // Process the order asynchronously
-const result = await runtime.runCommand('Order', 'processOrder', {
-  instanceId: 'order-42',
-});
+const result = await runtime.runCommand(
+  'processOrder',
+  {},
+  { entityName: 'Order', instanceId: 'order-42' },
+);
 
-console.log(result.status); // "pending"
-console.log(result.jobId); // defined
+~~console.log(result.status); // "pending"
+console.log(result.jobId); // defined~~
+console.log(result.result.status); // "pending"
+console.log(result.result.jobId); // defined
 
 // Execute the background job
 await runtime.drainJobs();

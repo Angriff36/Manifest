@@ -70,22 +70,11 @@ manifest compile --merge src/
 | `--merge`        | Enable multi-file compilation and merge all discovered files into a single IR output               |
 | `--entry <path>` | Specify the entry point for module resolution. When omitted, the compiler auto-detects root files. |
 
-## Namespace isolation
+## ~~Namespace isolation~~ Cross-file naming
 
-Each module's entities, events, and enums are namespaced by the module's file path. Two files can define entities with the same name without collision:
+~~Each module's entities, events, and enums are namespaced by the module's file path. Two files can define entities with the same name without collision…~~
 
-```
-shared/types.manifest  ->  Status enum  ->  shared/types.Status
-domains/order.manifest ->  Order entity ->  domains/order.Order
-domains/product.manifest -> Order entity -> domains/product.Order
-```
-
-The `use` syntax makes all declarations from the referenced file available, with the module prefix available for disambiguation.
-
-<Note>
-  Cross-file validation catches ambiguous references when two modules export the same symbol name.
-  Use the module prefix to disambiguate.
-</Note>
+> **Correction (2026-07-15) @RYANSIGNED:** Multi-file merge does **not** path-prefix entity/enum/event names. Duplicate top-level names across files are a **compile error** (`Duplicate entity` / enum — see `src/manifest/multi-compiler.test.ts`). `module` blocks are a logical grouping only and do not change runtime identity (`docs/spec/semantics.md` § Modules). Keep declaration names unique across the merged project.
 
 ## Cross-file validation
 

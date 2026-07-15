@@ -129,11 +129,22 @@ interface ApprovalRequiredInfo {
 }
 ```
 
-```typescript
+~~```typescript
 const result = await runtime.runCommand('PurchaseOrder', 'submit', {
   instanceId: 'po-001',
   amount: 15000,
 });
+```~~
+
+> **Correction (2026-07-15):** Signature is `runCommand(commandName, input, options?)`.
+> `entityName` / `instanceId` go in options; command params go in `input`.
+
+```typescript
+const result = await runtime.runCommand(
+  'submit',
+  {},
+  { entityName: 'PurchaseOrder', instanceId: 'po-001' },
+);
 
 // result.success === false
 // result.approvalRequired === {
@@ -223,6 +234,12 @@ When an approval declaration includes a `timeout` (specified in hours), the `on_
 | `cancel`           | The command is treated as if it was denied. The next invocation creates a fresh request. |
 | (omitted)          | The approval remains pending indefinitely until explicitly granted, denied, or expired.  |
 
+~~`on_timeout: escalate` (if shown elsewhere as supported)~~
+
+> **Correction (2026-07-15):** Only `on_timeout: "cancel"` is supported. `escalate` is a hard
+> compile error (`APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED`, fixture
+> `103-approval-escalate-unsupported.manifest`). IR narrows `onTimeout` to `"cancel"` only.
+
 Denied and expired approvals are reset on the next command attempt — the runtime creates a new pending request rather than reusing the terminal state. This means a denied approval does not permanently block the command; it only blocks the current attempt.
 
 ## Lifecycle events
@@ -304,10 +321,16 @@ const runtime = new RuntimeEngine(ir, {
 });
 
 // Submit the order -- blocks at the approval gate
-const result = await runtime.runCommand('PurchaseOrder', 'submit', {
+~~const result = await runtime.runCommand('PurchaseOrder', 'submit', {
   instanceId: 'po-001',
   amount: 15000,
-});
+});~~
+
+const result = await runtime.runCommand(
+  'submit',
+  {},
+  { entityName: 'PurchaseOrder', instanceId: 'po-001' },
+);
 
 console.log(result.success); // false
 console.log(result.approvalRequired); // { pendingStages: ["manager", "director"] }
@@ -319,12 +342,21 @@ runtime.approveStage('PurchaseOrder', 'po-001', 'submitApproval', 'manager', 'us
 runtime.approveStage('PurchaseOrder', 'po-001', 'submitApproval', 'director', 'user-dir-1');
 
 // Re-submit -- now passes the approval gate
-const final = await runtime.runCommand('PurchaseOrder', 'submit', {
+~~const final = await runtime.runCommand('PurchaseOrder', 'submit', {
   instanceId: 'po-001',
   amount: 15000,
-});
+});~~
+
+const final = await runtime.runCommand(
+  'submit',
+  {},
+  { entityName: 'PurchaseOrder', instanceId: 'po-001' },
+);
 
 console.log(final.success); // true
 ```
+
+> **Correction (2026-07-15):** Both `runCommand` calls above use
+> `runCommand(commandName, input, options)` — not the phantom entity-first form.
 
 See [Commands](/language/commands) for the full execution pipeline, [Guards and policies](/language/guards-policies) for the gates that precede approvals, [Events](/language/events) for declaring event schemas used in approval lifecycle notifications, and [Roles](/language/roles) for role-based authorization in policy expressions.

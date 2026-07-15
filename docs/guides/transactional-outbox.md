@@ -2,7 +2,14 @@
 
 This document describes an application-level pattern for reliable delivery of events emitted by Manifest command execution.
 
-This is not core language semantics. Semantics remain defined by `C:/Projects/Manifest/docs/spec/semantics.md`.
+~~This is not core language semantics. Semantics remain defined by `C:/Projects/Manifest/docs/spec/semantics.md`.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Manifest ships a first-party outbox
+> (`@angriff36/manifest/outbox`, `RuntimeOptions.outboxStore` /
+> `transactionProvider`). Prefer wiring `OutboxStore` so the runtime enqueues
+> on successful `runCommand` (see `mintlify/adapters/outbox.mdx`). The DIY sketch
+> below remains valid for hosts that persist outbox rows outside the engine; it
+> is not the only path. Language semantics remain in `docs/spec/semantics.md`.
 
 ## Goal
 
@@ -52,6 +59,6 @@ await db.transaction(async (tx) => {
 
 ## Related
 
-- `C:/Projects/Manifest/docs/spec/adapters.md`
-- `C:/Projects/Manifest/docs/guides/implementing-custom-stores.md`
-- `C:/Projects/Manifest/docs/guides/embedded-runtime.md`
+- ~~`C:/Projects/Manifest/docs/spec/adapters.md`~~ → `docs/spec/adapters.md`
+- ~~`C:/Projects/Manifest/docs/guides/implementing-custom-stores.md`~~ → `docs/guides/implementing-custom-stores.md`
+- ~~`C:/Projects/Manifest/docs/guides/embedded-runtime.md`~~ → `docs/guides/embedded-runtime.md`

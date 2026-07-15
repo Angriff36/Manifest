@@ -2,7 +2,7 @@
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-12
+Last updated: 2026-07-15
 
 ## What Manifest Is
 
@@ -81,9 +81,9 @@ See: `docs/guides/event-wiring.md` for complete examples.
 
 ---
 
-### NOT a Job Queue
+### NOT a Job Queue Product
 
-Manifest does NOT schedule background jobs, manage queues, or handle retries.
+~~Manifest does NOT schedule background jobs, manage queues, or handle retries.
 
 **Why?** Job orchestration is infrastructure, not domain logic.
 
@@ -91,9 +91,20 @@ Manifest does NOT schedule background jobs, manage queues, or handle retries.
 
 1. Manifest events represent "something happened"
 2. You wire events to a job queue (Bull, BullMQ, Temporal, Inngest)
-3. Jobs execute side effects (emails, webhooks, external APIs)
+3. Jobs execute side effects (emails, webhooks, external APIs)~~
 
-**Example:**
+> **Correction (2026-07-15) @RYANSIGNED:** Manifest is still **not** Bull/Temporal/
+> Inngest. It **does** ship language constructs that touch background work:
+>
+> - `async command` + `RuntimeOptions.jobQueue` (jobId envelope; worker re-entry)
+> - `schedule` (cron / interval / every) + optional `@angriff36/manifest/schedule-worker`
+> - command `retry` / `rateLimit` (in-memory rate limit in the reference runtime)
+>
+> Adapters decide when schedules fire; side-effect delivery (email, webhooks) still
+> belongs in your infrastructure. Wire `onEvent` to Bull/etc. when you need a
+> full job product — do not pretend Manifest replaces one.
+
+**Example (events → external queue for side effects):**
 
 ```typescript
 import { Queue } from 'bullmq';
@@ -110,7 +121,8 @@ runtime.onEvent((event) => {
 });
 ```
 
-See: `docs/guides/event-wiring.md` for job queue integration patterns.
+See: `docs/guides/event-wiring.md` for job queue integration patterns. Also
+`docs/spec/semantics.md` § Async Commands / Schedules.
 
 ---
 

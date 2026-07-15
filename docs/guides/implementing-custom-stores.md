@@ -2,7 +2,10 @@
 
 This guide explains how to plug application storage into Manifest via `storeProvider`.
 
-Authoritative adapter behavior is in `C:/Projects/Manifest/docs/spec/adapters.md`.
+~~Authoritative adapter behavior is in `C:/Projects/Manifest/docs/spec/adapters.md`.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Authoritative adapter behavior is in
+> `docs/spec/adapters.md` (repo-relative). Package pin SoT: `package.json` = **3.6.4**.
 
 ## Store Contract
 
@@ -12,12 +15,19 @@ Custom stores must implement the runtime `Store` interface used by `RuntimeEngin
 interface Store<T extends EntityInstance = EntityInstance> {
   getAll(): Promise<T[]>;
   getById(id: string): Promise<T | undefined>;
-  create(data: Partial<T>): Promise<T>;
+  ~~create(data: Partial<T>): Promise<T>;
   update(id: string, data: Partial<T>): Promise<T | undefined>;
-  delete(id: string): Promise<boolean>;
+  delete(id: string): Promise<boolean>;~~
+  create(data: Partial<T>, tx?: TransactionHandle): Promise<T>;
+  update(id: string, data: Partial<T>, tx?: TransactionHandle): Promise<T | undefined>;
+  delete(id: string, tx?: TransactionHandle): Promise<boolean>;
   clear(): Promise<void>;
 }
 ```
+
+> **Correction (2026-07-15) @RYANSIGNED:** Match `Store` in `src/manifest/runtime-engine.ts` —
+> `create` / `update` / `delete` accept optional `tx?: TransactionHandle` for provider-mode
+> transactions. Implementations may ignore `tx` when not participating.
 
 ## Wiring with `storeProvider`
 
@@ -49,12 +59,12 @@ const runtime = new RuntimeEngine(
 
 ## Validation Checklist
 
-- `npm test` passes with the store integrated where applicable.
+- ~~`npm test`~~ `pnpm test` passes with the store integrated where applicable.
 - Runtime command semantics remain unchanged.
 - Store failures are observable and actionable.
 
 ## Related
 
-- `C:/Projects/Manifest/docs/spec/adapters.md`
-- `C:/Projects/Manifest/docs/guides/transactional-outbox.md`
-- `C:/Projects/Manifest/docs/guides/embedded-runtime.md`
+- ~~`C:/Projects/Manifest/docs/spec/adapters.md`~~ → `docs/spec/adapters.md`
+- ~~`C:/Projects/Manifest/docs/guides/transactional-outbox.md`~~ → `docs/guides/transactional-outbox.md`
+- ~~`C:/Projects/Manifest/docs/guides/embedded-runtime.md`~~ → `docs/guides/embedded-runtime.md`

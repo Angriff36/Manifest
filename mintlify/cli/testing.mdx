@@ -1,182 +1,84 @@
 ---
-title: 'Testing tools: constraint harness, mock server, and load testing'
-description: 'Interactive and automated testing tools for Manifest programs — a constraint test harness for exploring validation boundaries, an auto-generated mock server, and load testing fixture generation.'
+title: 'Testing tools: harness, mock server, and load testing'
+description: 'CLI testing tools for Manifest programs — IR harness scripts, an HTTP mock server backed by RuntimeEngine, seed data, and load-test script generation.'
 sidebarTitle: 'Testing'
 ---
 
-Manifest provides three testing tools for validating program behavior beyond unit and conformance tests: an interactive constraint test harness, an auto-generated mock server for integration testing, and a load testing fixture generator.
+Manifest provides CLI testing tools beyond unit/conformance suites. Verified against
+`packages/cli/src/index.ts` and `@angriff36/manifest@3.6.4`.
 
-## Interactive constraint test harness
+## IR harness scripts
 
-The constraint test harness provides an interactive interface for exploring constraint boundaries — you supply entity property values and immediately see which constraints pass, warn, or block. It is useful during development to understand how constraint expressions evaluate for different inputs without writing test code.
+~~`manifest test constraints`~~ / ~~`ConstraintTestHarness` from `@angriff36/manifest/testing`~~
 
-### Usage
-
-```bash
-# Launch the harness for a specific entity
-manifest test constraints --entity Order --ir ir/app.ir.json
-
-# Launch with an interactive REPL-style interface
-manifest test constraints --entity Order --source src/app.manifest --interactive
-```
-
-### Interactive session
-
-```
-Constraint harness for entity: Order
-
-Properties:
-  status (string): pending
-  total (number): 0
-  customerStatus (string): active
-
-Constraints:
-  [ok]   validStatus: self.status == "pending" or self.status == "confirmed" or self.status == "shipped"
-  [ok]   activeCustomer: self.customerStatus == "active"
-  [warn] highValue: self.total > 10000 — "High-value order may require additional approval"
-  [ok]   positiveTotal: self.total >= 0
-
-> set total 15000
-  [ok]   validStatus: ...
-  [ok]   activeCustomer: ...
-  [warn] highValue: self.total > 10000 — "High-value order may require additional approval"  ← WARN
-  [ok]   positiveTotal: ...
-
-> set customerStatus inactive
-  [ok]   validStatus: ...
-  [block] activeCustomer: self.customerStatus == "active"  ← BLOCK
-  [warn] highValue: self.total > 10000 — ...
-  [ok]   positiveTotal: ...
-```
-
-### Programmatic API
-
-```typescript
-import { ConstraintTestHarness } from '@angriff36/manifest/testing';
-
-const harness = new ConstraintTestHarness(ir, 'Order');
-
-// Set property values
-harness.setProperty('total', 15000);
-harness.setProperty('customerStatus', 'active');
-
-// Evaluate all constraints
-const results = harness.evaluate();
-// [
-//   { code: 'validStatus', severity: 'ok', expression: '...', passed: true },
-//   { code: 'activeCustomer', severity: 'ok', expression: '...', passed: true },
-//   { code: 'highValue', severity: 'warn', expression: '...', passed: false, message: '...' },
-//   { code: 'positiveTotal', severity: 'ok', expression: '...', passed: true },
-// ]
-
-// Test override authorization
-const overrideResult = harness.testOverride('highValue', {
-  authorizedBy: 'user-999',
-  reason: 'Emergency processing',
-});
-```
-
-## Auto-generated mock server
-
-The mock server generates a lightweight HTTP server that mimics the Manifest runtime API without requiring a real runtime or database. It is useful for:
-
-- **Frontend development**: Test UI against realistic API responses without a backend
-- **Integration testing**: Verify consumer code handles all response shapes correctly
-- **Contract testing**: Ensure downstream services match the Manifest API contract
-
-### Usage
+> **Correction (2026-07-15) @RYANSIGNED — Documentation gap:** There is **no** `manifest test`
+> command group, **no** interactive constraint harness CLI, and **no**
+> `@angriff36/manifest/testing` export / `ConstraintTestHarness` class. The shipped harness
+> runner is:
 
 ```bash
-# Generate and start a mock server
-manifest mock ir/app.ir.json --port 3456
-
-# Generate mock handlers as code (for embedding in test suites)
-manifest mock ir/app.ir.json --output mocks/ --format ts
+manifest harness path/to/app.manifest --script path/to/harness.json
+manifest harness path/to/app.manifest -s harness.json -f json
 ```
 
-### Mock server behavior
+`harness` runs a JSON script of steps/assertions against compiled IR and reports pass/fail
+counts. Explore constraints interactively via `manifest repl` or unit tests against
+`RuntimeEngine`.
 
-| Endpoint                       | Behavior                                                  |
-| ------------------------------ | --------------------------------------------------------- |
-| `GET /api/{entity}`            | Returns a paginated list of mock instances                |
-| `GET /api/{entity}/{id}`       | Returns a single mock instance                            |
-| `POST /api/{entity}/{command}` | Validates input, returns a `CommandResult` with mock data |
-| `GET /api/events`              | Returns the mock event log                                |
+## Mock HTTP server
 
-Mock instances are generated from the entity's property types with realistic defaults. Command execution follows the declared guard and policy rules — a guard denial returns the appropriate error response.
+`manifest mock` starts a local HTTP server from `.manifest` or `.ir.json`. It uses
+**`RuntimeEngine` with in-memory stores** (real command execution), not a fake guard-only stub.
 
-### Options
+~~default port `3456` / `--output` / `--format ts` / `--seed`~~
 
-| Option     | Default | Description                                                  |
-| ---------- | ------- | ------------------------------------------------------------ |
-| `--port`   | `3456`  | Port to listen on                                            |
-| `--output` | —       | Output directory (generates code instead of starting server) |
-| `--format` | `ts`    | Output format: `ts` (Hono handlers) or `json` (OpenAPI mock) |
-| `--seed`   | `42`    | Seed for deterministic mock data generation                  |
+> **Correction (2026-07-15) @RYANSIGNED:** Flags are `-p/--port` (default **`4000`**), `--host`
+> (default `127.0.0.1`), `--cors`, `--scenario` (`default` \| `guard-fail` \| `constraint-fail`).
+> There is no `--output` / `--format` / `--seed` on `mock`.
+
+```bash
+manifest mock ir/app.ir.json --port 4000 --cors
+manifest mock src/app.manifest --scenario guard-fail
+```
+
+## Seed / fixture data
+
+~~`manifest generate-fixtures`~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** There is **no** `generate-fixtures` command. Use
+> `manifest seed` for deterministic seed files (json / sql / supabase):
+
+```bash
+manifest seed src/app.manifest -o seeds/ --profile demo --format json
+manifest seed ir/app.ir.json --count 100 --entity Order --seed 42
+```
+
+| Option | Notes |
+| ------ | ----- |
+| `--profile` | `dev` \| `staging` \| `demo` (default record counts) |
+| `-f/--format` | `json` \| `sql` \| `supabase` |
+| `--count` | Override rows per entity |
+| `--entity` | Repeatable entity filter |
+| `--seed` | Deterministic PRNG seed |
+
+## Load testing scripts
+
+~~`manifest generate-fixtures` for load~~ → use **`manifest load-test`**:
+
+```bash
+manifest load-test ir/app.ir.json -o load-tests/ -f k6
+manifest load-test src/app.manifest --format artillery --base-url http://localhost:3000
+```
+
+Options include `--ramp-up`, `--slo`, `--command`, `--entity`, `--profile`, `--timeout`, `--json`.
+
+## Coverage reporter
+
+Command/guard/policy/constraint coverage is `manifest coverage` (export surface
+`@angriff36/manifest/coverage` exposes `coverageCommand`, not a `CoverageReporter` class). See
+[Snapshot testing](/extensibility/snapshot-testing).
 
 <Note>
-  The mock server does not execute the real runtime engine. It validates input structure and
-  guard/policy conditions, then returns pre-built mock responses. For full runtime behavior, use the
-  embedded runtime in your test suite.
+  Package pin: `@angriff36/manifest@3.6.4`. Prefer conformance fixtures + `pnpm test` for
+  language semantics; these CLI tools are for app/integration workflows.
 </Note>
-
-## Load testing fixture generator
-
-The load testing fixture generator creates realistic test data sets from IR entity definitions. It produces JSON files containing hundreds or thousands of entity instances with property values that conform to the declared types, constraints, and relationships.
-
-### Usage
-
-```bash
-# Generate 1000 instances per entity
-manifest generate-fixtures ir/app.ir.json --count 1000 --output fixtures/
-
-# Generate with relationship linking (preserves hasMany/belongsTo)
-manifest generate-fixtures ir/app.ir.json --count 500 --link-relationships --output fixtures/
-
-# Generate for a specific entity only
-manifest generate-fixtures ir/app.ir.json --entity Order --count 2000 --output fixtures/
-```
-
-### Generated fixture format
-
-```json
-{
-  "entities": {
-    "Order": [
-      { "id": "order-001", "status": "pending", "total": 45.99, "customerName": "Customer 1" },
-      { "id": "order-002", "status": "confirmed", "total": 129.5, "customerName": "Customer 2" }
-    ],
-    "LineItem": [
-      { "id": "li-001", "orderId": "order-001", "price": 25.99, "quantity": 1 },
-      { "id": "li-002", "orderId": "order-001", "price": 10.0, "quantity": 2 }
-    ]
-  },
-  "metadata": {
-    "generatedAt": "2026-06-02T00:00:00.000Z",
-    "seed": 42,
-    "entityCount": { "Order": 2, "LineItem": 2 }
-  }
-}
-```
-
-### Options
-
-| Option                 | Default     | Description                                   |
-| ---------------------- | ----------- | --------------------------------------------- |
-| `--count`              | `100`       | Number of instances per entity                |
-| `--entity`             | all         | Generate for a specific entity only           |
-| `--seed`               | `42`        | Random seed for deterministic generation      |
-| `--link-relationships` | `false`     | Generate relationship-consistent foreign keys |
-| `--output`             | `fixtures/` | Output directory                              |
-| `--format`             | `json`      | Output format: `json` or `csv`                |
-
-<Note>
-  When `--link-relationships` is enabled, the generator ensures that `belongsTo` and `ref`
-  properties reference valid instances of the target entity, and `hasMany` relationships have
-  consistent back-references. This produces more realistic data for testing joins and cross-entity
-  queries.
-</Note>
-
-## Property-based testing
-
-Manifest also includes a property-based testing framework that generates random valid IR programs and verifies runtime invariants. See [Snapshot testing](/extensibility/snapshot-testing) for the testing infrastructure overview.

@@ -30,9 +30,17 @@ These types do not introduce runtime arithmetic or validation of their own. The 
 
 ## How it maps to projections
 
-`IRType.params` carries precision and scale in the IR, but **no projection reads `IRType.params` directly**. The Prisma and Drizzle projections apply precision and scale from a separate `options.precision[Entity][property]` config object (e.g., `PrismaProjectionOptions.precision`), defaulting to `(12, 2)` when absent. `IRType.params` is currently stranded — compile-time precision/scale information is not propagated into generated schemas via the IR; callers must supply it through projection options.
+~~`IRType.params` carries precision and scale in the IR, but **no projection reads `IRType.params` directly**. … `IRType.params` is currently stranded …~~
 
-The summary states the intent for `decimal`/`money` to map to Postgres `NUMERIC` and to a decimal library such as `Decimal.js` or `big.js` in generated TypeScript. The specific generator mappings are projection-level choices; compile-time precision/scale validation is not implemented in the parser or IR compiler.
+> **Correction (2026-07-15) @RYANSIGNED:** Prisma and Drizzle **do** read
+> `IRType.params`. Precedence is: (1) `options.precision[Entity][prop]` —
+> explicit consumer override; (2) `prop.type.params` from IR; (3) default
+> `(12, 2)` / `@db.Decimal(12, 2)`. See `src/manifest/projections/prisma/generator.ts`
+> and the Drizzle type-mapping path. Zod still maps `decimal`/`money` to
+> `z.number()` (no precision metadata). Runtime still treats values as ordinary
+> numbers — no decimal arithmetic library in the reference engine.
+
+The summary states the intent for `decimal`/`money` to map to Postgres `NUMERIC` and to a decimal library such as `Decimal.js` or `big.js` in generated TypeScript. Compile-time precision/scale **validation** (rejecting impossible values) is still not implemented in the parser or IR compiler — params are recorded and consumed by SQL projections, not enforced as language semantics.
 
 ## Notes & limitations
 

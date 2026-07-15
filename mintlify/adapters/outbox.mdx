@@ -103,7 +103,18 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const outboxStore = new PostgresOutboxStore(pool);
 ```
 
+```typescript RedisOutboxStore (Redis Streams)
+import { RedisOutboxStore } from '@angriff36/manifest/outbox/redis';
+
+const outboxStore = new RedisOutboxStore({
+  url: process.env.REDIS_URL,
+});
+```
+
 </CodeGroup>
+
+> **Correction (2026-07-15) @RYANSIGNED:** First-party outbox stores also include
+> `RedisOutboxStore` (`@angriff36/manifest/outbox/redis`) — see [Redis adapter](/adapters/redis).
 
 `MemoryOutboxStore` is an in-memory analogue of `SELECT FOR UPDATE SKIP LOCKED` — `claim` skips entries that are already claimed or resolved. Use it in tests.
 

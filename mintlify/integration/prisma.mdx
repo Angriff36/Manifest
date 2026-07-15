@@ -100,11 +100,16 @@ export default defineConfig({
 
 Entities are iterated in IR source order; the projection does not re-sort.
 
-<Warning>
+~~<Warning>
   A property literally named `id` becomes the `@id` field. Entities without an `id` property get an
   info diagnostic (`PRISMA_NO_ID_PROPERTY`) because Prisma's schema validator will reject a model
   with no primary key.
-</Warning>
+</Warning>~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** A property literally named `id` becomes `@id` **unless**
+> the entity declares a composite `key [...]`, which emits `@@id([...])` and suppresses
+> `PRISMA_NO_ID_PROPERTY`. That diagnostic fires only when there is **neither** an `id` property
+> **nor** a composite key (`src/manifest/projections/prisma/generator.ts`).
 
 ## Type mapping
 
@@ -515,7 +520,10 @@ These are not bugs — they're scope boundaries:
 - **No database connection.** The projection is pure IR → text. Running migrations is your job (or Prisma's).
 - **No `@relation("name")` auto-generation.** Multi-relation pairs require named `@relation` clauses; the projection refuses to invent names. Diagnose, don't guess.
 - **No join-entity inference for `through` relationships.** Manifest's `through` annotation declares the join model, but Prisma needs the join entity to be a fully-modeled entity with its own belongsTo declarations. The user provides those.
-- **No `id` modifier.** Primary-key designation is by literal property name (`id`). A dedicated `@id` modifier in core grammar is a possible future addition; the projection will pick it up when it lands.
+- ~~**No `id` modifier.** Primary-key designation is by literal property name (`id`). A dedicated `@id` modifier in core grammar is a possible future addition; the projection will pick it up when it lands.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Primary key is still by literal `id` **or** a
+> composite `key [...]` declaration (`@@id`). There is still no grammar `@id` modifier.
 - **No app coupling.** No defaults reference tenant columns, soft-delete columns, auth fields, or any other application-specific concept.
 
 ## CLI usage

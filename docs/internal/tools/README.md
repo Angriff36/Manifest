@@ -3,7 +3,11 @@
 Last updated: 2026-05-20
 Status: Active
 Authority: Advisory
-Applies to: `@angriff36/manifest@0.5.0+`
+~~Applies to: `@angriff36/manifest@0.5.0+`~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Package pin SoT is root
+> `package.json` = **3.6.4** (not `@0.5.0+`). These guides live under
+> `docs/internal/tools/` — not `docs/tools/`.
 
 This section documents the CLI and development tools that ship with the
 `@angriff36/manifest` package. Tools are supportive — they validate IR,
@@ -12,10 +16,10 @@ defined only in `docs/spec/`**.
 
 ## Start here
 
-- **CLI reference:** [`docs/tools/CLI_REFERENCE.md`](./CLI_REFERENCE.md) — every command, when to use it, when not to.
-- **Integration check:** [`docs/tools/integration-check.md`](./integration-check.md) — the umbrella command for validating a downstream repo against the full governance + runtime contract.
-- **API reference:** [`docs/tools/API_REFERENCE.md`](./API_REFERENCE.md) — programmatic surface.
-- **Compile reference:** [`docs/tools/COMPILE_REFERENCE.md`](./COMPILE_REFERENCE.md) — compiler internals.
+- **CLI reference:** ~~[`docs/tools/CLI_REFERENCE.md`](./CLI_REFERENCE.md)~~ [`docs/internal/tools/CLI_REFERENCE.md`](./CLI_REFERENCE.md) — every command, when to use it, when not to.
+- **Integration check:** ~~[`docs/tools/integration-check.md`](./integration-check.md)~~ [`docs/internal/tools/integration-check.md`](./integration-check.md) — the umbrella command for validating a downstream repo against the full governance + runtime contract.
+- **API reference:** ~~[`docs/tools/API_REFERENCE.md`](./API_REFERENCE.md)~~ [`docs/internal/tools/API_REFERENCE.md`](./API_REFERENCE.md) — programmatic surface.
+- **Compile reference:** ~~[`docs/tools/COMPILE_REFERENCE.md`](./COMPILE_REFERENCE.md)~~ [`docs/internal/tools/COMPILE_REFERENCE.md`](./COMPILE_REFERENCE.md) — compiler internals.
 
 ## Tooling areas
 
@@ -64,8 +68,8 @@ conformance. If behavior changes, update spec and conformance first.
 
 ## Related
 
-- `docs/tools/USAGE_GUIDE.md`
-- `docs/tools/RECOMMENDATIONS.md`
-- `docs/tools/PACKAGES_AND_DISTRIBUTION.md`
-- `docs/tools/PUBLISHING.md`
+- ~~`docs/tools/USAGE_GUIDE.md`~~ → `docs/internal/tools/USAGE_GUIDE.md`
+- ~~`docs/tools/RECOMMENDATIONS.md`~~ → `docs/internal/tools/RECOMMENDATIONS.md`
+- ~~`docs/tools/PACKAGES_AND_DISTRIBUTION.md`~~ → `docs/internal/tools/PACKAGES_AND_DISTRIBUTION.md`
+- ~~`docs/tools/PUBLISHING.md`~~ → `docs/internal/tools/PUBLISHING.md`
 - `docs/spec/conformance.md`

@@ -4,9 +4,13 @@ This guide describes how to integrate Manifest without changing language semanti
 
 Normative behavior is defined in:
 
-- `C:/Projects/Manifest/docs/spec/semantics.md`
-- `C:/Projects/Manifest/docs/spec/adapters.md`
-- `C:/Projects/Manifest/docs/spec/conformance.md`
+~~- `C:/Projects/Manifest/docs/spec/semantics.md`~~
+~~- `C:/Projects/Manifest/docs/spec/adapters.md`~~
+~~- `C:/Projects/Manifest/docs/spec/conformance.md`~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Use repo-relative paths:
+> `docs/spec/semantics.md`, `docs/spec/adapters.md`, `docs/spec/conformance.md`.
+> Package pin SoT: **3.6.4**.
 
 ## Two Integration Patterns
 
@@ -27,8 +31,8 @@ When using generated route workflows or embedded handlers around them, treat cli
 
 See:
 
-- `C:/Projects/Manifest/docs/guides/usage-patterns.md`
-- `C:/Projects/Manifest/src/manifest/projections/nextjs/README.md`
+- ~~`C:/Projects/Manifest/docs/guides/usage-patterns.md`~~ → `docs/guides/usage-patterns.md`
+- ~~`C:/Projects/Manifest/src/manifest/projections/nextjs/README.md`~~ → `src/manifest/projections/nextjs/README.md`
 
 ### 2) Embedded Runtime
 
@@ -40,7 +44,7 @@ Use embedded runtime when you need full control over command orchestration, side
 
 See:
 
-- `C:/Projects/Manifest/docs/guides/embedded-runtime.md`
+- ~~`C:/Projects/Manifest/docs/guides/embedded-runtime.md`~~ → `docs/guides/embedded-runtime.md`
 
 ## Decision Guide
 

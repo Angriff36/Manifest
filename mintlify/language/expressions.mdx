@@ -30,6 +30,8 @@ Numeric helpers `abs`, `round`, `floor`, `ceil`, `min`, and `max` and the array 
 
 String helpers wrap the corresponding `String.prototype` methods (returning the input unchanged for non-strings), numeric helpers delegate to `Math`, and `min`/`max` are variadic over numeric arguments. The date components use UTC methods so results are timezone-independent — see [Types](/language/types) for the full list.
 
+> **Note (2026-07-15) @RYANSIGNED:** Date conversion / duration builtins also exist (`dateOf`, `timeOf`, `datetimeOf`, `addDuration`, `durationBetween`, `durationDays` / `Hours` / `Minutes` / `Seconds`) — see `docs/spec/builtins.md`.
+
 ## Aggregate built-ins with lambdas
 
 The aggregates reduce a collection — typically a `hasMany` relationship reached via `self.` — to a single value, optionally transforming or filtering each element with a lambda:
@@ -126,22 +128,48 @@ Additional built-in functions available in the standard library:
 
 ## Custom expression functions
 
-You can register custom expression functions via the plugin API. Custom functions are available in guards, computed properties, constraints, and other expression contexts.
+~~You can register custom expression functions via the plugin API… `registerBuiltin`…~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** There is **no** `registerBuiltin` export. Custom functions are injected via `RuntimeOptions.customBuiltins` (a `Map<string, Function>`), typically collected by the plugin loader from `BuiltinFunctionPlugin` entries (`docs/spec/builtins.md` § Custom Expression Functions). Core builtins always win name collisions.
 
 ### Registering a custom function
 
 ```typescript
-import { RuntimeEngine, registerBuiltin } from '@angriff36/manifest';
+import { RuntimeEngine } from '@angriff36/manifest';
+import { definePlugin } from '@angriff36/manifest/plugin-api';
 
-// Register a custom function before creating the runtime
-registerBuiltin('discount', (price: number, tier: string) => {
-  if (tier === 'premium') return price * 0.8;
-  if (tier === 'standard') return price * 0.9;
-  return price;
+// Plugin form (preferred for packages):
+export default definePlugin({
+  manifest: {
+    name: '@acme/custom-functions',
+    version: '1.0.0',
+    pluginApiVersion: '1',
+    manifestVersion: '>=1.0.0',
+  },
+  builtins: [
+    {
+      name: 'discount',
+      purity: 'pure',
+      arity: 2,
+      fn: (price: unknown, tier: unknown) => {
+        if (typeof price !== 'number') return price;
+        if (tier === 'premium') return price * 0.8;
+        if (tier === 'standard') return price * 0.9;
+        return price;
+      },
+    },
+  ],
 });
+
+// Direct RuntimeOptions form (tests / hosts):
+const customBuiltins = new Map<string, (...args: unknown[]) => unknown>();
+customBuiltins.set('discount', (price, tier) => {
+  /* ... */
+});
+const runtime = new RuntimeEngine(ir, {}, { customBuiltins });
 ```
 
-Once registered, the function is available in Manifest expressions:
+Once wired, the function is available in Manifest expressions:
 
 ```manifest
 entity Order {

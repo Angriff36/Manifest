@@ -23,14 +23,23 @@ This page explains the boundary between them, how to decide which to reach for f
     manifest generate ir/recipe.ir.json --surface command --output app/api/
     ```
 
-    The four generated surfaces are:
+    ~~The four generated surfaces are:~~
 
-    | Surface | What it produces |
+    ~~| Surface | What it produces |
     | --- | --- |
     | `nextjs.route` | GET handlers with direct database queries |
     | `nextjs.command` | POST/PUT/DELETE handlers that call `RuntimeEngine.runCommand` |
     | `ts.types` | TypeScript interfaces derived from your entity definitions |
-    | `ts.client` | Typed fetch wrappers for calling your routes from client code |
+    | `ts.client` | Typed fetch wrappers for calling your routes from client code |~~
+
+    > **Correction (2026-07-15) @RYANSIGNED:** The Next.js projection registers **twelve** surfaces
+    > (`nextjs.route`, `nextjs.detail`, `nextjs.command`, `nextjs.dispatcher`,
+    > `nextjs.subscribe`, `nextjs.subscriptionHook`, `nextjs.sharedRuntime`, `nextjs.schedule`,
+    > `nextjs.webhook`, `nextjs.companions`, `ts.types`, `ts.client`). Default `--surface all`
+    > writes go through the **command dispatcher** (`nextjs.dispatcher` →
+    > `app/api/manifest/[entity]/commands/[command]/route.ts`); per-command concrete routes
+    > (`nextjs.command`) are opt-in via `concreteCommandRoutes.enabled`. Other registered
+    > projections (`prisma`, `convex`, `zod`, …) are selected with `-p` / `manifest.config.yaml`.
 
     **Read operations** in generated routes use direct database queries and intentionally bypass the runtime for performance. **Write operations** always flow through `RuntimeEngine.runCommand` so that guards, policies, constraints, and event emissions run in the order the spec requires.
 

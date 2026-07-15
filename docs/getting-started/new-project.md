@@ -2,7 +2,7 @@
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-12
+Last updated: 2026-07-15
 
 Complete guide to using Manifest in a new project (outside the Manifest monorepo).
 
@@ -10,23 +10,40 @@ Complete guide to using Manifest in a new project (outside the Manifest monorepo
 
 ## Prerequisites
 
-**Manifest is published to the public npm registry** as `@angriff36/manifest` — `npm install` / `pnpm add` works with no special `.npmrc` configuration. For monorepo development, you can also link the local package.
+~~**Manifest is published to the public npm registry** as `@angriff36/manifest` — `npm install` / `pnpm add` works with no special `.npmrc` configuration. For monorepo development, you can also link the local package.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Prefer the **published** package
+> (`@angriff36/manifest@3.6.4` SoT in root `package.json`). Requires **Node.js
+> `>=20`**. Local `pnpm link` / `npm link` is only for contributing to Manifest
+> itself. This repo uses **pnpm** (`packageManager: pnpm@10.31.0`).
+
+```bash
+pnpm add @angriff36/manifest@3.6.4
+```
 
 ---
 
-## Step 1: Build Manifest (Required)
+## Step 1: Build Manifest (Required for local link only)
 
-The `dist/` folder must be built before linking. From the Manifest monorepo root:
+~~The `dist/` folder must be built before linking. From the Manifest monorepo root:
 
 ```bash
 cd /path/to/manifest
 npm run build:lib
+```~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Skip this step when installing from
+> npm. For a local link only:
+
+```bash
+cd /path/to/manifest
+pnpm run build:lib
 ```
 
 This creates the required distribution files:
 
 - `dist/manifest/*.js` - Runtime and compiler
-- `packages/cli/dist/*.js` - CLI entry points
+- `packages/cli/dist/*.js` - CLI entry points (after the CLI package build)
 
 ---
 
@@ -84,7 +101,7 @@ ls -la node_modules/@angriff36/manifest
 
 **Cause**: The `dist/` folder doesn't exist or wasn't built before linking.
 
-**Fix**: Run `npm run build:lib` in the Manifest directory first.
+**Fix**: Run ~~`npm run build:lib`~~ `pnpm run build:lib` in the Manifest directory first.
 
 ### "Cannot find package '@angriff36/manifest' from CLI"
 
@@ -92,9 +109,9 @@ ls -la node_modules/@angriff36/manifest
 
 **Fix**: Ensure you:
 
-1. Ran `npm run build:lib` in Manifest
-2. Ran `npm link` in Manifest directory
-3. Ran `npm link @angriff36/manifest` in your project
+1. Ran ~~`npm run build:lib`~~ `pnpm run build:lib` in Manifest
+2. Ran `npm link` / `pnpm link` in Manifest directory
+3. Ran `npm link @angriff36/manifest` / `pnpm link @angriff36/manifest` in your project
 
 ### pnpm: Issues with workspace linking
 

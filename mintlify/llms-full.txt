@@ -231,9 +231,15 @@ const runtime = new RuntimeEngine(ir, {
 });
 
 // Run the "create" command on the Todo entity
-const createResult = await runtime.runCommand('Todo', 'create', {
+~~const createResult = await runtime.runCommand('Todo', 'create', {
   title: 'Learn Manifest'
-});
+});~~
+// Correction (2026-07-15) @RYANSIGNED: runCommand(commandName, input, options?)
+const createResult = await runtime.runCommand(
+  'create',
+  { newTitle: 'Learn Manifest' },
+  { entityName: 'Todo' },
+);
 
 if (!createResult.success) {
   console.error('Failed:', createResult.diagnostics);
@@ -252,9 +258,15 @@ When the command succeeds, `createResult.instance` contains the resulting entity
 Use the instance returned by `create` to run `complete`. Check `completeResult.events` to see the `TodoCompleted` event that the command emitted.
 
 ```typescript
-const completeResult = await runtime.runCommand('Todo', 'complete', {
+~~const completeResult = await runtime.runCommand('Todo', 'complete', {
   id: createResult.instance.id
-});
+});~~
+// Correction (2026-07-15) @RYANSIGNED: runCommand(commandName, input, options?)
+const completeResult = await runtime.runCommand(
+  'complete',
+  {},
+  { entityName: 'Todo', instanceId: createResult.instance.id },
+);
 
 if (completeResult.success) {
   console.log('Events:', completeResult.events);
@@ -1027,10 +1039,16 @@ const runtime = new RuntimeEngine(ir, {
   user: { id: "user-123", role: "admin" },
 });
 
-const result = await runtime.runCommand("Order", "updateStatus", {
+~~const result = await runtime.runCommand("Order", "updateStatus", {
   instanceId: "order-abc",
   newStatus: "processing",
-});
+});~~
+// Correction (2026-07-15) @RYANSIGNED: runCommand(commandName, input, options?)
+const result = await runtime.runCommand(
+  "updateStatus",
+  { newStatus: "processing" },
+  { entityName: "Order", instanceId: "order-abc" },
+);
 
 if (!result.success) {
   if (result.policyDenial) {
@@ -1356,11 +1374,22 @@ The `payload` object contains the command's input parameters and the last action
 Pass `correlationId` and `causationId` in the command options to propagate identifiers across a multi-step workflow. The runtime attaches them to every event emitted during that invocation.
 
 ```typescript
-const result = await runtime.runCommand(
+~~const result = await runtime.runCommand(
   "Order",
   "complete",
   { instanceId: "order-123" },
   {
+    correlationId: "workflow-abc",
+    causationId: "step-2",
+  }
+);~~
+// Correction (2026-07-15) @RYANSIGNED: three args max; ids go in options
+const result = await runtime.runCommand(
+  "complete",
+  {},
+  {
+    entityName: "Order",
+    instanceId: "order-123",
     correlationId: "workflow-abc",
     causationId: "step-2",
   }
@@ -1445,7 +1474,12 @@ runtime.onEvent((event) => {
   }
 });
 
-const result = await runtime.runCommand("Order", "complete", {
+~~const result = await runtime.runCommand("Order", "complete", {
+  instanceId: "order-001",
+});~~
+// Correction (2026-07-15) @RYANSIGNED: runCommand(commandName, input, options?)
+const result = await runtime.runCommand("complete", {}, {
+  entityName: "Order",
   instanceId: "order-001",
 });
 

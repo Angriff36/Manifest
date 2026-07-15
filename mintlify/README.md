@@ -1,56 +1,40 @@
-# Mintlify Starter Kit
+# Manifest documentation (Mintlify)
 
-Use the starter kit to get your docs deployed and ready to customize.
+Authority: Advisory
+Enforced by: None
+Last updated: 2026-07-15
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+Public product docs for **`@angriff36/manifest`**.
 
-- Guide pages
-- Navigation
-- Customizations
-- API reference pages
-- Use of popular components
+~~This directory used to ship as an unmodified Mintlify starter kit (placeholder
+README / AGENTS / CONTRIBUTING).~~
 
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
+> **Correction (2026-07-15) @RYANSIGNED:** Content here is Manifest-specific.
+> Version SoT is the repo root `package.json` (**3.6.4**). Node **`>=20`**.
+> Do not invent features; prefer `docs/CONFIRMED-FEATURES.md` + the spec chain.
+
+## Local preview
+
+```bash
+npm i -g mint
+# from this directory (mintlify/), where docs.json lives:
+mint dev
+```
+
+Preview: `http://localhost:3000`. Update CLI with `mint update` if the preview fails.
 
 ## AI-assisted writing
-
-Set up your AI coding tool to work with Mintlify:
 
 ```bash
 npx skills add https://mintlify.com/docs
 ```
 
-This command installs Mintlify's documentation skill for your configured AI tools like Claude Code, Cursor, Windsurf, and others. The skill includes component reference, writing standards, and workflow guidance.
+Also read `AGENTS.md` in this folder before editing behavioral pages.
 
-See the [AI tools guides](/ai-tools) for tool-specific setup.
+## Publishing
 
-## Development
+Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app). Pushes to the default branch deploy production docs.
 
-Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
+## Accuracy
 
-```
-npm i -g mint
-```
-
-Run the following command at the root of your documentation, where your `docs.json` is located:
-
-```
-mint dev
-```
-
-View your local preview at `http://localhost:3000`.
-
-## Publishing changes
-
-Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
-
-## Need help?
-
-### Troubleshooting
-
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
-
-### Resources
-
-- [Mintlify documentation](https://mintlify.com/docs)
+False claims must use strikethrough + dated `@RYANSIGNED` correction (see `AGENTS.md` / `CONTRIBUTING.md`). Ledger: `docs/internal/plans/2026-07-15-docs-accuracy-loop.md`.

@@ -66,8 +66,10 @@ Schedules are resolved at compile time and emitted to the IR as `IRSchedule` obj
 Projection targets consume schedule metadata:
 
 - **Next.js projection** (`nextjs.schedule` surface): Generates cron routes only for schedules whose `trigger.kind === 'cron'`. `interval` and `every` schedules are filtered out by the projection and produce no Vercel cron route; they require the `startScheduleWorker()` package for execution.
-- **Express/Hono**: Route handlers for external scheduler invocation.
-- **Terraform projection**: CloudWatch Event rules or similar scheduled resources.
+- ~~**Express/Hono**: Route handlers for external scheduler invocation.~~
+- ~~**Terraform projection**: CloudWatch Event rules or similar scheduled resources.~~
+>
+> **Correction (2026-07-15) @RYANSIGNED:** Express and Hono projections do **not** emit schedule/cron route handlers (grep-verified in `src/manifest/projections/express` and `hono`). The Terraform projection emits store/entity/event HCL (AWS/GCP/Supabase) and has **no** schedule → CloudWatch/EventBridge mapping. Non-Next hosts: call `runtime.runSchedule(name)` from your own scheduler, or run `startScheduleWorker()` from `@angriff36/manifest/schedule-worker`.
 
 ## IR Representation
 

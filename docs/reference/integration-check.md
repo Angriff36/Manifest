@@ -102,7 +102,13 @@ downstream repo:
 gh workflow run cut-release.yml -f version=patch   # publish-first: tag is pushed only after npm publish succeeds
 ```
 
-Then in the downstream: `pnpm update @angriff36/manifest@^0.5.0`.
+Then in the downstream: ~~`pnpm update @angriff36/manifest@^0.5.0`~~
+`pnpm add @angriff36/manifest@3.6.4 --save-exact` (or whatever version `integration-check`
+just validated).
+
+> **Correction (2026-07-15) @RYANSIGNED:** `@angriff36/manifest` is on **3.6.x**, not `0.5.0`.
+> Prefer exact pins (`docs/spec/sdk-stability.md`); `^` ranges can pull breaking releases under
+> this project's versioning policy.
 
 A published version cannot be unpublished from npm, so confirming
 clean output from `integration-check` against both the file:/ and pack/

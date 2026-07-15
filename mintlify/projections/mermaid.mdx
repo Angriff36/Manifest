@@ -6,6 +6,10 @@ description: 'Generate deterministic Mermaid diagrams from Manifest IR — entit
 
 The Mermaid projection generates [Mermaid](https://mermaid.js.org) diagrams from compiled Manifest IR. Use it to visualize a domain model — entity relationships, state machines, and command execution flows — for documentation, design review, or onboarding. Diagrams are deterministic: identical IR always yields identical output.
 
+> **Verified (2026-07-15) @RYANSIGNED:** Registry name `mermaid`; dedicated CLI
+> `manifest diagram` exists (`packages/cli/src/commands/diagram.ts`). Also
+> `manifest generate -p mermaid`. Package pin **3.6.4**.
+
 The projection is registered under the name `mermaid` and lives at `src/manifest/projections/mermaid/generator.ts`. A dedicated CLI wrapper, `manifest diagram`, is provided at `packages/cli/src/commands/diagram.ts`.
 
 ## What it generates

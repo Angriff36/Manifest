@@ -1,5 +1,9 @@
 # Date and Time Types
 
+> **Audited (2026-07-15) @RYANSIGNED:** Spot-check OK against builtins /
+> `autoNow` / fixture `92-date-time-types.manifest` on package **3.6.4**. No
+> phantom `timestamp` language type (Zod may alias `timestamp` → datetime).
+
 Manifest provides primitive types `date`, `time`, `datetime`, and `duration`, plus built-ins for date extraction and duration arithmetic. See conformance fixture `92-date-time-types.manifest`.
 
 ## Syntax

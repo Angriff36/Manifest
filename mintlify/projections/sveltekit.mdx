@@ -12,7 +12,11 @@ The projection is registered under the name `sveltekit` and lives at `src/manife
 
 The projection exposes five surfaces.
 
-`sveltekit.server` emits a `+server.ts` file with `GET` and `POST` `RequestHandler` exports. The `GET` handler lists entity instances (with optional auth checks, tenant filtering, and soft-delete filtering). The `POST` handler dispatches a command through the Manifest runtime via `runtime.runCommand`.
+`sveltekit.server` emits a `+server.ts` file with `GET` and `POST` `RequestHandler` exports. The `GET` handler lists entity instances (with optional auth checks, tenant filtering, and soft-delete filtering). The `POST` handler dispatches a command through ~~the Manifest runtime via `runtime.runCommand`~~.
+
+> **Correction (2026-07-15) @RYANSIGNED:** Generated POST/form handlers emit entity-first
+> `runtime.runCommand(entity, command, { params, instanceId })` — see Notes. That is not the
+> `RuntimeEngine` signature.
 
 `sveltekit.load` emits a `+page.server.ts` file with a `load: PageServerLoad` function and an `actions: Actions` export. The `load` function fetches entity data for page rendering. Form actions decode `event.request.formData()`, extract `instanceId` from form fields, and invoke commands. SvelteKit's `./$types` provides type-safe `PageData`.
 
@@ -57,7 +61,10 @@ The projection supports four auth providers, configured via the `authProvider` o
 - **`custom`** — Imports a `requireUser(event)` function from the configured `authImportPath`.
 - **`none`** — No auth checks in generated code.
 
-Tenant filtering is activated via the `includeTenantContext` option. When enabled, read queries include a `tenantId` predicate. Soft-delete filtering adds `deletedAt: null` to read queries when `includeSoftDeleteFilter` is enabled.
+Tenant filtering is activated via the ~~`includeTenantContext`~~ **`includeTenantFilter`** option. When enabled, read queries include a `tenantId` predicate. Soft-delete filtering adds `deletedAt: null` to read queries when `includeSoftDeleteFilter` is enabled.
+
+> **Correction (2026-07-15) @RYANSIGNED:** Option name is `includeTenantFilter` (default **`true`**).
+> `includeSoftDeleteFilter` also defaults to **`true`** (`SVELTEKIT_DEFAULTS`), not `false`.
 
 ## Generated file structure
 
@@ -83,12 +90,31 @@ The projection maps Manifest IR types to TypeScript using `irTypeToTs`: `string`
 
 ## Options
 
-`SvelteKitProjectionOptions` accepts `authProvider` (`'lucia'` | `'auth-js'` | `'custom'` | `'none'`, default `'lucia'`), `authImportPath`, `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `basePath` (default `/api`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `includeSoftDeleteFilter` (default `false`), `publicReads` (default `false`), `validationImportPath` (default unset), `databaseImportPath` (for direct database reads), `dispatcherImportPath`, and `includeComments` (default `true`).
+~~`SvelteKitProjectionOptions` accepts `authProvider` (`'lucia'` | `'auth-js'` | `'custom'` | `'none'`, default `'lucia'`), `authImportPath`, `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `basePath` (default `/api`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `includeSoftDeleteFilter` (default `false`), `publicReads` (default `false`), `validationImportPath` (default unset), `databaseImportPath` (for direct database reads), `dispatcherImportPath`, and `includeComments` (default `true`).~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Real defaults from `SVELTEKIT_DEFAULTS`: `authProvider`
+> `'lucia'`; `authImportPath` `$lib/server/auth`; `runtimeImportPath`
+> `$lib/server/manifest-runtime`; `runtimeFactoryName` `createManifestRuntime`;
+> `databaseImportPath` `$lib/server/database`; `routesDir` `src/routes`;
+> `includeTenantFilter` **`true`** (not `includeTenantContext`); `includeSoftDeleteFilter`
+> **`true`**; `emitFormActions` / `emitTypeImports` / `emitCompanions` **`true`**. There is **no**
+> `basePath`, `publicReads`, or `dispatcherImportPath` option. `validationImportPath` exists and
+> is optional.
 
 ## Notes & limitations
 
-<Note>
+~~<Note>
 All writes flow through `runtime.runCommand()`, preserving guard, policy, and constraint enforcement. Reads may bypass the runtime via direct Prisma-style `database.<entity>.findMany()` calls when the `databaseImportPath` option is configured, which improves read performance at the cost of bypassing Manifest-level read policies.
-</Note>
+</Note>~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Generated SvelteKit handlers call a **phantom**
+> entity-first form
+> `runtime.runCommand(entityName, commandName, { params, instanceId })`. The default companion
+> from `generateRuntimeFactoryModule` returns a raw `RuntimeEngine`, whose API is
+> `runCommand(commandName, input, { entityName, instanceId })` — **not** entity-first. Unlike
+> Express/Hono, SvelteKit does **not** emit an adapting facade. Treat generated write call sites
+> as scaffolding that must be aligned with the engine (or a hand-written facade) before use.
+> Reads may still bypass the runtime via `database.<entity>.findMany()` when
+> `databaseImportPath` is set.
 
 Form actions decode `event.request.formData()` and extract `instanceId` from form fields. The `+page.server.ts` returns typed `data` through SvelteKit's generated `./$types`, providing full type safety from server to client. The output is deterministic: the same IR and options always produce the same generated code.

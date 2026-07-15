@@ -28,9 +28,11 @@ entity Order {
 
 ## Runtime Behavior
 
-1. Synchronous validation: rate-limit → policies → constraints → guards (fail-fast)
-2. Enqueue `JobRecord` via `JobQueue` adapter
-3. Returns `{ jobId, status: 'pending', enqueuedAt }` immediately
+1. ~~Synchronous validation: rate-limit → policies → constraints → guards (fail-fast)~~
+>
+> **Correction (2026-07-15) @RYANSIGNED:** Async fail-fast validation (`_validateAsyncCommand`) runs **params → policies → constraints → guards** only. Command `rateLimit` is **not** checked on the enqueue path; it runs later when the worker re-enters full `runCommand` / `_executeCommandInternal` with `context.source === 'job'`.
+2. Enqueue `JobRecord` via `JobQueue` adapter (`enqueue` returns `Promise<void>`)
+3. Returns `{ success: true, result: { jobId, status: 'pending', enqueuedAt }, emittedEvents: [] }` immediately
 4. Worker re-entry: `context.source === 'job'` bypasses async branch during worker execution
 5. Missing `jobQueue` configuration produces `MISSING_JOB_QUEUE` error result
 

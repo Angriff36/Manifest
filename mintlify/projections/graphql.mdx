@@ -42,7 +42,13 @@ manifest generate ir/recipe.ir.json --projection graphql --surface graphql.schem
 
 IR types map to GraphQL types in `irTypeToGraphQL`. `string` maps to `String`, `number` to `Float`, `integer`/`int` to `Int`, `boolean`/`bool` to `Boolean`, `date` to `Date`, `datetime` to `DateTime`, `uuid` to `UUID`, and `email` / `url` / `uri` to `String`. `array` (with a generic) becomes a GraphQL list with non-null inner elements unless the inner type is nullable, and `map` / `record` / `object` become `JSON`. Unknown types fall back to `String`. Types such as `DateTime`, `UUID`, `JSON`, `Date`, `Email`, and `URL` are declared as custom scalars when used.
 
-Mutations are mapped from commands, with non-null markers placed on required parameters in the generated input types. Resolver stubs for queries call the database client directly (for example `database.<table>.findUnique`), while mutation resolvers are expected to delegate to the runtime at `runtimeImportPath`.
+Mutations are mapped from commands, with non-null markers placed on required parameters in the generated input types. Resolver stubs for queries call the database client directly (for example `database.<table>.findUnique`). ~~Mutation resolvers are expected to delegate to the runtime at `runtimeImportPath`.~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** Generated mutation stubs call a **phantom** 3-arg form
+> `runtime.runCommand(entity, command, input)` on whatever `createManifestRuntime(context)` returns.
+> That is **not** `RuntimeEngine.runCommand(commandName, input, options?)`. Treat resolvers as
+> scaffolding: either implement a companion facade that adapts the entity-first call, or rewrite
+> stubs to the real engine signature (`src/manifest/projections/graphql/generator.ts`).
 
 ## Options
 

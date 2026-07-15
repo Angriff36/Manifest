@@ -39,7 +39,9 @@ Roles inherit permissions transitively through the `extends` chain. The compiler
 | `Manager` (extends User)  | User           | read, write, execute                   |
 | `Admin` (extends Manager) | Manager, User  | read, write, execute, delete, override |
 
-The `effectivePermissions` map is precomputed at compile time by the IR compiler's `resolveRoleGraph()` method. The runtime evaluates these directly via O(1) lookups — no chain traversal happens at execution time.
+~~The `effectivePermissions` map is precomputed… via O(1) lookups…~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `resolveRoleGraph()` precomputes an `effectivePermissions: IRRolePermission[]` (allow entries remaining after transitive deny). Runtime checks scan that array (no inheritance walk at execution time).
 
 ### Compile-time validation
 
@@ -68,8 +70,8 @@ role Support extends User {
 Deny rules are applied after the full inheritance union is computed. This means:
 
 1. Walk the inheritance chain and union all `allow` permissions.
-2. Walk the inheritance chain and subtract all `deny` permissions.
-3. The result is the `effectivePermissions` map.
+2. Walk the inheritance chain and collect all `deny` permissions.
+3. ~~The result is the `effectivePermissions` map.~~ **Correction (2026-07-15) @RYANSIGNED:** Filter allows against denies → `effectivePermissions: IRRolePermission[]`.
 
 A `deny` at any level is absolute. There is no mechanism to override a deny with a subsequent allow. This is by design — it prevents privilege escalation through role chain manipulation.
 
@@ -98,8 +100,9 @@ Reference roles in policy expressions via the `user.role` binding and the built-
 entity Document {
   default policy RequireAuth execute: user.id != null "Authentication required"
 
+  ~~policy CanDelete execute: hasPermission(user, "delete")~~
   policy CanApprove execute: roleAllows(user.role, "approve") or user.role == "admin"
-  policy CanDelete execute: hasPermission(user, "delete")
+  policy CanDelete execute: hasPermission("delete")
 
   command approve() {
     mutate status = "approved"
@@ -117,28 +120,34 @@ entity Document {
 
 Two built-in functions are registered on the runtime engine when roles are present in the IR:
 
-| Function        | Signature                         | Returns                                                                 |
-| --------------- | --------------------------------- | ----------------------------------------------------------------------- |
-| `hasPermission` | `hasPermission(user, permission)` | `true` if the user's effective permissions include the named permission |
-| `roleAllows`    | `roleAllows(roleName, action)`    | `true` if the named role's effective permissions allow the action       |
+~~| Function | Signature | Returns |
+| --- | --- | --- |
+| `hasPermission` | `hasPermission(user, permission)` | … |
+| `roleAllows` | `roleAllows(roleName, action)` | … |~~
 
-Both functions perform O(1) lookups against the precomputed `effectivePermissions` map. The `roleIndex` is built at engine initialization time from the IR's `roles` array.
+> **Correction (2026-07-15) @RYANSIGNED:** Per `docs/spec/builtins.md` and conformance fixture `71-role-hierarchy.manifest`:
 
-### `hasPermission(user, permission)`
+| Function | Signature | Returns |
+| --- | --- | --- |
+| `hasPermission` | `hasPermission(action, target?)` | `true` if `context.user.role`'s effective permissions grant `action` (optional `target`) |
+| `roleAllows` | `roleAllows(roleName, action, target?)` | same check for an explicit role name |
 
-Checks whether the given user object's role grants the specified permission. Returns `false` if the user has no role, or if the role is not declared in the IR.
+`effectivePermissions` is an `IRRolePermission[]` (not a `Record<string, boolean>`). Lookups scan that array. Passing a user object as the first argument of `hasPermission` always returns `false` (action must be a string).
 
-```typescript
-// Inside a guard or policy expression:
-guard hasPermission(user, "delete")
-```
+### `hasPermission(action, target?)`
 
-### `roleAllows(roleName, action)`
-
-Checks whether a named role allows a specific action, without requiring a user object. Useful for checking whether a role would permit something before assigning it to a user.
+Uses the bound runtime `user.role`. Returns `false` if there is no role string or the role is undeclared.
 
 ```manifest
-// As an entity-level policy:
+guard hasPermission("delete")
+guard hasPermission("execute", "CreateReport")
+```
+
+### `roleAllows(roleName, action, target?)`
+
+Checks whether a named role allows a specific action, without requiring a user object.
+
+```manifest
 policy CanExecute execute: roleAllows(user.role, "execute") or user.role == "admin"
 ```
 
@@ -168,23 +177,34 @@ The parser only treats `role` as a declaration keyword at the top level of a pro
 
 Roles are stored in the IR as an optional `roles` array on the root `IR` object (and on `IRModule` for module-scoped roles). Each `IRRole` contains:
 
+~~```typescript
+interface IRRole {
+  name: string;
+  extends?: string;
+  permissions: IRRolePermission[];
+  effectivePermissions: Record<string, boolean>;
+}
+```~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** IR shape (`src/manifest/ir.ts`):
+
 ```typescript
 interface IRRolePermission {
-  kind: 'allow' | 'deny';
   action: string;
   target?: string;
 }
 
 interface IRRole {
   name: string;
-  extends?: string;
-  permissions: IRRolePermission[];
-  effectivePermissions: Record<string, boolean>;
   module?: string;
+  parent?: string; // from `extends` in source
+  allow: IRRolePermission[];
+  deny: IRRolePermission[];
+  effectivePermissions: IRRolePermission[]; // post inheritance + deny
 }
 ```
 
-The `effectivePermissions` field is the precomputed result of inheritance resolution. The runtime reads this field directly and never re-computes it.
+The runtime reads `effectivePermissions` directly and never re-computes it.
 
 ## Complete example
 
@@ -211,10 +231,13 @@ entity Document {
 
   default policy RequireAuth execute: user.id != null "Authentication required"
 
-  policy CanRead execute: hasPermission(user, "read")
+  ~~policy CanRead execute: hasPermission(user, "read")
   policy CanWrite execute: hasPermission(user, "write")
+  policy CanDelete execute: hasPermission(user, "delete")~~
+  policy CanRead execute: hasPermission("read")
+  policy CanWrite execute: hasPermission("write")
   policy CanApprove execute: roleAllows(user.role, "execute")
-  policy CanDelete execute: hasPermission(user, "delete")
+  policy CanDelete execute: hasPermission("delete")
 
   command view() {
     emit DocumentViewed
@@ -238,6 +261,21 @@ entity Document {
 }
 ```
 
+~~```typescript
+const result = await adminRuntime.runCommand('Document', 'removeDocument', {
+  instanceId: 'doc-42',
+});
+const mgrResult = await mgrRuntime.runCommand('Document', 'removeDocument', {
+  instanceId: 'doc-42',
+});
+const unknownResult = await unknownRuntime.runCommand('Document', 'view', {
+  instanceId: 'doc-42',
+});
+```~~
+
+> **Correction (2026-07-15) @RYANSIGNED:** `RuntimeEngine.runCommand(commandName, input, options?)` —
+> not entity-first. Pass `entityName` / `instanceId` in `options`.
+
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';
 import { ir } from './compiled.ir.json';
@@ -247,7 +285,8 @@ const adminRuntime = new RuntimeEngine(ir, {
   user: { id: 'admin-1', role: 'Admin' },
 });
 
-const result = await adminRuntime.runCommand('Document', 'removeDocument', {
+const result = await adminRuntime.runCommand('removeDocument', {}, {
+  entityName: 'Document',
   instanceId: 'doc-42',
 });
 console.log(result.success); // true
@@ -257,7 +296,8 @@ const mgrRuntime = new RuntimeEngine(ir, {
   user: { id: 'mgr-1', role: 'Manager' },
 });
 
-const mgrResult = await mgrRuntime.runCommand('Document', 'removeDocument', {
+const mgrResult = await mgrRuntime.runCommand('removeDocument', {}, {
+  entityName: 'Document',
   instanceId: 'doc-42',
 });
 console.log(mgrResult.success); // false (Manager has no "delete" permission — removeDocument requires it)
@@ -267,7 +307,8 @@ const unknownRuntime = new RuntimeEngine(ir, {
   user: { id: 'guest-1', role: 'Guest' },
 });
 
-const unknownResult = await unknownRuntime.runCommand('Document', 'view', {
+const unknownResult = await unknownRuntime.runCommand('view', {}, {
+  entityName: 'Document',
   instanceId: 'doc-42',
 });
 console.log(unknownResult.success); // false (unknown role defaults to deny)
