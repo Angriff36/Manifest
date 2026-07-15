@@ -129,7 +129,7 @@ const EXPECTED_EXPORTS_BY_SUBPATH: Record<string, string[]> = {
   '@angriff36/manifest/plugin-loader': ['loadPlugins'],
   '@angriff36/manifest/parser': ['Parser'],
   '@angriff36/manifest/lexer': ['Lexer'],
-  '@angriff36/manifest/config': ['resolveProjectionOptions'],
+  '@angriff36/manifest/config': ['resolveProjectionOptions', 'createUserResolver', 'hasUserResolver'],
 };
 
 /**

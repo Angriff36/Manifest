@@ -120,10 +120,10 @@ export interface RuntimeFactoryModuleInput {
   /**
    * Optional import specifier for the app's `manifest.config` (default export,
    * `ManifestRuntimeConfig` shape). When provided, the factory composes a
-   * `storeProvider` from `config.stores` and passes it to the engine — mirrors
-   * `createStoreProvider` in packages/cli/src/utils/config.ts. When omitted
-   * (the zero-config default), the engine uses its built-in stores (memory,
-   * localStorage) so a config-free project still runs.
+   * `storeProvider` from `config.stores` and a `createUserResolver` from
+   * `config.resolveUser` (mirrors `@angriff36/manifest/config` + CLI utils).
+   * When omitted (the zero-config default), the engine uses its built-in
+   * stores (memory, localStorage) so a config-free project still runs.
    */
   runtimeConfigImport?: string;
   /**
@@ -180,6 +180,9 @@ export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): 
     lines.push('');
     lines.push('interface RuntimeConfigLike {');
     lines.push('  stores?: Record<string, { implementation: unknown }>;');
+    lines.push(
+      '  resolveUser?: (auth: Record<string, unknown>) => Promise<Record<string, unknown> | null>;',
+    );
     lines.push('}');
   }
   lines.push('');
@@ -219,14 +222,61 @@ export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): 
     lines.push('  };');
     lines.push('}');
     lines.push('');
+    lines.push('// Mirrors createUserResolver from @angriff36/manifest/config: fail-soft');
+    lines.push('// wrapper around config.resolveUser (errors → null).');
+    lines.push(
+      'function createUserResolver(config: RuntimeConfigLike | undefined): (auth: Record<string, unknown>) => Promise<Record<string, unknown> | null> {',
+    );
+    lines.push('  const resolveUser = config?.resolveUser;');
+    lines.push('  if (typeof resolveUser !== "function") {');
+    lines.push('    return async () => null;');
+    lines.push('  }');
+    lines.push('  return async (auth) => {');
+    lines.push('    try {');
+    lines.push('      return await resolveUser(auth);');
+    lines.push('    } catch (error) {');
+    lines.push(
+      '      console.error("Failed to resolve user:", error instanceof Error ? error.message : error);',
+    );
+    lines.push('      return null;');
+    lines.push('    }');
+    lines.push('  };');
+    lines.push('}');
+    lines.push('');
     lines.push('const storeProvider = createStoreProvider(');
+    lines.push('  manifestConfig as unknown as RuntimeConfigLike | undefined,');
+    lines.push(');');
+    lines.push('const resolveUser = createUserResolver(');
     lines.push('  manifestConfig as unknown as RuntimeConfigLike | undefined,');
     lines.push(');');
     lines.push('');
     lines.push(`export async function ${exportName}(`);
     lines.push('  context: ManifestContext = {},');
+    lines.push('  auth?: Record<string, unknown>,');
     lines.push('): Promise<RuntimeEngine> {');
-    lines.push('  return new RuntimeEngine(ir, context, { storeProvider });');
+    lines.push('  let resolvedContext: ManifestContext = context;');
+    lines.push('  if (typeof (manifestConfig as RuntimeConfigLike | undefined)?.resolveUser === "function") {');
+    lines.push('    const authInput = auth ?? {');
+    lines.push(
+      '      userId: (context as { actorId?: string }).actorId ?? (context as { user?: { id?: string } }).user?.id,',
+    );
+    lines.push('    };');
+    lines.push('    const user = await resolveUser(authInput);');
+    lines.push('    if (user && typeof user === "object") {');
+    lines.push('      const userRecord = user as { id?: string; tenantId?: string };');
+    lines.push('      resolvedContext = {');
+    lines.push('        ...context,');
+    lines.push('        user: { ...(context as { user?: object }).user, ...user },');
+    lines.push(
+      '        actorId: (context as { actorId?: string }).actorId ?? userRecord.id,',
+    );
+    lines.push(
+      '        tenantId: (context as { tenantId?: string }).tenantId ?? userRecord.tenantId,',
+    );
+    lines.push('      } as ManifestContext;');
+    lines.push('    }');
+    lines.push('  }');
+    lines.push('  return new RuntimeEngine(ir, resolvedContext, { storeProvider });');
     lines.push('}');
   } else {
     lines.push(`export async function ${exportName}(`);

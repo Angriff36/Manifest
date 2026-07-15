@@ -274,6 +274,32 @@ export function defineConfig(config: ManifestRuntimeConfig): ManifestRuntimeConf
 }
 
 /**
+ * Build a fail-soft user resolver from `ManifestRuntimeConfig.resolveUser`.
+ * Missing/throwing resolvers yield `null` (caller decides fail-closed vs anonymous).
+ */
+export function createUserResolver(
+  config: ManifestRuntimeConfig | null | undefined,
+): (auth: ManifestAuthContext) => Promise<ManifestUserContext | null> {
+  if (!config?.resolveUser) {
+    return async () => null;
+  }
+  const resolveUser = config.resolveUser;
+  return async (auth: ManifestAuthContext): Promise<ManifestUserContext | null> => {
+    try {
+      return await resolveUser(auth);
+    } catch (error) {
+      console.error('Failed to resolve user:', error instanceof Error ? error.message : error);
+      return null;
+    }
+  };
+}
+
+/** True when config provides a `resolveUser` function. */
+export function hasUserResolver(config: ManifestRuntimeConfig | null | undefined): boolean {
+  return typeof config?.resolveUser === 'function';
+}
+
+/**
  * Resolve the option bag a projection receives, layering the build-level global
  * physical `naming` convention UNDER the projection's own `options` when the
  * projection did not set `options.naming`. When app-wide `naming.normalization`

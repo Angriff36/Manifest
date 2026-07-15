@@ -698,32 +698,21 @@ export function getStoreBindingsInfo(config: ManifestRuntimeConfig | null): {
 // ============================================================================
 
 /**
- * Create a user resolver function from runtime config
- *
- * This enables config-driven user context resolution for routes and runtime.
- * The returned function wraps the config's resolveUser with error handling.
+ * Create a user resolver function from runtime config.
+ * Same fail-soft contract as `@angriff36/manifest/config` `createUserResolver`
+ * (errors → null). Generated runtime factories embed an equivalent inline helper
+ * when `runtimeConfigImport` is set.
  *
  * @example
  * ```typescript
- * // manifest.config.ts
- * export default {
- *   resolveUser: async (auth) => {
- *     const session = await getSession(auth.headers);
- *     return { id: session.userId, role: session.role };
- *   }
- * }
- *
- * // In your route handler
  * const resolver = createUserResolver(config);
  * const user = await resolver({ userId: session.user.id, headers: request.headers });
- * const runtime = new RuntimeEngine(ir, { user, ...otherContext });
  * ```
  */
 export function createUserResolver(
   config: ManifestRuntimeConfig | null,
 ): (auth: AuthContext) => Promise<UserContext | null> {
   if (!config?.resolveUser) {
-    // Return a pass-through resolver that returns null
     return async () => null;
   }
 
@@ -731,7 +720,6 @@ export function createUserResolver(
     try {
       return await config.resolveUser!(auth);
     } catch (error) {
-      // Log error but don't throw - return null to indicate resolution failure
       console.error('Failed to resolve user:', error instanceof Error ? error.message : error);
       return null;
     }
@@ -748,7 +736,6 @@ export function hasUserResolver(config: ManifestRuntimeConfig | null): boolean {
 // ============================================================================
 // Prisma Schema Parser (for P1-B Property Alignment Scanner)
 // ============================================================================
-
 /**
  * Represents a field in a Prisma model
  */

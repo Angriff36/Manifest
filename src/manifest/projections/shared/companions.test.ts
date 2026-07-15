@@ -134,7 +134,18 @@ describe('generateRuntimeFactoryModule', () => {
     });
     expect(code).toContain('import manifestConfig from "../../manifest.config";');
     expect(code).toContain('function createStoreProvider(config: RuntimeConfigLike | undefined)');
-    expect(code).toContain('return new RuntimeEngine(ir, context, { storeProvider });');
+    expect(code).toContain('function createUserResolver(config: RuntimeConfigLike | undefined)');
+    expect(code).toContain('return new RuntimeEngine(ir, resolvedContext, { storeProvider });');
+  });
+
+  it('invokes config.resolveUser when present (auth or context-derived)', () => {
+    const code = generateRuntimeFactoryModule({
+      ir: tinyIR,
+      runtimeConfigImport: '../../manifest.config',
+    });
+    expect(code).toContain('auth?: Record<string, unknown>');
+    expect(code).toContain('const user = await resolveUser(authInput);');
+    expect(code).toContain('resolvedContext = {');
   });
 
   it('fails closed during generation for durable IR without runtime configuration', () => {

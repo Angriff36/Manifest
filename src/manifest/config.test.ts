@@ -7,7 +7,13 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { defineConfig, resolveProjectionOptions, type ManifestRuntimeConfig } from './config';
+import {
+  defineConfig,
+  resolveProjectionOptions,
+  createUserResolver,
+  hasUserResolver,
+  type ManifestRuntimeConfig,
+} from './config';
 
 describe('defineConfig', () => {
   it('returns its argument unchanged (identity)', () => {
@@ -91,5 +97,32 @@ describe('resolveProjectionOptions — global naming inheritance', () => {
     const build = { naming: 'snake_case' as const, projections: { prisma: { options: {} } } };
     resolveProjectionOptions(build, 'prisma');
     expect(build.projections.prisma.options).toEqual({});
+  });
+});
+
+describe('createUserResolver', () => {
+  it('returns null when config has no resolveUser', async () => {
+    const resolver = createUserResolver(null);
+    expect(await resolver({ userId: 'u1' })).toBeNull();
+    expect(hasUserResolver(null)).toBe(false);
+  });
+
+  it('delegates to config.resolveUser', async () => {
+    const config = defineConfig({
+      resolveUser: async (auth) => ({ id: String(auth.userId), role: 'admin' }),
+    });
+    expect(hasUserResolver(config)).toBe(true);
+    const resolver = createUserResolver(config);
+    expect(await resolver({ userId: 'u42' })).toEqual({ id: 'u42', role: 'admin' });
+  });
+
+  it('fail-softs when resolveUser throws', async () => {
+    const config = defineConfig({
+      resolveUser: async () => {
+        throw new Error('boom');
+      },
+    });
+    const resolver = createUserResolver(config);
+    expect(await resolver({})).toBeNull();
   });
 });

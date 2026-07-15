@@ -156,7 +156,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [ ]    | Time-travel debugger                                                          | NOT_IMPLEMENTED / OUT_OF_SCOPE | phantom                                                                                          |
 | [~]    | IdempotencyStore                                                              | CLAIMED_NEEDS_PROOF            |                                                                                                  |
 | [~]    | JobQueue / async worker path                                                  | CLAIMED_NEEDS_PROOF            | fixture `69`                                                                                     |
-| [ ]    | Runtime reads `optional`                                                      | NOT_IMPLEMENTED                | wiring matrix                                                                                    |
+| [x]    | `optional` modifier (projection hint; no runtime gate)                        | OUT_OF_SCOPE / by design   | semantics.md § Properties — enforced via `required` only                                         |
 | [ ]    | Runtime uses `alternateKeys`                                                  | NOT_IMPLEMENTED                |                                                                                                  |
 | [ ]    | `command.returns` runtime/projection-complete                                 | PARTIAL                        | projection-only                                                                                  |
 | [x]    | Durable rate-limit (Postgres store)                                           | FULLY_IMPLEMENTED              | §1                                                                                               |
@@ -282,7 +282,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | [ ]    | Materialized-views SQL expression lowering                                     | PARTIAL                    |
 | [ ]    | Convex unsupported surfaces (list in §6)                                       | DIAGNOSTIC_ONLY            |
 | [ ]    | Config G5/G2/G10                                                               | NOT_IMPLEMENTED            |
-| [ ]    | Orphan `createUserResolver()`                                                  | NOT_IMPLEMENTED            |
+| [x]    | `createUserResolver` wired into runtime factory                                | FULLY_IMPLEMENTED          | landing this commit — promote to §1 with SHA |
 | [ ]    | Sub-package publish/park                                                       | NOT_IMPLEMENTED            |
 | [ ]    | Full WASM runtime / time-travel debugger                                       | NOT_IMPLEMENTED            |
 | [x]    | Durable `RateLimitStore` / Postgres adapter                                    | FULLY_IMPLEMENTED          | §1                                                   |

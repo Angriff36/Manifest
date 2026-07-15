@@ -41,10 +41,14 @@ forensics: Appendix D in
       `updateInstance` enforce child-side `onDelete`/`onUpdate`
       (`cascade`/`restrict`/`setNull`/`setDefault`/`noAction`); evidence in
       `runtime-referential-actions.test.ts`; semantics.md § Referential Actions.
-- [ ] **`optional` modifier never read by runtime**; **`alternateKeys` runtime-unused**;
+- [ ] **`alternateKeys` runtime-unused**;
       **entity-level constraint overrides never evaluated**; **`command.returns`
       projection-only** — see the reconciled matrix
       `docs/internal/plans/2026-07-06-ir-wiring-audit-matrix.md` (~50 rows still open).
+      ~~`optional` modifier never read by runtime~~ **Clarified 2026-07-15:**
+      semantics.md § Properties — `optional` (with `indexed`/`searchable`) is a
+      projection hint with no independent runtime behavior; `required` is the
+      enforced create-time gate.
 - [x] **Rate limiting durable store** — fixed 2026-07-15:
       `RateLimitStore` + `MemoryRateLimitStore` (default) +
       `PostgresRateLimitStore` (`@angriff36/manifest/rate-limit/postgres`);
@@ -77,9 +81,12 @@ forensics: Appendix D in
       `authProvider?: 'clerk' | 'custom' | 'none'` on both projections; companion
       middleware templates switch (fail-closed custom stub / Clerk getAuth /
       anonymous none). Default remains `custom` (prior fail-closed behavior).
-- [ ] **`createUserResolver()` orphaned** — `packages/cli/src/utils/config.ts`
-      is only called by `manifest scan` and its own tests; no generated route or
-      runtime factory invokes it.
+- [x] **`createUserResolver()` wired** — fixed 2026-07-15: canonical helper on
+      `@angriff36/manifest/config`; generated runtime factory embeds the same
+      fail-soft resolver when `runtimeConfigImport` is set (merges resolved
+      `user`/`actorId`/`tenantId` into context). CLI re-exports the package
+      helper. Still opt-in via `manifest.config` `resolveUser`.
+      ~~`createUserResolver()` orphaned — only `manifest scan` + tests.~~
 
 ## Tooling / CI
 
