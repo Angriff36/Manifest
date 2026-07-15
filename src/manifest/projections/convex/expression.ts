@@ -221,6 +221,16 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
             return `(${args[0]}).replace(${args[1]}, ${args[2]})`;
           case 'split':
             return `(${args[0]}).split(${args[1]})`;
+          // Aggregate builtins (docs/spec/builtins.md). Collections are plain
+          // arrays at evaluation time — mutation codegen preloads hasMany edges
+          // referenced by count_of(self.<rel>, …) onto the self var (PB023).
+          case 'count_of':
+            if (args.length === 0) {
+              unresolved.push("builtin 'count_of()' missing collection");
+              return '/* unresolved count_of() */ 0';
+            }
+            if (args.length === 1) return `((${args[0]}) ?? []).length`;
+            return `((${args[0]}) ?? []).filter(${args[1]}).length`;
           default:
             if (!callee) {
               unresolved.push('non-identifier callee');
@@ -231,9 +241,20 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
         }
       }
 
-      case 'lambda':
-        unresolved.push('lambda expression');
-        return '/* unresolved lambda */ undefined';
+      case 'lambda': {
+        // Render as a JS arrow so aggregate builtins (count_of/filter/map) can
+        // pass the predicate through. Lambda params bind as locals for the body.
+        const added: string[] = [];
+        for (const p of e.params) {
+          if (!locals.has(p)) {
+            locals.add(p);
+            added.push(p);
+          }
+        }
+        const body = go(e.body);
+        for (const p of added) locals.delete(p);
+        return `(${e.params.join(', ')}) => (${body})`;
+      }
 
       default: {
         unresolved.push(`expression kind '${(e as { kind: string }).kind}'`);

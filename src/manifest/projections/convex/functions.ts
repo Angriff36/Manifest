@@ -56,6 +56,10 @@ import {
   stripPrivateFromRows,
 } from './privacy.js';
 import { renderInlineComputedFields } from './computed.js';
+import {
+  collectCountOfHasManyRels,
+  renderCountOfHasManyPreloads,
+} from './count-of-preload.js';
 
 type Normalized = NormalizedOptions;
 
@@ -1086,7 +1090,17 @@ function generateMutation(
   }
 
   // Non-create: command params are destructured locals; self.x → doc.x.
-  const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), {
+  const checkSpecs = commandChecks(ir, cmd, options.policyMode);
+  const countOfRels = new Set<string>();
+  for (const c of checkSpecs) collectCountOfHasManyRels(c.expr, countOfRels);
+  const hasManyPreloads = renderCountOfHasManyPreloads(
+    ir,
+    entity,
+    countOfRels,
+    options,
+    'docId',
+  );
+  const checks = renderChecks(entity.name, checkSpecs, {
     selfVar: 'doc',
     locals: paramNames,
   });
@@ -1181,6 +1195,7 @@ function generateMutation(
     `    const doc = await ctx.db.get(docId) as Record<string, any> | null;\n` +
     `    if (!doc) throw new Error(${JSON.stringify(`${entity.name} not found`)});\n` +
     ownershipLine +
+    (hasManyPreloads.length ? hasManyPreloads.join('\n') + '\n' : '') +
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
     (transitions.lines.length ? transitions.lines.join('\n') + '\n' : '') +
     (versionOcc.checkLines.length ? versionOcc.checkLines.join('\n') + '\n' : '') +

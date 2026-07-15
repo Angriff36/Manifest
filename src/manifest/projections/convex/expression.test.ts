@@ -168,10 +168,49 @@ describe('renderExpression — fail closed', () => {
     expect(res.unresolved).toContain("binary operator '<=>'");
   });
 
-  it('reports lambdas and empty expressions', () => {
-    expect(
-      renderExpression({ kind: 'lambda', params: ['x'], body: lit(1) }, DOC).unresolved,
-    ).toContain('lambda expression');
+  it('resolves count_of with lambda predicate (Event.beginExecution shape)', () => {
+    const pred: IRExpression = {
+      kind: 'lambda',
+      params: ['t'],
+      body: {
+        kind: 'binary',
+        operator: 'and',
+        left: {
+          kind: 'binary',
+          operator: '!=',
+          left: { kind: 'member', object: id('t'), property: 'status' },
+          right: lit('completed'),
+        },
+        right: {
+          kind: 'binary',
+          operator: '!=',
+          left: { kind: 'member', object: id('t'), property: 'status' },
+          right: lit('cancelled'),
+        },
+      },
+    };
+    const countCall: IRExpression = {
+      kind: 'call',
+      callee: { kind: 'identifier', name: 'count_of' },
+      args: [self('prepTasks'), pred],
+    };
+    const guard: IRExpression = {
+      kind: 'binary',
+      operator: '==',
+      left: countCall,
+      right: lit(0),
+    };
+    const res = renderExpression(guard, DOC);
+    expect(res.unresolved).toEqual([]);
+    expect(res.code).toBe(
+      '(((doc.prepTasks) ?? []).filter((t) => (((t.status !== "completed") && (t.status !== "cancelled")))).length === 0)',
+    );
+  });
+
+  it('resolves bare lambdas as arrow functions; empty expressions stay unresolved', () => {
+    const lam = renderExpression({ kind: 'lambda', params: ['x'], body: lit(1) }, DOC);
+    expect(lam.unresolved).toEqual([]);
+    expect(lam.code).toBe('(x) => (1)');
     expect(renderExpression(undefined, DOC).unresolved).toContain('empty expression');
   });
 

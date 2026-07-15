@@ -588,12 +588,12 @@ describe('convex.mutations — governance', () => {
 
   it('fails CLOSED on an unresolvable guard (throws + diagnostic, never passes)', () => {
     const ir = govIR();
-    // a lambda guard the resolver cannot map
+    // unknown builtin — fail-closed (bare lambdas now lower to arrows)
     ir.commands[0].guards = [
       {
-        kind: 'lambda',
-        params: ['x'],
-        body: { kind: 'literal', value: { kind: 'boolean', value: true } },
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'mysteryBuiltin' },
+        args: [],
       },
     ];
     const res = mutations(ir);
