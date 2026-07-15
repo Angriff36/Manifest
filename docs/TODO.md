@@ -66,8 +66,11 @@ forensics: Appendix D in
       when both are set.
 - [ ] **`softDelete` is not a language keyword** — only a prisma-store / projection
       config option (by design unless language work is scheduled).
-- [ ] **Materialized-views projection ignores `expression-to-sql.ts`** — view
-      columns are raw-SQL passthrough.
+- [x] **Materialized-views uses `expression-to-sql.ts`** — fixed 2026-07-15:
+      default SELECT emits stored props plus IR `computedProperties` lowered
+      via `translateExpression`; `self`/`this` members map to columns; raw
+      `columns` overrides remain an escape hatch.
+      ~~Materialized-views projection ignores `expression-to-sql.ts`.~~
 - [ ] **Convex projection diagnostics-only surfaces** — approvals, masking,
       searchable, versionProperty, computed-cache, realtime, retry, rateLimit emit
       `CONVEX_UNSUPPORTED_*` diagnostics (good) but generate no Convex enforcement.
@@ -84,8 +87,9 @@ forensics: Appendix D in
 - [x] **`createUserResolver()` wired** — fixed 2026-07-15: canonical helper on
       `@angriff36/manifest/config`; generated runtime factory embeds the same
       fail-soft resolver when `runtimeConfigImport` is set (merges resolved
-      `user`/`actorId`/`tenantId` into context). CLI re-exports the package
-      helper. Still opt-in via `manifest.config` `resolveUser`.
+      `user`/`actorId`/`tenantId` into context). CLI keeps a matching helper
+      for `manifest scan` / programmatic use. Still opt-in via `manifest.config`
+      `resolveUser`.
       ~~`createUserResolver()` orphaned — only `manifest scan` + tests.~~
 
 ## Tooling / CI
@@ -140,7 +144,13 @@ forensics: Appendix D in
 - [x] **Stable Builder export contract (semver subset)** — declared in
       `docs/spec/sdk-stability.md`.
 
-## App-side (Capsule-V2 — different repo, tracked here because it's the critical path)
+## App-side (Capsule-V2 — different repo)
+
+~~Tracked here as if it were a Manifest platform gap.~~  
+**Correction (2026-07-15):** Generated-app lifecycle / consumer auth-seam adoption is
+**Builder + consumer-app owned** (`OUT_OF_SCOPE` on Manifest compliance matrix). Keep
+the checklist for critical-path awareness only — it does **not** block Manifest
+`FULLY_IMPLEMENTED` claims.
 
 - [ ] **Adopt the v3.5.0+ auth seam** — Capsule-V2 still pins an older manifest
       (was `3.4.25` on 2026-07-14), still ships `scripts/patch-generated-auth.mjs`,

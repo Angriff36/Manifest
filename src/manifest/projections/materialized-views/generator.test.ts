@@ -125,7 +125,7 @@ describe('MaterializedViewsProjection — empty configurations', () => {
 // ---------------------------------------------------------------------------
 
 describe('MaterializedViewsProjection — on-demand refresh strategy', () => {
-  it('emits CREATE MATERIALIZED VIEW with SELECT * by default', () => {
+  it('emits CREATE MATERIALIZED VIEW with stored props + translated computed columns', () => {
     const p = new MaterializedViewsProjection();
     const result = p.generate(irWithOrder(), {
       surface: 'materialized-views.ddl',
@@ -140,6 +140,7 @@ describe('MaterializedViewsProjection — on-demand refresh strategy', () => {
     expect(code).toContain('WITH DATA');
     expect(code).toContain('"id"');
     expect(code).toContain('"amount"');
+    expect(code).toContain('SUM("amount") AS "totalAmount"');
     expect(code).toContain('FROM "orders"');
     expect(code).toContain('REFRESH MATERIALIZED VIEW "all_orders"');
   });
@@ -464,8 +465,8 @@ describe('translateExpression — IRExpression to SQL', () => {
     expect(diagnostics[0].code).toBe('UNKNOWN_PROPERTY');
   });
 
-  it('translates member access to dotted column reference', () => {
-    const { sql } = translateExpression(
+  it('translates self.prop member access to the resolved column', () => {
+    const { sql, diagnostics } = translateExpression(
       {
         kind: 'member',
         object: { kind: 'identifier', name: 'self' },
@@ -474,7 +475,8 @@ describe('translateExpression — IRExpression to SQL', () => {
       columnResolver,
       'Entity',
     );
-    expect(sql).toBe('col_self."amount"');
+    expect(sql).toBe('col_amount');
+    expect(diagnostics).toHaveLength(0);
   });
 
   it('translates a binary expression with arithmetic', () => {

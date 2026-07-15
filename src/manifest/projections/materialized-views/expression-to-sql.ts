@@ -65,8 +65,23 @@ function translateNode(
     }
 
     case 'member': {
-      // member access: translate the object, then access a property.
-      // e.g. event.payload.amount → "payload"."amount"
+      // self.prop / this.prop → column for prop (view SELECT scope is the entity row).
+      if (
+        expr.object.kind === 'identifier' &&
+        (expr.object.name === 'self' || expr.object.name === 'this')
+      ) {
+        const resolved = columnResolver(expr.property);
+        if (resolved === undefined) {
+          diagnostics.push({
+            severity: 'error',
+            code: 'UNKNOWN_PROPERTY',
+            message: `Unknown property '${expr.property}' referenced via ${expr.object.name} in expression for entity '${entityName}'.`,
+            entity: entityName,
+          });
+          return `"${expr.property}"`;
+        }
+        return resolved;
+      }
       const obj = translateNode(expr.object, columnResolver, entityName, diagnostics);
       return `${obj}."${expr.property}"`;
     }

@@ -31,6 +31,7 @@ import type {
 import { normalizeOptions, type MaterializedViewsProjectionOptions } from './options.js';
 import type { MaterializedViewDefinition, MaterializedViewIndex } from './types.js';
 import { MATERIALIZED_VIEWS_DESCRIPTOR_META } from './descriptor-meta.js';
+import { translateExpression } from './expression-to-sql.js';
 
 
 // ============================================================================
@@ -214,26 +215,53 @@ function emitMaterializedView(
 function buildSelectClause(
   def: MaterializedViewDefinition,
   source: ResolvedSource,
-  _diagnostics: ProjectionDiagnostic[],
+  diagnostics: ProjectionDiagnostic[],
 ): string {
-  // If the consumer supplied column expressions, use them verbatim.
+  // If the consumer supplied column expressions, use them verbatim (escape hatch).
   if (def.columns && Object.keys(def.columns).length > 0) {
     const lines: string[] = [];
     lines.push('SELECT');
     const entries = Object.entries(def.columns);
     entries.forEach(([outputName, rawExpr], idx) => {
-      // rawExpr is a raw SQL fragment supplied by the consumer; we pass it through.
-      // The expression-to-sql translator in expression-to-sql.ts handles
-      // IRExpression tree translation; column overrides here are raw SQL.
       const suffix = idx === entries.length - 1 ? '' : ',';
       lines.push(`  ${rawExpr} AS "${outputName}"${suffix}`);
     });
     return lines.join('\n');
   }
 
-  // Otherwise, emit SELECT with all stored properties of the entity.
-  const cols = source.entity.properties.map((p) => `"${p.name}"`).join(', ');
-  return `SELECT\n  ${cols || '*'}`;
+  const columnResolver = (propName: string): string | undefined => {
+    if (source.entity.properties.some((p) => p.name === propName)) {
+      return `"${propName}"`;
+    }
+    if (source.entity.computedProperties.some((c) => c.name === propName)) {
+      return `"${propName}"`;
+    }
+    return undefined;
+  };
+
+  const selectParts: string[] = [];
+  for (const prop of source.entity.properties) {
+    selectParts.push(`"${prop.name}"`);
+  }
+  for (const computed of source.entity.computedProperties) {
+    const { sql, diagnostics: exprDiagnostics } = translateExpression(
+      computed.expression,
+      columnResolver,
+      source.entity.name,
+    );
+    diagnostics.push(...exprDiagnostics);
+    selectParts.push(`${sql} AS "${computed.name}"`);
+  }
+
+  if (selectParts.length === 0) {
+    return 'SELECT\n  *';
+  }
+  const lines = ['SELECT'];
+  selectParts.forEach((part, idx) => {
+    const suffix = idx === selectParts.length - 1 ? '' : ',';
+    lines.push(`  ${part}${suffix}`);
+  });
+  return lines.join('\n');
 }
 
 function emitIndex(

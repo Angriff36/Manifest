@@ -3,8 +3,10 @@ title: Manifest Feature Completion Compliance Matrix
 created: 2026-02-28
 updated: 2026-07-15
 source_of_truth: true
-scope: Feature completion status for EVERY Manifest language, runtime, store, projection, tooling, and distribution surface
-authority: Binding — agents and humans MUST treat this file as the source of truth for whether a feature is complete
+scope: Manifest-owned feature completion only — language/syntax, compiler/AST/IR, runtime semantics, projections, analysis/verification APIs, stable public SDK contracts
+authority: Binding — agents and humans MUST treat this file as the source of truth for whether a Manifest-owned feature is complete
+companion_boundary: docs/internal/contracts/manifest-builder-boundary.md
+companion_builder_matrix: ../../../builder/docs/CAPABILITY_CONSUMPTION_MATRIX.md
 companion_semantics: docs/spec/ir/ir-v1.schema.json → docs/spec/semantics.md → docs/spec/builtins.md → docs/spec/adapters.md → conformance fixtures
 companion_inventory: docs/CONFIRMED-FEATURES.md (existence claims; must reconcile to this matrix)
 companion_checklist: docs/TODO.md
@@ -12,25 +14,65 @@ companion_checklist: docs/TODO.md
 
 # Manifest Compliance Matrix
 
-**Authority:** Binding for feature-completion claims.  
+**Authority:** Binding for **Manifest-owned** feature-completion claims.  
 **Enforced by:** `AGENTS.md` / `CLAUDE.md` / `docs/internal/DOCUMENTATION_GOVERNANCE.md` (`@RYAN_APPROVED 2026-07-15`).
 
+**Ownership boundary (canonical):** [`docs/internal/contracts/manifest-builder-boundary.md`](./contracts/manifest-builder-boundary.md)
+
+| Owner | Owns |
+| ----- | ---- |
+| **Manifest** | Language/syntax; compiler, AST, IR; runtime semantics; projections; analysis/verification APIs; stable public SDK contracts |
+| **Builder** | Visual editing; workspace/project management; presets; projection orchestration; generated-app assembly; consumer wiring inspection; verification/debugging UI; generated-app lifecycle |
+
+Builder consumption / end-to-end proof lives in Builder’s matrix:  
+`C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md` (repo-relative from Builder: `docs/CAPABILITY_CONSUMPTION_MATRIX.md`).
+
 ~~Earlier 2026-07-15 drafts of this matrix only listed ~12 proven fixes + ~30 gaps and a short “existence” dump — that was **not** a complete feature inventory.~~  
-**Correction (2026-07-15):** This file enumerates language, runtime, stores, **each** registered projection, CLI/SDK, packaging, and open gaps. Rows without filename+lines+commit stay `CLAIMED_NEEDS_PROOF` (or weaker) — never invent `FULLY_IMPLEMENTED`.
+~~Correction that treated product UI / Capsule adoption / kitchen tutorials as Manifest “missing features.”~~  
+**Correction (2026-07-15):** This file enumerates **Manifest-owned** language, runtime, stores, **each** registered projection, CLI/SDK, packaging, and open **Manifest** gaps. Builder-owned work is `OUT_OF_SCOPE` here (tracked in Builder). Rows without filename+lines+commit stay `CLAIMED_NEEDS_PROOF` (or weaker) — never invent `FULLY_IMPLEMENTED`.
 
 ## Proof Protocol
 
 | Status                | Meaning                                                                   |
 | --------------------- | ------------------------------------------------------------------------- |
-| `FULLY_IMPLEMENTED`   | End-to-end + tests; **requires** filename + line range + git commit SHA   |
-| `PARTIAL`             | Present but incomplete across consumers/layers                            |
+| `FULLY_IMPLEMENTED`   | Manifest end-to-end + tests; **requires** filename + line range + git commit SHA |
+| `PARTIAL`             | Present but incomplete across Manifest consumers/layers                   |
 | `DIAGNOSTIC_ONLY`     | Loud unsupported path; no full enforcement                                |
 | `REJECTED_LOUD`       | Compile/schema rejects until designed                                     |
-| `NOT_IMPLEMENTED`     | Missing / passthrough / phantom                                           |
-| `OUT_OF_SCOPE`        | Not a Manifest-core deliverable                                           |
+| `NOT_IMPLEMENTED`     | Missing / passthrough / phantom **in Manifest**                           |
+| `OUT_OF_SCOPE`        | Not a Manifest-core deliverable (often Builder-owned)                     |
 | `CLAIMED_NEEDS_PROOF` | Exists in inventory/fixtures but **no** commit proof yet — **not** “done” |
 
-Update this matrix first when closing work; then reconcile `docs/TODO.md` and `docs/CONFIRMED-FEATURES.md`.
+Update this matrix first when closing Manifest work; then reconcile `docs/TODO.md` and `docs/CONFIRMED-FEATURES.md`.
+
+## Integration status (Manifest × Builder)
+
+These states are **orthogonal** to implementation status above. A Manifest gap is never “fixed” by Builder UI. Builder-owned work is never a Manifest `NOT_IMPLEMENTED` row.
+
+| Integration state       | Meaning |
+| ----------------------- | ------- |
+| `MANIFEST_COMPLETE`     | Manifest matrix marks the capability `FULLY_IMPLEMENTED` (hard proof) **or** the published SDK surface is declared stable and present for that capability |
+| `BUILDER_CONSUMED`      | Builder’s consumption matrix records a real import of the Manifest public API + Builder implementation location |
+| `END_TO_END_VERIFIED`   | `MANIFEST_COMPLETE` **and** `BUILDER_CONSUMED` **and** a focused Builder test proves consumption (see Builder matrix “Focused test” column) |
+
+Do **not** write `END_TO_END_VERIFIED` in this file without a matching Builder matrix row. Track consumption details only in Builder.
+
+### Platform SDK integration ledger (summary)
+
+Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/manifest@3.6.3` (Manifest SoT version is `package.json` — verify before asserting). Detail rows: Builder matrix.
+
+| Manifest public API | Manifest status | Integration (as of 2026-07-15) |
+| ------------------- | --------------- | ------------------------------ |
+| `@angriff36/manifest/ir-compiler` (`compile`) | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` → see Builder matrix |
+| `@angriff36/manifest/multi-compiler` | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` |
+| `@angriff36/manifest/projections` (generate / list / capabilities / descriptors) | PARTIAL (capabilities declared incrementally) + §1 for APIs | `BUILDER_CONSUMED` |
+| `@angriff36/manifest/runtime-engine` | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` |
+| `@angriff36/manifest/ir-diff` + `/breaking-change` | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` |
+| `@angriff36/manifest/projections/wiring` | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` |
+| `@angriff36/manifest/agent-sdk` | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` |
+| `@angriff36/manifest/language-metadata` | FULLY_IMPLEMENTED (§1) | `BUILDER_CONSUMED` (candidate `END_TO_END_VERIFIED` if Builder test green) |
+| `@angriff36/manifest/seed-pack` + convex assembly helpers | CLAIMED_NEEDS_PROOF / shipped | `BUILDER_CONSUMED` (preset path) |
+| Stable export contract (`docs/spec/sdk-stability.md`) | FULLY_IMPLEMENTED (§1) | `MANIFEST_COMPLETE` — Builder must stay on listed subpaths |
 
 ---
 
@@ -154,7 +196,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [x]    | RedisEventBus injectable                                                      | FULLY_IMPLEMENTED              | §1                                                                                               |
 | [~]    | WASM expression compatibility layer                                           | CLAIMED_NEEDS_PROOF / PARTIAL  | not a full WASM runtime                                                                          |
 | [ ]    | Full WASM runtime                                                             | NOT_IMPLEMENTED                | phantom                                                                                          |
-| [ ]    | Time-travel debugger                                                          | NOT_IMPLEMENTED / OUT_OF_SCOPE | phantom                                                                                          |
+| [ ]    | Time-travel debugger (product UI)                                             | OUT_OF_SCOPE                   | Builder owns verification/debugging UI — see boundary; not a Manifest language gap               |
 | [~]    | IdempotencyStore                                                              | CLAIMED_NEEDS_PROOF            |                                                                                                  |
 | [~]    | JobQueue / async worker path                                                  | CLAIMED_NEEDS_PROOF            | fixture `69`                                                                                     |
 | [x]    | `optional` modifier (projection hint; no runtime gate)                        | OUT_OF_SCOPE / by design   | semantics.md § Properties — enforced via `required` only                                         |
@@ -208,7 +250,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [~]    | jsonschema            | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | storybook             | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | health                | CLAIMED_NEEDS_PROOF            | **undocumented** in mintlify/docs (§7)                                         |
-| [~]    | materialized-views    | PARTIAL                        | ignores `expression-to-sql.ts`                                                 |
+| [x]    | materialized-views    | FULLY_IMPLEMENTED              | computed → `translateExpression`; raw `columns` escape hatch (§1 after commit) |
 | [~]    | elasticsearch         | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | terraform             | CLAIMED_NEEDS_PROOF            |                                                                                |
 | [~]    | analytics             | CLAIMED_NEEDS_PROOF            |                                                                                |
@@ -266,7 +308,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [ ]    | Restore `newguard.json`                             | NOT_IMPLEMENTED               |                                       |
 | [ ]    | Health projection docs                              | NOT_IMPLEMENTED               |                                       |
 | [ ]    | FEATURE-LIST → registry inventory (M12)             | NOT_IMPLEMENTED               |                                       |
-| [ ]    | Capsule-V2 auth seam adoption                       | OUT_OF_SCOPE                  | other repo                            |
+| [ ]    | Capsule-V2 / consumer app auth-seam adoption        | OUT_OF_SCOPE                  | Generated-app lifecycle — Builder + consumer apps; not a Manifest gap |
 
 ---
 
@@ -276,24 +318,27 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 
 | Status | Gap                                                                            | Implementation Status      |
 | ------ | ------------------------------------------------------------------------------ | -------------------------- |
-| [ ]    | Approval escalate timeout                                                      | REJECTED_LOUD              |
-| [ ]    | `optional` / `alternateKeys` / entity constraint overrides / `command.returns` | NOT_IMPLEMENTED or PARTIAL |
+| [ ]    | Approval escalate timeout                                                      | REJECTED_LOUD              | Manifest language gap — preserve |
+| [ ]    | `optional` runtime gate (beyond `required`)                                    | OUT_OF_SCOPE               | by design — see §4; not a missing Manifest feature |
+| [ ]    | `alternateKeys` runtime use / entity constraint overrides / `command.returns`  | NOT_IMPLEMENTED or PARTIAL | Manifest gaps — preserve until closed              |
 | [ ]    | EventSourcedStore                                                              | NOT_IMPLEMENTED            |
-| [ ]    | softDelete language keyword                                                    | NOT_IMPLEMENTED            |
-| [ ]    | Materialized-views SQL expression lowering                                     | PARTIAL                    |
+| [ ]    | softDelete language keyword                                                    | NOT_IMPLEMENTED            | Manifest language gap (projection config exists)   |
+| [x]    | Materialized-views SQL expression lowering                                     | FULLY_IMPLEMENTED          | landing — §1 with SHA |
 | [ ]    | Convex unsupported surfaces (list in §6)                                       | DIAGNOSTIC_ONLY            |
 | [ ]    | Config G5/G2/G10                                                               | NOT_IMPLEMENTED            |
 | [x]    | `createUserResolver` wired into runtime factory                                | FULLY_IMPLEMENTED          | §1                                                   |
-| [ ]    | Sub-package publish/park                                                       | NOT_IMPLEMENTED            |
-| [ ]    | Full WASM runtime / time-travel debugger                                       | NOT_IMPLEMENTED            |
+| [ ]    | Sub-package publish/park                                                       | NOT_IMPLEMENTED            | Manifest distribution                                |
+| [ ]    | Full WASM runtime                                                              | NOT_IMPLEMENTED            | Manifest phantom                                     |
+| [ ]    | Time-travel / product debugger UI                                              | OUT_OF_SCOPE               | Builder-owned                                        |
 | [x]    | Durable `RateLimitStore` / Postgres adapter                                    | FULLY_IMPLEMENTED          | §1                                                   |
 | [ ]    | `manifest test constraints` / ConstraintTestHarness                            | NOT_IMPLEMENTED            | phantom CLI                                          |
 | [ ]    | `manifest generate-fixtures`                                                   | NOT_IMPLEMENTED            | phantom CLI                                          |
 | [ ]    | Config `env(VAR)` / `MANIFEST_ENV` overlays / top-level `stores:` YAML         | NOT_IMPLEMENTED            | phantom config                                       |
 | [ ]    | `projection.generateRoute` / `generateTypes` / `generateClient` API            | NOT_IMPLEMENTED            | phantom projection API                               |
 | [ ]    | Kysely `columnMappings` actually applied                                       | NOT_IMPLEMENTED / PARTIAL  | option declared, unused                              |
-| [ ]    | Kitchen tutorial UI wiring                                                     | NOT_IMPLEMENTED            | FEATURE-LIST / audit phantom                         |
+| [ ]    | Kitchen tutorial / product editor UI                                           | OUT_OF_SCOPE               | Builder owns visual editing; Kitchen is Manifest diagnostic surface only |
 | [ ]    | Default encryption provider (common no-vendor case)                            | NOT_IMPLEMENTED            | fail-closed by design until provider set             |
+| [ ]    | Projection orchestration / presets / app assembly UX                           | OUT_OF_SCOPE               | Builder — see Builder consumption matrix             |
 
 ---
 
@@ -341,13 +386,15 @@ Agents: when auditing a feature page, update the matching row; do not invent com
 
 | Source                                 | Role vs this matrix                                                                            |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `docs/internal/contracts/manifest-builder-boundary.md` | **Ownership law** — what belongs in this matrix vs Builder |
+| `C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md` | Builder consumption + `BUILDER_CONSUMED` / `END_TO_END_VERIFIED` evidence |
 | `docs/CONFIRMED-FEATURES.md`           | Existence narrative — must not claim completion beyond this file                               |
-| `docs/FEATURE-LIST.md`                 | Historical roadmap (2026-06-02); **not** completion SoT; ~116 names — use to find missing rows |
-| `docs/features/*.md`                   | User guides (30 pages) — each capability should appear as a row above                          |
-| `docs/TODO.md`                         | Working checklist                                                                              |
+| `docs/FEATURE-LIST.md`                 | Historical roadmap (2026-06-02); **not** completion SoT; use to find missing **Manifest** rows |
+| `docs/features/*.md`                   | User guides — each Manifest capability should appear as a row above                            |
+| `docs/TODO.md`                         | Working checklist (Manifest gaps; Builder items must be `OUT_OF_SCOPE` or moved)               |
 | Conformance fixtures                   | Executable semantics evidence pointers                                                         |
 | Appendix D phantoms (2026-07-01 audit) | Names that must appear as `NOT_IMPLEMENTED` / struck claims until fixed                        |
 
-When a feature is found in any of those sources but missing here: **add a row immediately** (even as `CLAIMED_NEEDS_PROOF` or `NOT_IMPLEMENTED`).
+When a **Manifest-owned** feature is found in any of those sources but missing here: **add a row immediately** (even as `CLAIMED_NEEDS_PROOF` or `NOT_IMPLEMENTED`). When the capability is Builder-owned: mark `OUT_OF_SCOPE` here and add/update the Builder consumption matrix — do **not** treat it as a missing Manifest implementation.
 
-**Still not one-row-per-FEATURE-LIST-entry:** FEATURE-LIST has overlapping/historical names. Prefer CONFIRMED + fixtures + `builtins.ts` + CLI index as the enumeration sources; pull FEATURE-LIST names in when they describe a distinct capability not already listed.
+**Still not one-row-per-FEATURE-LIST-entry:** FEATURE-LIST has overlapping/historical names. Prefer CONFIRMED + fixtures + `builtins.ts` + CLI index as the enumeration sources; pull FEATURE-LIST names in when they describe a distinct Manifest capability not already listed.
