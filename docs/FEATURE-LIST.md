@@ -462,7 +462,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 7. CLI, SDK, config, packaging, docs tooling | diff / versions / migrate / changelog | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | enforce-surface / audit-* / lint-routes | `CLAIMED_NEEDS_PROOF / PARTIAL` | ORM shapes incomplete |
 | 7. CLI, SDK, config, packaging, docs tooling | enforce-surface Drizzle/Kysely/raw-SQL | `PARTIAL` | See feature matrix |
-| 7. CLI, SDK, config, packaging, docs tooling | FEATURE-LIST → registry inventory (M12) | `NOT_IMPLEMENTED` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | IR version control / versions CLI | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/ir-version-control.md` |
 | 7. CLI, SDK, config, packaging, docs tooling | Publish `@manifest/lsp-server` | `NOT_IMPLEMENTED` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | Publish `@manifest/mcp-server` | `NOT_IMPLEMENTED` | in-repo only |

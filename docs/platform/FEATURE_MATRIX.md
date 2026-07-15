@@ -115,6 +115,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Approval `onTimeout: escalate` (open routing)      | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:748-820` @ `a16d2bf16c54d8d20a4d58323415513163ab0b4e`; `ir-compiler.ts:934-1005` @ same; `runtime-engine.ts:6539-6595` @ same; fixtures `111`, `103`                                                               |
 | [x]    | Convex `searchable` → `.searchIndex`               | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/generator.ts:367-441` @ `f8221d44be41a80725ab58981658edf3cfe64f30`; `capabilities.ts` string-gate @ same; `type-mapping.ts:85-87` @ same; `semantics.test.ts` |
 | [x]    | Convex `versionProperty` OCC                       | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/version-occ.ts:1-76` @ `4660059ba17fcc00f06de523b14c361df421fea8`; `functions.ts` create/update OCC @ same; `generator.ts` schema synthesize; `semantics.test.ts` |
+| [x]    | FEATURE-LIST → registry inventory (M12)            | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts`; `src/manifest/feature-list-generator.test.ts`; `package.json` `docs:feature-list` / `docs:check:feature-list`; generated `docs/FEATURE-LIST.md` — SHA after commit |
 
 ---
 
@@ -330,7 +331,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [ ]    | enforce-surface Drizzle/Kysely/raw-SQL              | PARTIAL                       |                                                                       |
 | [ ]    | Restore `newguard.json`                             | NOT_IMPLEMENTED               |                                                                       |
 | [x]    | Health projection docs                              | FULLY_IMPLEMENTED             | §1                                                                    |
-| [ ]    | FEATURE-LIST → registry inventory (M12)             | NOT_IMPLEMENTED               |                                                                       |
+| [x]    | FEATURE-LIST → registry inventory (M12)             | FULLY_IMPLEMENTED             | §1                                                                    |
 | [ ]    | Capsule-V2 / consumer app auth-seam adoption        | OUT_OF_SCOPE                  | Generated-app lifecycle — Builder + consumer apps; not a Manifest gap |
 
 ---
@@ -415,7 +416,7 @@ Agents: when auditing a feature page, update the matching row; do not invent com
 | `docs/internal/contracts/manifest-builder-boundary.md`      | **Ownership law** — what belongs in this matrix vs Builder                                     |
 | `C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md` | Builder consumption + `BUILDER_CONSUMED` / `END_TO_END_VERIFIED` evidence                      |
 | `docs/platform/CONFIRMED-FEATURES.md`                       | Existence narrative — must not claim completion beyond this file                               |
-| `docs/FEATURE-LIST.md`                                      | Historical roadmap (2026-06-02); **not** completion SoT; use to find missing **Manifest** rows |
+| `docs/FEATURE-LIST.md`                                      | **Generated** registry inventory (`pnpm docs:feature-list`); existence/registration only — **not** completion SoT |
 | `docs/internal/features/*.md`                               | User guides — each Manifest capability should appear as a row above                            |
 | `docs/TODO.md`                                              | Working checklist (Manifest gaps; Builder items must be `OUT_OF_SCOPE` or moved)               |
 | Conformance fixtures                                        | Executable semantics evidence pointers                                                         |

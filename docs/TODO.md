@@ -181,9 +181,13 @@ forensics: Appendix D in
       guide pages still listed under that ledger for later deep audit.
 - [x] **Health projection docs** — `docs/projections/health.md` +
       `mintlify/projections/health.mdx` (2026-07-15; stubs/limitations documented).
-- [ ] **Replace `docs/FEATURE-LIST.md` with a registry-generated inventory** (M12) —
-      currently a 2026-06-02 snapshot with a caveat header pointing at
-      `docs/CONFIRMED-FEATURES.md` (caveat verified honest 2026-07-15).
+- [x] **Replace `docs/FEATURE-LIST.md` with a registry-generated inventory** (M12) —
+      fixed 2026-07-15: `scripts/generate-feature-list.ts` + `pnpm docs:feature-list` /
+      `docs:check:feature-list`; inventory from language metadata, projection
+      descriptors, CLI Commander tree, conformance fixtures, package exports, and
+      open gaps from `docs/platform/FEATURE_MATRIX.md`. Matrix remains completion SoT.
+      ~~currently a 2026-06-02 snapshot with a caveat header pointing at
+      `docs/CONFIRMED-FEATURES.md`~~
 - [ ] **Appendix E language-design backlog** (recorded, never scheduled):
       `map<K,V>` two-param form, retry/rateLimit field-name ergonomics,
       reserved-word ergonomics, command-body policy clause, `.length` vs

@@ -22,9 +22,12 @@ code, registration points, and tests on `main` — not against docs, roadmaps, o
 landed on `main` after the v3.5.0 tag and is not installable from npm until the
 next release.~~
 **Update (2026-07-15):** npm and `package.json` have moved past v3.5.0 (see §7).
-Treat FEATURE-LIST “unreleased” labels as historical only. Use this file + Gaps
+Treat FEATURE-LIST as a **generated registry inventory** only
+(`pnpm docs:feature-list`) — existence/registration, not completion.
+Completion SoT: `docs/platform/FEATURE_MATRIX.md`.
+~~Treat FEATURE-LIST “unreleased” labels as historical only. Use this file + Gaps
 for what exists vs phantoms. It supersedes the verification status of
-`docs/FEATURE-LIST.md` (a 2026-06-02 roadmap snapshot).
+`docs/FEATURE-LIST.md` (a 2026-06-02 roadmap snapshot).~~
 
 **Verification bar:** a feature is listed only if (1) implementation source
 exists, (2) it is wired/registered/exported, and (3) tests cover it. Items that
