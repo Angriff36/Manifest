@@ -100,6 +100,7 @@ junk/
 !/src/manifest/projections/interface.js
 /graphify-out/cache
 /graphify-out
+/tools/graphify-out/
 CLAUDE-FABLE-5.md
 output.txt
 simplify-manifest.md
