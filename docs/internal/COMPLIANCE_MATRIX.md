@@ -283,7 +283,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | [ ]    | Materialized-views SQL expression lowering                                     | PARTIAL                    |
 | [ ]    | Convex unsupported surfaces (list in §6)                                       | DIAGNOSTIC_ONLY            |
 | [ ]    | Config G5/G2/G10                                                               | NOT_IMPLEMENTED            |
-| [x]    | `createUserResolver` wired into runtime factory                                | FULLY_IMPLEMENTED          | landing this commit — promote to §1 with SHA |
+| [x]    | `createUserResolver` wired into runtime factory                                | FULLY_IMPLEMENTED          | §1                                                   |
 | [ ]    | Sub-package publish/park                                                       | NOT_IMPLEMENTED            |
 | [ ]    | Full WASM runtime / time-travel debugger                                       | NOT_IMPLEMENTED            |
 | [x]    | Durable `RateLimitStore` / Postgres adapter                                    | FULLY_IMPLEMENTED          | §1                                                   |
