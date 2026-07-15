@@ -99,6 +99,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Materialized-views computed → SQL                     | FULLY_IMPLEMENTED     | `src/manifest/projections/materialized-views/generator.ts:215-265` @ `7ce53859bdc162263384825043b2ecbb0ab96191`; `expression-to-sql.ts:67-88` @ same |
 | [x]    | `EventSourcedStore` for `eventSourced` target         | FULLY_IMPLEMENTED     | `src/manifest/stores/event-sourced.ts:37-140` @ `ca526f02c67d1db7138d6e34a400fe459a87caef`; `runtime-engine.ts:1279-1283` @ same |
 | [x]    | `alternateKeys` uniqueness on create/update           | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2832-2864,2876,2966-2977` @ `a8af116268de8f4329eb2af1a4df82fb5a65fa5b` |
+| [x]    | Entity-level constraint overrides on create/update    | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2625-2642,4958-4995,5934-5985` @ `PENDING_COMMIT`; `src/manifest/runtime-entity-constraint-overrides.test.ts:1-149` @ same |
 
 ---
 
@@ -138,7 +139,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | Constraints severity `ok`/`warn`/`block`                                                                             | CLAIMED_NEEDS_PROOF           | fixtures `21`, `36`                                                 |
 | [x]    | Constraint `failWhen` polarity                                                                                       | FULLY_IMPLEMENTED             | see §1                                                              |
 | [~]    | Constraint override authorization                                                                                    | CLAIMED_NEEDS_PROOF           | fixture `22`                                                        |
-| [ ]    | Entity-level constraint overrides evaluated                                                                          | NOT_IMPLEMENTED               | §6                                                                  |
+| [x]    | Entity-level constraint overrides evaluated                                                                          | FULLY_IMPLEMENTED             | see §1                                                              |
 | [~]    | Policies read/write/delete/execute/all/override                                                                      | CLAIMED_NEEDS_PROOF           | fixture `06`                                                        |
 | [~]    | State transitions                                                                                                    | CLAIMED_NEEDS_PROOF           | fixture `38`                                                        |
 | [~]    | Aggregate `count()` in reactions                                                                                     | CLAIMED_NEEDS_PROOF           | fixture `97`                                                        |

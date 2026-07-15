@@ -235,6 +235,11 @@ database FK engine:
 ### Constraints
 
 - Constraints are boolean expressions. A runtime MAY enforce them when mutating properties or creating instances.
+- **Update (2026-07-15):** On create and update, entity-level constraints that are
+  `overrideable` honor the same [Override Mechanism](#override-mechanism-vnext) as
+  command constraints (explicit `OverrideRequest` and auto-policy via
+  `overridePolicyRef`), including `OverrideApplied` audit events. Blocking failures
+  that are successfully overridden MUST NOT halt the mutation.
 
 #### Constraint Severity (vNext)
 
@@ -535,6 +540,9 @@ normalization is enabled.
   1. **Explicit request**: the caller supplies an `OverrideRequest`; `authorizedBy` is the request's authorizer.
   2. **Auto-policy**: no `OverrideRequest` is supplied but the constraint's `overridePolicyRef` policy passes for the acting context. In this path `authorizedBy` is derived from the acting user in context (`context.user.id`, falling back to `policy:<name>` when no user is present) and the event `reason` records the authorizing policy.
 - Constraints NOT marked `overrideable` MAY NOT be overridden; override attempts MUST be rejected.
+- **Update (2026-07-15):** The mechanism applies to **entity-level** constraints on
+  create/update as well as command constraints. Evidence:
+  `runtime-entity-constraint-overrides.test.ts`.
 
 ### Generated Artifacts
 

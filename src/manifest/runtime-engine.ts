@@ -24,10 +24,7 @@ import { dateOf, timeOf, datetimeOf, isValidDateString, isValidTimeString } from
 import { applyMaskStrategy } from './masking.js';
 import { constraintExpressionPasses } from './constraint-polarity.js';
 import { RateLimiter, type RateLimitStore } from './runtime-rate-limit.js';
-import {
-  EventSourcedStore,
-  eventSourcedOptionsFromConfig,
-} from './stores/event-sourced.js';
+import { EventSourcedStore, eventSourcedOptionsFromConfig } from './stores/event-sourced.js';
 
 import {
   checkRateLimitGate,
@@ -320,19 +317,6 @@ export interface RuntimeOptions {
    * § "Cross-instance delivery".
    */
   eventBus?: EventBus;
-  /**
-   * Optional WASM expression evaluator for near-native execution speed.
-   * When provided, the runtime will use the WASM module for expression
-   * evaluation and constraint validation. Falls back to the TypeScript
-   * evaluator transparently if the WASM module fails to load or evaluate.
-   *
-   * The WASM evaluator maintains identical semantics to the TypeScript
-   * implementation, so swapping in/out is safe and observable only via
-   * performance characteristics.
-   *
-   * @see src/manifest/wasm/wasm-evaluator.ts
-   */
-  wasmEvaluator?: import('./wasm/wasm-evaluator').WasmExpressionEvaluator;
   /**
    * Optional encryption provider for field-level encryption.
    * When supplied, properties with the `encrypted` modifier are transparently
@@ -917,6 +901,17 @@ export class RuntimeEngine {
     patch: Partial<EntityInstance>;
   } | null = null;
 
+  /**
+   * Active while a command runs: entity create/update constraint overrides use the
+   * same OverrideRequest list as command constraints (semantics.md § Override Mechanism).
+   * OverrideApplied events from entity-level paths accumulate in `events`.
+   */
+  private activeCommandOverrides: {
+    requests?: OverrideRequest[];
+    context: { commandName: string; entityName?: string; instanceId?: string };
+    events: EmittedEvent[];
+  } | null = null;
+
   /** Last transition validation error (set by updateInstance, checked by _executeCommandInternal) */
   private lastTransitionError: string | null = null;
 
@@ -1373,8 +1368,7 @@ export class RuntimeEngine {
     if (!joinEntity) return [];
 
     const toSource = joinEntity.relationships.find(
-      (r) =>
-        (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === sourceEntityName,
+      (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === sourceEntityName,
     );
     const toTarget = joinEntity.relationships.find(
       (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === targetEntityName,
@@ -1400,15 +1394,12 @@ export class RuntimeEngine {
       if (toTarget.foreignKey && toTarget.foreignKey.fields.length > 1) {
         const targetEntity = this.getEntity(targetEntityName);
         const pairs = this.fkColumnPairs(toTarget.foreignKey, targetEntity);
-        const unset = pairs.some(
-          ([local]) => join[local] === undefined || join[local] === null,
-        );
+        const unset = pairs.some(([local]) => join[local] === undefined || join[local] === null);
         if (!unset) {
           const allTargets = await this.getAllInstancesRaw(targetEntityName);
           target =
-            allTargets.find((t) =>
-              pairs.every(([local, remote]) => t[remote] === join[local]),
-            ) ?? null;
+            allTargets.find((t) => pairs.every(([local, remote]) => t[remote] === join[local])) ??
+            null;
         }
       } else {
         const fkProperty = toTarget.foreignKey?.fields[0] ?? `${toTarget.name}Id`;
@@ -1418,10 +1409,7 @@ export class RuntimeEngine {
         }
       }
       if (!target) continue;
-      const tid =
-        typeof target.id === 'string'
-          ? target.id
-          : JSON.stringify(target.id ?? target);
+      const tid = typeof target.id === 'string' ? target.id : JSON.stringify(target.id ?? target);
       if (seen.has(tid)) continue;
       seen.add(tid);
       targets.push(target);
@@ -2563,10 +2551,11 @@ export class RuntimeEngine {
   async createInstance(
     entityName: string,
     data: Partial<EntityInstance>,
+    options?: { overrideRequests?: OverrideRequest[] },
   ): Promise<EntityInstance | undefined> {
     const ownsEvalBudget = this.initEvalBudget();
     try {
-      return (await this.createInstanceWithOutcomes(entityName, data)).instance;
+      return (await this.createInstanceWithOutcomes(entityName, data, options)).instance;
     } finally {
       if (ownsEvalBudget) this.clearEvalBudget();
     }
@@ -2634,7 +2623,9 @@ export class RuntimeEngine {
   }
 
   private reportConstraintOutcomes(constraintOutcomes: ConstraintOutcome[]): boolean {
-    const blockingFailures = constraintOutcomes.filter((o) => !o.passed && o.severity === 'block');
+    const blockingFailures = constraintOutcomes.filter(
+      (o) => !o.passed && !o.overridden && o.severity === 'block',
+    );
 
     if (blockingFailures.length > 0) {
       // Log blocking constraint failures for diagnostics
@@ -2644,7 +2635,7 @@ export class RuntimeEngine {
 
     // Log non-blocking outcomes (warn/ok) for diagnostics
     const nonBlockingOutcomes = constraintOutcomes.filter(
-      (o) => !o.passed && o.severity !== 'block',
+      (o) => !o.passed && !o.overridden && o.severity !== 'block',
     );
     if (nonBlockingOutcomes.length > 0) {
       console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
@@ -2656,13 +2647,20 @@ export class RuntimeEngine {
   private async createInstanceWithOutcomes(
     entityName: string,
     data: Partial<EntityInstance>,
+    options?: { overrideRequests?: OverrideRequest[] },
   ): Promise<{ instance?: EntityInstance; constraintOutcomes?: ConstraintOutcome[] }> {
     const entity = this.getEntity(entityName);
     if (!entity) return {};
 
     const requiredOutcomes = this.requiredModifierOutcomes(entity, data);
     const mergedData = this.prepareCreateData(entity, data);
-    return this.persistPreparedCreate(entityName, entity, mergedData, requiredOutcomes);
+    return this.persistPreparedCreate(
+      entityName,
+      entity,
+      mergedData,
+      requiredOutcomes,
+      options?.overrideRequests,
+    );
   }
 
   /** Date/time primitive write-time validation (docs/spec/semantics.md, Date/Time Types). */
@@ -2844,8 +2842,7 @@ export class RuntimeEngine {
       const values = columns.map((c) => candidate[c]);
       if (values.some((v) => v === undefined || v === null)) continue;
       const collides = existing.some(
-        (row) =>
-          row.id !== excludeId && columns.every((c, i) => row[c] === values[i]),
+        (row) => row.id !== excludeId && columns.every((c, i) => row[c] === values[i]),
       );
       if (collides) {
         const message = `Alternate key [${columns.join(', ')}] must be unique; matching values already exist`;
@@ -2868,13 +2865,14 @@ export class RuntimeEngine {
     entity: IREntity,
     mergedData: Record<string, unknown>,
     requiredOutcomes: ConstraintOutcome[] = [],
+    overrideRequests?: OverrideRequest[],
   ): Promise<{ instance?: EntityInstance; constraintOutcomes?: ConstraintOutcome[] }> {
     const constraintOutcomes = [
       ...requiredOutcomes,
       ...this.validateDateTimeTypes(entity, mergedData),
       ...(await this.uniqueModifierOutcomes(entityName, entity, mergedData)),
       ...(await this.alternateKeyOutcomes(entityName, entity, mergedData)),
-      ...(await this.validateConstraints(entity, mergedData)),
+      ...(await this.validateConstraints(entity, mergedData, overrideRequests)),
     ];
     if (!this.reportConstraintOutcomes(constraintOutcomes)) {
       return { constraintOutcomes };
@@ -2901,6 +2899,7 @@ export class RuntimeEngine {
     entityName: string,
     id: string,
     data: Partial<EntityInstance>,
+    options?: { overrideRequests?: OverrideRequest[] },
   ): Promise<EntityInstance | undefined> {
     const entity = this.getEntity(entityName);
     const store = this.stores.get(entityName);
@@ -3041,17 +3040,17 @@ export class RuntimeEngine {
         }
       }
 
-      // Validate entity constraints.
+      // Validate entity constraints (same Override Mechanism as command constraints).
       // Date/time type validation runs against the patch only, so previously
       // stored values are not re-validated on unrelated updates.
       const constraintOutcomes = [
         ...this.validateDateTimeTypes(entity, data),
-        ...(await this.validateConstraints(entity, mergedData)),
+        ...(await this.validateConstraints(entity, mergedData, options?.overrideRequests)),
       ];
 
-      // Only block on severity='block' constraints that failed
+      // Only block on severity='block' constraints that failed and were not overridden
       const blockingFailures = constraintOutcomes.filter(
-        (o) => !o.passed && o.severity === 'block',
+        (o) => !o.passed && !o.overridden && o.severity === 'block',
       );
 
       if (blockingFailures.length > 0) {
@@ -3062,7 +3061,7 @@ export class RuntimeEngine {
 
       // Log non-blocking outcomes (warn/ok) for diagnostics
       const nonBlockingOutcomes = constraintOutcomes.filter(
-        (o) => !o.passed && o.severity !== 'block',
+        (o) => !o.passed && !o.overridden && o.severity !== 'block',
       );
       if (nonBlockingOutcomes.length > 0) {
         console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
@@ -4269,6 +4268,11 @@ export class RuntimeEngine {
         entityName: options.entityName,
         instanceId: options.instanceId,
       };
+      this.activeCommandOverrides = {
+        requests: options.overrideRequests,
+        context: commandContext,
+        events: [],
+      };
       const constraintResult = await this.profilingBridge.trackPhase('constraintValidation', () =>
         this.evaluateCommandConstraints(
           command,
@@ -4289,7 +4293,7 @@ export class RuntimeEngine {
           overrideRequests: options.overrideRequests,
           ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
           ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
-          emittedEvents: [],
+          emittedEvents: [...constraintResult.overrideEvents],
         };
       }
 
@@ -4367,6 +4371,7 @@ export class RuntimeEngine {
             input,
             this.commandProducedFields(command),
           ),
+          options.overrideRequests,
         );
         this.profilingBridge.endPhase('autoCreate');
         createConstraintOutcomes = createResult.constraintOutcomes;
@@ -4385,12 +4390,15 @@ export class RuntimeEngine {
               ? { correlationId: options.correlationId }
               : {}),
             ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
-            emittedEvents: [],
+            emittedEvents: [...(this.activeCommandOverrides?.events ?? [])],
           };
         }
 
         autoCreatedInstance = createResult.instance;
         options.instanceId = createResult.instance.id;
+        if (this.activeCommandOverrides) {
+          this.activeCommandOverrides.context.instanceId = createResult.instance.id;
+        }
         const createdEvalContext = this.buildEvalContext(
           autoCreateEvalInput ?? input,
           createResult.instance,
@@ -4402,7 +4410,10 @@ export class RuntimeEngine {
       // Include any OverrideApplied events from constraint evaluation
       // Per spec: OverrideApplied events are included in CommandResult.emittedEvents
       // alongside command-declared events (override events come first)
-      const emittedEvents: EmittedEvent[] = [...constraintResult.overrideEvents];
+      const emittedEvents: EmittedEvent[] = [
+        ...constraintResult.overrideEvents,
+        ...(this.activeCommandOverrides?.events ?? []),
+      ];
       let result: unknown;
       const emitCounter = { value: emittedEvents.length };
       const workflowMeta = {
@@ -4827,6 +4838,7 @@ export class RuntimeEngine {
       }
       throw e; // re-throw other errors (ManifestEffectBoundaryError, etc.)
     } finally {
+      this.activeCommandOverrides = null;
       this.commandExecutionDepth -= 1;
       if (ownsEvalBudget) this.clearEvalBudget();
     }
@@ -4946,8 +4958,11 @@ export class RuntimeEngine {
   private async validateConstraints(
     entity: IREntity,
     instanceData: Record<string, unknown>,
+    overrideRequests?: OverrideRequest[],
   ): Promise<ConstraintOutcome[]> {
     const outcomes: ConstraintOutcome[] = [];
+    const requests = overrideRequests ?? this.activeCommandOverrides?.requests;
+    const commandContext = this.activeCommandOverrides?.context;
 
     // Enrich instance with _entity metadata so relationship resolution works
     // when the member expression handler reads _entity from self/this
@@ -4963,6 +4978,18 @@ export class RuntimeEngine {
     // Use evaluateConstraint to build proper ConstraintOutcome objects
     for (const constraint of entity.constraints) {
       const outcome = await this.evaluateConstraint(constraint, evalContext);
+      if (!outcome.passed && constraint.overrideable) {
+        const event = await this.tryApplyConstraintOverride(
+          constraint,
+          outcome,
+          evalContext,
+          requests,
+          commandContext,
+        );
+        if (event && this.activeCommandOverrides) {
+          this.activeCommandOverrides.events.push(event);
+        }
+      }
       outcomes.push(outcome);
     }
 
@@ -5341,18 +5368,6 @@ export class RuntimeEngine {
       }
     }
     try {
-      // WASM fast path: if a WASM evaluator is configured and ready, and the
-      // expression is a pure computational expression (no relationship resolution
-      // needed), use the WASM module for near-native execution speed.
-      // Falls back transparently to TypeScript on any error.
-      if (this.options.wasmEvaluator?.isReady() && this.isWasmCompatible(expr)) {
-        try {
-          const result = await this.options.wasmEvaluator.evaluate(expr, context);
-          return result;
-        } catch {
-          // Fall through to TypeScript evaluation on WASM error
-        }
-      }
       switch (expr.kind) {
         case 'literal':
           return this.irValueToJs(expr.value);
@@ -5522,54 +5537,6 @@ export class RuntimeEngine {
         this.evalBudget.depth--;
       }
     }
-  }
-
-  /**
-   * Check whether an expression can be safely evaluated by the WASM module.
-   * Pure computational expressions (no entity relationships, no async effects)
-   * are compatible. The check is conservative — when in doubt, return false
-   * to ensure the TypeScript evaluator is used.
-   */
-  private isWasmCompatible(expr: IRExpression): boolean {
-    // Walk the expression tree checking for features that need TypeScript runtime
-    const walk = (node: IRExpression): boolean => {
-      switch (node.kind) {
-        case 'literal':
-        case 'identifier':
-          return true;
-        case 'member': {
-          // Member access on identifiers (e.g., self.foo) needs runtime context.
-          // Only allow member access on plain property reads of simple identifiers.
-          if (node.object.kind === 'identifier') {
-            return walk(node.object);
-          }
-          return false;
-        }
-        case 'binary':
-          return walk(node.left) && walk(node.right);
-        case 'unary':
-          return walk(node.operand);
-        case 'call': {
-          // Only allow calls to builtins (identifier callees), not function values
-          if (node.callee.kind === 'identifier') {
-            return node.args.every(walk);
-          }
-          return false;
-        }
-        case 'conditional':
-          return walk(node.condition) && walk(node.consequent) && walk(node.alternate);
-        case 'array':
-          return node.elements.every(walk);
-        case 'object':
-          return node.properties.every((p) => walk(p.value));
-        case 'lambda':
-          // Lambdas are not yet supported in WASM core
-          return false;
-        default:
-          return false;
-      }
-    };
-    return walk(expr);
   }
 
   private evaluateBinaryOp(op: string, left: unknown, right: unknown): unknown {
@@ -5875,7 +5842,7 @@ export class RuntimeEngine {
   ): Promise<ConstraintOutcome> {
     const result = await this.evaluateExpression(constraint.expression, evalContext);
 
-    // Polarity + severity: shared with WASM evaluator (semantics.md § Constraint Polarity).
+    // Polarity + severity: shared helper (semantics.md § Constraint Polarity).
     // Runtimes MUST read only failWhen — never constraint names.
     const passed = constraintExpressionPasses(result, {
       failWhen: constraint.failWhen,
@@ -5935,58 +5902,16 @@ export class RuntimeEngine {
     for (const constraint of command.constraints || []) {
       const outcome = await this.evaluateConstraint(constraint, evalContext);
 
-      // Check for override if constraint failed and is overrideable
       if (!outcome.passed && constraint.overrideable) {
-        // First check for explicit override request
-        if (overrideRequests) {
-          const overrideReq = overrideRequests.find((o) => o.constraintCode === constraint.code);
-          if (overrideReq) {
-            const authorized = await this.validateOverrideAuthorization(
-              constraint,
-              overrideReq,
-              evalContext,
-            );
-            if (authorized) {
-              outcome.overridden = true;
-              outcome.overriddenBy = overrideReq.authorizedBy;
-              const event = this.buildOverrideAppliedEvent(constraint, overrideReq, commandContext);
-              overrideEvents.push(event);
-              this.eventLog.push(event);
-              this.notifyListeners(event);
-            }
-          }
-        }
-
-        // If still not overridden and has overridePolicyRef, automatically check policy
-        if (!outcome.overridden && constraint.overridePolicyRef) {
-          const policy = this.ir.policies.find((p) => p.name === constraint.overridePolicyRef);
-          if (policy && policy.action === 'override') {
-            const policyResult = await this.evaluateExpression(policy.expression, evalContext);
-            const authorized = Boolean(policyResult);
-            if (authorized) {
-              outcome.overridden = true;
-              outcome.overriddenBy = 'policy:' + policy.name;
-              // Emit the same OverrideApplied audit event the explicit-override
-              // path emits, so an auto-policy override is not silently unaudited.
-              // authorizedBy is derived from the acting user in context; the
-              // reason records the authorizing policy.
-              const actingUser = (evalContext.user as { id?: string } | null | undefined)?.id;
-              const syntheticReq: OverrideRequest = {
-                constraintCode: constraint.code,
-                reason: `Auto-authorized by policy '${policy.name}'`,
-                authorizedBy: actingUser ?? 'policy:' + policy.name,
-                timestamp: this.getNow(),
-              };
-              const event = this.buildOverrideAppliedEvent(
-                constraint,
-                syntheticReq,
-                commandContext,
-              );
-              overrideEvents.push(event);
-              this.eventLog.push(event);
-              this.notifyListeners(event);
-            }
-          }
+        const event = await this.tryApplyConstraintOverride(
+          constraint,
+          outcome,
+          evalContext,
+          overrideRequests,
+          commandContext,
+        );
+        if (event) {
+          overrideEvents.push(event);
         }
       }
 
@@ -5999,6 +5924,64 @@ export class RuntimeEngine {
     }
 
     return { allowed: true, outcomes, overrideEvents };
+  }
+
+  /**
+   * Apply explicit OverrideRequest and/or auto-policy override to a failed
+   * overrideable constraint. Mutates `outcome` when authorized. Emits
+   * OverrideApplied to the event log. Returns the audit event when applied.
+   */
+  private async tryApplyConstraintOverride(
+    constraint: IRConstraint,
+    outcome: ConstraintOutcome,
+    evalContext: Record<string, unknown>,
+    overrideRequests?: OverrideRequest[],
+    commandContext?: { commandName: string; entityName?: string; instanceId?: string },
+  ): Promise<EmittedEvent | undefined> {
+    // First check for explicit override request
+    if (overrideRequests) {
+      const overrideReq = overrideRequests.find((o) => o.constraintCode === constraint.code);
+      if (overrideReq) {
+        const authorized = await this.validateOverrideAuthorization(
+          constraint,
+          overrideReq,
+          evalContext,
+        );
+        if (authorized) {
+          outcome.overridden = true;
+          outcome.overriddenBy = overrideReq.authorizedBy;
+          const event = this.buildOverrideAppliedEvent(constraint, overrideReq, commandContext);
+          this.eventLog.push(event);
+          this.notifyListeners(event);
+          return event;
+        }
+      }
+    }
+
+    // Auto-policy: no (or unauthorized) explicit request — check overridePolicyRef
+    if (!outcome.overridden && constraint.overridePolicyRef) {
+      const policy = this.ir.policies.find((p) => p.name === constraint.overridePolicyRef);
+      if (policy && policy.action === 'override') {
+        const policyResult = await this.evaluateExpression(policy.expression, evalContext);
+        if (Boolean(policyResult)) {
+          outcome.overridden = true;
+          outcome.overriddenBy = 'policy:' + policy.name;
+          const actingUser = (evalContext.user as { id?: string } | null | undefined)?.id;
+          const syntheticReq: OverrideRequest = {
+            constraintCode: constraint.code,
+            reason: `Auto-authorized by policy '${policy.name}'`,
+            authorizedBy: actingUser ?? 'policy:' + policy.name,
+            timestamp: this.getNow(),
+          };
+          const event = this.buildOverrideAppliedEvent(constraint, syntheticReq, commandContext);
+          this.eventLog.push(event);
+          this.notifyListeners(event);
+          return event;
+        }
+      }
+    }
+
+    return undefined;
   }
 
   /**

@@ -41,9 +41,15 @@ forensics: Appendix D in
       `updateInstance` enforce child-side `onDelete`/`onUpdate`
       (`cascade`/`restrict`/`setNull`/`setDefault`/`noAction`); evidence in
       `runtime-referential-actions.test.ts`; semantics.md § Referential Actions.
-- [ ] **entity-level constraint overrides never evaluated**; **`command.returns`
-      projection-only** — see the reconciled matrix
-      `docs/internal/plans/2026-07-06-ir-wiring-audit-matrix.md`.
+- [x] **entity-level constraint overrides** — fixed 2026-07-15: create/update
+      honor `overrideable` / `overridePolicyRef` (same Override Mechanism as
+      command constraints); `OverrideApplied` audited; evidence
+      `runtime-entity-constraint-overrides.test.ts`; semantics.md § Constraints /
+      § Override Mechanism.
+      ~~entity-level constraint overrides never evaluated~~
+- [ ] **`command.returns` projection-only** — runtime does not validate/coerce
+      return type; see `docs/internal/plans/2026-07-06-ir-wiring-audit-matrix.md`.
+      ~~bundled with entity overrides in one TODO bullet~~ **split 2026-07-15.**
 - [x] **`alternateKeys` runtime uniqueness** — fixed 2026-07-15: create/update
       enforce multi-column groups (`E_ALTERNATE_KEY`); semantics.md § Composite
       Keys updated. Lookup-by-AK not required.
