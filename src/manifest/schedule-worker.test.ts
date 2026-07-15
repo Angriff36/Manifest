@@ -32,7 +32,7 @@ function makeRuntime(config: {
       if (config.runScheduleThrows?.has(name)) throw new Error(`boom:${name}`);
       return { success: true, emittedEvents: [] };
     },
-    expireApprovals(now?: number) {
+    async expireApprovals(now?: number) {
       expireCalls.push(now ?? -1);
       return [];
     },

@@ -1,0 +1,36 @@
+// Test: Open author-defined approval escalation compiles and runs.
+// on_timeout escalate { to, status, timeout } — target is an expression (opaque routing).
+
+entity PurchaseOrder {
+  property required id: string
+  property amount: number = 0
+  property status: string = "draft"
+  property escalationQueue: string = "director-queue"
+
+  store memory
+
+  command submit() {
+    mutate status = "submitted"
+  }
+
+  approval submitApproval {
+    command: submit
+    stages {
+      manager {
+        policy: user.role == "manager"
+        required: 1
+      }
+    }
+    timeout: 24
+    on_timeout: escalate {
+      to: self.escalationQueue
+      status: pending
+      timeout: 48
+    }
+    emit ApprovalRequested
+  }
+}
+
+event ApprovalRequested: "approval.requested" {
+  orderId: string
+}

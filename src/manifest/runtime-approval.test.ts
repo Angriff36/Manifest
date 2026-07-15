@@ -410,10 +410,102 @@ describe('Approval Workflow', () => {
 
       // Advance time past 72 hours
       currentTime = 1000000 + 73 * 3600000;
-      const expired = runtime.expireApprovals(currentTime);
+      const expired = await runtime.expireApprovals(currentTime);
       expect(expired).toHaveLength(1);
       expect(expired[0].status).toBe('expired');
     });
+
+    it('should escalate with open author-defined target expression', async () => {
+      const escalateSource = `
+        entity PurchaseOrder {
+          property required id: string
+          property amount: number = 0
+          property status: string = "draft"
+          property escalationQueue: string = "director-queue"
+
+          command submit() {
+            mutate status = "submitted"
+          }
+
+          approval submitApproval {
+            command: submit
+            stages {
+              manager {
+                policy: user.role == "manager"
+                required: 1
+              }
+            }
+            timeout: 24
+            on_timeout: escalate {
+              to: self.escalationQueue
+              status: pending
+              timeout: 48
+            }
+            emit ApprovalRequested
+          }
+        }
+        store PurchaseOrder in memory
+        event ApprovalRequested: "approval.requested" { orderId: string }
+      `;
+      const escalateIr = await compileToIR(escalateSource);
+      const approval = escalateIr.entities[0].approvals![0];
+      expect(approval.onTimeout).toMatchObject({
+        action: 'escalate',
+        status: 'pending',
+        timeout: 48,
+      });
+
+      let currentTime = 1000000;
+      const runtime = new RuntimeEngine(
+        escalateIr,
+        { user: { id: 'user1', role: 'employee' } },
+        { now: () => currentTime, generateId: () => 'po-esc' },
+      );
+
+      await runtime.createInstance('PurchaseOrder', {
+        id: 'po-esc',
+        amount: 100,
+        status: 'draft',
+        escalationQueue: 'director-queue',
+      });
+      await runtime.runCommand('submit', {}, { entityName: 'PurchaseOrder', instanceId: 'po-esc' });
+
+      currentTime = 1000000 + 25 * 3600000;
+      const affected = await runtime.expireApprovals(currentTime);
+      expect(affected).toHaveLength(1);
+      expect(affected[0].status).toBe('pending');
+      expect(affected[0].escalatedTo).toBe('director-queue');
+      expect(affected[0].escalatedAt).toBe(currentTime);
+      expect(affected[0].expiresAt).toBe(currentTime + 48 * 3600000);
+    });
+
+    it('should reject bare on_timeout escalate without block', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity Order {
+          property required id: string
+          command submit() { mutate result = true }
+          approval orderApproval {
+            command: submit
+            stages {
+              admin {
+                policy: user.role == "admin"
+                required: 1
+              }
+            }
+            timeout: 1
+            on_timeout: escalate
+            emit ApprovalRequested
+          }
+        }
+        event ApprovalRequested: "approval.requested" { orderId: string }
+      `);
+      expect(
+        result.diagnostics.some((d) => d.code === 'APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE'),
+      ).toBe(true);
+      expect(result.ir).toBeNull();
+    });
+
 
     it('should throw when approving non-existent request', async () => {
       ir = await compileToIR(APPROVAL_SOURCE);

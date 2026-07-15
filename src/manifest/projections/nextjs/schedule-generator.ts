@@ -107,7 +107,7 @@ function approvalExpiryRouteCode(runtimeImport: string): string {
     'export async function GET(request: Request) {',
     ...authGuardLines(),
     '  const runtime = await createManifestRuntime({ source: "cron" });',
-    '  const expired = runtime.expireApprovals();',
+    '  const expired = await runtime.expireApprovals();',
     '  return Response.json({ expired: expired.length });',
     '}',
     '',

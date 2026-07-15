@@ -1,6 +1,5 @@
-// Test: Approval declaring onTimeout: 'escalate' is a hard compile error.
-// APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED — escalation target model is not implemented.
-// Use onTimeout: 'cancel' instead (same observable behavior until escalation is designed).
+// Test: Bare on_timeout: escalate without a complete block is a hard compile error.
+// APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE — author must provide escalate { to, status, timeout }.
 // This is a shouldFail fixture — the compiler must emit an error diagnostic.
 
 entity PurchaseOrder {
@@ -21,6 +20,7 @@ entity PurchaseOrder {
         required: 1
       }
     }
+    timeout: 24
     on_timeout: "escalate"
   }
 }

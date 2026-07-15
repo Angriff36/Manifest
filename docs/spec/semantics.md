@@ -870,11 +870,44 @@ For each `on Event run Entity.command` reaction:
 - **Invalid payload reference**: ERROR when `payload.X` references a field not present on the emitting command's parameters, the event's declared payload schema, enriched fields (`_subject`, `_eventName`, `_channel`), or (for create emitters) valid `payload.result.Y` entity properties.
 - **Non-create `payload.result.*` member access**: ERROR — non-create commands set `result` to the last action value, not the instance; use `payload._subject.id` or an input param instead.
 
-### Unsupported: approval `onTimeout: "escalate"` (error)
+### Approval timeout actions
 
-Only `onTimeout: "cancel"` is supported. `escalate` is **not implemented** — the runtime has no escalation target model. The compiler MUST reject an approval declaring `onTimeout: "escalate"` with an **error**-severity diagnostic `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED`, naming the approval and directing the author to use `cancel`. Compilation MUST fail (`ir` is null). The `IRApproval.onTimeout` field is narrowed to `"cancel"` only in the IR schema; the `"escalate"` union member is removed. When escalation is designed in a future version this diagnostic is lifted. Conformance fixture `103-approval-escalate-unsupported.manifest` is the canonical test case.
+`on_timeout` selects what happens when a pending approval exceeds its `timeout`.
 
-Migration: change `on_timeout: "escalate"` to `on_timeout: "cancel"` — the runtime already produced identical behavior (setting `status: "expired"`) for both values.
+#### `on_timeout: cancel`
+
+The request status becomes `expired`. No escalation metadata is recorded.
+
+#### `on_timeout: escalate { … }` (open author-defined routing)
+
+Escalation is an **open author-defined routing capability**. The `.manifest` author
+decides what the target expression means in their domain (person, team,
+department, stage name, queue id, or any other value). Manifest MUST NOT invent
+a closed enum of target kinds unless an existing language limitation forces it.
+
+Required block fields (all MUST be present or compilation fails):
+
+| Field | Meaning |
+| --- | --- |
+| `to` | Any expression (same expression language as stage `policy` / `when`). Evaluated at timeout against the instance evaluation context (`self`/`this`, runtime context). The resulting value is stored on the request as opaque routing metadata (`escalatedTo`) — the runtime does not interpret its domain meaning. |
+| `status` | Approval status entered after escalation: `pending`, `granted`, `denied`, or `expired`. |
+| `timeout` | Post-escalation deadline: a number (hours from the escalation instant), `none` (clear `expiresAt`), or `reset` (re-apply the approval's original `timeout` hours from now). |
+
+`reset` MUST fail compilation when the approval has no numeric `timeout` hours
+(`APPROVAL_ESCALATE_RESET_WITHOUT_TIMEOUT`).
+
+Bare `on_timeout: "escalate"` / `on_timeout: escalate` without a complete block
+MUST fail compilation with `APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE` (fixture
+`103-approval-escalate-unsupported.manifest`). Incomplete blocks (missing `to`,
+`status`, or `timeout`) MUST fail with precise diagnostics naming the approval
+and the missing field.
+
+When escalation runs successfully, the runtime MUST set `escalatedAt` to the
+sweep time, store `escalatedTo` from evaluating `to`, apply `status`, and update
+`expiresAt` per `timeout`. Conformance fixture `111-approval-escalate.manifest`
+is the canonical success case.
+
+`expireApprovals` is asynchronous (expression evaluation of `to` may be async).
 
 ## Expressions
 

@@ -485,6 +485,10 @@ export interface ApprovalRequestState {
   expiresAt?: number;
   deniedReason?: string;
   deniedBy?: string;
+  /** Opaque author-defined escalation target (expression result). */
+  escalatedTo?: unknown;
+  /** Timestamp when escalation was applied. */
+  escalatedAt?: number;
 }
 
 /**
@@ -996,7 +1000,7 @@ export class RuntimeEngine {
   /**
    * In-process approval request cache, keyed by
    * `${entity}:${instanceId}:${approvalName}`. Always maintained as a mirror
-   * so the synchronous `getApprovalRequest`/`expireApprovals` accessors work.
+   * so the `getApprovalRequest`/`expireApprovals` accessors work.
    * When `options.approvalStore` is set, that store is the source of truth and
    * this Map is just a write-through mirror; otherwise this Map IS the store.
    */
@@ -6533,28 +6537,56 @@ export class RuntimeEngine {
   }
 
   /**
-   * Expire any pending approvals that have exceeded their timeout.
-   * Approvals with `onTimeout: 'cancel'` are set to 'expired'.
-   * Approvals with `onTimeout: 'escalate'` are flagged but kept pending (future).
+   * Apply timeout actions for pending approvals past their deadline.
+   * - `onTimeout: cancel` (or unset): status → `expired`
+   * - `onTimeout: escalate {…}`: evaluate open `to` expression, apply author
+   *   `status` / `timeout`, record `escalatedTo` / `escalatedAt`
    *
    * Operates on the in-process request set. In durable mode
    * (`options.approvalStore` configured), run set-based expiry across all
    * stored requests via `approvalStore.expire(now)` from a cron/worker; this
-   * synchronous accessor only sees requests this engine has touched.
+   * accessor only sees requests this engine has touched.
    */
-  expireApprovals(now?: number): ApprovalRequestState[] {
+  async expireApprovals(now?: number): Promise<ApprovalRequestState[]> {
     const currentTime = now ?? this.getNow();
-    const expired: ApprovalRequestState[] = [];
+    const affected: ApprovalRequestState[] = [];
 
     for (const request of this.approvalRequests.values()) {
       if (request.status !== 'pending' || !request.expiresAt) continue;
-      if (currentTime >= request.expiresAt) {
+      if (currentTime < request.expiresAt) continue;
+
+      const entity = this.getEntity(request.entity);
+      const approval = entity?.approvals?.find((a) => a.name === request.approvalName);
+      const onTimeout = approval?.onTimeout;
+
+      if (onTimeout && typeof onTimeout === 'object' && onTimeout.action === 'escalate') {
+        const instance = await this.getInstanceRaw(request.entity, request.instanceId);
+        const evalContext = this.buildEvalContext({}, instance, request.entity);
+        request.escalatedTo = await this.evaluateExpression(onTimeout.to, evalContext);
+        request.escalatedAt = currentTime;
+        request.status = onTimeout.status;
+
+        if (onTimeout.timeout === 'none') {
+          delete request.expiresAt;
+        } else if (onTimeout.timeout === 'reset') {
+          const hours = approval?.timeout;
+          request.expiresAt =
+            hours !== undefined ? currentTime + hours * 3600000 : undefined;
+        } else {
+          request.expiresAt = currentTime + onTimeout.timeout * 3600000;
+        }
+      } else {
         request.status = 'expired';
-        expired.push(request);
       }
+
+      await this.saveApprovalState(
+        this.approvalKey(request.entity, request.instanceId, request.approvalName),
+        request,
+      );
+      affected.push(request);
     }
 
-    return expired;
+    return affected;
   }
 
   /**

@@ -3,9 +3,9 @@
   "diagnostics": [
     {
       "severity": "error",
-      "code": "APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED",
-      "message": "Approval 'escalateApproval' declares onTimeout: 'escalate', which is not supported in this version. Use onTimeout: 'cancel' instead.",
-      "line": 16,
+      "code": "APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE",
+      "message": "Approval 'escalateApproval' declares bare on_timeout: escalate without a block. Provide escalate { to: <expr>, status: <pending|granted|denied|expired>, timeout: <hours|none|reset> }.",
+      "line": 15,
       "column": 11
     }
   ]

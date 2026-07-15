@@ -112,6 +112,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Config G2 `validation.failOn`                      | FULLY_IMPLEMENTED     | `packages/cli/src/utils/validation-gate-policy.ts:1-45` @ `7c3e16a9349af3130ae5408beee5297e33b7200d`; wired in `compile.ts`/`validate.ts`; schema `validation.failOn`                                                                 |
 | [x]    | Config G10 `driftGates` / `manifest ci-gate`       | FULLY_IMPLEMENTED     | `packages/cli/src/commands/ci-gate.ts:1-160` @ `c28e3e437a9d4af3a121e7cbdbf211c09997a98f`; `packages/cli/src/utils/drift-gates.ts:1-59` @ same                                                                                    |
 | [x]    | Health projection docs                             | FULLY_IMPLEMENTED     | `docs/projections/health.md:1-68` @ `ebf2164dff1ab0ea648b12cc109ac5eaa0ee332b`; `mintlify/projections/health.mdx:1-77` @ same; generator `src/manifest/projections/health/generator.ts:1-429` @ `f335a74128466feaef1ffde8b14d52b1bbcd5eab` |
+| [x]    | Approval `onTimeout: escalate` (open routing)      | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:748-820` @ PENDING; `ir-compiler.ts:934-1005`; `runtime-engine.ts:6539-6595`; fixtures `111`, `103` |
 
 ---
 
@@ -159,7 +160,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | Reaction fan-out                                                                                                     | CLAIMED_NEEDS_PROOF           | fixture `96`                                                                 |
 | [~]    | Sagas + compensation                                                                                                 | CLAIMED_NEEDS_PROOF           | fixture `88`                                                                 |
 | [~]    | Approvals (multi-stage, `onTimeout: cancel`)                                                                         | CLAIMED_NEEDS_PROOF           | fixture `68`                                                                 |
-| [ ]    | Approval `onTimeout: escalate`                                                                                       | REJECTED_LOUD                 | fixture `103`                                                                |
+| [x]    | Approval `onTimeout: escalate` (open author target)                                                                  | FULLY_IMPLEMENTED             | see §1; fixtures `111`, `103` (bare incomplete)                              |
 | [~]    | Roles / RBAC hierarchy + deny                                                                                        | CLAIMED_NEEDS_PROOF           | fixture `71`                                                                 |
 | [~]    | Webhooks + HMAC                                                                                                      | CLAIMED_NEEDS_PROOF           | fixture `90`                                                                 |
 | [~]    | Schedules cron/interval/every                                                                                        | CLAIMED_NEEDS_PROOF           | fixture `76`                                                                 |
@@ -336,7 +337,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 
 | Status | Gap                                                                    | Implementation Status     |
 | ------ | ---------------------------------------------------------------------- | ------------------------- |
-| [ ]    | Approval escalate timeout                                              | REJECTED_LOUD             | Manifest language gap — preserve                                         |
+| [x]    | Approval escalate timeout (open `to` expression)                       | FULLY_IMPLEMENTED         | §1; author-defined routing — not person/department platform choice           |
 | [ ]    | `optional` runtime gate (beyond `required`)                            | OUT_OF_SCOPE              | by design — see §4; not a missing Manifest feature                       |
 | [x]    | Entity-level constraint overrides                                      | FULLY_IMPLEMENTED         | §1                                                                       |
 | [x]    | `command.returns` runtime validation                                   | OUT_OF_SCOPE              | by design — projection metadata only; semantics § Commands               |

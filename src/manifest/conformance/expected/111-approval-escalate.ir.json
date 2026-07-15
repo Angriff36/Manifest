@@ -1,0 +1,169 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "feff8ec9f938d981d318e10b5e589b37bf281d0ca2307e59bd584aa70d592a2b",
+    "irHash": "f966630f8081eafa21d640dfe4617fbab412ccae1bc9bbad4d506bb247433456",
+    "compilerVersion": "3.6.4",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "PurchaseOrder",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "draft"
+          },
+          "modifiers": []
+        },
+        {
+          "name": "escalationQueue",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "director-queue"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "submit"
+      ],
+      "constraints": [],
+      "policies": [],
+      "approvals": [
+        {
+          "name": "submitApproval",
+          "command": "submit",
+          "stages": [
+            {
+              "name": "manager",
+              "policy": {
+                "kind": "binary",
+                "operator": "==",
+                "left": {
+                  "kind": "member",
+                  "object": {
+                    "kind": "identifier",
+                    "name": "user"
+                  },
+                  "property": "role"
+                },
+                "right": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "string",
+                    "value": "manager"
+                  }
+                }
+              },
+              "required": 1
+            }
+          ],
+          "emits": [
+            "ApprovalRequested"
+          ],
+          "timeout": 24,
+          "onTimeout": {
+            "action": "escalate",
+            "to": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "escalationQueue"
+            },
+            "status": "pending",
+            "timeout": 48
+          }
+        }
+      ]
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "PurchaseOrder",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "ApprovalRequested",
+      "channel": "approval.requested",
+      "payload": [
+        {
+          "name": "orderId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "submit",
+      "entity": "PurchaseOrder",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "submitted"
+            }
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

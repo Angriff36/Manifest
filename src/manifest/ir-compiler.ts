@@ -73,6 +73,7 @@ import {
   IRReactionRule,
   IRReactionParam,
   IRApproval,
+  IRApprovalEscalate,
   IRApprovalStage,
   IRRole,
   IRRolePermission,
@@ -931,18 +932,70 @@ export class IRCompiler {
     };
     if (a.timeout !== undefined) node.timeout = a.timeout;
     if (a.onTimeout !== undefined) {
-      if (a.onTimeout === 'escalate') {
-        // APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED: escalation target model is not implemented.
-        // Use 'cancel' instead (identical observable behavior until escalation is designed).
-        this.emitDiagnostic(
-          'error',
-          `Approval '${a.name}' declares onTimeout: 'escalate', which is not supported in this version. Use onTimeout: 'cancel' instead.`,
-          a.position?.line,
-          a.position?.column,
-          'APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED',
-        );
+      if (a.onTimeout === 'cancel') {
+        node.onTimeout = 'cancel';
       } else {
-        node.onTimeout = a.onTimeout;
+        // Escalate: require complete open routing block (to + status + timeout).
+        const esc = a.onTimeout;
+        if (esc.bare) {
+          this.emitDiagnostic(
+            'error',
+            `Approval '${a.name}' declares bare on_timeout: escalate without a block. Provide escalate { to: <expr>, status: <pending|granted|denied|expired>, timeout: <hours|none|reset> }.`,
+            a.position?.line,
+            a.position?.column,
+            'APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE',
+          );
+        } else {
+          let complete = true;
+          if (!esc.to) {
+            complete = false;
+            this.emitDiagnostic(
+              'error',
+              `Approval '${a.name}' escalate block is missing required field 'to' (author-defined target expression).`,
+              esc.position?.line ?? a.position?.line,
+              esc.position?.column ?? a.position?.column,
+              'APPROVAL_ESCALATE_MISSING_TO',
+            );
+          }
+          if (!esc.status) {
+            complete = false;
+            this.emitDiagnostic(
+              'error',
+              `Approval '${a.name}' escalate block is missing required field 'status' (pending, granted, denied, or expired).`,
+              esc.position?.line ?? a.position?.line,
+              esc.position?.column ?? a.position?.column,
+              'APPROVAL_ESCALATE_MISSING_STATUS',
+            );
+          }
+          if (esc.timeout === undefined) {
+            complete = false;
+            this.emitDiagnostic(
+              'error',
+              `Approval '${a.name}' escalate block is missing required field 'timeout' (hours, none, or reset).`,
+              esc.position?.line ?? a.position?.line,
+              esc.position?.column ?? a.position?.column,
+              'APPROVAL_ESCALATE_MISSING_TIMEOUT',
+            );
+          } else if (esc.timeout === 'reset' && a.timeout === undefined) {
+            complete = false;
+            this.emitDiagnostic(
+              'error',
+              `Approval '${a.name}' escalate timeout: reset requires the approval to declare a numeric timeout.`,
+              esc.position?.line ?? a.position?.line,
+              esc.position?.column ?? a.position?.column,
+              'APPROVAL_ESCALATE_RESET_WITHOUT_TIMEOUT',
+            );
+          }
+          if (complete && esc.to && esc.status && esc.timeout !== undefined) {
+            const escalate: IRApprovalEscalate = {
+              action: 'escalate',
+              to: this.transformExpression(esc.to),
+              status: esc.status,
+              timeout: esc.timeout,
+            };
+            node.onTimeout = escalate;
+          }
+        }
       }
     }
     return node;

@@ -115,6 +115,20 @@ export interface IRApprovalStage {
   when?: IRExpression;
 }
 
+/** Post-escalation deadline: hours from now, clear, or re-apply approval.timeout. */
+export type IRApprovalEscalateTimeout = number | 'none' | 'reset';
+
+/**
+ * Open author-defined escalation. `to` is an expression whose value is opaque
+ * routing metadata — not a closed person/department/stage enum.
+ */
+export interface IRApprovalEscalate {
+  action: 'escalate';
+  to: IRExpression;
+  status: 'pending' | 'granted' | 'denied' | 'expired';
+  timeout: IRApprovalEscalateTimeout;
+}
+
 export interface IRApproval {
   name: string;
   /** Command name this approval gates */
@@ -122,8 +136,8 @@ export interface IRApproval {
   stages: IRApprovalStage[];
   /** Timeout in hours (optional) */
   timeout?: number;
-  /** Behavior on timeout. Only 'cancel' is supported; 'escalate' is rejected at compile time. */
-  onTimeout?: 'cancel';
+  /** Behavior on timeout: cancel, or escalate with to/status/timeout. */
+  onTimeout?: 'cancel' | IRApprovalEscalate;
   /** Lifecycle events emitted */
   emits: string[];
 }

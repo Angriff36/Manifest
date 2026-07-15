@@ -330,7 +330,7 @@ Approval state must outlive a single request. Consumers that build a fresh `Runt
 
 When `RuntimeOptions.approvalStore` is supplied, the runtime treats it as the source of truth for approval state. `checkApprovalGate` (during `runCommand`), `requestApproval`, `approveStage`, and `denyApproval` all read via `load` and write via `save`. An in-process `Map` is still maintained as a write-through mirror so the synchronous `getApprovalRequest`/`expireApprovals` accessors stay coherent within one engine. When **no** store is supplied, that `Map` is the store (single-process / test use only).
 
-Durable timeout sweeping in store mode runs via `approvalStore.expire(now)` from a cron/worker — the synchronous `RuntimeEngine.expireApprovals()` only sees requests the current engine has touched.
+Durable timeout sweeping in store mode runs via `approvalStore.expire(now)` from a cron/worker — `RuntimeEngine.expireApprovals()` (async) only sees requests the current engine has touched.
 
 ### Approver Role Context (Implemented)
 

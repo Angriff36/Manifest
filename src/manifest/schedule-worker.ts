@@ -25,7 +25,7 @@ export interface ScheduleRuntime {
   getSchedules(): IRSchedule[];
   getEntities(): IREntity[];
   runSchedule(scheduleName: string): Promise<CommandResult>;
-  expireApprovals(now?: number): ApprovalRequestState[];
+  expireApprovals(now?: number): ApprovalRequestState[] | Promise<ApprovalRequestState[]>;
 }
 
 /** Opaque timer handle — whatever the injected timer factory returns. */
@@ -151,7 +151,7 @@ async function runTick(
 
   if (hasExpiringApprovals(runtime)) {
     try {
-      runtime.expireApprovals(now);
+      await runtime.expireApprovals(now);
     } catch (error) {
       options.onError?.(error, { phase: 'expireApprovals' });
     }

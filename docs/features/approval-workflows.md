@@ -44,11 +44,17 @@ entity PurchaseOrder {
 > `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` (fixture `103-approval-escalate-unsupported.manifest`).
 > IR schema `IRApproval.onTimeout` enum is `["cancel"]` only.
 
+> **Update (2026-07-15):** Open escalate shipped — `escalate { to: <expr>, status, timeout }`.
+> Target is an author expression (opaque routing). Bare `escalate` still errors
+> (`APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE`, fixture 103). Success: fixture `111`.
+> Spec: `docs/spec/semantics.md` § Approval timeout actions.
+
 ## IR Schema Changes
 
 - `IRApprovalStage`: name, policy (IRExpression), required (number), optional when (IRExpression)
-- `IRApproval`: name, command (string), stages (IRApprovalStage[]), optional timeout/onTimeout ~~, emits~~
-  (`onTimeout` is `"cancel"` only — see escalate correction above), emits
+- `IRApproval`: name, command (string), stages (IRApprovalStage[]), optional timeout/onTimeout, emits
+  (`onTimeout` is `"cancel"` **or** `{ action: "escalate", to, status, timeout }` — open author target expression)
+- `expireApprovals(now?)` — async; applies cancel → expired or escalate block
 - `IREntity.approvals`: optional array of IRApproval
 
 ## Runtime Behavior
@@ -67,13 +73,5 @@ When a command has a matching approval declaration:
 - `requestApproval(entity, instanceId, approvalName)` — creates a pending approval request
 - `approveStage(entity, instanceId, approvalName, stage, userId)` — evaluates stage policy, records grant
 - `denyApproval(entity, instanceId, approvalName, deniedBy, reason)` — marks as denied
-- `expireApprovals(now?)` — expires pending approvals past timeout
-- `getApprovalRequest(entity, instanceId, approvalName)` — query approval state
-
-## Conformance Fixtures
-
-- `68-approval-workflow.manifest` — PurchaseOrder with manager/director stages
-
-## Test Coverage
-
-18 tests in `src/manifest/runtime-approval.test.ts` covering parser, IR compiler validation, and runtime lifecycle.
+- `expireApprovals(now?)` — async; expires or escalates pending approvals past timeout
+- Conformance: `68-approval-workflow`, `111-approval-escalate`, `103` (bare incomplete)

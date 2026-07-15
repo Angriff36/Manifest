@@ -134,7 +134,7 @@ describe('generateScheduleCronRoutes — approval-expiry route', () => {
     const route = result.artifacts.find((a) => a.id === 'nextjs.schedule.__approval_expiry__');
     expect(route).toBeDefined();
     expect(route!.pathHint).toBe('app/api/cron/manifest-approval-expiry/route.ts');
-    expect(route!.code).toContain('expireApprovals()');
+    expect(route!.code).toContain('await runtime.expireApprovals()');
 
     const crons = vercelCrons(result.artifacts);
     expect(crons).toContainEqual({

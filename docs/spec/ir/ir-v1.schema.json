@@ -510,9 +510,40 @@
           "description": "Timeout in hours for pending approval"
         },
         "onTimeout": {
-          "type": "string",
-          "enum": ["cancel"],
-          "description": "Behavior when approval times out. Only 'cancel' is supported; 'escalate' is rejected at compile time (APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED)."
+          "description": "Behavior when approval times out: cancel, or escalate with an open author-defined target expression (not a closed person/department enum).",
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": ["cancel"]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["action", "to", "status", "timeout"],
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "escalate"
+                },
+                "to": {
+                  "$ref": "#/definitions/IRExpression",
+                  "description": "Author-defined escalation target expression; evaluated at timeout; opaque routing metadata"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["pending", "granted", "denied", "expired"],
+                  "description": "Approval status entered after escalation"
+                },
+                "timeout": {
+                  "description": "Hours from escalation instant, 'none' to clear expiry, or 'reset' to re-apply the approval timeout",
+                  "oneOf": [
+                    { "type": "number" },
+                    { "type": "string", "enum": ["none", "reset"] }
+                  ]
+                }
+              }
+            }
+          ]
         },
         "emits": {
           "type": "array",

@@ -198,7 +198,12 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
     declares belongsTo/ref to both ends; runtime two-hop navigation; Prisma/Drizzle
     wire the join entity. Fixture `102-through-join`. ForeignKey+through still
     exclusive (101).
-- Approval `onTimeout: escalate` — schema allows only `cancel`; compiler rejects with `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` (fixture 103). Escalation semantics still need a spec-first design if shipped.
+- ~~Approval `onTimeout: escalate` — schema allows only `cancel`; compiler rejects with `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` (fixture 103). Escalation semantics still need a spec-first design if shipped.~~
+  - **Update (2026-07-15):** Open author-defined escalate shipped:
+    `on_timeout: escalate { to: <expr>, status: …, timeout: … }`. Target is an
+    expression (opaque routing — not a closed person/department/stage enum).
+    Bare `escalate` still fails (`APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE`,
+    fixture 103). Success: fixture `111-approval-escalate`.
 
 **IR fields not consumed by the reference runtime** (per the reconciled
 2026-07-06 wiring matrix — ~50 rows still open; see `docs/TODO.md`):
@@ -240,7 +245,8 @@ blocks are hard compile errors (~~message-only diagnostic, fixture 110 —
 
 > **Correction (2026-07-15) @RYANSIGNED:** Optional `IRDiagnostic.code` exists;
 > fixture 110 seeds `ENTITY_BEHAVIOR_UNSUPPORTED` (also ~~`RELATION_THROUGH_UNSUPPORTED`,~~
-> `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` on 103).
+> **Update (2026-07-15):** Bare escalate still fails as
+> `APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE` on 103; complete escalate block is fixture 111.
 > ~~also RELATION_THROUGH_UNSUPPORTED on 102~~
 > **Update (2026-07-15):** `through` is implemented; fixture `102-through-join` is the
 > happy path. Exclusivity remains `RELATION_FK_THROUGH_EXCLUSIVE` (101). Canonical IR and `docs/spec`

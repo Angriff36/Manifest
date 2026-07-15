@@ -36,6 +36,7 @@ import {
   ReactionNode,
   ReactionParamMapping,
   ApprovalNode,
+  ApprovalEscalateNode,
   ApprovalStageNode,
   UseNode,
   RoleNode,
@@ -683,7 +684,7 @@ export class Parser {
     let command = '';
     const stages: ApprovalStageNode[] = [];
     let timeout: number | undefined;
-    let onTimeout: 'cancel' | 'escalate' | undefined;
+    let onTimeout: ApprovalNode['onTimeout'];
     const emits: string[] = [];
 
     while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
@@ -719,8 +720,7 @@ export class Parser {
       } else if (this.check('IDENTIFIER') && this.current()?.value === 'on_timeout') {
         this.advance(); // consume 'on_timeout'
         this.consume('OPERATOR', ':');
-        const v = this.check('STRING') ? this.advance().value : this.advance().value;
-        if (v === 'cancel' || v === 'escalate') onTimeout = v;
+        onTimeout = this.parseApprovalOnTimeout();
       } else if (this.check('KEYWORD', 'emit')) {
         this.advance(); // consume 'emit'
         emits.push(this.consumeIdentifier().value);
@@ -739,6 +739,88 @@ export class Parser {
     if (timeout !== undefined) node.timeout = timeout;
     if (onTimeout !== undefined) node.onTimeout = onTimeout;
     return node;
+  }
+
+  /**
+   * Parse `cancel` or `escalate { to / status / timeout }`.
+   * Bare `escalate` without a block is recorded as incomplete for compile diagnostics.
+   */
+  private parseApprovalOnTimeout(): ApprovalNode['onTimeout'] {
+    const position = this.current()?.position;
+    const raw = this.check('STRING') ? this.advance().value : this.advance().value;
+
+    if (raw === 'cancel') return 'cancel';
+
+    if (raw !== 'escalate') {
+      throw new Error(`Unknown on_timeout action '${raw}' (expected cancel or escalate)`);
+    }
+
+    if (!this.check('PUNCTUATION', '{')) {
+      return { type: 'ApprovalEscalate', bare: true, position };
+    }
+
+    this.consume('PUNCTUATION', '{');
+    this.skipNL();
+
+    let to: ExpressionNode | undefined;
+    let status: ApprovalEscalateNode['status'];
+    let timeout: ApprovalEscalateNode['timeout'];
+
+    while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', '}')) break;
+
+      const field = this.check('STRING')
+        ? this.advance().value
+        : this.consumeIdentifierOrKeyword().value;
+      this.consume('OPERATOR', ':');
+
+      if (field === 'to') {
+        to = this.parseExpr();
+      } else if (field === 'status') {
+        const statusRaw = this.check('STRING')
+          ? this.advance().value
+          : this.consumeIdentifierOrKeyword().value;
+        if (
+          statusRaw === 'pending' ||
+          statusRaw === 'granted' ||
+          statusRaw === 'denied' ||
+          statusRaw === 'expired'
+        ) {
+          status = statusRaw;
+        } else {
+          throw new Error(
+            `Invalid escalate status '${statusRaw}' (expected pending, granted, denied, or expired)`,
+          );
+        }
+      } else if (field === 'timeout') {
+        if (this.check('NUMBER')) {
+          timeout = parseFloat(this.advance().value);
+        } else {
+          const tRaw = this.check('STRING')
+            ? this.advance().value
+            : this.consumeIdentifierOrKeyword().value;
+          if (tRaw === 'none' || tRaw === 'reset') {
+            timeout = tRaw;
+          } else {
+            throw new Error(
+              `Invalid escalate timeout '${tRaw}' (expected a number of hours, none, or reset)`,
+            );
+          }
+        }
+      } else if (field === 'reset_timeout') {
+        const flagVal = this.advance().value;
+        if (flagVal === 'true') timeout = 'reset';
+      } else {
+        throw new Error(`Unknown escalate field '${field}' (expected to, status, timeout)`);
+      }
+
+      if (this.check('PUNCTUATION', ',')) this.advance();
+      this.skipNL();
+    }
+
+    this.consume('PUNCTUATION', '}');
+    return { type: 'ApprovalEscalate', to, status, timeout, position };
   }
 
   private parseApprovalStage(): ApprovalStageNode {

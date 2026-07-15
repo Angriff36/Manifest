@@ -22,8 +22,8 @@ forensics: Appendix D in
 - [x] **Entity `behaviors` loudly rejected** — fixed 2026-07-14 (fixture 110).
 - [x] **Structured diagnostic codes** — fixed 2026-07-15: optional `IRDiagnostic.code`;
       seeded on `ENTITY_BEHAVIOR_UNSUPPORTED`, `RELATION_FK_THROUGH_EXCLUSIVE`,
-      `RELATION_THROUGH_JOIN_INVALID`, `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED`
-      (and related). More codes can be added incrementally.
+      `RELATION_THROUGH_JOIN_INVALID`, `APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE`
+      (and related escalate missing-field codes). More codes can be added incrementally.
 - [x] **M5 remainder (Convex/zod)** — fixed 2026-07-15:
       - Convex list/array create defaults already covered by `semantics.test.ts` M5
       - Zod: IR enums → `z.enum([...])`; `timestamp` alias → `z.coerce.date()`;
@@ -36,11 +36,16 @@ forensics: Appendix D in
       runtime two-hop resolve; Prisma emits join collection; fixture
       `102-through-join`. Still exclusivity-fail with fields+through (101).
       ~~Wrongly marked OUT_OF_SCOPE then reopened; now implemented.~~
-- [ ] **Approval `onTimeout: 'escalate'`** — still missing. Rejected today with
-      `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` (fixture 103); schema allows
-      only `cancel`. Escalation semantics need a spec-first design before
-      implementation — still an open gap, not a closed decision to never ship it.
+- [x] **Approval `onTimeout: escalate`** — shipped 2026-07-15: open
+      author-defined routing via `escalate { to: <expr>, status: …, timeout: … }`.
+      Target is an expression (opaque routing metadata — not a closed
+      person/department/stage enum). Bare `on_timeout: escalate` still hard-fails
+      (`APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE`, fixture 103). Success: fixture
+      `111-approval-escalate`. Spec: semantics.md § Approval timeout actions.
+      ~~still missing / REJECTED_LOUD / needs spec-first design~~
       ~~Wrongly marked OUT_OF_SCOPE 2026-07-15; reopened same day.~~
+      ~~`APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` (fixture 103); schema allows
+      only `cancel`.~~
 - [x] **Referential actions at runtime** — fixed 2026-07-15: `deleteInstance` /
       `updateInstance` enforce child-side `onDelete`/`onUpdate`
       (`cascade`/`restrict`/`setNull`/`setDefault`/`noAction`); evidence in

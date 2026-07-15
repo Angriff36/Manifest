@@ -49,6 +49,19 @@ export interface ApprovalStageNode extends ASTNode {
   when?: ExpressionNode;
 }
 
+/** Complete escalate block on approval timeout (open author-defined routing). */
+export interface ApprovalEscalateNode extends ASTNode {
+  type: 'ApprovalEscalate';
+  /** Target expression — author defines domain meaning (person, queue, stage, …). */
+  to?: ExpressionNode;
+  /** Status the approval enters after escalation. */
+  status?: 'pending' | 'granted' | 'denied' | 'expired';
+  /** Hours from now, clear expiry (`none`), or re-apply approval timeout (`reset`). */
+  timeout?: number | 'none' | 'reset';
+  /** True when author wrote bare `on_timeout: escalate` without a block. */
+  bare?: boolean;
+}
+
 export interface ApprovalNode extends ASTNode {
   type: 'Approval';
   name: string;
@@ -57,8 +70,8 @@ export interface ApprovalNode extends ASTNode {
   stages: ApprovalStageNode[];
   /** Timeout in hours for pending approval (optional) */
   timeout?: number;
-  /** Action on timeout: "cancel" | "escalate" */
-  onTimeout?: 'cancel' | 'escalate';
+  /** Timeout action: cancel, or escalate with required to/status/timeout. */
+  onTimeout?: 'cancel' | ApprovalEscalateNode;
   /** Events to emit across the approval lifecycle */
   emits: string[];
 }
