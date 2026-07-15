@@ -3,7 +3,7 @@
 Last updated: 2026-07-15
 Status: Active
 Authority: Binding
-Enforced by: pnpm run docs:check, pnpm run docs:check:spec-integrity
+Enforced by: pnpm run docs:check, pnpm run docs:check:spec-integrity; feature-completion claims enforced by agent rules + `docs/internal/COMPLIANCE_MATRIX.md`
 
 ## Purpose
 
@@ -11,6 +11,9 @@ This document defines how to classify, name, version, structure, and edit
 documentation in this repository so humans and AI agents can reliably distinguish
 binding language law from advisory guidance from generated derivative output —
 and write user-facing pages that stay accurate to shipped Manifest capabilities.
+
+It also defines **where feature-completion status lives** and what proof is
+required before any doc may claim a feature is fully implemented.
 
 ## Front Door
 
@@ -21,9 +24,53 @@ Read these first:
 - `docs/README.md` — product documentation front door and reading order
 - ~~`docs/contracts/README.md`~~ → `docs/internal/contracts/README.md` —
   contracts signpost. Path corrected 2026-07-15.
+- **`docs/internal/COMPLIANCE_MATRIX.md`** — **source of truth for feature
+  completion** (done vs open). See Feature completion governance below.
 
 Style and information-architecture rules for user pages live in
 **User documentation style & information architecture** below.
+
+## Feature completion governance
+
+@RYAN_APPROVED 2026-07-15
+
+**Binding source of truth:** `docs/internal/COMPLIANCE_MATRIX.md`
+
+~~Earlier 2026-07-15 matrix drafts were gap-focused (~40 rows) and were **not** a full feature inventory.~~  
+**Update (2026-07-15):** The matrix must enumerate language, builtins, runtime, stores, **each** registered projection, CLI/SDK/packaging, and gaps. Absence from the matrix is a documentation defect — add the row (even as `CLAIMED_NEEDS_PROOF` / `NOT_IMPLEMENTED`). `FULLY_IMPLEMENTED` still requires filename + line range + commit SHA.
+
+| Document                             | Role                                                                                                      |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `docs/internal/COMPLIANCE_MATRIX.md` | **Completion SoT** — whether a feature is done, partial, diagnostic-only, rejected, or not implemented    |
+| `docs/CONFIRMED-FEATURES.md`         | **Existence inventory** — what verifiably exists; must reconcile to the matrix; loses completion disputes |
+| `docs/TODO.md`                       | Working checklist of open items; closing an item requires updating the matrix first                       |
+| `docs/FEATURE-LIST.md`               | Historical roadmap names only — use to find missing matrix rows; never as completion proof                |
+| Tier A `docs/spec/**` + conformance  | **Semantics SoT** — what behavior means when it exists                                                    |
+
+### Proof protocol (mandatory for “fully implemented”)
+
+A matrix row (and any doc that claims completion) may use status
+`FULLY_IMPLEMENTED` **only** when all three are present:
+
+1. **Filename** — repo-relative path to the implementing code or fixture
+2. **Line range** — inclusive lines in the current tree
+3. **Git commit** — full SHA that introduced or last verified the behavior
+
+Without all three, use `CLAIMED_NEEDS_PROOF`, `PARTIAL`, `DIAGNOSTIC_ONLY`,
+`REJECTED_LOUD`, `NOT_IMPLEMENTED`, or `OUT_OF_SCOPE` — never invent
+“complete.”
+
+Agents MUST:
+
+- Enter every feature and gap into the compliance matrix using its table format.
+- Update the matrix **before** marking `docs/TODO.md` items done or promoting
+  claims in `docs/CONFIRMED-FEATURES.md` / Mintlify / guides.
+- Prefer matrix status over roadmaps, `docs/FEATURE-LIST.md`, or chat memory.
+
+This block is human-authored (`RYAN_APPROVED`) and must not be deleted or
+weakened without a new dated owner mark.
+
+@RYAN_APPROVED
 
 ## What Manifest Is
 
@@ -60,6 +107,11 @@ Rules:
 - If implementation differs from spec, document **Nonconformance** in the
   relevant spec file until resolved.
 - No ad-hoc reinterpretation in guides, projections, or UI docs.
+
+### Tier A′: Binding feature-completion law
+
+- `docs/internal/COMPLIANCE_MATRIX.md` — binding for **completion status** only
+  (not semantics). Semantics remain Tier A. See Feature completion governance.
 
 ### Tier B: Proposals and design docs (non-binding)
 
@@ -208,6 +260,10 @@ Do **not** use unexplained **compiler**, **AST**, **IR**, **semantic model**, or
   or
 
   `SOURCE REQUIRED — UNABLE TO FIND DOCUMENTED METHODS`
+- **Completion claims** (“fully implemented”, “shipped”, “done”) MUST match
+  `docs/internal/COMPLIANCE_MATRIX.md`. Do not claim `FULLY_IMPLEMENTED` in
+  guides, Mintlify, CONFIRMED-FEATURES, or TODO without the matrix’s hard proof
+  (filename + line range + commit SHA). Prefer linking to the matrix row.
 - Do not invent syntax, CLI flags, projection names, store targets, or SDK
   exports to make a page look complete.
 - When a layer does not apply (for example a pure type has no projection
@@ -231,6 +287,10 @@ Required for completion and must be green:
 - `pnpm run lint`
 
 For language meaning changes, `pnpm test` (including conformance) is mandatory evidence.
+
+For **feature-completion** claims, green gates are necessary but not sufficient:
+also record hard proof on the matching row in `docs/internal/COMPLIANCE_MATRIX.md`
+(filename + line range + commit SHA) before marking `FULLY_IMPLEMENTED`.
 
 ### Temporary validation tests
 
@@ -299,6 +359,9 @@ confirmed in this file.
 | `docs/guides/`                                                                                               | C — Concepts / integration | Patterns; includes `guides/migration/`                                                                       |
 | `docs/projections/`                                                                                          | C — Generated outputs      | Projection usage and emitted artifacts                                                                       |
 | `docs/reference/`                                                                                            | C — Exact reference        | CLI, API, compiler, runtime packaging reference                                                              |
+| `docs/internal/COMPLIANCE_MATRIX.md`                                                                         | A′ — Binding (completion)  | Feature-completion SoT; hard-proof protocol for FULLY_IMPLEMENTED                                            |
+| `docs/CONFIRMED-FEATURES.md`                                                                                 | C — Existence inventory    | What exists; loses completion disputes to the matrix                                                         |
+| `docs/TODO.md`                                                                                               | C — Working checklist      | Open items; update matrix first when closing                                                                 |
 | `docs/internal/proposals/`                                                                                   | B — Non-binding            | Design proposals, deferred work, drafts                                                                      |
 | `docs/plans/`, `docs/internal/plans/`, `docs/internal/notes/`, `docs/internal/context/`, `docs/superpowers/` | B — Non-binding            | Plans, WIP, agent design artifacts                                                                           |
 | `docs/internal/tools/`                                                                                       | C — Advisory               | CLI/API usage guides (internal)                                                                              |
@@ -323,6 +386,14 @@ When changing documentation structure, authority boundaries, or this style/IA st
 4. Validate: `pnpm run docs:check`.
 5. Record rationale and date in this file (or `docs/internal/plans/` for large moves).
 
+When changing **feature completion** status:
+
+1. Update `docs/internal/COMPLIANCE_MATRIX.md` first (with hard proof for
+   `FULLY_IMPLEMENTED`).
+2. Reconcile `docs/TODO.md` and `docs/CONFIRMED-FEATURES.md`.
+3. Correct any user/Mintlify pages that claimed the old status (strikethrough +
+   dated correction per CLAUDE.md documentation law).
+
 ## Rationale (2026-07-15)
 
 Structural documentation-standard change only: path corrections for relocated
@@ -332,3 +403,10 @@ pedagogical page skeleton inspired by Prisma / TypeSpec / Encore / Convex /
 Stripe documentation systems. No Manifest language redesign; no mass rewrite of
 existing pages; capability honesty and an explicit docs:check enforcement gap
 are recorded so agents do not invent behavior to fill template slots.
+
+**Addendum (2026-07-15) — feature completion SoT:** Promoted
+`docs/internal/COMPLIANCE_MATRIX.md` to binding Tier A′ for completion status,
+with a mandatory hard-proof protocol (filename + line range + git commit) for
+`FULLY_IMPLEMENTED`. Recorded in this file, `AGENTS.md`, and `CLAUDE.md` under
+`@RYAN_APPROVED 2026-07-15` so agents cannot treat roadmaps or unverified
+inventory prose as “done.”
