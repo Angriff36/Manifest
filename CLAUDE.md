@@ -11,6 +11,8 @@ This is a **language implementation**, not an end-user application. The Runtime 
 ## Essential Commands
 
 ```bash
+pnpm run build:lib          # Emit dist/manifest/** (gitignored). Required before CLI tests
+                            # that import package subpaths like plugin-loader / plugin-api.
 pnpm test                    # Run all tests (must always pass; see test output for current count)
 pnpm run typecheck          # TypeScript check without emit
 pnpm run lint               # ESLint validation
@@ -20,6 +22,11 @@ pnpm run bench              # Run benchmarks
 ```
 
 **Critical**: `pnpm test` must remain green. No exceptions.
+
+**`dist/` is gitignored.** A fresh clone (or wiped `dist/`) that skips `pnpm run build:lib`
+will fail CLI tests with `Cannot find module '.../dist/manifest/plugin-loader.js'`. That is a
+local rebuild gap, not a packaging defect — published npm tarballs include those files
+(verified for 3.6.5+). Cut-release always builds before publish.
 
 ## Release Procedure — use the one-button workflow
 
