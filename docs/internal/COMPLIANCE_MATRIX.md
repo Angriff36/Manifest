@@ -99,7 +99,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Materialized-views computed → SQL                     | FULLY_IMPLEMENTED     | `src/manifest/projections/materialized-views/generator.ts:215-265` @ `7ce53859bdc162263384825043b2ecbb0ab96191`; `expression-to-sql.ts:67-88` @ same |
 | [x]    | `EventSourcedStore` for `eventSourced` target         | FULLY_IMPLEMENTED     | `src/manifest/stores/event-sourced.ts:37-140` @ `ca526f02c67d1db7138d6e34a400fe459a87caef`; `runtime-engine.ts:1279-1283` @ same |
 | [x]    | `alternateKeys` uniqueness on create/update           | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2832-2864,2876,2966-2977` @ `a8af116268de8f4329eb2af1a4df82fb5a65fa5b` |
-| [x]    | Entity-level constraint overrides on create/update    | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2625-2642,4958-4995,5934-5985` @ `PENDING_COMMIT`; `src/manifest/runtime-entity-constraint-overrides.test.ts:1-149` @ same |
+| [x]    | Entity-level constraint overrides on create/update    | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2625-2642,4958-4995,5934-5985` @ `f36c83dd63690e83812ee286f42379f18d65e0d9`; `src/manifest/runtime-entity-constraint-overrides.test.ts:1-149` @ same |
 
 ---
 
@@ -324,7 +324,8 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 | ------ | ------------------------------------------------------------------------------ | -------------------------- |
 | [ ]    | Approval escalate timeout                                                      | REJECTED_LOUD              | Manifest language gap — preserve |
 | [ ]    | `optional` runtime gate (beyond `required`)                                    | OUT_OF_SCOPE               | by design — see §4; not a missing Manifest feature |
-| [ ]    | entity constraint overrides / `command.returns`                                | NOT_IMPLEMENTED or PARTIAL | Manifest gaps — preserve until closed              |
+| [x]    | Entity-level constraint overrides                                              | FULLY_IMPLEMENTED          | §1                                                   |
+| [ ]    | `command.returns` runtime validation                                           | NOT_IMPLEMENTED            | projection metadata only — preserve until designed     |
 | [x]    | EventSourcedStore                                                              | FULLY_IMPLEMENTED          | §1                                                   |
 | [ ]    | softDelete language keyword                                                    | NOT_IMPLEMENTED            | Manifest language gap (projection config exists)   |
 | [x]    | Materialized-views SQL expression lowering                                     | FULLY_IMPLEMENTED          | §1                                                   |
