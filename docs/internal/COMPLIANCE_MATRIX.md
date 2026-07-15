@@ -97,6 +97,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Durable `RateLimitStore` (Memory + Postgres)          | FULLY_IMPLEMENTED     | `src/manifest/runtime-rate-limit.ts:46-133` @ `fd4bb50a41dbfaf340013389e6023f31b9e23a79`; `src/manifest/rate-limit/stores/postgres.ts:48-137` @ same; `RuntimeOptions.rateLimitStore` `runtime-engine.ts:264,1187` @ same |
 | [x]    | `createUserResolver` in config + runtime factory      | FULLY_IMPLEMENTED     | `src/manifest/config.ts:280-299` @ `3c1a4e61f845867cf3881edf42ea63005c17ea4d`; `src/manifest/projections/shared/companions.ts:225-280` @ same |
 | [x]    | Materialized-views computed → SQL                     | FULLY_IMPLEMENTED     | `src/manifest/projections/materialized-views/generator.ts:215-265` @ `7ce53859bdc162263384825043b2ecbb0ab96191`; `expression-to-sql.ts:67-88` @ same |
+| [x]    | `EventSourcedStore` for `eventSourced` target         | FULLY_IMPLEMENTED     | `src/manifest/stores/event-sourced.ts:37-140` @ `ca526f02c67d1db7138d6e34a400fe459a87caef`; `runtime-engine.ts:1279-1283` @ same |
 
 ---
 
