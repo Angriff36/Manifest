@@ -119,6 +119,22 @@ describe('hono.companions surface', () => {
     );
   });
 
+  it('emits clerk getAuth binding when authProvider is clerk', async () => {
+    const result = await companions({ authProvider: 'clerk' });
+    const auth = byPath(result, 'src/middleware/auth.ts')!.code;
+    expect(auth).toContain("import { getAuth } from '@hono/clerk-auth'");
+    expect(auth).toContain("c.set('user', { id: auth.userId })");
+    expect(auth).toContain('401');
+  });
+
+  it('emits anonymous pass-through when authProvider is none', async () => {
+    const result = await companions({ authProvider: 'none' });
+    const auth = byPath(result, 'src/middleware/auth.ts')!.code;
+    expect(auth).toContain("c.set('user', { id: 'anonymous' })");
+    expect(auth).toContain('await next()');
+    expect(auth).not.toContain('401');
+  });
+
   it('emits nothing when emitCompanions is false', async () => {
     const result = await companions({ emitCompanions: false });
     expect(result.artifacts).toEqual([]);

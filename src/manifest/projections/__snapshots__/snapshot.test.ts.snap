@@ -1518,6 +1518,7 @@ exports[`projection snapshots > express > generated artifacts match snapshot 1`]
 // Replace the body: authenticate the caller, attach the identity to the
 // request (so handlers can read it), and continue. Until then every request
 // is denied so unauthenticated access cannot silently succeed.
+// Or set authProvider: "clerk" | "none" on the Express projection options.
 
 import type { RequestHandler } from 'express';
 
@@ -2791,6 +2792,7 @@ exports[`projection snapshots > hono > generated artifacts match snapshot 1`] = 
 // Replace the body: authenticate the caller, then \`c.set('user', { id, ... })\`
 // and \`await next()\`. Until then every request is denied so unauthenticated
 // access cannot silently succeed.
+// Or set authProvider: "clerk" | "none" on the Hono projection options.
 
 import type { MiddlewareHandler } from 'hono';
 
@@ -2807,6 +2809,7 @@ export const requireAuth: MiddlewareHandler = async (c) => {
 // Replace the body: authenticate the caller, then \`c.set('user', { id, ... })\`
 // and \`await next()\`. Until then every request is denied so unauthenticated
 // access cannot silently succeed.
+// Or set authProvider: "clerk" | "none" on the Hono projection options.
 
 import type { MiddlewareHandler } from 'hono';
 

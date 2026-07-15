@@ -109,6 +109,22 @@ describe('express.companions surface', () => {
     expect(auth!.code).toContain('export const ensureUser: RequestHandler =');
   });
 
+  it('emits clerk getAuth binding when authProvider is clerk', async () => {
+    const result = await companions({ authProvider: 'clerk' });
+    const auth = byPath(result, 'routes/middleware/auth.ts')!.code;
+    expect(auth).toContain("import { getAuth } from '@clerk/express'");
+    expect(auth).toContain('auth.userId');
+    expect(auth).toContain('.status(401)');
+  });
+
+  it('emits anonymous pass-through when authProvider is none', async () => {
+    const result = await companions({ authProvider: 'none' });
+    const auth = byPath(result, 'routes/middleware/auth.ts')!.code;
+    expect(auth).toContain("user = { id: 'anonymous' }");
+    expect(auth).toContain('next()');
+    expect(auth).not.toContain('.status(401)');
+  });
+
   it('emits a Fastify preHandler stub in fastify mode', async () => {
     const result = await companions({ framework: 'fastify' });
     const auth = byPath(result, 'routes/middleware/auth.ts');

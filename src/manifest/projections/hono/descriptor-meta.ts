@@ -2,6 +2,7 @@ import type { ProjectionDescriptorMeta } from '../descriptor-types.js';
 import {
   aggregateSurface,
   entitySurface,
+  optionalOption,
 } from '../descriptor-helpers.js';
 
 export const HONO_DESCRIPTOR_META: ProjectionDescriptorMeta = {
@@ -14,7 +15,15 @@ export const HONO_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     aggregateSurface('hono.webhooks'),
     aggregateSurface('hono.all'),
   ],
-  options: [],
+  options: [
+    optionalOption('authProvider', 'enum', {
+      enumValues: ['clerk', 'custom', 'none'],
+      default: 'custom',
+    }),
+    optionalOption('authImportPath', 'string'),
+    optionalOption('authMiddlewareName', 'string'),
+    optionalOption('emitCompanions', 'boolean', { default: true }),
+  ],
   artifactCategories: ["routes","types","companions"],
   packageDependencies: ['hono'],
   runtimeDependencies: [],

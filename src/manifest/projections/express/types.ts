@@ -29,6 +29,14 @@ export interface ExpressProjectionOptions {
   authImportPath?: string;
 
   /**
+   * Auth provider template for the emitted companion middleware.
+   * - `custom` (default): fail-closed stub — replace the body with real auth
+   * - `clerk`: middleware that reads `@clerk/express` `getAuth` and attaches `req.user`
+   * - `none`: pass-through with `{ id: 'anonymous' }` (dev / open surfaces)
+   */
+  authProvider?: 'clerk' | 'custom' | 'none';
+
+  /**
    * Named export for the auth middleware function.
    * Default: 'requireAuth'
    */

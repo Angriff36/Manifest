@@ -65,8 +65,10 @@ forensics: Appendix D in
       `validation.failOn`, drift gates: confirmed unbuilt (`src/manifest/config.ts`).
 - [ ] **No `manifest db init`** — approval/audit/outbox/jobs/idempotency `.sql`
       schemas ship in the npm package but must be applied by hand.
-- [ ] **Hono & Express projections have no `authProvider` option** (grep-verified
-      in their `types.ts`) — auth wiring for those frameworks is hand-written glue.
+- [x] **Hono & Express `authProvider` option** — fixed 2026-07-15:
+      `authProvider?: 'clerk' | 'custom' | 'none'` on both projections; companion
+      middleware templates switch (fail-closed custom stub / Clerk getAuth /
+      anonymous none). Default remains `custom` (prior fail-closed behavior).
 - [ ] **`createUserResolver()` orphaned** — `packages/cli/src/utils/config.ts`
       is only called by `manifest scan` and its own tests; no generated route or
       runtime factory invokes it.
