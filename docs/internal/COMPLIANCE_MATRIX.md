@@ -53,6 +53,7 @@ Update this matrix first when closing work; then reconcile `docs/TODO.md` and `d
 | [x]    | Doctest TS `check`/`invalid` fences                   | FULLY_IMPLEMENTED     | `scripts/check-doc-snippets.mjs:94-117` @ `6ed6549fc70c86cd7e586818175d44715e1332d5`                                                          |
 | [x]    | RedisEventBus via `RuntimeOptions.eventBus`           | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:307` @ `61d5ab6fb1da4dca32e683b45f9934e56dba141c`; `src/manifest/events/redis.ts:55-60`                       |
 | [x]    | Durable `RateLimitStore` (Memory + Postgres)          | FULLY_IMPLEMENTED     | `src/manifest/runtime-rate-limit.ts:46-133` @ `fd4bb50a41dbfaf340013389e6023f31b9e23a79`; `src/manifest/rate-limit/stores/postgres.ts:48-137` @ same; `RuntimeOptions.rateLimitStore` `runtime-engine.ts:264,1187` @ same |
+| [x]    | `createUserResolver` in config + runtime factory      | FULLY_IMPLEMENTED     | `src/manifest/config.ts:280-299` @ `3c1a4e61f845867cf3881edf42ea63005c17ea4d`; `src/manifest/projections/shared/companions.ts:225-280` @ same |
 
 ---
 
