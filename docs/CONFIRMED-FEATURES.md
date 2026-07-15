@@ -152,7 +152,7 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 - 234 test files (173 under `src/`, 61 under `packages/`); ~3,973 passing + 21 skipped as of the 2026-07-14 SDK wave (counts drift — run `pnpm test` for current)
 - 99 conformance fixtures with expected IR/diagnostics/results — executable semantics
 - 4 benchmark files; coverage floors + dependency-cycle check in CI
-- Docs snippet doctest gate in CI (`.github/workflows/ci.yml` — every fenced `manifest` code block in docs must compile; TypeScript blocks are NOT checked, see TODO.md)
+- Docs snippet doctest gate in CI (`.github/workflows/ci.yml` — every fenced `manifest` code block in docs must compile; TypeScript blocks are NOT checked, see docs/TODO.md)
 - One-button release: `cut-release.yml` (build+typecheck+test gate → version bump → npm publish via OIDC → tag → GitHub Release)
 
 ---
@@ -165,7 +165,7 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 - Approval `onTimeout: escalate` — schema allows only `cancel`; compiler explicitly rejects `escalate` (fixture 103)
 
 **IR fields not consumed by the reference runtime** (per the reconciled
-2026-07-06 wiring matrix — ~50 rows still open; see root `TODO.md`):
+2026-07-06 wiring matrix — ~50 rows still open; see `docs/TODO.md`):
 `optional` modifier, `alternateKeys`, referential actions (DB-only),
 entity-level constraint overrides, `command.returns` (projection-only),
 lambda expressions in the Convex projection, `ir.tenant` in most web
