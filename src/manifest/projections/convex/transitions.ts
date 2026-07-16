@@ -71,7 +71,7 @@ export function renderTransitionChecks(
       `        const __from = String(__cur);`,
       `        const __to = ${toExpr};`,
       `        const __allowed: Record<string, string[]> = ${allowedMap};`,
-      `        if (Object.hasOwn(__allowed, __from) && !__allowed[__from].includes(__to)) {`,
+      `        if (__from !== __to && Object.hasOwn(__allowed, __from) && !__allowed[__from].includes(__to)) {`,
       `          const __opts = __allowed[__from].map((v) => "'" + v + "'").join(", ");`,
       `          throw new Error("Invalid state transition for " + ${propLabel} + ": '" + __from + "' -> '" + __to + "' is not allowed. Allowed from '" + __from + "': [" + __opts + "]");`,
       `        }`,

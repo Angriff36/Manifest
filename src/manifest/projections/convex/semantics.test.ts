@@ -127,6 +127,11 @@ describe('M2 — transitions', () => {
     expect(code).toMatch(/__to = "cancelled"/);
   });
 
+  it('allows an instance creation command to reassert its preallocated lifecycle value', () => {
+    const code = gen(orderIR(), 'convex.mutations').artifacts[0].code;
+    expect(code).toContain('__from !== __to && Object.hasOwn(__allowed, __from)');
+  });
+
   it('emits CONVEX_TRANSITION_UNUSED when command does not mutate the property', () => {
     const diags = gen(orderIR(), 'convex.mutations').diagnostics;
     expect(diags.some((d) => d.code === 'CONVEX_TRANSITION_UNUSED')).toBe(true);
