@@ -120,7 +120,7 @@ describe('renderExpression — builtins', () => {
     );
   });
 
-  it('roleAllows(user.role, X) → checkRole(userRole, X)', () => {
+  it('roleAllows preserves its explicit role and optional target', () => {
     expect(
       renderExpression(
         call(
@@ -130,7 +130,10 @@ describe('renderExpression — builtins', () => {
         ),
         DOC,
       ).code,
-    ).toBe('checkRole(userRole, "manageAccess")');
+    ).toBe('checkRole(user.role, "manageAccess")');
+    expect(
+      renderExpression(call('roleAllows', lit('Admin'), lit('read'), lit('Doc')), DOC).code,
+    ).toBe('checkRole("Admin", "read", "Doc")');
   });
 });
 

@@ -17,7 +17,12 @@
   "type": "module",
   "license": "MIT",
   "private": false,
-  "packageManager": "pnpm@10.31.0",
+  "packageManager": "pnpm@10.34.5",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
   "engines": {
     "node": ">=20"
   },

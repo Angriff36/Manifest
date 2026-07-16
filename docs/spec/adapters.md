@@ -105,6 +105,33 @@ For transactional outbox patterns, stores MAY support event collection via the `
 - They are framework glue, not business logic.
 - Projection outputs MUST remain aligned with IR/runtime semantics and MUST NOT redefine language meaning.
 
+### Convex security seams
+
+The Convex projection uses author-owned module imports for capabilities that
+depend on application identity or key management:
+
+- `authContextImport` MUST name a module exporting
+  `getAuthContext(ctx): Promise<Record<string, unknown>> | Record<string, unknown>`.
+  When present, generated public queries MUST evaluate every applicable
+  `read`/`all` policy in IR declaration order. A denied single read returns
+  `null`; denied list rows are omitted. Without the seam, read-gated queries
+  MUST remain `internalQuery` and generation MUST fail loudly when public policy
+  enforcement or tenant filtering is required.
+  A policy that depends on a capability the projection cannot reproduce exactly
+  MUST keep that entity's queries internal. In particular, `flag()` requires a
+  provider seam, relationship-valued expressions require relationship loading,
+  and policy `rateLimit` requires durable rate-limit state; the current Convex
+  projection diagnoses each of these instead of approximating authorization.
+- `encryptionImport` MUST name a module exporting `encrypt` and `decrypt`.
+  `encrypt(plaintext, metadata)` returns `{ ciphertext, keyId }`;
+  `decrypt(ciphertext, keyId, metadata)` returns plaintext. `metadata` contains
+  `{ ctx, entity, property }`. Generated mutations MUST encrypt immediately
+  before persistence, and generated queries MUST decrypt before read-policy
+  evaluation and public projection, using the envelope defined in
+  `semantics.md` under Property Encryption.
+
+Both seams are projection configuration only and do not alter IR shape.
+
 See also:
 
 - `semantics.md` (Generated Artifacts / Generated Projections)

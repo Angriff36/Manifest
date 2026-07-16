@@ -12,8 +12,8 @@ workflow): `docs/convex-projection-wiring.html`.
 
 ## Surface
 
-| Surface            | Output                                                                         | Status    |
-| ------------------ | ------------------------------------------------------------------------------ | --------- |
+| Surface            | Output                                                                         | Status     |
+| ------------------ | ------------------------------------------------------------------------------ | ---------- |
 | `convex.schema`    | `convex/schema.ts` (`defineSchema`/`defineTable` + `convex/values` validators) | ✅ Phase 1 |
 | `convex.queries`   | `convex/queries.ts` (`list`/`get`/`listBy<Field>` reactive reads)              | ✅ Phase 2 |
 | `convex.mutations` | `convex/mutations.ts` (governed `mutation` per command)                        | ✅ Phase 2 |
@@ -117,6 +117,20 @@ For local demos with no auth, set `policyMode: 'skip'` and
 "not found" on a cross-tenant document. The module must handle identity-less
 system calls too (crons/sagas/webhooks run the same mutations).
 
+Generated entity queries also evaluate applicable `read`/`all` policies through
+this seam. Context-only policies short-circuit list reads; row policies filter
+each decrypted row; denied get reads return `null`. If a policy expression
+cannot be rendered, its entity queries remain `internalQuery`. The mixed-entity
+system-event feed remains internal whenever any read policy exists.
+
+**Encryption seam (`encryptionImport`):** required when a persistent property
+is marked `encrypted`. The module exports `encrypt(plaintext, metadata)` and
+`decrypt(ciphertext, keyId, metadata)`, where metadata is
+`{ ctx, entity, property }`. Mutations encrypt immediately before insert/patch;
+queries and instance mutations decrypt the versioned envelope before policy or
+domain evaluation. Without the seam generation emits the hard
+`CONVEX_ENCRYPTION_IMPORT_REQUIRED` diagnostic.
+
 ## Usage
 
 ```ts
@@ -169,10 +183,10 @@ See `options.ts` (`ConvexProjectionOptions`): `output`, `tableMappings`,
 `typeMappings`, `indexes`, `references`, `referenceMode`, `naming`,
 `emitEventsTable`, `eventsTable`, `policyMode`, `includeTenantFilter`,
 `includeSoftDeleteFilter`, `tenantIdProperty`, `deletedAtProperty`,
-`authContextImport`, `computedProperties` (`helpers` \| `inline`).
+`authContextImport`, `encryptionImport`, `computedProperties` (`helpers` \| `inline`).
 
 **Always-on semantics (not options):** transition enforcement, private-field
-stripping on reads, capability-map / encrypted diagnostics.
+stripping on reads, and fail-closed capability diagnostics.
 
 ## Validation
 

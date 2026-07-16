@@ -225,8 +225,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
           case 'flag':
             return `flag(${args.join(', ')})`;
           case 'roleAllows':
-            // roleAllows(user.role, X) → checkRole(userRole, X). The caller emits checkRole().
-            return `checkRole(userRole, ${args[1]})`;
+            return `checkRole(${args.join(', ')})`;
           case 'length':
             return `(${args[0]}).length`;
           case 'lower':

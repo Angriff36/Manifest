@@ -45,11 +45,7 @@ function prop(
 ): IRProperty {
   return { name, type: { name: typeName, nullable: false }, modifiers, ...extra };
 }
-function entity(
-  name: string,
-  props: IRProperty[],
-  extra: Partial<IREntity> = {},
-): IREntity {
+function entity(name: string, props: IRProperty[], extra: Partial<IREntity> = {}): IREntity {
   return {
     name,
     properties: props,
@@ -79,17 +75,13 @@ describe('M2 — transitions', () => {
   function orderIR(): IR {
     const ir = emptyIR();
     ir.entities = [
-      entity(
-        'Order',
-        [prop('status', 'string', ['required'])],
-        {
-          transitions: [
-            { property: 'status', from: 'draft', to: ['submitted', 'cancelled'] },
-            { property: 'status', from: 'submitted', to: ['shipped'] },
-          ],
-          commands: ['advance'],
-        },
-      ),
+      entity('Order', [prop('status', 'string', ['required'])], {
+        transitions: [
+          { property: 'status', from: 'draft', to: ['submitted', 'cancelled'] },
+          { property: 'status', from: 'submitted', to: ['shipped'] },
+        ],
+        commands: ['advance'],
+      }),
     ];
     ir.stores = [durable('Order')];
     ir.commands = [
@@ -163,11 +155,61 @@ describe('M3 — private strip + encrypted diagnostic', () => {
     expect(code).not.toMatch(/return await ctx\.db\.get\(id\);/);
   });
 
-  it('emits CONVEX_ENCRYPTED_UNSUPPORTED for encrypted fields', () => {
+  it('fails loudly when encrypted persistent fields have no encryptionImport', () => {
     const diags = gen(vendorIR(), 'convex.schema').diagnostics;
-    const enc = diags.filter((d) => d.code === 'CONVEX_ENCRYPTED_UNSUPPORTED');
+    const enc = diags.filter((d) => d.code === 'CONVEX_ENCRYPTION_IMPORT_REQUIRED');
     expect(enc.length).toBe(1);
     expect(enc[0].message).toContain('taxId');
+  });
+
+  it('encrypts writes and decrypts reads through the author-owned seam', () => {
+    const ir = vendorIR();
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Vendor',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: [],
+      },
+      {
+        name: 'rename',
+        entity: 'Vendor',
+        parameters: [{ name: 'taxId', type: { name: 'string', nullable: false }, required: true }],
+        guards: [],
+        constraints: [],
+        actions: [
+          { kind: 'mutate', target: 'taxId', expression: { kind: 'identifier', name: 'taxId' } },
+        ],
+        emits: [],
+      },
+    ];
+    const options = { encryptionImport: './lib/encryption' };
+    const queries = gen(ir, 'convex.queries', options);
+    const mutations = gen(ir, 'convex.mutations', options);
+
+    expect(queries.diagnostics.some((d) => d.code === 'CONVEX_ENCRYPTION_IMPORT_REQUIRED')).toBe(
+      false,
+    );
+    expect(queries.artifacts[0].code).toContain('import { decrypt } from "./lib/encryption";');
+    expect(queries.artifacts[0].code).toContain(
+      'async function __decryptDoc(ctx: any, entity: string, fields: readonly string[], doc: any)',
+    );
+    expect(queries.artifacts[0].code).toContain('await __decryptDoc(ctx, "Vendor", ["taxId"],');
+
+    expect(mutations.artifacts[0].code).toContain(
+      'import { encrypt, decrypt } from "./lib/encryption";',
+    );
+    expect(mutations.artifacts[0].code).toContain(
+      'const __storedDoc = await __encryptDoc(ctx, "Vendor", ["taxId"], doc);',
+    );
+    expect(mutations.artifacts[0].code).toContain('ctx.db.insert("vendors", __storedDoc as any)');
+    expect(mutations.artifacts[0].code).toContain(
+      'const __storedUpdates = await __encryptDoc(ctx, "Vendor", ["taxId"], updates);',
+    );
+    expect(mutations.artifacts[0].code).toContain('ctx.db.patch(docId, __storedUpdates as any)');
   });
 
   it('keeps byte-stable returns when entity has no private fields', () => {
@@ -218,7 +260,15 @@ describe('M3 — private strip + encrypted diagnostic', () => {
     ir.entities = [entity('Item', [prop('sku', 'string', ['required'])])];
     ir.stores = [durable('Item')];
     ir.commands = [
-      { name: 'create', entity: 'Item', parameters: [], guards: [], constraints: [], actions: [], emits: [] },
+      {
+        name: 'create',
+        entity: 'Item',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: [],
+      },
     ];
     const code = gen(ir, 'convex.mutations').artifacts[0].code;
     expect(code).toContain('return { _id, ...doc };');
@@ -236,11 +286,9 @@ describe('M4 — computed helpers', () => {
       dependencies: ['price', 'qty'],
     };
     ir.entities = [
-      entity(
-        'Line',
-        [prop('price', 'float', ['required']), prop('qty', 'int', ['required'])],
-        { computedProperties: [computed] },
-      ),
+      entity('Line', [prop('price', 'float', ['required']), prop('qty', 'int', ['required'])], {
+        computedProperties: [computed],
+      }),
     ];
     ir.stores = [durable('Line')];
     return ir;
@@ -298,7 +346,9 @@ describe('M5 — substring + list defaults', () => {
       },
     ];
     const result = gen(ir, 'convex.mutations');
-    expect(result.artifacts[0].code).toContain('workOrderNumber: (crypto.randomUUID()).substring(0, 8)');
+    expect(result.artifacts[0].code).toContain(
+      'workOrderNumber: (crypto.randomUUID()).substring(0, 8)',
+    );
     expect(result.diagnostics.some((d) => d.code === 'CONVEX_UNRESOLVED_ACTION')).toBe(false);
   });
 

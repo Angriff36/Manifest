@@ -1,12 +1,8 @@
 /**
  * Private / encrypted property handling for the Convex projection.
  *
- * Phase 1 (always on):
- *   - Strip `private` fields from generated query returns.
- *   - Emit CONVEX_ENCRYPTED_UNSUPPORTED for each `encrypted` field.
- *
- * Phase 2 (encryptionImport) is deferred: docs/spec has no dedicated encryption
- * section yet (semantics.md cross-references a missing section). Spec first.
+ * Private fields are stripped from public returns. Encrypted fields use the
+ * author-owned `encryptionImport` seam and the reference-runtime envelope.
  */
 
 import type { IR, IREntity } from '../../ir';
@@ -22,29 +18,30 @@ export function privateFieldNames(entity: IREntity): string[] {
 
 /** Property names marked `encrypted` on an entity. */
 export function encryptedFieldNames(entity: IREntity): string[] {
-  return entity.properties
-    .filter((p) => p.modifiers.includes('encrypted'))
-    .map((p) => p.name);
+  return entity.properties.filter((p) => p.modifiers.includes('encrypted')).map((p) => p.name);
 }
 
 /**
  * Diagnostics for every encrypted field on persistent entities.
  * Loud gap — never silent. No encryption seam until semantics are specified.
  */
-export function collectEncryptedDiagnostics(ir: IR): ProjectionDiagnostic[] {
+export function collectEncryptedDiagnostics(
+  ir: IR,
+  encryptionImport?: string,
+): ProjectionDiagnostic[] {
+  if (encryptionImport) return [];
   const out: ProjectionDiagnostic[] = [];
   for (const entity of ir.entities) {
     if (!isPersistentEntity(entity, ir)) continue;
     for (const name of encryptedFieldNames(entity)) {
       out.push({
-        severity: 'warning',
-        code: 'CONVEX_ENCRYPTED_UNSUPPORTED',
+        severity: 'error',
+        code: 'CONVEX_ENCRYPTION_IMPORT_REQUIRED',
         entity: entity.name,
         message:
-          `Property '${entity.name}.${name}' is encrypted; the Convex projection ` +
-          `stores and returns ciphertext as a plain string. At-rest encryption via ` +
-          `an author-owned seam is not yet available (spec gap — no dedicated ` +
-          `encrypted semantics section).`,
+          `Property '${entity.name}.${name}' is encrypted; set ` +
+          `options.encryptionImport to an author-owned module exporting encrypt/decrypt. ` +
+          `Generation fails closed rather than persisting new plaintext values.`,
       });
     }
   }

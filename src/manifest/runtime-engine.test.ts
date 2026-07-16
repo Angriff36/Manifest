@@ -2049,6 +2049,26 @@ on TicketResolved run Receipt.create
       expect(decryptSpy).toHaveBeenCalledWith(expect.any(String), 'test-key-1');
     });
 
+    it('rejects unsupported encryption envelopes and provider failures', async () => {
+      const ir = await compileToIR(`
+        entity Patient {
+          property encrypted ssn: string
+        }
+      `);
+      const provider = createMockEncryptionProvider();
+      const runtime = new RuntimeEngine(ir, {}, { encryptionProvider: provider });
+      const decrypt = (runtime as any).decryptProperties.bind(runtime);
+
+      await expect(
+        decrypt('Patient', { ssn: JSON.stringify({ v: 2, kid: 'old', ct: 'ciphertext' }) }),
+      ).rejects.toThrow('Unsupported Manifest encryption envelope version: 2');
+
+      provider.decrypt = vi.fn().mockRejectedValue(new Error('kms unavailable'));
+      await expect(
+        decrypt('Patient', { ssn: JSON.stringify({ v: 1, kid: 'key', ct: 'ciphertext' }) }),
+      ).rejects.toThrow('kms unavailable');
+    });
+
     it('should not encrypt non-encrypted properties', async () => {
       const ir = await compileToIR(`
         entity Patient {

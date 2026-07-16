@@ -99,7 +99,8 @@ Placement rules for the projection-repair work:
 
 Ordered by impact. Each item: problem → change → acceptance.
 
-### M1. ~~Release the Convex auth seam and adopt it *(projection code DONE, unreleased)*~~
+### M1. ~~Release the Convex auth seam and adopt it _(projection code DONE, unreleased)_~~
+
 **Update (2026-07-14):** Merged and **released as v3.5.0** (commit `e30a863` →
 merge `27b2159` → release `22a19e1`; confirmed on npm). `authContextImport` is
 now listed as a Supported surface in `src/manifest/projections/convex/CAPABILITIES.md`.
@@ -108,11 +109,13 @@ Manifest-core work is done. **Downstream adoption is NOT done**: Capsule-V2
 `scripts/patch-generated-auth.mjs` is still present, and no `authContextImport`
 usage exists in `scripts/manifest-regen.mjs` — the "Do" steps below (adopt in
 Capsule-V2) remain outstanding as app-side work (tracked as A1 in Part 2).
+
 - **State:** `authContextImport` option implemented on branch `feat/convex-auth-context-seam` (commit `e30a863`): routes identity through author-owned `getAuthContext(ctx)`, server-derives tenant on create (drops the client arg — 3.4.25's patch flow still exposes a required-but-ignored `tenantId: v.string()` arg), adds cross-tenant "not found" rejection on instance commands.
 - **Do:** merge → bundle into the next minor (pre-write the CHANGELOG section) → `pnpm manifest:publish minor` → in Capsule-V2: `manifest:update`, pass `authContextImport: "./lib/authContext"` to the generate step, delete `scripts/patch-generated-auth.mjs` and the patch invocation in `manifest-regen.mjs`, regen, full gate.
 - **Accept:** `grep -c "(ctx as any).auth" convex/*.ts` = 0 with no patch script in the pipe; drift gate green; `tenantId` absent from every `*_create` args block.
 
 ### M2. ~~Lower `transition` declarations into generated Convex guards~~
+
 **Update (2026-07-14):** Shipped in commit `79093ec` (released v3.5.0). New
 `src/manifest/projections/convex/transitions.ts` lowers `entity.transitions`
 to pre-patch legality checks with exact `runtime-engine.ts` message parity
@@ -120,12 +123,19 @@ to pre-patch legality checks with exact `runtime-engine.ts` message parity
 in `CAPABILITIES.md` ("Transitions | mutations | Pre-patch legality; always
 on"). Not yet regenerated into Capsule-V2 (still on the `3.4.25` pin — see M1
 update above), so the fix exists but the downstream app hasn't picked it up.
+
 - **Problem:** sources declare 280 `transition <prop> from X to [Y]` rules; `ir.json` carries 97 `transitions` arrays; `runtime-engine.ts:2817` enforces them; `src/manifest/projections/convex/*.ts` has **zero** references to `entity.transitions` → no FSM enforcement in generated mutations. Invalid state jumps the reference runtime blocks succeed in Convex. Reference semantics → projection parity bug.
 - **Do:** in `generateMutation` (`functions.ts`), for each mutate action whose target property has transition rules on the entity: emit a pre-patch check that `doc.<prop>` is a legal source for the assigned value (assignments to non-literal values need the rule set rendered as a lookup table). Mirror runtime-engine semantics exactly (same denial message shape). Emit a diagnostic for transitions on properties the command never mutates (no-op, info only).
 - **Accept:** new unit tests in `functions.test.ts` (legal transition passes, illegal throws, non-transition props untouched); conformance untouched; regen Capsule-V2 and verify e.g. an `inventory-transfer` mutation now contains the from-state check; full `pnpm test` green.
 
 ### M3. ~~Enforce `private` / `encrypted` property modifiers in the Convex projection~~
-**Update (2026-07-14):** Phase 1 shipped in commit `79093ec` (released v3.5.0)
+
+**Update (2026-07-15):** Phase 2 is implemented in the current worktree:
+`encryptionImport` emits reference-runtime-compatible encrypt/decrypt transforms
+for Convex queries and mutations, with focused tests; commit/release proof is
+still pending. ~~Phase 1 only; phase 2 not done.~~
+
+**Earlier update (2026-07-14):** Phase 1 shipped in commit `79093ec` (released v3.5.0)
 — new `src/manifest/projections/convex/privacy.ts` strips `private` fields
 from **both** query returns and mutation returns (create + instance
 mutations; the roadmap's own accept criterion only asked for query
@@ -134,14 +144,17 @@ mutation-return leak). `CONVEX_ENCRYPTED_UNSUPPORTED` diagnostic emitted per
 encrypted field. Listed as **Supported** ("Private properties (read strip) |
 queries | Always on") with **Partial** for encrypted ("Stored/returned as
 plain strings | `CONVEX_ENCRYPTED_UNSUPPORTED` (phase 1; phase 2 needs
-spec)"). **Phase 2 (at-rest encryption seam) is still not done** — matches
-the roadmap's own phasing, not a gap.
+spec)"). ~~**Phase 2 (at-rest encryption seam) is still not done** — matches
+the roadmap's own phasing, not a gap.~~ Superseded by the 2026-07-15 update
+above; the dedicated semantics section and seam now exist.
+
 - **Problem:** 32 `private encrypted property` declarations (bankRoutingNumber, taxId, licenseNumber…) land as plain `v.string()` in `schema.ts` and are returned wholesale by generated `get`/`list` queries. Neither modifier has any projection handling. Security/compliance gap.
 - **Do (minimum, phase 1):** strip `private` fields from generated query returns (project the doc to non-private fields); emit a `CONVEX_ENCRYPTED_UNSUPPORTED` **warning** diagnostic for `encrypted` so the gap is loud instead of silent.
 - **Do (phase 2, design first):** at-rest encryption seam analogous to `authContextImport` (author-owned `encrypt`/`decrypt` module invoked in generated mutations/queries for `encrypted` fields). Check `docs/spec/` for the modifier's guaranteed semantics BEFORE implementing — spec first if unspecified.
 - **Accept (phase 1):** unit test — entity with `private` prop: `list`/`get` output omits it; diagnostics list the encrypted warning; capsule regen shows taxId/bankRoutingNumber no longer in query responses.
 
 ### M4. ~~Computed-property strategy for the Convex projection~~
+
 **Update (2026-07-14):** Shipped in commit `79093ec` (released v3.5.0),
 design doc at `docs/internal/proposals/2026-07-14-convex-computed-properties.md`.
 Went with option (c): a `computedProperties: 'helpers' | 'inline'` projection
@@ -151,11 +164,13 @@ Relation-dependent aggregate computeds remain **Partial** — "Unresolved
 unless self-only / count via reactions" with a `CONVEX_UNRESOLVED_COMPUTED`
 diagnostic, matching the roadmap's own "minimum bar" (scalar computeds
 solved, unresolved ones fail loud, not silently dropped).
+
 - **Problem:** 653 `computed` declarations have no runtime existence in Convex output (correctly never stored; but nothing materializes them), so apps re-derive by hand or lose them.
 - **Do:** design decision needed — options: (a) emit a generated `convex/computed.ts` module of pure functions `computeX(doc, related?) `; (b) inline computed evaluation into `get`/`list` query returns (cost: extra reads for relation-dependent ones); (c) both, gated by an option. Aggregate computeds (count/sum across relations) need indexed reads — reuse the reaction aggregate-count rendering. Propose in a design doc first (this is a language-boundary surface: keep IR authority, projection-only change).
 - **Accept:** per chosen design; minimum bar — scalar computeds (self-only expressions) available server-side without hand-written code, unresolved ones fail loud with a diagnostic.
 
 ### M5. Small generator correctness bugs (recorded in Capsule-V2 goal.md/AGENTS.md — reproduce first)
+
 **Update (2026-07-14):** Item 1 (`substring()` unresolved in expressions) is
 **fixed** — commit `79093ec`'s commit message explicitly lists "expression
 resolver: substring/string builtins; list\<T> = array\<T>" and
@@ -164,12 +179,15 @@ in that commit. Items 2 (`Event_create` array default) and 3 (enum/timestamp
 → `z.unknown()` in zod projection) are **not addressed by this wave** — they
 weren't in the commit's file list (no `zod/generator.ts` change) and weren't
 independently verified in this pass; still open.
+
 1. `WorkOrder.create` / `Schedule.create`: number-generation expressions with `substring()` are unresolved → fields silently omitted. Either add `substring` to the expression resolver or fail loud.
 2. `Event_create` omits a required array default (`accessibilityOptions`) → callers must pass `[]` manually. Reproduce against `defaultToTs`/create-default fill; likely a default-materialization miss for array-typed required fields.
 3. Enum-like types and `timestamp` degrade to `z.unknown()` in the zod/wiring projection.
+
 - **Accept:** failing regression test per bug first, then fix; capsule regen diff shows the fields now present/typed.
 
 ### M6. ~~Native drift-check ergonomics (nice-to-have)~~
+
 **Update (2026-07-14):** This item was **already wrong when written** — the
 roadmap's own instruction ("verify current CLI flags before building") wasn't
 followed. `manifest generate --check` already existed before this doc was
@@ -181,9 +199,11 @@ also wired for `generate --all --check` via `generateAllFromConfig`
 exits 1 with the drifted projection names. No new work needed; Capsule-V2's
 hand-rolled `--check` branch in `manifest-regen.mjs` can be retired in favor
 of the native flag whenever that script is next touched.
+
 - `manifest generate --check` style flag that generates to temp and byte-compares against the output dir with `compiledAt`/`irHash` normalization, exiting 1 with a file list — retires each consumer's hand-rolled compare (Capsule-V2's `--check` branch). Verify current CLI flags before building (`manifest generate --help`); do not duplicate an existing capability.
 
 ### M7. ~~Capability map — eliminate "parsed but ignored"~~
+
 **Update (2026-07-14):** Shipped in commit `79093ec` (released v3.5.0).
 `src/manifest/projections/convex/CAPABILITIES.md` (dated 2026-07-14) plus
 `capabilities.ts` (165 lines) implement exactly this design: Supported /
@@ -192,6 +212,7 @@ for approvals, `realtime`, `versionProperty`, `masked`, `searchable`,
 computed `cache`, `retry`, `rateLimit`, `async` commands, and action kinds
 `effect`/`publish`/`persist`. Referenced from `README.md`. Accept criteria
 met.
+
 - **Problem:** the Convex projection consumes a subset of IR fields; everything else vanishes silently (transitions/computed/private/encrypted being the proven cases). Nothing tells a consumer which declarations survived.
 - **Do:** audit every IR field (`src/manifest/ir.ts`) against the Convex generators; produce a checked-in capability matrix (`src/manifest/projections/convex/CAPABILITIES.md` or structured TS the README embeds): **Supported** (generated + tested) / **Partial** (exact limitation stated) / **Unsupported** (generation emits a diagnostic naming the dropped declaration). Add a projection-level pass that walks the IR for declarations in the Unsupported set and emits `CONVEX_UNSUPPORTED_<FEATURE>` warnings — a program using a dropped feature can never regenerate silently again.
 - **Accept:** generating capsule's IR lists every dropped declaration in diagnostics; matrix file exists and is referenced from the projection README; test asserting an entity with an unsupported construct yields the diagnostic.
@@ -201,6 +222,7 @@ met.
 ## Part 1.5 — Manifest-core gaps beyond the projection (verified 2026-07-14 unless marked VERIFY)
 
 ### M8. Approval timeout escalation is a declared-but-unsupported language feature
+
 **Update (2026-07-14):** Re-verified, still open as a capability, but the
 framing needs correction — this is **not silent grammar debt**. It's already
 formally documented and conformance-tested as intentionally unsupported:
@@ -213,9 +235,11 @@ is the same "formally closed as OUT_OF_SCOPE" pattern the sibling
 `UNIMPLEMENTED_FEATURES_PLAN.md` used for the workflow replay engine — a
 deliberate, spec'd non-feature, not an oversight. If escalation semantics are
 ever wanted, spec-first as originally proposed; otherwise no action needed.
+
 - `parser.ts` accepts `onTimeout: 'escalate'` on approvals; `ir-compiler.ts:884–889` emits a hard "not supported in this version" diagnostic. Either implement escalation semantics (spec first: docs/spec/, then conformance fixtures, then runtime) or remove it from the grammar — a keyword that always errors is grammar debt.
 
 ### M9. `through` (M2M) relationships — complete the chain or fail loud (VERIFY depth)
+
 **Update (2026-07-14):** Verified — the chain already fails loud at the
 earliest possible point, so the "or fail loud" half of this item is done.
 `ir-compiler.ts:1059-1069` rejects `through` with a compile-time error
@@ -225,9 +249,11 @@ belongsTo relationships") before it ever reaches IR, runtime, or projections
 — there's no silent acceptance. The M2M feature itself is still not
 implemented; that remains open if wanted (spec-first, Danger Zone per this
 doc's own rules), but there is no dangling/silent gap to trace.
+
 - `lexer.ts:36` + `parser.ts:921–975` parse `through`; the 2026-07-06 IR wiring audit recorded through/M2M as deferred. Trace parse → IR → runtime → projections; wherever the chain breaks, either finish it (spec-first, Danger Zone) or emit a compile-time diagnostic at the break point. No silent acceptance of a construct that does nothing.
 
 ### M10. ~~`retry` / `rateLimit` enforcement depth (VERIFY)~~
+
 **Update (2026-07-14):** Verified — both are enforced in the reference
 runtime (`src/manifest/runtime-engine.ts`: `RateLimiter` class + `rateLimiter`
 field at line 963, `policyHasRateLimit`/`rateLimitDenial` handling at
@@ -236,19 +262,24 @@ for command `retry?`). The Convex capability map (M7, now shipped) already
 classifies both honestly as Unsupported-with-diagnostic
 (`CONVEX_UNSUPPORTED_RETRY`, `CONVEX_UNSUPPORTED_RATE_LIMIT` in
 `CAPABILITIES.md`). Accept criteria met — closed, no gap.
+
 - `IRRetry` exists (`ir.ts:262+`, command `retry?`); rate-limit has conformance fixtures (74/75). Verify the reference runtime actually enforces both (retry re-execution, limiter state) and that the capability map (M7) classifies their projection status honestly. Close or loudly-diagnose any gap found.
 
 ### M11. CLI + config leverage items
+
 **Update (2026-07-14):** Mixed — verified each sub-item individually.
+
 - **M6** (native `generate --check` drift gate) — see the corrected M6 entry above: it **already existed** before this doc was written, not a new item.
 - **Config G5** (`projections.enabled` + `defaults`) — **still missing**, confirmed live: `src/manifest/config.ts:25` still lists `driftGates`/`mergeIntegrity`/`provenance`/`runtime` (and by extension `projections.enabled/defaults`) as "NOT modelled here."
 - **Config G2/G10** (`validation.failOn`, `driftGates`/`manifest ci-gate`) — **still missing**, same `config.ts:25` comment confirms it.
 - **createManifestRuntime emission** (docs-audit native-gap #1) — ~~VERIFY still open~~ **partially resolved on inspection, needs the original audit re-checked**: `createManifestRuntime` IS imported and invoked by the Next.js generator (`src/manifest/projections/nextjs/generator.ts:1187,1255,1350,1435,1739,1750`) — it is not "never emitted." What the generator does NOT do is generate the runtime factory module itself at the `runtimeImportPath` target; that module is author/consumer-supplied (same author-owned-seam pattern as `authContextImport`), which may be what the original audit meant by "assumes." This doc cannot resolve the ambiguity without the 2026-07-01 audit's original repro; re-run it against current `main` before carrying this forward as an open gap.
 
 ### M13. Platform-SDK gaps for Builder (see the binding contract)
+
 - The Builder app (Manifest Studio) is the official Manifest control plane; the ownership contract is `docs/internal/contracts/manifest-builder-boundary.md`. Manifest-side prerequisites before ANY Builder feature growth: (a) `language-metadata` export (keywords/builtins/modifiers as data, sourced from the lexer's own tables — Builder currently hardcodes them at `builder/src/lib/completions.ts:12`); (b) structured `getProjectionCapabilities()` (capability matrices as API, not markdown); (c) a declared stable-for-Builder export subset with semver discipline.
 
 ### M12. FEATURE-LIST.md truth cleanup
+
 **Update (2026-07-14):** In progress, not yet committed. The working tree
 already has an uncommitted header note in `docs/FEATURE-LIST.md` (dated
 2026-07-14) marking the doc as an incomplete 2026-06-02 snapshot and
@@ -256,11 +287,13 @@ pointing readers at the Convex projection's `README.md` and
 `docs/convex-projection-wiring.html` for what actually shipped since. That
 covers the "header warning" half of this item; the fuller ask (replace with
 a registry-generated verified inventory) remains undone.
-- `docs/FEATURE-LIST.md` is a 6,399-line 2026-06-02 automaker snapshot with known phantom entries (16/116 per the 2026-07-01 audit). Replace with (or gate behind) a *verified* feature inventory — ideally generated from the registries the code already has (projection registry, CLI command table, conformance fixture list) so it cannot rot. Until then, add a header warning pointing at the verified inventory.
+
+- `docs/FEATURE-LIST.md` is a 6,399-line 2026-06-02 automaker snapshot with known phantom entries (16/116 per the 2026-07-01 audit). Replace with (or gate behind) a _verified_ feature inventory — ideally generated from the registries the code already has (projection registry, CLI command table, conformance fixture list) so it cannot rot. Until then, add a header warning pointing at the verified inventory.
 
 ## Part 2 — App-side adoption (Capsule-V2 first; capsule-pro sources are the shared upstream)
 
 ### A1. Adopt the auth seam (depends on M1) — covered in M1 "Do".
+
 **Update (2026-07-14):** The dependency (M1) is now released as v3.5.0 — this
 item is unblocked. It is still **not started**: verified `C:\projects\Capsule-V2\package.json`
 still pins `@angriff36/manifest` at `3.4.25`, `scripts/patch-generated-auth.mjs`
@@ -268,15 +301,18 @@ still exists, and no `authContextImport` reference exists under
 `C:\projects\Capsule-V2\scripts\`.
 
 ### A2. Replace hand-rolled timer/expiry logic with `schedule` declarations
+
 **Update (2026-07-14):** Re-verified directly against `C:\projects\Capsule-V2\manifest\source`
 — genuinely zero `schedule` declarations (a naive grep for the substring
 "schedule " hits ~15 false positives, all English words in guard/constraint
 messages like "Can only schedule delivery..."; none are the `schedule`
 keyword). `convex/crons.ts` is 10 lines (stub/empty). Claim confirmed
 accurate, still open.
+
 - Sources declare **zero** schedules; `convex/crons.ts` generates empty. Candidates (search sources for status-expiry/overdue patterns): dunning escalation (collections), certification expiry, cycle-count cadences, prep-list generation. One pilot: pick ONE (e.g. overdue-invoice flagging), declare `schedule` on the command, regen, verify `crons.ts` emits `crons.cron(...)` wiring to the mutation. NOTE: generated mutations run under system identity — `getAuthContext` must return a system context for scheduler calls (already required by the seam contract).
 
 ### A3. Inbound integrations as `webhook` declarations
+
 **Update (2026-07-14):** Re-verified — zero `webhook` declarations in
 Capsule-V2 sources, `convex/http.ts` is 11 lines (stub/empty). Claim
 confirmed accurate, still open. The signature-verification gap this item
@@ -285,12 +321,15 @@ flags is now formally documented in Manifest core's own capability map:
 "httpAction does not verify HMAC" / `CONVEX_UNSUPPORTED_WEBHOOK_SIGNATURE` —
 so if webhooks are adopted, the caveat is no longer just this doc's
 observation, it's a shipped diagnostic.
+
 - Sources declare zero webhooks; `convex/http.ts` generates empty. Candidates: sms-automation, email-workflow, payment-provider callbacks. Caveat (per Convex projection README): generated `httpAction`s do NOT verify `IRWebhook.signature` or enforce `idempotencyHeader` — either fix that in Manifest first (add to Part 1 if pursued) or front with a verifying edge.
 
 ### A4. Grow reactions / fan-out / aggregates where V2 slices need cascades
+
 - Currently 10 reactions, 1 fanOut, 2 `count()` aggregates. As PARITY.md slices land (Kitchen production, Inventory, Procurement), express cross-entity cascades as `on Event run Command` (+ `fanOut` for 1:N) instead of UI-side chaining. The generated mutations already render reactions via `ctx.runMutation` with governance intact.
 
 ### A5. Approvals: evaluate native constructs before building approval UI
+
 **Update (2026-07-14):** The "unverified — check before committing" flag is
 now resolved by Manifest core's own shipped capability map: `CAPABILITIES.md`
 lists **Approvals** under **Unsupported (diagnostic always emitted when
@@ -300,39 +339,46 @@ with the hand-rolled FSM pattern (M2's transition enforcement now covers it)
 rather than adopting `approvalStore`/`approveStage`, unless someone builds
 Convex projection support for approvals first (not currently planned/tracked
 in Part 1).
+
 - Approvals today are hand-rolled status strings + transitions. Runtime has `approvalStore`/`approveStage` (shipped v2.1.0-era; **Convex projection support unverified — check before committing**). If the projection doesn't render approval stages, either stay with the FSM pattern (it works, and M2 will enforce it) or add projection support upstream first. Do not half-adopt.
 
 ### A6. Delete dead Studio artifacts in Capsule-V2
+
 **Update (2026-07-14):** Re-verified — all four files still present in
 `C:\projects\Capsule-V2`: `src/generated/manifest-wiring-bindings.ts`,
 `src/generated/manifest-wiring-contract.json`,
 `src/hooks/manifest-hooks.ts`, `src/providers/manifest-query-provider.tsx`.
 Not deleted; still open, still trivial.
+
 - `src/generated/manifest-wiring-bindings.ts`, `src/generated/manifest-wiring-contract.json`, `src/hooks/manifest-hooks.ts`, `src/providers/manifest-query-provider.tsx` — react-query/product-wiring projection output from the original download; mounted nowhere; not regenerated by `manifest:regen`. Delete (git preserves them) unless a REST dispatcher is actually planned.
 
 ### A7. Projection adoption decisions (deliberate, not drift)
+
 **Update (2026-07-14):** Re-verified — `C:\projects\Capsule-V2\scripts\manifest-regen.mjs`
 has no `zod`/`react-query`/`tanstack` references; the zod and TanStack
 projections are still not wired into the regen script. No decision recorded
 either way (not "deliberate, not drift" yet — genuinely undecided). Still
 open exactly as written.
+
 - V2 already depends on `zod` and `@tanstack/react-query` but hand-writes both layers. If the hand-written `src/lib/api.ts` seam + Biome/tsc suffice, fine — record the decision. Otherwise wire the zod projection (arg validation at the UI boundary) and/or TanStack hooks projection INTO the regen script so they're governed by the same drift gate. Never re-import them as one-off Studio downloads (that's how A6's corpses were born).
 
 ### A8. Keep capsule-pro and Capsule-V2 sources from diverging
+
 **Update (2026-07-14):** Re-verified — both repos have exactly 104 `.manifest`
 files under `manifest/source/`, still in sync on count. `AGENTS.md` in both
 repos has a "source of truth" table, but it documents the in-repo rule
 (`.manifest` sources are the source of truth over generated `convex/*.ts`
-within each repo) — neither says which of the two *repos* (capsule-pro vs
+within each repo) — neither says which of the two _repos_ (capsule-pro vs
 Capsule-V2) is authoritative over the other. The cross-repo decision this
 item asks for is still not recorded anywhere found. Still open.
+
 - Today they are semantically identical (only `use`-path prefixes differ). V2 is the fork that will evolve (lowercase roles noted in its regen header). Decide the source of truth (likely: V2 forward; capsule-pro frozen as intent reference per goal.md) and record it in both repos' AGENTS.md so agents stop treating capsule-pro's copy as live.
 
 ---
 
 ## Part 3 — The interconnection gap (single-consumer IR)
 
-Capsule-V2 consumes exactly **two** features of the whole platform: multi-module compile (`compile --merge` with `use`/mixins) and the Convex projection. Everything else that makes the IR a *source of truth across surfaces* is unwired. From the same `manifest/ir.json`, without touching the sources, the toolchain can emit (verify each against the current CLI before wiring — some FEATURE-LIST entries are phantom per the 2026-07-01 audit):
+Capsule-V2 consumes exactly **two** features of the whole platform: multi-module compile (`compile --merge` with `use`/mixins) and the Convex projection. Everything else that makes the IR a _source of truth across surfaces_ is unwired. From the same `manifest/ir.json`, without touching the sources, the toolchain can emit (verify each against the current CLI before wiring — some FEATURE-LIST entries are phantom per the 2026-07-01 audit):
 
 - **Boundary contracts:** Zod schemas (arg/form validation in the UI), OpenAPI 3.1 (external API contract), JSON Schema.
 - **Frontend layer:** TanStack Query hooks (V2 already deps @tanstack/react-query and hand-writes this layer).

@@ -30,10 +30,8 @@ forensics: Appendix D in
       seeded on `ENTITY_BEHAVIOR_UNSUPPORTED`, `RELATION_FK_THROUGH_EXCLUSIVE`,
       `RELATION_THROUGH_JOIN_INVALID`, `APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE`
       (and related escalate missing-field codes). More codes can be added incrementally.
-- [x] **M5 remainder (Convex/zod)** — fixed 2026-07-15:
-      - Convex list/array create defaults already covered by `semantics.test.ts` M5
-      - Zod: IR enums → `z.enum([...])`; `timestamp` alias → `z.coerce.date()`;
-        `list<T>` → `z.array(...)` (was falling through to `z.unknown()`)
+- [x] **M5 remainder (Convex/zod)** — fixed 2026-07-15: - Convex list/array create defaults already covered by `semantics.test.ts` M5 - Zod: IR enums → `z.enum([...])`; `timestamp` alias → `z.coerce.date()`;
+      `list<T>` → `z.array(...)` (was falling through to `z.unknown()`)
 
 ## Native gaps (language / runtime)
 
@@ -114,6 +112,15 @@ forensics: Appendix D in
       info diagnostics `CONVEX_PARTIAL_REALTIME` (platform-reactive queries; no
       SSE) and `CONVEX_PARTIAL_COMPUTED_CACHE` (pure helpers; Manifest cache not
       lowered). No longer `CONVEX_UNSUPPORTED_*`.
+- [x] **Convex read-policy enforcement** — fixed 2026-07-15: with
+      `authContextImport`, generated entity list/get/index queries evaluate
+      applicable `read`/`all` policies in IR order; denied rows are omitted and
+      denied single reads return null. Without a renderable auth seam they stay
+      `internalQuery` fail-closed. Mixed-entity system-event feeds stay internal.
+- [x] **Convex encrypted-property persistence** — fixed 2026-07-15:
+      `encryptionImport` encrypts create/patch values into the reference-runtime
+      envelope and decrypts reads before policy/public projection. Missing seam
+      is the hard `CONVEX_ENCRYPTION_IMPORT_REQUIRED` diagnostic.
 - [ ] **Convex projection remaining diagnostics-only surfaces** — approvals,
       masking, retry, rateLimit emit `CONVEX_UNSUPPORTED_*` (good) but generate
       no Convex enforcement.
@@ -126,8 +133,7 @@ forensics: Appendix D in
       meta keys; evidence in `config.test.ts`, `generate.test.ts`,
       `config-validate.test.ts`.
 - [x] **Config vNext G2 (`validation.failOn`)** — fixed 2026-07-15: CI exit
-      policy for `compile`/`validate` (`block`/`warn`/`never`); `--fail-on` CLI
-      + `validate --strict` alias; does not change language severities. Rule
+      policy for `compile`/`validate` (`block`/`warn`/`never`); `--fail-on` CLI + `validate --strict` alias; does not change language severities. Rule
       registries / requireDescriptions remain open.
 - [x] **Config vNext G10 (`driftGates`)** — fixed 2026-07-15: `manifest ci-gate`
       enforces `effectiveConfigSnapshot` / `failOnConfigDrift` /
@@ -136,12 +142,9 @@ forensics: Appendix D in
       ~~Config vNext G10 — drift gates: confirmed unbuilt.~~
       ~~Config vNext G2/G10~~
       ~~Config vNext G5/G2/G10~~
-- [x] **Language vNext remainder (2026-07-15 audit)** — closed 2026-07-15:
-      - Canonical routes conformance — `routes.conformance.test.ts`
-        (determinism / manual merge / lint-routes)
-      - Diagnostics completeness — `runtime-diagnostics-completeness.test.ts`
-      - Evaluation step-count counters — `EvaluationStats` +
-        `getLastEvaluationStats()` (`evaluation-stats.ts`)
+- [x] **Language vNext remainder (2026-07-15 audit)** — closed 2026-07-15: - Canonical routes conformance — `routes.conformance.test.ts`
+      (determinism / manual merge / lint-routes) - Diagnostics completeness — `runtime-diagnostics-completeness.test.ts` - Evaluation step-count counters — `EvaluationStats` +
+      `getLastEvaluationStats()` (`evaluation-stats.ts`)
       ~~still open from `docs/spec/manifest-vnext.md` Nonconformance~~
       ~~Canonical routes conformance fixtures — PARTIAL~~
       ~~Diagnostics completeness — PARTIAL~~
@@ -165,8 +168,8 @@ forensics: Appendix D in
 ## Tooling / CI
 
 - [x] **Doctest gate supports TypeScript blocks** — fixed 2026-07-15:
-      `scripts/check-doc-snippets.mjs` typechecks ```typescript check` /
-      ```ts check` (and `invalid`) via `typescript.transpileModule`; unannotated
+      `scripts/check-doc-snippets.mjs` typechecks ``typescript check` /
+``ts check`(and`invalid`) via `typescript.transpileModule`; unannotated
       TS fences remain skipped until migrated. Manifest fences unchanged.
 - [x] **enforce-surface ORM coverage** — fixed 2026-07-15: `DirectWriteScanner`
       flags Prisma-style writes plus Drizzle (`insert`/`update`/`delete`),
@@ -191,8 +194,7 @@ forensics: Appendix D in
       `docs/internal/plans/2026-07-15-docs-accuracy-loop.md`.
 - [x] **`docs/getting-started/**` + root docs honesty** — audited 2026-07-15
       (FAQ version/projections/read-policies/execution order; troubleshooting pin;
-      architecture async/schedule clarification; CONFIRMED-FEATURES RedisEventBus
-      + diagnostic codes; README MCP/projection inventory).
+      architecture async/schedule clarification; CONFIRMED-FEATURES RedisEventBus + diagnostic codes; README MCP/projection inventory).
 - [x] **`docs/features/**` + `docs/guides/**` deep accuracy batch** — audited
       2026-07-15 (`@RYANSIGNED` corrections: async enqueue validation order,
       reaction causationId, entity merge order, schedule Express/Hono/Terraform

@@ -20,7 +20,14 @@ import {
   JobQueue,
   JobRecord,
 } from './ir';
-import { dateOf, timeOf, datetimeOf, isValidDateString, isValidTimeString, isDatetimeTypeName } from './date-time.js';
+import {
+  dateOf,
+  timeOf,
+  datetimeOf,
+  isValidDateString,
+  isValidTimeString,
+  isDatetimeTypeName,
+} from './date-time.js';
 import { applyMaskStrategy } from './masking.js';
 import { constraintExpressionPasses } from './constraint-polarity.js';
 import { RateLimiter, type RateLimitStore } from './runtime-rate-limit.js';
@@ -1163,14 +1170,24 @@ export class RuntimeEngine {
     for (const name of names) {
       const raw = out[name];
       if (typeof raw !== 'string') continue;
+      let envelope: unknown;
       try {
-        const envelope = JSON.parse(raw) as { v: number; kid: string; ct: string };
-        if (envelope && envelope.v === 1 && envelope.kid && envelope.ct) {
-          out[name] = await provider.decrypt(envelope.ct, envelope.kid);
-        }
+        envelope = JSON.parse(raw);
       } catch {
         // Not an envelope — leave value as-is (e.g. plaintext from before encryption was enabled)
+        continue;
       }
+      if (!envelope || typeof envelope !== 'object') continue;
+      const candidate = envelope as { v?: unknown; kid?: unknown; ct?: unknown };
+      const looksEncrypted = 'v' in candidate && 'kid' in candidate && 'ct' in candidate;
+      if (!looksEncrypted) continue;
+      if (candidate.v !== 1) {
+        throw new Error(`Unsupported Manifest encryption envelope version: ${String(candidate.v)}`);
+      }
+      if (typeof candidate.kid !== 'string' || typeof candidate.ct !== 'string') {
+        throw new Error(`Malformed Manifest encryption envelope for ${entityName}.${name}`);
+      }
+      out[name] = await provider.decrypt(candidate.ct, candidate.kid);
     }
     return out;
   }
@@ -6601,8 +6618,7 @@ export class RuntimeEngine {
           delete request.expiresAt;
         } else if (onTimeout.timeout === 'reset') {
           const hours = approval?.timeout;
-          request.expiresAt =
-            hours !== undefined ? currentTime + hours * 3600000 : undefined;
+          request.expiresAt = hours !== undefined ? currentTime + hours * 3600000 : undefined;
         } else {
           request.expiresAt = currentTime + onTimeout.timeout * 3600000;
         }

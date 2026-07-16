@@ -24,7 +24,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | `searchable` (string/text/uuid)                  | schema                       | Emits `.searchIndex("search_<field>", { searchField })`; tenant → `filterFields` when set  |
 | Commands → mutations                             | mutations                    | Order: policies → guards → constraints → mutate → emit → react                             |
 | Command policies / guards / constraints          | mutations                    | Fail-closed; `CONVEX_UNRESOLVED_*` + denying throw; constraint `failWhen` polarity honored |
-| Roles + `roleAllows`                             | mutations                    | `ROLE_PERMISSIONS` + `checkRole`                                                           |
+| Roles + `roleAllows`                             | queries + mutations          | Target-aware `ROLE_PERMISSIONS` + `checkRole`                                              |
 | Events + G7 emit payloads                        | mutations                    | `manifestEvents` table                                                                     |
 | Reactions (resolve, fanOut, count aggregates)    | mutations                    |                                                                                            |
 | Transitions                                      | mutations                    | Pre-patch legality; always on                                                              |
@@ -36,34 +36,34 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Sagas (steps + compensate/abort)                 | sagas                        | Step arg mapping = Partial                                                                 |
 | Tenant filter / soft-delete filter               | queries                      | Field-aware defaults                                                                       |
 | `authContextImport`                              | queries + mutations          | Author-owned identity seam                                                                 |
-| React client hooks (`useQuery` / `useMutation`)  | react                        | Skips read-gated (internalQuery) entities                                                  |
+| `encryptionImport` / encrypted properties        | queries + mutations          | Versioned envelope; decrypt before policy/read projection, encrypt before store writes     |
+| React client hooks (`useQuery` / `useMutation`)  | react                        | Skips only read-gated entities whose public policy queries cannot be rendered              |
 
 ## Partial (limitation stated)
 
-| IR construct                  | Limitation                                             | Diagnostic / note                                            |
-| ----------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
-| Webhook `signature`           | httpAction does not verify HMAC                        | `CONVEX_UNSUPPORTED_WEBHOOK_SIGNATURE`                       |
-| Saga step arguments           | Single `input` forwarded to every step                 | Documented in README                                         |
-| `trustedSource` params        | Exposed as normal args unless auth/create seam injects | `CONVEX_PARTIAL_TRUSTED_SOURCE` (info)                       |
-| Referential onDelete/onUpdate | No schema cascade                                      | `CONVEX_REFERENTIAL_ACTION_DEFERRED`                         |
-| Computed relation aggregates  | Unresolved unless self-only / count via reactions      | `CONVEX_UNRESOLVED_COMPUTED`                                 |
-| Encrypted properties          | Stored/returned as plain strings                       | `CONVEX_ENCRYPTED_UNSUPPORTED` (phase 1; phase 2 needs spec) |
-| `policyMode: 'skip'`          | Omits authorization only                               | Documented escape hatch                                      |
-| `realtime` hint               | Convex queries already reactive; no SSE artifact       | `CONVEX_PARTIAL_REALTIME` (info)                             |
-| Computed `cache` directives   | Helpers stay pure; Manifest cache strategies not lowered | `CONVEX_PARTIAL_COMPUTED_CACHE` (info)                     |
+| IR construct                  | Limitation                                                                                                                   | Diagnostic / note                      |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Webhook `signature`           | httpAction does not verify HMAC                                                                                              | `CONVEX_UNSUPPORTED_WEBHOOK_SIGNATURE` |
+| Saga step arguments           | Single `input` forwarded to every step                                                                                       | Documented in README                   |
+| `trustedSource` params        | Exposed as normal args unless auth/create seam injects                                                                       | `CONVEX_PARTIAL_TRUSTED_SOURCE` (info) |
+| Referential onDelete/onUpdate | No schema cascade                                                                                                            | `CONVEX_REFERENTIAL_ACTION_DEFERRED`   |
+| Computed relation aggregates  | Unresolved unless self-only / count via reactions                                                                            | `CONVEX_UNRESOLVED_COMPUTED`           |
+| Read/`all` policies           | Renderable predicates are public with `authContextImport`; `flag()`, relationship traversal, and `rateLimit` remain internal | `CONVEX_UNSUPPORTED_READ_POLICY_*`     |
+| `policyMode: 'skip'`          | Omits authorization only                                                                                                     | Documented escape hatch                |
+| `realtime` hint               | Convex queries already reactive; no SSE artifact                                                                             | `CONVEX_PARTIAL_REALTIME` (info)       |
+| Computed `cache` directives   | Helpers stay pure; Manifest cache strategies not lowered                                                                     | `CONVEX_PARTIAL_COMPUTED_CACHE` (info) |
 
 ## Unsupported (diagnostic always emitted when declared)
 
-| IR construct                                  | Diagnostic code                     |
-| --------------------------------------------- | ----------------------------------- |
-| Approvals                                     | `CONVEX_UNSUPPORTED_APPROVAL`       |
-| `masked` / `unmask when`                      | `CONVEX_UNSUPPORTED_MASKED`         |
-| `searchable` (non-string types)               | `CONVEX_UNSUPPORTED_SEARCHABLE`     |
-| Command/policy `retry`                        | `CONVEX_UNSUPPORTED_RETRY`          |
-| Command/policy `rateLimit`                    | `CONVEX_UNSUPPORTED_RATE_LIMIT`     |
-| Read/`all` policies on generated queries      | `CONVEX_UNSUPPORTED_READ_POLICY`    |
-| `async` commands / job queue                  | `CONVEX_UNSUPPORTED_ASYNC_COMMAND`  |
-| Action kinds `effect` / `publish` / `persist` | `CONVEX_UNSUPPORTED_ACTION_KIND`    |
+| IR construct                                  | Diagnostic code                    |
+| --------------------------------------------- | ---------------------------------- |
+| Approvals                                     | `CONVEX_UNSUPPORTED_APPROVAL`      |
+| `masked` / `unmask when`                      | `CONVEX_UNSUPPORTED_MASKED`        |
+| `searchable` (non-string types)               | `CONVEX_UNSUPPORTED_SEARCHABLE`    |
+| Command/policy `retry`                        | `CONVEX_UNSUPPORTED_RETRY`         |
+| Command/policy `rateLimit`                    | `CONVEX_UNSUPPORTED_RATE_LIMIT`    |
+| `async` commands / job queue                  | `CONVEX_UNSUPPORTED_ASYNC_COMMAND` |
+| Action kinds `effect` / `publish` / `persist` | `CONVEX_UNSUPPORTED_ACTION_KIND`   |
 
 ## Intentionally out of scope
 

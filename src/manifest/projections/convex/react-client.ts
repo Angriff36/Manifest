@@ -14,7 +14,7 @@
 import type { IR, IRCommand, IREntity } from '../../ir';
 import type { ProjectionDiagnostic } from '../interface';
 import { isPersistentEntity } from './persist.js';
-import { hasReadPolicies } from './read-policies.js';
+import { hasReadPolicies, renderReadPolicies } from './read-policies.js';
 
 export const SURFACE_REACT = 'convex.react' as const;
 
@@ -71,14 +71,16 @@ export function generateReactClient(
     typeof reactOpts.authContextImport === 'string' && reactOpts.authContextImport.length > 0;
   for (const entity of persistentEntities(ir)) {
     const gated = hasReadPolicies(ir, entity.name);
-    if (gated && !authSeam) {
+    const readable =
+      !gated || (authSeam && renderReadPolicies(ir, entity.name, '__row').renderable);
+    if (!readable) {
       diagnostics.push({
         severity: 'info',
         code: 'CONVEX_REACT_INTERNAL_QUERY',
         entity: entity.name,
         message:
-          `Entity '${entity.name}' has read/all policies — queries are internalQuery ` +
-          `(not client-callable). No useQuery hooks emitted; expose via a policy-enforcing public wrapper.`,
+          `Entity '${entity.name}' has read/all policies without a fully renderable auth seam — ` +
+          `queries are internalQuery (not client-callable). No useQuery hooks emitted.`,
       });
     } else {
       if (gated && authSeam) {
@@ -87,8 +89,8 @@ export function generateReactClient(
           code: 'CONVEX_REACT_AUTH_QUERY',
           entity: entity.name,
           message:
-            `Entity '${entity.name}' has read/all policies but authContextImport is set — ` +
-            `emitting useQuery against public queries (tenant via getAuthContext; role policies still partial).`,
+            `Entity '${entity.name}' has read/all policies and authContextImport is set — ` +
+            `emitting useQuery against policy-enforcing public queries.`,
         });
       }
       lines.push(`/** Reactive list for ${entity.name}. */`);
@@ -97,9 +99,7 @@ export function generateReactClient(
       lines.push(`}`);
       lines.push('');
       lines.push(`/** Reactive get-by-id for ${entity.name}. Pass "skip" to suspend. */`);
-      lines.push(
-        `export function useGet${entity.name}(id: string | "skip") {`,
-      );
+      lines.push(`export function useGet${entity.name}(id: string | "skip") {`);
       lines.push(
         `  return useQuery(api.queries.get${entity.name}, id === "skip" ? "skip" : { id: id as any });`,
       );

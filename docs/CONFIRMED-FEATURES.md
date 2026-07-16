@@ -28,8 +28,9 @@ carries file evidence checked on 2026-07-14.
 ## 1. Language (DSL) Features
 
 All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts`
-+ a dedicated conformance fixture in `src/manifest/conformance/fixtures/`
-(99 fixtures — executable semantics, not just tests).
+
+- a dedicated conformance fixture in `src/manifest/conformance/fixtures/`
+  (99 fixtures — executable semantics, not just tests).
 
 **Entities & data model**
 
@@ -37,7 +38,7 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 - `extends` / `mixin` inheritance & composition, with cycle detection (fixtures 77–79, 81)
 - ~~Generic / parameterized entities, with arity-mismatch diagnostics (fixtures 84–85)~~
   - **Correction (2026-07-15):** generics are still **not implemented**. Fixtures 84–85 are
-    *negative* tests (`shouldFail: true`, message `Expected {, got <`) — they pin the parse
+    _negative_ tests (`shouldFail: true`, message `Expected {, got <`) — they pin the parse
     rejection, they do not prove `entity X<T>` works. Appendix D still correctly lists
     `generic-entity-types` as phantom.
 - Value objects / embedded types (fixture 60)
@@ -124,7 +125,7 @@ sveltekit, kysely, dynamodb, pydantic, dart, wiring, contract-tests.
 
 Highlights:
 
-- **Convex** (`src/manifest/projections/convex/`): schema/queries/mutations/crons/http/sagas/`convex.computed`/`convex.react`; companions `wiring`, `llm-context`, `mermaid`, `zod`, `contract-tests`; `authContextImport`; transition enforcement; private-field stripping; capability map with `CONVEX_UNSUPPORTED_*`; assembly gate `verifyConvexApplicationAssembly`
+- **Convex** (`src/manifest/projections/convex/`): schema/queries/mutations/crons/http/sagas/`convex.computed`/`convex.react`; companions `wiring`, `llm-context`, `mermaid`, `zod`, `contract-tests`; `authContextImport` with generated read-policy enforcement; `encryptionImport` with reference-runtime envelopes; transition enforcement; private-field stripping; capability map with `CONVEX_UNSUPPORTED_*`; assembly gate `verifyConvexApplicationAssembly`
 - **contract-tests**: Vitest suites asserting Convex query/mutation export names match IR
 - **Next.js**: full command surface incl. `createManifestRuntime` emission, executionMode dispatcher (`dispatcher-modes.test.ts`), field-aware soft-delete/timestamp reads
 - **Prisma**: multi-schema (`@@schema` from modules), opt-in snake_case/pluralize naming, autoBackRelations, composite-unique/optional-FK/cycle correctness — natively generates capsule-pro's 199-model schema
@@ -194,11 +195,12 @@ lambda expressions in the Convex projection, `ir.tenant` in most web
 projections, module-based output splitting, and durable rate-limit storage
 (in-memory Map only in committed tree).
 ~~**Update (2026-07-15):** durable rate-limit via `RuntimeOptions.rateLimitStore`…~~
+
 > **Correction (2026-07-15):** `src/manifest/rate-limit/` (Postgres store, etc.)
 > is **uncommitted working-tree WIP** — do not treat as shipped until merged with
 > hard proof on `docs/internal/COMPLIANCE_MATRIX.md`. Rate limiting remains
 > Map-backed in HEAD.
-~~RedisEventBus exists but is test-only, never wired.~~
+> ~~RedisEventBus exists but is test-only, never wired.~~
 > **Correction (2026-07-15) @RYANSIGNED:** `RuntimeOptions.eventBus` accepts any
 > `EventBus`, including `RedisEventBus`. There is no missing hook. Auto-constructing
 > Redis from env is intentionally not a core default (see `docs/TODO.md`).
@@ -220,14 +222,15 @@ kind as passthrough only).
 **Update (2026-07-14, unreleased):** entity `behavior` / bare `on Event { ... }`
 blocks are hard compile errors (~~message-only diagnostic, fixture 110 —
 `IRDiagnostic` has no machine-readable `code` field yet; see TODO~~).
+
 > **Correction (2026-07-15) @RYANSIGNED:** Optional `IRDiagnostic.code` exists;
 > fixture 110 seeds `ENTITY_BEHAVIOR_UNSUPPORTED` (also ~~`RELATION_THROUGH_UNSUPPORTED`,~~
 > `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` on 103).
 > ~~also RELATION_THROUGH_UNSUPPORTED on 102~~
 > **Update (2026-07-15):** `through` is implemented; fixture `102-through-join` is the
 > happy path. Exclusivity remains `RELATION_FK_THROUGH_EXCLUSIVE` (101). Canonical IR and `docs/spec`
-define no behavior semantics; use top-level reactions or command actions
-instead.
+> define no behavior semantics; use top-level reactions or command actions
+> instead.
 
 **Distribution gap:** MCP server, LSP server, stdlib, and the VS Code
 extension are built and tested but published nowhere.

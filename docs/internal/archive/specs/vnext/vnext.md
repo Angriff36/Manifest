@@ -1,8 +1,8 @@
 # Manifest vNext Implementation Plan
 
 > **ARCHIVED — do not use as completion SoT (2026-07-15).**
-> Binding language/runtime vNext spec: [`docs/spec/manifest-vnext.md`](../../../spec/manifest-vnext.md).
-> Completion SoT: [`docs/internal/COMPLIANCE_MATRIX.md`](../../COMPLIANCE_MATRIX.md).
+> Binding language/runtime vNext spec: [`docs/spec/manifest-vnext.md`](../../../../spec/manifest-vnext.md).
+> Completion SoT: [`docs/internal/COMPLIANCE_MATRIX.md`](../../../COMPLIANCE_MATRIX.md).
 >
 > ~~**Status**: vNext Core Implementation Complete - Test Pass Rate 100% (134/134 passing) ✅~~
 > ~~**✅ ALL CONFORMANCE TESTS PASSING**: All 27 fixtures…~~
@@ -44,8 +44,8 @@ The following features are FULLY IMPLEMENTED and VERIFIED:
 
 ### vNext Features (PARTIALLY IMPLEMENTED - Phases 1-5 Complete)
 
-| Feature                                    | Status        | Evidence                                                                                        |
-| ------------------------------------------ | ------------- | ----------------------------------------------------------------------------------------------- |
+| Feature                                    | Status         | Evidence                                                                                        |
+| ------------------------------------------ | -------------- | ----------------------------------------------------------------------------------------------- |
 | IRConstraint fields (code, severity, etc.) | ✅ DONE        | `ir.ts:IRConstraint`                                                                            |
 | Command-level constraints array            | ✅ DONE        | `ir.ts:IRCommand`, `types.ts:CommandNode`                                                       |
 | Entity version properties                  | ✅ DONE        | `ir.ts:IREntity`                                                                                |

@@ -32,7 +32,13 @@ import type {
   ProjectionTarget,
 } from '../interface';
 
-import { normalizeOptions, type IndexEntry, resolveConvexTableName, collectConvexAuthConfigDiagnostics, collectConvexNamingPrecedenceDiagnostics } from './options.js';
+import {
+  normalizeOptions,
+  type IndexEntry,
+  resolveConvexTableName,
+  collectConvexAuthConfigDiagnostics,
+  collectConvexNamingPrecedenceDiagnostics,
+} from './options.js';
 import { resolveConvexValidator, isConvexSearchIndexFieldType } from './type-mapping.js';
 import { generateQueries, generateMutations } from './functions.js';
 import { generateCrons, generateHttp, generateSagas } from './orchestration.js';
@@ -43,7 +49,6 @@ import { isPersistentEntity, isPersistentStoreTarget } from './persist.js';
 import { CONVEX_DESCRIPTOR_META } from './descriptor-meta.js';
 import { synthesizeConvexVersionSchemaFields } from './version-occ.js';
 import { generateReactClient } from './react-client.js';
-
 
 export { isPersistentEntity } from './persist.js';
 export { resolveConvexTableName } from './options.js';
@@ -193,8 +198,7 @@ export function buildValidator(
   }
 
   // array<T> / list<T> / T[] → v.array(<element>)
-  const isArray =
-    (prop.type.name === 'array' || prop.type.name === 'list') && !!prop.type.generic;
+  const isArray = (prop.type.name === 'array' || prop.type.name === 'list') && !!prop.type.generic;
   const effectiveTypeName = isArray ? prop.type.generic!.name : prop.type.name;
 
   const typeOverrides = options.typeMappings[entity.name];
@@ -468,8 +472,8 @@ export class ConvexProjection implements ProjectionTarget {
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const optionsEarly = normalizeOptions(request.options);
     const crossCutting = [
-      ...collectEncryptedDiagnostics(ir),
-      ...collectUnsupportedDiagnostics(ir),
+      ...collectEncryptedDiagnostics(ir, optionsEarly.encryptionImport),
+      ...collectUnsupportedDiagnostics(ir, optionsEarly),
       ...collectConvexNamingPrecedenceDiagnostics(request.options, optionsEarly),
       ...collectConvexAuthConfigDiagnostics(ir, optionsEarly),
     ];

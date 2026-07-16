@@ -362,6 +362,30 @@ describe('authContextImport — the auth seam', () => {
     expect(code.indexOf('!== __auth.tenantId')).toBeLessThan(code.indexOf('ctx.db.patch'));
   });
 
+  it('checks tenant ownership before decrypting an instance mutation document', () => {
+    const ir = tenantIR();
+    ir.entities[0].properties.push(prop('secret', 'string', ['encrypted']));
+    ir.commands = [
+      {
+        name: 'archive',
+        entity: 'Invoice',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.mutations',
+      options: { ...seam, encryptionImport: './lib/encryption' },
+    }).artifacts[0].code;
+    expect(code).toContain('if ((__storedDoc as any).tenantId !== __auth.tenantId)');
+    expect(code.indexOf('__storedDoc as any).tenantId')).toBeLessThan(
+      code.indexOf('await __decryptDoc(ctx'),
+    );
+  });
+
   it('role/user bindings route through the auth context', () => {
     const ir = tenantIR();
     ir.policies = [
@@ -394,7 +418,8 @@ describe('authContextImport — the auth seam', () => {
       surface: 'convex.mutations',
       options: seam,
     }).artifacts[0].code;
-    expect(code).toContain('const userRole = __auth.role ?? "anonymous";');
+    expect(code).toContain('const user = __auth;');
+    expect(code).toContain('checkRole(user.role, "manage")');
     expect(code).not.toContain('(ctx as any).auth');
   });
 
@@ -444,12 +469,274 @@ describe('convex.queries — read-policy lockdown', () => {
         expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
       },
     ] as IRPolicy[];
+    const result = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { authContextImport: './lib/authContext' },
+    });
+    const code = result.artifacts[0].code;
+    expect(code).toContain('export const listSecret = query({');
+    expect(code).not.toContain('export const listSecret = internalQuery({');
+    expect(code).not.toContain('export const getSecret = internalQuery({');
+    expect(code).toContain('__allowsRead("canReadSecret", "Secret", () => true)) return [];');
+    expect(code).toContain('__allowsRead("canReadSecret", "Secret", () => true)) return null;');
+    expect(result.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_READ_POLICY')).toBe(false);
+  });
+
+  it('evaluates row-level read policies against each decrypted row and auth context', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Doc', [
+        prop('ownerId', 'string', ['required']),
+        prop('secret', 'string', ['encrypted']),
+      ]),
+    ];
+    ir.stores = [durable('Doc')];
+    ir.policies = [
+      {
+        name: 'ownerRead',
+        entity: 'Doc',
+        action: 'read',
+        expression: {
+          kind: 'binary',
+          operator: '==',
+          left: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'self' },
+            property: 'ownerId',
+          },
+          right: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'user' },
+            property: 'id',
+          },
+        },
+      },
+    ] as IRPolicy[];
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: {
+        authContextImport: './lib/authContext',
+        encryptionImport: './lib/encryption',
+      },
+    }).artifacts[0].code;
+    expect(code).toContain('const user = (__auth.user ?? __auth) as any;');
+    expect(code).toContain('const __plainRows = await Promise.all(');
+    expect(code).toContain('.map((row) => __decryptDoc(ctx, "Doc", ["secret"], row))');
+    expect(code.indexOf('const __plainRows')).toBeLessThan(code.indexOf('const __visibleRows'));
+    expect(code).toContain(
+      '__allowsRead("ownerRead", "Doc", () => (__row.ownerId === user.id))) continue;',
+    );
+    expect(code).toContain(
+      '__allowsRead("ownerRead", "Doc", () => (__doc.ownerId === user.id))) return null;',
+    );
+  });
+
+  it('emits role hierarchy support for read policies using roleAllows', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Doc', [prop('name', 'string', ['required'])])];
+    ir.stores = [durable('Doc')];
+    ir.roles = [
+      {
+        name: 'Admin',
+        allow: [],
+        deny: [],
+        effectivePermissions: [{ action: 'readDoc' }],
+      },
+    ];
+    ir.policies = [
+      {
+        name: 'roleRead',
+        entity: 'Doc',
+        action: 'read',
+        expression: {
+          kind: 'call',
+          callee: { kind: 'identifier', name: 'roleAllows' },
+          args: [
+            {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'user' },
+              property: 'role',
+            },
+            { kind: 'literal', value: { kind: 'string', value: 'readDoc' } },
+          ],
+        },
+      },
+    ] as IRPolicy[];
     const code = new ConvexProjection().generate(ir, {
       surface: 'convex.queries',
       options: { authContextImport: './lib/authContext' },
     }).artifacts[0].code;
-    expect(code).toContain('export const listSecret = query({');
-    expect(code).not.toContain('= internalQuery({');
+    expect(code).toContain('const user = (__auth.user ?? __auth) as any;');
+    expect(code).toContain(
+      'const ROLE_PERMISSIONS: Record<string, { action: string; target?: string }[]>',
+    );
+    expect(code).toContain(
+      '__allowsRead("roleRead", "Doc", () => checkRole(user.role, "readDoc"))) return [];',
+    );
+  });
+
+  it('preserves roleAllows target semantics in public read queries', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Doc', [prop('name', 'string', ['required'])])];
+    ir.stores = [durable('Doc')];
+    ir.roles = [
+      {
+        name: 'Admin',
+        allow: [],
+        deny: [],
+        effectivePermissions: [{ action: 'read', target: 'Doc' }],
+      },
+    ];
+    ir.policies = [
+      {
+        name: 'targetRead',
+        entity: 'Doc',
+        action: 'read',
+        expression: {
+          kind: 'call',
+          callee: { kind: 'identifier', name: 'roleAllows' },
+          args: [
+            { kind: 'literal', value: { kind: 'string', value: 'Admin' } },
+            { kind: 'literal', value: { kind: 'string', value: 'read' } },
+            { kind: 'literal', value: { kind: 'string', value: 'Doc' } },
+          ],
+        },
+      },
+    ] as IRPolicy[];
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { authContextImport: './lib/authContext' },
+    }).artifacts[0].code;
+    expect(code).toContain('checkRole("Admin", "read", "Doc")');
+    expect(code).toContain('"target": "Doc"');
+  });
+
+  it('keeps flag-gated read queries internal without a feature-flag provider seam', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Doc', [prop('name', 'string')])];
+    ir.stores = [durable('Doc')];
+    ir.policies = [
+      {
+        name: 'flagRead',
+        entity: 'Doc',
+        action: 'read',
+        expression: {
+          kind: 'call',
+          callee: { kind: 'identifier', name: 'flag' },
+          args: [{ kind: 'literal', value: { kind: 'string', value: 'docs' } }],
+        },
+      },
+    ] as IRPolicy[];
+    const result = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { authContextImport: './lib/authContext' },
+    });
+    expect(result.artifacts[0].code).toContain('export const listDoc = internalQuery({');
+    expect(result.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_READ_POLICY_FLAG')).toBe(
+      true,
+    );
+  });
+
+  it('keeps relationship-traversing read queries internal until relationships can be loaded', () => {
+    const ir = emptyIR();
+    const doc = entity('Doc', [prop('ownerId', 'string')]);
+    doc.relationships = [
+      { name: 'owner', kind: 'belongsTo', target: 'Person', foreignKey: { fields: ['ownerId'] } },
+    ];
+    ir.entities = [doc, entity('Person', [prop('name', 'string')])];
+    ir.stores = [durable('Doc'), durable('Person')];
+    ir.policies = [
+      {
+        name: 'ownerRead',
+        entity: 'Doc',
+        action: 'read',
+        expression: {
+          kind: 'binary',
+          operator: '==',
+          left: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'self' },
+            property: 'owner',
+          },
+          right: { kind: 'literal', value: { kind: 'null' } },
+        },
+      },
+    ] as IRPolicy[];
+    const result = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { authContextImport: './lib/authContext' },
+    });
+    expect(result.artifacts[0].code).toContain('export const listDoc = internalQuery({');
+    expect(
+      result.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_READ_POLICY_RELATIONSHIP'),
+    ).toBe(true);
+  });
+
+  it('evaluates context-only denial before querying or decrypting rows', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Doc', [prop('secret', 'string', ['encrypted'])])];
+    ir.stores = [durable('Doc')];
+    ir.policies = [
+      {
+        name: 'userRead',
+        entity: 'Doc',
+        action: 'read',
+        expression: {
+          kind: 'binary',
+          operator: '==',
+          left: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'user' },
+            property: 'role',
+          },
+          right: { kind: 'literal', value: { kind: 'string', value: 'reader' } },
+        },
+      },
+    ] as IRPolicy[];
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: {
+        authContextImport: './lib/authContext',
+        encryptionImport: './lib/encryption',
+      },
+    }).artifacts[0].code;
+    const list = code.slice(
+      code.indexOf('export const listDoc'),
+      code.indexOf('export const getDoc'),
+    );
+    expect(list.indexOf('__allowsRead("userRead"')).toBeLessThan(list.indexOf('ctx.db.query'));
+    expect(list.indexOf('__allowsRead("userRead"')).toBeLessThan(list.indexOf('__decryptDoc'));
+  });
+
+  it('wraps read-policy expressions so thrown evaluation denies instead of leaking an error path', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Doc', [prop('tags', 'string')])];
+    ir.stores = [durable('Doc')];
+    ir.policies = [
+      {
+        name: 'tagRead',
+        entity: 'Doc',
+        action: 'read',
+        expression: {
+          kind: 'binary',
+          operator: 'contains',
+          left: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'self' },
+            property: 'tags',
+          },
+          right: { kind: 'literal', value: { kind: 'string', value: 'visible' } },
+        },
+      },
+    ] as IRPolicy[];
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { authContextImport: './lib/authContext' },
+    }).artifacts[0].code;
+    expect(code).toContain('function __allowsRead(');
+    expect(code).toContain('__allowsRead("tagRead", "Doc", () => __row.tags.includes("visible"))');
+    expect(code).toContain('catch (error)');
+    expect(code).toContain('return false;');
   });
 
   it('a global (entity-less) read policy locks down every entity, runtime-parity', () => {
@@ -544,8 +831,8 @@ describe('convex.mutations — governance', () => {
     }).artifacts[0].code;
     expect(code).toContain('export const Task_close = mutation({');
     expect(code).toContain('docId: v.id("tasks")');
-    expect(code).toContain('const userRole = __auth.role ?? "anonymous";');
-    expect(code).toContain('checkRole(userRole, "manageAccess")'); // policy
+    expect(code).toContain('const user = __auth;');
+    expect(code).toContain('checkRole(user.role, "manageAccess")'); // policy
     expect(code).toContain('if (!((doc.status === "open")))'); // guard
     expect(code).toContain('status: "closed"'); // action
     expect(code).toContain('await ctx.db.patch(docId, updates as any)');
@@ -1276,10 +1563,7 @@ describe('convex.mutations — G7 emit payloads (`emit Event { field: expr }`)',
     // `result: …` while the reaction envelope also binds reserved `result`.
     const ir = emptyIR();
     ir.entities = [
-      entity('QualityCheck', [
-        prop('status', 'string', ['required']),
-        prop('result', 'string'),
-      ]),
+      entity('QualityCheck', [prop('status', 'string', ['required']), prop('result', 'string')]),
       entity('Board', [prop('sourceId', 'string', ['required'])]),
     ];
     ir.stores = [durable('QualityCheck'), durable('Board')];

@@ -12,6 +12,7 @@ import type { IR, IREntity } from '../../ir';
 import type { ProjectionCapability, ProjectionDiagnostic } from '../interface';
 import { isPersistentEntity } from './persist.js';
 import { isConvexSearchIndexFieldType } from './type-mapping.js';
+import { renderReadPolicies } from './read-policies.js';
 
 /**
  * Structured counterpart to CAPABILITIES.md. Keep both representations aligned
@@ -24,7 +25,11 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   { feature: 'Indexed, tenant, and option indexes', status: 'supported' },
   { feature: 'Commands to mutations', status: 'supported' },
   { feature: 'Command policies / guards / constraints (in mutations)', status: 'supported' },
-  { feature: 'Read/all policies on generated queries', status: 'partial', note: 'CONVEX_UNSUPPORTED_READ_POLICY — gated entities emit internalQuery (fail-closed, not client-callable); policy expressions are NOT evaluated. Wrap with a policy-enforcing public query.' },
+  {
+    feature: 'Read/all policies on generated queries',
+    status: 'partial',
+    note: 'Renderable predicates are evaluated with authContextImport; flag, relationship traversal, and rateLimit stay internal (fail closed).',
+  },
   { feature: 'Roles + roleAllows', status: 'supported' },
   { feature: 'Events + emit payloads', status: 'supported' },
   { feature: 'Reactions', status: 'supported' },
@@ -36,30 +41,82 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   { feature: 'Sagas', status: 'supported' },
   { feature: 'Tenant / soft-delete filters', status: 'supported' },
   { feature: 'authContextImport', status: 'supported' },
-  { feature: 'Webhook signature', status: 'partial', note: 'Generated httpAction does not verify HMAC.' },
-  { feature: 'Saga step arguments', status: 'partial', note: 'A single input is forwarded to every step.' },
-  { feature: 'trustedSource params', status: 'partial', note: 'Exposed as normal args unless the auth/create seam injects them.' },
+  { feature: 'encryptionImport', status: 'supported' },
+  {
+    feature: 'Webhook signature',
+    status: 'partial',
+    note: 'Generated httpAction does not verify HMAC.',
+  },
+  {
+    feature: 'Saga step arguments',
+    status: 'partial',
+    note: 'A single input is forwarded to every step.',
+  },
+  {
+    feature: 'trustedSource params',
+    status: 'partial',
+    note: 'Exposed as normal args unless the auth/create seam injects them.',
+  },
   { feature: 'Referential onDelete/onUpdate', status: 'partial', note: 'No schema cascade.' },
-  { feature: 'Computed relation aggregates', status: 'partial', note: 'Unresolved unless self-only or count via reactions.' },
-  { feature: 'Encrypted properties', status: 'partial', note: 'Stored and returned as plain strings.' },
+  {
+    feature: 'Computed relation aggregates',
+    status: 'partial',
+    note: 'Unresolved unless self-only or count via reactions.',
+  },
+  {
+    feature: 'Encrypted properties',
+    status: 'supported',
+    note: 'Runtime-compatible envelope via encryptionImport; missing seam is a hard diagnostic.',
+  },
   { feature: "policyMode: 'skip'", status: 'partial', note: 'Omits authorization only.' },
   { feature: 'Approvals', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_APPROVAL' },
-  { feature: 'realtime hint', status: 'partial', note: 'CONVEX_PARTIAL_REALTIME — Convex queries are already reactive; no SSE artifact (unlike Next.js).' },
-  { feature: 'versionProperty / optimistic concurrency', status: 'supported', note: 'Create seeds version=1; updates optional expected version + increment (VERSION_MISMATCH throw)' },
+  {
+    feature: 'realtime hint',
+    status: 'partial',
+    note: 'CONVEX_PARTIAL_REALTIME — Convex queries are already reactive; no SSE artifact (unlike Next.js).',
+  },
+  {
+    feature: 'versionProperty / optimistic concurrency',
+    status: 'supported',
+    note: 'Create seeds version=1; updates optional expected version + increment (VERSION_MISMATCH throw)',
+  },
   { feature: 'masked / unmask when', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_MASKED' },
-  { feature: 'searchable (string-like → .searchIndex)', status: 'supported', note: 'Non-string searchable still emits CONVEX_UNSUPPORTED_SEARCHABLE' },
-  { feature: 'Computed cache directives', status: 'partial', note: 'CONVEX_PARTIAL_COMPUTED_CACHE — helpers stay pure; Manifest cache strategies are not lowered (platform query caching applies).' },
+  {
+    feature: 'searchable (string-like → .searchIndex)',
+    status: 'supported',
+    note: 'Non-string searchable still emits CONVEX_UNSUPPORTED_SEARCHABLE',
+  },
+  {
+    feature: 'Computed cache directives',
+    status: 'partial',
+    note: 'CONVEX_PARTIAL_COMPUTED_CACHE — helpers stay pure; Manifest cache strategies are not lowered (platform query caching applies).',
+  },
   { feature: 'Command/policy retry', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_RETRY' },
-  { feature: 'Command/policy rateLimit', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_RATE_LIMIT' },
-  { feature: 'async commands / job queue', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_ASYNC_COMMAND' },
-  { feature: 'Action kinds effect / publish / persist', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_ACTION_KIND' },
+  {
+    feature: 'Command/policy rateLimit',
+    status: 'unsupported',
+    note: 'CONVEX_UNSUPPORTED_RATE_LIMIT',
+  },
+  {
+    feature: 'async commands / job queue',
+    status: 'unsupported',
+    note: 'CONVEX_UNSUPPORTED_ASYNC_COMMAND',
+  },
+  {
+    feature: 'Action kinds effect / publish / persist',
+    status: 'unsupported',
+    note: 'CONVEX_UNSUPPORTED_ACTION_KIND',
+  },
 ];
 
 /**
  * Emit warnings for IR constructs the Convex projection does not enforce.
  * Field-aware: only fires when the program actually declares the construct.
  */
-export function collectUnsupportedDiagnostics(ir: IR): ProjectionDiagnostic[] {
+export function collectUnsupportedDiagnostics(
+  ir: IR,
+  options: { authContextImport?: string } = {},
+): ProjectionDiagnostic[] {
   const out: ProjectionDiagnostic[] = [];
 
   for (const entity of ir.entities) {
@@ -122,8 +179,8 @@ export function collectUnsupportedDiagnostics(ir: IR): ProjectionDiagnostic[] {
     }
   }
 
-  // Read/all policies are NOT applied to generated queries (queries filter
-  // tenant/soft-delete only; command policies are enforced in mutations).
+  // Read/all policies require the real Convex identity seam. Without it (or
+  // when an expression cannot be rendered), reads stay internal fail-closed.
   for (const policy of ir.policies) {
     if (policy.action !== 'read' && policy.action !== 'all') continue;
     const target = policy.entity;
@@ -131,11 +188,18 @@ export function collectUnsupportedDiagnostics(ir: IR): ProjectionDiagnostic[] {
       ? ir.entities.some((e) => e.name === target && isPersistentEntity(e, ir))
       : ir.entities.some((e) => isPersistentEntity(e, ir));
     if (gated) {
+      const targetEntities = ir.entities.filter(
+        (e) => isPersistentEntity(e, ir) && (target === undefined || e.name === target),
+      );
+      const enforceable =
+        !!options.authContextImport &&
+        targetEntities.every((e) => renderReadPolicies(ir, e.name, '__row').renderable);
+      if (enforceable) continue;
       out.push({
         severity: 'warning',
         code: 'CONVEX_UNSUPPORTED_READ_POLICY',
         entity: target,
-        message: `Policy '${policy.name}' (action: ${policy.action}) is not evaluated in generated Convex queries; the gated queries are emitted as internalQuery (not client-callable). Expose them through a policy-enforcing public wrapper.`,
+        message: `Policy '${policy.name}' (action: ${policy.action}) requires options.authContextImport and a renderable expression; until then its queries are emitted as internalQuery (not client-callable).`,
       });
     }
   }

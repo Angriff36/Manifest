@@ -515,8 +515,9 @@ export const Task_updateStatus = mutation({
       status: newStatus
     };
     await ctx.db.patch(docId, updates as any);
-    const payload: Record<string, any> = { id: docId, ...doc, ...updates, result: { id: docId, ...doc, ...updates }, _subject: { entity: "Task", command: "updateStatus", id: docId } };
-    await ctx.db.insert("manifestEvents", { type: "TaskStatusUpdated", entity: "Task", entityId: docId, payload: {}, createdAt: Date.now() });
+    const __after: Record<string, any> = { ...doc, ...updates };
+    const payload: Record<string, any> = { id: docId, ...__after, result: { id: docId, ...__after }, _subject: { entity: "Task", command: "updateStatus", id: docId } };
+    await ctx.db.insert("manifestEvents", { type: "TaskStatusUpdated", entity: "Task", entityId: docId, payload: { id: __after.id }, createdAt: Date.now() });
     return { ...doc, ...updates };
   },
 });
@@ -534,8 +535,9 @@ export const Task_assignTask = mutation({
       assigneeId: userId
     };
     await ctx.db.patch(docId, updates as any);
-    const payload: Record<string, any> = { id: docId, ...doc, ...updates, result: { id: docId, ...doc, ...updates }, _subject: { entity: "Task", command: "assignTask", id: docId } };
-    await ctx.db.insert("manifestEvents", { type: "TaskAssigned", entity: "Task", entityId: docId, payload: {}, createdAt: Date.now() });
+    const __after: Record<string, any> = { ...doc, ...updates };
+    const payload: Record<string, any> = { id: docId, ...__after, result: { id: docId, ...__after }, _subject: { entity: "Task", command: "assignTask", id: docId } };
+    await ctx.db.insert("manifestEvents", { type: "TaskAssigned", entity: "Task", entityId: docId, payload: { id: __after.id }, createdAt: Date.now() });
     return { ...doc, ...updates };
   },
 });

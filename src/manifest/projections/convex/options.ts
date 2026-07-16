@@ -170,6 +170,14 @@ export interface ConvexProjectionOptions {
   authContextImport?: string;
 
   /**
+   * Module exporting `encrypt(plaintext, metadata)` and
+   * `decrypt(ciphertext, keyId, metadata)` for properties carrying the
+   * `encrypted` modifier. Metadata is `{ ctx, entity, property }`. Required
+   * whenever a persistent entity has encrypted fields.
+   */
+  encryptionImport?: string;
+
+  /**
    * Keep list/get results inside the caller’s tenant. Default `true`.
    * When on, generated reads never take a client-supplied tenant id; they use
    * the authenticated tenant from {@link authContextImport}. Requires that
@@ -250,7 +258,10 @@ export type NormalizedConvexOptions = Required<
     | 'computedProperties'
   >
 > &
-  Pick<ConvexProjectionOptions, 'naming' | 'tenantIdProperty' | 'authContextImport'> & {
+  Pick<
+    ConvexProjectionOptions,
+    'naming' | 'tenantIdProperty' | 'authContextImport' | 'encryptionImport'
+  > & {
     /** @internal App-wide naming policy when injected by config resolution. */
     manifestNaming?: ManifestNamingInjection;
   };
@@ -286,8 +297,7 @@ export function normalizeOptions(
 
   // App-wide normalization owns spelling — drop local naming so it cannot
   // silently recreate different table names in this projection.
-  const naming =
-    manifestNaming?.normalization === true ? undefined : input.naming;
+  const naming = manifestNaming?.normalization === true ? undefined : input.naming;
 
   return {
     output: input.output ?? CONVEX_PROJECTION_DEFAULTS.output,
@@ -308,6 +318,7 @@ export function normalizeOptions(
     computedProperties: input.computedProperties ?? CONVEX_PROJECTION_DEFAULTS.computedProperties,
     tenantIdProperty: input.tenantIdProperty,
     authContextImport: input.authContextImport,
+    encryptionImport: input.encryptionImport,
     naming,
     manifestNaming,
   };

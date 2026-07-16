@@ -6,7 +6,7 @@
 > This document proves that a capability is registered or has executable evidence; it does **not** independently prove completion.
 > Completion status is governed by [`docs/platform/FEATURE_MATRIX.md`](platform/FEATURE_MATRIX.md). Language meaning is governed by `docs/spec/**`.
 
-Package version: `3.6.4`
+Package version: `3.6.7`
 
 Generated sources:
 
@@ -40,7 +40,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | --- | --- | --- | --- |
 | `analytics` | `analytics.tracking-plan`, `analytics.events`, `analytics.handlers` | no | undeclared |
 | `contract-tests` | `contract-tests.convex` | yes | undeclared |
-| `convex` | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react` | yes | 19 supported / 10 partial / 6 unsupported |
+| `convex` | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react` | yes | 21 supported / 9 partial / 6 unsupported |
 | `dart` | `dart.entity`, `dart.command`, `dart.models`, `dart.client`, `dart.providers`, `dart.package` | no | undeclared |
 | `drizzle` | `drizzle.schema` | yes | undeclared |
 | `dynamodb` | `dynamodb.cloudformation`, `dynamodb.cdk`, `dynamodb.terraform` | yes | undeclared |

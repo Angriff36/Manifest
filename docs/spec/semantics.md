@@ -96,14 +96,7 @@ not authoritative for Manifest semantics.
 
 A property literal default MUST be compatible with its declared type. The compiler MUST reject incompatible pairs (for example, `property metadata: string? = {}`) instead of emitting IR that downstream projections cannot type safely. `null` is valid only for nullable types; object and array literals are valid only for compatible composite, JSON, or `any` types.
 
-- ~~`encrypted` and `masked` are enforced as described in their own sections.~~
-- **(2026-07-14)** `masked` is enforced as described in Property Masking below.
-  `encrypted` is enforced by the reference runtime when an `encryptionProvider`
-  is configured (envelope encrypt-on-write / decrypt-on-read); there is **no
-  dedicated Property Encryption section in this spec yet**. Projections that
-  cannot honor encryption MUST emit a loud diagnostic (Convex:
-  `CONVEX_ENCRYPTED_UNSUPPORTED`) rather than silently treating ciphertext as
-  a plain string without notice.
+- `encrypted` and `masked` are enforced as described in their own sections.
 
 ### Computed Properties
 
@@ -282,13 +275,13 @@ database FK engine:
 Four primitive type names with fixed runtime representations, plus one
 source-level alias:
 
-| Type                       | Representation                                                                                      |
-| -------------------------- | --------------------------------------------------------------------------------------------------- |
-| `datetime`                 | finite number, epoch milliseconds UTC, within ±8,640,000,000,000,000 (the representable Date range) |
-| `timestamp`                | **alias of `datetime`** — same representation and write-time validation (`E_TYPE_DATETIME`)         |
-| `duration`                 | finite number, milliseconds (may be negative)                                                       |
-| `date`                     | string `"YYYY-MM-DD"`, must be a valid calendar date (leap years honored; `"2026-02-30"` invalid)   |
-| `time`                     | string `"HH:MM:SS"`, `00:00:00`–`23:59:59` (no `24:00:00`, no leap seconds)                         |
+| Type        | Representation                                                                                      |
+| ----------- | --------------------------------------------------------------------------------------------------- |
+| `datetime`  | finite number, epoch milliseconds UTC, within ±8,640,000,000,000,000 (the representable Date range) |
+| `timestamp` | **alias of `datetime`** — same representation and write-time validation (`E_TYPE_DATETIME`)         |
+| `duration`  | finite number, milliseconds (may be negative)                                                       |
+| `date`      | string `"YYYY-MM-DD"`, must be a valid calendar date (leap years honored; `"2026-02-30"` invalid)   |
+| `time`      | string `"HH:MM:SS"`, `00:00:00`–`23:59:59` (no `24:00:00`, no leap seconds)                         |
 
 IR MAY preserve the author spelling `timestamp` on `type.name` (same pattern as
 `bool` vs `boolean`). Projections and the reference runtime MUST treat
@@ -298,6 +291,53 @@ examples; `timestamp` exists for ergonomics and projection parity (e.g. Zod).
 **Write-time validation.** On create and update mutations in the reference runtime, properties of these types are validated after guards, alongside entity constraints. A malformed value produces a blocking constraint outcome with code `E_TYPE_DATE`, `E_TYPE_TIME`, `E_TYPE_DATETIME`, or `E_TYPE_DURATION`, carrying the property name and offending value. `null`/`undefined` always passes this validation (nullability is enforced separately). Validation applies only to these type names — no behavior change for any existing program that does not use them.
 
 **Generated defaults.** Code generators emit `""` as the default for non-nullable `date`/`time` properties — an intentionally invalid sentinel; the reference runtime's write-time validation blocks it (generated standalone code performs no date/time validation itself). Generated defaults for `datetime`/`timestamp`/`duration` are `0` — a _valid_ value (epoch / zero duration), not a sentinel. Deterministic "today" defaults are impossible by design.
+
+## Property Encryption
+
+Properties carrying the `encrypted` modifier are encrypted at the persistence
+boundary and are plaintext everywhere inside Manifest evaluation. Encryption is
+an adapter concern: the IR records the modifier, while a runtime or projection
+receives key-management behavior through an author-owned provider.
+
+### Provider contract and envelope
+
+- A provider encrypt operation receives `String(value)` plus adapter metadata
+  identifying the entity and property. It MUST return `{ ciphertext, keyId }`.
+- A provider decrypt operation receives `ciphertext`, `keyId`, and the same
+  adapter metadata. It MUST return the plaintext string.
+- Stored encrypted values use the deterministic envelope JSON shape
+  `{"v":1,"kid":"<keyId>","ct":"<ciphertext>"}`. Providers own cryptography
+  and key selection; Manifest owns this envelope and its version.
+- `null`, `undefined`, and absent properties pass through without invoking the
+  provider.
+- A version-1 envelope is decrypted on read. A non-envelope string is treated
+  as legacy plaintext and returned unchanged so applications can migrate
+  existing data incrementally. An envelope with an unsupported version or an
+  encryption/decryption provider failure MUST fail the read or write; it MUST
+  NOT silently return ciphertext, drop the field, or write plaintext.
+
+### Evaluation order
+
+- On create and update, guards, policies, constraints, actions, emitted-event
+  payloads, reactions, and command results operate on plaintext. Encryption is
+  the final transform immediately before the store write.
+- On external reads, decryption happens immediately after the store read and
+  before read policies, computed values, `private` removal, or `masked`
+  transformation. Read policies therefore evaluate the same plaintext values
+  as the reference runtime.
+- Internal execution reads are decrypted before command evaluation. No command
+  may observe an encryption envelope as a domain value.
+- Identical IR, runtime context, stored envelopes, and provider behavior MUST
+  produce identical domain results. Ciphertext itself MAY be nondeterministic;
+  that variability belongs to the injected provider boundary.
+
+### Missing-provider behavior
+
+The reference runtime preserves backward compatibility when no
+`encryptionProvider` is configured, but adapters and generated projections that
+claim encrypted-field support MUST fail generation or startup loudly when an
+encrypted persistent property exists without their required provider seam.
+They MUST NOT claim support while persisting new plaintext values.
 
 ## Property Masking
 
@@ -895,11 +935,11 @@ a closed enum of target kinds unless an existing language limitation forces it.
 
 Required block fields (all MUST be present or compilation fails):
 
-| Field | Meaning |
-| --- | --- |
-| `to` | Any expression (same expression language as stage `policy` / `when`). Evaluated at timeout against the instance evaluation context (`self`/`this`, runtime context). The resulting value is stored on the request as opaque routing metadata (`escalatedTo`) — the runtime does not interpret its domain meaning. |
-| `status` | Approval status entered after escalation: `pending`, `granted`, `denied`, or `expired`. |
-| `timeout` | Post-escalation deadline: a number (hours from the escalation instant), `none` (clear `expiresAt`), or `reset` (re-apply the approval's original `timeout` hours from now). |
+| Field     | Meaning                                                                                                                                                                                                                                                                                                           |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `to`      | Any expression (same expression language as stage `policy` / `when`). Evaluated at timeout against the instance evaluation context (`self`/`this`, runtime context). The resulting value is stored on the request as opaque routing metadata (`escalatedTo`) — the runtime does not interpret its domain meaning. |
+| `status`  | Approval status entered after escalation: `pending`, `granted`, `denied`, or `expired`.                                                                                                                                                                                                                           |
+| `timeout` | Post-escalation deadline: a number (hours from the escalation instant), `none` (clear `expiresAt`), or `reset` (re-apply the approval's original `timeout` hours from now).                                                                                                                                       |
 
 `reset` MUST fail compilation when the approval has no numeric `timeout` hours
 (`APPROVAL_ESCALATE_RESET_WITHOUT_TIMEOUT`).

@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Convex read policies:** generated entity list/get/index queries now evaluate
+  `read`/`all` policies through `authContextImport`, after decryption and before
+  public projection. Denied list rows are omitted, denied gets return `null`,
+  and unrenderable/no-auth policy surfaces remain `internalQuery` fail-closed.
+- **Convex encrypted properties:** add `encryptionImport`; generated mutations
+  encrypt marked create/patch values into the reference-runtime versioned
+  envelope, while reads and instance mutations decrypt before domain
+  evaluation. Missing configuration is now the hard
+  `CONVEX_ENCRYPTION_IMPORT_REQUIRED` diagnostic.
+
 - **Convex event rows:** bare `emit EventName` no longer persists `payload: {}`.
   When the IR event declares schema fields, the projection synthesizes them from
   the post-action instance (id aliases like `milestoneId`, matching properties,
@@ -203,6 +213,7 @@ versions; `^` ranges are unsafe with this scheme.
 - SDK stability declaration — `docs/spec/sdk-stability.md` lists the
   subpaths that are stable for Builder/platform consumers; breaking one now
   requires a major version and a **Breaking** changelog entry.
+
 ### Fixed
 
 - **Convex — constraint `failWhen` polarity (correctness):** generated
