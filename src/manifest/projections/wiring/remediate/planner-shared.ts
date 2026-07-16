@@ -82,30 +82,24 @@ export function findingIdOf(mismatch: ContractMismatch): string {
   return `${mismatch.kind}:${mismatch.capabilityId}:${mismatch.parameter ?? ''}:${mismatch.source.file}`;
 }
 
+const REPAIR_KIND_PRIORITY: Record<RepairKind, number> = {
+  'move-trusted-input-server-side': 5,
+  'replace-payload-expression': 10,
+  'remove-invalid-literal': 10,
+  'replace-empty-date-sentinel': 12,
+  'add-required-input': 15,
+  'migrate-to-safe-binding': 20,
+  'replace-fake-lifecycle-binding': 25,
+  'expand-partial-to-full-body': 35,
+  'add-invalidation': 40,
+  'wire-existing-control': 50,
+};
+
 export function priorityFor(kind: RepairKind, cap: WiringCommandDescriptor): number {
   const cmd = cap.command.toLowerCase();
   const isPrimary =
     cmd === 'create' || cmd === 'update' || cmd === 'delete' || cmd.startsWith('create');
-  const base =
-    kind === 'move-trusted-input-server-side'
-      ? 5
-      : kind === 'replace-payload-expression' || kind === 'remove-invalid-literal'
-        ? 10
-        : kind === 'replace-empty-date-sentinel'
-          ? 12
-          : kind === 'add-required-input'
-            ? 15
-            : kind === 'migrate-to-safe-binding'
-              ? 20
-              : kind === 'replace-fake-lifecycle-binding'
-                ? 25
-                : kind === 'expand-partial-to-full-body'
-                  ? 35
-                  : kind === 'add-invalidation'
-                    ? 40
-                    : kind === 'wire-existing-control'
-                      ? 50
-                      : 60;
+  const base = REPAIR_KIND_PRIORITY[kind] ?? 60;
   return isPrimary ? base : base + 5;
 }
 

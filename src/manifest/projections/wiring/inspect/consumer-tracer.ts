@@ -168,6 +168,61 @@ export class ConsumerTracer {
     }
   }
 
+  private pushUnresolvedImportAmbiguous(
+    uiFile: string,
+    specifier: string,
+    usedSymbols: string[],
+    ambiguous: ConsumerEvidence[],
+  ): void {
+    if (usedSymbols.length === 0) return;
+    ambiguous.push({
+      capabilityId: `unresolved:${usedSymbols[0]}`,
+      entity: '',
+      command: '',
+      classification: 'imported_helper',
+      proofLevel: 'ambiguous',
+      source: { file: uiFile },
+      consumerSymbol: usedSymbols[0],
+      trace: [
+        { label: normalizeRepoPath(uiFile), file: uiFile },
+        { label: `import ${specifier}` },
+      ],
+      confidence: 'low',
+    });
+  }
+
+  private classifyImportVia(moduleContent: string): ConsumerTraceVia {
+    const isServerAction =
+      moduleContent.includes('"use server"') || moduleContent.includes("'use server'");
+    return isServerAction ? 'server_action' : 'imported_helper';
+  }
+
+  private recordImportModuleIntents(
+    uiFile: string,
+    content: string,
+    intentModule: string,
+    via: ConsumerTraceVia,
+    hopPrefix: TraceHop[],
+    consumerSymbol: string | undefined,
+    capabilityIds: ReadonlySet<string>,
+    pushProven: (ev: ConsumerEvidence) => void,
+    staleReferences: ConsumerEvidence[],
+    recordInv: (inv: ManifestInvocation, file: string, reachable: boolean) => void,
+  ): void {
+    for (const inv of this.manifestIntentsForModule(intentModule)) {
+      recordInv(inv, inv.file, true);
+      const hops: TraceHop[] = [
+        { label: normalizeRepoPath(uiFile), file: uiFile },
+        ...hopPrefix,
+        { label: normalizeRepoPath(inv.file), file: inv.file },
+        { label: inv.intent },
+      ];
+      const ev = makeEvidence(inv, uiFile, content, via, hops, consumerSymbol);
+      if (capabilityIds.has(inv.intent)) pushProven(ev);
+      else staleReferences.push(ev);
+    }
+  }
+
   private traceUsedImportLinks(
     uiFile: string,
     capabilityIds: ReadonlySet<string>,
@@ -187,76 +242,43 @@ export class ConsumerTracer {
         this.fileContents,
         this.caseInsensitive,
       );
+      const usedSymbols = imp.symbols.filter((sym) => uiReferencesSymbol(content, sym));
       if (!resolved) {
-        // Unresolved import of a used symbol → ambiguous, not proven defect
-        const used = imp.symbols.filter((sym) => uiReferencesSymbol(content, sym));
-        if (used.length > 0) {
-          ambiguous.push({
-            capabilityId: `unresolved:${used[0]}`,
-            entity: '',
-            command: '',
-            classification: 'imported_helper',
-            proofLevel: 'ambiguous',
-            source: { file: uiFile },
-            consumerSymbol: used[0],
-            trace: [
-              { label: normalizeRepoPath(uiFile), file: uiFile },
-              { label: `import ${imp.specifier}` },
-            ],
-            confidence: 'low',
-          });
-        }
+        this.pushUnresolvedImportAmbiguous(uiFile, imp.specifier, usedSymbols, ambiguous);
         continue;
       }
       if (this.surface.isGeneratedDefinition(resolved)) continue;
-
-      const usedSymbols = imp.symbols.filter((sym) => uiReferencesSymbol(content, sym));
       if (usedSymbols.length === 0) continue; // import-only — not a consumer
 
       const moduleContent = this.fileContents.get(resolved) ?? '';
-      const isServerAction =
-        moduleContent.includes('"use server"') || moduleContent.includes("'use server'");
-      const via: ConsumerTraceVia = isServerAction ? 'server_action' : 'imported_helper';
-
-      for (const inv of this.manifestIntentsForModule(resolved)) {
-        recordInv(inv, inv.file, true);
-        const ev = makeEvidence(
-          inv,
-          uiFile,
-          content,
-          via,
-          [
-            { label: normalizeRepoPath(uiFile), file: uiFile },
-            { label: usedSymbols[0]!, file: resolved },
-            { label: normalizeRepoPath(inv.file), file: inv.file },
-            { label: inv.intent },
-          ],
-          usedSymbols[0],
-        );
-        if (capabilityIds.has(inv.intent)) pushProven(ev);
-        else staleReferences.push(ev);
-      }
+      const via = this.classifyImportVia(moduleContent);
+      const symbolHop: TraceHop = { label: usedSymbols[0]!, file: resolved };
+      this.recordImportModuleIntents(
+        uiFile,
+        content,
+        resolved,
+        via,
+        [symbolHop],
+        usedSymbols[0],
+        capabilityIds,
+        pushProven,
+        staleReferences,
+        recordInv,
+      );
 
       for (const link of this.parser.resolveHandlersFromUi(moduleContent, this.routeHelpers)) {
-        for (const inv of this.manifestIntentsForModule(link.handlerPath)) {
-          recordInv(inv, inv.file, true);
-          const ev = makeEvidence(
-            inv,
-            uiFile,
-            content,
-            via,
-            [
-              { label: normalizeRepoPath(uiFile), file: uiFile },
-              { label: usedSymbols[0]!, file: resolved },
-              { label: link.apiPath },
-              { label: normalizeRepoPath(inv.file), file: inv.file },
-              { label: inv.intent },
-            ],
-            usedSymbols[0],
-          );
-          if (capabilityIds.has(inv.intent)) pushProven(ev);
-          else staleReferences.push(ev);
-        }
+        this.recordImportModuleIntents(
+          uiFile,
+          content,
+          link.handlerPath,
+          via,
+          [symbolHop, { label: link.apiPath }],
+          usedSymbols[0],
+          capabilityIds,
+          pushProven,
+          staleReferences,
+          recordInv,
+        );
       }
     }
   }
@@ -352,12 +374,9 @@ function sameEvidence(a: ConsumerEvidence, b: ConsumerEvidence): boolean {
  * Detect camelCase client calls that look like Entity+Command but are not in the contract.
  * Reserved for future stale-client heuristics; executeCommand/runManifest cover stale today.
  */
-function extractUnknownClientStyleCalls(
+export function extractUnknownClientStyleCalls(
   _content: string,
   _capabilityIds: ReadonlySet<string>,
 ): ManifestInvocation[] {
   return [];
 }
-
-// Keep referenced for future extension without unused-export noise in tests.
-void extractUnknownClientStyleCalls;

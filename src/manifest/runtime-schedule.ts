@@ -91,42 +91,61 @@ function parseCronField(
 ): CronField {
   const field = raw.trim();
   if (field === '') throw new Error('empty cron field');
-  const star = field === '*';
   const values = new Set<number>();
-
   for (const part of field.split(',')) {
-    const seg = part.trim();
-    if (seg === '') throw new Error(`empty term in cron field "${raw}"`);
-
-    const slash = seg.indexOf('/');
-    const rangePart = slash === -1 ? seg : seg.slice(0, slash);
-    let step = 1;
-    if (slash !== -1) {
-      step = Number(seg.slice(slash + 1));
-      if (!Number.isInteger(step) || step <= 0) {
-        throw new Error(`invalid step in cron term "${part}"`);
-      }
-    }
-
-    let lo: number;
-    let hi: number;
-    if (rangePart === '*') {
-      lo = min;
-      hi = max;
-    } else if (rangePart.includes('-')) {
-      const dash = rangePart.indexOf('-');
-      lo = resolveCronToken(rangePart.slice(0, dash), names, min, max);
-      hi = resolveCronToken(rangePart.slice(dash + 1), names, min, max);
-    } else {
-      lo = resolveCronToken(rangePart, names, min, max);
-      // `a/n` means "from a to the field maximum, every n"; a bare `a` is a point.
-      hi = slash !== -1 ? max : lo;
-    }
-    if (lo > hi) throw new Error(`invalid range "${part}" (start > end)`);
-    for (let v = lo; v <= hi; v += step) values.add(v);
+    addCronSegmentValues(part, raw, min, max, names, values);
   }
+  return { values, star: field === '*' };
+}
 
-  return { values, star };
+function addCronSegmentValues(
+  part: string,
+  rawField: string,
+  min: number,
+  max: number,
+  names: Record<string, number>,
+  values: Set<number>,
+): void {
+  const seg = part.trim();
+  if (seg === '') throw new Error(`empty term in cron field "${rawField}"`);
+  const { rangePart, step, hasStep } = splitCronStep(seg, part);
+  const { lo, hi } = resolveCronRange(rangePart, hasStep, min, max, names, part);
+  if (lo > hi) throw new Error(`invalid range "${part}" (start > end)`);
+  for (let v = lo; v <= hi; v += step) values.add(v);
+}
+
+function splitCronStep(
+  seg: string,
+  part: string,
+): { rangePart: string; step: number; hasStep: boolean } {
+  const slash = seg.indexOf('/');
+  if (slash === -1) return { rangePart: seg, step: 1, hasStep: false };
+  const step = Number(seg.slice(slash + 1));
+  if (!Number.isInteger(step) || step <= 0) {
+    throw new Error(`invalid step in cron term "${part}"`);
+  }
+  return { rangePart: seg.slice(0, slash), step, hasStep: true };
+}
+
+function resolveCronRange(
+  rangePart: string,
+  hasStep: boolean,
+  min: number,
+  max: number,
+  names: Record<string, number>,
+  _part: string,
+): { lo: number; hi: number } {
+  if (rangePart === '*') return { lo: min, hi: max };
+  if (rangePart.includes('-')) {
+    const dash = rangePart.indexOf('-');
+    return {
+      lo: resolveCronToken(rangePart.slice(0, dash), names, min, max),
+      hi: resolveCronToken(rangePart.slice(dash + 1), names, min, max),
+    };
+  }
+  const lo = resolveCronToken(rangePart, names, min, max);
+  // `a/n` means "from a to the field maximum, every n"; a bare `a` is a point.
+  return { lo, hi: hasStep ? max : lo };
 }
 
 /** Parse the day-of-week field, normalizing 7 (some crons' Sunday) to 0. */

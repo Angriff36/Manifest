@@ -179,27 +179,36 @@ export function resolveLocalImportClosure(
     if (visited.has(seenKey)) continue;
     visited.add(seenKey);
     out.push(current.file);
-
     if (current.depth >= maxDepth) continue;
     const content = fileContents.get(current.file);
     if (!content) continue;
-
-    for (const imp of parseImportSpecifiers(content)) {
-      if (!imp.specifier.startsWith('.')) continue;
-      const resolved = resolveImportPath(
-        current.file,
-        imp.specifier,
-        fileContents,
-        caseInsensitive,
-      );
-      if (resolved) queue.push({ file: resolved, depth: current.depth + 1 });
-    }
-    for (const specifier of parseSideEffectImports(content)) {
-      if (!specifier.startsWith('.')) continue;
-      const resolved = resolveImportPath(current.file, specifier, fileContents, caseInsensitive);
-      if (resolved) queue.push({ file: resolved, depth: current.depth + 1 });
-    }
+    enqueueRelativeImports(current, content, fileContents, caseInsensitive, queue);
   }
 
   return out;
+}
+
+function enqueueRelativeImports(
+  current: { file: string; depth: number },
+  content: string,
+  fileContents: Map<string, string>,
+  caseInsensitive: boolean,
+  queue: Array<{ file: string; depth: number }>,
+): void {
+  const nextDepth = current.depth + 1;
+  for (const imp of parseImportSpecifiers(content)) {
+    if (!imp.specifier.startsWith('.')) continue;
+    const resolved = resolveImportPath(
+      current.file,
+      imp.specifier,
+      fileContents,
+      caseInsensitive,
+    );
+    if (resolved) queue.push({ file: resolved, depth: nextDepth });
+  }
+  for (const specifier of parseSideEffectImports(content)) {
+    if (!specifier.startsWith('.')) continue;
+    const resolved = resolveImportPath(current.file, specifier, fileContents, caseInsensitive);
+    if (resolved) queue.push({ file: resolved, depth: nextDepth });
+  }
 }

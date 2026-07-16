@@ -10,6 +10,16 @@ interface FlameGraphPanelProps {
   disabled: boolean;
 }
 
+function resolveSelectedCommandLabel(
+  current: string,
+  options: ProfilerCommandOption[],
+): string {
+  if (current && options.some((option) => option.label === current)) {
+    return current;
+  }
+  return options[0]?.label || '';
+}
+
 interface FlameBarProps {
   phase: PhaseTiming;
   x: number;
@@ -194,12 +204,9 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
         setSelectedProfile(null);
         const nextCommandOptions = buildProfilerCommandOptions(compileResult.ir);
         setCommandOptions(nextCommandOptions);
-        setSelectedCommandLabel((current) => {
-          if (current && nextCommandOptions.some((option) => option.label === current)) {
-            return current;
-          }
-          return nextCommandOptions[0]?.label || '';
-        });
+        setSelectedCommandLabel((current) =>
+          resolveSelectedCommandLabel(current, nextCommandOptions),
+        );
         setError(null);
       } catch (err) {
         if (cancelled) return;

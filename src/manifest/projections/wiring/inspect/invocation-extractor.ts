@@ -178,36 +178,45 @@ function extractCommandArgLiteralsInManifestModules(content: string): ManifestIn
 
   const visit = (node: ts.Node) => {
     if (ts.isCallExpression(node)) {
-      const calleeName = callCalleeName(node.expression);
-      // Intended helpers: runLifecycleCommand / *Command — not text()/csv()/etc.
-      if (calleeName && /Command$/.test(calleeName) && calleeName !== 'runManifestCommand') {
-        for (let i = 1; i < node.arguments.length; i++) {
-          const arg = node.arguments[i]!;
-          if (!ts.isStringLiteral(arg) && !ts.isNoSubstitutionTemplateLiteral(arg)) {
-            continue;
-          }
-          const command = arg.text;
-          if (!isPlausibleCommandLiteral(command)) continue;
-          for (const entity of entities) {
-            const intent = `${entity}.${command}`;
-            if (seen.has(intent)) continue;
-            seen.add(intent);
-            out.push({
-              entity,
-              command,
-              intent,
-              bodyFields: [],
-              index: arg.getStart(sf),
-              payloadSource: '',
-            });
-          }
-        }
-      }
+      collectCommandArgIntents(node, entities, sf, seen, out);
     }
     ts.forEachChild(node, visit);
   };
   visit(sf);
   return out;
+}
+
+function collectCommandArgIntents(
+  node: ts.CallExpression,
+  entities: string[],
+  sf: ts.SourceFile,
+  seen: Set<string>,
+  out: ManifestInvocation[],
+): void {
+  const calleeName = callCalleeName(node.expression);
+  // Intended helpers: runLifecycleCommand / *Command — not text()/csv()/etc.
+  if (!calleeName || !/Command$/.test(calleeName) || calleeName === 'runManifestCommand') {
+    return;
+  }
+  for (let i = 1; i < node.arguments.length; i++) {
+    const arg = node.arguments[i]!;
+    if (!ts.isStringLiteral(arg) && !ts.isNoSubstitutionTemplateLiteral(arg)) continue;
+    const command = arg.text;
+    if (!isPlausibleCommandLiteral(command)) continue;
+    for (const entity of entities) {
+      const intent = `${entity}.${command}`;
+      if (seen.has(intent)) continue;
+      seen.add(intent);
+      out.push({
+        entity,
+        command,
+        intent,
+        bodyFields: [],
+        index: arg.getStart(sf),
+        payloadSource: '',
+      });
+    }
+  }
 }
 
 function callCalleeName(expr: ts.Expression): string | undefined {

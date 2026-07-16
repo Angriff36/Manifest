@@ -47,11 +47,7 @@ export function findUniqueFullBodyPattern(
   cap: WiringCommandDescriptor,
   fileContents: Map<string, string>,
 ): FullBodyPattern | undefined {
-  let byCap = patternCache.get(fileContents);
-  if (!byCap) {
-    byCap = new Map();
-    patternCache.set(fileContents, byCap);
-  }
+  const byCap = cacheFor(fileContents);
   if (byCap.has(cap.capabilityId)) {
     return byCap.get(cap.capabilityId) ?? undefined;
   }
@@ -64,14 +60,31 @@ export function findUniqueFullBodyPattern(
     return undefined;
   }
 
+  const result = pickUniqueCandidate(collectFullBodyCandidates(cap, fileContents, required));
+  byCap.set(cap.capabilityId, result);
+  return result ?? undefined;
+}
+
+function cacheFor(fileContents: Map<string, string>): Map<string, FullBodyPattern | null> {
+  let byCap = patternCache.get(fileContents);
+  if (!byCap) {
+    byCap = new Map();
+    patternCache.set(fileContents, byCap);
+  }
+  return byCap;
+}
+
+function collectFullBodyCandidates(
+  cap: WiringCommandDescriptor,
+  fileContents: Map<string, string>,
+  required: string[],
+): FullBodyPattern[] {
   const candidates: FullBodyPattern[] = [];
   for (const [file, content] of fileContents) {
-    // Cheap prefilter — avoid AST on unrelated modules.
     if (!looksLikeBuilderCandidate(content, cap, required)) continue;
     for (const hit of findBuildersInFile(file, content, required)) {
       const usage = findProvenUsage(fileContents, hit.builderName, cap);
-      if (!usage) continue;
-      if (usage.capabilityId !== cap.capabilityId) continue;
+      if (!usage || usage.capabilityId !== cap.capabilityId) continue;
       candidates.push({
         ...hit,
         provenUsageSnippet: usage.snippet,
@@ -79,17 +92,16 @@ export function findUniqueFullBodyPattern(
       });
     }
   }
+  return candidates;
+}
 
-  let result: FullBodyPattern | null = null;
-  if (candidates.length === 1) {
-    result = candidates[0]!;
-  } else if (candidates.length > 1) {
+function pickUniqueCandidate(candidates: FullBodyPattern[]): FullBodyPattern | null {
+  if (candidates.length === 1) return candidates[0]!;
+  if (candidates.length > 1) {
     const uniqueNames = new Set(candidates.map((c) => `${c.builderFile}:${c.builderName}`));
-    if (uniqueNames.size === 1) result = candidates[0]!;
-    // else ambiguous → null
+    if (uniqueNames.size === 1) return candidates[0]!;
   }
-  byCap.set(cap.capabilityId, result);
-  return result ?? undefined;
+  return null;
 }
 
 function looksLikeBuilderCandidate(
@@ -171,24 +183,39 @@ function patternFromFunction(
 function findReturnedObjectLiteral(
   node: ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression,
 ): ts.ObjectLiteralExpression | undefined {
-  if (ts.isArrowFunction(node) && ts.isParenthesizedExpression(node.body)) {
-    if (ts.isObjectLiteralExpression(node.body.expression)) return node.body.expression;
-  }
-  if (ts.isArrowFunction(node) && ts.isObjectLiteralExpression(node.body)) {
-    return node.body;
-  }
+  const arrowLiteral = arrowBodyObjectLiteral(node);
+  if (arrowLiteral) return arrowLiteral;
   const body = node.body;
   if (!body || !ts.isBlock(body)) return undefined;
   for (const stmt of body.statements) {
-    if (ts.isReturnStatement(stmt) && stmt.expression) {
-      if (ts.isObjectLiteralExpression(stmt.expression)) return stmt.expression;
-      if (
-        ts.isParenthesizedExpression(stmt.expression) &&
-        ts.isObjectLiteralExpression(stmt.expression.expression)
-      ) {
-        return stmt.expression.expression;
-      }
-    }
+    const lit = returnStatementObjectLiteral(stmt);
+    if (lit) return lit;
+  }
+  return undefined;
+}
+
+function arrowBodyObjectLiteral(
+  node: ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression,
+): ts.ObjectLiteralExpression | undefined {
+  if (!ts.isArrowFunction(node)) return undefined;
+  if (ts.isObjectLiteralExpression(node.body)) return node.body;
+  if (
+    ts.isParenthesizedExpression(node.body) &&
+    ts.isObjectLiteralExpression(node.body.expression)
+  ) {
+    return node.body.expression;
+  }
+  return undefined;
+}
+
+function returnStatementObjectLiteral(stmt: ts.Statement): ts.ObjectLiteralExpression | undefined {
+  if (!ts.isReturnStatement(stmt) || !stmt.expression) return undefined;
+  if (ts.isObjectLiteralExpression(stmt.expression)) return stmt.expression;
+  if (
+    ts.isParenthesizedExpression(stmt.expression) &&
+    ts.isObjectLiteralExpression(stmt.expression.expression)
+  ) {
+    return stmt.expression.expression;
   }
   return undefined;
 }

@@ -1008,9 +1008,8 @@ program
     '--write-receiver <name>',
     'ORM client identifier direct-write detectors match on (default: prisma)',
   )
-  .action(async (options = {}, cmd) => {
+  .action(async (options = {}) => {
     // Surface a deprecation hint when callers invoke the legacy alias.
-    const invokedAs = cmd?.args?.[0] ?? cmd?.name?.();
     const calledByAlias = process.argv.includes('audit-constitution');
     if (calledByAlias) {
       console.warn(
@@ -1028,8 +1027,6 @@ program
       // caller's CI integration. Mirror audit-routes behavior.
       process.exitCode = 1;
     }
-    // Suppress unused-var noise from optional invokedAs lookup.
-    void invokedAs;
   });
 
 /**
@@ -1885,11 +1882,14 @@ async function isDirectExecution(): Promise<boolean> {
   return false;
 }
 
-void isDirectExecution().then((shouldRun) => {
-  if (shouldRun) {
-    runCli().catch((error) => {
-      console.error('CLI error:', error);
-      process.exit(1);
-    });
-  }
-});
+isDirectExecution()
+  .then((shouldRun) => {
+    if (shouldRun) {
+      return runCli();
+    }
+    return undefined;
+  })
+  .catch((error) => {
+    console.error('CLI error:', error);
+    process.exit(1);
+  });

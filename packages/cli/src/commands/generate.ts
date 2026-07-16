@@ -205,7 +205,7 @@ async function generateWithRegistryProjection(
   const registry = await import('@angriff36/manifest/projections');
   const projection = registry.getProjection(options.projection);
   if (!projection) {
-    const available = registry.getProjectionNames().sort().join(', ');
+    const available = registry.getProjectionNames().sort((a, b) => a.localeCompare(b)).join(', ');
     throw new Error(`Unknown projection: ${options.projection} (available: ${available})`);
   }
 
@@ -618,22 +618,79 @@ function recordGeneration(
   }
 }
 
+function printProjectionDiagnostics(diagnostics: ProjectionDiagnostic[]): void {
+  for (const d of diagnostics) {
+    if (d.severity === 'error') {
+      console.error(chalk.red(`  Error: ${d.message}`));
+    } else if (d.severity === 'warning') {
+      console.warn(chalk.yellow(`  Warning: ${d.message}`));
+    } else {
+      console.log(chalk.gray(`  Info: ${d.message}`));
+    }
+  }
+}
+
+function pathSegments(p: string): string[] {
+  return p.split(/[/\\]+/).filter(Boolean);
+}
+
+/** Collapse pathHint that duplicates outputDir trailing segments (appDir overlap). */
+function collapseOverlappingHint(outputDir: string, hint: string): string {
+  const outSegs = pathSegments(outputDir);
+  const hintSegs = pathSegments(hint);
+  let overlap = Math.min(outSegs.length, hintSegs.length);
+  for (; overlap > 0; overlap--) {
+    if (
+      outSegs.slice(outSegs.length - overlap).join('/') === hintSegs.slice(0, overlap).join('/')
+    ) {
+      break;
+    }
+  }
+  if (overlap <= 0) return hint;
+  const collapsed = hintSegs.slice(overlap).join('/');
+  console.warn(
+    chalk.yellow(
+      `  Note: artifact path '${hint}' duplicates output dir '${hintSegs.slice(0, overlap).join('/')}' — collapsed to '${collapsed}' (appDir is relative to output; drop the output prefix from appDir to silence this).`,
+    ),
+  );
+  return collapsed;
+}
+
+async function writeOrCheckArtifact(
+  artifact: ProjectionResult['artifacts'][number],
+  outputDir: string,
+  context: WriteContext | undefined,
+): Promise<void> {
+  if (!artifact.pathHint) {
+    console.warn(chalk.yellow(`  Artifact "${artifact.id}" has no path hint, skipping`));
+    return;
+  }
+  const hint = collapseOverlappingHint(outputDir, artifact.pathHint);
+  const outputPath = path.resolve(outputDir, hint);
+
+  if (checkMode) {
+    // --check: compare generated code to the committed file without writing.
+    recordGeneration(artifact, outputPath, context);
+    const existing = await fs.readFile(outputPath, 'utf-8').catch(() => null);
+    if (existing !== artifact.code) {
+      driftedFiles.push(path.relative(process.cwd(), outputPath));
+    }
+    return;
+  }
+
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+  await fs.writeFile(outputPath, artifact.code, 'utf-8');
+  recordGeneration(artifact, outputPath, context);
+  console.log(chalk.gray(`  → ${path.relative(process.cwd(), outputPath)}`));
+}
+
 async function writeProjectionResult(
   result: ProjectionResult,
   outputDir: string,
   opts: { failOnError?: boolean; context?: WriteContext } = {},
 ): Promise<void> {
-  // Show diagnostics first (if any errors, we might still write files)
   if (result.diagnostics && result.diagnostics.length > 0) {
-    result.diagnostics.forEach((d: ProjectionDiagnostic) => {
-      if (d.severity === 'error') {
-        console.error(chalk.red(`  Error: ${d.message}`));
-      } else if (d.severity === 'warning') {
-        console.warn(chalk.yellow(`  Warning: ${d.message}`));
-      } else {
-        console.log(chalk.gray(`  Info: ${d.message}`));
-      }
-    });
+    printProjectionDiagnostics(result.diagnostics);
   }
 
   // An error diagnostic with nothing produced is a failed generation step,
@@ -645,73 +702,52 @@ async function writeProjectionResult(
     throw new Error(errors[0].message);
   }
 
-  // Write each artifact
   for (const artifact of result.artifacts) {
-    if (!artifact.pathHint) {
-      console.warn(chalk.yellow(`  Artifact "${artifact.id}" has no path hint, skipping`));
-      continue;
-    }
-
-    // Use pathHint directly (it may include subdirectories).
-    //
-    // appDir is resolved relative to outputDir. When a config sets both to
-    // overlapping paths (e.g. output 'apps/api' + appDir 'apps/api/app/api'),
-    // a naive resolve doubles the prefix → 'apps/api/apps/api/app/api'. That is
-    // never intended, so strip the overlap and say so rather than write garbage.
-    let hint = artifact.pathHint;
-    // appDir is resolved relative to outputDir. When config sets both to
-    // overlapping paths (e.g. output 'apps/api' + appDir 'apps/api/app/api'),
-    // a naive resolve doubles the prefix → 'apps/api/apps/api/app/api'. Detect
-    // it cwd-independently: if the hint's leading segments equal the output
-    // dir's trailing segments, strip the overlap and say so — never write the
-    // doubled path silently.
-    const segs = (p: string): string[] => p.split(/[/\\]+/).filter(Boolean);
-    const outSegs = segs(outputDir);
-    const hintSegs = segs(hint);
-    let overlap = Math.min(outSegs.length, hintSegs.length);
-    for (; overlap > 0; overlap--) {
-      if (
-        outSegs.slice(outSegs.length - overlap).join('/') === hintSegs.slice(0, overlap).join('/')
-      )
-        break;
-    }
-    if (overlap > 0) {
-      const collapsed = hintSegs.slice(overlap).join('/');
-      console.warn(
-        chalk.yellow(
-          `  Note: artifact path '${hint}' duplicates output dir '${hintSegs.slice(0, overlap).join('/')}' — collapsed to '${collapsed}' (appDir is relative to output; drop the output prefix from appDir to silence this).`,
-        ),
-      );
-      hint = collapsed;
-    }
-    const outputPath = path.resolve(outputDir, hint);
-
-    if (checkMode) {
-      // --check: compare generated code to the committed file without writing.
-      // A missing file or any byte difference counts as drift. Still record
-      // into the generation manifest so --check can verify the committed
-      // manifest matches what a real run would emit.
-      recordGeneration(artifact, outputPath, opts.context);
-      const existing = await fs.readFile(outputPath, 'utf-8').catch(() => null);
-      if (existing !== artifact.code) {
-        driftedFiles.push(path.relative(process.cwd(), outputPath));
-      }
-      continue;
-    }
-
-    await fs.mkdir(path.dirname(outputPath), { recursive: true });
-    await fs.writeFile(outputPath, artifact.code, 'utf-8');
-
-    // Record what was ACTUALLY written (resolved path, not merely pathHint)
-    // into the generation manifest.
-    recordGeneration(artifact, outputPath, opts.context);
-
-    console.log(chalk.gray(`  → ${path.relative(process.cwd(), outputPath)}`));
+    await writeOrCheckArtifact(artifact, outputDir, opts.context);
   }
 
   if (result.artifacts.length === 0 && result.diagnostics.length === 0) {
     console.warn(chalk.yellow(`  No artifacts generated`));
   }
+}
+
+async function finishGenerateCheckMode(
+  spinner: Ora,
+  options: GenerateOptions,
+): Promise<void> {
+  // The generation manifest is a generated file too: --check verifies the
+  // committed one matches what this run would emit (byte-stable contract).
+  if (!generationRecorder.isEmpty) {
+    const manifestPath = path.resolve(process.cwd(), options.output, 'generation.manifest.json');
+    const committed = await fs.readFile(manifestPath, 'utf-8').catch(() => null);
+    if (committed !== generationRecorder.serialize()) {
+      driftedFiles.push(path.relative(process.cwd(), manifestPath));
+    }
+  }
+  if (driftedFiles.length > 0) {
+    console.error(
+      chalk.red(`\n  Drift: ${driftedFiles.length} generated file(s) differ from committed:`),
+    );
+    for (const f of driftedFiles) {
+      console.error(chalk.red(`    • ${f}`));
+    }
+    console.error(
+      chalk.red('  Run `manifest generate` (without --check) and commit the result.'),
+    );
+    if (options.throwOnError) throw new DriftError(driftedFiles.length);
+    process.exit(1);
+  }
+  spinner.succeed('No drift — generated code matches committed files.');
+}
+
+async function writeGenerationManifest(output: string): Promise<void> {
+  if (generationRecorder.isEmpty) return;
+  const manifestPath = path.resolve(process.cwd(), output, 'generation.manifest.json');
+  await fs.mkdir(path.dirname(manifestPath), { recursive: true });
+  await fs.writeFile(manifestPath, generationRecorder.serialize(), 'utf-8');
+  console.log(
+    chalk.gray(`  → ${path.relative(process.cwd(), manifestPath)} (generation manifest)`),
+  );
 }
 
 /**
@@ -726,9 +762,7 @@ export async function generateCommand(ir: string, options: GenerateOptions): Pro
   generationRecorder = new GenerationManifestRecorder();
 
   try {
-    // Get IR files
     const irFiles = await getIRFiles(ir);
-
     if (irFiles.length === 0) {
       spinner.warn('No IR files found');
       console.log('  Generate IR first with: manifest compile <source>');
@@ -736,8 +770,6 @@ export async function generateCommand(ir: string, options: GenerateOptions): Pro
     }
 
     spinner.info(`Found ${irFiles.length} IR file(s)`);
-
-    // Generate from each IR file
     let successCount = 0;
     let errorCount = 0;
 
@@ -753,7 +785,6 @@ export async function generateCommand(ir: string, options: GenerateOptions): Pro
       }
     }
 
-    // Summary
     console.log('');
     if (errorCount > 0) {
       spinner.warn(`Generated from ${successCount} file(s), ${errorCount} failed`);
@@ -762,48 +793,11 @@ export async function generateCommand(ir: string, options: GenerateOptions): Pro
     }
 
     if (checkMode) {
-      // The generation manifest is a generated file too: --check verifies the
-      // committed one matches what this run would emit (byte-stable contract).
-      if (!generationRecorder.isEmpty) {
-        const manifestPath = path.resolve(
-          process.cwd(),
-          options.output,
-          'generation.manifest.json',
-        );
-        const committed = await fs.readFile(manifestPath, 'utf-8').catch(() => null);
-        if (committed !== generationRecorder.serialize()) {
-          driftedFiles.push(path.relative(process.cwd(), manifestPath));
-        }
-      }
-      if (driftedFiles.length > 0) {
-        console.error(
-          chalk.red(`\n  Drift: ${driftedFiles.length} generated file(s) differ from committed:`),
-        );
-        for (const f of driftedFiles) {
-          console.error(chalk.red(`    • ${f}`));
-        }
-        console.error(
-          chalk.red('  Run `manifest generate` (without --check) and commit the result.'),
-        );
-        if (options.throwOnError) throw new DriftError(driftedFiles.length);
-        process.exit(1);
-      }
-      spinner.succeed('No drift — generated code matches committed files.');
+      await finishGenerateCheckMode(spinner, options);
       return;
     }
 
-    // Emit the generation manifest: what this run ACTUALLY wrote (resolved
-    // outputFile per artifact + dispatcher dispatch surface). Deterministic —
-    // sorted, deduped, no timestamps — so an unchanged rerun is byte-stable.
-    if (!generationRecorder.isEmpty) {
-      const manifestPath = path.resolve(process.cwd(), options.output, 'generation.manifest.json');
-      await fs.mkdir(path.dirname(manifestPath), { recursive: true });
-      await fs.writeFile(manifestPath, generationRecorder.serialize(), 'utf-8');
-      console.log(
-        chalk.gray(`  → ${path.relative(process.cwd(), manifestPath)} (generation manifest)`),
-      );
-    }
-
+    await writeGenerationManifest(options.output);
     spinner.succeed(`Generated code from ${successCount} IR file(s)`);
   } catch (error: unknown) {
     if (options.throwOnError) throw error;

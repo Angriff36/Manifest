@@ -132,13 +132,13 @@ export async function computeIRHash(ir: IR): Promise<string> {
   // Use deterministic JSON serialization with recursive key sorting.
   // A replacer function sorts object keys at every nesting level to ensure
   // identical IR always produces the same hash regardless of property insertion order.
-  // NOTE: An array replacer (Object.keys().sort()) would only whitelist those key
+  // NOTE: An array replacer (Object.keys().sort((a, b) => a.localeCompare(b))) would only whitelist those key
   // names at ALL levels, silently dropping nested properties — a subtle JSON.stringify
   // pitfall that would make the hash blind to content changes within entities/commands.
   const json = JSON.stringify(canonical, (_key: string, value: unknown) => {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       const sorted: Record<string, unknown> = {};
-      for (const k of Object.keys(value as Record<string, unknown>).sort()) {
+      for (const k of Object.keys(value as Record<string, unknown>).sort((a, b) => a.localeCompare(b))) {
         sorted[k] = (value as Record<string, unknown>)[k];
       }
       return sorted;
@@ -1189,46 +1189,50 @@ export class IRCompiler {
     const byName = new Map(entities.map((e) => [e.name, e]));
     for (const entity of entities) {
       for (const rel of entity.relationships) {
-        if (!rel.through) continue;
-        if (rel.foreignKey) continue; // exclusivity diagnostic already emitted
-        if (rel.kind !== 'hasMany') {
-          this.emitDiagnostic(
-            'error',
-            `Relationship '${rel.name}' on entity '${entity.name}' uses 'through', which is only supported on hasMany in this version.`,
-            undefined,
-            undefined,
-            'RELATION_THROUGH_KIND_UNSUPPORTED',
-          );
-          continue;
-        }
-        const join = byName.get(rel.through);
-        if (!join) {
-          this.emitDiagnostic(
-            'error',
-            `Relationship '${rel.name}' on entity '${entity.name}' uses through '${rel.through}', but no entity '${rel.through}' is declared.`,
-            undefined,
-            undefined,
-            'RELATION_THROUGH_JOIN_INVALID',
-          );
-          continue;
-        }
-        const toSource = join.relationships.some(
-          (jr) =>
-            (jr.kind === 'belongsTo' || jr.kind === 'ref') && jr.target === entity.name,
-        );
-        const toTarget = join.relationships.some(
-          (jr) => (jr.kind === 'belongsTo' || jr.kind === 'ref') && jr.target === rel.target,
-        );
-        if (!toSource || !toTarget) {
-          this.emitDiagnostic(
-            'error',
-            `Relationship '${rel.name}' on entity '${entity.name}' through '${rel.through}' requires '${rel.through}' to declare belongsTo/ref to '${entity.name}' and to '${rel.target}'.`,
-            undefined,
-            undefined,
-            'RELATION_THROUGH_JOIN_INVALID',
-          );
-        }
+        this.validateThroughRelationship(entity, rel, byName);
       }
+    }
+  }
+
+  private validateThroughRelationship(
+    entity: IREntity,
+    rel: IREntity['relationships'][number],
+    byName: Map<string, IREntity>,
+  ): void {
+    if (!rel.through || rel.foreignKey) return;
+    if (rel.kind !== 'hasMany') {
+      this.emitDiagnostic(
+        'error',
+        `Relationship '${rel.name}' on entity '${entity.name}' uses 'through', which is only supported on hasMany in this version.`,
+        undefined,
+        undefined,
+        'RELATION_THROUGH_KIND_UNSUPPORTED',
+      );
+      return;
+    }
+    const join = byName.get(rel.through);
+    if (!join) {
+      this.emitDiagnostic(
+        'error',
+        `Relationship '${rel.name}' on entity '${entity.name}' uses through '${rel.through}', but no entity '${rel.through}' is declared.`,
+        undefined,
+        undefined,
+        'RELATION_THROUGH_JOIN_INVALID',
+      );
+      return;
+    }
+    const linksTo = (target: string) =>
+      join.relationships.some(
+        (jr) => (jr.kind === 'belongsTo' || jr.kind === 'ref') && jr.target === target,
+      );
+    if (!linksTo(entity.name) || !linksTo(rel.target)) {
+      this.emitDiagnostic(
+        'error',
+        `Relationship '${rel.name}' on entity '${entity.name}' through '${rel.through}' requires '${rel.through}' to declare belongsTo/ref to '${entity.name}' and to '${rel.target}'.`,
+        undefined,
+        undefined,
+        'RELATION_THROUGH_JOIN_INVALID',
+      );
     }
   }
 

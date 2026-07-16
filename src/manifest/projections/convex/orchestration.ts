@@ -43,7 +43,8 @@ export function generateCrons(
   ir: IR,
   rawOptions: Record<string, unknown> | undefined,
 ): OrchestrationResult {
-  void normalizeOptions(rawOptions);
+  // Validate/normalize options even though crons currently ignore the bag.
+  normalizeOptions(rawOptions);
   const diagnostics: ProjectionDiagnostic[] = [];
   const lines: string[] = [];
 
@@ -183,75 +184,7 @@ export function generateHttp(
   for (const wh of webhooks) {
     const ref = wh.entity ? mutationRef(wh.entity, wh.command) : `api.mutations.${wh.command}`;
     const method = (wh.method ?? 'POST').toUpperCase();
-    const needsRawBody = !!wh.signature;
-
-    const bodyLines: string[] = [];
-
-    // Body reading: raw text when signature verification is required (HMAC is
-    // computed over the exact bytes), plain json() otherwise.
-    if (needsRawBody) {
-      bodyLines.push(`    const _rawBody = await request.text();`);
-    }
-
-    // 1. HMAC signature verification (fail-closed, matches handler.ts pipeline).
-    if (wh.signature) {
-      const sig = wh.signature;
-      const envVar = secretToEnvVar(sig.secret);
-      bodyLines.push(
-        `    const _secret = process.env[${JSON.stringify(envVar)}];`,
-        `    if (!_secret)`,
-        `      return new Response(JSON.stringify({ error: "Webhook '${wh.name}' signature secret not configured" }), { status: 500, headers: { "Content-Type": "application/json" } });`,
-        `    const _sig = request.headers.get(${JSON.stringify(sig.header)});`,
-        `    if (!_sig)`,
-        `      return new Response(JSON.stringify({ error: "Missing signature header '${sig.header}'" }), { status: 401, headers: { "Content-Type": "application/json" } });`,
-        `    if (!(await _verifyHmac(_rawBody, ${JSON.stringify(sig.algorithm)}, _secret, _sig)))`,
-        `      return new Response(JSON.stringify({ error: "Invalid webhook signature" }), { status: 401, headers: { "Content-Type": "application/json" } });`,
-      );
-    }
-
-    // 2. Idempotency dedup (fail-closed, matches handler.ts pipeline).
-    if (wh.idempotencyHeader) {
-      bodyLines.push(
-        `    const _ikey = request.headers.get(${JSON.stringify(wh.idempotencyHeader)});`,
-        `    if (!_ikey)`,
-        `      return new Response(JSON.stringify({ error: "Missing idempotency header '${wh.idempotencyHeader}'" }), { status: 400, headers: { "Content-Type": "application/json" } });`,
-        `    const _isNew = await ctx.runMutation(internal.http._checkIdempotencyKey, { key: _ikey, webhookName: ${JSON.stringify(wh.name)} });`,
-        `    if (!_isNew) return new Response(null, { status: 200 }); // duplicate delivery`,
-      );
-    }
-
-    // 3. Body parsing (after verification so HMAC was over the raw bytes).
-    if (needsRawBody) {
-      bodyLines.push(
-        `    let body: unknown;`,
-        `    try { body = JSON.parse(_rawBody); } catch { return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400 }); }`,
-      );
-    } else {
-      bodyLines.push(`    const body = await request.json();`);
-    }
-
-    // 4. Transform + dispatch.
-    const transformEntries: string[] = [];
-    for (const t of wh.transform ?? []) {
-      const { code, unresolved } = renderExpression(t.expression, {
-        selfVar: 'body',
-        globals: ['body', ...DEFAULT_GLOBALS],
-      });
-      if (unresolved.length) {
-        diagnostics.push({
-          severity: 'warning',
-          code: 'CONVEX_UNRESOLVED_WEBHOOK_PARAM',
-          message: `webhook '${wh.name}' param '${t.name}' unresolved; omitted.`,
-        });
-        continue;
-      }
-      transformEntries.push(`${t.name}: ${code}`);
-    }
-    bodyLines.push(
-      `    await ctx.runMutation(${ref}, { ${transformEntries.join(', ')} } as any);`,
-      `    return new Response(null, { status: 200 });`,
-    );
-
+    const bodyLines = buildWebhookHandlerBody(wh, ref, diagnostics);
     routes.push(
       `http.route({\n` +
         `  path: ${JSON.stringify(wh.path)},\n` +
@@ -307,6 +240,87 @@ export function generateHttp(
     `${routes.join('\n\n')}${routes.length ? '\n\n' : '\n'}` +
     `export default http;\n`;
   return { code, diagnostics };
+}
+
+function buildWebhookHandlerBody(
+  wh: IRWebhook,
+  mutationRefPath: string,
+  diagnostics: ProjectionDiagnostic[],
+): string[] {
+  const needsRawBody = !!wh.signature;
+  const bodyLines: string[] = [];
+  if (needsRawBody) {
+    bodyLines.push(`    const _rawBody = await request.text();`);
+  }
+  bodyLines.push(...webhookSignatureLines(wh));
+  bodyLines.push(...webhookIdempotencyLines(wh));
+  bodyLines.push(...webhookBodyParseLines(needsRawBody));
+  bodyLines.push(...webhookDispatchLines(wh, mutationRefPath, diagnostics));
+  return bodyLines;
+}
+
+function webhookSignatureLines(wh: IRWebhook): string[] {
+  if (!wh.signature) return [];
+  const sig = wh.signature;
+  const envVar = secretToEnvVar(sig.secret);
+  return [
+    `    const _secret = process.env[${JSON.stringify(envVar)}];`,
+    `    if (!_secret)`,
+    `      return new Response(JSON.stringify({ error: "Webhook '${wh.name}' signature secret not configured" }), { status: 500, headers: { "Content-Type": "application/json" } });`,
+    `    const _sig = request.headers.get(${JSON.stringify(sig.header)});`,
+    `    if (!_sig)`,
+    `      return new Response(JSON.stringify({ error: "Missing signature header '${sig.header}'" }), { status: 401, headers: { "Content-Type": "application/json" } });`,
+    `    if (!(await _verifyHmac(_rawBody, ${JSON.stringify(sig.algorithm)}, _secret, _sig)))`,
+    `      return new Response(JSON.stringify({ error: "Invalid webhook signature" }), { status: 401, headers: { "Content-Type": "application/json" } });`,
+  ];
+}
+
+function webhookIdempotencyLines(wh: IRWebhook): string[] {
+  if (!wh.idempotencyHeader) return [];
+  return [
+    `    const _ikey = request.headers.get(${JSON.stringify(wh.idempotencyHeader)});`,
+    `    if (!_ikey)`,
+    `      return new Response(JSON.stringify({ error: "Missing idempotency header '${wh.idempotencyHeader}'" }), { status: 400, headers: { "Content-Type": "application/json" } });`,
+    `    const _isNew = await ctx.runMutation(internal.http._checkIdempotencyKey, { key: _ikey, webhookName: ${JSON.stringify(wh.name)} });`,
+    `    if (!_isNew) return new Response(null, { status: 200 }); // duplicate delivery`,
+  ];
+}
+
+function webhookBodyParseLines(needsRawBody: boolean): string[] {
+  if (needsRawBody) {
+    return [
+      `    let body: unknown;`,
+      `    try { body = JSON.parse(_rawBody); } catch { return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400 }); }`,
+    ];
+  }
+  return [`    const body = await request.json();`];
+}
+
+function webhookDispatchLines(
+  wh: IRWebhook,
+  mutationRefPath: string,
+  diagnostics: ProjectionDiagnostic[],
+): string[] {
+  const transformEntries: string[] = [];
+  for (const t of wh.transform ?? []) {
+    const { code, unresolved } = renderExpression(t.expression, {
+      selfVar: 'body',
+      globals: ['body', ...DEFAULT_GLOBALS],
+    });
+    if (unresolved.length) {
+      diagnostics.push({
+        severity: 'warning',
+        code: 'CONVEX_UNRESOLVED_WEBHOOK_PARAM',
+        message: `webhook '${wh.name}' param '${t.name}' unresolved; omitted.`,
+      });
+      continue;
+    }
+    transformEntries.push(`${t.name}: ${code}`);
+  }
+  return [
+    `    await ctx.runMutation(${mutationRefPath}, { ${transformEntries.join(', ')} } as any);`,
+    `    return new Response(null, { status: 200 });`,
+  ];
 }
 
 // ---------------------------------------------------------------------------
