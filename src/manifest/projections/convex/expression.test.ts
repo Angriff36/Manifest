@@ -206,14 +206,43 @@ describe('renderExpression — fail closed', () => {
     const res = renderExpression(guard, DOC);
     expect(res.unresolved).toEqual([]);
     expect(res.code).toBe(
-      '(((doc.prepTasks) ?? []).filter((t) => (((t.status !== "completed") && (t.status !== "cancelled")))).length === 0)',
+      '(((doc.prepTasks) ?? []).filter((t: Record<string, any>) => (((t.status !== "completed") && (t.status !== "cancelled")))).length === 0)',
+    );
+  });
+
+  it('types count_of lambdas with Doc<> when resolveCollectionElementType is set', () => {
+    const pred: IRExpression = {
+      kind: 'lambda',
+      params: ['t'],
+      body: {
+        kind: 'binary',
+        operator: '!=',
+        left: { kind: 'member', object: id('t'), property: 'status' },
+        right: lit('completed'),
+      },
+    };
+    const countCall: IRExpression = {
+      kind: 'call',
+      callee: { kind: 'identifier', name: 'count_of' },
+      args: [self('prepTasks'), pred],
+    };
+    const res = renderExpression(countCall, {
+      selfVar: 'doc',
+      resolveCollectionElementType: (collection) =>
+        collection.kind === 'member' && collection.property === 'prepTasks'
+          ? 'Doc<"prepTasks">'
+          : undefined,
+    });
+    expect(res.unresolved).toEqual([]);
+    expect(res.code).toBe(
+      '((doc.prepTasks) ?? []).filter((t: Doc<"prepTasks">) => ((t.status !== "completed"))).length',
     );
   });
 
   it('resolves bare lambdas as arrow functions; empty expressions stay unresolved', () => {
     const lam = renderExpression({ kind: 'lambda', params: ['x'], body: lit(1) }, DOC);
     expect(lam.unresolved).toEqual([]);
-    expect(lam.code).toBe('(x) => (1)');
+    expect(lam.code).toBe('(x: Record<string, any>) => (1)');
     expect(renderExpression(undefined, DOC).unresolved).toContain('empty expression');
   });
 

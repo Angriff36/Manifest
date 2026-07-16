@@ -38,6 +38,12 @@ import {
 import { resolveConvexValidator } from './type-mapping.js';
 import { ReactionPayloadCollisionPlanner } from './reactionPayloadCollision.js';
 import {
+  codeUsesDocType,
+  collectCountOfHasManyRels,
+  renderCountOfHasManyPreloads,
+  resolveHasManyDocElementType,
+} from './count-of-preload.js';
+import {
   renderExpression,
   isNullLiteral,
   type RenderScope,
@@ -58,7 +64,6 @@ import {
   stripPrivateFromRows,
 } from './privacy.js';
 import { renderInlineComputedFields } from './computed.js';
-import { collectCountOfHasManyRels, renderCountOfHasManyPreloads } from './count-of-preload.js';
 import {
   commandNeedsAfterSnapshot,
   renderEvents,
@@ -333,7 +338,7 @@ export function generateQueries(
     const encrypted = encryptedFieldNames(entity);
     const inlineComputed =
       options.computedProperties === 'inline'
-        ? renderInlineComputedFields(entity, '__row')
+        ? renderInlineComputedFields(entity, '__row', options)
         : {
             fields: [] as { name: string; code: string }[],
             diagnostics: [] as ProjectionDiagnostic[],
@@ -1037,7 +1042,11 @@ function generateMutation(
     // Command parameters that feed actions (and are not themselves fields) are
     // also exposed as args. All expressions resolve against `args`.
     const params = cmd.parameters ?? [];
-    const scope: RenderScope = { selfVar: 'args' };
+    const scope: RenderScope = {
+      selfVar: 'args',
+      resolveCollectionElementType: (collection) =>
+        resolveHasManyDocElementType(entity, collection, options),
+    };
     const argLines: string[] = [];
     const argNames = new Set<string>();
     const docLines: string[] = [];
@@ -1213,6 +1222,8 @@ function generateMutation(
   const checks = renderChecks(entity.name, checkSpecs, {
     selfVar: 'doc',
     locals: paramNames,
+    resolveCollectionElementType: (collection) =>
+      resolveHasManyDocElementType(entity, collection, options),
   });
   diagnostics.push(...checks.diagnostics);
 
@@ -1399,11 +1410,13 @@ export function generateMutations(
   // needs the generated `api`. Only import it when actually used (no dead import).
   const needsApi = /\bctx\.runMutation\b/.test(body);
   const needsAuthCtx = !!options.authContextImport && /\bgetAuthContext\b/.test(body);
+  const needsDoc = codeUsesDocType(body);
   const code =
     `${GENERATED_HEADER}\n// ${blocks.length} mutation(s); roles: ${(ir.roles ?? []).length}; policies: ${ir.policies.length}.${policyNote}\n\n` +
     `import { mutation } from "./_generated/server";\n` +
     `import { v } from "convex/values";\n` +
     (needsApi ? `import { api } from "./_generated/api";\n` : '') +
+    (needsDoc ? `import type { Doc } from "./_generated/dataModel";\n` : '') +
     (needsAuthCtx
       ? `import { getAuthContext } from ${JSON.stringify(options.authContextImport)};\n`
       : '') +

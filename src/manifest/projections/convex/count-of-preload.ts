@@ -11,6 +11,36 @@ import type { IR, IREntity, IRExpression, IRRelationship } from '../../ir';
 import type { NormalizedOptions } from './generator.js';
 import { resolveConvexTableName } from './generator.js';
 
+/**
+ * When `collection` is `self.<hasManyRel>` / `this.<hasManyRel>`, return the
+ * Convex `Doc<"table">` type for the related entity. Otherwise undefined so the
+ * expression renderer falls back to {@link DEFAULT_LAMBDA_PARAM_TYPE}.
+ */
+export function resolveHasManyDocElementType(
+  entity: IREntity,
+  collection: IRExpression,
+  options: NormalizedOptions,
+): string | undefined {
+  if (
+    collection.kind !== 'member' ||
+    collection.object.kind !== 'identifier' ||
+    (collection.object.name !== 'self' && collection.object.name !== 'this')
+  ) {
+    return undefined;
+  }
+  const rel = entity.relationships.find(
+    (r) => r.name === collection.property && r.kind === 'hasMany',
+  );
+  if (!rel?.target) return undefined;
+  const table = resolveConvexTableName(rel.target, options);
+  return `Doc<${JSON.stringify(table)}>`;
+}
+
+/** True when generated code references `Doc<"…">` and needs a dataModel import. */
+export function codeUsesDocType(code: string): boolean {
+  return /\bDoc\s*</.test(code);
+}
+
 /** Collect hasMany relationship names used as `count_of(self.<rel>, …)` collections. */
 export function collectCountOfHasManyRels(expr: IRExpression | undefined, out: Set<string>): void {
   if (!expr) return;

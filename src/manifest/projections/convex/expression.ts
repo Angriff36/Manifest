@@ -50,7 +50,21 @@ export interface RenderScope {
    * current fields (`status`, etc.).
    */
   beforeVar?: string;
+  /**
+   * Fallback TypeScript type for lambda callback parameters when no collection
+   * element type is known. Default {@link DEFAULT_LAMBDA_PARAM_TYPE}.
+   */
+  lambdaParamType?: string;
+  /**
+   * Resolve the element type of a collection expression (e.g. `self.prepTasks`
+   * → `Doc<"prepTasks">`) so `count_of` predicates get a named document type
+   * when IR + table naming make that safe.
+   */
+  resolveCollectionElementType?: (collection: IRExpression) => string | undefined;
 }
+
+/** Smallest explicit doc-shaped type used when no named Doc<> is available. */
+export const DEFAULT_LAMBDA_PARAM_TYPE = 'Record<string, any>';
 
 /** Map `previousStatus` → `status` (emit previous-value convention). */
 export function previousPropertyName(property: string): string | undefined {
@@ -118,11 +132,22 @@ export function isNullLiteral(e: IRExpression | undefined): boolean {
  * Render an IR expression to TypeScript. Collects unmappable nodes in
  * `unresolved` instead of guessing.
  */
+/** Format `(p: T, q: T)` for a generated arrow callback. */
+export function formatTypedLambdaParams(
+  params: readonly string[],
+  paramType: string = DEFAULT_LAMBDA_PARAM_TYPE,
+): string {
+  return params.map((p) => `${p}: ${paramType}`).join(', ');
+}
+
 export function renderExpression(expr: IRExpression | undefined, scope: RenderScope): RenderResult {
   const unresolved: string[] = [];
   const bareIsSelf = scope.bareIdentifierIsSelf !== false;
   const globals = new Set(scope.globals ?? DEFAULT_GLOBALS);
   const locals = new Set(scope.locals ?? []);
+  /** Stack of element types for nested `count_of`/aggregate lambda bodies. */
+  const lambdaParamTypeStack: string[] = [];
+  const fallbackLambdaType = scope.lambdaParamType ?? DEFAULT_LAMBDA_PARAM_TYPE;
 
   const go = (e: IRExpression | undefined): string => {
     if (!e) {
@@ -203,6 +228,24 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
 
       case 'call': {
         const callee = e.callee.kind === 'identifier' ? e.callee.name : undefined;
+        // count_of: resolve the related-document element type before rendering
+        // the predicate lambda so callback params are never implicit any.
+        if (callee === 'count_of') {
+          if (e.args.length === 0) {
+            unresolved.push("builtin 'count_of()' missing collection");
+            return '/* unresolved count_of() */ 0';
+          }
+          const collection = e.args[0]!;
+          const collCode = go(collection);
+          if (e.args.length === 1) return `((${collCode}) ?? []).length`;
+          const predicate = e.args[1]!;
+          const elementType =
+            scope.resolveCollectionElementType?.(collection) ?? fallbackLambdaType;
+          lambdaParamTypeStack.push(elementType);
+          const predCode = go(predicate);
+          lambdaParamTypeStack.pop();
+          return `((${collCode}) ?? []).filter(${predCode}).length`;
+        }
         const args = e.args.map(go);
         switch (callee) {
           case 'now':
@@ -250,16 +293,6 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
             return `(${args[0]}).replace(${args[1]}, ${args[2]})`;
           case 'split':
             return `(${args[0]}).split(${args[1]})`;
-          // Aggregate builtins (docs/spec/builtins.md). Collections are plain
-          // arrays at evaluation time — mutation codegen preloads hasMany edges
-          // referenced by count_of(self.<rel>, …) onto the self var (PB023).
-          case 'count_of':
-            if (args.length === 0) {
-              unresolved.push("builtin 'count_of()' missing collection");
-              return '/* unresolved count_of() */ 0';
-            }
-            if (args.length === 1) return `((${args[0]}) ?? []).length`;
-            return `((${args[0]}) ?? []).filter(${args[1]}).length`;
           default:
             if (!callee) {
               unresolved.push('non-identifier callee');
@@ -271,8 +304,8 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
       }
 
       case 'lambda': {
-        // Render as a JS arrow so aggregate builtins (count_of/filter/map) can
-        // pass the predicate through. Lambda params bind as locals for the body.
+        // Render as a typed JS arrow so aggregate builtins (count_of/filter/map)
+        // pass the predicate through under strict TypeScript (no TS7006).
         const added: string[] = [];
         for (const p of e.params) {
           if (!locals.has(p)) {
@@ -282,7 +315,9 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
         }
         const body = go(e.body);
         for (const p of added) locals.delete(p);
-        return `(${e.params.join(', ')}) => (${body})`;
+        const paramType =
+          lambdaParamTypeStack[lambdaParamTypeStack.length - 1] ?? fallbackLambdaType;
+        return `(${formatTypedLambdaParams(e.params, paramType)}) => (${body})`;
       }
 
       default: {
