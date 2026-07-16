@@ -54,6 +54,93 @@ export interface MultiCompileResult {
   sources: Array<{ absPath: string; contentHash: string }>;
 }
 
+function claimUniqueName(
+  map: Map<string, string>,
+  name: string,
+  absPath: string,
+  kind: string,
+  diagnostics: IRDiagnostic[],
+): void {
+  const existing = map.get(name);
+  if (existing) {
+    diagnostics.push({
+      severity: 'error',
+      message: `Duplicate ${kind} '${name}' declared in '${absPath}' and '${existing}'`,
+    });
+    return;
+  }
+  map.set(name, absPath);
+}
+
+function collectCrossFileNameUniqueness(
+  compiledIRs: Array<{ ir: IR; absPath: string }>,
+): { entityNames: Map<string, string>; diagnostics: IRDiagnostic[] } {
+  const diagnostics: IRDiagnostic[] = [];
+  const entityNames = new Map<string, string>();
+  const enumNames = new Map<string, string>();
+  const commandKeys = new Map<string, string>();
+  let tenantFile: string | undefined;
+
+  for (const { ir, absPath } of compiledIRs) {
+    for (const entity of ir.entities) {
+      claimUniqueName(entityNames, entity.name, absPath, 'entity', diagnostics);
+    }
+    for (const en of ir.enums) {
+      claimUniqueName(enumNames, en.name, absPath, 'enum', diagnostics);
+    }
+    for (const cmd of ir.commands) {
+      const key = cmd.entity ? `${cmd.entity}.${cmd.name}` : cmd.name;
+      claimUniqueName(commandKeys, key, absPath, 'command', diagnostics);
+    }
+    if (ir.tenant) {
+      if (tenantFile) {
+        diagnostics.push({
+          severity: 'error',
+          message: `Duplicate tenant declaration in '${absPath}' and '${tenantFile}'`,
+        });
+      } else {
+        tenantFile = absPath;
+      }
+    }
+  }
+
+  return { entityNames, diagnostics };
+}
+
+function validateCrossFileReferences(
+  compiledIRs: Array<{ ir: IR; absPath: string }>,
+  entityNames: Map<string, string>,
+): IRDiagnostic[] {
+  const diagnostics: IRDiagnostic[] = [];
+  for (const { ir, absPath } of compiledIRs) {
+    for (const entity of ir.entities) {
+      for (const rel of entity.relationships) {
+        if (!entityNames.has(rel.target)) {
+          diagnostics.push({
+            severity: 'error',
+            message: `[${absPath}] Entity '${entity.name}' has relationship '${rel.name}' targeting unknown entity '${rel.target}'`,
+          });
+        }
+        if (rel.through && !entityNames.has(rel.through)) {
+          diagnostics.push({
+            severity: 'error',
+            message: `[${absPath}] Entity '${entity.name}' has relationship '${rel.name}' with unknown through entity '${rel.through}'`,
+          });
+        }
+      }
+    }
+    for (const store of ir.stores) {
+      if (!entityNames.has(store.entity)) {
+        diagnostics.push({
+          severity: 'error',
+          message: `[${absPath}] Store references unknown entity '${store.entity}'`,
+        });
+      }
+    }
+  }
+  return diagnostics;
+}
+
 /**
  * Compile multiple .manifest files into a single merged IR.
  *
@@ -176,98 +263,15 @@ export async function compileProjectToIR(
   }
 
   // Phase 3: Cross-file validation
-  const entityNames = new Map<string, string>(); // name → sourceFile
-  const enumNames = new Map<string, string>();
-  const commandKeys = new Map<string, string>(); // "entity.command" or "command" → sourceFile
-  let tenantFile: string | undefined;
-
-  for (const { ir, absPath } of compiledIRs) {
-    // Check entity name uniqueness
-    for (const entity of ir.entities) {
-      const existing = entityNames.get(entity.name);
-      if (existing) {
-        diagnostics.push({
-          severity: 'error',
-          message: `Duplicate entity '${entity.name}' declared in '${absPath}' and '${existing}'`,
-        });
-      } else {
-        entityNames.set(entity.name, absPath);
-      }
-    }
-
-    // Check enum name uniqueness
-    for (const en of ir.enums) {
-      const existing = enumNames.get(en.name);
-      if (existing) {
-        diagnostics.push({
-          severity: 'error',
-          message: `Duplicate enum '${en.name}' declared in '${absPath}' and '${existing}'`,
-        });
-      } else {
-        enumNames.set(en.name, absPath);
-      }
-    }
-
-    // Check command uniqueness (entity-scoped)
-    for (const cmd of ir.commands) {
-      const key = cmd.entity ? `${cmd.entity}.${cmd.name}` : cmd.name;
-      const existing = commandKeys.get(key);
-      if (existing) {
-        diagnostics.push({
-          severity: 'error',
-          message: `Duplicate command '${key}' declared in '${absPath}' and '${existing}'`,
-        });
-      } else {
-        commandKeys.set(key, absPath);
-      }
-    }
-
-    // Check tenant uniqueness
-    if (ir.tenant) {
-      if (tenantFile) {
-        diagnostics.push({
-          severity: 'error',
-          message: `Duplicate tenant declaration in '${absPath}' and '${tenantFile}'`,
-        });
-      } else {
-        tenantFile = absPath;
-      }
-    }
-  }
+  const { entityNames, diagnostics: uniquenessDiagnostics } =
+    collectCrossFileNameUniqueness(compiledIRs);
+  diagnostics.push(...uniquenessDiagnostics);
 
   if (diagnostics.some((d) => d.severity === 'error')) {
     return { ir: null, diagnostics, sources };
   }
 
-  // Cross-file relationship target validation
-  for (const { ir, absPath } of compiledIRs) {
-    for (const entity of ir.entities) {
-      for (const rel of entity.relationships) {
-        if (!entityNames.has(rel.target)) {
-          diagnostics.push({
-            severity: 'error',
-            message: `[${absPath}] Entity '${entity.name}' has relationship '${rel.name}' targeting unknown entity '${rel.target}'`,
-          });
-        }
-        if (rel.through && !entityNames.has(rel.through)) {
-          diagnostics.push({
-            severity: 'error',
-            message: `[${absPath}] Entity '${entity.name}' has relationship '${rel.name}' with unknown through entity '${rel.through}'`,
-          });
-        }
-      }
-    }
-
-    // Validate store entity references
-    for (const store of ir.stores) {
-      if (!entityNames.has(store.entity)) {
-        diagnostics.push({
-          severity: 'error',
-          message: `[${absPath}] Store references unknown entity '${store.entity}'`,
-        });
-      }
-    }
-  }
+  diagnostics.push(...validateCrossFileReferences(compiledIRs, entityNames));
 
   if (diagnostics.some((d) => d.severity === 'error')) {
     return { ir: null, diagnostics, sources };
@@ -370,30 +374,30 @@ function mergeIRs(
     for (const mod of ir.modules) {
       const existing = moduleMap.get(mod.name);
       if (existing) {
-        existing.entities = [...new Set([...existing.entities, ...mod.entities])].sort();
-        existing.enums = [...new Set([...existing.enums, ...mod.enums])].sort();
-        existing.commands = [...new Set([...existing.commands, ...mod.commands])].sort();
-        existing.stores = [...new Set([...existing.stores, ...mod.stores])].sort();
-        existing.events = [...new Set([...existing.events, ...mod.events])].sort();
-        existing.policies = [...new Set([...existing.policies, ...mod.policies])].sort();
+        existing.entities = [...new Set([...existing.entities, ...mod.entities])].sort((a, b) => a.localeCompare(b));
+        existing.enums = [...new Set([...existing.enums, ...mod.enums])].sort((a, b) => a.localeCompare(b));
+        existing.commands = [...new Set([...existing.commands, ...mod.commands])].sort((a, b) => a.localeCompare(b));
+        existing.stores = [...new Set([...existing.stores, ...mod.stores])].sort((a, b) => a.localeCompare(b));
+        existing.events = [...new Set([...existing.events, ...mod.events])].sort((a, b) => a.localeCompare(b));
+        existing.policies = [...new Set([...existing.policies, ...mod.policies])].sort((a, b) => a.localeCompare(b));
         if (mod.reactions) {
           existing.reactions = [
             ...new Set([...(existing.reactions ?? []), ...mod.reactions]),
-          ].sort();
+          ].sort((a, b) => a.localeCompare(b));
         }
         if (mod.roles) {
-          existing.roles = [...new Set([...(existing.roles ?? []), ...mod.roles])].sort();
+          existing.roles = [...new Set([...(existing.roles ?? []), ...mod.roles])].sort((a, b) => a.localeCompare(b));
         }
         if (mod.sagas) {
-          existing.sagas = [...new Set([...(existing.sagas ?? []), ...mod.sagas])].sort();
+          existing.sagas = [...new Set([...(existing.sagas ?? []), ...mod.sagas])].sort((a, b) => a.localeCompare(b));
         }
         if (mod.schedules) {
           existing.schedules = [
             ...new Set([...(existing.schedules ?? []), ...mod.schedules]),
-          ].sort();
+          ].sort((a, b) => a.localeCompare(b));
         }
         if (mod.webhooks) {
-          existing.webhooks = [...new Set([...(existing.webhooks ?? []), ...mod.webhooks])].sort();
+          existing.webhooks = [...new Set([...(existing.webhooks ?? []), ...mod.webhooks])].sort((a, b) => a.localeCompare(b));
         }
       } else {
         moduleMap.set(mod.name, { ...mod });
@@ -424,7 +428,7 @@ function mergeIRs(
   const modules = [...moduleMap.values()].sort((a, b) => a.name.localeCompare(b.name));
 
   // Create merged provenance
-  const sortedHashes = sources.map((s) => s.contentHash).sort();
+  const sortedHashes = sources.map((s) => s.contentHash).sort((a, b) => a.localeCompare(b));
   const mergedContentHash = sortedHashes.join(':');
 
   const provenanceSources: IRProvenanceSource[] = sources

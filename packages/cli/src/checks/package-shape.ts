@@ -396,7 +396,7 @@ async function runNpmPackDryRun(cwd: string): Promise<TarballContentResult> {
       try {
         const parsed = JSON.parse(stdout);
         const entries: Array<{ path: string }> = parsed?.[0]?.files ?? [];
-        const files = entries.map((e) => e.path).sort();
+        const files = entries.map((e) => e.path).sort((a, b) => a.localeCompare(b));
         const { ok, missing } = validateEntries(files);
         resolve({ ran: true, ok, packer: 'npm', files, missingExpectedEntries: missing });
       } catch (e) {
@@ -451,7 +451,7 @@ async function listTarball(tgzPath: string): Promise<string[]> {
         .filter((line) => !line.endsWith('/'))
         // Strip leading `package/` so paths match what npm pack --dry-run would have emitted.
         .map((line) => line.replace(/^package\//, ''))
-        .sort();
+        .sort((a, b) => a.localeCompare(b));
       resolve(files);
     });
   });

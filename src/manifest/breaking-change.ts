@@ -500,7 +500,7 @@ function classifyConstraintDiff(entityPath: string, con: ConstraintDiff): Classi
 // Entity classification
 // ============================================================================
 
-function classifyEntityDiff(entity: EntityDiff, report: IRDiffReport): ClassifiedChange[] {
+function classifyEntityDiff(entity: EntityDiff, _report: IRDiffReport): ClassifiedChange[] {
   const results: ClassifiedChange[] = [];
   const entityPath = entity.name;
 
@@ -573,7 +573,6 @@ function classifyEntityDiff(entity: EntityDiff, report: IRDiffReport): Classifie
     results.push(...classifyConstraintDiff(entityPath, con));
   }
 
-  void report;
   return results;
 }
 
@@ -997,9 +996,9 @@ export function classifyBreakingChanges(
   // Aggregate consumer impact
   const allImpact = classified.flatMap((c) => c.consumerImpact);
   const consumerImpact: ConsumerImpactSummary = {
-    commands: [...new Set(allImpact.filter((i) => i.startsWith('command:')))].sort(),
-    routes: [...new Set(allImpact.filter((i) => i.startsWith('route:')))].sort(),
-    projections: [...new Set(allImpact.filter((i) => i.startsWith('projection:')))].sort(),
+    commands: [...new Set(allImpact.filter((i) => i.startsWith('command:')))].sort((a, b) => a.localeCompare(b)),
+    routes: [...new Set(allImpact.filter((i) => i.startsWith('route:')))].sort((a, b) => a.localeCompare(b)),
+    projections: [...new Set(allImpact.filter((i) => i.startsWith('projection:')))].sort((a, b) => a.localeCompare(b)),
   };
 
   return {

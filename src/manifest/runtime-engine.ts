@@ -10,6 +10,7 @@ import {
   IRType,
   IRConstraint,
   IRForeignKey,
+  IRStore,
   ConstraintOutcome,
   OverrideRequest,
   ConcurrencyConflict,
@@ -1258,7 +1259,6 @@ export class RuntimeEngine {
 
   private initializeStores(): void {
     for (const entity of this.ir.entities) {
-      // First check if a storeProvider is configured and use it
       if (this.options.storeProvider) {
         const customStore = this.options.storeProvider(entity.name);
         if (customStore) {
@@ -1266,71 +1266,58 @@ export class RuntimeEngine {
           continue;
         }
       }
-
-      // Fall back to default store initialization
       const storeConfig = this.ir.stores.find((s) => s.entity === entity.name);
-      let store: Store;
+      this.stores.set(entity.name, this.createConfiguredStore(entity.name, storeConfig));
+    }
+  }
 
-      if (storeConfig) {
-        switch (storeConfig.target) {
-          case 'localStorage': {
-            const key =
-              storeConfig.config.key?.kind === 'string'
-                ? storeConfig.config.key.value
-                : `${entity.name.toLowerCase()}s`;
-            store = new LocalStorageStore(key);
-            break;
-          }
-          case 'memory':
-            store = new MemoryStore(this.options.generateId);
-            break;
-          case 'postgres':
-            throw new Error(
-              `PostgreSQL storage for entity '${entity.name}' is not available in browser environments. ` +
-                `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
-                `For server-side use, import PostgresStore from stores.node.ts.`,
-            );
-          case 'supabase':
-            throw new Error(
-              `Supabase storage for entity '${entity.name}' is not available in browser environments. ` +
-                `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
-                `For server-side use, import SupabaseStore from stores.node.ts.`,
-            );
-          case 'mongodb':
-            throw new Error(
-              `MongoDB storage for entity '${entity.name}' is not available in browser environments. ` +
-                `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
-                `For server-side use, import MongoDBStore from stores.node.ts.`,
-            );
-          case 'durable':
-            // `'durable'` is a backend-neutral semantic signal — it intentionally does NOT
-            // map to any built-in store. Consumers MUST supply a custom store adapter via
-            // the storeProvider option (e.g. a Prisma-backed adapter). This is the deliberate
-            // handoff point: core stays backend-neutral. (Matches v0.9.0 behavior.)
-            throw new Error(
-              `Entity '${entity.name}' declares 'store ... in durable' but no storeProvider is bound. ` +
-                `'durable' is backend-neutral and requires a runtime store adapter supplied via the storeProvider option.`,
-            );
-          case 'eventSourced':
-            store = new EventSourcedStore(
-              eventSourcedOptionsFromConfig(storeConfig.config, this.options.generateId),
-            );
-            break;
-          default:
-            // Custom store adapter scheme — requires a storeProvider that handles this target.
-            // Plugin-registered adapters (e.g. 'redis', 'dynamodb') are resolved through the
-            // CompositeStoreProvider built by the plugin loader.
-            throw new Error(
-              `Entity '${entity.name}' declares store target '${storeConfig.target}' but no storeProvider ` +
-                `returned a store for it. Custom store targets require a matching StoreAdapterPlugin registered ` +
-                `via the plugin API, or a storeProvider that handles the '${storeConfig.target}' scheme.`,
-            );
-        }
-      } else {
-        store = new MemoryStore(this.options.generateId);
+  private browserStoreUnsupported(entityName: string, backend: string): never {
+    throw new Error(
+      `${backend} storage for entity '${entityName}' is not available in browser environments. ` +
+        `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
+        `For server-side use, import the corresponding store from stores.node.ts.`,
+    );
+  }
+
+  private createConfiguredStore(
+    entityName: string,
+    storeConfig: IRStore | undefined,
+  ): Store {
+    if (!storeConfig) {
+      return new MemoryStore(this.options.generateId);
+    }
+    switch (storeConfig.target) {
+      case 'localStorage': {
+        const key =
+          storeConfig.config.key?.kind === 'string'
+            ? storeConfig.config.key.value
+            : `${entityName.toLowerCase()}s`;
+        return new LocalStorageStore(key);
       }
-
-      this.stores.set(entity.name, store);
+      case 'memory':
+        return new MemoryStore(this.options.generateId);
+      case 'postgres':
+        return this.browserStoreUnsupported(entityName, 'PostgreSQL');
+      case 'supabase':
+        return this.browserStoreUnsupported(entityName, 'Supabase');
+      case 'mongodb':
+        return this.browserStoreUnsupported(entityName, 'MongoDB');
+      case 'durable':
+        // `'durable'` is backend-neutral — requires storeProvider (matches v0.9.0).
+        throw new Error(
+          `Entity '${entityName}' declares 'store ... in durable' but no storeProvider is bound. ` +
+            `'durable' is backend-neutral and requires a runtime store adapter supplied via the storeProvider option.`,
+        );
+      case 'eventSourced':
+        return new EventSourcedStore(
+          eventSourcedOptionsFromConfig(storeConfig.config, this.options.generateId),
+        );
+      default:
+        throw new Error(
+          `Entity '${entityName}' declares store target '${storeConfig.target}' but no storeProvider ` +
+            `returned a store for it. Custom store targets require a matching StoreAdapterPlugin registered ` +
+            `via the plugin API, or a storeProvider that handles the '${storeConfig.target}' scheme.`,
+        );
     }
   }
 
@@ -2048,7 +2035,7 @@ export class RuntimeEngine {
       const json = JSON.stringify(canonical, (_key: string, value: unknown) => {
         if (value && typeof value === 'object' && !Array.isArray(value)) {
           const sorted: Record<string, unknown> = {};
-          for (const k of Object.keys(value as Record<string, unknown>).sort()) {
+          for (const k of Object.keys(value as Record<string, unknown>).sort((a, b) => a.localeCompare(b))) {
             sorted[k] = (value as Record<string, unknown>)[k];
           }
           return sorted;
@@ -5099,7 +5086,7 @@ export class RuntimeEngine {
     };
 
     walk(expr);
-    return Array.from(keys).sort();
+    return Array.from(keys).sort((a, b) => a.localeCompare(b));
   }
 
   private formatExpression(expr: IRExpression): string {

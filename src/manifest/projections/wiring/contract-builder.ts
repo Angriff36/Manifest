@@ -28,23 +28,44 @@ import { WIRING_CONTRACT_SCHEMA } from './types.js';
 
 function irTypeToTs(type: IRType, enums: Map<string, IREnum>, dateAsString: boolean): string {
   if (type.name === 'array' || type.name === 'list') {
-    const inner = type.generic ? irTypeToTs(type.generic, enums, dateAsString) : 'unknown';
-    const elem = inner.includes(' | ') ? `(${inner})[]` : `${inner}[]`;
-    return type.nullable ? `${elem} | null` : elem;
+    return withNullability(arrayTs(type, enums, dateAsString), type.nullable);
   }
   if (type.name === 'map') {
-    const inner = type.generic ? irTypeToTs(type.generic, enums, dateAsString) : 'unknown';
-    const base = `Record<string, ${inner}>`;
-    return type.nullable ? `${base} | null` : base;
+    return withNullability(mapTs(type, enums, dateAsString), type.nullable);
   }
-  if (dateAsString && (type.name === 'date' || type.name === 'datetime' || type.name === 'timestamp')) {
-    return type.nullable ? 'string | null' : 'string';
+  if (dateAsString && isDateLikeType(type.name)) {
+    return withNullability('string', type.nullable);
   }
-  const enumDef = enums.get(type.name);
-  if (enumDef) {
-    const union = enumDef.values.map((v) => JSON.stringify(v.name)).join(' | ');
-    return type.nullable ? `${union} | null` : union;
-  }
+  const enumUnion = enumTs(type.name, enums);
+  if (enumUnion) return withNullability(enumUnion, type.nullable);
+  return withNullability(primitiveTs(type.name), type.nullable);
+}
+
+function withNullability(base: string, nullable: boolean | undefined): string {
+  return nullable ? `${base} | null` : base;
+}
+
+function isDateLikeType(name: string): boolean {
+  return name === 'date' || name === 'datetime' || name === 'timestamp';
+}
+
+function arrayTs(type: IRType, enums: Map<string, IREnum>, dateAsString: boolean): string {
+  const inner = type.generic ? irTypeToTs(type.generic, enums, dateAsString) : 'unknown';
+  return inner.includes(' | ') ? `(${inner})[]` : `${inner}[]`;
+}
+
+function mapTs(type: IRType, enums: Map<string, IREnum>, dateAsString: boolean): string {
+  const inner = type.generic ? irTypeToTs(type.generic, enums, dateAsString) : 'unknown';
+  return `Record<string, ${inner}>`;
+}
+
+function enumTs(typeName: string, enums: Map<string, IREnum>): string | undefined {
+  const enumDef = enums.get(typeName);
+  if (!enumDef) return undefined;
+  return enumDef.values.map((v) => JSON.stringify(v.name)).join(' | ');
+}
+
+function primitiveTs(typeName: string): string {
   const map: Record<string, string> = {
     string: 'string',
     text: 'string',
@@ -70,8 +91,7 @@ function irTypeToTs(type: IRType, enums: Map<string, IREnum>, dateAsString: bool
     void: 'void',
     json: 'unknown',
   };
-  const base = map[type.name] ?? type.name;
-  return type.nullable ? `${base} | null` : base;
+  return map[typeName] ?? typeName;
 }
 
 function classifyTrustedSource(path: string): TrustedSourceKind {
@@ -106,61 +126,67 @@ function constraintsForParam(
   enums: Map<string, IREnum>,
 ): WiringInputConstraints {
   const out: WiringInputConstraints = {};
+  applyTypeDerivedConstraints(param, enums, out);
+  const analysis = analyzeConstraints(command.constraints ?? []);
+  const names = new Set([param.name, `self.${param.name}`, `this.${param.name}`]);
+  applyAnalyzedConstraints(analysis, param.name, names, out);
+  for (const c of command.constraints ?? []) {
+    collectBareParamBounds(c.expression, param.name, out);
+  }
+  return out;
+}
+
+function applyTypeDerivedConstraints(
+  param: IRParameter,
+  enums: Map<string, IREnum>,
+  out: WiringInputConstraints,
+): void {
   const enumDef = enums.get(param.type.name);
   if (enumDef) {
     out.enumValues = enumDef.values.map((v) => v.name);
   }
-  if (param.type.name === 'date' || param.type.name === 'datetime' || param.type.name === 'timestamp') {
+  if (
+    param.type.name === 'date' ||
+    param.type.name === 'datetime' ||
+    param.type.name === 'timestamp'
+  ) {
     out.dateLike = true;
-    if (param.required) {
-      out.rejectEmptyString = true;
-    }
+    if (param.required) out.rejectEmptyString = true;
   }
+}
 
-  const analysis = analyzeConstraints(command.constraints ?? []);
-  const names = new Set([param.name, `self.${param.name}`, `this.${param.name}`]);
+function pathMatchesParam(
+  propertyPath: string,
+  paramName: string,
+  names: Set<string>,
+): boolean {
+  const key = stripSelfPrefix(propertyPath);
+  return names.has(propertyPath) || names.has(key) || key === paramName;
+}
 
+function applyAnalyzedConstraints(
+  analysis: ReturnType<typeof analyzeConstraints>,
+  paramName: string,
+  names: Set<string>,
+  out: WiringInputConstraints,
+): void {
   for (const range of analysis.numericRanges) {
-    const key = stripSelfPrefix(range.propertyPath);
-    if (!(names.has(range.propertyPath) || names.has(key)) && key !== param.name) {
-      continue;
-    }
-    if (range.min !== undefined) {
-      out.min = range.min;
-    }
-    if (range.max !== undefined) {
-      out.max = range.max;
-    }
+    if (!pathMatchesParam(range.propertyPath, paramName, names)) continue;
+    if (range.min !== undefined) out.min = range.min;
+    if (range.max !== undefined) out.max = range.max;
   }
   for (const len of analysis.lengthConstraints) {
-    const key = stripSelfPrefix(len.propertyPath);
-    if (!(names.has(len.propertyPath) || names.has(key)) && key !== param.name) {
-      continue;
-    }
+    if (!pathMatchesParam(len.propertyPath, paramName, names)) continue;
     if (len.minLength !== undefined) {
       out.minLength = len.minLength;
-      if (len.minLength >= 1) {
-        out.nonEmpty = true;
-      }
+      if (len.minLength >= 1) out.nonEmpty = true;
     }
-    if (len.maxLength !== undefined) {
-      out.maxLength = len.maxLength;
-    }
+    if (len.maxLength !== undefined) out.maxLength = len.maxLength;
   }
   for (const pat of analysis.patternConstraints) {
-    const key = stripSelfPrefix(pat.propertyPath);
-    if (!(names.has(pat.propertyPath) || names.has(key)) && key !== param.name) {
-      continue;
-    }
+    if (!pathMatchesParam(pat.propertyPath, paramName, names)) continue;
     out.pattern = pat.pattern;
   }
-
-  // Bare identifier comparisons in constraints: `priority >= 1` (no self.)
-  for (const c of command.constraints ?? []) {
-    collectBareParamBounds(c.expression, param.name, out);
-  }
-
-  return out;
 }
 
 function collectBareParamBounds(

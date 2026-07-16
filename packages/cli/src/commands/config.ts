@@ -44,7 +44,7 @@ function stableStringify(value: unknown): string {
 function sortKeys(_key: string, value: unknown): unknown {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     return Object.keys(value as Record<string, unknown>)
-      .sort()
+      .sort((a, b) => a.localeCompare(b))
       .reduce<Record<string, unknown>>((acc, k) => {
         acc[k] = (value as Record<string, unknown>)[k];
         return acc;

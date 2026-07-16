@@ -85,53 +85,13 @@ export class PatternAdapter {
     _file: string,
     opts?: { preferDate?: boolean; preferIsoString?: boolean },
   ): LocalValueSource | undefined {
-    // form.param / values.param / data.param / state.param / input.param
-    const memberPatterns = [
-      new RegExp(`\\b((?:form|values|data|state|input|payload|body)\\.${escape(param)})\\b`),
-      new RegExp(`\\b((?:formData|formValues)\\.${escape(param)})\\b`),
-    ];
-    for (const re of memberPatterns) {
-      const m = re.exec(content);
-      if (m?.[1]) return { expression: m[1], kind: 'form' };
-    }
-
-    // form: { param: … } or (form: { param: string }) — proven form field
-    const formShape = new RegExp(
-      `\\b(form|values|data|input)\\s*:\\s*\\{[^}]*\\b${escape(param)}\\b`,
+    return (
+      findFormMemberSource(content, param) ??
+      findFormShapeSource(content, param) ??
+      findLocalDeclSource(content, param) ??
+      findFunctionParamSource(content, param) ??
+      findOptionalDateSource(content, param, opts)
     );
-    const formShapeMatch = formShape.exec(content);
-    if (formShapeMatch?.[1]) {
-      return { expression: `${formShapeMatch[1]}.${param}`, kind: 'form' };
-    }
-
-    // const param = … or let param = (value binding, not a type-only name)
-    const decl = new RegExp(`\\b(?:const|let|var)\\s+${escape(param)}\\s*=`);
-    if (decl.test(content)) {
-      return { expression: param, kind: 'identifier' };
-    }
-
-    // Function param: function f(param: …) or (param: string) =>
-    const fnParam = new RegExp(`\\(\\s*(?:[\\w\\s,]*?\\b)?${escape(param)}\\s*:`);
-    if (fnParam.test(content) && !formShape.test(content)) {
-      // Only if it's a value parameter, not nested in a type literal alone
-      const nestedOnly = new RegExp(`\\{\\s*[^}]*\\b${escape(param)}\\s*:`);
-      const bareParam = new RegExp(`\\(\\s*${escape(param)}\\s*:`);
-      if (bareParam.test(content)) {
-        return { expression: param, kind: 'identifier' };
-      }
-      void nestedOnly;
-    }
-
-    if (opts?.preferDate) {
-      const proven = findProvenDateSource(content, param, {
-        preferIsoString: opts.preferIsoString === true,
-      });
-      if (proven) {
-        return { expression: proven.expression, kind: 'identifier' };
-      }
-    }
-
-    return undefined;
   }
 
   findSafeBindingMigration(cap: WiringCommandDescriptor): SafeBindingMigration | null {
@@ -288,4 +248,55 @@ function extractBindingsModule(content: string): string | undefined {
 
 function escape(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function findFormMemberSource(content: string, param: string): LocalValueSource | undefined {
+  const memberPatterns = [
+    new RegExp(`\\b((?:form|values|data|state|input|payload|body)\\.${escape(param)})\\b`),
+    new RegExp(`\\b((?:formData|formValues)\\.${escape(param)})\\b`),
+  ];
+  for (const re of memberPatterns) {
+    const m = re.exec(content);
+    if (m?.[1]) return { expression: m[1], kind: 'form' };
+  }
+  return undefined;
+}
+
+function findFormShapeSource(content: string, param: string): LocalValueSource | undefined {
+  const formShape = new RegExp(
+    `\\b(form|values|data|input)\\s*:\\s*\\{[^}]*\\b${escape(param)}\\b`,
+  );
+  const formShapeMatch = formShape.exec(content);
+  if (!formShapeMatch?.[1]) return undefined;
+  return { expression: `${formShapeMatch[1]}.${param}`, kind: 'form' };
+}
+
+function findLocalDeclSource(content: string, param: string): LocalValueSource | undefined {
+  const decl = new RegExp(`\\b(?:const|let|var)\\s+${escape(param)}\\s*=`);
+  if (!decl.test(content)) return undefined;
+  return { expression: param, kind: 'identifier' };
+}
+
+function findFunctionParamSource(content: string, param: string): LocalValueSource | undefined {
+  const formShape = new RegExp(
+    `\\b(form|values|data|input)\\s*:\\s*\\{[^}]*\\b${escape(param)}\\b`,
+  );
+  const fnParam = new RegExp(`\\(\\s*(?:[\\w\\s,]*?\\b)?${escape(param)}\\s*:`);
+  if (!fnParam.test(content) || formShape.test(content)) return undefined;
+  const bareParam = new RegExp(`\\(\\s*${escape(param)}\\s*:`);
+  if (!bareParam.test(content)) return undefined;
+  return { expression: param, kind: 'identifier' };
+}
+
+function findOptionalDateSource(
+  content: string,
+  param: string,
+  opts?: { preferDate?: boolean; preferIsoString?: boolean },
+): LocalValueSource | undefined {
+  if (!opts?.preferDate) return undefined;
+  const proven = findProvenDateSource(content, param, {
+    preferIsoString: opts.preferIsoString === true,
+  });
+  if (!proven) return undefined;
+  return { expression: proven.expression, kind: 'identifier' };
 }

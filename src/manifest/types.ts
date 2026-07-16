@@ -341,7 +341,17 @@ export interface TenantNode extends ASTNode {
  * matched exactly by the engine. The string union preserves autocomplete for the
  * well-known values while permitting custom tokens.
  */
-export type RolePermissionAction = 'read' | 'write' | 'delete' | 'execute' | 'all' | (string & {});
+/** Brand so custom tokens stay assignable without collapsing the union to `string`. */
+declare const RolePermissionOpenStringBrand: unique symbol;
+type RolePermissionOpenString = string & { readonly [RolePermissionOpenStringBrand]?: true };
+
+export type RolePermissionAction =
+  | 'read'
+  | 'write'
+  | 'delete'
+  | 'execute'
+  | 'all'
+  | RolePermissionOpenString;
 
 export interface RolePermissionNode {
   kind: 'allow' | 'deny';

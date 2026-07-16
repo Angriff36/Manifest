@@ -226,7 +226,12 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
             ([k]) => k.replace(/\\/g, '/') === file.replace(/\\/g, '/'),
           )?.[1];
         if (content !== undefined) {
-          void options.writeFile(file, content);
+          const writeResult = options.writeFile(file, content);
+          if (writeResult instanceof Promise) {
+            writeResult.catch(() => {
+              /* best-effort disk write on sync remediate path */
+            });
+          }
         }
       }
     }

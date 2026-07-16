@@ -36,7 +36,7 @@ export class PrismaStoreProjection implements ProjectionTarget {
 
     const options = normalizeStoreOptions(request.options);
     const { metadata, diagnostics } = buildPrismaModelMetadata(ir, options);
-    const entityNames = Object.keys(metadata).sort();
+    const entityNames = Object.keys(metadata).sort((a, b) => a.localeCompare(b));
 
     if (request.surface === SURFACE_METADATA) {
       return {

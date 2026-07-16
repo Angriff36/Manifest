@@ -79,32 +79,43 @@ export async function wiringInspectCommand(
     failOn,
   });
 
-  if (options.format === 'json') {
-    console.log(JSON.stringify(report, null, 2));
-  } else {
-    const text = formatInspectReportText(report);
-    for (const line of text.split('\n')) {
-      if (line.includes('✗')) console.log(chalk.red(line));
-      else if (line.startsWith('✓')) console.log(chalk.green(line));
-      else if (
-        line === 'WORKING' ||
-        line.startsWith('WORKING ') ||
-        line === 'FEATURE_THEATRE' ||
-        line.startsWith('FEATURE_THEATRE ') ||
-        line === 'BUILT_BUT_UNWIRED' ||
-        line.startsWith('BUILT_BUT_UNWIRED ') ||
-        line === 'BROKEN_UNPROVEN' ||
-        line.startsWith('BROKEN_UNPROVEN ')
-      ) {
-        console.log(chalk.bold(line));
-      } else {
-        console.log(line);
-      }
-    }
-  }
+  printInspectReport(report, options.format);
 
   if (options.strict && !report.ok) {
     process.exitCode = 1;
   }
   return report;
+}
+
+const INSPECT_SECTION_HEADERS = [
+  'WORKING',
+  'FEATURE_THEATRE',
+  'BUILT_BUT_UNWIRED',
+  'BROKEN_UNPROVEN',
+] as const;
+
+function printInspectReport(
+  report: WiringInspectReport,
+  format: WiringInspectCommandOptions['format'],
+): void {
+  if (format === 'json') {
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+  for (const line of formatInspectReportText(report).split('\n')) {
+    console.log(colorInspectLine(line));
+  }
+}
+
+function colorInspectLine(line: string): string {
+  if (line.includes('✗')) return chalk.red(line);
+  if (line.startsWith('✓')) return chalk.green(line);
+  if (isInspectSectionHeader(line)) return chalk.bold(line);
+  return line;
+}
+
+function isInspectSectionHeader(line: string): boolean {
+  return INSPECT_SECTION_HEADERS.some(
+    (header) => line === header || line.startsWith(`${header} `),
+  );
 }

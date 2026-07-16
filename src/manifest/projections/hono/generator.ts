@@ -403,14 +403,25 @@ function generateHonoEntityRoutes(
     routeSegments: options.routeSegments,
   });
   const lines: string[] = [];
-  const hasValidation = !!options.validationImportPath;
-
-  // Entity-scoped commands
+  emitHonoListRoute(lines, entity, contract, options);
+  lines.push('');
+  emitHonoDetailRoute(lines, entity, contract, options);
   const entityCommands = commands
     .filter((c) => c.entity === entity.name)
     .sort((a, b) => a.name.localeCompare(b.name));
+  for (const command of entityCommands) {
+    lines.push('');
+    emitHonoCommandRoute(lines, entity, command, policies, contract, options);
+  }
+  return lines.join('\n');
+}
 
-  // GET list route
+function emitHonoListRoute(
+  lines: string[],
+  entity: IREntity,
+  contract: ReturnType<typeof resolveRouteContract>,
+  options: NormalizedOptions,
+): void {
   if (options.includeComments) {
     lines.push('  /** List all ' + entity.name + ' entities */');
   }
@@ -427,16 +438,19 @@ function generateHonoEntityRoutes(
     lines.push(
       `    const result = await runtime.list('${entity.name}', { ${options.tenantIdProperty}: user.${options.tenantIdProperty} });`,
     );
-  } else if (options.includeTenantContext && options.publicReads) {
-    lines.push(`    const result = await runtime.list('${entity.name}');`);
   } else {
     lines.push(`    const result = await runtime.list('${entity.name}');`);
   }
   lines.push('    return c.json(result);');
   lines.push('  });');
-  lines.push('');
+}
 
-  // GET detail route
+function emitHonoDetailRoute(
+  lines: string[],
+  entity: IREntity,
+  contract: ReturnType<typeof resolveRouteContract>,
+  options: NormalizedOptions,
+): void {
   if (options.includeComments) {
     lines.push('  /** Get a single ' + entity.name + ' by ID */');
   }
@@ -464,77 +478,85 @@ function generateHonoEntityRoutes(
   lines.push('    }');
   lines.push('    return c.json(result);');
   lines.push('  });');
+}
 
-  // Command routes (POST)
-  for (const command of entityCommands) {
-    lines.push('');
-    if (options.includeComments) {
-      lines.push(generateCommandComment(command, entity, policies));
-    }
-
-    const commandSegment = toKebabCase(command.name);
-    const schemaName =
-      command.parameters.length > 0 ? zodParamsSchemaName(entity.name, command.name) : undefined;
-
-    lines.push(
-      `  app.post('${contract.entityBasePath(entity.name)}/${commandSegment}', ${options.authMiddlewareName}, async (c) => {`,
-    );
-    lines.push('    try {');
-
-    // Validation
-    if (hasValidation && schemaName) {
-      lines.push('      const body = await c.req.json();');
-      lines.push(`      const parseResult = ${schemaName}.safeParse(body);`);
-      lines.push('      if (!parseResult.success) {');
-      lines.push('        return c.json({');
-      lines.push(
-        "          error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parseResult.error.issues },",
-      );
-      lines.push('        }, 400);');
-      lines.push('      }');
-      lines.push('      const params = parseResult.data;');
-    } else {
-      lines.push('      const body = await c.req.json();');
-      lines.push('      const params = body;');
-    }
-
-    // Runtime dispatch
-    lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
-    lines.push(`      const user = c.get('user');`);
-
-    const contextArg = options.includeTenantContext
-      ? `, { user, ${options.tenantIdProperty}: user.${options.tenantIdProperty} }`
-      : ', { user }';
-
-    lines.push('      const instanceId = body.instanceId ?? body.id;');
-    lines.push(
-      `      const result = await runtime.runCommand('${entity.name}', '${command.name}', {`,
-    );
-    lines.push('        params,');
-    lines.push('        instanceId,');
-    lines.push(`      }${contextArg});`);
-    lines.push('');
-    lines.push('      return c.json(result);');
-    lines.push('    } catch (err: unknown) {');
-    lines.push("      if (err && typeof err === 'object' && 'code' in err) {");
-    lines.push('        const e = err as { code: string; message?: string; status?: number };');
-    lines.push("        const status = e.code === 'GUARD_FAILED' ? 403");
-    lines.push("          : e.code === 'CONSTRAINT_VIOLATION' ? 422");
-    lines.push("          : e.code === 'CONCURRENCY_CONFLICT' ? 409");
-    lines.push("          : e.code === 'NOT_FOUND' ? 404");
-    lines.push('          : 500;');
-    lines.push(
-      "        return c.json({ error: { code: e.code, message: e.message ?? 'Command failed' } }, status as any);",
-    );
-    lines.push('      }');
-    lines.push(
-      "      return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } }, 500);",
-    );
-    lines.push('    }');
-    lines.push('  });');
+function emitHonoCommandRoute(
+  lines: string[],
+  entity: IREntity,
+  command: IRCommand,
+  policies: IRPolicy[],
+  contract: ReturnType<typeof resolveRouteContract>,
+  options: NormalizedOptions,
+): void {
+  const hasValidation = !!options.validationImportPath;
+  if (options.includeComments) {
+    lines.push(generateCommandComment(command, entity, policies));
   }
+  const commandSegment = toKebabCase(command.name);
+  const schemaName =
+    command.parameters.length > 0 ? zodParamsSchemaName(entity.name, command.name) : undefined;
+  lines.push(
+    `  app.post('${contract.entityBasePath(entity.name)}/${commandSegment}', ${options.authMiddlewareName}, async (c) => {`,
+  );
+  lines.push('    try {');
+  emitHonoCommandBodyParse(lines, hasValidation, schemaName);
+  lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
+  lines.push(`      const user = c.get('user');`);
+  const contextArg = options.includeTenantContext
+    ? `, { user, ${options.tenantIdProperty}: user.${options.tenantIdProperty} }`
+    : ', { user }';
+  lines.push('      const instanceId = body.instanceId ?? body.id;');
+  lines.push(
+    `      const result = await runtime.runCommand('${entity.name}', '${command.name}', {`,
+  );
+  lines.push('        params,');
+  lines.push('        instanceId,');
+  lines.push(`      }${contextArg});`);
+  lines.push('');
+  lines.push('      return c.json(result);');
+  lines.push('    } catch (err: unknown) {');
+  emitHonoCommandErrorHandler(lines);
+  lines.push('    }');
+  lines.push('  });');
+}
 
-  return lines.join('\n');
+function emitHonoCommandBodyParse(
+  lines: string[],
+  hasValidation: boolean,
+  schemaName: string | undefined,
+): void {
+  if (hasValidation && schemaName) {
+    lines.push('      const body = await c.req.json();');
+    lines.push(`      const parseResult = ${schemaName}.safeParse(body);`);
+    lines.push('      if (!parseResult.success) {');
+    lines.push('        return c.json({');
+    lines.push(
+      "          error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parseResult.error.issues },",
+    );
+    lines.push('        }, 400);');
+    lines.push('      }');
+    lines.push('      const params = parseResult.data;');
+    return;
+  }
+  lines.push('      const body = await c.req.json();');
+  lines.push('      const params = body;');
+}
+
+function emitHonoCommandErrorHandler(lines: string[]): void {
+  lines.push("      if (err && typeof err === 'object' && 'code' in err) {");
+  lines.push('        const e = err as { code: string; message?: string; status?: number };');
+  lines.push("        const status = e.code === 'GUARD_FAILED' ? 403");
+  lines.push("          : e.code === 'CONSTRAINT_VIOLATION' ? 422");
+  lines.push("          : e.code === 'CONCURRENCY_CONFLICT' ? 409");
+  lines.push("          : e.code === 'NOT_FOUND' ? 404");
+  lines.push('          : 500;');
+  lines.push(
+    "        return c.json({ error: { code: e.code, message: e.message ?? 'Command failed' } }, status as any);",
+  );
+  lines.push('      }');
+  lines.push(
+    "      return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } }, 500);",
+  );
 }
 
 // ============================================================================
@@ -854,7 +876,7 @@ function generateCompanions(ir: IR, options: NormalizedOptions): ProjectionResul
       if (resolved) pathHints.add(resolved);
     }
     const code = build();
-    for (const pathHint of [...pathHints].sort()) {
+    for (const pathHint of [...pathHints].sort((a, b) => a.localeCompare(b))) {
       const topDir = pathHint.split('/')[0];
       artifacts.push({
         id: `hono.companions.${kind}.${topDir}`,

@@ -136,21 +136,35 @@ export function findMatchingBrace(content: string, openIdx: number): number {
   let inStr: string | null = null;
   for (let i = openIdx; i < content.length; i++) {
     const ch = content[i]!;
-    if (inStr) {
-      if (ch === inStr && content[i - 1] !== '\\') inStr = null;
+    if (inStr !== null) {
+      inStr = advanceStringState(content, i, ch, inStr);
       continue;
     }
     if (ch === '"' || ch === "'" || ch === '`') {
       inStr = ch;
       continue;
     }
-    if (ch === '{') depth++;
-    if (ch === '}') {
-      depth--;
-      if (depth === 0) return i;
-    }
+    const nextDepth = advanceBraceDepth(ch, depth);
+    if (nextDepth === 0 && ch === '}') return i;
+    depth = nextDepth;
   }
   return -1;
+}
+
+function advanceStringState(
+  content: string,
+  index: number,
+  ch: string,
+  inStr: string,
+): string | null {
+  if (ch === inStr && content[index - 1] !== '\\') return null;
+  return inStr;
+}
+
+function advanceBraceDepth(ch: string, depth: number): number {
+  if (ch === '{') return depth + 1;
+  if (ch === '}') return depth - 1;
+  return depth;
 }
 
 function escape(s: string): string {

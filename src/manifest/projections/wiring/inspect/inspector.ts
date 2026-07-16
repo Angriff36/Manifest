@@ -241,13 +241,18 @@ function normalizeOverrides(raw: WiringConsumersRegistry | unknown): WiringConsu
 
 /** Compact human-readable report. */
 export function formatInspectReportText(report: WiringInspectReport): string {
-  const lines: string[] = [];
-  lines.push('Manifest wiring inspect');
-  lines.push(
+  const lines: string[] = [
+    'Manifest wiring inspect',
     `  capabilities=${report.summary.totalCapabilities} consumed=${report.summary.consumed} unwired=${report.summary.unwired} backend-only=${report.summary.backendOnly} deferred=${report.summary.deferred} stale=${report.summary.staleConsumers} ambiguous=${report.summary.ambiguous} mismatches=${report.summary.mismatchDefects}`,
-  );
-  lines.push('');
+    '',
+    ...formatInspectBuckets(report),
+    ...formatInspectMismatches(report),
+  ];
+  lines.push(report.ok ? '✓ inspect ok' : '✗ inspect failed gate');
+  return lines.join('\n');
+}
 
+function formatInspectBuckets(report: WiringInspectReport): string[] {
   const buckets: ProductRealityBucket[] = [
     'WORKING',
     'FEATURE_THEATRE',
@@ -255,32 +260,31 @@ export function formatInspectReportText(report: WiringInspectReport): string {
     'BROKEN_UNPROVEN',
     'DUPLICATE_PARALLEL_MODEL',
   ];
+  const lines: string[] = [];
   for (const bucket of buckets) {
     const items = report.findings.filter((f) => f.productReality === bucket);
     if (items.length === 0) continue;
     lines.push(`${bucket} (${items.length})`);
     for (const f of items.slice(0, 40)) {
-      const mark = f.defect ? '✗' : '·';
-      lines.push(`  ${mark} [${f.status}] ${f.capabilityId}`);
+      lines.push(`  ${f.defect ? '✗' : '·'} [${f.status}] ${f.capabilityId}`);
       if (f.evidence[0]) {
-        const t = f.evidence[0].trace.map((h) => h.label).join(' → ');
-        lines.push(`      ${t}`);
+        lines.push(`      ${f.evidence[0].trace.map((h) => h.label).join(' → ')}`);
       }
     }
     if (items.length > 40) lines.push(`  … +${items.length - 40} more`);
     lines.push('');
   }
+  return lines;
+}
 
-  if (report.mismatches.filter((m) => m.defect).length > 0) {
-    lines.push('CONTRACT MISMATCHES');
-    for (const m of report.mismatches.filter((x) => x.defect)) {
-      lines.push(`  ✗ [${m.kind}] ${m.message}`);
-      lines.push(`      ${m.source.file}${m.source.line ? `:${m.source.line}` : ''}`);
-    }
-    lines.push('');
+function formatInspectMismatches(report: WiringInspectReport): string[] {
+  const defects = report.mismatches.filter((m) => m.defect);
+  if (defects.length === 0) return [];
+  const lines = ['CONTRACT MISMATCHES'];
+  for (const m of defects) {
+    lines.push(`  ✗ [${m.kind}] ${m.message}`);
+    lines.push(`      ${m.source.file}${m.source.line ? `:${m.source.line}` : ''}`);
   }
-
-  if (report.ok) lines.push('✓ inspect ok');
-  else lines.push('✗ inspect failed gate');
-  return lines.join('\n');
+  lines.push('');
+  return lines;
 }

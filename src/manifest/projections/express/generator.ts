@@ -383,29 +383,51 @@ function generateExpressEntityRouter(
     routeCasing: options.routeCasing,
     routeSegments: options.routeSegments,
   });
-  const lines: string[] = [];
   const hasValidation = !!options.validationImportPath;
-
-  // Entity-scoped commands
   const entityCommands = commands
     .filter((c) => c.entity === entity.name)
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // GET list route
+  const lines = [
+    ...emitExpressListRoute(entity, contract, options),
+    '',
+    ...emitExpressDetailRoute(entity, contract, options),
+  ];
+  for (const command of entityCommands) {
+    lines.push('');
+    lines.push(
+      ...emitExpressCommandRoute(entity, command, policies, contract, options, hasValidation),
+    );
+  }
+  return lines.join('\n');
+}
+
+function expressReadAuthPrefix(options: NormalizedOptions): string {
+  return options.publicReads ? '' : `${options.authMiddlewareName}, `;
+}
+
+function expressTenantListArg(options: NormalizedOptions): string {
+  return options.includeTenantContext
+    ? `, { ${options.tenantIdProperty}: req.user?.${options.tenantIdProperty} }`
+    : '';
+}
+
+function emitExpressListRoute(
+  entity: IREntity,
+  contract: ReturnType<typeof resolveRouteContract>,
+  options: NormalizedOptions,
+): string[] {
+  const lines: string[] = [];
   if (options.includeComments) {
     lines.push('  /** List all ' + entity.name + ' entities */');
   }
-  if (options.publicReads) {
-    lines.push(`  router.get('${contract.listPath(entity.name)}', async (req, res) => {`);
-  } else {
-    lines.push(
-      `  router.get('${contract.listPath(entity.name)}', ${options.authMiddlewareName}, async (req, res) => {`,
-    );
-  }
+  lines.push(
+    `  router.get('${contract.listPath(entity.name)}', ${expressReadAuthPrefix(options)}async (req, res) => {`,
+  );
   lines.push('    try {');
   lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
   lines.push(
-    `      const result = await runtime.list('${entity.name}'${options.includeTenantContext ? `, { ${options.tenantIdProperty}: req.user?.${options.tenantIdProperty} }` : ''});`,
+    `      const result = await runtime.list('${entity.name}'${expressTenantListArg(options)});`,
   );
   lines.push('      res.json(result);');
   lines.push('    } catch (err) {');
@@ -414,25 +436,25 @@ function generateExpressEntityRouter(
   );
   lines.push('    }');
   lines.push('  });');
-  lines.push('');
+  return lines;
+}
 
-  // GET detail route
+function emitExpressDetailRoute(
+  entity: IREntity,
+  contract: ReturnType<typeof resolveRouteContract>,
+  options: NormalizedOptions,
+): string[] {
+  const lines: string[] = [];
   if (options.includeComments) {
     lines.push('  /** Get a single ' + entity.name + ' by ID */');
   }
-  if (options.publicReads) {
-    lines.push(
-      `  router.get('${contract.detailPath(entity.name, 'colon')}', async (req, res) => {`,
-    );
-  } else {
-    lines.push(
-      `  router.get('${contract.detailPath(entity.name, 'colon')}', ${options.authMiddlewareName}, async (req, res) => {`,
-    );
-  }
+  lines.push(
+    `  router.get('${contract.detailPath(entity.name, 'colon')}', ${expressReadAuthPrefix(options)}async (req, res) => {`,
+  );
   lines.push('    try {');
   lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
   lines.push(
-    `      const result = await runtime.get('${entity.name}', req.params.id${options.includeTenantContext ? `, { ${options.tenantIdProperty}: req.user?.${options.tenantIdProperty} }` : ''});`,
+    `      const result = await runtime.get('${entity.name}', req.params.id${expressTenantListArg(options)});`,
   );
   lines.push('      if (!result) {');
   lines.push(
@@ -446,75 +468,80 @@ function generateExpressEntityRouter(
   );
   lines.push('    }');
   lines.push('  });');
+  return lines;
+}
 
-  // Command routes (POST)
-  for (const command of entityCommands) {
-    lines.push('');
-    if (options.includeComments) {
-      lines.push(generateCommandComment(command, entity, policies));
-    }
-
-    const commandSegment = toKebabCase(command.name);
-    const schemaName =
-      command.parameters.length > 0 ? zodParamsSchemaName(entity.name, command.name) : undefined;
-
-    lines.push(
-      `  router.post('${contract.entityBasePath(entity.name)}/${commandSegment}', ${options.authMiddlewareName}, async (req, res) => {`,
-    );
-    lines.push('    try {');
-
-    // Validation
-    if (hasValidation && schemaName) {
-      lines.push(`      const parseResult = ${schemaName}.safeParse(req.body);`);
-      lines.push('      if (!parseResult.success) {');
-      lines.push('        return res.status(400).json({');
-      lines.push(
-        "          error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parseResult.error.issues },",
-      );
-      lines.push('        });');
-      lines.push('      }');
-      lines.push('      const params = parseResult.data;');
-    } else {
-      lines.push('      const params = req.body;');
-    }
-
-    // Runtime dispatch
-    lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
-
-    const contextArg = options.includeTenantContext
-      ? `, { user: req.user, ${options.tenantIdProperty}: req.user?.${options.tenantIdProperty} }`
-      : ', { user: req.user }';
-
-    // Instance ID extraction for non-create commands
-    lines.push('      const instanceId = req.body.instanceId ?? req.body.id;');
-    lines.push(
-      `      const result = await runtime.runCommand('${entity.name}', '${command.name}', {`,
-    );
-    lines.push('        params,');
-    lines.push('        instanceId,');
-    lines.push(`      }${contextArg});`);
-    lines.push('');
-    lines.push('      res.json(result);');
-    lines.push('    } catch (err: unknown) {');
-    lines.push("      if (err && typeof err === 'object' && 'code' in err) {");
-    lines.push('        const e = err as { code: string; message?: string; status?: number };');
-    lines.push("        const status = e.code === 'GUARD_FAILED' ? 403");
-    lines.push("          : e.code === 'CONSTRAINT_VIOLATION' ? 422");
-    lines.push("          : e.code === 'CONCURRENCY_CONFLICT' ? 409");
-    lines.push("          : e.code === 'NOT_FOUND' ? 404");
-    lines.push('          : 500;');
-    lines.push(
-      "        return res.status(status).json({ error: { code: e.code, message: e.message ?? 'Command failed' } });",
-    );
-    lines.push('      }');
-    lines.push(
-      "      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });",
-    );
-    lines.push('    }');
-    lines.push('  });');
+function emitExpressCommandRoute(
+  entity: IREntity,
+  command: IRCommand,
+  policies: IRPolicy[],
+  contract: ReturnType<typeof resolveRouteContract>,
+  options: NormalizedOptions,
+  hasValidation: boolean,
+): string[] {
+  const lines: string[] = [];
+  if (options.includeComments) {
+    lines.push(generateCommandComment(command, entity, policies));
   }
+  const commandSegment = toKebabCase(command.name);
+  const schemaName =
+    command.parameters.length > 0 ? zodParamsSchemaName(entity.name, command.name) : undefined;
+  lines.push(
+    `  router.post('${contract.entityBasePath(entity.name)}/${commandSegment}', ${options.authMiddlewareName}, async (req, res) => {`,
+  );
+  lines.push('    try {');
+  lines.push(...emitExpressCommandValidation(hasValidation, schemaName));
+  lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
+  const contextArg = options.includeTenantContext
+    ? `, { user: req.user, ${options.tenantIdProperty}: req.user?.${options.tenantIdProperty} }`
+    : ', { user: req.user }';
+  lines.push('      const instanceId = req.body.instanceId ?? req.body.id;');
+  lines.push(
+    `      const result = await runtime.runCommand('${entity.name}', '${command.name}', {`,
+  );
+  lines.push('        params,');
+  lines.push('        instanceId,');
+  lines.push(`      }${contextArg});`);
+  lines.push('');
+  lines.push('      res.json(result);');
+  lines.push(...emitExpressCommandCatch());
+  lines.push('  });');
+  return lines;
+}
 
-  return lines.join('\n');
+function emitExpressCommandValidation(
+  hasValidation: boolean,
+  schemaName: string | undefined,
+): string[] {
+  if (hasValidation && schemaName) {
+    return [
+      `      const parseResult = ${schemaName}.safeParse(req.body);`,
+      '      if (!parseResult.success) {',
+      '        return res.status(400).json({',
+      "          error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parseResult.error.issues },",
+      '        });',
+      '      }',
+      '      const params = parseResult.data;',
+    ];
+  }
+  return ['      const params = req.body;'];
+}
+
+function emitExpressCommandCatch(): string[] {
+  return [
+    '    } catch (err: unknown) {',
+    "      if (err && typeof err === 'object' && 'code' in err) {",
+    '        const e = err as { code: string; message?: string; status?: number };',
+    "        const status = e.code === 'GUARD_FAILED' ? 403",
+    "          : e.code === 'CONSTRAINT_VIOLATION' ? 422",
+    "          : e.code === 'CONCURRENCY_CONFLICT' ? 409",
+    "          : e.code === 'NOT_FOUND' ? 404",
+    '          : 500;',
+    "        return res.status(status).json({ error: { code: e.code, message: e.message ?? 'Command failed' } });",
+    '      }',
+    "      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });",
+    '    }',
+  ];
 }
 
 function generateFastifyEntityRouter(
@@ -981,7 +1008,7 @@ function generateCompanions(ir: IR, options: NormalizedOptions): ProjectionResul
       if (resolved) pathHints.add(resolved);
     }
     const code = build();
-    for (const pathHint of [...pathHints].sort()) {
+    for (const pathHint of [...pathHints].sort((a, b) => a.localeCompare(b))) {
       const topDir = pathHint.split('/')[0];
       artifacts.push({
         id: `express.companions.${kind}.${topDir}`,

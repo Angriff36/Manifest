@@ -320,6 +320,154 @@ function resolveReadFilter(ir: IR, entity: IREntity, options: Normalized): ReadF
   };
 }
 
+type PolicyPrelude = (deniedValue: '[]' | 'null') => string[];
+type FinishRows = (rowsExpr: string) => string;
+type FinishDoc = (docExpr: string) => string;
+
+function emitListEntityQuery(
+  blocks: string[],
+  entity: IREntity,
+  table: string,
+  rf: ReadFilter,
+  options: Normalized,
+  qfn: string,
+  policyPrelude: PolicyPrelude,
+  finishRows: FinishRows,
+): void {
+  if (!rf.hasTenant && !rf.hasSoftDelete) {
+    const bodyLines = [
+      ...policyPrelude('[]'),
+      `    ${finishRows(`await ctx.db.query("${table}").collect()`)}`,
+    ].join('\n');
+    blocks.push(
+      `export const list${entity.name} = ${qfn}({\n` +
+        `  args: {},\n` +
+        `  handler: async (ctx) => {\n` +
+        `${bodyLines}\n` +
+        `  },\n});`,
+    );
+    return;
+  }
+  const lines: string[] = [...policyPrelude('[]')];
+  if (rf.hasTenant) lines.push(tenantBindingLine(options, rf.tenantProp!));
+  if (rf.hasTenant && rf.tenantIndexed) {
+    lines.push(
+      `    let rows = await ctx.db.query("${table}").withIndex("by_${rf.tenantProp}", (q) => q.eq("${rf.tenantProp}", __tenant)).collect();`,
+    );
+  } else {
+    lines.push(`    let rows = await ctx.db.query("${table}").collect();`);
+    if (rf.hasTenant) {
+      lines.push(`    rows = rows.filter((d) => (d as any).${rf.tenantProp} === __tenant);`);
+    }
+  }
+  if (rf.hasSoftDelete) {
+    lines.push(`    rows = rows.filter((d) => (d as any).${rf.deletedProp} == null);`);
+  }
+  lines.push(`    ${finishRows('rows')}`);
+  blocks.push(
+    `export const list${entity.name} = ${qfn}({\n` +
+      `  args: {},\n` +
+      `  handler: async (ctx) => {\n${lines.join('\n')}\n  },\n});`,
+  );
+}
+
+function emitGetEntityQuery(
+  blocks: string[],
+  entity: IREntity,
+  table: string,
+  rf: ReadFilter,
+  options: Normalized,
+  qfn: string,
+  policyPrelude: PolicyPrelude,
+  finishDoc: FinishDoc,
+): void {
+  if (!rf.hasTenant && !rf.hasSoftDelete) {
+    const bodyLines = [...policyPrelude('null'), `    ${finishDoc(`await ctx.db.get(id)`)}`].join(
+      '\n',
+    );
+    blocks.push(
+      `export const get${entity.name} = ${qfn}({\n` +
+        `  args: { id: v.id("${table}") },\n` +
+        `  handler: async (ctx, { id }) => {\n` +
+        `${bodyLines}\n` +
+        `  },\n});`,
+    );
+    return;
+  }
+  const lines: string[] = [...policyPrelude('null'), `    const doc = await ctx.db.get(id);`];
+  if (rf.hasTenant) {
+    lines.push(tenantBindingLine(options, rf.tenantProp!));
+    lines.push(`    if (doc && (doc as any).${rf.tenantProp} !== __tenant) return null;`);
+  }
+  if (rf.hasSoftDelete) {
+    lines.push(`    if (doc && (doc as any).${rf.deletedProp} != null) return null;`);
+  }
+  lines.push(`    ${finishDoc('doc')}`);
+  blocks.push(
+    `export const get${entity.name} = ${qfn}({\n` +
+      `  args: { id: v.id("${table}") },\n` +
+      `  handler: async (ctx, { id }) => {\n${lines.join('\n')}\n  },\n});`,
+  );
+}
+
+function emitListByIndexQueries(
+  blocks: string[],
+  ir: IR,
+  entity: IREntity,
+  table: string,
+  rf: ReadFilter,
+  options: Normalized,
+  qfn: string,
+  policyPrelude: PolicyPrelude,
+  finishRows: FinishRows,
+): void {
+  for (const spec of collectQueryIndexSpecs(ir, entity, options)) {
+    const names = spec.fields.map((f) => f.name);
+    const suffix = spec.fields.map((f) => capWord(f.name)).join('And');
+    const argList = spec.fields
+      .map((f) => `${f.name}: ${f.fkTarget ? `v.id("${f.fkTarget}")` : 'v.string()'}`)
+      .join(', ');
+    const destructure = `{ ${names.join(', ')} }`;
+    const eqChain = spec.fields.map((f) => `.eq("${f.name}", ${f.name})`).join('');
+    const applyTenant = rf.hasTenant && !!rf.tenantProp && !names.includes(rf.tenantProp);
+
+    if (!applyTenant && !rf.hasSoftDelete) {
+      const bodyLines = [
+        ...policyPrelude('[]'),
+        `    ${finishRows(
+          `await ctx.db.query("${table}").withIndex("${spec.indexName}", (q) => q${eqChain}).collect()`,
+        )}`,
+      ].join('\n');
+      blocks.push(
+        `export const list${entity.name}By${suffix} = ${qfn}({\n` +
+          `  args: { ${argList} },\n` +
+          `  handler: async (ctx, ${destructure}) => {\n` +
+          `${bodyLines}\n` +
+          `  },\n});`,
+      );
+      continue;
+    }
+
+    const lines: string[] = [...policyPrelude('[]')];
+    if (applyTenant) lines.push(tenantBindingLine(options, rf.tenantProp!));
+    lines.push(
+      `    let rows = await ctx.db.query("${table}").withIndex("${spec.indexName}", (q) => q${eqChain}).collect();`,
+    );
+    if (applyTenant) {
+      lines.push(`    rows = rows.filter((d) => (d as any).${rf.tenantProp} === __tenant);`);
+    }
+    if (rf.hasSoftDelete) {
+      lines.push(`    rows = rows.filter((d) => (d as any).${rf.deletedProp} == null);`);
+    }
+    lines.push(`    ${finishRows('rows')}`);
+    blocks.push(
+      `export const list${entity.name}By${suffix} = ${qfn}({\n` +
+        `  args: { ${argList} },\n` +
+        `  handler: async (ctx, ${destructure}) => {\n${lines.join('\n')}\n  },\n});`,
+    );
+  }
+}
+
 export function generateQueries(
   ir: IR,
   rawOptions: Record<string, unknown> | undefined,
@@ -479,117 +627,20 @@ export function generateQueries(
       return lines.join('\n');
     };
 
-    // list<Entity> — tenant-scoped + soft-delete-filtered by default. The tenant
-    // id comes from the authenticated identity (never a client arg), so an
-    // un-scoped list cannot leak rows across tenants.
-    if (!rf.hasTenant && !rf.hasSoftDelete) {
-      const bodyLines = [
-        ...policyPrelude('[]'),
-        `    ${finishRows(`await ctx.db.query("${table}").collect()`)}`,
-      ].join('\n');
-      blocks.push(
-        `export const list${entity.name} = ${qfn}({\n` +
-          `  args: {},\n` +
-          `  handler: async (ctx) => {\n` +
-          `${bodyLines}\n` +
-          `  },\n});`,
-      );
-    } else {
-      const lines: string[] = [...policyPrelude('[]')];
-      if (rf.hasTenant) lines.push(tenantBindingLine(options, rf.tenantProp!));
-      if (rf.hasTenant && rf.tenantIndexed) {
-        lines.push(
-          `    let rows = await ctx.db.query("${table}").withIndex("by_${rf.tenantProp}", (q) => q.eq("${rf.tenantProp}", __tenant)).collect();`,
-        );
-      } else {
-        lines.push(`    let rows = await ctx.db.query("${table}").collect();`);
-        if (rf.hasTenant)
-          lines.push(`    rows = rows.filter((d) => (d as any).${rf.tenantProp} === __tenant);`);
-      }
-      if (rf.hasSoftDelete)
-        lines.push(`    rows = rows.filter((d) => (d as any).${rf.deletedProp} == null);`);
-      lines.push(`    ${finishRows('rows')}`);
-      blocks.push(
-        `export const list${entity.name} = ${qfn}({\n` +
-          `  args: {},\n` +
-          `  handler: async (ctx) => {\n${lines.join('\n')}\n  },\n});`,
-      );
-    }
-
-    // get<Entity> by Convex _id — returns null on tenant mismatch / soft-deleted.
-    if (!rf.hasTenant && !rf.hasSoftDelete) {
-      const bodyLines = [...policyPrelude('null'), `    ${finishDoc(`await ctx.db.get(id)`)}`].join(
-        '\n',
-      );
-      blocks.push(
-        `export const get${entity.name} = ${qfn}({\n` +
-          `  args: { id: v.id("${table}") },\n` +
-          `  handler: async (ctx, { id }) => {\n` +
-          `${bodyLines}\n` +
-          `  },\n});`,
-      );
-    } else {
-      const lines: string[] = [...policyPrelude('null'), `    const doc = await ctx.db.get(id);`];
-      if (rf.hasTenant) {
-        lines.push(tenantBindingLine(options, rf.tenantProp!));
-        lines.push(`    if (doc && (doc as any).${rf.tenantProp} !== __tenant) return null;`);
-      }
-      if (rf.hasSoftDelete)
-        lines.push(`    if (doc && (doc as any).${rf.deletedProp} != null) return null;`);
-      lines.push(`    ${finishDoc('doc')}`);
-      blocks.push(
-        `export const get${entity.name} = ${qfn}({\n` +
-          `  args: { id: v.id("${table}") },\n` +
-          `  handler: async (ctx, { id }) => {\n${lines.join('\n')}\n  },\n});`,
-      );
-    }
-
-    // list<Entity>By<Field...> — one per schema index (indexed, tenant, every
-    // reference FK in both modes, single-field AND composite option indexes).
-    // Soft-delete + (auth-derived) tenant filters apply unless the index itself
-    // already constrains the tenant column.
-    for (const spec of collectQueryIndexSpecs(ir, entity, options)) {
-      const names = spec.fields.map((f) => f.name);
-      const suffix = spec.fields.map((f) => capWord(f.name)).join('And');
-      const argList = spec.fields
-        .map((f) => `${f.name}: ${f.fkTarget ? `v.id("${f.fkTarget}")` : 'v.string()'}`)
-        .join(', ');
-      const destructure = `{ ${names.join(', ')} }`;
-      const eqChain = spec.fields.map((f) => `.eq("${f.name}", ${f.name})`).join('');
-      const applyTenant = rf.hasTenant && !!rf.tenantProp && !names.includes(rf.tenantProp);
-
-      if (!applyTenant && !rf.hasSoftDelete) {
-        const bodyLines = [
-          ...policyPrelude('[]'),
-          `    ${finishRows(
-            `await ctx.db.query("${table}").withIndex("${spec.indexName}", (q) => q${eqChain}).collect()`,
-          )}`,
-        ].join('\n');
-        blocks.push(
-          `export const list${entity.name}By${suffix} = ${qfn}({\n` +
-            `  args: { ${argList} },\n` +
-            `  handler: async (ctx, ${destructure}) => {\n` +
-            `${bodyLines}\n` +
-            `  },\n});`,
-        );
-      } else {
-        const lines: string[] = [...policyPrelude('[]')];
-        if (applyTenant) lines.push(tenantBindingLine(options, rf.tenantProp!));
-        lines.push(
-          `    let rows = await ctx.db.query("${table}").withIndex("${spec.indexName}", (q) => q${eqChain}).collect();`,
-        );
-        if (applyTenant)
-          lines.push(`    rows = rows.filter((d) => (d as any).${rf.tenantProp} === __tenant);`);
-        if (rf.hasSoftDelete)
-          lines.push(`    rows = rows.filter((d) => (d as any).${rf.deletedProp} == null);`);
-        lines.push(`    ${finishRows('rows')}`);
-        blocks.push(
-          `export const list${entity.name}By${suffix} = ${qfn}({\n` +
-            `  args: { ${argList} },\n` +
-            `  handler: async (ctx, ${destructure}) => {\n${lines.join('\n')}\n  },\n});`,
-        );
-      }
-    }
+    // list/get/listBy — tenant + soft-delete filters applied in helpers.
+    emitListEntityQuery(blocks, entity, table, rf, options, qfn, policyPrelude, finishRows);
+    emitGetEntityQuery(blocks, entity, table, rf, options, qfn, policyPrelude, finishDoc);
+    emitListByIndexQueries(
+      blocks,
+      ir,
+      entity,
+      table,
+      rf,
+      options,
+      qfn,
+      policyPrelude,
+      finishRows,
+    );
   }
 
   // System events table reads (when emitted): recent feed + the three indexed

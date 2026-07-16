@@ -14,7 +14,7 @@ import {
 
 export function ensureExportSymbols(
   content: string,
-  fileName: string,
+  _fileName: string,
   op: Extract<RepairOperation, { type: 'ensure-export-symbols' }>,
 ): string | null {
   const isServerActionsModule = /^["']use server["']/m.test(content);
@@ -30,7 +30,6 @@ export function ensureExportSymbols(
     // Next.js: every export from a "use server" file must be an async Server Action.
     // Never promote a sync helper to export in those modules.
     if (isServerActionsModule && isSyncDeclaration(next, name)) {
-      void fileName;
       return null;
     }
     const constRe = new RegExp(`(^|\\n)(const\\s+${escape(name)}\\b)`);
@@ -43,7 +42,6 @@ export function ensureExportSymbols(
       next = next.replace(fnRe, `$1export $2`);
       continue;
     }
-    void fileName;
   }
   return next;
 }
@@ -123,45 +121,63 @@ function buildLoaderInsert(
   );
 }
 
+type PayloadSpan = { callStart: number; payloadStart: number; payloadEnd: number };
+
 function findPartialPayloadSpan(
   content: string,
   op: Extract<RepairOperation, { type: 'replace-capability-payload-with-full-body' }>,
-): { callStart: number; payloadStart: number; payloadEnd: number } | undefined {
+): PayloadSpan | undefined {
   if (op.siteKind === 'api-post') {
-    for (const inv of extractApiManifestPosts(content)) {
-      if (inv.intent !== op.capabilityId) continue;
-      if (!inv.payloadSource.startsWith('{')) continue;
-      if (/\.\.\./.test(inv.payloadSource)) continue;
-      const payloadStart = content.indexOf(inv.payloadSource, inv.index);
-      if (payloadStart < 0) continue;
-      return {
-        callStart: inv.index,
-        payloadStart,
-        payloadEnd: payloadStart + inv.payloadSource.length,
-      };
-    }
+    const apiSpan = findApiPostPayloadSpan(content, op.capabilityId);
+    if (apiSpan) return apiSpan;
   }
+  return (
+    findGeneratedClientPayloadSpan(content, op.capabilityId) ??
+    findFallbackPayloadSpan(content, op.entity, op.command)
+  );
+}
 
-  const caps = new Set([op.capabilityId]);
-  for (const inv of extractGeneratedClientCalls(content, caps)) {
-    if (!inv.payloadSource.startsWith('{')) continue;
-    if (/\.\.\./.test(inv.payloadSource)) continue;
-    const payloadStart = content.indexOf(inv.payloadSource, inv.index);
-    if (payloadStart < 0) continue;
-    return {
-      callStart: inv.index,
-      payloadStart,
-      payloadEnd: payloadStart + inv.payloadSource.length,
-    };
+function spanFromInvocation(content: string, inv: { index: number; payloadSource: string }): PayloadSpan | undefined {
+  if (!inv.payloadSource.startsWith('{') || /\.\.\./.test(inv.payloadSource)) return undefined;
+  const payloadStart = content.indexOf(inv.payloadSource, inv.index);
+  if (payloadStart < 0) return undefined;
+  return {
+    callStart: inv.index,
+    payloadStart,
+    payloadEnd: payloadStart + inv.payloadSource.length,
+  };
+}
+
+function findApiPostPayloadSpan(content: string, capabilityId: string): PayloadSpan | undefined {
+  for (const inv of extractApiManifestPosts(content)) {
+    if (inv.intent !== capabilityId) continue;
+    const span = spanFromInvocation(content, inv);
+    if (span) return span;
   }
+  return undefined;
+}
 
-  // Fallback: locate client fn or path string then nearest object literal
-  const fn = clientFunctionName(op.entity, op.command);
-  const pathHint = `/api/manifest/${op.entity}/commands/${op.command}`;
+function findGeneratedClientPayloadSpan(
+  content: string,
+  capabilityId: string,
+): PayloadSpan | undefined {
+  for (const inv of extractGeneratedClientCalls(content, new Set([capabilityId]))) {
+    const span = spanFromInvocation(content, inv);
+    if (span) return span;
+  }
+  return undefined;
+}
+
+function findFallbackPayloadSpan(
+  content: string,
+  entity: string,
+  command: string,
+): PayloadSpan | undefined {
+  const fn = clientFunctionName(entity, command);
+  const pathHint = `/api/manifest/${entity}/commands/${command}`;
   const idx = Math.max(content.indexOf(fn + '('), content.indexOf(pathHint));
   if (idx < 0) return undefined;
-  const after = content.slice(idx, idx + 2000);
-  const braceRel = after.indexOf('{');
+  const braceRel = content.slice(idx, idx + 2000).indexOf('{');
   if (braceRel < 0) return undefined;
   const abs = idx + braceRel;
   const payload = extractBalancedBraces(content, abs);

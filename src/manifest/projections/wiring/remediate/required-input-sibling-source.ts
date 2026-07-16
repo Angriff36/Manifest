@@ -62,7 +62,7 @@ export function collectSiblingParamBindings(
   const exprs = new Set(hits.map((h) => h.expression));
   if (exprs.size === 0) return [];
 
-  for (const expression of [...exprs].sort()) {
+  for (const expression of [...exprs].sort((a, b) => a.localeCompare(b))) {
     if (!expressionRootInScope(expression, scopes, sf, call.getStart(sf))) {
       continue;
     }

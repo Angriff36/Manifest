@@ -2,7 +2,7 @@ import { Hover, MarkupKind } from 'vscode-languageserver';
 import type { Position as LspPosition } from 'vscode-languageserver';
 import type { Token } from '@angriff36/manifest/types';
 import type { IR } from '@angriff36/manifest/ir';
-import { KEYWORD_DOCS } from '../symbols/builtin-docs.js';
+import { getKeywordDoc } from '../symbols/builtin-docs.js';
 import { toManifestPosition, tokenToLspRange } from '../position-utils.js';
 import { findTokenAtPosition } from './completion.js';
 
@@ -16,7 +16,7 @@ export function getHover(tokens: Token[], ir: IR | null, position: LspPosition):
 
   // Keywords
   if (token.type === 'KEYWORD') {
-    const doc = KEYWORD_DOCS[token.value];
+    const doc = getKeywordDoc(token.value);
     if (doc) {
       return {
         contents: {

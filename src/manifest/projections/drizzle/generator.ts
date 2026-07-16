@@ -30,6 +30,7 @@ import {
   normalizeOptions,
   type DrizzleProjectionOptions,
   type ForeignKeyConfig,
+  type IndexEntry,
 } from './options.js';
 import { DRIZZLE_DESCRIPTOR_META } from './descriptor-meta.js';
 import {
@@ -631,52 +632,71 @@ function emitTable(
 
 function emitIndexes(entity: IREntity, options: DrizzleProjectionOptions): string[] {
   const idx = options.indexes?.[entity.name];
-  const lines: string[] = [];
   const varName =
     options.tableMappings?.[entity.name] ??
     entity.name.charAt(0).toLowerCase() + entity.name.slice(1);
+  return [
+    ...emitConfiguredIndexes(idx, varName),
+    ...emitIndexedPropertyIndexes(entity, idx, varName),
+    ...emitSearchableGinIndex(entity, options, varName),
+  ];
+}
 
-  if (idx && idx.length > 0) {
-    for (const entry of idx) {
-      const fields = Array.isArray(entry) ? entry : entry.fields;
-      const name =
-        !Array.isArray(entry) && entry.name ? entry.name : `${varName}_${fields.join('_')}_idx`;
-      lines.push(`export const ${name.replace(/[^a-zA-Z0-9_]/g, '_')} = index("${name}")`);
-      lines.push(`  .on(${fields.map((f) => `${varName}.${f}`).join(', ')});`);
-      lines.push(``);
-    }
+function emitConfiguredIndexes(
+  idx: IndexEntry[] | undefined,
+  varName: string,
+): string[] {
+  if (!idx || idx.length === 0) return [];
+  const lines: string[] = [];
+  for (const entry of idx) {
+    const fields = Array.isArray(entry) ? entry : entry.fields;
+    const name =
+      !Array.isArray(entry) && entry.name ? entry.name : `${varName}_${fields.join('_')}_idx`;
+    lines.push(`export const ${name.replace(/[^a-zA-Z0-9_]/g, '_')} = index("${name}")`);
+    lines.push(`  .on(${fields.map((f) => `${varName}.${f}`).join(', ')});`);
+    lines.push(``);
   }
+  return lines;
+}
 
-  // Indexes for `indexed` modifier on properties — emit one index per such
-  // property, but skip any that are already covered by options.indexes.
+function emitIndexedPropertyIndexes(
+  entity: IREntity,
+  idx: IndexEntry[] | undefined,
+  varName: string,
+): string[] {
+  const lines: string[] = [];
   const indexedProps = entity.properties.filter((p) => p.modifiers.includes('indexed'));
   for (const indexedProp of indexedProps) {
     const alreadyInOptions = (idx ?? []).some((entry) => {
       const fields = Array.isArray(entry) ? entry : entry.fields;
       return fields.includes(indexedProp.name);
     });
-    if (!alreadyInOptions) {
-      const name = `${varName}_${indexedProp.name}_idx`;
-      lines.push(`export const ${name} = index("${name}")`);
-      lines.push(`  .on(${varName}.${indexedProp.name});`);
-      lines.push(``);
-    }
+    if (alreadyInOptions) continue;
+    const name = `${varName}_${indexedProp.name}_idx`;
+    lines.push(`export const ${name} = index("${name}")`);
+    lines.push(`  .on(${varName}.${indexedProp.name});`);
+    lines.push(``);
   }
+  return lines;
+}
 
-  // GIN tsvector index for searchable properties (PostgreSQL only)
+function emitSearchableGinIndex(
+  entity: IREntity,
+  options: DrizzleProjectionOptions,
+  varName: string,
+): string[] {
   const dialect = (options.dialect ?? 'postgresql') as DrizzleDialect;
   const searchableFields = entity.properties
     .filter((p) => p.modifiers.includes('searchable'))
     .map((p) => p.name);
-  if (searchableFields.length > 0 && dialect === 'postgresql') {
-    const tsvectorParts = searchableFields.map((f) => `"${f}"`).join(` || ' ' || `);
-    const idxName = `${varName}_search_idx`;
-    lines.push(`export const ${idxName} = index("${idxName}")`);
-    lines.push(`  .using("gin", sql\`to_tsvector('english', ${tsvectorParts})\`);`);
-    lines.push(``);
-  }
-
-  return lines;
+  if (searchableFields.length === 0 || dialect !== 'postgresql') return [];
+  const tsvectorParts = searchableFields.map((f) => `"${f}"`).join(` || ' ' || `);
+  const idxName = `${varName}_search_idx`;
+  return [
+    `export const ${idxName} = index("${idxName}")`,
+    `  .using("gin", sql\`to_tsvector('english', ${tsvectorParts})\`);`,
+    ``,
+  ];
 }
 
 // ============================================================================
@@ -805,7 +825,7 @@ export class DrizzleProjection implements ProjectionTarget {
 
       // Add type imports
       if (usedTypes.size > 0) {
-        const types = Array.from(usedTypes).sort().join(', ');
+        const types = Array.from(usedTypes).sort((a, b) => a.localeCompare(b)).join(', ');
         header.push(`import { ${types} } from '${importPath}';`);
       }
     }

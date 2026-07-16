@@ -56,20 +56,29 @@ export class RedisEventBus implements EventBus {
   private channel: string;
   private publisher!: RedisEventBusClient;
   private ownsPublisher: boolean;
-  private ready: Promise<void>;
+  private ready: Promise<void> | undefined;
+  private readonly url: string | undefined;
   private subscribers = new Set<RedisEventBusClient>();
   private closed = false;
 
   constructor(config: RedisEventBusConfig = {}) {
     this.channel = config.channel ?? DEFAULT_CHANNEL;
+    this.url = config.url;
     if (config.client) {
       this.publisher = config.client;
       this.ownsPublisher = false;
       this.ready = Promise.resolve();
     } else {
       this.ownsPublisher = true;
-      this.ready = this.initPublisher(config.url);
+      // Defer async ioredis load until first use (Sonar S7059).
     }
+  }
+
+  private ensureReady(): Promise<void> {
+    if (!this.ready) {
+      this.ready = this.initPublisher(this.url);
+    }
+    return this.ready;
   }
 
   private async initPublisher(url?: string): Promise<void> {
@@ -88,12 +97,12 @@ export class RedisEventBus implements EventBus {
   }
 
   async publish(message: EventBusMessage): Promise<void> {
-    await this.ready;
+    await this.ensureReady();
     await this.publisher.publish(this.channel, JSON.stringify(message));
   }
 
   async subscribe(handler: EventBusHandler): Promise<() => Promise<void>> {
-    await this.ready;
+    await this.ensureReady();
 
     // Redis requires a dedicated connection for subscriber mode.
     const sub = this.publisher.duplicate();
@@ -135,7 +144,9 @@ export class RedisEventBus implements EventBus {
     this.closed = true;
 
     // Swallow a failed init (e.g. ioredis missing) — there is nothing to tear down.
-    await this.ready.catch(() => {});
+    if (this.ready) {
+      await this.ready.catch(() => {});
+    }
 
     // Subscriber connections are always bus-owned (created via duplicate()).
     const subs = [...this.subscribers];

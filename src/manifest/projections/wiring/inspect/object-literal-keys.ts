@@ -198,9 +198,9 @@ function stripCommentsForColonScan(s: string): string {
   let inStr: string | null = null;
   while (i < s.length) {
     const ch = s[i]!;
-    if (inStr) {
+    if (inStr !== null) {
       out.push(ch);
-      if (ch === inStr && s[i - 1] !== '\\') inStr = null;
+      inStr = advanceScanString(s, i, ch, inStr);
       i++;
       continue;
     }
@@ -212,10 +212,7 @@ function stripCommentsForColonScan(s: string): string {
     }
     const after = skipComment(s, i);
     if (after !== i) {
-      while (i < after) {
-        out.push(s[i] === '\n' || s[i] === '\r' ? s[i]! : ' ');
-        i++;
-      }
+      i = pushBlankedComment(s, i, after, out);
       continue;
     }
     out.push(ch);
@@ -224,17 +221,39 @@ function stripCommentsForColonScan(s: string): string {
   return out.join('');
 }
 
+function advanceScanString(
+  s: string,
+  index: number,
+  ch: string,
+  inStr: string,
+): string | null {
+  if (ch === inStr && s[index - 1] !== '\\') return null;
+  return inStr;
+}
+
+function pushBlankedComment(
+  s: string,
+  start: number,
+  after: number,
+  out: string[],
+): number {
+  let i = start;
+  while (i < after) {
+    out.push(s[i] === '\n' || s[i] === '\r' ? s[i]! : ' ');
+    i++;
+  }
+  return i;
+}
+
 /** Advance from value start to the next top-level `,` or `}` (exclusive). */
 function skipTopLevelValue(s: string, start: number): number {
   let i = start;
-  let depthBrace = 0;
-  let depthParen = 0;
-  let depthBracket = 0;
+  const depth = { brace: 0, paren: 0, bracket: 0 };
   let inStr: string | null = null;
   while (i < s.length) {
     const ch = s[i]!;
-    if (inStr) {
-      if (ch === inStr && s[i - 1] !== '\\') inStr = null;
+    if (inStr !== null) {
+      inStr = advanceScanString(s, i, ch, inStr);
       i++;
       continue;
     }
@@ -248,25 +267,47 @@ function skipTopLevelValue(s: string, start: number): number {
       i++;
       continue;
     }
-    if (ch === '{') depthBrace++;
-    else if (ch === '}') {
-      if (depthBrace === 0 && depthParen === 0 && depthBracket === 0) return i;
-      depthBrace--;
-    } else if (ch === '(') depthParen++;
-    else if (ch === ')') depthParen--;
-    else if (ch === '[') depthBracket++;
-    else if (ch === ']') depthBracket--;
-    else if (
-      (ch === ',' || ch === '}') &&
-      depthBrace === 0 &&
-      depthParen === 0 &&
-      depthBracket === 0
-    ) {
-      return i;
-    }
+    const end = applyTopLevelDelimiter(ch, depth);
+    if (end) return i;
     i++;
   }
   return i;
+}
+
+function applyTopLevelDelimiter(
+  ch: string,
+  depth: { brace: number; paren: number; bracket: number },
+): boolean {
+  if (ch === '{') {
+    depth.brace++;
+    return false;
+  }
+  if (ch === '}') {
+    if (isTopLevel(depth)) return true;
+    depth.brace--;
+    return false;
+  }
+  if (ch === '(') {
+    depth.paren++;
+    return false;
+  }
+  if (ch === ')') {
+    depth.paren--;
+    return false;
+  }
+  if (ch === '[') {
+    depth.bracket++;
+    return false;
+  }
+  if (ch === ']') {
+    depth.bracket--;
+    return false;
+  }
+  return (ch === ',' || ch === '}') && isTopLevel(depth);
+}
+
+function isTopLevel(depth: { brace: number; paren: number; bracket: number }): boolean {
+  return depth.brace === 0 && depth.paren === 0 && depth.bracket === 0;
 }
 
 export function extractObjectFieldNames(objectLiteral: string): string[] {

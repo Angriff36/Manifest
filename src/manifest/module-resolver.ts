@@ -144,7 +144,7 @@ export async function resolveModuleGraph(
   }
 
   if (cyclePaths.length > 0) {
-    const unique = [...new Set(cyclePaths)].sort();
+    const unique = [...new Set(cyclePaths)].sort((a, b) => a.localeCompare(b));
     diagnostics.push({
       message: `Circular dependency detected: ${unique.join(' -> ')}`,
       severity: 'error',
@@ -194,13 +194,13 @@ export async function resolveModuleGraph(
     if (deg === 0) ready.push(path);
   }
   // Deterministic tie-breaking: sort alphabetically
-  ready.sort();
+  ready.sort((a, b) => a.localeCompare(b));
 
   const order: ResolvedFile[] = [];
 
   while (ready.length > 0) {
     // Always pick the lexicographically smallest for determinism
-    ready.sort();
+    ready.sort((a, b) => a.localeCompare(b));
     const current = ready.shift()!;
     const file = files.get(current);
     if (file) order.push(file);

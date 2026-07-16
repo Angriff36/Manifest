@@ -180,7 +180,7 @@ function assertKeywordSubset(label: string, names: readonly string[]): string[] 
 
 function listCoreBuiltinNames(): string[] {
   const engine = new RuntimeEngine(EMPTY_IR, {});
-  return Object.keys(engine.getBuiltins()).sort();
+  return Object.keys(engine.getBuiltins()).sort((a, b) => a.localeCompare(b));
 }
 
 /**
@@ -188,7 +188,7 @@ function listCoreBuiltinNames(): string[] {
  * Derive-only: keywords ← lexer, modifiers ← IR, builtins ← RuntimeEngine.
  */
 export function getLanguageMetadata(): LanguageMetadata {
-  const keywords = [...KEYWORDS].sort();
+  const keywords = [...KEYWORDS].sort((a, b) => a.localeCompare(b));
   const operators = [...getLexerOperators()];
   const relationshipKinds = assertKeywordSubset('relationshipKinds', RELATIONSHIP_KINDS);
   const commandActionConstructs = assertKeywordSubset(
@@ -199,10 +199,10 @@ export function getLanguageMetadata(): LanguageMetadata {
   const contextualTopLevelConstructs = [...CONTEXTUAL_TOP_LEVEL_CONSTRUCTS];
   const contextualKeywords = [...CONTEXTUAL_KEYWORDS];
   const keywordPrimitives = assertKeywordSubset('primitiveTypes', KEYWORD_PRIMITIVE_TYPES);
-  const primitiveTypes = [...keywordPrimitives, ...DATE_TIME_TYPE_NAMES].sort();
+  const primitiveTypes = [...keywordPrimitives, ...DATE_TIME_TYPE_NAMES].sort((a, b) => a.localeCompare(b));
   const builtinNames = listCoreBuiltinNames();
   const builtins = builtinNames.map((name) => ({ name }));
-  const documentationIds = [...new Set([...keywords, ...builtinNames])].sort();
+  const documentationIds = [...new Set([...keywords, ...builtinNames])].sort((a, b) => a.localeCompare(b));
 
   return {
     keywords,

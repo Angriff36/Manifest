@@ -43,50 +43,8 @@ export function applyRepairPlan(
     };
   }
 
-  // Stale plan guard: preconditions must still match
-  for (const pre of plan.preconditions) {
-    const file = plan.edits[0]?.file;
-    if (!file) continue;
-    const content = getContent(fileContents, file);
-    if (!content) {
-      return {
-        ok: false,
-        filesChanged: [],
-        editsApplied: 0,
-        skippedReason: `Stale plan: source file missing (${file})`,
-        nextContents: new Map(fileContents),
-      };
-    }
-    const proven = extractProvenSourceExpression(plan);
-    if (proven && !provenSourceStillPresent(proven, content)) {
-      return {
-        ok: false,
-        filesChanged: [],
-        editsApplied: 0,
-        skippedReason: `Stale plan: expected source snippet no longer present in ${file}`,
-        nextContents: new Map(fileContents),
-      };
-    }
-    // Fingerprint of expected snippet must appear OR full-file still contains key fragment
-    const stillValid =
-      content.includes(pre.sourceFingerprint) ||
-      fingerprintStillMatches(content, pre.sourceFingerprint) ||
-      preconditionSnippetPresent(plan, content);
-    if (!stillValid && plan.preconditions.length > 0) {
-      // Soft check: if we can still apply and produce a change, allow;
-      // hard fail only when fingerprint was a content hash of a specific expression
-      const expr = extractFromExpression(plan);
-      if (expr && !content.includes(expr)) {
-        return {
-          ok: false,
-          filesChanged: [],
-          editsApplied: 0,
-          skippedReason: `Stale plan: expected source snippet no longer present in ${file}`,
-          nextContents: new Map(fileContents),
-        };
-      }
-    }
-  }
+  const stale = checkStalePreconditions(plan, fileContents);
+  if (stale) return stale;
 
   const next = new Map(fileContents);
   const changed = new Set<string>();
@@ -513,11 +471,57 @@ function preconditionSnippetPresent(plan: RepairPlan, content: string): boolean 
   return false;
 }
 
-function fingerprintStillMatches(content: string, fp: string): boolean {
+function fingerprintStillMatches(_content: string, _fp: string): boolean {
   // Fingerprints are hashes — they won't appear in content. Always false.
-  void content;
-  void fp;
   return false;
+}
+
+function checkStalePreconditions(
+  plan: RepairPlan,
+  fileContents: Map<string, string>,
+): PatchApplyResult | undefined {
+  for (const pre of plan.preconditions) {
+    const file = plan.edits[0]?.file;
+    if (!file) continue;
+    const content = getContent(fileContents, file);
+    if (!content) {
+      return stalePlanResult(fileContents, `Stale plan: source file missing (${file})`);
+    }
+    const proven = extractProvenSourceExpression(plan);
+    if (proven && !provenSourceStillPresent(proven, content)) {
+      return stalePlanResult(
+        fileContents,
+        `Stale plan: expected source snippet no longer present in ${file}`,
+      );
+    }
+    const stillValid =
+      content.includes(pre.sourceFingerprint) ||
+      fingerprintStillMatches(content, pre.sourceFingerprint) ||
+      preconditionSnippetPresent(plan, content);
+    if (!stillValid && plan.preconditions.length > 0) {
+      const expr = extractFromExpression(plan);
+      if (expr && !content.includes(expr)) {
+        return stalePlanResult(
+          fileContents,
+          `Stale plan: expected source snippet no longer present in ${file}`,
+        );
+      }
+    }
+  }
+  return undefined;
+}
+
+function stalePlanResult(
+  fileContents: Map<string, string>,
+  skippedReason: string,
+): PatchApplyResult {
+  return {
+    ok: false,
+    filesChanged: [],
+    editsApplied: 0,
+    skippedReason,
+    nextContents: new Map(fileContents),
+  };
 }
 
 /** Apply multiple plans sequentially (for non-one-defect modes). */

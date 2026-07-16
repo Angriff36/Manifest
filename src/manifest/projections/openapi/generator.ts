@@ -781,59 +781,55 @@ function buildCommandOperation(
 // Full spec assembly
 // ============================================================================
 
-/**
- * Build the complete OpenAPI 3.1.0 spec from IR.
- */
-function buildOpenApiSpec(
-  ir: IR,
-  options: OpenApiProjectionOptions,
-): { spec: Record<string, unknown>; diagnostics: ProjectionDiagnostic[] } {
-  const diagnostics: ProjectionDiagnostic[] = [];
-  const basePath = options.basePath ?? '/api';
-  const includeConstraintErrors = options.includeConstraintErrors !== false;
+function sortedIrEntities(ir: IR): IREntity[] {
+  return [...ir.entities].sort((a, b) => a.name.localeCompare(b.name));
+}
 
-  // Build entity lookup
-  const entityByName = new Map<string, IREntity>();
-  for (const entity of ir.entities) {
-    entityByName.set(entity.name, entity);
-  }
-
-  // Build value-object lookup so type-mapping functions can emit $ref instead
-  // of the generic { type: 'string' } fallback.
-  const valueObjectMap = new Map<string, IRValueObject>((ir.values ?? []).map((v) => [v.name, v]));
-
-  // Build title
-  const title =
-    options.info?.title ??
-    (ir.modules.length > 0 && ir.modules[0].name
-      ? `${toPascalCase(ir.modules[0].name)} API`
-      : 'Manifest API');
-  const version = options.info?.version ?? ir.provenance.schemaVersion ?? '1.0.0';
-
-  // Collect all paths
-  const paths: Record<string, Record<string, OpenApiOperation>> = {};
-
-  // Sort entities and commands for determinism
-  const sortedEntities = [...ir.entities].sort((a, b) => a.name.localeCompare(b.name));
-  const sortedCommands = [...ir.commands].sort((a, b) => {
+function sortedIrCommands(ir: IR): IRCommand[] {
+  return [...ir.commands].sort((a, b) => {
     const aKey = `${a.entity ?? ''}.${a.name}`;
     const bKey = `${b.entity ?? ''}.${b.name}`;
     return aKey.localeCompare(bKey);
   });
+}
 
-  // Generate entity read operations (GET list + GET detail)
-  for (const entity of sortedEntities) {
-    const listOp = buildListOperation(entity, basePath, options, ir.policies);
+function resolveOpenApiTitle(ir: IR, options: OpenApiProjectionOptions): string {
+  if (options.info?.title) return options.info.title;
+  if (ir.modules.length > 0 && ir.modules[0].name) {
+    return `${toPascalCase(ir.modules[0].name)} API`;
+  }
+  return 'Manifest API';
+}
+
+function collectEntityReadPaths(
+  paths: Record<string, Record<string, OpenApiOperation>>,
+  entities: IREntity[],
+  basePath: string,
+  options: OpenApiProjectionOptions,
+  policies: IRPolicy[],
+): void {
+  for (const entity of entities) {
+    const listOp = buildListOperation(entity, basePath, options, policies);
     if (!paths[listOp.path]) paths[listOp.path] = {};
     paths[listOp.path].get = listOp.operation;
 
-    const getOp = buildGetOperation(entity, basePath, options, ir.policies);
+    const getOp = buildGetOperation(entity, basePath, options, policies);
     if (!paths[getOp.path]) paths[getOp.path] = {};
     paths[getOp.path].get = getOp.operation;
   }
+}
 
-  // Generate command operations (POST)
-  for (const command of sortedCommands) {
+function collectCommandPaths(
+  paths: Record<string, Record<string, OpenApiOperation>>,
+  commands: IRCommand[],
+  entityByName: Map<string, IREntity>,
+  basePath: string,
+  options: OpenApiProjectionOptions,
+  policies: IRPolicy[],
+  valueObjectMap: Map<string, IRValueObject>,
+  diagnostics: ProjectionDiagnostic[],
+): void {
+  for (const command of commands) {
     if (!command.entity) {
       diagnostics.push({
         severity: 'warning',
@@ -842,59 +838,61 @@ function buildOpenApiSpec(
       });
       continue;
     }
-
     const entity = entityByName.get(command.entity);
     const cmdOp = buildCommandOperation(
       command,
       entity,
       basePath,
       options,
-      ir.policies,
+      policies,
       valueObjectMap,
     );
-    if (cmdOp) {
-      if (!paths[cmdOp.path]) paths[cmdOp.path] = {};
-      paths[cmdOp.path].post = cmdOp.operation;
-    }
+    if (!cmdOp) continue;
+    if (!paths[cmdOp.path]) paths[cmdOp.path] = {};
+    paths[cmdOp.path].post = cmdOp.operation;
   }
+}
 
-  // Build schemas in components
+function buildOpenApiSchemas(
+  entities: IREntity[],
+  commands: IRCommand[],
+  options: OpenApiProjectionOptions,
+  valueObjectMap: Map<string, IRValueObject>,
+  includeConstraintErrors: boolean,
+): Record<string, JsonSchema> {
   const schemas: Record<string, JsonSchema> = {};
-
-  // Register value object schemas first so entity schemas can reference them
-  for (const vo of ir.values ?? []) {
+  for (const vo of valueObjectMap.values()) {
     schemas[vo.name] = buildValueObjectSchema(vo, valueObjectMap);
   }
-
-  for (const entity of sortedEntities) {
+  for (const entity of entities) {
     schemas[entity.name] = buildEntitySchema(entity, options, valueObjectMap);
     schemas[`${entity.name}Write`] = buildEntityWriteSchema(entity, valueObjectMap);
   }
-
-  for (const command of sortedCommands) {
+  for (const command of commands) {
     if (command.parameters.length > 0 && command.entity) {
       schemas[`${toPascalCase(command.entity)}${toPascalCase(command.name)}Request`] =
         buildCommandRequestSchema(command, valueObjectMap);
     }
   }
-
-  // Add error response schemas
   if (includeConstraintErrors) {
-    schemas['ConstraintErrorResponse'] = buildConstraintErrorSchema();
-    schemas['GuardFailureResponse'] = buildGuardFailureSchema();
-    schemas['ConcurrencyConflictResponse'] = buildConcurrencyConflictSchema();
+    schemas.ConstraintErrorResponse = buildConstraintErrorSchema();
+    schemas.GuardFailureResponse = buildGuardFailureSchema();
+    schemas.ConcurrencyConflictResponse = buildConcurrencyConflictSchema();
   }
+  return schemas;
+}
 
-  // Build components
-  const components: Record<string, unknown> = {
-    schemas,
-  };
-
+function assembleOpenApiDocument(
+  title: string,
+  version: string,
+  options: OpenApiProjectionOptions,
+  paths: Record<string, Record<string, OpenApiOperation>>,
+  schemas: Record<string, JsonSchema>,
+): Record<string, unknown> {
+  const components: Record<string, unknown> = { schemas };
   if (options.securitySchemes && Object.keys(options.securitySchemes).length > 0) {
     components.securitySchemes = options.securitySchemes;
   }
-
-  // Build spec
   const spec: Record<string, unknown> = {
     openapi: '3.1.0',
     info: {
@@ -908,12 +906,50 @@ function buildOpenApiSpec(
     paths,
     components,
   };
-
-  // Global security
   if (options.security && options.security.length > 0) {
     spec.security = options.security.map((s) => ({ [s.ref]: [] }));
   }
+  return spec;
+}
 
+/**
+ * Build the complete OpenAPI 3.1.0 spec from IR.
+ */
+function buildOpenApiSpec(
+  ir: IR,
+  options: OpenApiProjectionOptions,
+): { spec: Record<string, unknown>; diagnostics: ProjectionDiagnostic[] } {
+  const diagnostics: ProjectionDiagnostic[] = [];
+  const basePath = options.basePath ?? '/api';
+  const includeConstraintErrors = options.includeConstraintErrors !== false;
+  const entityByName = new Map(ir.entities.map((e) => [e.name, e]));
+  const valueObjectMap = new Map<string, IRValueObject>((ir.values ?? []).map((v) => [v.name, v]));
+  const sortedEntities = sortedIrEntities(ir);
+  const sortedCommands = sortedIrCommands(ir);
+  const paths: Record<string, Record<string, OpenApiOperation>> = {};
+
+  collectEntityReadPaths(paths, sortedEntities, basePath, options, ir.policies);
+  collectCommandPaths(
+    paths,
+    sortedCommands,
+    entityByName,
+    basePath,
+    options,
+    ir.policies,
+    valueObjectMap,
+    diagnostics,
+  );
+
+  const schemas = buildOpenApiSchemas(
+    sortedEntities,
+    sortedCommands,
+    options,
+    valueObjectMap,
+    includeConstraintErrors,
+  );
+  const title = resolveOpenApiTitle(ir, options);
+  const version = options.info?.version ?? ir.provenance.schemaVersion ?? '1.0.0';
+  const spec = assembleOpenApiDocument(title, version, options, paths, schemas);
   return { spec, diagnostics };
 }
 

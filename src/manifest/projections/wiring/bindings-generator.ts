@@ -33,7 +33,7 @@ function paramField(p: WiringParameterDescriptor): string {
     p.required &&
     (ts === 'string' || ts.startsWith('string'))
   ) {
-    ts = 'string & {}'; // non-empty brand hint; runtime still validates
+    ts = 'string & { readonly __nonEmpty?: true }'; // non-empty brand; runtime still validates
   }
   const lines = [`  ${p.name}${opt}: ${ts};`];
   if (p.constraints.enumValues?.length) {

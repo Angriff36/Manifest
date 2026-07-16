@@ -165,7 +165,7 @@ function buildSchemasList(
       used.add(schema);
     }
   }
-  for (const schema of [...used].sort()) {
+  for (const schema of [...used].sort((a, b) => a.localeCompare(b))) {
     if (!ordered.includes(schema)) {
       ordered.push(schema);
     }
@@ -263,27 +263,23 @@ interface PropertyEmission {
   line: string | null;
 }
 
-/**
- * Emit a single Prisma model field line for an IR property, or null if the
- * property is unmappable (with a diagnostic explaining why).
- */
-function emitPropertyLine(
+interface ResolvedPropertyScalar {
+  isArray: boolean;
+  effectiveTypeName: string;
+  isEnum: boolean;
+  hasOverride: boolean;
+  scalar: string | undefined;
+}
+
+function resolvePropertyScalar(
   entity: IREntity,
   prop: IRProperty,
   ir: IR,
   options: PrismaProjectionOptions,
-): PropertyEmission {
-  const diagnostics: ProjectionDiagnostic[] = [];
-
-  // Array type handling: array<T> or T[] produces Prisma ScalarType[]
-  // (e.g. array<string> → String[], array<int> → Int[]).
-  const isArray = prop.type.name === 'array' && prop.type.generic;
+): ResolvedPropertyScalar {
+  const isArray = !!(prop.type.name === 'array' && prop.type.generic);
   const effectiveTypeName = isArray ? prop.type.generic!.name : prop.type.name;
-
   const isValueObject = ir.values?.some((v) => v.name === effectiveTypeName);
-  // Enum-typed property: the IR type name matches a declared enum. The Prisma
-  // field type IS the enum name (emitted as a `enum` block by emitEnum), unless
-  // a typeMappings override is explicitly supplied.
   const isEnum = (ir.enums?.some((e) => e.name === effectiveTypeName) ?? false) && !isValueObject;
   const typeOverrides = isValueObject ? undefined : options.typeMappings?.[entity.name];
   const hasOverride =
@@ -293,10 +289,18 @@ function emitPropertyLine(
     : isEnum && !hasOverride
       ? effectiveTypeName
       : resolvePrismaScalar(effectiveTypeName, typeOverrides, prop.name);
+  return { isArray, effectiveTypeName, isEnum, hasOverride, scalar };
+}
 
-  if (!scalar) {
-    if (effectiveTypeName === 'number' && !hasOverride) {
-      diagnostics.push({
+function pushUnknownScalarDiagnostics(
+  entity: IREntity,
+  prop: IRProperty,
+  resolved: ResolvedPropertyScalar,
+): ProjectionDiagnostic[] {
+  const { effectiveTypeName, hasOverride } = resolved;
+  if (effectiveTypeName === 'number' && !hasOverride) {
+    return [
+      {
         severity: 'error',
         code: 'PRISMA_AMBIGUOUS_NUMBER',
         entity: entity.name,
@@ -306,11 +310,11 @@ function emitPropertyLine(
           `'int' or 'bigint' for counts and ids, 'float' for measurements where rounding is acceptable, ` +
           `'money' or 'decimal' for currency and other exact-decimal values. ` +
           `Or supply a 'typeMappings.${entity.name}.${prop.name}' override.`,
-      });
-      return { line: null, diagnostics };
-    }
-
-    diagnostics.push({
+      },
+    ];
+  }
+  return [
+    {
       severity: 'error',
       code: 'PRISMA_UNKNOWN_TYPE',
       entity: entity.name,
@@ -318,72 +322,39 @@ function emitPropertyLine(
         `Property '${entity.name}.${prop.name}' has IR type '${effectiveTypeName}' which is not in the default type mapping ` +
         `and no override was supplied in 'typeMappings.${entity.name}.${prop.name}'. ` +
         'Add an entry to typeMappings, or change the property type in the .manifest source.',
-    });
-    return { line: null, diagnostics };
-  }
+    },
+  ];
+}
 
-  // @id is auto-added for a property named 'id' UNLESS the entity uses a composite key
-  // (in that case @@id([...]) is emitted at model level; the id column is not special).
-  const hasCompositeKey = entity.key && entity.key.length > 0;
-  const isId = prop.name === 'id' && !hasCompositeKey;
-  // A scalar column is nullable IFF the IR type is nullable — i.e. the .manifest
-  // source wrote an explicit `?` on the property type. `required`/id no longer
-  // drive the suffix: a non-nullable type emits NOT NULL even without `required`,
-  // and the edge case `required` + `?` type emits `?` (the declared type wins).
-  // Prisma list fields (String[]) are implicitly optional — never append ?.
-  const nullableSuffix = isArray ? '' : prop.type.nullable ? '?' : '';
-  // Prisma list suffix: scalar becomes scalar[].
-  const listSuffix = isArray ? '[]' : '';
-
-  // Attribute list, ordered: @id, @unique, @default, @map, @db.Decimal, @db.ObjectId,
-  // dbAttributes (@db.*), fieldAttributes (@unique, @default(now()), @updatedAt, etc.)
-  const attrs: string[] = [];
-  if (isId) {
-    attrs.push('@id');
-  }
-  if (prop.modifiers.includes('unique') && !isId) {
-    attrs.push('@unique');
-  }
-
-  const isMongo = options.provider === 'mongodb';
+function pushColumnMapAttrs(
+  attrs: string[],
+  entity: IREntity,
+  prop: IRProperty,
+  isId: boolean,
+  isMongo: boolean,
+  options: PrismaProjectionOptions,
+): void {
   const colMapOverride = options.columnMappings?.[entity.name]?.[prop.name];
-  if (isId && isMongo && !colMapOverride && !prop.defaultValue) {
-    attrs.push('@default(auto())');
-  }
-
-  // Scan fieldAttributes early to detect @default overrides.
-  // We need to know BEFORE emitting the IR default whether the consumer
-  // supplied their own @default. Actual push is deferred after dbAttributes.
-  const fieldAttrs = options.fieldAttributes?.[entity.name]?.[prop.name];
-  const fieldAttrHasDefault = fieldAttrs?.some((fa) => /^@default\b/.test(fa)) ?? false;
-
-  // NOTE: IR-level @default is NOT emitted here. It's emitted after dbAttributes
-  // so that the attribute ordering matches the existing test expectations
-  // (@id → @map → @db.* → @default → @updatedAt → @unique).
-
   if (colMapOverride) {
     attrs.push(`@map("${colMapOverride}")`);
   } else if (isId && isMongo) {
     attrs.push('@map("_id")');
   } else if (options.naming) {
-    // Auto-casing convention: emit @map only when the physical name differs
-    // from the IR property name. The Prisma field identifier stays prop.name.
     const phys = resolveColumnName(prop.name, options.naming);
-    if (phys !== prop.name) {
-      attrs.push(`@map("${phys}")`);
-    }
+    if (phys !== prop.name) attrs.push(`@map("${phys}")`);
   }
+}
 
-  // Native-type precedence: an explicit `precision` entry wins, then an
-  // explicit `dbAttributes` entry, then the default @db.Decimal for decimal
-  // scalars. Previously dbAttributes was SKIPPED whenever the default
-  // @db.Decimal fired, so `money`-typed columns could never be annotated
-  // @db.Money — an explicit per-field override must beat a derived default.
-  //
-  // Precision-resolution order (highest to lowest priority):
-  //   1. options.precision[entity][prop]  — explicit consumer override
-  //   2. prop.type.params                — precision/scale compiled into IR
-  //   3. Default @db.Decimal(12,2)       — applied below for decimal scalars
+function pushDbNativeAttrs(
+  attrs: string[],
+  entity: IREntity,
+  prop: IRProperty,
+  scalar: string,
+  effectiveTypeName: string,
+  isId: boolean,
+  isMongo: boolean,
+  options: PrismaProjectionOptions,
+): void {
   const optPrec = options.precision?.[entity.name]?.[prop.name];
   const typeParams = prop.type.params;
   const prec =
@@ -395,11 +366,6 @@ function emitPropertyLine(
         }
       : undefined);
   const dbAttr = options.dbAttributes?.[entity.name]?.[prop.name];
-  // A Manifest `uuid` maps to the `String` scalar, but on PostgreSQL/CockroachDB
-  // the physical column is a native `uuid` — so derive `@db.Uuid` automatically
-  // instead of making every consumer repeat it per field in `dbAttributes`.
-  // Postgres family only: MySQL/SQLite/SQL Server/Mongo have no `@db.Uuid`, and
-  // when `provider` is unset the dialect is unknown so we stay conservative.
   const isPgFamily = options.provider === 'postgresql' || options.provider === 'cockroachdb';
   if (prec) {
     attrs.push(`@db.Decimal(${prec.precision}, ${prec.scale})`);
@@ -410,81 +376,105 @@ function emitPropertyLine(
   } else if (effectiveTypeName === 'uuid' && isPgFamily) {
     attrs.push('@db.Uuid');
   }
-
   if (isId && isMongo && scalar === 'String') {
     const idTypeOverride = options.typeMappings?.[entity.name]?.id;
     if (!idTypeOverride || idTypeOverride === 'String') {
       attrs.push('@db.ObjectId');
     }
   }
+}
 
-  // `= now()` / `= today()` default: emit a store-level `@default(now())` so the
-  // column is populated even when a row is inserted without the field.
+function pushDefaultAttrs(
+  attrs: string[],
+  prop: IRProperty,
+  scalar: string,
+  isArray: boolean,
+  isEnum: boolean,
+  effectiveTypeName: string,
+  fieldAttrHasDefault: boolean,
+): void {
   if (prop.autoNow && !fieldAttrHasDefault) {
     attrs.push('@default(now())');
   }
-
-  // IR-level default: only emit if fieldAttributes didn't supply a @default override.
-  // Exception: a `uuid` property with an empty-string default (`uuid? = ""`, the
-  // Manifest "unset FK" sentinel). `''` is not a valid uuid literal, so on native
-  // uuid columns (Postgres family) `@default("")` produces `SET DEFAULT ''` DDL
-  // that the database rejects (22P02: invalid input syntax for type uuid). The
-  // sentinel's seeding semantics live in the runtime (which maps "" → NULL for
-  // uuid columns); the store-level default is meaningless and undeployable.
   const isEmptyUuidSentinel =
     effectiveTypeName === 'uuid' &&
     prop.defaultValue?.kind === 'string' &&
     prop.defaultValue.value === '';
-  if (prop.defaultValue && !fieldAttrHasDefault && !isEmptyUuidSentinel) {
-    if (isEnum && prop.defaultValue.kind === 'string') {
-      // An enum default is a member identifier, emitted bare (`@default(draft)`),
-      // never quoted like a string literal (`@default("draft")` would be invalid).
-      attrs.push(`@default(${prop.defaultValue.value})`);
-    } else if (
-      scalar === 'Json' &&
-      !isArray &&
-      (prop.defaultValue.kind === 'object' || prop.defaultValue.kind === 'array')
-    ) {
-      // Json column object/array defaults must be double-quoted JSON strings
-      // (`@default("{}")`, `@default("[]")`), not the bare bracket form Prisma
-      // reserves for scalar lists. Serialize then escape for the Prisma string.
-      const json = irValueToJsonString(prop.defaultValue);
-      if (json !== undefined) {
-        const escaped = json.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-        attrs.push(`@default("${escaped}")`);
-      }
-    } else {
-      const def = literalToPrismaDefault(prop.defaultValue);
-      if (def !== undefined) {
-        attrs.push(`@default(${def})`);
-      }
-    }
+  if (!prop.defaultValue || fieldAttrHasDefault || isEmptyUuidSentinel) return;
+  if (isEnum && prop.defaultValue.kind === 'string') {
+    attrs.push(`@default(${prop.defaultValue.value})`);
+    return;
   }
+  if (
+    scalar === 'Json' &&
+    !isArray &&
+    (prop.defaultValue.kind === 'object' || prop.defaultValue.kind === 'array')
+  ) {
+    const json = irValueToJsonString(prop.defaultValue);
+    if (json !== undefined) {
+      const escaped = json.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      attrs.push(`@default("${escaped}")`);
+    }
+    return;
+  }
+  const def = literalToPrismaDefault(prop.defaultValue);
+  if (def !== undefined) attrs.push(`@default(${def})`);
+}
 
-  // Field-level attributes from config (e.g. @unique, @default(now()), @updatedAt).
-  // For @default: replaces any IR-emitted @default in-place (consumer override wins).
-  // For all other kinds: suppressed if already present from IR/modifiers.
-  if (fieldAttrs && fieldAttrs.length > 0) {
-    for (const fa of fieldAttrs) {
-      const faKind = fa.match(/^@\w+/)?.[0];
-      if (faKind === '@default') {
-        // Replace any existing @default (from IR) in-place to preserve attribute order.
-        const idx = attrs.findIndex((a) => a.startsWith('@default'));
-        if (idx === -1) {
-          attrs.push(fa);
-        } else {
-          attrs[idx] = fa;
-        }
-      } else if (faKind) {
-        // Non-default: skip if this kind already exists in attrs.
-        if (!attrs.some((a) => a.startsWith(faKind))) {
-          attrs.push(fa);
-        }
-      } else {
-        attrs.push(fa);
-      }
+function mergeFieldAttributeOverrides(attrs: string[], fieldAttrs: string[] | undefined): void {
+  if (!fieldAttrs || fieldAttrs.length === 0) return;
+  for (const fa of fieldAttrs) {
+    const faKind = fa.match(/^@\w+/)?.[0];
+    if (faKind === '@default') {
+      const idx = attrs.findIndex((a) => a.startsWith('@default'));
+      if (idx === -1) attrs.push(fa);
+      else attrs[idx] = fa;
+    } else if (faKind) {
+      if (!attrs.some((a) => a.startsWith(faKind))) attrs.push(fa);
+    } else {
+      attrs.push(fa);
     }
   }
+}
+
+/**
+ * Emit a single Prisma model field line for an IR property, or null if the
+ * property is unmappable (with a diagnostic explaining why).
+ */
+function emitPropertyLine(
+  entity: IREntity,
+  prop: IRProperty,
+  ir: IR,
+  options: PrismaProjectionOptions,
+): PropertyEmission {
+  const resolved = resolvePropertyScalar(entity, prop, ir, options);
+  if (!resolved.scalar) {
+    return {
+      line: null,
+      diagnostics: pushUnknownScalarDiagnostics(entity, prop, resolved),
+    };
+  }
+  const { isArray, effectiveTypeName, isEnum, scalar } = resolved;
+  const hasCompositeKey = entity.key && entity.key.length > 0;
+  const isId = prop.name === 'id' && !hasCompositeKey;
+  const nullableSuffix = isArray ? '' : prop.type.nullable ? '?' : '';
+  const listSuffix = isArray ? '[]' : '';
+  const attrs: string[] = [];
+  if (isId) attrs.push('@id');
+  if (prop.modifiers.includes('unique') && !isId) attrs.push('@unique');
+
+  const isMongo = options.provider === 'mongodb';
+  const colMapOverride = options.columnMappings?.[entity.name]?.[prop.name];
+  if (isId && isMongo && !colMapOverride && !prop.defaultValue) {
+    attrs.push('@default(auto())');
+  }
+  const fieldAttrs = options.fieldAttributes?.[entity.name]?.[prop.name];
+  const fieldAttrHasDefault = fieldAttrs?.some((fa) => /^@default\b/.test(fa)) ?? false;
+
+  pushColumnMapAttrs(attrs, entity, prop, isId, isMongo, options);
+  pushDbNativeAttrs(attrs, entity, prop, scalar, effectiveTypeName, isId, isMongo, options);
+  pushDefaultAttrs(attrs, prop, scalar, isArray, isEnum, effectiveTypeName, fieldAttrHasDefault);
+  mergeFieldAttributeOverrides(attrs, fieldAttrs);
 
   const attrPart = attrs.length ? ' ' + attrs.join(' ') : '';
   const encryptedComment = prop.modifiers.includes('encrypted')
@@ -492,7 +482,7 @@ function emitPropertyLine(
     : '';
   return {
     line: `  ${prop.name} ${scalar}${listSuffix}${nullableSuffix}${attrPart}${encryptedComment}`,
-    diagnostics,
+    diagnostics: [],
   };
 }
 
@@ -853,34 +843,14 @@ function emitRelationship(
       const nameAttr = relationName ? `${relNameArg}, ` : '';
       const fieldsAttr = `fields: [${fkFields.join(', ')}]`;
       const refsAttr = `references: [${refsFields.join(', ')}]`;
-      // Prisma rejects the implicit SetNull/Cascade referential actions on a
-      // self-relation or a reference cycle (e.g. A→B belongsTo while B→A
-      // belongsTo). Such relations must carry NoAction on at least one side; we
-      // default BOTH sides to NoAction (valid, and side-independent) unless the
-      // user explicitly configured actions.
-      const isSelfRelation = rel.target === entity.name;
-      const targetEntity = ir.entities.find((e) => e.name === rel.target);
-      const isMutualCycle =
-        !isSelfRelation &&
-        !!targetEntity?.relationships.some(
-          (r) =>
-            (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === entity.name && !r.through,
-        );
-      // `NoAction` is the cycle-breaker in relational mode, but it is not
-      // implemented for Postgres under relationMode="prisma" — there the allowed
-      // set is Cascade/Restrict/SetNull, so use Restrict to break the cycle.
-      const cycleDefault =
-        isSelfRelation || isMutualCycle
-          ? options.relationMode === 'prisma'
-            ? 'Restrict'
-            : 'NoAction'
-          : undefined;
-      const effectiveOnDelete =
-        configOnDelete ?? (rel.onDelete ? toPrismaAction(rel.onDelete) : cycleDefault);
-      const effectiveOnUpdate =
-        configOnUpdate ?? (rel.onUpdate ? toPrismaAction(rel.onUpdate) : cycleDefault);
-      const onDeleteAttr = effectiveOnDelete ? `, onDelete: ${effectiveOnDelete}` : '';
-      const onUpdateAttr = effectiveOnUpdate ? `, onUpdate: ${effectiveOnUpdate}` : '';
+      const { onDeleteAttr, onUpdateAttr } = prismaReferentialAttrs(
+        entity,
+        rel,
+        ir,
+        options,
+        configOnDelete,
+        configOnUpdate,
+      );
       lines.push(
         `  ${rel.name} ${rel.target}${optionalMark} @relation(${nameAttr}${fieldsAttr}, ${refsAttr}${onDeleteAttr}${onUpdateAttr})`,
       );
@@ -914,6 +884,41 @@ function emitRelationship(
  * (see {@link ambiguousRelationName}). Field names are uniquified against the
  * provided `existingFieldNames` set.
  */
+function prismaReferentialAttrs(
+  entity: IREntity,
+  rel: IRRelationship,
+  ir: IR,
+  options: PrismaProjectionOptions,
+  configOnDelete: string | undefined,
+  configOnUpdate: string | undefined,
+): { onDeleteAttr: string; onUpdateAttr: string } {
+  // Prisma rejects the implicit SetNull/Cascade referential actions on a
+  // self-relation or a reference cycle. Default BOTH sides to NoAction
+  // (or Restrict under relationMode="prisma") unless the user configured actions.
+  const isSelfRelation = rel.target === entity.name;
+  const targetEntity = ir.entities.find((e) => e.name === rel.target);
+  const isMutualCycle =
+    !isSelfRelation &&
+    !!targetEntity?.relationships.some(
+      (r) =>
+        (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === entity.name && !r.through,
+    );
+  const cycleDefault =
+    isSelfRelation || isMutualCycle
+      ? options.relationMode === 'prisma'
+        ? 'Restrict'
+        : 'NoAction'
+      : undefined;
+  const effectiveOnDelete =
+    configOnDelete ?? (rel.onDelete ? toPrismaAction(rel.onDelete) : cycleDefault);
+  const effectiveOnUpdate =
+    configOnUpdate ?? (rel.onUpdate ? toPrismaAction(rel.onUpdate) : cycleDefault);
+  return {
+    onDeleteAttr: effectiveOnDelete ? `, onDelete: ${effectiveOnDelete}` : '',
+    onUpdateAttr: effectiveOnUpdate ? `, onUpdate: ${effectiveOnUpdate}` : '',
+  };
+}
+
 /**
  * Number of synthetic inverse fields `owner`'s model gains that reference
  * `target`: `target`'s FK-owning relations back to `owner` not already covered

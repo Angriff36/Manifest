@@ -38,14 +38,16 @@ export class MongoDBOutboxStore implements OutboxStore {
   private databaseName: string;
   private generateId: () => string;
   private now: () => number;
-  private ready: Promise<void>;
+  private ready: Promise<void> | undefined;
+  private readonly initConfig: MongoDBOutboxStoreConfig;
 
   constructor(config: MongoDBOutboxStoreConfig, opts: MongoDBOutboxStoreOptions = {}) {
     this.collectionName = config.collectionName || '_manifest_outbox';
     this.databaseName = config.databaseName || 'manifest';
     this.generateId = opts.generateId ?? (() => crypto.randomUUID());
     this.now = opts.now ?? (() => Date.now());
-    this.ready = this.init(config);
+    this.initConfig = config;
+    // Defer async mongodb load until first use (Sonar S7059).
   }
 
   private async init(config: MongoDBOutboxStoreConfig): Promise<void> {
@@ -70,8 +72,11 @@ export class MongoDBOutboxStore implements OutboxStore {
     await this.collection.createIndex({ status: 1, claimed: 1 });
   }
 
-  private async ensureReady(): Promise<void> {
-    await this.ready;
+  private ensureReady(): Promise<void> {
+    if (!this.ready) {
+      this.ready = this.init(this.initConfig);
+    }
+    return this.ready;
   }
 
   async enqueue(entries: OutboxEntry[], tx?: unknown): Promise<void> {

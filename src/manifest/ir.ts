@@ -336,10 +336,17 @@ export interface IREventSourcedConfig {
   exposeEventLog?: boolean;
 }
 
+/**
+ * Open string brand — keeps literal unions from collapsing to `string` while
+ * remaining a non-empty intersection (Sonar S4335).
+ */
+declare const OpenStringBrand: unique symbol;
+export type OpenString = string & { readonly [OpenStringBrand]?: true };
+
 export interface IRStore {
   entity: string;
   /** Built-in targets or custom adapter scheme registered via plugin API. */
-  target: BuiltinStoreTarget | (string & {});
+  target: BuiltinStoreTarget | OpenString;
   config: Record<string, IRValue>;
   /** Optional parsed event-sourced settings (also present as raw config values). */
   eventSourced?: IREventSourcedConfig;
@@ -521,7 +528,7 @@ export interface IRPolicy {
  * capability-style permission token, opaque to the engine and matched exactly.
  */
 export type IRRolePermissionAction =
-  'read' | 'write' | 'delete' | 'execute' | 'all' | (string & {});
+  'read' | 'write' | 'delete' | 'execute' | 'all' | OpenString;
 
 export interface IRRolePermission {
   action: IRRolePermissionAction;

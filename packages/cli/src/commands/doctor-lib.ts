@@ -683,6 +683,42 @@ export async function findRoutesManifestFiles(cwd: string = process.cwd()): Prom
   return uniqueSorted(files);
 }
 
+interface LooseRouteSource {
+  kind?: string;
+  entity?: string;
+  command?: string;
+}
+interface LooseRoute {
+  path?: string;
+  method?: string;
+  source?: LooseRouteSource;
+}
+interface LooseRouteManifest {
+  routes?: LooseRoute[];
+}
+
+function routeMatchesCommand(
+  route: LooseRoute,
+  options: { entityName: string; commandName: string; routePath?: string },
+  manifestFile: string,
+): RouteManifestCommandHit | undefined {
+  const source = route.source;
+  if (!source || !route.path || !route.method) return undefined;
+  if (source.kind !== 'command') return undefined;
+  if (source.entity !== options.entityName || source.command !== options.commandName) {
+    return undefined;
+  }
+  if (options.routePath && route.path !== options.routePath) return undefined;
+  return {
+    routePath: route.path,
+    method: route.method,
+    sourceKind: source.kind,
+    sourceEntity: source.entity!,
+    sourceCommand: source.command!,
+    manifestFile,
+  };
+}
+
 export async function inspectRouteSurfaceForCommand(options: {
   entityName: string;
   commandName: string;
@@ -690,20 +726,6 @@ export async function inspectRouteSurfaceForCommand(options: {
   cwd?: string;
 }): Promise<{ routeExists: boolean; matches: RouteManifestCommandHit[] }> {
   const files = await findRoutesManifestFiles(options.cwd || process.cwd());
-  interface LooseRouteSource {
-    kind?: string;
-    entity?: string;
-    command?: string;
-  }
-  interface LooseRoute {
-    path?: string;
-    method?: string;
-    source?: LooseRouteSource;
-  }
-  interface LooseRouteManifest {
-    routes?: LooseRoute[];
-  }
-
   const matches: RouteManifestCommandHit[] = [];
   for (const file of files) {
     let json: LooseRouteManifest | undefined;
@@ -714,22 +736,8 @@ export async function inspectRouteSurfaceForCommand(options: {
     }
     const routes = Array.isArray(json?.routes) ? json.routes : [];
     for (const route of routes) {
-      const source = route?.source;
-      const sameCommand =
-        source?.kind === 'command' &&
-        source?.entity === options.entityName &&
-        source?.command === options.commandName;
-      const samePath = options.routePath ? route?.path === options.routePath : true;
-      if (sameCommand && samePath && source && route.path && route.method) {
-        matches.push({
-          routePath: route.path,
-          method: route.method,
-          sourceKind: source.kind!,
-          sourceEntity: source.entity!,
-          sourceCommand: source.command!,
-          manifestFile: file,
-        });
-      }
+      const hit = routeMatchesCommand(route, options, file);
+      if (hit) matches.push(hit);
     }
   }
   return { routeExists: matches.length > 0, matches };

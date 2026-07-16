@@ -57,7 +57,7 @@ function collectUniqueTargets(ir: IR): string[] {
   for (const store of ir.stores) {
     targets.add(store.target);
   }
-  return Array.from(targets).sort();
+  return Array.from(targets).sort((a, b) => a.localeCompare(b));
 }
 
 /**

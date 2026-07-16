@@ -39,25 +39,10 @@ export function readObjectPropertyExpression(
 
   const visit = (node: ts.Node) => {
     if (found) return;
-    if (ts.isCallExpression(node) && capabilityId) {
-      if (callMatchesCapability(node, content, capabilityId)) {
-        const obj = findPayloadObject(node);
-        if (obj) {
-          const prop = findProperty(obj, parameter);
-          if (prop?.initializer) {
-            found = prop.initializer.getText(sf);
-            return;
-          }
-        }
-      }
-    }
-    if (ts.isObjectLiteralExpression(node) && !capabilityId) {
-      const prop = findProperty(node, parameter);
-      if (prop?.initializer) {
-        found = prop.initializer.getText(sf);
-        return;
-      }
-    }
+    found =
+      extractFromCapabilityCall(node, content, parameter, capabilityId, sf) ??
+      extractFromBareObjectLiteral(node, parameter, capabilityId, sf);
+    if (found) return;
     ts.forEachChild(node, visit);
   };
   visit(sf);
@@ -70,6 +55,32 @@ export function readObjectPropertyExpression(
   if (!m) return undefined;
   const start = m.index + m[0].length;
   return sliceExpression(content, start);
+}
+
+function extractFromCapabilityCall(
+  node: ts.Node,
+  content: string,
+  parameter: string,
+  capabilityId: string | undefined,
+  sf: ts.SourceFile,
+): string | undefined {
+  if (!capabilityId || !ts.isCallExpression(node)) return undefined;
+  if (!callMatchesCapability(node, content, capabilityId)) return undefined;
+  const obj = findPayloadObject(node);
+  if (!obj) return undefined;
+  const prop = findProperty(obj, parameter);
+  return prop?.initializer?.getText(sf);
+}
+
+function extractFromBareObjectLiteral(
+  node: ts.Node,
+  parameter: string,
+  capabilityId: string | undefined,
+  sf: ts.SourceFile,
+): string | undefined {
+  if (capabilityId || !ts.isObjectLiteralExpression(node)) return undefined;
+  const prop = findProperty(node, parameter);
+  return prop?.initializer?.getText(sf);
 }
 
 export function callMatchesCapability(
@@ -154,13 +165,11 @@ function readStringProp(obj: ts.ObjectLiteralExpression, name: string): string |
 
 function sliceExpression(content: string, start: number): string {
   let i = start;
-  let depthParen = 0;
-  let depthBrace = 0;
-  let depthBracket = 0;
+  const depth = { paren: 0, brace: 0, bracket: 0 };
   let inStr: string | null = null;
   while (i < content.length) {
     const ch = content[i]!;
-    if (inStr) {
+    if (inStr !== null) {
       if (ch === inStr && content[i - 1] !== '\\') inStr = null;
       i++;
       continue;
@@ -170,21 +179,35 @@ function sliceExpression(content: string, start: number): string {
       i++;
       continue;
     }
-    if (ch === '(') depthParen++;
-    if (ch === ')') depthParen--;
-    if (ch === '{') depthBrace++;
-    if (ch === '}') {
-      if (depthBrace === 0 && depthParen === 0 && depthBracket === 0) break;
-      depthBrace--;
-    }
-    if (ch === '[') depthBracket++;
-    if (ch === ']') depthBracket--;
-    if ((ch === ',' || ch === '}') && depthParen === 0 && depthBrace === 0 && depthBracket === 0) {
-      break;
-    }
+    if (shouldEndExpressionSlice(ch, depth)) break;
+    applyExpressionDepth(ch, depth);
     i++;
   }
   return content.slice(start, i).trim();
+}
+
+function isFlatDepth(depth: { paren: number; brace: number; bracket: number }): boolean {
+  return depth.paren === 0 && depth.brace === 0 && depth.bracket === 0;
+}
+
+function shouldEndExpressionSlice(
+  ch: string,
+  depth: { paren: number; brace: number; bracket: number },
+): boolean {
+  if (ch === '}' && isFlatDepth(depth)) return true;
+  return (ch === ',' || ch === '}') && isFlatDepth(depth);
+}
+
+function applyExpressionDepth(
+  ch: string,
+  depth: { paren: number; brace: number; bracket: number },
+): void {
+  if (ch === '(') depth.paren++;
+  else if (ch === ')') depth.paren--;
+  else if (ch === '{') depth.brace++;
+  else if (ch === '}') depth.brace--;
+  else if (ch === '[') depth.bracket++;
+  else if (ch === ']') depth.bracket--;
 }
 
 function escapeRe(s: string): string {
@@ -261,6 +284,11 @@ export function ensureNamedImports(
   return content.slice(0, insertPos) + importLine + content.slice(insertPos);
 }
 
+type PayloadMutator = (
+  obj: ts.ObjectLiteralExpression,
+  factory: ts.NodeFactory,
+) => ts.ObjectLiteralExpression | undefined;
+
 /**
  * Transform object-literal property values for a matching capability call.
  */
@@ -268,33 +296,27 @@ export function transformCapabilityPayload(
   content: string,
   fileName: string,
   capabilityId: string,
-  mutate: (
-    obj: ts.ObjectLiteralExpression,
-    factory: ts.NodeFactory,
-  ) => ts.ObjectLiteralExpression | undefined,
+  mutate: PayloadMutator,
 ): string {
   const sf = parseSource(fileName, content);
-  const transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
+  const transformer = createPayloadTransformer(content, capabilityId, mutate);
+  const result = ts.transform(sf, [transformer]);
+  const transformed = result.transformed[0]!;
+  result.dispose();
+  return printSource(transformed);
+}
+
+function createPayloadTransformer(
+  content: string,
+  capabilityId: string,
+  mutate: PayloadMutator,
+): ts.TransformerFactory<ts.SourceFile> {
+  return (context) => {
     const visit: ts.Visitor = (node) => {
       if (ts.isCallExpression(node) && callMatchesCapability(node, content, capabilityId)) {
-        const args = node.arguments.map((arg) => {
-          if (!ts.isObjectLiteralExpression(arg)) return arg;
-          // runManifestCommand body nesting
-          const body = findProperty(arg, 'body');
-          if (body?.initializer && ts.isObjectLiteralExpression(body.initializer)) {
-            const nextBody = mutate(body.initializer, context.factory);
-            if (!nextBody) return arg;
-            const nextProps = arg.properties.map((p) => {
-              if (p === body) {
-                return context.factory.updatePropertyAssignment(body, body.name, nextBody);
-              }
-              return p;
-            });
-            return context.factory.updateObjectLiteralExpression(arg, nextProps);
-          }
-          const next = mutate(arg, context.factory);
-          return next ?? arg;
-        });
+        const args = node.arguments.map((arg) =>
+          rewritePayloadArgument(arg, mutate, context.factory),
+        );
         return context.factory.updateCallExpression(
           node,
           node.expression,
@@ -306,9 +328,34 @@ export function transformCapabilityPayload(
     };
     return (node) => ts.visitNode(node, visit) as ts.SourceFile;
   };
+}
 
-  const result = ts.transform(sf, [transformer]);
-  const transformed = result.transformed[0]!;
-  result.dispose();
-  return printSource(transformed);
+function rewritePayloadArgument(
+  arg: ts.Expression,
+  mutate: PayloadMutator,
+  factory: ts.NodeFactory,
+): ts.Expression {
+  if (!ts.isObjectLiteralExpression(arg)) return arg;
+  // runManifestCommand body nesting
+  const body = findProperty(arg, 'body');
+  if (body?.initializer && ts.isObjectLiteralExpression(body.initializer)) {
+    const nextBody = mutate(body.initializer, factory);
+    if (!nextBody) return arg;
+    return factory.updateObjectLiteralExpression(
+      arg,
+      replacePropertyAssignment(arg.properties, body, nextBody, factory),
+    );
+  }
+  return mutate(arg, factory) ?? arg;
+}
+
+function replacePropertyAssignment(
+  properties: ts.NodeArray<ts.ObjectLiteralElementLike>,
+  target: ts.PropertyAssignment,
+  nextInitializer: ts.Expression,
+  factory: ts.NodeFactory,
+): ts.ObjectLiteralElementLike[] {
+  return properties.map((p) =>
+    p === target ? factory.updatePropertyAssignment(target, target.name, nextInitializer) : p,
+  );
 }
