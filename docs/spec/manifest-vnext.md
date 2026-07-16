@@ -1,9 +1,22 @@
 # Manifest vNext Specification
 
-Last updated: 2026-02-16
+Last updated: 2026-07-15
 Status: Active
 Authority: Binding
 Enforced by: src/manifest/conformance/**, npm test
+
+> **Completion audit (2026-07-15):** Normative language/runtime vNext features
+> listed under Scope → In scope are **implemented** with conformance and/or unit
+> proof tracked in `docs/internal/COMPLIANCE_MATRIX.md` §1.
+> ~~Remaining open items are only those still marked PARTIAL / NOT_IMPLEMENTED in
+> [Nonconformance / Not Yet Enforced](#nonconformance--not-yet-enforced) below
+> (canonical-routes conformance fixtures; diagnostics completeness tests;
+> evaluation step-count counters).~~
+> **Update (2026-07-15):** Those three remainder items are now implemented
+> (`getLastEvaluationStats` / `EvaluationStats`, `runtime-diagnostics-completeness.test.ts`,
+> `routes.conformance.test.ts`). **Config-vNext**
+> (`docs/internal/proposals/config/manifest-config-vnext.md`) is a separate
+> proposal — not this document.
 
 ## Purpose
 
@@ -362,16 +375,19 @@ Note: Workflow metadata (correlationId, causationId, emitIndex), deterministicMo
 
 This section lists vNext items that are declared in this specification but not yet enforced by conformance fixtures or implementation.
 
-| Item                                               | Spec Reference                               | Status          | Notes                                                                                                                                                                                                                                                                                             |
-| -------------------------------------------------- | -------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bounded complexity limits                          | This document, "Diagnostics"                 | IMPLEMENTED     | `EvaluationLimits` (maxExpressionDepth, maxEvaluationSteps) enforced via `RuntimeOptions.evaluationLimits`. Defaults: 64 depth, 10K steps. Budget tracked across all entry points (`runCommand`, `createInstance`, `updateInstance`, `checkConstraints`, `evaluateComputed`). 8 unit tests added. |
-| Constraint code uniqueness diagnostic              | This document, "Constraint Blocks"           | IMPLEMENTED     | Compiler emits error diagnostic on duplicate constraint codes. Fixture `39-duplicate-constraint-codes` implemented.                                                                                                                                                                               |
-| Override conformance fixtures                      | This document, "Override Mechanism"          | IMPLEMENTED     | Fixtures 52 (override-allowed) and 53 (override-denied) implemented. OverrideApplied event included in CommandResult.emittedEvents per spec.                                                                                                                                                      |
-| Concurrency conflict fixture                       | This document, "Concurrency Controls"        | IMPLEMENTED     | Fixture 54 (concurrency-conflict-return) implemented. ConcurrencyConflict return path fully wired.                                                                                                                                                                                                |
-| Provenance verification (`requireValidProvenance`) | This document, "Provenance and IR Integrity" | IMPLEMENTED     | Runtime enforces `requireValidProvenance` via `verifyIRHash()`, `assertValidProvenance()`, and `RuntimeEngine.create()` factory. 10 unit tests verify valid/tampered/absent hash scenarios. Hash computation uses recursive key-sorting for full content coverage.                                |
-| Diagnostics completeness                           | This document, "Diagnostics"                 | PARTIAL         | Guard index and policy name are tested. Transition failure details (property, current, attempted, allowed) and concurrency conflict details format are not explicitly unit-tested for completeness.                                                                                               |
-| Performance guardrails                             | This document, "Diagnostics"                 | NOT_IMPLEMENTED | No instrumentation counters for step-count verification. Advisory only.                                                                                                                                                                                                                           |
-| Compilation caching                                | This document, "Advisory Guidance"           | ADVISORY        | No normative requirement. See `docs/guides/complex-workflows.md` for caching patterns.                                                                                                                                                                                                            |
+| Item                                               | Spec Reference                               | Status              | Notes                                                                                                                                                                                                                                                                                                |
+| -------------------------------------------------- | -------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bounded complexity limits                          | This document, "Diagnostics"                 | IMPLEMENTED         | `EvaluationLimits` (maxExpressionDepth, maxEvaluationSteps) enforced via `RuntimeOptions.evaluationLimits`. Defaults: 64 depth, 10K steps. Budget tracked across all entry points (`runCommand`, `createInstance`, `updateInstance`, `checkConstraints`, `evaluateComputed`). 8 unit tests added.    |
+| Constraint code uniqueness diagnostic              | This document, "Constraint Blocks"           | IMPLEMENTED         | Compiler emits error diagnostic on duplicate constraint codes. Fixture `39-duplicate-constraint-codes` implemented.                                                                                                                                                                                  |
+| Override conformance fixtures                      | This document, "Override Mechanism"          | IMPLEMENTED         | Fixtures 52 (override-allowed) and 53 (override-denied) implemented. OverrideApplied event included in CommandResult.emittedEvents per spec.                                                                                                                                                         |
+| Concurrency conflict fixture                       | This document, "Concurrency Controls"        | IMPLEMENTED         | Fixture 54 (concurrency-conflict-return) implemented. ConcurrencyConflict return path fully wired.                                                                                                                                                                                                   |
+| Provenance verification (`requireValidProvenance`) | This document, "Provenance and IR Integrity" | IMPLEMENTED         | Runtime enforces `requireValidProvenance` via `verifyIRHash()`, `assertValidProvenance()`, and `RuntimeEngine.create()` factory. 10 unit tests verify valid/tampered/absent hash scenarios. Hash computation uses recursive key-sorting for full content coverage.                                   |
+| ~~Diagnostics completeness~~                       | This document, "Diagnostics"                 | ~~PARTIAL~~         | ~~Guard index and policy name are tested. Transition failure details (property, current, attempted, allowed) and concurrency conflict details format are not explicitly unit-tested for completeness.~~                                                                                              |
+| ~~Diagnostics completeness~~                       | This document, "Diagnostics"                 | ~~PARTIAL~~         | ~~**Update (2026-07-15):** Implementation includes transition strings (`runtime-engine.ts` state-transition path) and structured `ConcurrencyConflict`. Still PARTIAL until dedicated unit assertions cover the diagnostic payload shape end-to-end. Matrix: `docs/internal/COMPLIANCE_MATRIX.md`.~~ |
+| Diagnostics completeness                           | This document, "Diagnostics"                 | IMPLEMENTED         | **Update (2026-07-15):** `runtime-diagnostics-completeness.test.ts` asserts transition error shape + `ConcurrencyConflict` fields; fixtures `38`/`54` remain conformance evidence.                                                                                                                   |
+| ~~Performance guardrails~~                         | This document, "Diagnostics"                 | ~~NOT_IMPLEMENTED~~ | ~~No instrumentation counters for step-count verification. Advisory only. (`profiling.ts` is phase timing — different feature.)~~                                                                                                                                                                    |
+| Performance guardrails (step-count counters)       | This document, "Diagnostics"                 | IMPLEMENTED         | **Update (2026-07-15):** `EvaluationStats` + `RuntimeEngine.getLastEvaluationStats()` snapshot stepsUsed/peakDepth/limits after each top-level entry point. `runtime-evaluation-stats.test.ts`. Phase timing remains in `profiling.ts` (separate).                                                   |
+| Compilation caching                                | This document, "Advisory Guidance"           | ADVISORY            | No normative requirement. Code exists (`ir-cache.ts`) and is used by the compiler; still advisory per this section. See `docs/guides/complex-workflows.md` for caching patterns.                                                                                                                     |
 
 ---
 
@@ -510,11 +526,11 @@ The route manifest (`routes.manifest.json`) MUST conform to this structure:
 
 ### Conformance
 
-| Fixture (proposed name)    | Feature                                                      | Status       |
-| -------------------------- | ------------------------------------------------------------ | ------------ |
-| Route manifest determinism | Identical IR produces identical route manifest               | **Required** |
-| Manual route merge         | Manual routes appear in manifest alongside IR-derived routes | **Required** |
-| Linter correctness         | Linter detects hardcoded routes and passes clean code        | **Required** |
+| Fixture (proposed name)    | Feature                                                      | Status                                                                              |
+| -------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Route manifest determinism | Identical IR produces identical route manifest               | ~~Required~~ ~~PARTIAL~~ **Implemented (2026-07-15):** `routes.conformance.test.ts` |
+| Manual route merge         | Manual routes appear in manifest alongside IR-derived routes | ~~Required~~ ~~PARTIAL~~ **Implemented (2026-07-15):** same                         |
+| Linter correctness         | Linter detects hardcoded routes and passes clean code        | ~~Required~~ ~~PARTIAL~~ **Implemented (2026-07-15):** same + `lint-routes.test.ts` |
 
 ---
 
@@ -528,5 +544,5 @@ The route manifest (`routes.manifest.json`) MUST conform to this structure:
 | Adapter hooks           | `docs/spec/adapters.md`                                                                                   |
 | Conformance rules       | `docs/spec/conformance.md`                                                                                |
 | Documentation authority | ~~`docs/DOCUMENTATION_GOVERNANCE.md`~~ `docs/internal/DOCUMENTATION_GOVERNANCE.md` (corrected 2026-07-15) |
-| Compliance tracking     | `docs/COMPLIANCE_MATRIX.md`                                                                               |
+| Compliance tracking     | `docs/internal/COMPLIANCE_MATRIX.md` (~~`docs/COMPLIANCE_MATRIX.md`~~ path corrected 2026-07-15)          |
 | Route surface boundary  | `docs/guides/external-projections.md`                                                                     |

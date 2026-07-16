@@ -44,7 +44,7 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 - Enum types (fixture 57); decimal/money type (fixture 56); map/record type (fixture 73)
 - Date/time primitive types (fixture 92)
 - Composite primary keys (`key`), `alternateKeys`
-- Relationships: `hasMany` / `hasOne` / `belongsTo` / `ref` (fixtures 98–99), composite FKs, referential actions (`onDelete`/`onUpdate` **enforced by the reference runtime** as of 2026-07-15 — see `runtime-referential-actions.test.ts`), **many-to-many via `hasMany … through Join`** (fixture 102; Join must belongsTo both ends; runtime two-hop)
+- Relationships: `hasMany` / `hasOne` / `belongsTo` / `ref` (fixtures `02`, `98`, `99`), composite FKs, referential actions (`onDelete`/`onUpdate` **enforced by the reference runtime** as of 2026-07-15 — see `runtime-referential-actions.test.ts`), **many-to-many via `hasMany … through Join`** (fixture 102; Join must belongsTo both ends; runtime two-hop). Completion SoT: `docs/internal/COMPLIANCE_MATRIX.md` §1.
 - Automatic timestamps / `autoNow` defaults — `= now()` / `= today()` (fixture 62)
 - Property privacy & protection modifiers: `private`, `encrypted`, `masked` (fixtures 91, 93)
 - Full-text `searchable` declarations (fixture 89)
@@ -158,7 +158,7 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 - JSON schema: `docs/spec/config/manifest.config.schema.json` (+ Prisma projection schema)
 - `src/manifest/config.ts` wired to `manifest config validate/print-defaults/inspect`
 - `executionMode` dispatcher is a **Next.js-projection** setting, not a global runtime concept
-- config-vNext: G0+G1 shipped; G5/G2/G10 still unbuilt (stated in `config.ts` comments)
+- config-vNext: G0+G1+G5+G2(`failOn`)+G10(`ci-gate`) shipped (see `config.ts` comments + matrix §1). ~~G5/G2/G10 still unbuilt~~ **Correction (2026-07-15):** those three shipped; remaining open: G2 rule registry beyond `failOn`, G3 mergeIntegrity, G4 provenance config, G7 runtime config, G8 hooks.lifecycle, G9 plugins.order — see `docs/internal/proposals/config/manifest-config-vnext.md`.
 
 ## 9. Testing & Release Infrastructure
 
@@ -179,7 +179,10 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
     declares belongsTo/ref to both ends; runtime two-hop navigation; Prisma/Drizzle
     wire the join entity. Fixture `102-through-join`. ForeignKey+through still
     exclusive (101).
-- Approval `onTimeout: escalate` — schema allows only `cancel`; compiler rejects with `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` (fixture 103). Escalation semantics still need a spec-first design if shipped.
+- ~~Approval `onTimeout: escalate` — schema allows only `cancel`; compiler rejects with `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` (fixture 103). Escalation semantics still need a spec-first design if shipped.~~
+  - **Correction (2026-07-15):** escalate with author-defined routing shipped
+    (`escalate { to, status, timeout }`); fixture `111-approval-escalate`. Bare
+    `on_timeout: escalate` still hard-fails as incomplete (`103`). Matrix §1.
 
 **IR fields not consumed by the reference runtime** (per the reconciled
 2026-07-06 wiring matrix — ~50 rows still open; see `docs/TODO.md`):

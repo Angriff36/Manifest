@@ -40,8 +40,10 @@ import {
   ManifestReferentialRestrictError,
   ManifestReferentialSetNullError,
 } from './runtime-referential-actions.js';
+import type { EvaluationStats } from './evaluation-stats.js';
 
 export { ManifestReferentialRestrictError, ManifestReferentialSetNullError };
+export type { EvaluationStats } from './evaluation-stats.js';
 
 // Note: PostgresStore and SupabaseStore are in stores.node.ts for server-side use only.
 // This file is browser-safe and only includes MemoryStore and LocalStorageStore.
@@ -1035,8 +1037,16 @@ export class RuntimeEngine {
   }
 
   /** Per-entry-point evaluation budget for bounded complexity enforcement */
-  private evalBudget: { depth: number; steps: number; maxDepth: number; maxSteps: number } | null =
-    null;
+  private evalBudget: {
+    depth: number;
+    steps: number;
+    peakDepth: number;
+    maxDepth: number;
+    maxSteps: number;
+  } | null = null;
+
+  /** Snapshot of the last completed top-level evaluation budget (instrumentation) */
+  private lastEvaluationStats: EvaluationStats | null = null;
 
   /** Cache for computed property values, keyed by "entityName:instanceId:propertyName" */
   private computedPropertyCache: Map<
@@ -1068,6 +1078,7 @@ export class RuntimeEngine {
     this.evalBudget = {
       depth: 0,
       steps: 0,
+      peakDepth: 0,
       maxDepth: this.options.evaluationLimits?.maxExpressionDepth ?? 64,
       maxSteps: this.options.evaluationLimits?.maxEvaluationSteps ?? 10_000,
     };
@@ -1076,6 +1087,14 @@ export class RuntimeEngine {
 
   /** Clear evaluation budget (only call if initEvalBudget returned true) */
   private clearEvalBudget(): void {
+    if (this.evalBudget) {
+      this.lastEvaluationStats = {
+        stepsUsed: this.evalBudget.steps,
+        peakDepth: this.evalBudget.peakDepth,
+        maxSteps: this.evalBudget.maxSteps,
+        maxDepth: this.evalBudget.maxDepth,
+      };
+    }
     this.evalBudget = null;
   }
 
@@ -1948,6 +1967,14 @@ export class RuntimeEngine {
    */
   hasIdempotencyStore(): boolean {
     return this.options.idempotencyStore !== undefined;
+  }
+
+  /**
+   * Last top-level evaluation step/depth counters (vNext performance guardrails).
+   * Null until the first entry point that initializes an evaluation budget completes.
+   */
+  getLastEvaluationStats(): EvaluationStats | null {
+    return this.lastEvaluationStats;
   }
 
   /**
@@ -5368,6 +5395,9 @@ export class RuntimeEngine {
         throw new EvaluationBudgetExceededError('steps', this.evalBudget.maxSteps);
       }
       this.evalBudget.depth++;
+      if (this.evalBudget.depth > this.evalBudget.peakDepth) {
+        this.evalBudget.peakDepth = this.evalBudget.depth;
+      }
       if (this.evalBudget.depth > this.evalBudget.maxDepth) {
         throw new EvaluationBudgetExceededError('depth', this.evalBudget.maxDepth);
       }

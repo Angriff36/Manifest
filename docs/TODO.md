@@ -2,16 +2,19 @@
 
 Created 2026-07-14 from a full reconciliation of the internal plan docs against
 main @ v3.5.0 (commit 22a19e1). Companion docs: `docs/platform/CONFIRMED-FEATURES.md`
-(existence) and **`docs/platform/FEATURE_MATRIX.md` (binding feature-completion
+(existence) and **`docs/internal/COMPLIANCE_MATRIX.md` (binding feature-completion
 source of truth — update the matrix when closing items here)**.
 AI-generated.
 
 ~~Companion was `docs/CONFIRMED-FEATURES.md` + `docs/internal/COMPLIANCE_MATRIX.md`~~
-**Correction (2026-07-15):** platform paths above are authoritative
-(`docs/SOURCE_OF_TRUTH_INDEX.md`).
+~~**Correction (2026-07-15):** platform paths above are authoritative
+(`docs/SOURCE_OF_TRUTH_INDEX.md`).~~
+**Correction (2026-07-15):** Completion SoT is `docs/internal/COMPLIANCE_MATRIX.md`
+(see `docs/SOURCE_OF_TRUTH_INDEX.md`). `docs/platform/FEATURE_MATRIX.md` is a
+non-binding navigation mirror only.
 
 ~~Verified against main @ v3.5.0~~
-**Update (2026-07-15):** `package.json` / npm are at **v3.6.4**. Phantom
+**Update (2026-07-15):** `package.json` / npm are at **v3.6.7**. Phantom
 forensics: Appendix D in
 `docs/internal/plans/2026-07-01-docs-feature-reconciliation-audit.md`
 (15/16 original phantoms still phantom; `transactional-outbox` shipped).
@@ -133,6 +136,16 @@ forensics: Appendix D in
       ~~Config vNext G10 — drift gates: confirmed unbuilt.~~
       ~~Config vNext G2/G10~~
       ~~Config vNext G5/G2/G10~~
+- [x] **Language vNext remainder (2026-07-15 audit)** — closed 2026-07-15:
+      - Canonical routes conformance — `routes.conformance.test.ts`
+        (determinism / manual merge / lint-routes)
+      - Diagnostics completeness — `runtime-diagnostics-completeness.test.ts`
+      - Evaluation step-count counters — `EvaluationStats` +
+        `getLastEvaluationStats()` (`evaluation-stats.ts`)
+      ~~still open from `docs/spec/manifest-vnext.md` Nonconformance~~
+      ~~Canonical routes conformance fixtures — PARTIAL~~
+      ~~Diagnostics completeness — PARTIAL~~
+      ~~Evaluation step-count instrumentation counters — NOT_IMPLEMENTED~~
 - [x] **`manifest db init`** — fixed 2026-07-15: CLI prints/applies the shipped
       approval/audit/outbox/jobs/idempotency/rate-limit `.sql` schemas
       (`manifest db init`, `--apply` + `DATABASE_URL` / `--out` / `--only` /

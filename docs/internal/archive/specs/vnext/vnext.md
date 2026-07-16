@@ -1,6 +1,22 @@
 # Manifest vNext Implementation Plan
 
-**Status**: vNext Core Implementation Complete - Test Pass Rate 100% (134/134 passing) ✅
+> **ARCHIVED — do not use as completion SoT (2026-07-15).**
+> Binding language/runtime vNext spec: [`docs/spec/manifest-vnext.md`](../../../spec/manifest-vnext.md).
+> Completion SoT: [`docs/internal/COMPLIANCE_MATRIX.md`](../../COMPLIANCE_MATRIX.md).
+>
+> ~~**Status**: vNext Core Implementation Complete - Test Pass Rate 100% (134/134 passing) ✅~~
+> ~~**✅ ALL CONFORMANCE TESTS PASSING**: All 27 fixtures…~~
+> ~~**Last Updated**: 2026-02-05…~~
+> ~~vNext documentation ❌ PENDING / Remaining Work: Documentation~~
+>
+> **Correction (2026-07-15):** Core language/runtime vNext is implemented and
+> documented in `manifest-vnext.md`. ~~Open items are only those still PARTIAL /
+> NOT_IMPLEMENTED in that spec’s Nonconformance table (routes conformance
+> fixtures, diagnostics completeness tests, step-count counters).~~
+> **Update (2026-07-15):** Those remainder items closed (matrix §1). Config-vNext
+> is a separate proposal.
+
+**Status**: SUPERSEDED / ARCHIVE (historical plan from 2026-02)
 
 **✅ ALL CONFORMANCE TESTS PASSING**: All 27 fixtures now passing including vNext features (override mechanism, constraint semantics, workflow state management)
 
@@ -28,31 +44,31 @@ The following features are FULLY IMPLEMENTED and VERIFIED:
 
 ### vNext Features (PARTIALLY IMPLEMENTED - Phases 1-5 Complete)
 
-| Feature                                    | Status     | Evidence                                  |
-| ------------------------------------------ | ---------- | ----------------------------------------- |
-| IRConstraint fields (code, severity, etc.) | ✅ DONE    | `ir.ts:IRConstraint`                      |
-| Command-level constraints array            | ✅ DONE    | `ir.ts:IRCommand`, `types.ts:CommandNode` |
-| Entity version properties                  | ✅ DONE    | `ir.ts:IREntity`                          |
-| EntityInstance version fields              | ✅ DONE    | `runtime-engine.ts:EntityInstance`        |
-| ConstraintOutcome interface                | ✅ DONE    | `ir.ts`                                   |
-| OverrideRequest interface                  | ✅ DONE    | `ir.ts`                                   |
-| ConcurrencyConflict interface              | ✅ DONE    | `ir.ts`                                   |
-| CommandResult constraint outcomes          | ✅ DONE    | `runtime-engine.ts:CommandResult`         |
-| Keywords: overrideable, ok, warn           | ✅ DONE    | `lexer.ts:KEYWORDS`                       |
-| ConstraintNode extended fields             | ✅ DONE    | `types.ts:ConstraintNode`                 |
-| Constraint severity parsing                | ✅ DONE    | `parser.ts:parseConstraint()`             |
-| Command constraint parsing                 | ✅ DONE    | `parser.ts:parseCommand()`                |
-| transformConstraint extended               | ✅ DONE    | `ir-compiler.ts:transformConstraint()`    |
-| transformCommand constraints               | ✅ DONE    | `ir-compiler.ts:transformCommand()`       |
-| evaluateConstraint method                  | ✅ DONE    | `runtime-engine.ts`                       |
-| evaluateCommandConstraints method          | ✅ DONE    | `runtime-engine.ts`                       |
-| validateOverrideAuthorization method       | ✅ DONE    | `runtime-engine.ts`                       |
-| emitOverrideAppliedEvent method            | ✅ DONE    | `runtime-engine.ts`                       |
-| emitConcurrencyConflictEvent method        | ✅ DONE    | `runtime-engine.ts`                       |
-| IR cache module                            | ✅ DONE    | `ir-cache.ts`                             |
-| Relationship memoization                   | ✅ DONE    | `runtime-engine.ts`                       |
-| Conformance fixtures 21-27                 | ✅ DONE    | All 27 fixtures passing (134/134 tests)   |
-| vNext documentation                        | ❌ PENDING | Not written                               |
+| Feature                                    | Status        | Evidence                                                                                        |
+| ------------------------------------------ | ------------- | ----------------------------------------------------------------------------------------------- |
+| IRConstraint fields (code, severity, etc.) | ✅ DONE        | `ir.ts:IRConstraint`                                                                            |
+| Command-level constraints array            | ✅ DONE        | `ir.ts:IRCommand`, `types.ts:CommandNode`                                                       |
+| Entity version properties                  | ✅ DONE        | `ir.ts:IREntity`                                                                                |
+| EntityInstance version fields              | ✅ DONE        | `runtime-engine.ts:EntityInstance`                                                              |
+| ConstraintOutcome interface                | ✅ DONE        | `ir.ts`                                                                                         |
+| OverrideRequest interface                  | ✅ DONE        | `ir.ts`                                                                                         |
+| ConcurrencyConflict interface              | ✅ DONE        | `ir.ts`                                                                                         |
+| CommandResult constraint outcomes          | ✅ DONE        | `runtime-engine.ts:CommandResult`                                                               |
+| Keywords: overrideable, ok, warn           | ✅ DONE        | `lexer.ts:KEYWORDS`                                                                             |
+| ConstraintNode extended fields             | ✅ DONE        | `types.ts:ConstraintNode`                                                                       |
+| Constraint severity parsing                | ✅ DONE        | `parser.ts:parseConstraint()`                                                                   |
+| Command constraint parsing                 | ✅ DONE        | `parser.ts:parseCommand()`                                                                      |
+| transformConstraint extended               | ✅ DONE        | `ir-compiler.ts:transformConstraint()`                                                          |
+| transformCommand constraints               | ✅ DONE        | `ir-compiler.ts:transformCommand()`                                                             |
+| evaluateConstraint method                  | ✅ DONE        | `runtime-engine.ts`                                                                             |
+| evaluateCommandConstraints method          | ✅ DONE        | `runtime-engine.ts`                                                                             |
+| validateOverrideAuthorization method       | ✅ DONE        | `runtime-engine.ts`                                                                             |
+| emitOverrideAppliedEvent method            | ✅ DONE        | `runtime-engine.ts`                                                                             |
+| emitConcurrencyConflictEvent method        | ✅ DONE        | `runtime-engine.ts`                                                                             |
+| IR cache module                            | ✅ DONE        | `ir-cache.ts`                                                                                   |
+| Relationship memoization                   | ✅ DONE        | `runtime-engine.ts`                                                                             |
+| Conformance fixtures 21-27                 | ✅ DONE        | All 27 fixtures passing (134/134 tests)                                                         |
+| vNext documentation                        | ~~❌ PENDING~~ | ~~Not written~~ → **Correction (2026-07-15):** `docs/spec/manifest-vnext.md` is the binding doc |
 
 ## Executive Summary
 

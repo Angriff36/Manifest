@@ -265,15 +265,26 @@ pnpm run conformance:regen
 
 ### What are vNext features?
 
-Implemented in IR and runtime, ready for adoption:
+Language/runtime features specified in `docs/spec/manifest-vnext.md`
+(constraint severity/outcomes, overrides, command constraints, concurrency,
+state transitions, workflow metadata, idempotency, deterministicMode, etc.).
+**Implemented** — completion SoT: `docs/internal/COMPLIANCE_MATRIX.md` §1.
+~~Remaining open: canonical-routes conformance fixtures (PARTIAL), diagnostics
+completeness tests (PARTIAL), evaluation step-count counters (NOT_IMPLEMENTED).~~
+**Update (2026-07-15):** Those three remainder items closed.
 
-- Constraint severity and outcomes
-- Command-level constraints
-- Entity concurrency controls
-- Policy-based authorization (read/execute/all)
-- IR caching for compilation performance
+~~Implemented in IR and runtime, ready for adoption:~~
+~~- Constraint severity and outcomes~~
+~~- Command-level constraints~~
+~~- Entity concurrency controls~~
+~~- Policy-based authorization (read/execute/all)~~
+~~- IR caching for compilation performance~~
 
-See: `docs/spec/manifest-vnext.md` and `docs/guides/migration/v0.3.8.md`
+> **Correction (2026-07-15):** Prefer the matrix over this bullet list. See also
+> `docs/guides/migration/vnext.md`. Historical notes:
+> `docs/guides/migration/v0.3.8.md`.
+
+See: `docs/spec/manifest-vnext.md` and `docs/guides/migration/vnext.md`.
 
 ### How do I migrate to vNext?
 

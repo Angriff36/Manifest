@@ -12,7 +12,16 @@ Primary references:
 > **Correction (2026-07-15) @RYANSIGNED:** Use repo-relative paths (machine-local
 > absolute paths are not portable): `docs/spec/manifest-vnext.md`,
 > `docs/spec/semantics.md`, `docs/spec/ir/ir-v1.schema.json`,
-> `src/manifest/conformance/fixtures/`. Package pin SoT: `package.json` = **3.6.4**.
+> `src/manifest/conformance/fixtures/`. Package pin SoT: `package.json` = **3.6.7**.
+>
+> **Completion (2026-07-15):** Language/runtime vNext normative features are
+> implemented — see `docs/internal/COMPLIANCE_MATRIX.md` §1.
+> ~~Remaining gaps: canonical-routes conformance fixtures (PARTIAL), diagnostics
+> completeness tests (PARTIAL), evaluation step-count counters (NOT_IMPLEMENTED).~~
+> **Update (2026-07-15):** Those three remainder items closed
+> (`routes.conformance.test.ts`, `runtime-diagnostics-completeness.test.ts`,
+> `getLastEvaluationStats`). Config-vNext is a separate proposal
+> (G0/G1/G5/G2-failOn/G10 shipped; G3/G4/G7–G9 open).
 
 ## vNext Features
 
