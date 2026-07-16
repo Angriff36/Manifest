@@ -29,11 +29,11 @@ import {
   IRWebhook,
   IRSchedule,
 } from './ir';
-import { COMPILER_VERSION, SCHEMA_VERSION } from './version';
-import { Parser } from './parser';
-import { IRCompiler, computeIRHash } from './ir-compiler';
-import { resolveModuleGraph, ResolverHost } from './module-resolver';
-import { checkReactionCompleteness } from './reaction-completeness';
+import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
+import { Parser } from './parser.js';
+import { IRCompiler, computeIRHash } from './ir-compiler.js';
+import { resolveModuleGraph, ResolverHost } from './module-resolver.js';
+import { checkReactionCompleteness } from './reaction-completeness.js';
 
 export interface CompileProjectOptions {
   /** Absolute paths of entry .manifest files */
