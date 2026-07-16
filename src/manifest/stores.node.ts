@@ -206,12 +206,14 @@ export class SupabaseStore<T extends EntityInstance> implements Store<T> {
   private client!: any;
   private tableName: string;
   private generateId: () => string;
-  private ready: Promise<void>;
+  private ready: Promise<void> | undefined;
+  private readonly initConfig: SupabaseConfig;
 
   constructor(config: SupabaseConfig, generateId?: () => string) {
     this.generateId = generateId || (() => crypto.randomUUID());
     this.tableName = config.tableName || 'entities';
-    this.ready = this.init(config);
+    this.initConfig = config;
+    // Defer async supabase load until first use (Sonar S7059).
   }
 
   private async init(config: SupabaseConfig): Promise<void> {
@@ -228,8 +230,11 @@ export class SupabaseStore<T extends EntityInstance> implements Store<T> {
     this.client = createClient(config.url, config.key);
   }
 
-  private async ensureReady(): Promise<void> {
-    await this.ready;
+  private ensureReady(): Promise<void> {
+    if (!this.ready) {
+      this.ready = this.init(this.initConfig);
+    }
+    return this.ready;
   }
 
   async getAll(): Promise<T[]> {
@@ -340,13 +345,15 @@ export class MongoDBStore<T extends EntityInstance> implements Store<T> {
   private collectionName: string;
   private databaseName: string;
   private generateId: () => string;
-  private ready: Promise<void>;
+  private ready: Promise<void> | undefined;
+  private readonly initConfig: MongoDBConfig;
 
   constructor(config: MongoDBConfig, generateId?: () => string) {
     this.generateId = generateId || (() => crypto.randomUUID());
     this.collectionName = config.collectionName || 'entities';
     this.databaseName = config.databaseName || 'manifest';
-    this.ready = this.init(config);
+    this.initConfig = config;
+    // Defer async mongodb load until first use (Sonar S7059).
   }
 
   private async init(config: MongoDBConfig): Promise<void> {
@@ -370,8 +377,11 @@ export class MongoDBStore<T extends EntityInstance> implements Store<T> {
     await this.collection.createIndex({ id: 1 }, { unique: true });
   }
 
-  private async ensureReady(): Promise<void> {
-    await this.ready;
+  private ensureReady(): Promise<void> {
+    if (!this.ready) {
+      this.ready = this.init(this.initConfig);
+    }
+    return this.ready;
   }
 
   async getAll(): Promise<T[]> {

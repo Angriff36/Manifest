@@ -59,7 +59,8 @@ export class RedisOutboxStore implements OutboxStore {
   private consumerName: string;
   private generateId: () => string;
   private now: () => number;
-  private ready: Promise<void>;
+  private ready: Promise<void> | undefined;
+  private readonly initConfig: RedisOutboxStoreConfig;
   private streamKey: string;
 
   constructor(config: RedisOutboxStoreConfig = {}, opts: RedisOutboxStoreOptions = {}) {
@@ -69,7 +70,15 @@ export class RedisOutboxStore implements OutboxStore {
     this.generateId = opts.generateId ?? (() => crypto.randomUUID());
     this.now = opts.now ?? (() => Date.now());
     this.streamKey = `${this.keyPrefix}entries`;
-    this.ready = this.init(config);
+    this.initConfig = config;
+    // Defer async ioredis load until first use (Sonar S7059).
+  }
+
+  private ensureReady(): Promise<void> {
+    if (!this.ready) {
+      this.ready = this.init(this.initConfig);
+    }
+    return this.ready;
   }
 
   private async init(config: RedisOutboxStoreConfig): Promise<void> {
@@ -118,10 +127,6 @@ export class RedisOutboxStore implements OutboxStore {
         throw err;
       }
     }
-  }
-
-  private async ensureReady(): Promise<void> {
-    await this.ready;
   }
 
   async enqueue(entries: OutboxEntry[], tx?: unknown): Promise<void> {
@@ -302,8 +307,12 @@ export class RedisOutboxStore implements OutboxStore {
   }
 
   async close(): Promise<void> {
-    await this.ready;
-    await this.client.quit();
+    if (this.ready) {
+      await this.ready.catch(() => {});
+    }
+    if (this.client) {
+      await this.client.quit();
+    }
   }
 
   private streamFieldsToEntry(streamId: string, fields: Record<string, string>): OutboxEntry {
