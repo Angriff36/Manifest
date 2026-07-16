@@ -198,3 +198,29 @@ export function renderReadPolicies(
 
   return { contextChecks, rowChecks, diagnostics, renderable };
 }
+
+/**
+ * Shared client-readability decision for `convex.queries` and `convex.react`.
+ *
+ * - Not gated → public `query` + useQuery hooks.
+ * - Gated + auth seam + fully renderable policies → public `query` that
+ *   enforces those policies (never silent fail-open).
+ * - Otherwise → `internalQuery` and no browser hooks (fail closed).
+ */
+export function resolveConvexReadVisibility(
+  ir: IR,
+  entityName: string,
+  authContextImport: string | undefined,
+  selfVar = '__row',
+): {
+  gated: boolean;
+  clientReadable: boolean;
+  policies: RenderedReadPolicies;
+} {
+  const gated = hasReadPolicies(ir, entityName);
+  const policies = renderReadPolicies(ir, entityName, selfVar);
+  const authSeam =
+    typeof authContextImport === 'string' && authContextImport.length > 0;
+  const clientReadable = !gated || (authSeam && policies.renderable);
+  return { gated, clientReadable, policies };
+}

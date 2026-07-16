@@ -18,7 +18,7 @@ import {
   resolveReactApiImportPath,
   resolveReactClientPathHint,
 } from './react-api-import.js';
-import { hasReadPolicies, renderReadPolicies } from './read-policies.js';
+import { resolveConvexReadVisibility } from './read-policies.js';
 
 export const SURFACE_REACT = 'convex.react' as const;
 
@@ -77,20 +77,26 @@ export function generateReactClient(
   const authSeam =
     typeof reactOpts.authContextImport === 'string' && reactOpts.authContextImport.length > 0;
   for (const entity of persistentEntities(ir)) {
-    const gated = hasReadPolicies(ir, entity.name);
-    const readable =
-      !gated || (authSeam && renderReadPolicies(ir, entity.name, '__row').renderable);
-    if (!readable) {
-      diagnostics.push({
-        severity: 'info',
-        code: 'CONVEX_REACT_INTERNAL_QUERY',
-        entity: entity.name,
-        message:
-          `Entity '${entity.name}' has read/all policies without a fully renderable auth seam — ` +
-          `queries are internalQuery (not client-callable). No useQuery hooks emitted.`,
-      });
+    const visibility = resolveConvexReadVisibility(
+      ir,
+      entity.name,
+      reactOpts.authContextImport,
+      '__row',
+    );
+    diagnostics.push(...visibility.policies.diagnostics);
+    if (!visibility.clientReadable) {
+      if (visibility.gated) {
+        diagnostics.push({
+          severity: 'info',
+          code: 'CONVEX_REACT_INTERNAL_QUERY',
+          entity: entity.name,
+          message:
+            `Entity '${entity.name}' has read/all policies without a fully renderable auth seam — ` +
+            `queries are internalQuery (not client-callable). No useQuery hooks emitted.`,
+        });
+      }
     } else {
-      if (gated && authSeam) {
+      if (visibility.gated && authSeam) {
         diagnostics.push({
           severity: 'info',
           code: 'CONVEX_REACT_AUTH_QUERY',

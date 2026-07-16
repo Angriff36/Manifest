@@ -55,7 +55,10 @@ import {
   isConvexVersionManagedField,
   renderConvexUpdateVersionOcc,
 } from './version-occ.js';
-import { renderReadPolicies, selectReadPolicies } from './read-policies.js';
+import {
+  renderReadPolicies,
+  resolveConvexReadVisibility,
+} from './read-policies.js';
 import {
   encryptedFieldNames,
   privateFieldNames,
@@ -324,13 +327,17 @@ export function generateQueries(
   const blocks: string[] = [];
 
   for (const entity of persistentEntities(ir)) {
-    const readPolicies = selectReadPolicies(ir, entity.name);
-    const listPolicyPlan = renderReadPolicies(ir, entity.name, '__row');
+    const visibility = resolveConvexReadVisibility(
+      ir,
+      entity.name,
+      options.authContextImport,
+      '__row',
+    );
+    const listPolicyPlan = visibility.policies;
     const docPolicyPlan = renderReadPolicies(ir, entity.name, '__doc');
     diagnostics.push(...listPolicyPlan.diagnostics);
-    const policyGated = readPolicies.length > 0;
-    const policyEnforceable =
-      !policyGated || (!!options.authContextImport && listPolicyPlan.renderable);
+    const policyGated = visibility.gated;
+    const policyEnforceable = visibility.clientReadable;
     const qfn = policyEnforceable ? 'query' : 'internalQuery';
     const table = resolveConvexTableName(entity.name, options);
     const rf = resolveReadFilter(ir, entity, options);
