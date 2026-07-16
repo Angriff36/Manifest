@@ -1,0 +1,197 @@
+name: Daily Triage (loop)
+
+on:
+  schedule:
+    - cron: '0 8 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Record run start
+        id: timing
+        run: echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: Run loop-audit
+        id: audit
+        run: |
+          npx --yes @cobusgreyling/loop-audit . --json > /tmp/audit.json
+          SCORE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/audit.json','utf8')).score)")
+          LEVEL=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/audit.json','utf8')).level)")
+          echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+          echo "level=$LEVEL" >> "$GITHUB_OUTPUT"
+
+      - name: Check CI workflow health
+        id: workflows
+        run: |
+          FAILING=0
+          STATUS=$(gh run list --workflow="ci.yml" --limit 1 --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "unknown")
+          echo "ci.yml: ${STATUS}"
+          if [ "$STATUS" = "failure" ]; then FAILING=1; fi
+          echo "failing=$FAILING" >> "$GITHUB_OUTPUT"
+          echo "ci_status=$STATUS" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Update STATE.md
+        run: |
+          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          SCORE="${{ steps.audit.outputs.score }}"
+          LEVEL="${{ steps.audit.outputs.level }}"
+          FAILING="${{ steps.workflows.outputs.failing }}"
+          CI_STATUS="${{ steps.workflows.outputs.ci_status }}"
+          CI_LINE=""
+          if [ "$FAILING" -gt 0 ]; then
+            CI_LINE="- **CI failing** (latest \`ci.yml\` conclusion: ${CI_STATUS}) — investigate before language changes."
+          else
+            CI_LINE="- Latest \`ci.yml\` conclusion: ${CI_STATUS}."
+          fi
+          # <<-EOF strips leading tabs; use printf to avoid YAML-indent pollution
+          STATE_BODY=$(cat <<EOF
+          # Loop State — Manifest
+
+          Last run: ${DATE} (automated daily-triage workflow)
+
+          ## High Priority (loop is acting or waiting on human)
+
+          - Maintain loop readiness score (current: **${SCORE}**, level **${LEVEL}**).
+          ${CI_LINE}
+          - L1 report-only: human reviews this file before any L2 auto-fix path.
+
+          ## Watch List
+
+          - capsule-v2 loop setup (deferred — not this repo)
+          - Least-privilege tool scopes on loop skills
+          - Confirm weekday triage signal stays useful
+
+          ## Recent Noise (ignored this run)
+
+          —
+
+          ---
+          Run log: Updated by \`.github/workflows/daily-triage.yml\`. See \`LOOP.md\` for cadence and gates.
+          EOF
+          )
+          printf '%s\n' "$STATE_BODY" | sed 's/^[[:space:]]*//' > STATE.md
+
+      - name: Append loop-run-log.md
+        id: runlog
+        run: |
+          START="${{ steps.timing.outputs.started_at }}"
+          END=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          DURATION=$(node -e "
+            const s = new Date('${START}').getTime();
+            const e = new Date('${END}').getTime();
+            console.log(Math.max(1, Math.round((e - s) / 1000)));
+          ")
+          FAILING="${{ steps.workflows.outputs.failing }}"
+          SCORE="${{ steps.audit.outputs.score }}"
+          if [ "$FAILING" -gt 0 ]; then
+            OUTCOME="escalated"
+          else
+            OUTCOME="report-only"
+          fi
+          ENTRY=$(node -e "
+            console.log(JSON.stringify({
+              run_id: '${END}',
+              pattern: 'daily-triage',
+              duration_s: Number('${DURATION}'),
+              items_found: Number('${FAILING}') + 1,
+              actions_taken: 1,
+              escalations: Number('${FAILING}'),
+              tokens_estimate: 23000,
+              readiness_score: Number('${SCORE}'),
+              outcome: '${OUTCOME}',
+              workflow_run: '${{ github.run_id }}'
+            }));
+          ")
+          printf '\n```json\n%s\n```\n' "$ENTRY" >> loop-run-log.md
+          echo "outcome=${OUTCOME}" >> "$GITHUB_OUTPUT"
+
+      - name: Open draft PR for STATE.md + loop-run-log if changed
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet STATE.md loop-run-log.md; then
+            echo "No STATE.md or loop-run-log.md changes — skip PR"
+            echo "opened=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BRANCH="automated/daily-triage-$(date -u +%Y-%m-%d)"
+          git fetch origin main 2>/dev/null || true
+          git checkout -B "$BRANCH"
+          git add STATE.md loop-run-log.md
+          git commit -m "chore(loop): daily triage update STATE.md + run log [automated]"
+          git push -u origin "$BRANCH" --force-with-lease
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "opened=true" >> "$GITHUB_OUTPUT"
+
+          EXISTING=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || true)
+          if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
+            echo "PR #$EXISTING already open"
+            echo "number=${EXISTING}" >> "$GITHUB_OUTPUT"
+          else
+            BODY=$(cat <<EOF
+          ## Summary
+
+          Automated daily triage from \`daily-triage.yml\` (L1 report-only).
+
+          - Loop readiness: **${{ steps.audit.outputs.score }}** (${{ steps.audit.outputs.level }})
+          - Latest CI: \`${{ steps.workflows.outputs.ci_status }}\`
+          - Run outcome: \`${{ steps.runlog.outputs.outcome }}\`
+
+          Human reviews \`STATE.md\` and merges when ready. No auto-merge.
+          EOF
+          )
+            # Strip incidental leading spaces from YAML-indented heredoc
+            BODY=$(printf '%s\n' "$BODY" | sed 's/^[[:space:]]*//')
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --draft \
+              --title "chore(loop): daily triage STATE.md $(date -u +%Y-%m-%d)" \
+              --body "$BODY"
+            PR_NUMBER=$(gh pr view "$BRANCH" --json number -q '.number')
+            echo "number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open weekly loop report issue (Mondays)
+        if: github.event_name == 'schedule'
+        run: |
+          DAY=$(date -u +%u)
+          if [ "$DAY" != "1" ]; then echo "Not Monday — skip issue"; exit 0; fi
+          EXISTING=$(gh issue list --label "loop-report" --state open --limit 1 --json number -q '.[0].number' 2>/dev/null || true)
+          if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
+            echo "Open loop-report issue #$EXISTING exists"
+            exit 0
+          fi
+          gh label create "loop-report" --color "3ee8c5" --description "Weekly loop triage report" 2>/dev/null || true
+          gh issue create \
+            --title "Loop report — week of $(date -u +%Y-%m-%d)" \
+            --label "loop-report" \
+            --body "## Automated daily triage summary
+
+          - Loop readiness: **${{ steps.audit.outputs.score }}** (${{ steps.audit.outputs.level }})
+          - Latest run outcome: \`${{ steps.runlog.outputs.outcome }}\` (see \`loop-run-log.md\`)
+          - Review high-priority items in \`STATE.md\` (draft PR from weekday runs)
+
+          _Generated by daily-triage workflow. Human reviews and decides actions._"
+        env:
+          GH_TOKEN: ${{ github.token }}
