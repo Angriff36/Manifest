@@ -107,4 +107,115 @@ describe('Convex seed binding', () => {
     expect(code).toContain('api.mutations.Task_create');
     expect(code).toMatch(/"title":/);
   });
+
+  it('skips memory-store entities and emits typed datetime literals without duplicate keys', () => {
+    const ir = emptyIR();
+    const milestone: IREntity = {
+      name: 'ActionMilestone',
+      properties: [
+        { name: 'title', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'dueDate', type: { name: 'datetime', nullable: false }, modifiers: ['required'] },
+        {
+          name: 'disciplinaryActionId',
+          type: { name: 'string', nullable: false },
+          modifiers: ['required'],
+        },
+      ],
+      computedProperties: [],
+      relationships: [
+        {
+          name: 'disciplinaryAction',
+          kind: 'belongsTo',
+          target: 'DisciplinaryAction',
+          foreignKey: { fields: ['disciplinaryActionId'], references: ['id'] },
+        },
+      ],
+      commands: [],
+      constraints: [],
+      policies: [],
+    };
+    const flag: IREntity = {
+      name: 'FeatureFlag',
+      properties: [
+        { name: 'flagKey', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
+    };
+    ir.entities = [milestone, flag];
+    ir.stores = [
+      { entity: 'ActionMilestone', target: 'durable', config: {} },
+      { entity: 'FeatureFlag', target: 'memory', config: {} },
+    ];
+    ir.commands = [
+      {
+        entity: 'ActionMilestone',
+        name: 'create',
+        parameters: [
+          {
+            name: 'disciplinaryActionId',
+            type: { name: 'string', nullable: false },
+            required: true,
+          },
+          { name: 'title', type: { name: 'string', nullable: false }, required: true },
+          { name: 'dueDate', type: { name: 'datetime', nullable: false }, required: true },
+        ],
+        guards: [],
+        actions: [],
+        emits: [],
+      },
+      {
+        entity: 'FeatureFlag',
+        name: 'create',
+        parameters: [
+          { name: 'flagKey', type: { name: 'string', nullable: false }, required: true },
+        ],
+        guards: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+
+    const pack: SeedPack = {
+      meta: { packId: 'demo', version: '1', entities: ['ActionMilestone', 'FeatureFlag'] },
+      tables: [
+        {
+          entity: 'ActionMilestone',
+          columns: ['seedKey', 'title', 'dueDate', 'disciplinaryActionId', 'disciplinaryAction'],
+          rows: [
+            {
+              seedKey: 'm1',
+              title: '{{fill}}',
+              dueDate: '{{fill}}',
+              disciplinaryActionId: '{{fill}}',
+              disciplinaryAction: '{{fill}}',
+            },
+          ],
+        },
+        {
+          entity: 'FeatureFlag',
+          columns: ['seedKey', 'flagKey'],
+          rows: [{ seedKey: 'f1', flagKey: '{{fill}}' }],
+        },
+      ],
+    };
+
+    const { code, binding } = generateConvexSeedScript(ir, pack);
+    expect(binding.entities.find((e) => e.entity === 'FeatureFlag')!.createMutation).toBeNull();
+    expect(code).toContain('skip FeatureFlag: not a Convex-persistent store');
+    expect(code).not.toContain('FeatureFlag_create');
+    expect(code).toMatch(/"dueDate": \d+/);
+    expect(code).not.toMatch(/"dueDate": "/);
+    // disciplinaryActionId appears once (relationship overwrites property fill)
+    const line = code
+      .split('\n')
+      .find((l) => l.includes('await client.mutation(api.mutations.ActionMilestone_create'))!;
+    expect(line).toBeTruthy();
+    const keys = [...line.matchAll(/"([^"]+)":/g)].map((m) => m[1]!);
+    expect(keys.filter((k) => k === 'disciplinaryActionId')).toHaveLength(1);
+    expect(code).toMatch(/"dueDate": \d+/);
+  });
 });

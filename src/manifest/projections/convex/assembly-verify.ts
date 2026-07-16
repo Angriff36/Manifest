@@ -2,12 +2,17 @@
  * End-to-end Convex application assembly verification.
  *
  * Builder / CI call this after generating a Convex preset to prove the
- * assembly is complete: required surfaces, companions, seed binding, and
- * contract-tests are present — not merely individually registered.
+ * assembly is complete: required surfaces, companions, seed binding,
+ * contract-tests, seed coherence, and event payload contracts.
  */
 
 import { describeProjection, hasProjection } from '../registry.js';
+import type { IR } from '../../ir.js';
 import type { ConvexSeedBinding } from '../../seed-pack/convex-binding.js';
+import {
+  checkEventPayloadContract,
+  checkSeedScriptCoherence,
+} from './assembly-seed-checks.js';
 
 export const CONVEX_ASSEMBLY_REQUIRED_SURFACES = [
   'convex.schema',
@@ -39,6 +44,11 @@ export interface VerifyConvexApplicationAssemblyInput {
   seedBinding?: ConvexSeedBinding;
   /** When true (default), require contract-tests projection to be registered. */
   requireContractTests?: boolean;
+  /**
+   * Compiled IR — required for event-payload-contract and preferred for
+   * complete:true. Without it, event contract check fails closed.
+   */
+  ir?: IR;
 }
 
 export interface ConvexAssemblyCheck {
@@ -146,16 +156,9 @@ export function verifyConvexApplicationAssembly(
   });
 
   const seedCode = codes.get('scripts/seed-convex.ts') ?? '';
-  if (seedCode.length > 0) {
-    const emptyArgs = /\.mutation\([^,]+,\s*\{\s*\}\s*as any\)/.test(seedCode);
-    checks.push({
-      id: 'seed-script-args',
-      pass: !emptyArgs,
-      detail: emptyArgs
-        ? 'seed script calls create mutations with empty {} args'
-        : 'seed script has no empty mutation arg objects',
-    });
-  }
+  const mutationsCode = codes.get('convex.mutations') ?? '';
+  checks.push(...checkSeedScriptCoherence(seedCode, mutationsCode));
+  checks.push(...checkEventPayloadContract(input.ir, mutationsCode));
 
   return { ok: checks.every((c) => c.pass), checks };
 }

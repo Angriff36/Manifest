@@ -95,11 +95,13 @@ describe('verifyConvexApplicationAssembly', () => {
         },
       ],
     };
-    const { binding } = generateConvexSeedScript(ir, pack);
+    const { binding, code: seedCode } = generateConvexSeedScript(ir, pack);
+    artifacts.push({ id: 'scripts/seed-convex.ts', code: seedCode });
 
     const report = verifyConvexApplicationAssembly({
       artifacts,
       seedBinding: binding,
+      ir,
     });
     expect(report.ok, JSON.stringify(report.checks, null, 2)).toBe(true);
   });

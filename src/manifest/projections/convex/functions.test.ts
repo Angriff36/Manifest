@@ -1217,7 +1217,39 @@ describe('convex.mutations — G7 emit payloads (`emit Event { field: expr }`)',
     expect(code).not.toContain('__after.previousStatus');
   });
 
-  it('does not introduce __after or populate payload when no emitPayloads are declared (no churn)', () => {
+  it('populates bare emit payloads from event schema or result fallback (not empty {})', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Task', [prop('title', 'string', ['required'])])];
+    ir.stores = [durable('Task')];
+    ir.events = [
+      {
+        name: 'TaskCreated',
+        channel: 'task.created',
+        payload: [
+          { name: 'taskId', type: { name: 'string', nullable: false }, required: true },
+          { name: 'title', type: { name: 'string', nullable: false }, required: true },
+        ],
+      },
+    ];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Task',
+        parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }],
+        guards: [],
+        constraints: [],
+        actions: [
+          { kind: 'mutate', target: 'title', expression: { kind: 'identifier', name: 'title' } },
+        ],
+        emits: ['TaskCreated'],
+      },
+    ];
+    const code = mutations(ir).artifacts[0].code;
+    expect(code).toContain('payload: { taskId: _id, title: doc.title }');
+    expect(code).not.toMatch(/type: "TaskCreated"[\s\S]*?payload: \{\}/);
+  });
+
+  it('uses result fallback when bare emit has no event schema fields', () => {
     const ir = emptyIR();
     ir.entities = [entity('Task', [prop('title', 'string', ['required'])])];
     ir.stores = [durable('Task')];
@@ -1235,8 +1267,8 @@ describe('convex.mutations — G7 emit payloads (`emit Event { field: expr }`)',
       },
     ];
     const code = mutations(ir).artifacts[0].code;
-    expect(code).toContain('payload: {}'); // empty payload, as before G7
-    expect(code).not.toContain('__after'); // no post-action var introduced
+    expect(code).toContain('payload: { result: { _id, id: _id, ...doc } }');
+    expect(code).not.toContain('payload: {}');
   });
 
   it('does not emit duplicate result keys when G7 declares result (TS1117 collision)', () => {

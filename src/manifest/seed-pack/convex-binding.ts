@@ -10,6 +10,11 @@ import type { IR, IRCommand } from '../ir.js';
 import type { SeedPack, SeedEntityTable, SeedRow } from './types.js';
 import { isBlankCell } from './types.js';
 import { findEntity, relationshipColumnNames } from './template.js';
+import {
+  heuristicFillForType,
+  isConvexPersistentEntity,
+  rowToArgsLiteral,
+} from './convex-seed-args.js';
 
 export interface ConvexSeedEntityBinding {
   entity: string;
@@ -48,12 +53,13 @@ function findCreateCommand(ir: IR, entityName: string): IRCommand | undefined {
 
 function tableBinding(ir: IR, table: SeedEntityTable): ConvexSeedEntityBinding {
   const create = findCreateCommand(ir, table.entity);
+  const persistent = isConvexPersistentEntity(ir, table.entity);
   const seedKeys = table.rows
     .map((r) => r.seedKey)
     .filter((k): k is string => typeof k === 'string' && !isBlankCell(k));
   return {
     entity: table.entity,
-    createMutation: create ? `${table.entity}_${create.name}` : null,
+    createMutation: create && persistent ? `${table.entity}_${create.name}` : null,
     seedKeys,
     columns: [...table.columns],
     rowCount: table.rows.length,
@@ -72,51 +78,15 @@ export function describeConvexSeedBinding(ir: IR, pack: SeedPack): ConvexSeedBin
   };
 }
 
-function createParamNames(cmd: IRCommand | undefined): Set<string> | undefined {
-  if (!cmd) return undefined;
-  return new Set((cmd.parameters ?? []).map((p) => p.name));
-}
-
-/** Map seed relationship column names (rel.name) → create param / FK property names. */
-function seedColumnToParam(entityName: string, ir: IR, col: string): string {
+function propertyTypeName(ir: IR, entityName: string, col: string): string {
   const entity = findEntity(ir, entityName);
-  if (!entity) return col;
-  const rel = entity.relationships.find((r) => r.name === col);
-  if (!rel) return col;
-  if (rel.foreignKey?.fields && rel.foreignKey.fields.length > 0) {
-    return rel.foreignKey.fields[0]!;
-  }
-  return `${rel.name}Id`;
+  if (!entity) return 'string';
+  const prop = entity.properties.find((p) => p.name === col);
+  if (prop) return (prop.type?.name ?? 'string').toLowerCase();
+  return 'string';
 }
 
-function rowToArgsLiteral(
-  ir: IR,
-  entityName: string,
-  row: SeedRow,
-  columns: string[],
-  paramNames?: Set<string>,
-): string {
-  const parts: string[] = [];
-  for (const col of columns) {
-    if (col === 'seedKey') continue;
-    const param = seedColumnToParam(entityName, ir, col);
-    if (paramNames && !paramNames.has(param)) continue;
-    const raw = row[col];
-    if (isBlankCell(raw)) continue;
-    const numeric =
-      (param.toLowerCase().includes('quantity') ||
-        param.toLowerCase().includes('count') ||
-        param.toLowerCase().includes('amount')) &&
-      raw !== undefined &&
-      /^\d+(\.\d+)?$/.test(raw);
-    parts.push(
-      `${JSON.stringify(param)}: ${numeric ? String(Number(raw)) : JSON.stringify(raw)}`,
-    );
-  }
-  return `{ ${parts.join(', ')} }`;
-}
-
-/** Deterministic sync fill for blank / `{{fill}}` cells. */
+/** Deterministic sync fill for blank / `{{fill}}` cells (type-aware). */
 function syncHeuristicFill(ir: IR, pack: SeedPack): SeedPack {
   const tables: SeedEntityTable[] = [];
   for (const table of pack.tables) {
@@ -142,18 +112,13 @@ function syncHeuristicFill(ir: IR, pack: SeedPack): SeedPack {
           out[col] = allowed[rowIndex % allowed.length]!;
           continue;
         }
-        const lower = col.toLowerCase();
-        if (lower.includes('email')) out[col] = `user${rowIndex + 1}@example.com`;
-        else if (
-          lower.includes('quantity') ||
-          lower.includes('count') ||
-          lower.includes('amount')
-        )
-          out[col] = String(rowIndex + 1);
-        else if (lower.includes('name') || lower === 'title')
-          out[col] = `${table.entity} ${rowIndex + 1}`;
-        else if (lower.endsWith('id')) out[col] = `${col}-${row.seedKey ?? rowIndex + 1}`;
-        else out[col] = `demo-${col}-${rowIndex + 1}`;
+        out[col] = heuristicFillForType(
+          propertyTypeName(ir, table.entity, col),
+          col,
+          table.entity,
+          rowIndex,
+          typeof row.seedKey === 'string' ? row.seedKey : undefined,
+        );
       }
       return out;
     });
@@ -164,9 +129,9 @@ function syncHeuristicFill(ir: IR, pack: SeedPack): SeedPack {
 
 /**
  * Generate a Convex seed runner that calls create mutations for each pack row.
- * Entities without a `create` command are skipped with a diagnostic comment.
- * Blank/`{{fill}}` cells are heuristically filled; rows that still yield empty
- * args are skipped (never emit `mutation(..., {} as any)`).
+ * Entities without a Convex-persistent `create` mutation are skipped.
+ * Blank/`{{fill}}` cells are type-heuristically filled; rows that still yield
+ * empty args are skipped (never emit `mutation(..., {} as any)`).
  */
 export function generateConvexSeedScript(
   ir: IR,
@@ -197,16 +162,18 @@ export function generateConvexSeedScript(
   for (const table of filledPack.tables) {
     const b = binding.entities.find((e) => e.entity === table.entity)!;
     if (!b.createMutation) {
+      const reason = !isConvexPersistentEntity(ir, table.entity)
+        ? 'not a Convex-persistent store'
+        : 'no create command in IR';
       lines.push(
-        `  // skip ${table.entity}: no create command in IR (${table.rows.length} rows unused)`,
+        `  // skip ${table.entity}: ${reason} (${table.rows.length} rows unused)`,
       );
       continue;
     }
     const create = findCreateCommand(ir, table.entity);
-    const params = createParamNames(create);
     lines.push(`  // ${table.entity} → api.mutations.${b.createMutation}`);
     for (const row of table.rows) {
-      const args = rowToArgsLiteral(ir, table.entity, row, table.columns, params);
+      const args = rowToArgsLiteral(ir, table.entity, row, table.columns, create);
       if (args === '{  }' || args === '{}') {
         lines.push(
           `  // skip ${table.entity} row ${JSON.stringify(row.seedKey ?? '')}: no non-blank create args`,

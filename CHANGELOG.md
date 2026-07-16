@@ -4,6 +4,24 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- **Convex event rows:** bare `emit EventName` no longer persists `payload: {}`.
+  When the IR event declares schema fields, the projection synthesizes them from
+  the post-action instance (id aliases like `milestoneId`, matching properties,
+  and `*At`/`*Date` → `Date.now()`). Otherwise it stores a runtime-shaped
+  `{ result: { id, ...doc } }` fallback.
+- **Seed-pack Convex binding:** skip non-persistent stores (e.g. `memory`
+  FeatureFlag → no `FeatureFlag_create`); dedupe mutation arg keys when both a
+  property and relationship map to the same FK; type-aware fill/literals so
+  `datetime`/`number`/`boolean` are not string `"demo-…"` values.
+- **`verifyConvexApplicationAssembly`:** fails closed on duplicate seed keys,
+  seed refs to missing mutations, string-typed temporal seed literals, and
+  event inserts that stay `payload: {}` while the IR event schema declares
+  fields. Callers should pass `ir` (Builder Convex preset does).
+
 ## [3.6.7] - 2026-07-15
 
 ### Fixed

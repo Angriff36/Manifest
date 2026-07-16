@@ -60,6 +60,11 @@ import {
   collectCountOfHasManyRels,
   renderCountOfHasManyPreloads,
 } from './count-of-preload.js';
+import {
+  commandNeedsAfterSnapshot,
+  renderEvents,
+  unionEmitPayloadFields,
+} from './event-payload.js';
 
 type Normalized = NormalizedOptions;
 
@@ -797,98 +802,6 @@ function renderReactions(
   return { lines, diagnostics };
 }
 
-interface RenderedPayloadField {
-  name: string;
-  /** Rendered TS expression, already scoped to the post-action instance. */
-  code: string;
-}
-
-/**
- * Render the G7 `emit Event { field: expr }` payload fields declared for ONE
- * event, evaluated against the post-action instance scope (selfVar = the
- * affected instance). Mirrors runtime-engine.ts G7 (eventPayload construction
- * at emit time): declared fields are populated from `self.*` so the emitted
- * event row — and the reactions/readers that consume it — see real values
- * instead of `undefined`. Without this, a reaction on a MUTATE command reading
- * an entity-owned field (e.g. `payload.invoiceId`) is a silent no-op, which is
- * the gap capsule-pro papers over with hand-written after-emit middleware.
- *
- * Non-governance expressions: unresolved fields are omitted with a warning
- * diagnostic (never a denying throw — that is reserved for guards/policies).
- */
-function renderEmitPayloadFields(
-  cmd: IRCommand,
-  eventName: string,
-  scope: RenderScope,
-): { fields: RenderedPayloadField[]; diagnostics: ProjectionDiagnostic[] } {
-  const spec = cmd.emitPayloads?.find((ep) => ep.eventName === eventName);
-  if (!spec) return { fields: [], diagnostics: [] };
-  const fields: RenderedPayloadField[] = [];
-  const diagnostics: ProjectionDiagnostic[] = [];
-  for (const f of spec.fields) {
-    const { code, unresolved } = renderExpression(f.expression, scope);
-    if (unresolved.length) {
-      diagnostics.push({
-        severity: 'warning',
-        code: 'CONVEX_UNRESOLVED_EMIT_PAYLOAD',
-        message: `emit payload field '${cmd.entity}.${eventName}.${f.name}' unresolved (${unresolved.join('; ')}); omitted.`,
-      });
-      continue;
-    }
-    fields.push({ name: f.name, code });
-  }
-  return { fields, diagnostics };
-}
-
-/**
- * Union of G7 payload fields across ALL of a command's emits (deduped by field
- * name), for the shared reaction-payload binding. Per-event rows carry their
- * own precise fields (see {@link renderEvents}); the shared reaction payload is
- * a benign superset — a reaction only reads the fields it references, so extra
- * sibling-event fields are harmless. Correct for the common single-event case.
- */
-function unionEmitPayloadFields(
-  cmd: IRCommand,
-  scope: RenderScope,
-): { fields: RenderedPayloadField[]; diagnostics: ProjectionDiagnostic[] } {
-  const seen = new Set<string>();
-  const fields: RenderedPayloadField[] = [];
-  const diagnostics: ProjectionDiagnostic[] = [];
-  for (const ev of cmd.emits ?? []) {
-    const r = renderEmitPayloadFields(cmd, ev, scope);
-    diagnostics.push(...r.diagnostics);
-    for (const f of r.fields) {
-      if (seen.has(f.name)) continue;
-      seen.add(f.name);
-      fields.push(f);
-    }
-  }
-  return { fields, diagnostics };
-}
-
-function payloadObjectLiteral(fields: RenderedPayloadField[]): string {
-  return fields.length ? `{ ${fields.map((f) => `${f.name}: ${f.code}`).join(', ')} }` : '{}';
-}
-
-/** Render the event-row inserts for a command's emits, populating G7 payload fields. */
-function renderEvents(
-  eventsTable: string,
-  cmd: IRCommand,
-  idVar: string,
-  scope: RenderScope,
-): { lines: string[]; diagnostics: ProjectionDiagnostic[] } {
-  const lines: string[] = [];
-  const diagnostics: ProjectionDiagnostic[] = [];
-  for (const ev of cmd.emits ?? []) {
-    const { fields, diagnostics: d } = renderEmitPayloadFields(cmd, ev, scope);
-    diagnostics.push(...d);
-    lines.push(
-      `    await ctx.db.insert("${eventsTable}", { type: ${JSON.stringify(ev)}, entity: ${JSON.stringify(cmd.entity)}, entityId: ${idVar}, payload: ${payloadObjectLiteral(fields)}, createdAt: Date.now() });`,
-    );
-  }
-  return { lines, diagnostics };
-}
-
 /**
  * Auth/context/payload bindings a handler needs, derived by scanning the body
  * for the identifiers it actually references (avoids both undefined-name and
@@ -1049,7 +962,14 @@ function generateMutation(
     const g7Scope: RenderScope = { selfVar: 'doc', idExpr: '_id' };
     const g7 = unionEmitPayloadFields(cmd, g7Scope);
     diagnostics.push(...g7.diagnostics);
-    const events = renderEvents(resolveEventsTableName(ir, options), cmd, '_id', g7Scope);
+    const events = renderEvents(
+      resolveEventsTableName(ir, options),
+      ir,
+      entity,
+      cmd,
+      '_id',
+      g7Scope,
+    );
     diagnostics.push(...events.diagnostics);
     const reactions = renderReactions(ir, options, cmd.emits ?? []);
     diagnostics.push(...reactions.diagnostics);
@@ -1156,25 +1076,29 @@ function generateMutation(
   const transitions = renderTransitionChecks(entity, cmd, 'doc', resolvedUpdates);
   diagnostics.push(...transitions.diagnostics);
 
-  // G7 `emit Event { field: expr }`: declared payload fields are evaluated
-  // against the POST-action instance (fetched doc + applied updates). Introduce
-  // `__after` ONLY when the command actually declares emit fields, so commands
-  // without G7 emit byte-identical output to before (no unused-var, no churn).
-  // `self.id` → docId (Convex identity); `previousStatus` → doc.status (pre-patch).
-  const hasG7 = !!(cmd.emitPayloads && cmd.emitPayloads.length > 0);
+  // Post-action snapshot for G7 emit fields and/or event-schema synthesis on
+  // bare `emit EventName`. `self.id` → docId; `previousStatus` → doc.status.
+  const needsAfter = commandNeedsAfterSnapshot(ir, entity, cmd);
   const g7Scope: RenderScope = {
-    selfVar: hasG7 ? '__after' : 'doc',
+    selfVar: needsAfter ? '__after' : 'doc',
     locals: paramNames,
     idExpr: 'docId',
     beforeVar: 'doc',
   };
   const g7 = unionEmitPayloadFields(cmd, g7Scope);
   diagnostics.push(...g7.diagnostics);
-  const useAfter = hasG7 && g7.fields.length > 0;
+  const useAfter = needsAfter;
   const afterLine = useAfter
     ? `    const __after: Record<string, any> = { ...doc, ...updates };\n`
     : '';
-  const events = renderEvents(resolveEventsTableName(ir, options), cmd, 'docId', g7Scope);
+  const events = renderEvents(
+    resolveEventsTableName(ir, options),
+    ir,
+    entity,
+    cmd,
+    'docId',
+    g7Scope,
+  );
   diagnostics.push(...events.diagnostics);
   const reactions = renderReactions(ir, options, cmd.emits ?? []);
   diagnostics.push(...reactions.diagnostics);
