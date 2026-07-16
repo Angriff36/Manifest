@@ -126,7 +126,7 @@ sveltekit, kysely, dynamodb, pydantic, dart, wiring, contract-tests.
 Highlights:
 
 - **Convex** (`src/manifest/projections/convex/`): schema/queries/mutations/crons/http/sagas/`convex.computed`/`convex.react`; companions `wiring`, `llm-context`, `mermaid`, `zod`, `contract-tests`; `authContextImport` with generated read-policy enforcement; `encryptionImport` with reference-runtime envelopes; transition enforcement; private-field stripping; capability map with `CONVEX_UNSUPPORTED_*`; assembly gate `verifyConvexApplicationAssembly`
-- **contract-tests**: Vitest suites asserting Convex query/mutation export names match IR
+- **contract-tests**: Vitest suites asserting Convex query/mutation export names match IR (list/get when `clientReadable` per `resolveConvexReadVisibility` + optional `authContextImport`; skips true `internalQuery` surfaces; does not assert `listBy*` or behavior)
 - **Next.js**: full command surface incl. `createManifestRuntime` emission, executionMode dispatcher (`dispatcher-modes.test.ts`), field-aware soft-delete/timestamp reads
 - **Prisma**: multi-schema (`@@schema` from modules), opt-in snake_case/pluralize naming, autoBackRelations, composite-unique/optional-FK/cycle correctness — natively generates capsule-pro's 199-model schema
 

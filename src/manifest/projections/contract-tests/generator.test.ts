@@ -72,4 +72,77 @@ describe('contract-tests projection', () => {
     expect(code).toContain('Order_create');
     expect(code).toContain('MANIFEST_CONTRACT_TEST_COUNT');
   });
+
+  it('skips list/get when read policy forces internalQuery (no auth seam)', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      {
+        name: 'Secret',
+        properties: [
+          { name: 'name', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        ],
+        computedProperties: [],
+        relationships: [],
+        commands: [],
+        constraints: [],
+        policies: [],
+      },
+    ];
+    ir.stores = [{ entity: 'Secret', target: 'durable', config: {} } satisfies IRStore];
+    ir.policies = [
+      {
+        name: 'canRead',
+        entity: 'Secret',
+        action: 'read',
+        expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+      },
+    ];
+
+    const res = new ContractTestsProjection().generate(ir, {
+      surface: 'contract-tests.convex',
+    });
+    const code = res.artifacts[0]!.code;
+    expect(code).not.toContain('listSecret');
+    expect(code).not.toContain('getSecret');
+    expect(
+      res.diagnostics.some((d) => d.code === 'CONTRACT_TESTS_SKIP_INTERNAL_QUERY'),
+    ).toBe(true);
+  });
+
+  it('asserts list/get for read-gated entities when authContextImport is set', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      {
+        name: 'Secret',
+        properties: [
+          { name: 'name', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        ],
+        computedProperties: [],
+        relationships: [],
+        commands: [],
+        constraints: [],
+        policies: [],
+      },
+    ];
+    ir.stores = [{ entity: 'Secret', target: 'durable', config: {} } satisfies IRStore];
+    ir.policies = [
+      {
+        name: 'canRead',
+        entity: 'Secret',
+        action: 'read',
+        expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+      },
+    ];
+
+    const res = new ContractTestsProjection().generate(ir, {
+      surface: 'contract-tests.convex',
+      options: { authContextImport: './lib/authContext' },
+    });
+    const code = res.artifacts[0]!.code;
+    expect(code).toContain('listSecret');
+    expect(code).toContain('getSecret');
+    expect(
+      res.diagnostics.some((d) => d.code === 'CONTRACT_TESTS_SKIP_INTERNAL_QUERY'),
+    ).toBe(false);
+  });
 });

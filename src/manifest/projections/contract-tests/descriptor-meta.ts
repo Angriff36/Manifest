@@ -1,10 +1,11 @@
 import type { ProjectionDescriptorMeta } from '../descriptor-types.js';
-import { aggregateSurface } from '../descriptor-helpers.js';
+import { aggregateSurface, optionalOption } from '../descriptor-helpers.js';
 
 export const CONTRACT_TESTS_DESCRIPTOR_META: ProjectionDescriptorMeta = {
   displayName: 'Contract Tests',
   surfaces: [aggregateSurface('contract-tests.convex')],
-  options: [],
+  // Same auth seam as convex.queries — decides whether list/get are public.
+  options: [optionalOption('authContextImport', 'string')],
   artifactCategories: ['tests', 'contracts'],
   packageDependencies: ['vitest'],
   runtimeDependencies: [],

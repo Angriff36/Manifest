@@ -45,15 +45,15 @@ Builder consumption / end-to-end proof lives in Builder’s matrix:
 
 ## Proof Protocol
 
-| Status                | Meaning                                                                          |
-| --------------------- | -------------------------------------------------------------------------------- |
+| Status                | Meaning                                                                                                                                              |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `FULLY_IMPLEMENTED`   | Mirrored only from the canonical matrix after hand-verified end-to-end compile + tests with exact filename, inclusive line range, and git commit SHA |
-| `PARTIAL`             | Present but incomplete across Manifest consumers/layers                          |
-| `DIAGNOSTIC_ONLY`     | Loud unsupported path; no full enforcement                                       |
-| `REJECTED_LOUD`       | Compile/schema rejects until designed                                            |
-| `NOT_IMPLEMENTED`     | Missing / passthrough / phantom **in Manifest**                                  |
-| `OUT_OF_SCOPE`        | Not a Manifest-core deliverable (often Builder-owned)                            |
-| `CLAIMED_NEEDS_PROOF` | Exists in inventory/fixtures but **no** commit proof yet — **not** “done”        |
+| `PARTIAL`             | Present but incomplete across Manifest consumers/layers                                                                                              |
+| `DIAGNOSTIC_ONLY`     | Loud unsupported path; no full enforcement                                                                                                           |
+| `REJECTED_LOUD`       | Compile/schema rejects until designed                                                                                                                |
+| `NOT_IMPLEMENTED`     | Missing / passthrough / phantom **in Manifest**                                                                                                      |
+| `OUT_OF_SCOPE`        | Not a Manifest-core deliverable (often Builder-owned)                                                                                                |
+| `CLAIMED_NEEDS_PROOF` | Exists in inventory/fixtures but **no** commit proof yet — **not** “done”                                                                            |
 
 Update `docs/internal/COMPLIANCE_MATRIX.md` first when closing Manifest work; then reconcile this mirror, `docs/TODO.md`, and `docs/platform/CONFIRMED-FEATURES.md`.
 
@@ -90,40 +90,40 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 
 ## 1. Proven complete (`FULLY_IMPLEMENTED` + hard proof)
 
-| Status | Feature                                            | Implementation Status | Proof (file:lines @ commit)                                                                                                                                                                                                                |
-| ------ | -------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [x]    | Entity `behavior` rejected (no silent drop)        | FULLY_IMPLEMENTED     | `src/manifest/ir-compiler.ts:801-816` @ `3f41cb8da272c7d71efcad242ff498403ec09fd5`                                                                                                                                                         |
-| [x]    | Constraint `failWhen` polarity (RuntimeEngine)     | FULLY_IMPLEMENTED     | `src/manifest/constraint-polarity.ts:1-27` @ `55670fdd48891f336064bbbab1d402e5260ebfd7`; RuntimeEngine uses shared helper. ~~WASM evaluator path~~ **removed 2026-07-15** (never shipped a `.wasm` artifact).                              |
-| [x]    | `getLanguageMetadata()` export                     | FULLY_IMPLEMENTED     | `src/manifest/language-metadata.ts:190-220` @ `11988d6055503c1046ba093cf007cc123778ec5a`; `package.json:275-278`                                                                                                                           |
-| [x]    | `PROPERTY_MODIFIERS` single source                 | FULLY_IMPLEMENTED     | `src/manifest/property-modifiers.ts:1-18` @ `11988d6055503c1046ba093cf007cc123778ec5a`                                                                                                                                                     |
-| [x]    | `getProjectionCapabilities(name)`                  | FULLY_IMPLEMENTED     | `src/manifest/projections/registry.ts:105-120` @ `2828d0da940de5d5004d65b6d2e1342f66807e4d`                                                                                                                                                |
-| [x]    | Projection descriptors API                         | FULLY_IMPLEMENTED     | `src/manifest/projections/registry.ts:151-175` @ `f335a74128466feaef1ffde8b14d52b1bbcd5eab`                                                                                                                                                |
-| [x]    | Stable Builder export contract                     | FULLY_IMPLEMENTED     | `docs/spec/sdk-stability.md:1-48` @ `11988d6055503c1046ba093cf007cc123778ec5a`                                                                                                                                                             |
-| [x]    | `hasMany … through Join` M2M                       | FULLY_IMPLEMENTED     | `src/manifest/ir-compiler.ts:1132-1175` @ `3052dc56c45639f587a687017a13240d34dec997`; fixture `102-through-join`                                                                                                                           |
-| [x]    | Referential actions in reference runtime           | FULLY_IMPLEMENTED     | `src/manifest/runtime-referential-actions.ts:1-300` @ `3052dc56c45639f587a687017a13240d34dec997`                                                                                                                                           |
-| [x]    | `RuntimeOptions.flags` for `flag()`                | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:255-261,1894-1898` @ `3052dc56c45639f587a687017a13240d34dec997`                                                                                                                                            |
-| [x]    | Hono/Express `authProvider`                        | FULLY_IMPLEMENTED     | `src/manifest/projections/hono/types.ts:30` @ `1b1e2be9e059e5524021a671dd45eeddf3c7026f`; `express/types.ts:37`                                                                                                                            |
-| [x]    | `manifest db init`                                 | FULLY_IMPLEMENTED     | `packages/cli/src/commands/db-init.ts:1-195` @ `2b4f30cf6010e89d3e3e3000c704212fd0574aff`                                                                                                                                                  |
-| [x]    | Doctest TS `check`/`invalid` fences                | FULLY_IMPLEMENTED     | `testing/scripts/check-doc-snippets.mjs:94-117` @ `6ed6549fc70c86cd7e586818175d44715e1332d5`                                                                                                                                               |
-| [x]    | RedisEventBus via `RuntimeOptions.eventBus`        | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:307` @ `61d5ab6fb1da4dca32e683b45f9934e56dba141c`; `src/manifest/events/redis.ts:55-60`                                                                                                                    |
-| [x]    | Durable `RateLimitStore` (Memory + Postgres)       | FULLY_IMPLEMENTED     | `src/manifest/runtime-rate-limit.ts:46-133` @ `fd4bb50a41dbfaf340013389e6023f31b9e23a79`; `src/manifest/rate-limit/stores/postgres.ts:48-137` @ same; `RuntimeOptions.rateLimitStore` `runtime-engine.ts:264,1187` @ same                  |
-| [x]    | `createUserResolver` in config + runtime factory   | FULLY_IMPLEMENTED     | `src/manifest/config.ts:280-299` @ `3c1a4e61f845867cf3881edf42ea63005c17ea4d`; `src/manifest/projections/shared/companions.ts:225-280` @ same                                                                                              |
-| [x]    | Materialized-views computed → SQL                  | FULLY_IMPLEMENTED     | `src/manifest/projections/materialized-views/generator.ts:215-265` @ `7ce53859bdc162263384825043b2ecbb0ab96191`; `expression-to-sql.ts:67-88` @ same                                                                                       |
-| [x]    | `EventSourcedStore` for `eventSourced` target      | FULLY_IMPLEMENTED     | `src/manifest/stores/event-sourced.ts:37-140` @ `ca526f02c67d1db7138d6e34a400fe459a87caef`; `runtime-engine.ts:1279-1283` @ same                                                                                                           |
-| [x]    | `alternateKeys` uniqueness on create/update        | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2832-2864,2876,2966-2977` @ `a8af116268de8f4329eb2af1a4df82fb5a65fa5b`                                                                                                                                     |
-| [x]    | Entity-level constraint overrides on create/update | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2625-2642,4958-4995,5934-5985` @ `f36c83dd63690e83812ee286f42379f18d65e0d9`; `src/manifest/runtime-entity-constraint-overrides.test.ts:1-149` @ same                                                       |
-| [x]    | Config G5 `projections.enabled`/`defaults`         | FULLY_IMPLEMENTED     | `src/manifest/config.ts:117-168,380-414` @ `505e5051f67b0d1a33f59f7e4d1f48b14e124f2b`; `packages/cli/src/commands/generate.ts:822-895` @ same; schema meta keys in `docs/spec/config/manifest.config.schema.json`                          |
-| [x]    | Config G2 `validation.failOn`                      | FULLY_IMPLEMENTED     | `packages/cli/src/utils/validation-gate-policy.ts:1-45` @ `7c3e16a9349af3130ae5408beee5297e33b7200d`; wired in `compile.ts`/`validate.ts`; schema `validation.failOn`                                                                      |
-| [x]    | Config G10 `driftGates` / `manifest ci-gate`       | FULLY_IMPLEMENTED     | `packages/cli/src/commands/ci-gate.ts:1-160` @ `c28e3e437a9d4af3a121e7cbdbf211c09997a98f`; `packages/cli/src/utils/drift-gates.ts:1-59` @ same                                                                                             |
-| [x]    | Health projection docs                             | FULLY_IMPLEMENTED     | `docs/projections/health.md:1-68` @ `ebf2164dff1ab0ea648b12cc109ac5eaa0ee332b`; `mintlify/projections/health.mdx:1-77` @ same; generator `src/manifest/projections/health/generator.ts:1-429` @ `f335a74128466feaef1ffde8b14d52b1bbcd5eab` |
-| [x]    | Approval `onTimeout: escalate` (open routing)      | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:748-820` @ `a16d2bf16c54d8d20a4d58323415513163ab0b4e`; `ir-compiler.ts:934-1005` @ same; `runtime-engine.ts:6539-6595` @ same; fixtures `111`, `103`                                                               |
-| [x]    | Convex `searchable` → `.searchIndex`               | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/generator.ts:367-441` @ `f8221d44be41a80725ab58981658edf3cfe64f30`; `capabilities.ts` string-gate @ same; `type-mapping.ts:85-87` @ same; `semantics.test.ts` |
-| [x]    | Convex `versionProperty` OCC                       | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/version-occ.ts:1-76` @ `4660059ba17fcc00f06de523b14c361df421fea8`; `functions.ts` create/update OCC @ same; `generator.ts` schema synthesize; `semantics.test.ts` |
-| [x]    | FEATURE-LIST → registry inventory (M12)            | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts:1-301` @ `e0ffb716ffc627fdfe7bdb8df8ea6882be3dff66`; `src/manifest/feature-list-generator.test.ts:1-52` @ same; `package.json` `docs:feature-list` / `docs:check:feature-list`; generated `docs/FEATURE-LIST.md` |
-| [x]    | Convex realtime/cache PARTIAL reclass              | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/capabilities.ts` @ `03a019efbeddbf2bc177b745957de81c5a9384a1` (`CONVEX_PARTIAL_REALTIME` / `CONVEX_PARTIAL_COMPUTED_CACHE`); `semantics.test.ts` @ same; `CAPABILITIES.md` |
-| [x]    | Park unpublished sub-packages (mcp/lsp/stdlib/vscode) | FULLY_IMPLEMENTED  | `packages/mcp-server/package.json` (+ lsp/stdlib/vscode) `"private": true` @ `500f14712174bee2c989c869980ced8fd1397505`; `src/manifest/parked-packages.test.ts:1-28` @ same; `docs/reference/packages-and-distribution.md` |
-| [x]    | Language type `timestamp` (= `datetime` alias)     | FULLY_IMPLEMENTED     | `src/manifest/date-time.ts:12-18` @ `22c7792cf045450ab02fdccd982bfbf5551f4978`; `runtime-engine.ts:2676-2694` @ same; `runtime-datetime-validation.test.ts` @ same; `projections/shared/typescript-types.ts:21-24` @ same; semantics § Date/Time |
-| [x]    | Appendix E: `map<string,V>` sugar (= `map<V>`)     | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:1316-1341` @ `dc52bb5daa23fad540252654862a3b1db5ed23c6`; fixture `73`; semantics Properties; non-string keys still unsupported |
+| Status | Feature                                               | Implementation Status | Proof (file:lines @ commit)                                                                                                                                                                                                                        |
+| ------ | ----------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [x]    | Entity `behavior` rejected (no silent drop)           | FULLY_IMPLEMENTED     | `src/manifest/ir-compiler.ts:801-816` @ `3f41cb8da272c7d71efcad242ff498403ec09fd5`                                                                                                                                                                 |
+| [x]    | Constraint `failWhen` polarity (RuntimeEngine)        | FULLY_IMPLEMENTED     | `src/manifest/constraint-polarity.ts:1-27` @ `55670fdd48891f336064bbbab1d402e5260ebfd7`; RuntimeEngine uses shared helper. ~~WASM evaluator path~~ **removed 2026-07-15** (never shipped a `.wasm` artifact).                                      |
+| [x]    | `getLanguageMetadata()` export                        | FULLY_IMPLEMENTED     | `src/manifest/language-metadata.ts:190-220` @ `11988d6055503c1046ba093cf007cc123778ec5a`; `package.json:275-278`                                                                                                                                   |
+| [x]    | `PROPERTY_MODIFIERS` single source                    | FULLY_IMPLEMENTED     | `src/manifest/property-modifiers.ts:1-18` @ `11988d6055503c1046ba093cf007cc123778ec5a`                                                                                                                                                             |
+| [x]    | `getProjectionCapabilities(name)`                     | FULLY_IMPLEMENTED     | `src/manifest/projections/registry.ts:105-120` @ `2828d0da940de5d5004d65b6d2e1342f66807e4d`                                                                                                                                                        |
+| [x]    | Projection descriptors API                            | FULLY_IMPLEMENTED     | `src/manifest/projections/registry.ts:151-175` @ `f335a74128466feaef1ffde8b14d52b1bbcd5eab`                                                                                                                                                        |
+| [x]    | Stable Builder export contract                        | FULLY_IMPLEMENTED     | `docs/spec/sdk-stability.md:1-48` @ `11988d6055503c1046ba093cf007cc123778ec5a`                                                                                                                                                                     |
+| [x]    | `hasMany … through Join` M2M                          | FULLY_IMPLEMENTED     | `src/manifest/ir-compiler.ts:1132-1175` @ `3052dc56c45639f587a687017a13240d34dec997`; fixture `102-through-join`                                                                                                                                   |
+| [x]    | Referential actions in reference runtime              | FULLY_IMPLEMENTED     | `src/manifest/runtime-referential-actions.ts:1-300` @ `3052dc56c45639f587a687017a13240d34dec997`                                                                                                                                                   |
+| [x]    | `RuntimeOptions.flags` for `flag()`                   | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:255-261,1894-1898` @ `3052dc56c45639f587a687017a13240d34dec997`                                                                                                                                                    |
+| [x]    | Hono/Express `authProvider`                           | FULLY_IMPLEMENTED     | `src/manifest/projections/hono/types.ts:30` @ `1b1e2be9e059e5524021a671dd45eeddf3c7026f`; `express/types.ts:37`                                                                                                                                    |
+| [x]    | `manifest db init`                                    | FULLY_IMPLEMENTED     | `packages/cli/src/commands/db-init.ts:1-195` @ `2b4f30cf6010e89d3e3e3000c704212fd0574aff`                                                                                                                                                          |
+| [x]    | Doctest TS `check`/`invalid` fences                   | FULLY_IMPLEMENTED     | `testing/scripts/check-doc-snippets.mjs:94-117` @ `6ed6549fc70c86cd7e586818175d44715e1332d5`                                                                                                                                                       |
+| [x]    | RedisEventBus via `RuntimeOptions.eventBus`           | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:307` @ `61d5ab6fb1da4dca32e683b45f9934e56dba141c`; `src/manifest/events/redis.ts:55-60`                                                                                                                            |
+| [x]    | Durable `RateLimitStore` (Memory + Postgres)          | FULLY_IMPLEMENTED     | `src/manifest/runtime-rate-limit.ts:46-133` @ `fd4bb50a41dbfaf340013389e6023f31b9e23a79`; `src/manifest/rate-limit/stores/postgres.ts:48-137` @ same; `RuntimeOptions.rateLimitStore` `runtime-engine.ts:264,1187` @ same                          |
+| [x]    | `createUserResolver` in config + runtime factory      | FULLY_IMPLEMENTED     | `src/manifest/config.ts:280-299` @ `3c1a4e61f845867cf3881edf42ea63005c17ea4d`; `src/manifest/projections/shared/companions.ts:225-280` @ same                                                                                                      |
+| [x]    | Materialized-views computed → SQL                     | FULLY_IMPLEMENTED     | `src/manifest/projections/materialized-views/generator.ts:215-265` @ `7ce53859bdc162263384825043b2ecbb0ab96191`; `expression-to-sql.ts:67-88` @ same                                                                                               |
+| [x]    | `EventSourcedStore` for `eventSourced` target         | FULLY_IMPLEMENTED     | `src/manifest/stores/event-sourced.ts:37-140` @ `ca526f02c67d1db7138d6e34a400fe459a87caef`; `runtime-engine.ts:1279-1283` @ same                                                                                                                   |
+| [x]    | `alternateKeys` uniqueness on create/update           | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2832-2864,2876,2966-2977` @ `a8af116268de8f4329eb2af1a4df82fb5a65fa5b`                                                                                                                                             |
+| [x]    | Entity-level constraint overrides on create/update    | FULLY_IMPLEMENTED     | `src/manifest/runtime-engine.ts:2625-2642,4958-4995,5934-5985` @ `f36c83dd63690e83812ee286f42379f18d65e0d9`; `src/manifest/runtime-entity-constraint-overrides.test.ts:1-149` @ same                                                               |
+| [x]    | Config G5 `projections.enabled`/`defaults`            | FULLY_IMPLEMENTED     | `src/manifest/config.ts:117-168,380-414` @ `505e5051f67b0d1a33f59f7e4d1f48b14e124f2b`; `packages/cli/src/commands/generate.ts:822-895` @ same; schema meta keys in `docs/spec/config/manifest.config.schema.json`                                  |
+| [x]    | Config G2 `validation.failOn`                         | FULLY_IMPLEMENTED     | `packages/cli/src/utils/validation-gate-policy.ts:1-45` @ `7c3e16a9349af3130ae5408beee5297e33b7200d`; wired in `compile.ts`/`validate.ts`; schema `validation.failOn`                                                                              |
+| [x]    | Config G10 `driftGates` / `manifest ci-gate`          | FULLY_IMPLEMENTED     | `packages/cli/src/commands/ci-gate.ts:1-160` @ `c28e3e437a9d4af3a121e7cbdbf211c09997a98f`; `packages/cli/src/utils/drift-gates.ts:1-59` @ same                                                                                                     |
+| [x]    | Health projection docs                                | FULLY_IMPLEMENTED     | `docs/projections/health.md:1-68` @ `ebf2164dff1ab0ea648b12cc109ac5eaa0ee332b`; `mintlify/projections/health.mdx:1-77` @ same; generator `src/manifest/projections/health/generator.ts:1-429` @ `f335a74128466feaef1ffde8b14d52b1bbcd5eab`         |
+| [x]    | Approval `onTimeout: escalate` (open routing)         | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:748-820` @ `a16d2bf16c54d8d20a4d58323415513163ab0b4e`; `ir-compiler.ts:934-1005` @ same; `runtime-engine.ts:6539-6595` @ same; fixtures `111`, `103`                                                                       |
+| [x]    | Convex `searchable` → `.searchIndex`                  | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/generator.ts:367-441` @ `f8221d44be41a80725ab58981658edf3cfe64f30`; `capabilities.ts` string-gate @ same; `type-mapping.ts:85-87` @ same; `semantics.test.ts`                                                     |
+| [x]    | Convex `versionProperty` OCC                          | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/version-occ.ts:1-76` @ `4660059ba17fcc00f06de523b14c361df421fea8`; `functions.ts` create/update OCC @ same; `generator.ts` schema synthesize; `semantics.test.ts`                                                 |
+| [x]    | FEATURE-LIST → registry inventory (M12)               | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts:1-301` @ `e0ffb716ffc627fdfe7bdb8df8ea6882be3dff66`; `src/manifest/feature-list-generator.test.ts:1-52` @ same; `package.json` `docs:feature-list` / `docs:check:feature-list`; generated `docs/FEATURE-LIST.md` |
+| [x]    | Convex realtime/cache PARTIAL reclass                 | FULLY_IMPLEMENTED     | `src/manifest/projections/convex/capabilities.ts` @ `03a019efbeddbf2bc177b745957de81c5a9384a1` (`CONVEX_PARTIAL_REALTIME` / `CONVEX_PARTIAL_COMPUTED_CACHE`); `semantics.test.ts` @ same; `CAPABILITIES.md`                                        |
+| [x]    | Park unpublished sub-packages (mcp/lsp/stdlib/vscode) | FULLY_IMPLEMENTED     | `packages/mcp-server/package.json` (+ lsp/stdlib/vscode) `"private": true` @ `500f14712174bee2c989c869980ced8fd1397505`; `src/manifest/parked-packages.test.ts:1-28` @ same; `docs/reference/packages-and-distribution.md`                         |
+| [x]    | Language type `timestamp` (= `datetime` alias)        | FULLY_IMPLEMENTED     | `src/manifest/date-time.ts:12-18` @ `22c7792cf045450ab02fdccd982bfbf5551f4978`; `runtime-engine.ts:2676-2694` @ same; `runtime-datetime-validation.test.ts` @ same; `projections/shared/typescript-types.ts:21-24` @ same; semantics § Date/Time   |
+| [x]    | Appendix E: `map<string,V>` sugar (= `map<V>`)        | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:1316-1341` @ `dc52bb5daa23fad540252654862a3b1db5ed23c6`; fixture `73`; semantics Properties; non-string keys still unsupported                                                                                             |
 
 ---
 
@@ -260,53 +260,53 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 
 Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjections`). Each row = one registered projection. Status `CLAIMED_NEEDS_PROOF` until per-projection proof commit; Convex/capability nuances in Notes.
 
-| Status | Projection            | Implementation Status          | Notes                                                                          |
-| ------ | --------------------- | ------------------------------ | ------------------------------------------------------------------------------ |
-| [~]    | nextjs                | CLAIMED_NEEDS_PROOF            | createManifestRuntime, executionMode                                           |
-| [~]    | routes                | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | prisma                | CLAIMED_NEEDS_PROOF            | multi-schema, naming options                                                   |
-| [~]    | prisma-store          | CLAIMED_NEEDS_PROOF            | softDelete config (not language keyword)                                       |
-| [~]    | convex                | PARTIAL                        | core generate + auth seam; many `CONVEX_UNSUPPORTED_*` (§7)                    |
-| [~]    | openapi               | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | react-query           | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | zod                   | CLAIMED_NEEDS_PROOF            | enum/list/timestamp alias fixed 2026-07-15 per TODO                            |
-| [~]    | drizzle               | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | graphql               | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | llm-context           | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | express               | CLAIMED_NEEDS_PROOF            | `authProvider` §1                                                              |
-| [~]    | hono                  | CLAIMED_NEEDS_PROOF            | `authProvider` §1                                                              |
-| [~]    | mermaid               | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | jsonschema            | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | storybook             | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | health                | PARTIAL                        | generator registered; live IR/store/outbox checks still TODO stubs; docs §7    |
-| [x]    | materialized-views    | FULLY_IMPLEMENTED              | §1 — computed via `translateExpression`; raw `columns` escape hatch            |
-| [~]    | elasticsearch         | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | terraform             | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | analytics             | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | remix                 | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | sveltekit             | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | kysely                | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | dynamodb (projection) | CLAIMED_NEEDS_PROOF            | distinct from DynamoDB store                                                   |
-| [~]    | pydantic              | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | dart                  | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | wiring                | CLAIMED_NEEDS_PROOF            |                                                                                |
-| [~]    | contract-tests        | CLAIMED_NEEDS_PROOF            | Convex export name suites                                                      |
-| [ ]    | mongoose folder       | NOT_IMPLEMENTED / unregistered | folder exists; **not** in `builtins.ts` register list — verify before claiming |
+| Status | Projection            | Implementation Status          | Notes                                                                            |
+| ------ | --------------------- | ------------------------------ | -------------------------------------------------------------------------------- |
+| [~]    | nextjs                | CLAIMED_NEEDS_PROOF            | createManifestRuntime, executionMode                                             |
+| [~]    | routes                | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | prisma                | CLAIMED_NEEDS_PROOF            | multi-schema, naming options                                                     |
+| [~]    | prisma-store          | CLAIMED_NEEDS_PROOF            | softDelete config (not language keyword)                                         |
+| [~]    | convex                | PARTIAL                        | core generate + auth seam; many `CONVEX_UNSUPPORTED_*` (§7)                      |
+| [~]    | openapi               | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | react-query           | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | zod                   | CLAIMED_NEEDS_PROOF            | enum/list/timestamp alias fixed 2026-07-15 per TODO                              |
+| [~]    | drizzle               | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | graphql               | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | llm-context           | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | express               | CLAIMED_NEEDS_PROOF            | `authProvider` §1                                                                |
+| [~]    | hono                  | CLAIMED_NEEDS_PROOF            | `authProvider` §1                                                                |
+| [~]    | mermaid               | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | jsonschema            | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | storybook             | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | health                | PARTIAL                        | generator registered; live IR/store/outbox checks still TODO stubs; docs §7      |
+| [x]    | materialized-views    | FULLY_IMPLEMENTED              | §1 — computed via `translateExpression`; raw `columns` escape hatch              |
+| [~]    | elasticsearch         | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | terraform             | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | analytics             | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | remix                 | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | sveltekit             | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | kysely                | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | dynamodb (projection) | CLAIMED_NEEDS_PROOF            | distinct from DynamoDB store                                                     |
+| [~]    | pydantic              | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | dart                  | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | wiring                | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [~]    | contract-tests        | CLAIMED_NEEDS_PROOF            | See `docs/internal/COMPLIANCE_MATRIX.md` (list/get + mutations; auth visibility) |
+| [ ]    | mongoose folder       | NOT_IMPLEMENTED / unregistered | folder exists; **not** in `builtins.ts` register list — verify before claiming   |
 
 **Cross-cutting projection gaps**
 
-| Status | Feature                                                                            | Implementation Status | Notes                  |
-| ------ | ---------------------------------------------------------------------------------- | --------------------- | ---------------------- |
-| [x]    | Capability descriptors API                                                         | FULLY_IMPLEMENTED     | §1                     |
-| [x]    | Projection descriptor API                                                          | FULLY_IMPLEMENTED     | §1                     |
-| [ ]    | `ir.tenant` in all web projections                                                 | PARTIAL               | wiring matrix          |
-| [ ]    | Module-based output splitting                                                      | PARTIAL               |                        |
-| [ ]    | Convex approvals/masking/retry/rateLimit | DIAGNOSTIC_ONLY       | `CONVEX_UNSUPPORTED_*` (searchable + versionProperty + realtime/cache PARTIAL §1) |
-| [x]    | Convex `searchable` → `.searchIndex`                                   | FULLY_IMPLEMENTED     | §1                                             |
-| [x]    | Convex `versionProperty` OCC                                           | FULLY_IMPLEMENTED     | §1                                             |
-| [x]    | Convex realtime / computed-cache PARTIAL                               | FULLY_IMPLEMENTED     | §1                                             |
-| [ ]    | Convex complete lambda lowering                                                    | PARTIAL               |                        |
-| [ ]    | Hono/Express historically missing authProvider                                     | FULLY_IMPLEMENTED     | fixed §1               |
+| Status | Feature                                        | Implementation Status | Notes                                                                             |
+| ------ | ---------------------------------------------- | --------------------- | --------------------------------------------------------------------------------- |
+| [x]    | Capability descriptors API                     | FULLY_IMPLEMENTED     | §1                                                                                |
+| [x]    | Projection descriptor API                      | FULLY_IMPLEMENTED     | §1                                                                                |
+| [ ]    | `ir.tenant` in all web projections             | PARTIAL               | wiring matrix                                                                     |
+| [ ]    | Module-based output splitting                  | PARTIAL               |                                                                                   |
+| [ ]    | Convex approvals/masking/retry/rateLimit       | DIAGNOSTIC_ONLY       | `CONVEX_UNSUPPORTED_*` (searchable + versionProperty + realtime/cache PARTIAL §1) |
+| [x]    | Convex `searchable` → `.searchIndex`           | FULLY_IMPLEMENTED     | §1                                                                                |
+| [x]    | Convex `versionProperty` OCC                   | FULLY_IMPLEMENTED     | §1                                                                                |
+| [x]    | Convex realtime / computed-cache PARTIAL       | FULLY_IMPLEMENTED     | §1                                                                                |
+| [ ]    | Convex complete lambda lowering                | PARTIAL               |                                                                                   |
+| [ ]    | Hono/Express historically missing authProvider | FULLY_IMPLEMENTED     | fixed §1                                                                          |
 
 ---
 
@@ -421,16 +421,16 @@ Agents: when auditing a feature page, update the matching row; do not invent com
 
 ## 10. Coverage honesty
 
-| Source                                                      | Role vs this matrix                                                                            |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `docs/internal/contracts/manifest-builder-boundary.md`      | **Ownership law** — what belongs in this matrix vs Builder                                     |
-| `C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md` | Builder consumption + `BUILDER_CONSUMED` / `END_TO_END_VERIFIED` evidence                      |
-| `docs/platform/CONFIRMED-FEATURES.md`                       | Existence narrative — must not claim completion beyond this file                               |
+| Source                                                      | Role vs this matrix                                                                                               |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `docs/internal/contracts/manifest-builder-boundary.md`      | **Ownership law** — what belongs in this matrix vs Builder                                                        |
+| `C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md` | Builder consumption + `BUILDER_CONSUMED` / `END_TO_END_VERIFIED` evidence                                         |
+| `docs/platform/CONFIRMED-FEATURES.md`                       | Existence narrative — must not claim completion beyond this file                                                  |
 | `docs/FEATURE-LIST.md`                                      | **Generated** registry inventory (`pnpm docs:feature-list`); existence/registration only — **not** completion SoT |
-| `docs/internal/features/*.md`                               | User guides — each Manifest capability should appear as a row above                            |
-| `docs/TODO.md`                                              | Working checklist (Manifest gaps; Builder items must be `OUT_OF_SCOPE` or moved)               |
-| Conformance fixtures                                        | Executable semantics evidence pointers                                                         |
-| Appendix D phantoms (2026-07-01 audit)                      | Names that must appear as `NOT_IMPLEMENTED` / struck claims until fixed                        |
+| `docs/internal/features/*.md`                               | User guides — each Manifest capability should appear as a row above                                               |
+| `docs/TODO.md`                                              | Working checklist (Manifest gaps; Builder items must be `OUT_OF_SCOPE` or moved)                                  |
+| Conformance fixtures                                        | Executable semantics evidence pointers                                                                            |
+| Appendix D phantoms (2026-07-01 audit)                      | Names that must appear as `NOT_IMPLEMENTED` / struck claims until fixed                                           |
 
 When a **Manifest-owned** feature is found in any of those sources but missing here: **add a row immediately** (even as `CLAIMED_NEEDS_PROOF` or `NOT_IMPLEMENTED`). When the capability is Builder-owned: mark `OUT_OF_SCOPE` here and add/update the Builder consumption matrix — do **not** treat it as a missing Manifest implementation.
 
