@@ -130,9 +130,9 @@ update above), so the fix exists but the downstream app hasn't picked it up.
 
 ### M3. ~~Enforce `private` / `encrypted` property modifiers in the Convex projection~~
 
-**Update (2026-07-15):** Phase 2 is implemented in the current worktree:
+**Update (2026-07-15):** Phase 2 shipped in commit `3272499`:
 `encryptionImport` emits reference-runtime-compatible encrypt/decrypt transforms
-for Convex queries and mutations, with focused tests; commit/release proof is
+for Convex queries and mutations, with focused tests. Release publication is
 still pending. ~~Phase 1 only; phase 2 not done.~~
 
 **Earlier update (2026-07-14):** Phase 1 shipped in commit `79093ec` (released v3.5.0)
