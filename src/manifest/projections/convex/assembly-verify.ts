@@ -49,6 +49,11 @@ export interface VerifyConvexApplicationAssemblyInput {
    * complete:true. Without it, event contract check fails closed.
    */
   ir?: IR;
+  /**
+   * Optional DX proof-kit catalog JSON (string). When provided, must declare
+   * schemaVersion manifest-capability-catalog/v1.
+   */
+  proofCatalogJson?: string;
 }
 
 export interface ConvexAssemblyCheck {
@@ -165,6 +170,21 @@ export function verifyConvexApplicationAssembly(
   const mutationsCode = codes.get('convex.mutations') ?? '';
   checks.push(...checkSeedScriptCoherence(seedCode, mutationsCode));
   checks.push(...checkEventPayloadContract(input.ir, mutationsCode));
+
+  if (input.proofCatalogJson !== undefined) {
+    let pass = false;
+    let detail = 'proof catalog JSON missing schemaVersion';
+    try {
+      const parsed = JSON.parse(input.proofCatalogJson) as { schemaVersion?: string };
+      pass = parsed.schemaVersion === 'manifest-capability-catalog/v1';
+      detail = pass
+        ? 'proof-kit capability catalog schema present'
+        : `unexpected proof catalog schemaVersion: ${String(parsed.schemaVersion)}`;
+    } catch {
+      detail = 'proof catalog JSON failed to parse';
+    }
+    checks.push({ id: 'proof-kit.catalog', pass, detail });
+  }
 
   return { ok: checks.every((c) => c.pass), checks };
 }

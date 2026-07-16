@@ -133,6 +133,14 @@
       "types": "./dist/manifest/projections/contract-tests/index.d.ts",
       "import": "./dist/manifest/projections/contract-tests/index.js"
     },
+    "./proof-kit": {
+      "types": "./dist/manifest/proof-kit/index.d.ts",
+      "import": "./dist/manifest/proof-kit/index.js"
+    },
+    "./proof-kit/convex-test": {
+      "types": "./dist/manifest/proof-kit/convex-test/index.d.ts",
+      "import": "./dist/manifest/proof-kit/convex-test/index.js"
+    },
     "./ir": {
       "types": "./dist/manifest/ir.d.ts",
       "import": "./dist/manifest/ir.js"
@@ -405,6 +413,8 @@
   "peerDependencies": {
     "@libsql/client": ">=0.14",
     "@supabase/supabase-js": "^2",
+    "convex": ">=1.32.0",
+    "convex-test": ">=0.0.43",
     "ioredis": "^5",
     "mongodb": "^6"
   },
@@ -413,6 +423,12 @@
       "optional": true
     },
     "@supabase/supabase-js": {
+      "optional": true
+    },
+    "convex": {
+      "optional": true
+    },
+    "convex-test": {
       "optional": true
     },
     "ioredis": {

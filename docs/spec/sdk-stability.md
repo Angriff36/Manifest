@@ -21,6 +21,11 @@ for Builder and other platform consumers.
 - `./config`
 - `./language-metadata`
 - `./seed-pack`
+- `./proof-kit` (capability catalog, proof registry, integration guard engine;
+  must not require `convex-test`)
+- `./proof-kit/convex-test` (optional Convex runtime proof adapter; apps install
+  `convex-test` as a devDependency — see
+  `docs/internal/plans/2026-07-16-dx-proof-kit-boundary.md`)
 
 The `./projections` subpath includes the projection descriptor API
 (`ProjectionDescriptor`, `describeProjection`, `listProjectionDescriptors`,
