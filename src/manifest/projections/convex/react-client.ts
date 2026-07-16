@@ -19,6 +19,7 @@ import {
   resolveReactClientPathHint,
 } from './react-api-import.js';
 import { resolveConvexReadVisibility } from './read-policies.js';
+import { commandCreationEntry, commandCreationExportName } from './creation-entry.js';
 
 export const SURFACE_REACT = 'convex.react' as const;
 
@@ -127,6 +128,17 @@ export function generateReactClient(
       lines.push(`/** Mutation hook for ${entity.name}.${cmd.name}. */`);
       lines.push(`export function ${hookName}() {`);
       lines.push(`  return useMutation(api.mutations.${mutName});`);
+      lines.push(`}`);
+      lines.push('');
+      hookCount += 1;
+    }
+
+    const creationEntry = commandCreationEntry(ir, entity);
+    if (creationEntry) {
+      const mutationName = commandCreationExportName(entity.name, creationEntry.name);
+      lines.push(`/** Governed creation hook for ${entity.name}.${creationEntry.name}. */`);
+      lines.push(`export function useCreate${entity.name}() {`);
+      lines.push(`  return useMutation(api.mutations.${mutationName});`);
       lines.push(`}`);
       lines.push('');
       hookCount += 1;

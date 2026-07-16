@@ -127,9 +127,11 @@ describe('M2 — transitions', () => {
     expect(code).toMatch(/__to = "cancelled"/);
   });
 
-  it('allows an instance creation command to reassert its preallocated lifecycle value', () => {
+  it('limits same-state lifecycle initialization to the generated creation wrapper', () => {
     const code = gen(orderIR(), 'convex.mutations').artifacts[0].code;
-    expect(code).toContain('__from !== __to && Object.hasOwn(__allowed, __from)');
+    expect(code).toContain('!(__creation && __from === __to) && Object.hasOwn(__allowed, __from)');
+    expect(code).toContain('await __runOrderAdvance(ctx, { ...args, docId }, true)');
+    expect(code).not.toContain('__from !== __to && Object.hasOwn(__allowed, __from)');
   });
 
   it('emits CONVEX_TRANSITION_UNUSED when command does not mutate the property', () => {
@@ -561,7 +563,7 @@ describe('M7 — versionProperty OCC', () => {
 
   it('emits OCC check + increment on update mutations', () => {
     const mut = gen(versionedIR(), 'convex.mutations').artifacts[0].code;
-    const rename = mut.slice(mut.indexOf('export const Doc_rename'));
+    const rename = mut.slice(mut.indexOf('async function __runDocRename'));
     expect(rename).toContain('version: v.optional(v.number())');
     expect(rename).toContain('ConcurrencyConflict: VERSION_MISMATCH');
     expect(rename).toContain('version: ((doc as any).version ?? 0) + 1');

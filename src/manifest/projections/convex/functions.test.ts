@@ -1186,9 +1186,9 @@ describe('convex.mutations — create (param-style) & reactions', () => {
       },
     ];
     const code = mutations(ir).artifacts[0].code;
-    // tenantId auto-threaded from the source event into the Board insert
+    // tenantId is threaded into the governed Board creation command.
     expect(code).toContain(
-      'await ctx.db.insert("boards", { tenantId: payload.tenantId, name: payload.title } as any)',
+      'await __runBoardCreate(ctx, { tenantId: payload.tenantId, name: payload.title } as any)',
     );
   });
 
@@ -1227,7 +1227,7 @@ describe('convex.mutations — create (param-style) & reactions', () => {
       },
     ];
     const code = mutations(ir).artifacts[0].code;
-    expect(code).toContain('await ctx.db.insert("logs", { msg: "hi" } as any)');
+    expect(code).toContain('await __runLogCreate(ctx, { msg: "hi" } as any)');
     expect(code).not.toContain('tenantId: payload.tenantId');
   });
 
@@ -1271,7 +1271,7 @@ describe('convex.mutations — create (param-style) & reactions', () => {
     ];
     const code = mutations(ir).artifacts[0].code;
     expect(code).toContain('await ctx.db.insert("manifestEvents", {'); // event row (namespaced system table)
-    expect(code).toContain('await ctx.db.insert("boards", { name: payload.title } as any)'); // reaction create with resolved param
+    expect(code).toContain('await __runBoardCreate(ctx, { name: payload.title } as any)'); // governed reaction create with resolved param
     expect(code).not.toContain('TODO');
   });
 });
@@ -1681,7 +1681,7 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
       {
         name: 'deactivate',
         entity: 'Child',
-        parameters: [{ name: 'reason', type: { kind: 'primitive', name: 'string' } }],
+        parameters: [{ name: 'reason', type: { name: 'string', nullable: false }, required: true }],
         guards: [],
         constraints: [],
         actions: [],
@@ -1721,7 +1721,7 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
     expect(code).not.toContain('payload.payload');
   });
 
-  it('renders an indexed query + per-row runMutation loop for a fan-out reaction', () => {
+  it('renders an indexed query + per-row governed command loop for a fan-out reaction', () => {
     const ir = emptyIR();
     ir.entities = [
       entity('Parent', [prop('status', 'string', ['required'])]),
@@ -1787,14 +1787,13 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
       },
     ] as IRReactionRule[];
     const code = mutations(ir).artifacts[0].code;
-    // the sibling-mutation dispatch import is emitted only when runMutation is used
-    expect(code).toContain('import { api } from "./_generated/api";');
+    expect(code).not.toContain('import { api } from "./_generated/api";');
     // indexed FK field → withIndex by_parentId; matchSource self.id → payload.id
     expect(code).toContain('withIndex("by_parentId", (q) => q.eq("parentId", payload.id))');
     // per-match governed dispatch (target's own mutation, with its docId)
     expect(code).toContain('for (const __row of fanRows0) {');
     expect(code).toContain(
-      'ctx.runMutation(api.mutations.Child_deactivate, { docId: (__row as any)._id }',
+      'await __runChildDeactivate(ctx, { docId: (__row as any)._id }',
     );
     // a fan-out reaction must NOT render the single-target resolve/patch path
     expect(code).not.toContain('reactionTarget0');
@@ -1920,15 +1919,15 @@ describe('convex.mutations — aggregate count reactions (`count(E where fk == v
       },
     ] as IRReactionRule[];
     const code = mutations(ir).artifacts[0].code;
-    // FK predicate (stationId) drives the index; self.stationId → doc.stationId (single-target scope)
-    expect(code).toContain('withIndex("by_stationId", (q) => q.eq("stationId", doc.stationId))');
+    // Reaction self resolves to the flat emitted payload.
+    expect(code).toContain('withIndex("by_stationId", (q) => q.eq("stationId", payload.stationId))');
     // remaining equality predicate (status) applied as a JS filter, then counted
     expect(code).toContain('.filter((d) => (d as any).status === "in_progress")');
     expect(code).toContain('.length;');
     // the count variable is bound to the reaction param and patched onto the parent
     expect(code).toContain('currentTaskCount: __count0');
     expect(code).toContain(
-      'ctx.db.patch(reactionTarget0 as any, { currentTaskCount: __count0 } as any)',
+      'await __runStationSyncTaskCount(ctx, { docId: reactionTarget0, currentTaskCount: __count0 } as any)',
     );
   });
 
@@ -1994,7 +1993,7 @@ describe('convex.mutations — aggregate count reactions (`count(E where fk == v
       },
     ] as IRReactionRule[];
     const code = mutations(ir).artifacts[0].code;
-    expect(code).toContain('withIndex("by_scheduleId", (q) => q.eq("scheduleId", doc.scheduleId))');
+    expect(code).toContain('withIndex("by_scheduleId", (q) => q.eq("scheduleId", payload.scheduleId))');
     // single predicate → no extra filter chain, just .length
     expect(code).toContain('__count0_rows.length;');
     expect(code).toContain('shiftCount: __count0');
@@ -2054,7 +2053,7 @@ describe('convex.mutations — aggregate count reactions (`count(E where fk == v
     const code = res.artifacts[0].code;
     // no index → plain query (no withIndex), predicate applied as a JS filter
     expect(code).not.toContain('withIndex(');
-    expect(code).toContain('.filter((d) => (d as any).bucket === doc.bucket)');
+    expect(code).toContain('.filter((d) => (d as any).bucket === payload.bucket)');
     expect(res.diagnostics.some((d) => d.code === 'CONVEX_AGGREGATE_UNINDEXED')).toBe(true);
   });
 });

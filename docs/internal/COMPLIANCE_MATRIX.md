@@ -1,7 +1,7 @@
 ---
 title: Manifest Feature Completion Compliance Matrix
 created: 2026-02-28
-updated: 2026-07-15
+updated: 2026-07-16
 source_of_truth: true
 source_of_truth_for: Manifest-owned feature completion; this is the sole completion authority
 scope: Manifest-owned feature completion only — language/syntax, compiler/AST/IR, runtime semantics, projections, analysis/verification APIs, stable public SDK contracts
@@ -14,6 +14,7 @@ companion_checklist: docs/TODO.md
 ---
 
 <!-- Edit 2026-07-16: contract-tests list/get skip aligned to resolveConvexReadVisibility + authContextImport (CLAIMED_NEEDS_PROOF notes) -->
+<!-- Edit 2026-07-16: governed Convex creation entries, creation-only lifecycle initialization, and governed reaction dispatch (tests; SHA after commit) -->
 <!-- Edit 2026-07-15: Convex bare-emit payloads, seed typed/deduped/persistent-only, assembly verify event+seed coherence (tests; SHA after commit) -->
 <!-- Edit 2026-07-15: Convex G7 id/previous*, react api path, auth-public queries, seed fill (tests; SHA after commit) -->
 <!-- Edit 2026-07-15: PB023 Convex count_of(self.hasMany, λ) mutation guards marked FULLY_IMPLEMENTED @ df9bd7a -->
@@ -142,6 +143,9 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | FEATURE-LIST → registry inventory (M12)                     | FULLY_IMPLEMENTED     | `scripts/generate-feature-list.ts:1-301` @ `e0ffb716ffc627fdfe7bdb8df8ea6882be3dff66`; `src/manifest/feature-list-generator.test.ts:1-52` @ same; `package.json` `docs:feature-list` / `docs:check:feature-list`                                                                                                                                                                                                          |
 | [x]    | Convex realtime/cache PARTIAL reclass                       | FULLY_IMPLEMENTED     | `capabilities.ts` @ `03a019efbeddbf2bc177b745957de81c5a9384a1` (`CONVEX_PARTIAL_REALTIME` / `CONVEX_PARTIAL_COMPUTED_CACHE`); `semantics.test.ts` @ same                                                                                                                                                                                                                                                                  |
 | [x]    | Convex `count_of(self.hasMany, λ)` mutation guards          | FULLY_IMPLEMENTED     | `expression.ts:227-257` @ `df9bd7a64f0b34fa642eda460a8bb994532979e9`; `count-of-preload.ts:1-113` @ same; `functions.ts:1091-1101,1198` @ same; `count-of-preload.test.ts` @ same                                                                                                                                                                                                                                         |
+| [~]    | Convex governed creation entry for named initialization commands | CLAIMED_NEEDS_PROOF | `src/manifest/projections/convex/creation-entry.ts`, `functions.ts`, `react-client.ts`; `governed-creation.test.ts` (SHA after commit) |
+| [~]    | Convex creation-only initial-state reassertion              | CLAIMED_NEEDS_PROOF   | `src/manifest/projections/convex/transitions.ts`; `governed-creation.test.ts`, `semantics.test.ts` (SHA after commit) |
+| [~]    | Convex reactions dispatch governed target commands          | CLAIMED_NEEDS_PROOF   | `src/manifest/projections/convex/functions.ts`; `governed-reactions.test.ts`, `functions.test.ts` (SHA after commit) |
 | [x]    | Park unpublished sub-packages (mcp/lsp/stdlib/vscode)       | FULLY_IMPLEMENTED     | `packages/*/package.json` `"private": true` @ `500f14712174bee2c989c869980ced8fd1397505`; `parked-packages.test.ts` @ same                                                                                                                                                                                                                                                                                                |
 | [x]    | Language type `timestamp` (= `datetime` alias)              | FULLY_IMPLEMENTED     | `date-time.ts:12-18` @ `22c7792cf045450ab02fdccd982bfbf5551f4978`; `runtime-engine.ts:2676-2694` @ same; `runtime-datetime-validation.test.ts` @ same; typescript-types + projection maps @ same; semantics § Date/Time                                                                                                                                                                                                   |
 | [x]    | Appendix E: `map<string,V>` sugar (= `map<V>`)              | FULLY_IMPLEMENTED     | `parser.ts:1316-1341` @ `dc52bb5daa23fad540252654862a3b1db5ed23c6`; fixture `73`; semantics Properties                                                                                                                                                                                                                                                                                                                    |

@@ -430,7 +430,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "@vitest/coverage-v8": "4.0.18",
     "assemblyscript": "^0.27.37",
-    "autoprefixer": "^10.5.3",
+    "autoprefixer": "^10.5.4",
     "dpdm": "^4.2.0",
     "eslint": "^9.39.5",
     "eslint-plugin-react-hooks": "^7.1.1",

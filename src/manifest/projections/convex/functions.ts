@@ -19,6 +19,7 @@ import type {
   IREntity,
   IRExpression,
   IRPolicy,
+  IRProperty,
   IRReactionParam,
   IRReactionRule,
   IRValue,
@@ -50,6 +51,11 @@ import {
   type RenderResult,
 } from './expression.js';
 import { renderTransitionChecks } from './transitions.js';
+import {
+  commandCreationEntry,
+  commandCreationExportName,
+  commandRunnerName,
+} from './creation-entry.js';
 import {
   convexCreateVersionDocLines,
   isConvexVersionManagedField,
@@ -934,9 +940,8 @@ function renderReactions(
     // Fan-out reaction: dispatch the command on every target row where
     // row.<matchField> == matchSource. matchSource + params resolve against the
     // event payload (self === payload, matching the reference runtime). Each
-    // match runs the GENERATED target mutation via ctx.runMutation, so the
-    // target command's own governance/actions run — exactly what hand-written
-    // after-emit middleware does. Prefer the schema index (FK/indexed fields
+    // match runs the generated target command runner in the same transaction,
+    // so the target command's own governance/actions run. Prefer the schema index (FK/indexed fields
     // carry by_<field>); fall back to a table-scan filter otherwise.
     if (reaction.fanOut) {
       const fanScope: RenderScope = {
@@ -978,13 +983,16 @@ function renderReactions(
       lines.push(`    const ${rowsVar} = await ${queryExpr}.collect();`);
       lines.push(`    for (const __row of ${rowsVar}) {`);
       lines.push(
-        `      await ctx.runMutation(api.mutations.${reaction.targetEntity}_${reaction.targetCommand}, { docId: (__row as any)._id${fanParams.length ? ', ' + fanParams.join(', ') : ''} } as any);`,
+        `      await ${commandRunnerName(reaction.targetEntity, reaction.targetCommand)}(ctx, { docId: (__row as any)._id${fanParams.length ? ', ' + fanParams.join(', ') : ''} } as any);`,
       );
       lines.push(`    }`);
       return;
     }
 
-    const scope: RenderScope = { selfVar: 'doc', globals: ['payload', 'user', 'context', 'args'] };
+    const scope: RenderScope = {
+      selfVar: 'payload',
+      globals: ['payload', 'user', 'context', 'args'],
+    };
     const paramEntries: string[] = [];
     const paramPreLines: string[] = [];
     const paramNamesSeen = new Set<string>();
@@ -1011,11 +1019,11 @@ function renderReactions(
     for (const pl of paramPreLines) lines.push(pl);
     if (reaction.targetCommand === 'create') {
       lines.push(
-        `    await ctx.db.insert("${targetTable}", { ${paramEntries.join(', ')} } as any);`,
+        `    await ${commandRunnerName(reaction.targetEntity, reaction.targetCommand)}(ctx, { ${paramEntries.join(', ')} } as any);`,
       );
     } else {
       const resolve = renderExpression(reaction.resolve, {
-        selfVar: 'doc',
+        selfVar: 'payload',
         globals: ['payload', 'user', 'context', 'args'],
       });
       const varName = `reactionTarget${idx}`;
@@ -1032,7 +1040,7 @@ function renderReactions(
       } else {
         lines.push(`    const ${varName} = ${resolve.code};`);
         lines.push(
-          `    if (${varName}) await ctx.db.patch(${varName} as any, { ${paramEntries.join(', ')} } as any);`,
+          `    if (${varName}) await ${commandRunnerName(reaction.targetEntity, reaction.targetCommand)}(ctx, { docId: ${varName}${paramEntries.length ? ', ' + paramEntries.join(', ') : ''} } as any);`,
         );
       }
     }
@@ -1068,6 +1076,127 @@ function authBindings(bodyText: string, options: Normalized, forceAuth = false):
   return lines;
 }
 
+function creationSeedFallback(ir: IR, property: IRProperty, validator: string): string | undefined {
+  if (property.defaultValue) return defaultToTs(property.defaultValue, validator);
+  if (property.autoNow) return 'Date.now()';
+  if (!property.modifiers.includes('required') || property.type.nullable) return undefined;
+  if (property.type.name === 'boolean') return 'false';
+  if (property.type.name === 'array' || property.type.name === 'list') return '[]';
+  if (/\bv\.int64\(\)/.test(validator)) return '0n';
+  if (/\bv\.number\(\)/.test(validator)) return '0';
+  if (/\bv\.string\(\)/.test(validator)) return '""';
+  const enumType = ir.enums.find((item) => item.name === property.type.name);
+  if (enumType?.values[0]) return JSON.stringify(enumType.values[0].name);
+  return undefined;
+}
+
+function renderGovernedCreationEntry(
+  ir: IR,
+  options: Normalized,
+  entity: IREntity,
+  cmd: IRCommand,
+  table: string,
+  runnerName: string,
+  tenantScoped: boolean,
+  writeTenantProp: string | undefined,
+  encryptionActive: boolean,
+  mutationEncrypted: string[],
+): { code?: string; diagnostics: ProjectionDiagnostic[] } {
+  const diagnostics: ProjectionDiagnostic[] = [];
+  const fkTargets = collectFkTargets(entity, ir, options);
+  const params = cmd.parameters ?? [];
+  const paramNames = new Set(params.map((param) => param.name));
+  const actionByTarget = new Map(
+    (cmd.actions ?? [])
+      .filter((action) => action.kind === 'mutate' && action.target)
+      .map((action) => [action.target!, action]),
+  );
+  const seedLines: string[] = [];
+
+  for (const property of entity.properties) {
+    if (property.name === 'id') continue;
+    if (tenantScoped && property.name === writeTenantProp) {
+      seedLines.push(`      ${property.name}: __auth.${property.name}`);
+      continue;
+    }
+    if (isConvexVersionManagedField(entity, property.name)) continue;
+    const built = buildValidator(
+      entity,
+      property,
+      ir,
+      options,
+      fkTargets.get(property.name),
+    );
+    diagnostics.push(...built.diagnostics);
+    if (!built.validator) continue;
+
+    const action = actionByTarget.get(property.name);
+    if (action) {
+      const rendered = renderExpression(action.expression, {
+        selfVar: 'args',
+      });
+      if (rendered.unresolved.length === 0 && !/\bself\b|\bthis\b/.test(rendered.code)) {
+        seedLines.push(`      ${property.name}: ${rendered.code}`);
+        continue;
+      }
+    }
+    if (paramNames.has(property.name)) {
+      const fallback = creationSeedFallback(ir, property, built.validator);
+      seedLines.push(
+        `      ${property.name}: args.${property.name}${fallback === undefined ? '' : ` ?? ${fallback}`}`,
+      );
+      continue;
+    }
+    const fallback = creationSeedFallback(ir, property, built.validator);
+    if (fallback !== undefined) {
+      seedLines.push(`      ${property.name}: ${fallback}`);
+      continue;
+    }
+    if (property.modifiers.includes('required') && !property.type.nullable) {
+      diagnostics.push({
+        severity: 'warning',
+        code: 'CONVEX_CREATION_ENTRY_UNSEEDABLE',
+        entity: entity.name,
+        message: `Cannot emit governed creation entry for '${entity.name}.${cmd.name}': required field '${property.name}' has no default, command value, or safe Convex seed.`,
+      });
+      return { diagnostics };
+    }
+  }
+  // This is an allocation shell, not the completed creation write. The
+  // governed command below performs the first version increment.
+  if (entity.versionProperty) seedLines.push(`      ${entity.versionProperty}: 0`);
+  if (entity.versionAtProperty) {
+    seedLines.push(`      ${entity.versionAtProperty}: Date.now()`);
+  }
+
+  const argLines = params.map(
+    (param) =>
+      `    ${param.name}: ${param.required ? paramValidator(param.type) : `v.optional(${paramValidator(param.type)})`}`,
+  );
+  const exportName = commandCreationExportName(entity.name, cmd.name);
+  const authLines = authBindings(seedLines.join('\n'), options, tenantScoped);
+  const seedVar = encryptionActive ? '__storedSeed' : '__seed';
+  const code =
+    `export const ${exportName} = mutation({\n` +
+    `  args: {\n${argLines.join(',\n')}\n  },\n` +
+    `  handler: async (ctx, args: any) => {\n` +
+    (authLines.length ? authLines.join('\n') + '\n' : '') +
+    `    const __seed: Record<string, any> = {\n${seedLines.join(',\n')}\n    };\n` +
+    (encryptionActive
+      ? `    const __storedSeed = await __encryptDoc(ctx, ${JSON.stringify(entity.name)}, ${JSON.stringify(mutationEncrypted)}, __seed);\n`
+      : '') +
+    `    const docId = await ctx.db.insert("${table}", ${seedVar} as any);\n` +
+    `    try {\n` +
+    `      await ${runnerName}(ctx, { ...args, docId }, true);\n` +
+    `      return { docId };\n` +
+    `    } catch (error) {\n` +
+    `      await ctx.db.delete(docId);\n` +
+    `      throw error;\n` +
+    `    }\n` +
+    `  },\n});`;
+  return { code, diagnostics };
+}
+
 function generateMutation(
   ir: IR,
   options: Normalized,
@@ -1080,6 +1209,7 @@ function generateMutation(
   const diagnostics: ProjectionDiagnostic[] = [];
   const table = resolveConvexTableName(entity.name, options);
   const name = `${entity.name}_${cmd.name}`;
+  const runnerName = commandRunnerName(entity.name, cmd.name);
   const fkTargets = collectFkTargets(entity, ir, options);
   const isCreate = cmd.name === 'create';
   const paramNames = (cmd.parameters ?? []).map((p) => p.name);
@@ -1248,9 +1378,7 @@ function generateMutation(
     const authLines = authBindings(bodyText, options, tenantScoped);
 
     const body =
-      `export const ${name} = mutation({\n` +
-      `  args: {\n${argLines.join(',\n')}\n  },\n` +
-      `  handler: async (ctx, args: any) => {\n` +
+      `async function ${runnerName}(ctx: any, args: any) {\n` +
       (authLines.length ? authLines.join('\n') + '\n' : '') +
       `    const doc: Record<string, any> = {\n${docLines.join(',\n')}\n    };\n` +
       (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
@@ -1261,7 +1389,10 @@ function generateMutation(
       payloadBinding +
       (tail ? tail + '\n' : '') +
       stripPrivateFromReturn('{ _id, ...doc }', mutationPrivates) +
-      `  },\n});`;
+      `}\n\n` +
+      `export const ${name} = mutation({\n` +
+      `  args: {\n${argLines.join(',\n')}\n  },\n` +
+      `  handler: ${runnerName},\n});`;
     return { code: body, diagnostics };
   }
 
@@ -1326,7 +1457,7 @@ function generateMutation(
     resolvedUpdates.push({ target: a.target, expression: a.expression, renderedCode: code });
   }
 
-  const transitions = renderTransitionChecks(entity, cmd, 'doc', resolvedUpdates);
+  const transitions = renderTransitionChecks(entity, cmd, 'doc', resolvedUpdates, '__creation');
   diagnostics.push(...transitions.diagnostics);
 
   // Post-action snapshot for G7 / schema synthesis. Current fields → `__after`;
@@ -1404,10 +1535,8 @@ function generateMutation(
     : '';
 
   const updateFieldLines = [...updateLines, ...versionOcc.updateFields];
-  const body =
-    `export const ${name} = mutation({\n` +
-    `  args: {\n${argLines.join(',\n')}\n  },\n` +
-    `  handler: async (ctx, { docId${argDestructure} }) => {\n` +
+  let body =
+    `async function ${runnerName}(ctx: any, { docId${argDestructure} }: any, __creation = false) {\n` +
     (authLines.length ? authLines.join('\n') + '\n' : '') +
     (encryptionActive
       ? `    const __storedDoc = await ctx.db.get(docId) as Record<string, any> | null;\n` +
@@ -1419,8 +1548,6 @@ function generateMutation(
         ownershipLine) +
     (hasManyPreloads.length ? hasManyPreloads.join('\n') + '\n' : '') +
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
-    // Compute locals before transitions: transition `__to` may reference them
-    // (e.g. Invoice.applyPayment status from `nextDue`).
     (compute.bindings.length ? computeBindingLines(compute.bindings).join('\n') + '\n' : '') +
     (transitions.lines.length ? transitions.lines.join('\n') + '\n' : '') +
     (versionOcc.checkLines.length ? versionOcc.checkLines.join('\n') + '\n' : '') +
@@ -1433,7 +1560,27 @@ function generateMutation(
     payloadBinding +
     (tail ? tail + '\n' : '') +
     stripPrivateFromReturn('{ ...doc, ...updates }', mutationPrivates) +
-    `  },\n});`;
+    `}\n\n` +
+    `export const ${name} = mutation({\n` +
+    `  args: {\n${argLines.join(',\n')}\n  },\n` +
+    `  handler: ${runnerName},\n});`;
+
+  if (commandCreationEntry(ir, entity)?.name === cmd.name) {
+    const creation = renderGovernedCreationEntry(
+      ir,
+      options,
+      entity,
+      cmd,
+      table,
+      runnerName,
+      tenantScoped,
+      writeTenantProp,
+      encryptionActive,
+      mutationEncrypted,
+    );
+    diagnostics.push(...creation.diagnostics);
+    if (creation.code) body += `\n\n${creation.code}`;
+  }
   return { code: body, diagnostics };
 }
 
@@ -1483,16 +1630,12 @@ export function generateMutations(
 
   const policyNote =
     options.policyMode === 'skip' ? ' (policyMode: skip — authorization policies omitted)' : '';
-  // Fan-out reactions dispatch sibling mutations via ctx.runMutation, which
-  // needs the generated `api`. Only import it when actually used (no dead import).
-  const needsApi = /\bctx\.runMutation\b/.test(body);
   const needsAuthCtx = !!options.authContextImport && /\bgetAuthContext\b/.test(body);
   const needsDoc = codeUsesDocType(body);
   const code =
     `${GENERATED_HEADER}\n// ${blocks.length} mutation(s); roles: ${(ir.roles ?? []).length}; policies: ${ir.policies.length}.${policyNote}\n\n` +
     `import { mutation } from "./_generated/server";\n` +
     `import { v } from "convex/values";\n` +
-    (needsApi ? `import { api } from "./_generated/api";\n` : '') +
     (needsDoc ? `import type { Doc } from "./_generated/dataModel";\n` : '') +
     (needsAuthCtx
       ? `import { getAuthContext } from ${JSON.stringify(options.authContextImport)};\n`

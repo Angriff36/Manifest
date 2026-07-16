@@ -37,6 +37,8 @@ export function renderTransitionChecks(
   docVar: string,
   /** Rendered RHS expression per mutate target (already resolved). */
   updates: { target: string; expression: IRExpression; renderedCode: string }[],
+  /** True only while a generated creation entry initializes its seed document. */
+  creationFlagVar?: string,
 ): TransitionCheckResult {
   const diagnostics: ProjectionDiagnostic[] = [];
   const byProp = transitionsByProperty(entity);
@@ -64,6 +66,9 @@ export function renderTransitionChecks(
       ? JSON.stringify((u.expression as { value: { value: string } }).value.value)
       : `String(${u.renderedCode})`;
 
+    const invalidCondition = creationFlagVar
+      ? `!(${creationFlagVar} && __from === __to) && Object.hasOwn(__allowed, __from) && !__allowed[__from].includes(__to)`
+      : `Object.hasOwn(__allowed, __from) && !__allowed[__from].includes(__to)`;
     lines.push(
       `    {`,
       `      const __cur = ${docVar}.${u.target};`,
@@ -71,7 +76,7 @@ export function renderTransitionChecks(
       `        const __from = String(__cur);`,
       `        const __to = ${toExpr};`,
       `        const __allowed: Record<string, string[]> = ${allowedMap};`,
-      `        if (__from !== __to && Object.hasOwn(__allowed, __from) && !__allowed[__from].includes(__to)) {`,
+      `        if (${invalidCondition}) {`,
       `          const __opts = __allowed[__from].map((v) => "'" + v + "'").join(", ");`,
       `          throw new Error("Invalid state transition for " + ${propLabel} + ": '" + __from + "' -> '" + __to + "' is not allowed. Allowed from '" + __from + "': [" + __opts + "]");`,
       `        }`,
