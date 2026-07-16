@@ -4,6 +4,27 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.9] - 2026-07-16
+
+### Fixed
+
+- **Convex `count_of` typing:** emit `Doc<"table">` (or `Record<string, any>`)
+  on generated filter/lambda params so guards like `Event.isReadyForExecution`
+  / `beginExecution` pass strict Convex typecheck (clears TS7006).
+- **Convex react client import:** derive the relative `api` import from the
+  artifact pathHint to `convex/_generated/api` so Builder preset `src/lib`
+  layouts resolve correctly (not under `src/convex`).
+- **Convex query/react visibility:** share `resolveConvexReadVisibility` so
+  gated reads stay `internalQuery` without hooks, while auth-seam renderable
+  policies emit public queries that React `api.queries.*` hooks can call.
+- **Convex event payload identity:** lower logical `self.id` through the shared
+  payload renderer to document `_id`/`docId` so fields like `clientId` keep
+  their names without `__after.id`.
+- **Convex event previous-state:** evaluate command `compute` actions against
+  the pre-update document and expose them as locals for mutate/emit payloads
+  so `previousStatus` / `previousQuantity` keep declared names without
+  `__after.previous*` or prefix guesses.
+
 ## [3.6.8] - 2026-07-15
 
 ### Fixed
