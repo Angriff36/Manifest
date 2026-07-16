@@ -1,0 +1,43 @@
+---
+title: 'Inspect a compiled Manifest model'
+sidebarTitle: 'Inspect the model'
+description: 'Use Builder panels to understand entities, relationships, command flows, diagnostics, metrics, symbols, changes, and IR.'
+---
+
+Builder derives its inspection views from compiler output. Fix compiler errors before relying on projection or assembly results.
+
+## Inspection panels
+
+| Panel   | Use it for                                                                |
+| ------- | ------------------------------------------------------------------------- |
+| Model   | Browse compiled entities and their properties and commands.               |
+| Graph   | Explore entity relationships visually.                                    |
+| Flow    | Follow command, guard, mutation, and event flow.                          |
+| Changes | Compare the current compiled IR with the previous successful compilation. |
+| Checks  | Review compiler diagnostics and completeness findings.                    |
+| Metrics | Inspect model size and complexity measurements.                           |
+| Symbols | Navigate to declarations in the active source or workspace.               |
+| IR      | Inspect the exact compiled intermediate representation.                   |
+
+## Navigate from evidence
+
+Use the Symbols panel or command palette to jump to a declaration. Workspace diagnostics include a logical path; selecting one opens the matching file before moving the editor cursor.
+
+## Compare changes
+
+Builder retains the previous successful IR in the current session. The Changes panel summarizes structural differences rather than comparing raw source lines. Use it to answer questions such as:
+
+- Which entities or commands were added or removed?
+- Did a property type or requiredness change?
+- Which downstream projection surfaces may need regeneration?
+
+The comparison is an authoring aid, not a database migration plan.
+
+## Inspect generated meaning
+
+The IR panel is the clearest boundary between Manifest and Builder. If a rule is absent from IR, Builder cannot make it authoritative by adding UI behavior. Correct the Manifest source or compiler semantics instead.
+
+<Tip>
+  When a projection looks wrong, inspect the IR first, then the projection diagnostics. This
+  separates a source/compiler issue from a Builder routing or assembly issue.
+</Tip>

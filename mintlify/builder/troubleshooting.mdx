@@ -1,0 +1,55 @@
+---
+title: 'Troubleshoot Builder'
+sidebarTitle: 'Troubleshooting'
+description: 'Resolve common Builder workspace, compiler, projection, assembly, regeneration, cloud, and runtime problems.'
+---
+
+<AccordionGroup>
+  <Accordion title="Open Manifest Folder finds no files">
+    Confirm the selected folder contains `.manifest` files. Builder ignores other extensions. In
+    browser environments where directory iteration returns no entries, provide a valid
+    `manifest-workspace.txt` index with normalized relative file paths.
+  </Accordion>
+  <Accordion title="A use directive does not resolve">
+    Open the containing folder as a workspace instead of importing one file. Check the directive's
+    relative path and exact filename casing. Paths containing `.` or `..` traversal segments are
+    rejected.
+  </Accordion>
+  <Accordion title="Projection or assembly buttons are disabled">
+    Compile valid source first. Then select at least one projection and resolve exclusive
+    ORM/framework conflicts. Convex export also requires every preset verification check to pass.
+  </Accordion>
+  <Accordion title="Update mode says ownership manifest missing">
+    Update mode only works for applications created by initial mode and carrying
+    `.builder/ownership.json`. Builder does not guess ownership for an existing untracked
+    application because that could overwrite application code.
+  </Accordion>
+  <Accordion title="An owned file reports a conflict">
+    The file's current SHA-256 hash no longer matches the prior ownership record. Preserve the
+    application edit, move the customization to an app-owned seam, or reconcile it with the newly
+    generated content. Do not edit the ownership hash to bypass review.
+  </Accordion>
+  <Accordion title="package.json reports package-entry-modified">
+    An application changed a dependency or script that Builder previously owned, and the new
+    generated requirement differs. Choose a compatible requirement explicitly. Builder will not
+    replace the whole package file.
+  </Accordion>
+  <Accordion title="--install does not run">
+    Installs run only when the plan reports `dependencyRequirementsChanged: true` and `--install` is
+    present. Lifecycle scripts remain disabled unless you also pass `--allow-lifecycle-scripts`.
+  </Accordion>
+  <Accordion title="Convex source changed but deployment did not">
+    This is expected. Builder reports Convex deployment as a separate follow-up and never executes
+    it. Deploy from the application repository after reviewing the source and using the
+    application's established deployment process.
+  </Accordion>
+  <Accordion title="Cloud save or AI is unavailable">
+    Confirm both `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured, restart the Vite
+    server, and sign in. Local Studio features continue to work without those values.
+  </Accordion>
+  <Accordion title="A Run command timed out">
+    The panel stops waiting after two seconds, but the underlying execution may still finish.
+    Refresh the runtime context before running another command. Treat Studio execution as an
+    authoring aid, not production transaction evidence.
+  </Accordion>
+</AccordionGroup>

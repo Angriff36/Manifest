@@ -1,0 +1,73 @@
+---
+title: 'Builder: the visual control plane for Manifest applications'
+sidebarTitle: 'Introduction'
+description: 'Understand how Builder edits Manifest source, inspects compiled models, generates projections, assembles applications, and manages generated-file ownership.'
+---
+
+Builder is a browser-based studio and application-generation control plane for [Manifest](https://manifest.build). You edit one or more `.manifest` source files, compile them to Manifest IR, inspect the resulting model, generate projection artifacts, and assemble runnable application packages.
+
+Builder does not replace Manifest. Manifest owns the language, compiler, IR, runtime semantics, and projection implementations. Builder owns the authoring environment, project orchestration, visualization, assembly presets, and generated-application lifecycle.
+
+## What you can do
+
+<CardGroup cols={2}>
+  <Card title="Author and compile" icon="code" href="/builder/concepts/workspaces">
+    Edit a single document or open a folder of related Manifest source files with live compiler
+    diagnostics.
+  </Card>
+  <Card title="Inspect the model" icon="diagram-project" href="/builder/guides/inspect-model">
+    Browse entities, relationships, flows, symbols, metrics, changes, and compiled IR.
+  </Card>
+  <Card title="Generate projections" icon="layers" href="/builder/guides/generate-projections">
+    Preview registered Manifest projections and their emitted source artifacts.
+  </Card>
+  <Card title="Assemble applications" icon="box" href="/builder/guides/assemble-project">
+    Combine compatible projections with Builder-owned project wiring and package metadata.
+  </Card>
+  <Card title="Regenerate safely" icon="rotate" href="/builder/guides/safe-regeneration">
+    Update only recognized Builder-owned files with conflict detection, package merging, and
+    rollback.
+  </Card>
+  <Card title="Run commands" icon="play" href="/builder/guides/run-commands">
+    Exercise compiled commands against an isolated Studio runtime and inspect state and events.
+  </Card>
+</CardGroup>
+
+## The core workflow
+
+```text
+.manifest source
+      |
+      v
+Manifest compiler -> IR + diagnostics
+      |                    |
+      |                    +-> graphs, checks, flows, metrics, symbols
+      v
+Manifest projections -> generated source artifacts
+      |
+      v
+Builder assembly -> project file map + assembly report
+      |
+      v
+initial build or ownership-aware update
+```
+
+<Info>
+  Builder can run locally without a backend. Supabase configuration is optional and enables sign-in,
+  cloud project synchronization, share links, and the authenticated AI edge function.
+</Info>
+
+## Safety boundary
+
+Assembly creates a desired file map. Filesystem project generation is a separate operation with two explicit modes:
+
+- **Initial** creates a new application and records every generated file in `.builder/ownership.json`.
+- **Update** requires that ownership manifest, previews the plan, and changes only recognized Builder-owned files.
+
+Builder never implicitly deploys Convex, initializes a deployment, changes environment variables, runs migrations or seeds, or clears application data.
+
+## Next steps
+
+- [Run Builder locally](/builder/quickstart)
+- [Learn the workspace model](/builder/concepts/workspaces)
+- [Understand safe regeneration](/builder/guides/safe-regeneration)

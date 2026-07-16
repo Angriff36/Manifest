@@ -130,6 +130,43 @@
             "pages": ["faq", "troubleshooting"]
           }
         ]
+      },
+      {
+        "tab": "Builder",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["builder/introduction", "builder/quickstart"]
+          },
+          {
+            "group": "Model and Inspect",
+            "pages": [
+              "builder/concepts/workspaces",
+              "builder/guides/inspect-model",
+              "builder/guides/generate-projections"
+            ]
+          },
+          {
+            "group": "Generate Applications",
+            "pages": [
+              "builder/guides/assemble-project",
+              "builder/guides/safe-regeneration",
+              "builder/reference/project-generation-cli"
+            ]
+          },
+          {
+            "group": "Run and Collaborate",
+            "pages": [
+              "builder/guides/run-commands",
+              "builder/reference/cloud-and-ai",
+              "builder/reference/panels"
+            ]
+          },
+          {
+            "group": "Help",
+            "pages": ["builder/troubleshooting"]
+          }
+        ]
       }
     ]
   }

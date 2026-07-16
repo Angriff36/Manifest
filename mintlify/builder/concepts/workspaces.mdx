@@ -1,0 +1,50 @@
+---
+title: 'Documents, folders, and cloud projects'
+sidebarTitle: 'Workspaces'
+description: 'Learn how Builder handles single Manifest documents, local multi-file workspaces, drafts, templates, and cloud projects.'
+---
+
+Builder has three authoring scopes. Choose the narrowest one that matches your source layout.
+
+## Single document
+
+A single document is one editor buffer. You can create it from a built-in template, import a `.manifest` or plain-text file, drag a file into the app, or download the current source.
+
+When the browser grants a writable file handle, Builder can save changes back to that file. Permission is always browser-controlled.
+
+## Local folder workspace
+
+**Open Manifest Folder** loads the `.manifest` files in a selected directory tree. Builder creates a logical workspace with:
+
+- normalized relative paths;
+- an active source file;
+- a combined project compilation across all files;
+- dirty-path tracking;
+- direct saves back to granted file handles;
+- navigation from cross-file diagnostics to the relevant source.
+
+`use` directives resolve against the workspace file map. Builder rejects path traversal shapes such as `.` and `..` and ignores non-Manifest files during workspace discovery.
+
+<Note>
+  Folder access depends on the File System Access API. When directory iteration is unavailable,
+  Builder can use a `manifest-workspace.txt` index supplied by the selected workspace.
+</Note>
+
+## Cloud projects
+
+With Supabase configured and a user signed in, Builder can save named projects, keep revisions, create share links, and synchronize queued offline saves. If the cloud copy changed while you were offline, Builder presents a conflict instead of silently replacing either version.
+
+Cloud features are optional. Local compilation and generation do not depend on them.
+
+## Drafts and templates
+
+Builder keeps recovery drafts in browser storage. On restart, you can restore or discard the pending draft.
+
+User templates are also stored locally, separately from projects and drafts. Template JSON includes a kind and version marker; Builder validates the file before importing it.
+
+## Saving safely
+
+- Save all dirty workspace paths before closing a folder.
+- Resolve cloud conflicts explicitly with **Keep mine**, **Use cloud version**, or **Save copy**.
+- Treat browser storage as convenience state, not your only source control.
+- Keep application regeneration separate from saving Manifest source. They have different ownership rules.

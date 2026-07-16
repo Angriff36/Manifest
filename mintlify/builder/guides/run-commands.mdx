@@ -1,0 +1,42 @@
+---
+title: 'Run Manifest commands in Studio'
+sidebarTitle: 'Run commands'
+description: "Execute compiled commands in Builder's isolated runtime, provide inputs, and inspect state, policy failures, guard failures, and events."
+---
+
+The Run panel creates an isolated runtime session from the current compiled IR. Use it to inspect command behavior while authoring a model.
+
+## Execution context
+
+Studio currently creates the runtime with this fixed authoring context:
+
+```typescript
+{
+  source: 'ui',
+  user: { id: 'studio-user', role: 'admin' }
+}
+```
+
+The panel lists entity commands and their parameters, guards, policies, and declared events. Enter parameter values and execute the command.
+
+## Outcomes
+
+Builder distinguishes:
+
+- successful execution and resulting state;
+- guard failures with the formatted failed condition;
+- policy denials with policy name and message;
+- general runtime errors;
+- a two-second UI timeout.
+
+Successful outcomes include state before and after execution when the runtime can read it, plus emitted event names and payloads.
+
+<Warning>
+  The timeout stops waiting in the UI; it does not cancel the underlying runtime promise. The
+  command may still finish. Refresh the execution context before running another command after a
+  timeout.
+</Warning>
+
+## What Run is not
+
+The Studio runtime is not a production environment, database migration tool, seed runner, or deployment verifier. It does not connect to an existing Convex deployment or application database.

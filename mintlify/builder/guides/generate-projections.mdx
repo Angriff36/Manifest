@@ -1,0 +1,46 @@
+---
+title: 'Generate and preview projections'
+sidebarTitle: 'Generate projections'
+description: 'Select Manifest projection surfaces in Builder, inspect generated artifacts, and understand generation diagnostics and environment limits.'
+---
+
+The Projections panel lists projections registered by the installed `@angriff36/manifest` package. Builder calls the Manifest projection API and displays returned artifacts and diagnostics.
+
+## Preview a projection
+
+1. Compile valid Manifest source.
+2. Open **Projections**.
+3. Select a projection and one of its advertised surfaces.
+4. Review generated files, diagnostics, and any required options.
+
+Builder caches projection generation by IR and request options. A model or option change invalidates the relevant cache entry.
+
+## Projection versus assembly
+
+A projection preview answers, “What does this Manifest surface emit?” Assembly answers, “Can these selected outputs form one coherent project?”
+
+Assembly adds routing, collision checks, package requirements, framework wiring, and application-preset verification. Do not treat a successful projection preview as proof that a complete application is ready.
+
+## Environment-specific tooling
+
+Some Manifest tooling is intentionally unavailable in the browser:
+
+- coverage commands require filesystem paths and a Node project root;
+- generated test tooling requires a provider API key and a Node host;
+- the MCP stdio server must run in a host process, not a browser tab.
+
+Builder reports those host requirements instead of attempting to polyfill them.
+
+## Projection catalog
+
+The repository's generated `PROJECTIONS.md` is the source-backed catalog of registered projections and representative emitted surfaces. Run this check after changing the Manifest package pin:
+
+```bash
+npm run docs:projections:check
+```
+
+If it fails because the installed compiler changed, regenerate and review the catalog:
+
+```bash
+npm run docs:projections
+```

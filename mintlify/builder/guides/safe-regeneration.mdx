@@ -1,0 +1,80 @@
+---
+title: 'Safely create or regenerate an application'
+sidebarTitle: 'Safe regeneration'
+description: 'Use Builder initial and update modes to create owned files, preview changes, detect conflicts, merge package requirements, and roll back failed updates.'
+---
+
+Filesystem project generation has two explicit modes. Both produce a machine-readable plan before writing.
+
+## Initial mode
+
+Use initial mode only for a new application directory. It may create the complete generated structure and initial package configuration.
+
+Initial mode:
+
+- refuses a non-empty or initialized target;
+- requires `--destructive-override` before overwriting existing paths;
+- writes `.builder/ownership.json` after a successful transaction;
+- records a SHA-256 digest for each generated file;
+- records Builder-owned dependency, development dependency, and script entries.
+
+The ownership manifest is control metadata. Keep it in source control with the generated application.
+
+## Update mode
+
+Update mode requires `.builder/ownership.json`. It compares three states:
+
+1. the previously recorded Builder-owned hash;
+2. the current application file;
+3. the newly generated desired content.
+
+The resulting plan contains additions, modifications, conflicts, deletions, dependency-change status, and follow-up actions.
+
+| Situation                                                     | Result                                    |
+| ------------------------------------------------------------- | ----------------------------------------- |
+| New generated path does not exist                             | Addition                                  |
+| Owned file still matches its recorded hash                    | Modification when desired content changed |
+| Owned file contains an unrecognized edit                      | Conflict; no apply                        |
+| New generated path collides with an app-owned file            | Conflict; Builder does not claim it       |
+| Previously owned file is no longer generated and is unchanged | Deletion                                  |
+| Previously owned stale file was edited                        | Conflict; file is preserved               |
+
+## Transaction behavior
+
+Builder stages desired writes and snapshots all affected target files in a sibling temporary directory. It verifies plan preconditions, applies only conflict-free plans, and restores the snapshot if any write or deletion fails.
+
+If the target changes after planning, apply stops and asks you to create a new plan.
+
+## Protected application state
+
+Builder refuses to generate or delete:
+
+- `.env` and `.env.*` files at any depth;
+- `.convex` deployment state;
+- `.vercel`, `.netlify`, and `.firebase` deployment identifiers;
+- `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, and `npm-shrinkwrap.json`.
+
+Application-owned routes, UI, authentication wiring, local configuration, and unrelated files are outside the ownership manifest and are never update targets.
+
+## Package merging
+
+`package.json` is merged by owned entry instead of replaced as a whole.
+
+- Application-added dependencies and scripts remain.
+- An unchanged Builder-owned requirement can be updated or removed.
+- A Builder-owned entry changed by the application becomes a conflict when the new generated requirement differs.
+- Unrelated top-level package fields remain.
+- Lockfiles change only through an explicitly enabled dependency install after requirements changed.
+
+## Installs and lifecycle scripts
+
+`--install` has no effect unless generated dependency requirements changed. Install commands use `--ignore-scripts` by default. Add `--allow-lifecycle-scripts` only after reviewing the package changes.
+
+## Convex follow-up
+
+When Convex source changes, the plan reports a `convex-deploy` follow-up. Builder does not execute it. Review the generated source and deploy from the application repository using that application's established process.
+
+<Warning>
+  Builder never runs Convex deployment, schema deployment, migrations, seeds, resets, table
+  clearing, environment-variable changes, or deployment initialization as part of generation.
+</Warning>

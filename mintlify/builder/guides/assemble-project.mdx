@@ -1,0 +1,47 @@
+---
+title: 'Assemble a generated application'
+sidebarTitle: 'Assemble a project'
+description: 'Combine compatible Manifest projections into a project file map, inspect assembly diagnostics, and export only complete output.'
+---
+
+The Assemble panel combines generated projection artifacts with Builder-owned project wiring. It operates on an in-memory file map; it does not write into an existing application directory.
+
+## Select compatible projections
+
+Builder groups projections by category. ORM and framework selections are exclusive: selecting two ORMs or two frameworks creates an assembly conflict.
+
+The assembler routes known outputs into conventional directories, merges generated dependency requirements, and detects artifact path collisions.
+
+## Review the assembly report
+
+The report separates:
+
+- conflicts between selected projection families;
+- generation errors that block export;
+- warnings that require application configuration;
+- informational verification checks;
+- environment variable names required by selected outputs.
+
+Generated `.env.example` files contain names only. Builder does not write actual environment values.
+
+## Convex application preset
+
+Selecting Convex uses the dedicated Manifest-backed Convex application preset and its assembly verification. Builder does not substitute generic multi-projection output for that preset.
+
+Export is enabled only when the preset is complete. The output contains source and package requirements; it does not select or initialize a Convex deployment.
+
+## Export options
+
+When assembly is complete, you can:
+
+- download the in-memory files as a ZIP for a new project; or
+- open them in StackBlitz for temporary inspection.
+
+<Warning>
+  A ZIP export is not an ownership-aware update. Do not extract it over an existing application. Use
+  the [safe regeneration workflow](/builder/guides/safe-regeneration) for existing projects.
+</Warning>
+
+## Generated authentication
+
+Next.js assembly uses a fail-closed custom authentication seam. Implement the generated application's `lib/auth.ts` before runtime use. The generated stub is not anonymous production authentication.

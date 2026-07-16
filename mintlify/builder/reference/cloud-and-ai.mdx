@@ -1,0 +1,47 @@
+---
+title: 'Cloud, storage, and AI boundaries'
+sidebarTitle: 'Cloud and AI'
+description: 'Understand which Builder features are local, which require Supabase, what is stored in the browser, and how AI credentials remain server-side.'
+---
+
+Builder is local-first. The core studio does not require Supabase.
+
+## Local features
+
+Without cloud configuration you can:
+
+- edit and compile Manifest source;
+- open browser-granted files and folders;
+- use inspection, projection, assembly, and Run panels;
+- keep recovery drafts and user templates in browser storage;
+- download source and assembled ZIP files.
+
+## Supabase-backed features
+
+Set both `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to enable the cloud client. Cloud features include:
+
+- authentication;
+- saved projects and revisions;
+- share links;
+- queued save synchronization and conflict handling;
+- calls to the `manifest-ai` Edge Function.
+
+Builder creates a stable random device identifier in local storage for synchronization behavior.
+
+## AI request path
+
+The browser sends the authoring intent, current IR, and any repair feedback to the authenticated `manifest-ai` Supabase Edge Function. The Edge Function holds the provider credential.
+
+Returned source is compiled before insertion. In a folder workspace, validation uses the full workspace snapshot with the proposed active-file revision.
+
+<Warning>
+  Never expose provider API credentials through `VITE_*` variables. Vite embeds those variables in
+  browser assets.
+</Warning>
+
+## Data handling checklist
+
+- Review Manifest source before sending it to configured AI services.
+- Use repository source control for durable history.
+- Do not treat localStorage drafts or templates as backups.
+- Keep application `.env` files and deployment identifiers outside generated-file ownership.

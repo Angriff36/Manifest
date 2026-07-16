@@ -1,0 +1,70 @@
+---
+title: 'Project generation CLI reference'
+sidebarTitle: 'Generation CLI'
+description: "Reference for Builder's Convex project-generation command, modes, dry runs, apply gates, install flags, and exit behavior."
+---
+
+Builder exposes the safe Convex application generation entrypoint through npm:
+
+```bash
+npm run project:generate:convex -- [options]
+```
+
+The command is a dry run unless `--apply` is present.
+
+## Options
+
+| Option                      | Default                                                   | Meaning                                                                    |
+| --------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `--mode initial\|update`    | `update`                                                  | Select new-project or ownership-aware update behavior.                     |
+| `--ir <path>`               | `C:/projects/Manifest-source/generated/ir/merged.ir.json` | Manifest IR JSON used by the Convex preset.                                |
+| `--target <path>`           | `C:/projects/CapsuleX`                                    | Application directory to plan against.                                     |
+| `--name <name>`             | `capsule`                                                 | Generated project name.                                                    |
+| `--apply`                   | off                                                       | Apply a conflict-free plan.                                                |
+| `--destructive-override`    | off                                                       | Permit initial mode to overwrite generated paths in an initialized target. |
+| `--install`                 | off                                                       | Install only when generated dependency requirements changed.               |
+| `--allow-lifecycle-scripts` | off                                                       | Allow package lifecycle scripts during an explicitly enabled install.      |
+
+## Create a new project
+
+Review the initial plan:
+
+```bash
+npm run project:generate:convex -- \
+  --mode initial \
+  --ir C:/projects/manifest-source/generated/ir/merged.ir.json \
+  --target C:/projects/new-application \
+  --name new-application
+```
+
+After reviewing additions and conflicts, apply it:
+
+```bash
+npm run project:generate:convex -- \
+  --mode initial \
+  --ir C:/projects/manifest-source/generated/ir/merged.ir.json \
+  --target C:/projects/new-application \
+  --name new-application \
+  --apply
+```
+
+## Update an owned project
+
+Run the update without `--apply` first:
+
+```bash
+npm run project:generate:convex -- \
+  --mode update \
+  --ir C:/projects/manifest-source/generated/ir/merged.ir.json \
+  --target C:/projects/existing-application \
+  --name existing-application
+```
+
+The JSON output lists `additions`, `modifications`, `conflicts`, `deletions`, `dependencyRequirementsChanged`, and `followUps`. Resolve every conflict and rerun the plan before adding `--apply`.
+
+## Exit behavior
+
+- Invalid mode or incomplete Convex assembly exits with an error before planning.
+- A plan with conflicts sets exit code `2` and is not applied.
+- A dry run with no conflicts prints the plan and stops.
+- Apply writes transactionally, then optionally runs the gated install.

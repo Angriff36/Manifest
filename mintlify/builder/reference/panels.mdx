@@ -1,0 +1,30 @@
+---
+title: 'Builder panel reference'
+sidebarTitle: 'Panel reference'
+description: "Reference for Builder's model, graph, flow, changes, checks, metrics, symbols, assistant, projections, assemble, run, docs, help, and IR panels."
+---
+
+| Panel       | Source                                | Primary purpose                                    |
+| ----------- | ------------------------------------- | -------------------------------------------------- |
+| Model       | Compiled IR                           | Browse entity structure and commands.              |
+| Graph       | Compiled IR                           | Visualize entity relationships.                    |
+| Flow        | Compiled IR                           | Inspect command and event flow.                    |
+| Changes     | Current and previous IR               | Review structural model changes.                   |
+| Checks      | Diagnostics and completeness analysis | Find compiler and model issues.                    |
+| Metrics     | Compiled model                        | Measure size and complexity.                       |
+| Symbols     | Source index                          | Navigate declarations.                             |
+| Assistant   | IR, source, optional cloud AI         | Scaffold or repair Manifest source.                |
+| Projections | Manifest projection registry          | Preview individual generated surfaces.             |
+| Assemble    | Selected projections and IR           | Build a coherent project file map and report.      |
+| Run         | Isolated runtime session              | Exercise commands and inspect outcomes.            |
+| Docs        | Generated domain documentation        | Preview and download model documentation.          |
+| Help        | Repository `DSL.md`                   | Read the bundled Manifest language reference.      |
+| IR          | Compiler output                       | Inspect the canonical intermediate representation. |
+
+## Keyboard navigation
+
+Open the command palette with `Ctrl+K`. The first ten panels also receive `Ctrl+Alt+<number>` shortcuts based on their displayed order. Use `F8` and `Shift+F8` to move between editor problems.
+
+## Availability
+
+Panels that depend on valid IR may show no result or disable generation when compilation has errors. Fix the source diagnostics first; Builder does not generate from the last successful IR while the active source is invalid.

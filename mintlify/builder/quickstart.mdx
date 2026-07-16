@@ -1,0 +1,74 @@
+---
+title: 'Run Builder locally'
+sidebarTitle: 'Quickstart'
+description: 'Install Builder, start the local Vite application, open Manifest source, and inspect the compiled model.'
+---
+
+You can use Builder's local authoring, compilation, workspace, inspection, projection, assembly, and runtime features without configuring a cloud backend.
+
+## Prerequisites
+
+- Node.js 22 or later
+- npm 10 or later
+- A modern Chromium-based browser for folder access through the File System Access API
+
+<Steps>
+  <Step title="Clone and install">
+
+```bash
+git clone https://github.com/Angriff36/builder.git
+cd builder
+npm install
+```
+
+  </Step>
+  <Step title="Start the development server">
+
+```bash
+npm run dev
+```
+
+Open the local URL printed by Vite, normally `http://localhost:5173`.
+
+  </Step>
+  <Step title="Create or open source">
+
+Use **New document** to start from an empty editor, open a `.manifest` file, or choose **Open Manifest Folder** to load a multi-file workspace.
+
+The editor compiles as you work. The header reports compiler state, and diagnostics appear in the editor and Checks panel.
+
+  </Step>
+  <Step title="Inspect the compiled model">
+
+Open the right panel and switch between Model, Graph, Flow, Checks, Metrics, Symbols, and IR. Projection and assembly actions remain blocked while compilation has errors.
+
+  </Step>
+</Steps>
+
+## Optional cloud configuration
+
+Create a local `.env` file only when you need sign-in, cloud saves, share links, or AI generation:
+
+```bash
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+<Warning>
+  Do not put an Anthropic API key in a `VITE_*` variable. Builder sends authenticated AI requests
+  through the `manifest-ai` Supabase Edge Function so the browser never receives the provider key.
+</Warning>
+
+## Repository checks
+
+Before committing Builder changes, run:
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run build
+npm run docs:projections:check
+```
+
+The projection documentation check verifies that `PROJECTIONS.md` matches the installed Manifest compiler and registered projections.
