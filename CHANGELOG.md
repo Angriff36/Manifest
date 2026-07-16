@@ -4,6 +4,31 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.11] - 2026-07-16
+
+### Changed
+
+- docs: record convex governance proof
+- fix(convex): govern creation and reactions
+- fix(convex): allow idempotent lifecycle writes
+- feat(loop): real GLM/MiniMax triage with Cursor brain and Codex review
+- fix(convex): keep fan-out payload roots flat
+- chore(loop): daily triage update STATE.md + run log [automated] (#50)
+- [docs] add Builder section to Manifest site
+- fix(sonar): continue complexity and reliability quick wins
+- fix(contract-tests): align list/get skip with Convex read visibility
+- fix(loop): force-push disposable daily-triage branch on re-runs
+- fix(loop): fall back to issue when Actions cannot open PRs
+- fix(loop): install pnpm before Node in daily-triage workflow
+- fix(sonar): split SvelteKit import generation helpers (S3776)
+- fix(sonar): replace empty string brand in wiring bindings (S4335)
+- fix(sonar): localeCompare remaining pure string sorts (S2871)
+- fix(sonar): use localeCompare for deterministic string sorts (S2871)
+- fix(sonar): keep KEYWORD_DOCS free of then property (S7739)
+- fix(sonar): remove production void expressions (S3735)
+- fix(sonar): replace empty string intersections with brands (S4335)
+- fix(sonar): defer async store/bus init out of constructors (S7059)
+
 ## [3.6.10] - 2026-07-16
 
 ### Fixed
