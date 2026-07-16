@@ -25,7 +25,7 @@ export function commandCreationEntry(ir: IR, entity: IREntity): IRCommand | unde
           )
           .map((action) => action.target!),
       );
-      const initializesRequiredValue = [...targets].some((target) => {
+      const requiredValuesInitialized = [...targets].filter((target) => {
         const property = properties.get(target)!;
         return (
           property.modifiers.includes('required') &&
@@ -33,20 +33,23 @@ export function commandCreationEntry(ir: IR, entity: IREntity): IRCommand | unde
           !property.autoNow &&
           target !== 'id'
         );
-      });
+      }).length;
       const initializesAt = [...targets].some(
         (target) => target.endsWith('At') && target !== 'updatedAt',
       );
       return {
         command,
         score: targets.size,
-        hasCreationSignal: initializesRequiredValue || initializesAt,
+        requiredValuesInitialized,
+        hasCreationSignal: requiredValuesInitialized > 0 || initializesAt,
       };
     })
     .filter((candidate) => candidate.hasCreationSignal && candidate.score > 0)
     .sort(
       (left, right) =>
-        right.score - left.score || left.command.name.localeCompare(right.command.name),
+        right.requiredValuesInitialized - left.requiredValuesInitialized ||
+        right.score - left.score ||
+        left.command.name.localeCompare(right.command.name),
     );
   return candidates[0]?.command;
 }

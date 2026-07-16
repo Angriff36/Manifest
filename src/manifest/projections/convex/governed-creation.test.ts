@@ -23,6 +23,8 @@ function eventGuestIR(): IR {
       modifiers: ['required'],
       defaultValue: { kind: 'string', value: 'pending' },
     },
+    { name: 'notes', type: { name: 'string', nullable: true }, modifiers: [] },
+    { name: 'correctedAt', type: { name: 'datetime', nullable: true }, modifiers: [] },
   ];
   const entity: IREntity = {
     name: 'EventGuest',
@@ -63,7 +65,16 @@ function eventGuestIR(): IR {
     name: 'assignTable',
     parameters: [],
     guards: [],
-    actions: [{ kind: 'mutate', target: 'name', expression: literal('updated') }],
+    actions: [
+      { kind: 'mutate', target: 'name', expression: literal('updated') },
+      { kind: 'mutate', target: 'rsvpStatus', expression: literal('pending') },
+      { kind: 'mutate', target: 'notes', expression: literal('corrected') },
+      {
+        kind: 'mutate',
+        target: 'correctedAt',
+        expression: { kind: 'call', callee: { kind: 'identifier', name: 'now' }, args: [] },
+      },
+    ],
     emits: [],
   };
   return {

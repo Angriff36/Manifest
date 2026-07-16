@@ -102,6 +102,8 @@ describe('Convex governed reactions', () => {
       surface: 'convex.mutations',
     }).artifacts[0]!.code;
 
+    expect(code).toContain('import { mutation, type MutationCtx } from "./_generated/server";');
+    expect(code).toContain('ctx: MutationCtx');
     expect(code).toContain('payload.eventId');
     expect(code).not.toContain('payload.payload');
     expect(code).toContain('await __runPrepTaskMarkBlocked(ctx, { docId: (__row as any)._id');

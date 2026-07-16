@@ -1378,7 +1378,7 @@ function generateMutation(
     const authLines = authBindings(bodyText, options, tenantScoped);
 
     const body =
-      `async function ${runnerName}(ctx: any, args: any) {\n` +
+      `async function ${runnerName}(ctx: MutationCtx, args: any) {\n` +
       (authLines.length ? authLines.join('\n') + '\n' : '') +
       `    const doc: Record<string, any> = {\n${docLines.join(',\n')}\n    };\n` +
       (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
@@ -1536,7 +1536,7 @@ function generateMutation(
 
   const updateFieldLines = [...updateLines, ...versionOcc.updateFields];
   let body =
-    `async function ${runnerName}(ctx: any, { docId${argDestructure} }: any, __creation = false) {\n` +
+    `async function ${runnerName}(ctx: MutationCtx, { docId${argDestructure} }: any, __creation = false) {\n` +
     (authLines.length ? authLines.join('\n') + '\n' : '') +
     (encryptionActive
       ? `    const __storedDoc = await ctx.db.get(docId) as Record<string, any> | null;\n` +
@@ -1634,7 +1634,7 @@ export function generateMutations(
   const needsDoc = codeUsesDocType(body);
   const code =
     `${GENERATED_HEADER}\n// ${blocks.length} mutation(s); roles: ${(ir.roles ?? []).length}; policies: ${ir.policies.length}.${policyNote}\n\n` +
-    `import { mutation } from "./_generated/server";\n` +
+    `import { mutation, type MutationCtx } from "./_generated/server";\n` +
     `import { v } from "convex/values";\n` +
     (needsDoc ? `import type { Doc } from "./_generated/dataModel";\n` : '') +
     (needsAuthCtx
