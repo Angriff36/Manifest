@@ -4,6 +4,14 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.10] - 2026-07-16
+
+### Fixed
+
+- **ESM multi-compiler imports:** add `.js` extensions on relative imports in
+  `multi-compiler` so Node ESM can load `@angriff36/manifest/multi-compiler`
+  and the CLI `compile --merge` path (extensionless `./version` broke Node 22+).
+
 ## [3.6.9] - 2026-07-16
 
 ### Fixed
