@@ -139,11 +139,12 @@ jobs:
           fi
 
           BRANCH="automated/daily-triage-$(date -u +%Y-%m-%d)"
-          git fetch origin main 2>/dev/null || true
+          git fetch origin main "refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}" 2>/dev/null || true
           git checkout -B "$BRANCH"
           git add STATE.md loop-run-log.md
           git commit -m "chore(loop): daily triage update STATE.md + run log [automated]"
-          git push -u origin "$BRANCH" --force-with-lease
+          # Disposable daily branch — force so re-runs replace stale tip
+          git push -u origin "$BRANCH" --force
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
           BRANCH_URL="${{ github.server_url }}/${{ github.repository }}/tree/${BRANCH}"
