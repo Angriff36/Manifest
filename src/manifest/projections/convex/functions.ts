@@ -69,6 +69,8 @@ import {
 import { renderInlineComputedFields } from './computed.js';
 import {
   commandNeedsAfterSnapshot,
+  computeBindingLines,
+  renderCommandComputeBindings,
   renderEvents,
   unionEmitPayloadFields,
 } from './event-payload.js';
@@ -1234,6 +1236,16 @@ function generateMutation(
   });
   diagnostics.push(...checks.diagnostics);
 
+  // IR `compute` bindings: evaluate against pre-update `doc`, then expose as
+  // locals to mutate actions and emit payloads (semantics.md § Actions).
+  const compute = renderCommandComputeBindings(cmd, {
+    selfVar: 'doc',
+    locals: paramNames,
+  });
+  diagnostics.push(...compute.diagnostics);
+  const computeLocals = compute.localNames;
+  const actionLocals = [...paramNames, ...computeLocals];
+
   const updateLines: string[] = [];
   const resolvedUpdates: {
     target: string;
@@ -1245,7 +1257,7 @@ function generateMutation(
     if (isConvexVersionManagedField(entity, a.target)) continue;
     const { code, unresolved } = renderActionValue(entity, a.target, a.expression, {
       selfVar: 'doc',
-      locals: paramNames,
+      locals: actionLocals,
     });
     if (unresolved.length) {
       diagnostics.push({
@@ -1263,16 +1275,16 @@ function generateMutation(
   const transitions = renderTransitionChecks(entity, cmd, 'doc', resolvedUpdates);
   diagnostics.push(...transitions.diagnostics);
 
-  // Post-action snapshot for G7 emit fields and/or event-schema synthesis on
-  // bare `emit EventName`. `self.id` → docId; `previousStatus` → doc.status.
+  // Post-action snapshot for G7 / schema synthesis. Current fields → `__after`;
+  // previous-state fields → `compute` locals (pre-update expressions).
   const needsAfter = commandNeedsAfterSnapshot(ir, entity, cmd);
   const g7Scope: RenderScope = {
     selfVar: needsAfter ? '__after' : 'doc',
-    locals: paramNames,
+    locals: actionLocals,
     idExpr: 'docId',
     beforeVar: 'doc',
   };
-  const g7 = unionEmitPayloadFields(cmd, g7Scope, 'docId');
+  const g7 = unionEmitPayloadFields(cmd, g7Scope, 'docId', computeLocals);
   diagnostics.push(...g7.diagnostics);
   const useAfter = needsAfter;
   const afterLine = useAfter
@@ -1285,6 +1297,7 @@ function generateMutation(
     cmd,
     'docId',
     g7Scope,
+    computeLocals,
   );
   diagnostics.push(...events.diagnostics);
   const reactions = renderReactions(ir, options, cmd.emits ?? []);
@@ -1352,6 +1365,9 @@ function generateMutation(
         ownershipLine) +
     (hasManyPreloads.length ? hasManyPreloads.join('\n') + '\n' : '') +
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
+    // Compute locals before transitions: transition `__to` may reference them
+    // (e.g. Invoice.applyPayment status from `nextDue`).
+    (compute.bindings.length ? computeBindingLines(compute.bindings).join('\n') + '\n' : '') +
     (transitions.lines.length ? transitions.lines.join('\n') + '\n' : '') +
     (versionOcc.checkLines.length ? versionOcc.checkLines.join('\n') + '\n' : '') +
     `    const updates = {\n${updateFieldLines.join(',\n')}${updateFieldLines.length ? '\n' : ''}    };\n` +

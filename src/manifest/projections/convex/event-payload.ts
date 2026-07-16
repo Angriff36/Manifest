@@ -9,11 +9,22 @@
 
 import type { IR, IRCommand, IREntity, IREventField, IRExpression } from '../../ir.js';
 import type { ProjectionDiagnostic } from '../interface.js';
+import { withComputeLocals } from './compute-bindings.js';
 import { renderExpression, type RenderScope } from './expression.js';
+
+export {
+  computeBindingLines,
+  renderCommandComputeBindings,
+  withComputeLocals,
+} from './compute-bindings.js';
+export type { ComputeBinding } from './compute-bindings.js';
 
 export interface RenderedPayloadField {
   name: string;
-  /** Rendered TS expression, already scoped to the post-action instance. */
+  /**
+   * Rendered TS expression. Current/new fields use the post-action instance;
+   * previous-state values use command `compute` locals (pre-update snapshot).
+   */
   code: string;
 }
 
@@ -58,9 +69,20 @@ export function isLogicalIdentityExpression(expr: IRExpression): boolean {
   );
 }
 
-/** Scope used for payload field rendering — always carries a resolvable idExpr. */
-export function payloadRenderScope(scope: RenderScope, idVar: string): RenderScope {
-  return { ...scope, idExpr: convexIdentityExpr(scope, idVar) };
+/**
+ * Scope used for payload field rendering — always carries a resolvable idExpr.
+ * Pass `computeLocals` so bare identifiers from IR `compute` bindings resolve
+ * to pre-update locals (e.g. `previousStatus`) instead of `${selfVar}.…`.
+ */
+export function payloadRenderScope(
+  scope: RenderScope,
+  idVar: string,
+  computeLocals: readonly string[] = [],
+): RenderScope {
+  return withComputeLocals(
+    { ...scope, idExpr: convexIdentityExpr(scope, idVar) },
+    computeLocals,
+  );
 }
 
 function eventSchemaFields(ir: IR, eventName: string): IREventField[] {
@@ -128,10 +150,11 @@ export function renderEmitPayloadFields(
   eventName: string,
   scope: RenderScope,
   idVar = 'docId',
+  computeLocals: readonly string[] = [],
 ): { fields: RenderedPayloadField[]; diagnostics: ProjectionDiagnostic[] } {
   const spec = cmd.emitPayloads?.find((ep) => ep.eventName === eventName);
   if (!spec) return { fields: [], diagnostics: [] };
-  const payloadScope = payloadRenderScope(scope, idVar);
+  const payloadScope = payloadRenderScope(scope, idVar, computeLocals);
   const identity = convexIdentityExpr(payloadScope, idVar);
   const fields: RenderedPayloadField[] = [];
   const diagnostics: ProjectionDiagnostic[] = [];
@@ -161,12 +184,13 @@ export function unionEmitPayloadFields(
   cmd: IRCommand,
   scope: RenderScope,
   idVar = 'docId',
+  computeLocals: readonly string[] = [],
 ): { fields: RenderedPayloadField[]; diagnostics: ProjectionDiagnostic[] } {
   const seen = new Set<string>();
   const fields: RenderedPayloadField[] = [];
   const diagnostics: ProjectionDiagnostic[] = [];
   for (const ev of cmd.emits ?? []) {
-    const r = renderEmitPayloadFields(cmd, ev, scope, idVar);
+    const r = renderEmitPayloadFields(cmd, ev, scope, idVar, computeLocals);
     diagnostics.push(...r.diagnostics);
     for (const f of r.fields) {
       if (seen.has(f.name)) continue;
@@ -201,8 +225,9 @@ export function resolveEventPayloadFields(
   eventName: string,
   scope: RenderScope,
   idVar: string,
+  computeLocals: readonly string[] = [],
 ): { fields: RenderedPayloadField[]; diagnostics: ProjectionDiagnostic[]; usedSchema: boolean } {
-  const g7 = renderEmitPayloadFields(cmd, eventName, scope, idVar);
+  const g7 = renderEmitPayloadFields(cmd, eventName, scope, idVar, computeLocals);
   if (g7.fields.length > 0) {
     return { fields: g7.fields, diagnostics: g7.diagnostics, usedSchema: false };
   }
@@ -210,7 +235,7 @@ export function resolveEventPayloadFields(
     ir,
     entity,
     eventName,
-    payloadRenderScope(scope, idVar),
+    payloadRenderScope(scope, idVar, computeLocals),
     idVar,
   );
   return {
@@ -228,6 +253,7 @@ export function renderEvents(
   cmd: IRCommand,
   idVar: string,
   scope: RenderScope,
+  computeLocals: readonly string[] = [],
 ): { lines: string[]; diagnostics: ProjectionDiagnostic[] } {
   const lines: string[] = [];
   const diagnostics: ProjectionDiagnostic[] = [];
@@ -239,6 +265,7 @@ export function renderEvents(
       ev,
       scope,
       idVar,
+      computeLocals,
     );
     diagnostics.push(...d);
     const payloadLit =
