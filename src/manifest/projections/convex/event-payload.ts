@@ -7,7 +7,7 @@
  * fields — those must not persist as `payload: {}`.
  */
 
-import type { IR, IRCommand, IREntity, IREventField } from '../../ir.js';
+import type { IR, IRCommand, IREntity, IREventField, IRExpression } from '../../ir.js';
 import type { ProjectionDiagnostic } from '../interface.js';
 import { renderExpression, type RenderScope } from './expression.js';
 
@@ -20,9 +20,14 @@ export interface RenderedPayloadField {
 /**
  * Candidate identity field names for an entity (e.g. ActionMilestone →
  * ActionMilestoneId, actionMilestoneId, milestoneId).
+ *
+ * Includes bare `id` — the IR may declare an `id` property, but Convex schema
+ * omits it (document identity is `_id`). Event fields named `id` must use the
+ * Convex identity expression, never `${selfVar}.id`.
  */
 export function entityIdFieldAliases(entityName: string): Set<string> {
   const aliases = new Set<string>([
+    'id',
     `${entityName}Id`,
     `${entityName.charAt(0).toLowerCase()}${entityName.slice(1)}Id`,
   ]);
@@ -32,6 +37,30 @@ export function entityIdFieldAliases(entityName: string): Set<string> {
     aliases.add(`${last.charAt(0).toLowerCase()}${last.slice(1)}Id`);
   }
   return aliases;
+}
+
+/**
+ * Shared Convex identity mapping for logical Manifest `id`.
+ * Prefer `scope.idExpr` (`docId` / `_id`); fall back to the mutation id var.
+ */
+export function convexIdentityExpr(scope: RenderScope, idVar: string): string {
+  return scope.idExpr ?? idVar;
+}
+
+/** True when an emit expression is logical entity identity (`self.id` / `this.id` / bare `id`). */
+export function isLogicalIdentityExpression(expr: IRExpression): boolean {
+  if (expr.kind === 'identifier' && expr.name === 'id') return true;
+  return (
+    expr.kind === 'member' &&
+    expr.object.kind === 'identifier' &&
+    (expr.object.name === 'self' || expr.object.name === 'this') &&
+    expr.property === 'id'
+  );
+}
+
+/** Scope used for payload field rendering — always carries a resolvable idExpr. */
+export function payloadRenderScope(scope: RenderScope, idVar: string): RenderScope {
+  return { ...scope, idExpr: convexIdentityExpr(scope, idVar) };
 }
 
 function eventSchemaFields(ir: IR, eventName: string): IREventField[] {
@@ -56,11 +85,13 @@ export function synthesizePayloadFromEventSchema(
 
   const idAliases = entityIdFieldAliases(entity.name);
   const propNames = new Set(entity.properties.map((p) => p.name));
-  const idExpr = scope.idExpr ?? idVar;
+  const idExpr = convexIdentityExpr(scope, idVar);
   const fields: RenderedPayloadField[] = [];
   const diagnostics: ProjectionDiagnostic[] = [];
 
   for (const f of schema) {
+    // Logical identity (bare `id` or EntityId aliases) → Convex document id.
+    // Never `${selfVar}.id` — schema drops IR `id`; that expression is undefined.
     if (idAliases.has(f.name)) {
       fields.push({ name: f.name, code: idExpr });
       continue;
@@ -88,18 +119,28 @@ export function synthesizePayloadFromEventSchema(
 
 /**
  * Render G7 `emit Event { field: expr }` payload fields for ONE event.
+ * Logical `self.id` / bare `id` always lower through {@link convexIdentityExpr}
+ * so app field names (`clientId`, `eventId`, …) keep their names while the
+ * value is the real Convex document id (`docId` / `_id`).
  */
 export function renderEmitPayloadFields(
   cmd: IRCommand,
   eventName: string,
   scope: RenderScope,
+  idVar = 'docId',
 ): { fields: RenderedPayloadField[]; diagnostics: ProjectionDiagnostic[] } {
   const spec = cmd.emitPayloads?.find((ep) => ep.eventName === eventName);
   if (!spec) return { fields: [], diagnostics: [] };
+  const payloadScope = payloadRenderScope(scope, idVar);
+  const identity = convexIdentityExpr(payloadScope, idVar);
   const fields: RenderedPayloadField[] = [];
   const diagnostics: ProjectionDiagnostic[] = [];
   for (const f of spec.fields) {
-    const { code, unresolved } = renderExpression(f.expression, scope);
+    if (isLogicalIdentityExpression(f.expression)) {
+      fields.push({ name: f.name, code: identity });
+      continue;
+    }
+    const { code, unresolved } = renderExpression(f.expression, payloadScope);
     if (unresolved.length) {
       diagnostics.push({
         severity: 'warning',
@@ -119,12 +160,13 @@ export function renderEmitPayloadFields(
 export function unionEmitPayloadFields(
   cmd: IRCommand,
   scope: RenderScope,
+  idVar = 'docId',
 ): { fields: RenderedPayloadField[]; diagnostics: ProjectionDiagnostic[] } {
   const seen = new Set<string>();
   const fields: RenderedPayloadField[] = [];
   const diagnostics: ProjectionDiagnostic[] = [];
   for (const ev of cmd.emits ?? []) {
-    const r = renderEmitPayloadFields(cmd, ev, scope);
+    const r = renderEmitPayloadFields(cmd, ev, scope, idVar);
     diagnostics.push(...r.diagnostics);
     for (const f of r.fields) {
       if (seen.has(f.name)) continue;
@@ -160,11 +202,17 @@ export function resolveEventPayloadFields(
   scope: RenderScope,
   idVar: string,
 ): { fields: RenderedPayloadField[]; diagnostics: ProjectionDiagnostic[]; usedSchema: boolean } {
-  const g7 = renderEmitPayloadFields(cmd, eventName, scope);
+  const g7 = renderEmitPayloadFields(cmd, eventName, scope, idVar);
   if (g7.fields.length > 0) {
     return { fields: g7.fields, diagnostics: g7.diagnostics, usedSchema: false };
   }
-  const synthesized = synthesizePayloadFromEventSchema(ir, entity, eventName, scope, idVar);
+  const synthesized = synthesizePayloadFromEventSchema(
+    ir,
+    entity,
+    eventName,
+    payloadRenderScope(scope, idVar),
+    idVar,
+  );
   return {
     fields: synthesized.fields,
     diagnostics: [...g7.diagnostics, ...synthesized.diagnostics],

@@ -1148,7 +1148,7 @@ function generateMutation(
     // shared reaction payload below) with declared fields evaluated against the
     // post-action instance. `doc` is the created instance; `self.id` → Convex `_id`.
     const g7Scope: RenderScope = { selfVar: 'doc', idExpr: '_id' };
-    const g7 = unionEmitPayloadFields(cmd, g7Scope);
+    const g7 = unionEmitPayloadFields(cmd, g7Scope, '_id');
     diagnostics.push(...g7.diagnostics);
     const events = renderEvents(
       resolveEventsTableName(ir, options),
@@ -1272,7 +1272,7 @@ function generateMutation(
     idExpr: 'docId',
     beforeVar: 'doc',
   };
-  const g7 = unionEmitPayloadFields(cmd, g7Scope);
+  const g7 = unionEmitPayloadFields(cmd, g7Scope, 'docId');
   diagnostics.push(...g7.diagnostics);
   const useAfter = needsAfter;
   const afterLine = useAfter
