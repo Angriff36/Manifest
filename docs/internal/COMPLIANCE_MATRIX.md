@@ -71,7 +71,7 @@ Do **not** write `END_TO_END_VERIFIED` in this file without a matching Builder m
 
 ### Platform SDK integration ledger (summary)
 
-Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/manifest@3.6.7` (verified 2026-07-15; Manifest SoT version is `package.json` — verify before asserting). Detail rows: Builder matrix.
+Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/manifest@3.6.8` (verified 2026-07-15; Manifest SoT version is `package.json` — verify before asserting). Detail rows: Builder matrix.
 
 | Manifest public API                                                              | Manifest status                                             | Integration (as of 2026-07-15)                                                                                                                                                                   |
 | -------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
