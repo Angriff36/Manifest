@@ -271,7 +271,7 @@ function buildAuthDirective(
 
   if (actions.size === 0) return '';
 
-  const actionsStr = Array.from(actions).sort().join(', ');
+  const actionsStr = Array.from(actions).sort((a, b) => a.localeCompare(b)).join(', ');
   return ` @auth(requires: [${actionsStr.toUpperCase()}])`;
 }
 
@@ -546,7 +546,7 @@ function buildGraphQLSchema(
   }
   if (customScalars.size > 0) {
     const scalarLines = Array.from(customScalars)
-      .sort()
+      .sort((a, b) => a.localeCompare(b))
       .map((s) => `scalar ${s}`);
     sections.push(scalarLines.join('\n'));
   }

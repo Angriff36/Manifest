@@ -245,7 +245,7 @@ function serializeIRType(t: IRType): string {
 
 function modifiersEqual(a: PropertyModifier[], b: PropertyModifier[]): boolean {
   if (a.length !== b.length) return false;
-  const sorted = (arr: PropertyModifier[]) => [...arr].sort();
+  const sorted = (arr: PropertyModifier[]) => [...arr].sort((a, b) => a.localeCompare(b));
   const sa = sorted(a);
   const sb = sorted(b);
   return sa.every((v, i) => v === sb[i]);
@@ -334,8 +334,8 @@ function diffComputedProperties(
 
     const typeChanged = serializeIRType(old.type) !== serializeIRType(prop.type);
     const depsChanged =
-      JSON.stringify([...old.dependencies].sort()) !==
-      JSON.stringify([...prop.dependencies].sort());
+      JSON.stringify([...old.dependencies].sort((a, b) => a.localeCompare(b))) !==
+      JSON.stringify([...prop.dependencies].sort((a, b) => a.localeCompare(b)));
     // Expression comparison via JSON serialization (structural equality)
     const exprChanged = JSON.stringify(old.expression) !== JSON.stringify(prop.expression);
 
@@ -598,7 +598,7 @@ function diffCommands(oldCommands: IRCommand[], newCommands: IRCommand[]): Comma
     const guardsChanged = JSON.stringify(old.guards) !== JSON.stringify(cmd.guards);
     const actionsChanged = JSON.stringify(old.actions) !== JSON.stringify(cmd.actions);
     const emitsChanged =
-      JSON.stringify([...old.emits].sort()) !== JSON.stringify([...cmd.emits].sort());
+      JSON.stringify([...old.emits].sort((a, b) => a.localeCompare(b))) !== JSON.stringify([...cmd.emits].sort((a, b) => a.localeCompare(b)));
     const returnsChanged =
       serializeIRType(old.returns ?? { name: 'void', nullable: false }) !==
       serializeIRType(cmd.returns ?? { name: 'void', nullable: false });
@@ -836,8 +836,8 @@ function diffStringArrays(
   const oldSet = new Set(oldArr);
   const newSet = new Set(newArr);
   return {
-    added: newArr.filter((v) => !oldSet.has(v)).sort(),
-    removed: oldArr.filter((v) => !newSet.has(v)).sort(),
+    added: newArr.filter((v) => !oldSet.has(v)).sort((a, b) => a.localeCompare(b)),
+    removed: oldArr.filter((v) => !newSet.has(v)).sort((a, b) => a.localeCompare(b)),
   };
 }
 

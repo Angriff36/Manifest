@@ -996,9 +996,9 @@ export function classifyBreakingChanges(
   // Aggregate consumer impact
   const allImpact = classified.flatMap((c) => c.consumerImpact);
   const consumerImpact: ConsumerImpactSummary = {
-    commands: [...new Set(allImpact.filter((i) => i.startsWith('command:')))].sort(),
-    routes: [...new Set(allImpact.filter((i) => i.startsWith('route:')))].sort(),
-    projections: [...new Set(allImpact.filter((i) => i.startsWith('projection:')))].sort(),
+    commands: [...new Set(allImpact.filter((i) => i.startsWith('command:')))].sort((a, b) => a.localeCompare(b)),
+    routes: [...new Set(allImpact.filter((i) => i.startsWith('route:')))].sort((a, b) => a.localeCompare(b)),
+    projections: [...new Set(allImpact.filter((i) => i.startsWith('projection:')))].sort((a, b) => a.localeCompare(b)),
   };
 
   return {

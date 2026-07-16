@@ -276,7 +276,7 @@ function generateStateDiagrams(
 
     // Find terminal states (states that have no outgoing transitions)
     const terminalStates = [...allStates].filter((s) => !allFromStates.has(s));
-    for (const ts of terminalStates.sort()) {
+    for (const ts of terminalStates.sort((a, b) => a.localeCompare(b))) {
       lines.push(`    ${sanitizeName(ts)} --> [*]`);
     }
 
@@ -289,7 +289,7 @@ function generateStateDiagrams(
 
     for (const t of sortedTransitions) {
       const from = sanitizeName(t.from);
-      for (const to of [...t.to].sort()) {
+      for (const to of [...t.to].sort((a, b) => a.localeCompare(b))) {
         lines.push(`    ${from} --> ${sanitizeName(to)}`);
       }
     }
