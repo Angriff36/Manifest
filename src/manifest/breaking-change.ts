@@ -500,7 +500,7 @@ function classifyConstraintDiff(entityPath: string, con: ConstraintDiff): Classi
 // Entity classification
 // ============================================================================
 
-function classifyEntityDiff(entity: EntityDiff, report: IRDiffReport): ClassifiedChange[] {
+function classifyEntityDiff(entity: EntityDiff, _report: IRDiffReport): ClassifiedChange[] {
   const results: ClassifiedChange[] = [];
   const entityPath = entity.name;
 
@@ -573,7 +573,6 @@ function classifyEntityDiff(entity: EntityDiff, report: IRDiffReport): Classifie
     results.push(...classifyConstraintDiff(entityPath, con));
   }
 
-  void report;
   return results;
 }
 

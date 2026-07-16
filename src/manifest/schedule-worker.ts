@@ -240,7 +240,9 @@ export function startScheduleWorker(
   options.signal?.addEventListener('abort', stop);
 
   handle = setTimer(() => {
-    void tick();
+    tick().catch(() => {
+      /* tick failures are surfaced via the worker's own error path */
+    });
   }, intervalMs);
 
   return { stop, tick };

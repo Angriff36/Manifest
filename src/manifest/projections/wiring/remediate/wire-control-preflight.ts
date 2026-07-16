@@ -8,7 +8,6 @@
 
 import type { WiringCommandDescriptor } from '../types.js';
 import type { ControlSemanticSurface } from './control-semantic-match.js';
-import { clientFn } from './control-semantic-helpers.js';
 
 export interface PreflightVerdict {
   ok: boolean;
@@ -113,10 +112,6 @@ export function proveWirePatchConstructible(
       };
     }
   }
-
-  const callee = surface.bindingCallee || clientFn(cap.entity, cap.command);
-  const replacement = `() => { void ${callee}(${payload}); }`;
-  void replacement;
 
   // Targeted replace must be possible against the proven control fingerprint.
   if (surface.handlerSnippet && surface.handlerSnippet !== 'noop') {

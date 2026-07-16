@@ -130,9 +130,9 @@ export class DynamoDBOutboxStore implements OutboxStore {
    * mutations, use the `TransactWriteItems` API directly and group the
    * outbox PutItems with the entity PutItems in a single call.
    */
-  async enqueue(entries: OutboxEntry[], tx?: unknown): Promise<void> {
+  async enqueue(entries: OutboxEntry[], _tx?: unknown): Promise<void> {
     if (entries.length === 0) return;
-    void tx; // intentionally unused - see JSDoc above
+    // `_tx` accepted for OutboxStore contract compatibility — see JSDoc above.
 
     // DynamoDB TransactWriteItems supports up to 100 actions per call.
     const BATCH_SIZE = 100;
