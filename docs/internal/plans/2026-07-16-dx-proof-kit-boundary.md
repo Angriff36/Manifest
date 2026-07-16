@@ -26,3 +26,9 @@
 `IngredientDemand.confirm` → emit `IngredientDemandConfirmed` → reaction `PurchaseNeed.create`.
 
 Deferred: Event/Culinary guard migration, broad reaction rollout, Explorer, Builder, receipt→stock.
+
+## Capsule consumption (vertical slice)
+
+Until `@angriff36/manifest` is cut-released with `./proof-kit`, Capsule may pin
+`file:../Manifest` locally to consume the new subpaths. After cut-release, pin
+the published exact version again (no `^`).
