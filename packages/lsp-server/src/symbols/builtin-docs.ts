@@ -100,7 +100,8 @@ export const KEYWORD_DOCS: Record<string, string> = {
   // Keywords
   on: 'Event trigger keyword. Usage: `on EventName`.',
   when: 'Conditional expression. Usage: `when <condition>`.',
-  then: 'Action following a condition.',
+  // `then` is looked up via getKeywordDoc — never stored as a `then` own
+  // property (Sonar S7739: objects with `then` are Promise-thenable).
   as: 'Alias keyword for renaming.',
   from: 'Source specification.',
   to: 'Target specification.',
@@ -109,6 +110,14 @@ export const KEYWORD_DOCS: Record<string, string> = {
   extends: 'Inheritance/extension keyword for roles.',
   use: 'Import another manifest module.',
 };
+
+const THEN_KEYWORD_DOC = 'Action following a condition.';
+
+/** Resolve keyword documentation without making KEYWORD_DOCS thenable. */
+export function getKeywordDoc(keyword: string): string | undefined {
+  if (keyword === 'then') return THEN_KEYWORD_DOC;
+  return KEYWORD_DOCS[keyword];
+}
 
 /**
  * Completion item buckets for context-aware suggestions.
