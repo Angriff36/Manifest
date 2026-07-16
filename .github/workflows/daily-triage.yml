@@ -1,4 +1,8 @@
-name: Daily Triage (loop)
+name: Loop dogfood (scoreboard)
+
+# NOT the real Daily Triage agent loop. Real triage = Claude Code cron →
+# scripts/loop-tick.sh (GLM/MiniMax) → STATE.md; Cursor brain watches.
+# This workflow only records loop-audit + CI health into loop-run-log.md.
 
 on:
   schedule:
@@ -7,11 +11,10 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
   issues: write
 
 jobs:
-  triage:
+  dogfood:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -48,48 +51,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Update STATE.md
-        run: |
-          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          SCORE="${{ steps.audit.outputs.score }}"
-          LEVEL="${{ steps.audit.outputs.level }}"
-          FAILING="${{ steps.workflows.outputs.failing }}"
-          CI_STATUS="${{ steps.workflows.outputs.ci_status }}"
-          CI_LINE=""
-          if [ "$FAILING" -gt 0 ]; then
-            CI_LINE="- **CI failing** (latest \`ci.yml\` conclusion: ${CI_STATUS}) — investigate before language changes."
-          else
-            CI_LINE="- Latest \`ci.yml\` conclusion: ${CI_STATUS}."
-          fi
-          # <<-EOF strips leading tabs; use printf to avoid YAML-indent pollution
-          STATE_BODY=$(cat <<EOF
-          # Loop State — Manifest
-
-          Last run: ${DATE} (automated daily-triage workflow)
-
-          ## High Priority (loop is acting or waiting on human)
-
-          - Maintain loop readiness score (current: **${SCORE}**, level **${LEVEL}**).
-          ${CI_LINE}
-          - L1 report-only: human reviews this file before any L2 auto-fix path.
-
-          ## Watch List
-
-          - capsule-v2 loop setup (deferred — not this repo)
-          - Least-privilege tool scopes on loop skills
-          - Confirm weekday triage signal stays useful
-
-          ## Recent Noise (ignored this run)
-
-          —
-
-          ---
-          Run log: Updated by \`.github/workflows/daily-triage.yml\`. See \`LOOP.md\` for cadence and gates.
-          EOF
-          )
-          printf '%s\n' "$STATE_BODY" | sed 's/^[[:space:]]*//' > STATE.md
-
-      - name: Append loop-run-log.md
+      - name: Append dogfood entry to loop-run-log.md (never rewrite STATE.md)
         id: runlog
         run: |
           START="${{ steps.timing.outputs.started_at }}"
@@ -101,104 +63,64 @@ jobs:
           ")
           FAILING="${{ steps.workflows.outputs.failing }}"
           SCORE="${{ steps.audit.outputs.score }}"
-          if [ "$FAILING" -gt 0 ]; then
-            OUTCOME="escalated"
-          else
-            OUTCOME="report-only"
-          fi
+          LEVEL="${{ steps.audit.outputs.level }}"
+          CI_STATUS="${{ steps.workflows.outputs.ci_status }}"
+          if [ "$FAILING" -gt 0 ]; then OUTCOME="ci-red"; else OUTCOME="dogfood-ok"; fi
           ENTRY=$(node -e "
             console.log(JSON.stringify({
               run_id: '${END}',
               pattern: 'daily-triage',
+              source: 'gha-dogfood',
               duration_s: Number('${DURATION}'),
-              items_found: Number('${FAILING}') + 1,
-              actions_taken: 1,
-              escalations: Number('${FAILING}'),
-              tokens_estimate: 23000,
               readiness_score: Number('${SCORE}'),
+              readiness_level: '${LEVEL}',
+              ci_status: '${CI_STATUS}',
               outcome: '${OUTCOME}',
-              workflow_run: '${{ github.run_id }}'
+              workflow_run: '${{ github.run_id }}',
+              note: 'Scoreboard only — agent triage owns STATE.md'
             }));
           ")
           printf '\n```json\n%s\n```\n' "$ENTRY" >> loop-run-log.md
           echo "outcome=${OUTCOME}" >> "$GITHUB_OUTPUT"
 
-      - name: Push STATE.md + loop-run-log branch (draft PR if allowed)
-        id: pr
+      - name: Commit run-log only if changed
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          if git diff --quiet STATE.md loop-run-log.md; then
-            echo "No STATE.md or loop-run-log.md changes — skip"
-            echo "opened=false" >> "$GITHUB_OUTPUT"
+          if git diff --quiet loop-run-log.md; then
+            echo "No run-log changes"
             exit 0
           fi
-
-          BRANCH="automated/daily-triage-$(date -u +%Y-%m-%d)"
+          BRANCH="automated/loop-dogfood-$(date -u +%Y-%m-%d)"
           git fetch origin main "refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}" 2>/dev/null || true
           git checkout -B "$BRANCH"
-          git add STATE.md loop-run-log.md
-          git commit -m "chore(loop): daily triage update STATE.md + run log [automated]"
-          # Disposable daily branch — force so re-runs replace stale tip
+          git add loop-run-log.md
+          git commit -m "chore(loop): dogfood scoreboard entry [automated]"
           git push -u origin "$BRANCH" --force
-          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
-
-          BRANCH_URL="${{ github.server_url }}/${{ github.repository }}/tree/${BRANCH}"
-          SUMMARY=$(cat <<EOF
-          ## Daily triage update
-
-          - Loop readiness: **${{ steps.audit.outputs.score }}** (${{ steps.audit.outputs.level }})
-          - Latest CI: \`${{ steps.workflows.outputs.ci_status }}\`
-          - Run outcome: \`${{ steps.runlog.outputs.outcome }}\`
-          - Branch: [\`${BRANCH}\`](${BRANCH_URL})
-
-          Open a draft PR from that branch when ready (Actions may lack create-PR permission).
-          EOF
-          )
-          SUMMARY=$(printf '%s\n' "$SUMMARY" | sed 's/^[[:space:]]*//')
-
           EXISTING=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || true)
           if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
             echo "PR #$EXISTING already open"
-            echo "opened=true" >> "$GITHUB_OUTPUT"
-            echo "number=${EXISTING}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          BODY=$(printf '%s\n' \
+            "## Loop dogfood (not agent triage)" \
+            "" \
+            "- Readiness: **${{ steps.audit.outputs.score }}** (${{ steps.audit.outputs.level }})" \
+            "- CI: \`${{ steps.workflows.outputs.ci_status }}\`" \
+            "- Real triage: Claude Code cron → \`scripts/loop-tick.sh\` (see LOOP.md)")
+          gh pr create --base main --head "$BRANCH" --draft \
+            --title "chore(loop): dogfood scoreboard $(date -u +%Y-%m-%d)" \
+            --body "$BODY" || true
 
-          if gh pr create \
-            --base main \
-            --head "$BRANCH" \
-            --draft \
-            --title "chore(loop): daily triage STATE.md $(date -u +%Y-%m-%d)" \
-            --body "$SUMMARY"; then
-            PR_NUMBER=$(gh pr view "$BRANCH" --json number -q '.number')
-            echo "opened=true" >> "$GITHUB_OUTPUT"
-            echo "number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "PR create blocked — filing/updating loop-report issue with branch link"
-          echo "opened=false" >> "$GITHUB_OUTPUT"
-          gh label create "loop-report" --color "3ee8c5" --description "Weekly loop triage report" 2>/dev/null || true
-          ISSUE=$(gh issue list --label "loop-report" --state open --limit 1 --json number -q '.[0].number' 2>/dev/null || true)
-          if [ -n "$ISSUE" ] && [ "$ISSUE" != "null" ]; then
-            gh issue comment "$ISSUE" --body "$SUMMARY"
-          else
-            gh issue create \
-              --title "Loop report — $(date -u +%Y-%m-%d)" \
-              --label "loop-report" \
-              --body "$SUMMARY"
-          fi
-
-      - name: Open weekly loop report issue (Mondays)
+      - name: Open weekly loop-report issue (Mondays)
         if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           DAY=$(date -u +%u)
-          if [ "$DAY" != "1" ]; then echo "Not Monday — skip issue"; exit 0; fi
+          if [ "$DAY" != "1" ]; then echo "Not Monday — skip"; exit 0; fi
           EXISTING=$(gh issue list --label "loop-report" --state open --limit 1 --json number -q '.[0].number' 2>/dev/null || true)
           if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
             echo "Open loop-report issue #$EXISTING exists"
@@ -208,12 +130,10 @@ jobs:
           gh issue create \
             --title "Loop report — week of $(date -u +%Y-%m-%d)" \
             --label "loop-report" \
-            --body "## Automated daily triage summary
+            --body "## Week check-in
 
-          - Loop readiness: **${{ steps.audit.outputs.score }}** (${{ steps.audit.outputs.level }})
-          - Latest run outcome: \`${{ steps.runlog.outputs.outcome }}\` (see \`loop-run-log.md\`)
-          - Review high-priority items in \`STATE.md\` (draft PR from weekday runs)
+          - Dogfood readiness: **${{ steps.audit.outputs.score }}** (${{ steps.audit.outputs.level }})
+          - CI: \`${{ steps.workflows.outputs.ci_status }}\`
+          - **Agent triage** owns \`STATE.md\` (GLM/MiniMax via \`scripts/loop-tick.sh\`). Cursor brain reviews.
 
-          _Generated by daily-triage workflow. Human reviews and decides actions._"
-        env:
-          GH_TOKEN: ${{ github.token }}
+          See \`LOOP.md\`."

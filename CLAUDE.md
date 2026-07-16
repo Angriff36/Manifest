@@ -357,7 +357,14 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[Emergency bridge — running bridge was not updated]
-No changes or facts in this session.
+[proactive bridge @ 75% context — saved before compacting]
+Files (7):
+  src/manifest/projections/wiring/inspect/consumer-tracer.ts (edit)
+  src/manifest/projections/wiring/inspect/inspect.test.ts (edit)
+  C:/projects/builder/src/components/AssemblePanel.tsx (edit)
+  src/manifest/projections/convex/functions.ts (edit)
+  docs/internal/COMPLIANCE_MATRIX.md (edit)
+  C:/Users/Ryan/.claude/projects/C--projects-manifest/memory/project-wiring-browser-safe-fix.md (create)
+  C:/Users/Ryan/.claude/projects/C--projects-manifest/memory/MEMORY.md (edit)
 
 # === END COGNILAYER ===

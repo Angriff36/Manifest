@@ -1,12 +1,13 @@
 # Loop Budget — Manifest
 
-> Primary loop: **Daily Triage** (L1 report-only)
+> Primary loop: **Daily Triage** (L1 report-only) — GLM/MiniMax workhorses
 
 ## Daily limits
 
 | Loop | Max runs/day | Max tokens/day | Max sub-agent spawns/run |
 |------|--------------|----------------|--------------------------|
-| Daily Triage | 2 | 100k | 0 (L1) / 2 (L2) |
+| Daily Triage (workers) | 2 | 100k | 0 (L1) / 2 (L2) |
+| Codex review (L2) | 5 | n/a (Codex billing) | — |
 
 ## On budget exceed
 

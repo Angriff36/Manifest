@@ -1,46 +1,50 @@
 ---
 name: loop-triage
 description: >
-  Triage recent changes, CI failures, issues, and conversations.
-  Produces a concise, actionable findings report suitable for a loop to consume.
-  Writes structured output to a state file or Linear board.
+  Manifest language-repo triage tick. Scans CI, PRs, issues, recent commits on
+  main. Writes prioritized findings into STATE.md. L1: report only — never
+  edits code. Invoked by GLM/MiniMax workhorses via scripts/loop-triage.sh.
 user_invocable: true
 ---
 
-# Loop Triage Skill
+# Loop Triage — Manifest
 
-You are an expert engineering triage agent. Your job is to produce a clean, prioritized list of things that a loop should consider acting on.
+You are the triage pass of the Manifest loop (see `LOOP.md`). Run
+`$loop-constraints` first if it has not run this tick.
 
-## Inputs (the loop will provide these)
-- Recent CI / test failures (last 24h)
-- Open issues / Linear tickets assigned to the team
-- Recent commits on main (last 24–48h)
-- Any Slack / chat threads the loop has visibility into
-- The current state file (what the loop already knows about)
+## Inputs (gather each run)
 
-## Output Format
+- `STATE.md` — read FIRST
+- `LOOP.md` — phase (L1 vs L2) and routing
+- Recent commits: `git log --oneline -20 origin/main`
+- CI: `gh run list --limit 10` (note failures on main)
+- Open PRs: `gh pr list --limit 15`
+- Open issues: `gh issue list --limit 15` when enabled
+- `loop-run-log.md` last entries
 
-Produce a markdown report with these sections:
+## Output — update STATE.md
 
-### 1. High-Priority Items (act on these)
-- Clear, one-line description
-- Why it matters (impact, risk, or customer pain)
-- Suggested next action for the loop (e.g. "draft minimal fix in isolated worktree")
-- Rough effort estimate
+### High Priority (loop is acting or waiting on human)
+One line each: what, why it matters, suggested next action, effort guess.
 
-### 2. Watch Items (monitor, do not act yet)
-- Same format but lower urgency
+### Watch List
+Lower urgency; monitor only.
 
-### 3. Noise / Ignore
-- Brief list of things the loop looked at and decided were not worth action
+### Recent Noise (ignored this run)
+Brief — helps tune this skill.
 
-### 4. State Updates
-- Any facts the loop should remember for the next run (e.g. "PR #1234 now has 2 approvals")
+### Post-Run Critique
+False positives, repeated items, one adjustment for next run.
+
+Also update `Last run:` timestamp (UTC) and append one JSON entry to
+`loop-run-log.md` including `"worker": "glm"|"minimax"` and `"outcome"`.
 
 ## Rules
 
-- Be brutally concise. The loop (and the human reading the state) will thank you.
-- Only put something in "High-Priority" if a reasonable engineer would want to know about it today.
-- When in doubt, put it in Watch or Noise rather than creating work.
-- Never propose architectural overhauls during triage — this skill is for signal, not invention.
-- Respect the project's existing skills and conventions (they will be provided in context).
+- Be brutally concise. When in doubt: Watch or Noise, not High Priority.
+- Signal only — never invent architectural work from triage.
+- Respect high-scrutiny paths in `loop-constraints.md` (report/escalate only).
+- No actionable items → exit fast, log a no-op.
+- **L1 phase: do not edit any code, ever.** Report only.
+- Do not rewrite the whole STATE.md boilerplate from templates — merge with
+  prior High Priority / Watch items; prune resolved ones.

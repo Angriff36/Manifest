@@ -1,73 +1,78 @@
 # LOOP.md — Manifest Language
 
-How this repository is operated with loop engineering patterns.
+Real agent loop (not the GHA scoreboard). Architecture mirrors the proven
+`capsule-pro-loops` setup, with **Cursor as brain**.
 
-Loop engineering here is **agent ops** (triage → `STATE.md` → human gate). It is
-not Manifest DSL `schedule` / domain cron — those are runtime constructs.
+**Current phase: L1 report-only.** L2 implementers + Codex review are wired
+but **OFF** until graduation criteria below are met.
 
-## Active Loops
+## Model routing
 
-### Daily Triage (L1 — report-only)
+| Role | Model / host | Mechanism |
+|------|----------------|-----------|
+| Brain (watch, prioritize, dispatch, send to review) | Cursor (this chat / Automation) | Reads `STATE.md`; never rubber-stamps workers; owns graduation calls |
+| Work horses (triage L1; implement L2 when ON) | GLM 5.2 ⇄ MiniMax-M3 via Claude Code | `scripts/loop-tick.sh` / `scripts/loop-triage.sh` / `scripts/loop-dispatch.sh` + `~/.claude/switch-claude-profile.sh` |
+| Review gate (L2 — **OFF**) | Codex (`gpt-5.6-sol` per `~/.codex/config.toml`) | `.claude/agents/loop-verifier.md` → `codex exec` / `codex review` |
+| Circuit breaker | `loop-context` | `loop-ledger.json` |
+| Final gate | Human (Ryan) | Merges, denylist paths, Compliance Matrix proof |
 
-| Field | Value |
-|-------|-------|
-| Cadence | 1d weekdays (`/.github/workflows/daily-triage.yml`) + optional agent `/loop` |
-| Skill | `loop-triage` (`.claude/skills/loop-triage`) |
-| State | `STATE.md` |
-| Phase | Report-only. Human reviews and decides actions. |
-| Verifier (L2+) | `pnpm test` + `pnpm typecheck` in an isolated worktree |
-| Handoff | Spec/IR changes, Compliance Matrix status, language semantics |
+Worker credentials stay in `~/.claude/claude-glm.ps1` and
+`~/.claude/claude-minimax.ps1` — **never** commit tokens.
 
-Claude Code (week one):
+## What runs when
 
-```text
-/loop 1d Run $loop-triage. Read STATE.md first. Append high-priority and watch
-items. Update Last run timestamp. Do not auto-fix anything in week one.
+| Job | Cadence | What it does |
+|-----|---------|--------------|
+| **Real triage** | Claude Code cron weekdays `30 15 * * 1-5` (08:30 America/Los_Angeles ≈ 15:30 UTC) | `scripts/loop-tick.sh` → alternating GLM/MiniMax runs `$loop-constraints` then `$loop-triage` → updates `STATE.md` |
+| **Brain watch** | Cursor (you) after each tick / on demand | Read `STATE.md` + run log; prune noise; decide dispatch; send approved diffs to Codex |
+| **GHA dogfood** | `daily-triage.yml` weekdays 08:00 UTC | Audit score + CI health only — **does not own or rewrite triage findings** |
+
+## Active loops
+
+| Pattern | Cadence | Status |
+|---------|---------|--------|
+| Daily Triage | Weekdays ~08:30 local via Claude Code cron | L1 report-only |
+| Minimal fix + Codex review | On brain dispatch | L2 — **OFF** |
+
+## L1 → L2 graduation (all required)
+
+1. ≥1 week of L1 ticks with &lt;20% noise in High Priority
+2. One *manual* `loop-dispatch.sh` → Codex verifier round-trip proven
+3. Human flips implementer status in this file from **OFF** to ON
+4. Brain (Cursor) confirms denylist + `pnpm test` verifier path is solid
+
+## How the brain dispatches (L2, when ON)
+
+```bash
+# After approving a High Priority item in STATE.md:
+bash scripts/loop-dispatch.sh glm "exact one-line fix target"
+# or
+bash scripts/loop-dispatch.sh minimax "exact one-line fix target"
+
+# Then (brain / Claude wrapper): invoke Agent loop-verifier on the printed worktree
+# Verdict APPROVE → draft PR; REJECT → log attempt + alternate worker or escalate
 ```
 
-Cursor: `.cursor/` is gitignored — copy `.claude/skills/loop-triage` →
-`.cursor/skills/loop-triage` locally, or point Automations at the committed
-skill. Same report-only prompt.
+## Manual triage (smoke)
 
-## Human Gates
+```bash
+bash scripts/loop-triage.sh glm
+bash scripts/loop-triage.sh minimax
+```
 
-- No auto-fix until L2 checklist is explicitly enabled.
-- No auto-merge to `main`. Draft PRs only; human marks ready.
-- High-scrutiny paths require human review (see `loop-constraints.md`).
-- Kill switch: issue/label or `STATE.md` flag `loop-pause-all`.
+## Budget & kill switch
 
-## Worktrees
-
-- Any unattended code-change experiment (L2+) runs in an isolated git worktree
-  under `.worktrees/`.
-- One worktree per fix attempt; discard after verifier REJECT or human
-  escalation.
-
-## Connectors (MCP)
-
-- L1: optional. Loop pattern lookup via `.mcp.json` → `loop-engineering`
-  (`@cobusgreyling/loop-mcp-server`).
-- Manifest language MCP (`manifest-mcp`) is separate — compile/validate/explain,
-  not triage.
-- L2+: GitHub connector read-only for CI/issues first; write scope limited to
-  comments until trusted.
-
-## Budget & Observability
-
-- Caps: `loop-budget.md` (Daily Triage L1: 100k tokens/day suggested)
+- Caps: `loop-budget.md`
 - Run history: `loop-run-log.md`
-- Estimate: `npx @cobusgreyling/loop-cost --pattern daily-triage --level L1`
-- Audit: `npx @cobusgreyling/loop-audit . --suggest`
+- Kill: put `loop-pause-all` in `STATE.md` High Priority → ticks exit immediately
 
 ## Deferred
 
-- **capsule-v2** loop setup — separate phase
-- L2 `minimal-fix` / PR babysitter — after L1 signal quality is trusted
-- Manifest DSL `schedule` for triage — wrong layer
+- capsule-v2 loop setup — separate phase
+- Manifest DSL `schedule` for triage — wrong layer (agent ops ≠ runtime cron)
 
 ## Links
 
+- Overseer playbook: [`docs/internal/loop-overseer.md`](./docs/internal/loop-overseer.md)
 - Constraints: [`loop-constraints.md`](./loop-constraints.md)
 - Agents guide: [`AGENTS.md`](./AGENTS.md)
-- Compliance matrix: [`docs/internal/COMPLIANCE_MATRIX.md`](./docs/internal/COMPLIANCE_MATRIX.md)
-- Boundary: [`docs/internal/contracts/manifest-builder-boundary.md`](./docs/internal/contracts/manifest-builder-boundary.md)

@@ -276,14 +276,18 @@ Domain completeness diagnostics enforce the **user-facing boundary** (see `docs/
 
 ## Loop operation
 
-Daily Triage (L1 report-only) maintains this repo’s agent loop spine:
+Real Daily Triage (L1 report-only) — see [`LOOP.md`](./LOOP.md):
 
-- Read [`LOOP.md`](./LOOP.md) for cadence, gates, and deferred work (capsule-v2 later).
-- Read/update [`STATE.md`](./STATE.md) on triage runs — report only; do not invent L2 auto-fix.
+| Role | Who |
+|------|-----|
+| Brain | Cursor — [`docs/internal/loop-overseer.md`](./docs/internal/loop-overseer.md) |
+| Work horses | GLM 5.2 ⇄ MiniMax-M3 via Claude Code (`scripts/loop-tick.sh`) |
+| Review (L2 OFF) | Codex via `.claude/agents/loop-verifier.md` |
+
+- State spine: [`STATE.md`](./STATE.md) — **agent triage owns it**; GHA dogfood must not rewrite findings.
 - Binding denylist: [`loop-constraints.md`](./loop-constraints.md).
-- Budget / run log: [`loop-budget.md`](./loop-budget.md), [`loop-run-log.md`](./loop-run-log.md).
-- Skills: `.claude/skills/loop-triage` (and related). Weekday automation: `.github/workflows/daily-triage.yml`.
-- Claude: `/loop 1d Run $loop-triage. Read STATE.md. Report only.` Cursor: copy skill into `.cursor/skills/` locally (gitignored) or point Automations at the committed skill.
+- Smoke: `bash scripts/loop-triage.sh glm` or `minimax`.
+- Kill switch: `loop-pause-all` in `STATE.md`.
 
 ## Definition of "Done"
 
