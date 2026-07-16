@@ -123,16 +123,17 @@ jobs:
           printf '\n```json\n%s\n```\n' "$ENTRY" >> loop-run-log.md
           echo "outcome=${OUTCOME}" >> "$GITHUB_OUTPUT"
 
-      - name: Open draft PR for STATE.md + loop-run-log if changed
+      - name: Push STATE.md + loop-run-log branch (draft PR if allowed)
         id: pr
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           if git diff --quiet STATE.md loop-run-log.md; then
-            echo "No STATE.md or loop-run-log.md changes — skip PR"
+            echo "No STATE.md or loop-run-log.md changes — skip"
             echo "opened=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -144,35 +145,52 @@ jobs:
           git commit -m "chore(loop): daily triage update STATE.md + run log [automated]"
           git push -u origin "$BRANCH" --force-with-lease
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
-          echo "opened=true" >> "$GITHUB_OUTPUT"
 
-          EXISTING=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || true)
-          if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
-            echo "PR #$EXISTING already open"
-            echo "number=${EXISTING}" >> "$GITHUB_OUTPUT"
-          else
-            BODY=$(cat <<EOF
-          ## Summary
-
-          Automated daily triage from \`daily-triage.yml\` (L1 report-only).
+          BRANCH_URL="${{ github.server_url }}/${{ github.repository }}/tree/${BRANCH}"
+          SUMMARY=$(cat <<EOF
+          ## Daily triage update
 
           - Loop readiness: **${{ steps.audit.outputs.score }}** (${{ steps.audit.outputs.level }})
           - Latest CI: \`${{ steps.workflows.outputs.ci_status }}\`
           - Run outcome: \`${{ steps.runlog.outputs.outcome }}\`
+          - Branch: [\`${BRANCH}\`](${BRANCH_URL})
 
-          Human reviews \`STATE.md\` and merges when ready. No auto-merge.
+          Open a draft PR from that branch when ready (Actions may lack create-PR permission).
           EOF
           )
-            # Strip incidental leading spaces from YAML-indented heredoc
-            BODY=$(printf '%s\n' "$BODY" | sed 's/^[[:space:]]*//')
-            gh pr create \
-              --base main \
-              --head "$BRANCH" \
-              --draft \
-              --title "chore(loop): daily triage STATE.md $(date -u +%Y-%m-%d)" \
-              --body "$BODY"
+          SUMMARY=$(printf '%s\n' "$SUMMARY" | sed 's/^[[:space:]]*//')
+
+          EXISTING=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || true)
+          if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
+            echo "PR #$EXISTING already open"
+            echo "opened=true" >> "$GITHUB_OUTPUT"
+            echo "number=${EXISTING}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --draft \
+            --title "chore(loop): daily triage STATE.md $(date -u +%Y-%m-%d)" \
+            --body "$SUMMARY"; then
             PR_NUMBER=$(gh pr view "$BRANCH" --json number -q '.number')
+            echo "opened=true" >> "$GITHUB_OUTPUT"
             echo "number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "PR create blocked — filing/updating loop-report issue with branch link"
+          echo "opened=false" >> "$GITHUB_OUTPUT"
+          gh label create "loop-report" --color "3ee8c5" --description "Weekly loop triage report" 2>/dev/null || true
+          ISSUE=$(gh issue list --label "loop-report" --state open --limit 1 --json number -q '.[0].number' 2>/dev/null || true)
+          if [ -n "$ISSUE" ] && [ "$ISSUE" != "null" ]; then
+            gh issue comment "$ISSUE" --body "$SUMMARY"
+          else
+            gh issue create \
+              --title "Loop report — $(date -u +%Y-%m-%d)" \
+              --label "loop-report" \
+              --body "$SUMMARY"
           fi
 
       - name: Open weekly loop report issue (Mondays)
