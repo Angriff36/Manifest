@@ -497,51 +497,50 @@ interface ImportFlags {
 }
 
 function generateImports(options: NormalizedOptions, flags: ImportFlags): string {
-  const lines: string[] = [];
+  const lines = [
+    ...svelteKitCoreImports(flags),
+    ...svelteKitTypeImports(options, flags),
+    ...svelteKitRuntimeImports(options, flags),
+  ];
+  if (lines.length > 0) lines.push('');
+  return lines.join('\n');
+}
 
-  // SvelteKit core helpers
+function svelteKitCoreImports(flags: ImportFlags): string[] {
   const skitParts: string[] = [];
   if (flags.includeJson) skitParts.push('json');
   if (flags.includeError) skitParts.push('error');
   if (flags.includeRedirect) skitParts.push('redirect');
   if (flags.includeFail) skitParts.push('fail');
-  if (skitParts.length > 0) {
-    lines.push(`import { ${skitParts.join(', ')} } from "@sveltejs/kit";`);
-  }
+  if (skitParts.length === 0) return [];
+  return [`import { ${skitParts.join(', ')} } from "@sveltejs/kit";`];
+}
 
-  // Type-only imports from generated ./$types module
-  if (options.emitTypeImports && flags.includeTypes !== 'none') {
-    if (flags.includeTypes === 'server') {
-      lines.push(`import type { RequestHandler } from "./$types";`);
-    } else {
-      lines.push(`import type { Actions, PageServerLoad } from "./$types";`);
-    }
+function svelteKitTypeImports(options: NormalizedOptions, flags: ImportFlags): string[] {
+  if (!options.emitTypeImports || flags.includeTypes === 'none') return [];
+  if (flags.includeTypes === 'server') {
+    return [`import type { RequestHandler } from "./$types";`];
   }
+  return [`import type { Actions, PageServerLoad } from "./$types";`];
+}
 
-  // Database (for direct reads)
+function svelteKitRuntimeImports(options: NormalizedOptions, flags: ImportFlags): string[] {
+  const lines: string[] = [];
   if (flags.includeDatabase) {
     lines.push(`import { database } from "${options.databaseImportPath}";`);
   }
-
-  // Runtime factory (for writes / command dispatch)
   if (flags.includeRuntime) {
     lines.push(`import { ${options.runtimeFactoryName} } from "${options.runtimeImportPath}";`);
   }
-
-  // Auth provider import
   const authImport = generateAuthImports(options);
   if (authImport) lines.push(authImport);
-
-  // Tenant provider function — the handlers call it (generateTenantLookup) when
-  // a custom provider is configured, so it must be imported here.
+  // Tenant provider — handlers call it (generateTenantLookup) when configured.
   if (options.includeTenantFilter && options.tenantProvider) {
     lines.push(
       `import { ${options.tenantProvider.functionName} } from "${options.tenantProvider.importPath}";`,
     );
   }
-
-  if (lines.length > 0) lines.push('');
-  return lines.join('\n');
+  return lines;
 }
 
 // ============================================================================
