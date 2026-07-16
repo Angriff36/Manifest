@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.12] - 2026-07-16
+
+### Changed
+
+- docs(compliance): record Convex generation proof
+- fix(convex): preserve generated runner typing
+
 ## [3.6.11] - 2026-07-16
 
 ### Changed
