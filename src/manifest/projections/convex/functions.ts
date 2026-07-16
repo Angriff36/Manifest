@@ -939,7 +939,10 @@ function renderReactions(
     // after-emit middleware does. Prefer the schema index (FK/indexed fields
     // carry by_<field>); fall back to a table-scan filter otherwise.
     if (reaction.fanOut) {
-      const fanScope: RenderScope = { selfVar: 'payload', globals: ['user', 'context', 'args'] };
+      const fanScope: RenderScope = {
+        selfVar: 'payload',
+        globals: ['payload', 'user', 'context', 'args'],
+      };
       const src = renderExpression(reaction.fanOut.matchSource, fanScope);
       if (src.unresolved.length) {
         diagnostics.push({

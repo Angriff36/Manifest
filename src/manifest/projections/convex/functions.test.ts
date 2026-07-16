@@ -1646,6 +1646,81 @@ describe('convex.mutations — G7 emit payloads (`emit Event { field: expr }`)',
 });
 
 describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.x run cmd`)', () => {
+  it('keeps explicit payload roots flat in fan-out match sources and params', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Parent', [prop('status', 'string', ['required'])]),
+      entity(
+        'Child',
+        [
+          prop('parentId', 'string', ['required']),
+          prop('reason', 'string'),
+          prop('status', 'string', ['required']),
+        ],
+        [
+          {
+            name: 'parent',
+            kind: 'belongsTo',
+            target: 'Parent',
+            foreignKey: { fields: ['parentId'] },
+          },
+        ],
+      ),
+    ];
+    ir.stores = [durable('Parent'), durable('Child')];
+    ir.commands = [
+      {
+        name: 'deactivate',
+        entity: 'Parent',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: ['ParentDeactivated'],
+      },
+      {
+        name: 'deactivate',
+        entity: 'Child',
+        parameters: [{ name: 'reason', type: { kind: 'primitive', name: 'string' } }],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    ir.reactions = [
+      {
+        event: 'ParentDeactivated',
+        targetEntity: 'Child',
+        targetCommand: 'deactivate',
+        fanOut: {
+          matchField: 'parentId',
+          matchSource: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'payload' },
+            property: 'parentId',
+          },
+        },
+        params: [
+          {
+            name: 'reason',
+            expression: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'payload' },
+              property: 'reason',
+            },
+          },
+        ],
+      },
+    ] as IRReactionRule[];
+
+    const code = mutations(ir).artifacts[0].code;
+
+    expect(code).toContain('q.eq("parentId", payload.parentId)');
+    expect(code).toContain('reason: payload.reason');
+    expect(code).not.toContain('payload.payload');
+  });
+
   it('renders an indexed query + per-row runMutation loop for a fan-out reaction', () => {
     const ir = emptyIR();
     ir.entities = [
