@@ -5,6 +5,11 @@
 import { describe, it, expect } from 'vitest';
 import type { IR, IREntity, IRProperty, IRStore, IRCommand, IRPolicy } from '../../ir';
 import { ConvexProjection } from './generator.js';
+import {
+  relativeImportBetweenArtifacts,
+  resolveReactApiImportPath,
+  resolveReactClientPathHint,
+} from './react-api-import.js';
 
 function emptyIR(): IR {
   return {
@@ -51,6 +56,42 @@ function entity(name: string, props: IRProperty[]): IREntity {
 }
 
 const react = (ir: IR) => new ConvexProjection().generate(ir, { surface: 'convex.react' });
+
+describe('convex.react api import path', () => {
+  it('derives Builder preset layout: src/lib → ../../convex/_generated/api', () => {
+    expect(resolveReactClientPathHint(undefined)).toBe('src/lib/manifest-convex-react.ts');
+    expect(resolveReactClientPathHint('convex/schema.ts')).toBe(
+      'src/lib/manifest-convex-react.ts',
+    );
+    expect(
+      relativeImportBetweenArtifacts(
+        'src/lib/manifest-convex-react.ts',
+        'convex/_generated/api',
+      ),
+    ).toBe('../../convex/_generated/api');
+    expect(
+      resolveReactApiImportPath('src/lib/manifest-convex-react.ts', undefined),
+    ).toBe('../../convex/_generated/api');
+  });
+
+  it('emits the derived Builder import (not ../ which resolves under src/convex)', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Order', [prop('sku', 'string', ['required'])])];
+    ir.stores = [durable('Order')];
+    // Shared options bag may carry schema output — must not poison the client path.
+    const res = new ConvexProjection().generate(ir, {
+      surface: 'convex.react',
+      options: {
+        authContextImport: './lib/authContext',
+        output: 'convex/schema.ts',
+      },
+    });
+    const code = res.artifacts[0]!.code;
+    expect(res.artifacts[0]!.pathHint).toBe('src/lib/manifest-convex-react.ts');
+    expect(code).toContain('from "../../convex/_generated/api"');
+    expect(code).not.toContain('from "../convex/_generated/api"');
+  });
+});
 
 describe('convex.react', () => {
   it('is declared among Convex surfaces', () => {

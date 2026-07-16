@@ -56,6 +56,8 @@ export const CONVEX_DESCRIPTOR_META: ProjectionDescriptorMeta = {
       enumValues: ['helpers', 'inline'],
     }),
     optionalOption('apiImportPath', 'string', {
+      // When omitted, derived from client pathHint → convex/_generated/api.
+      // Default below is that derivation for the Builder preset client path.
       default: '../../convex/_generated/api',
     }),
   ],

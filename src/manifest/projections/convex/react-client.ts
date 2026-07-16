@@ -14,14 +14,26 @@
 import type { IR, IRCommand, IREntity } from '../../ir';
 import type { ProjectionDiagnostic } from '../interface';
 import { isPersistentEntity } from './persist.js';
+import {
+  resolveReactApiImportPath,
+  resolveReactClientPathHint,
+} from './react-api-import.js';
 import { hasReadPolicies, renderReadPolicies } from './read-policies.js';
 
 export const SURFACE_REACT = 'convex.react' as const;
 
 export interface ConvexReactOptions {
-  /** Import path for Convex's generated `api` (default `../../convex/_generated/api`). */
+  /**
+   * Override for the Convex `api` import. When omitted, derived from
+   * {@link output} (or the default client path) relative to
+   * `convex/_generated/api`.
+   */
   apiImportPath?: string;
-  /** Output path hint (default `src/lib/manifest-convex-react.ts`). */
+  /**
+   * Output path hint (default `src/lib/manifest-convex-react.ts`).
+   * Schema-surface `output` values like `convex/schema.ts` are ignored so a
+   * shared options bag cannot mis-place the client artifact.
+   */
   output?: string;
   /**
    * When set (Convex auth seam), emit useQuery hooks even for read-policy-gated
@@ -29,11 +41,6 @@ export interface ConvexReactOptions {
    */
   authContextImport?: string;
 }
-
-const DEFAULTS = {
-  apiImportPath: '../../convex/_generated/api',
-  output: 'src/lib/manifest-convex-react.ts',
-} as const;
 
 function persistentEntities(ir: IR): IREntity[] {
   return ir.entities.filter((e) => isPersistentEntity(e, ir));
@@ -56,8 +63,8 @@ export function generateReactClient(
   rawOptions: Record<string, unknown> | undefined,
 ): { code: string; diagnostics: ProjectionDiagnostic[]; pathHint: string } {
   const reactOpts = (rawOptions ?? {}) as ConvexReactOptions;
-  const apiImport = reactOpts.apiImportPath ?? DEFAULTS.apiImportPath;
-  const pathHint = reactOpts.output ?? DEFAULTS.output;
+  const pathHint = resolveReactClientPathHint(reactOpts.output);
+  const apiImport = resolveReactApiImportPath(pathHint, reactOpts.apiImportPath);
   const diagnostics: ProjectionDiagnostic[] = [];
   const lines: string[] = [];
 

@@ -140,18 +140,24 @@ export function verifyConvexApplicationAssembly(
   }
 
   const reactCode = codes.get('convex.react') ?? '';
+  // Builder preset writes src/lib/manifest-convex-react.ts → must reach
+  // convex/_generated/api via ../../… One-level ../ resolves under src/convex.
   const brokenReactApiImport = /from\s+["']\.\.\/convex\/_generated\/api["']/.test(reactCode);
+  const correctBuilderImport = /from\s+["']\.\.\/\.\.\/convex\/_generated\/api["']/.test(
+    reactCode,
+  );
   const reactOk =
     reactCode.includes('convex/react') &&
     reactCode.includes('useMutation') &&
-    !brokenReactApiImport;
+    !brokenReactApiImport &&
+    correctBuilderImport;
   checks.push({
     id: 'frontend-convex-api',
     pass: reactOk,
     detail: !reactCode.includes('convex/react')
       ? 'convex.react artifact does not look like a Convex React client'
-      : brokenReactApiImport
-        ? 'convex.react api import ../convex/_generated/api is wrong for src/lib (need ../../convex/_generated/api)'
+      : brokenReactApiImport || !correctBuilderImport
+        ? 'convex.react api import must be ../../convex/_generated/api for src/lib layout (../ resolves under src/convex)'
         : 'convex.react client surface present with resolvable api import',
   });
 
