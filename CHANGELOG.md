@@ -4,7 +4,7 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [3.6.8] - 2026-07-15
 
 ### Fixed
 
