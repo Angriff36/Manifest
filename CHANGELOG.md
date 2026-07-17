@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.20] - 2026-07-17
+
+### Changed
+
+- fix: hydrate relations referenced by emit payloads
+
 ## [3.6.19] - 2026-07-17
 
 ### Changed
