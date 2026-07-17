@@ -37,6 +37,13 @@ Deferred: Event/Culinary guard migration, broad reaction rollout, Explorer, Buil
 `file:../Manifest` locally to consume the new subpaths. After cut-release, pin
 the published exact version again (no `^`).~~
 
-**Correction (2026-07-16):** Published in `@angriff36/manifest@3.6.13`
+~~**Correction (2026-07-16):** Published in `@angriff36/manifest@3.6.13`
 (`[release] v3.6.13` / tag `v3.6.13`). Capsule must pin the exact version
-`3.6.13` (no `^`).
+`3.6.13` (no `^`).~~
+
+**Correction (2026-07-17):** Capsule pins the exact current release (no `^`),
+now `3.6.20` — the first version with working relation resolution in command
+evaluation (guards/constraints/actions/emit payloads) and pre-state draft
+defaults. `3.6.18`/`3.6.19` generate broken code; do not pin them. The
+boundary has since been applied beyond the first vertical slice: Capsule owns
+thin guard wrappers for supply, production, and workforce feature roots.
