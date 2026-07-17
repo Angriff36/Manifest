@@ -1,18 +1,22 @@
 # DX Proof Kit — dependency boundary
 
 **Created:** 2026-07-16  
+**Updated:** 2026-07-16  
 **Status:** Binding for the first vertical slice (IngredientDemand_confirm → PurchaseNeed)
+
+**User-facing guide (usage, not ownership):** [`docs/guides/dx-proof-kit.md`](../../guides/dx-proof-kit.md)  
+**Mintlify:** `mintlify/integration/dx-proof-kit.mdx`
 
 ## Ownership
 
-| Surface | Owner | Notes |
-| --- | --- | --- |
-| Capability catalog + proof-registry schemas/emit/validate | Manifest | Derived from IR + projection metadata; never hand-maintained inventories |
-| Integration guard engine | Manifest | App supplies feature roots / exceptions / rollout only |
-| `@angriff36/manifest/proof-kit` | Manifest | Core APIs; **must not** import `convex-test` |
-| `@angriff36/manifest/proof-kit/convex-test` | Manifest | Optional adapter; `convex-test` + `convex` are optional peers |
-| Runtime proof cases, scenario fixtures, product-decision markers | Capsule | Application-owned |
-| Feature-root guard wrappers | Capsule | Thin config over Manifest engine (Supply first) |
+| Surface                                                          | Owner    | Notes                                                                    |
+| ---------------------------------------------------------------- | -------- | ------------------------------------------------------------------------ |
+| Capability catalog + proof-registry schemas/emit/validate        | Manifest | Derived from IR + projection metadata; never hand-maintained inventories |
+| Integration guard engine                                         | Manifest | App supplies feature roots / exceptions / rollout only                   |
+| `@angriff36/manifest/proof-kit`                                  | Manifest | Core APIs; **must not** import `convex-test`                             |
+| `@angriff36/manifest/proof-kit/convex-test`                      | Manifest | Optional adapter; `convex-test` + `convex` are optional peers            |
+| Runtime proof cases, scenario fixtures, product-decision markers | Capsule  | Application-owned                                                        |
+| Feature-root guard wrappers                                      | Capsule  | Thin config over Manifest engine (Supply first)                          |
 
 ## Dependency rule
 

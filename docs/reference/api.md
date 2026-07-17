@@ -2,7 +2,7 @@
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-06-09
+Last updated: ~~2026-06-09~~ **2026-07-16**
 
 Complete API reference for the Manifest runtime and compiler.
 
@@ -445,6 +445,30 @@ Per `docs/spec/semantics.md`:
 **Note**: `contains` checks membership where left side is array or string.
 
 See: `docs/spec/builtins.md` for complete list.
+
+---
+
+## DX Proof Kit
+
+Stable since `@angriff36/manifest@3.6.13`. Full guide: [`docs/guides/dx-proof-kit.md`](../guides/dx-proof-kit.md).
+
+```typescript
+import {
+  emitCapabilityCatalog,
+  emitProofRegistry,
+  validateProofRegistry,
+  runManifestIntegrationGuard,
+} from '@angriff36/manifest/proof-kit';
+import {
+  createManifestTestContext,
+  ManifestConvexProofHarness,
+} from '@angriff36/manifest/proof-kit/convex-test';
+```
+
+| Subpath                                     | Role                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------ |
+| `@angriff36/manifest/proof-kit`             | Catalog, registry, validator, integration guard (no `convex-test`) |
+| `@angriff36/manifest/proof-kit/convex-test` | Optional Convex harness; apps inject `convexTest`                  |
 
 ---
 

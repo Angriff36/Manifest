@@ -1,6 +1,6 @@
 # Manifest Packages and Distribution
 
-Last updated: ~~2026-06-24~~ **2026-07-15**
+Last updated: ~~2026-06-24~~ ~~**2026-07-15**~~ **2026-07-16**
 Status: Active
 Authority: Advisory
 Enforced by: None
@@ -22,6 +22,7 @@ It includes:
 - Runtime (`RuntimeEngine`)
 - Compiler exports (`compileToIR`, compiler APIs)
 - Projections (including routes projection)
+- DX Proof Kit (`./proof-kit`, `./proof-kit/convex-test`) — see [`docs/guides/dx-proof-kit.md`](../guides/dx-proof-kit.md)
 - Bundled CLI binary (`manifest`)
 - Bundled IR schema (`docs/spec/ir/ir-v1.schema.json`) for `manifest validate`
 
@@ -42,12 +43,12 @@ Consumers do **not** install it directly. Production installs use `@angriff36/ma
 These packages are **intentionally unpublished**. Each has `"private": true` so
 `pnpm publish` / npm will refuse to ship them until an explicit unpark decision.
 
-| Package | Path | Notes |
-| --- | --- | --- |
-| `@manifest/mcp-server` | `packages/mcp-server` | MCP tooling — develop in-repo |
-| `@manifest/lsp-server` | `packages/lsp-server` | LSP — develop in-repo |
-| `@manifest/stdlib` | `packages/stdlib` | Stdlib `.manifest` sources — path/`use` only |
-| `manifest-lang` | `packages/vscode-extension` | VS Code extension — not on Marketplace |
+| Package                | Path                        | Notes                                        |
+| ---------------------- | --------------------------- | -------------------------------------------- |
+| `@manifest/mcp-server` | `packages/mcp-server`       | MCP tooling — develop in-repo                |
+| `@manifest/lsp-server` | `packages/lsp-server`       | LSP — develop in-repo                        |
+| `@manifest/stdlib`     | `packages/stdlib`           | Stdlib `.manifest` sources — path/`use` only |
+| `manifest-lang`        | `packages/vscode-extension` | VS Code extension — not on Marketplace       |
 
 The only consumer-facing npm package remains `@angriff36/manifest`.
 

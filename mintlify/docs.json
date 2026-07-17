@@ -83,7 +83,8 @@
             "pages": [
               "integration/overview",
               "integration/projections",
-              "integration/embedded-runtime"
+              "integration/embedded-runtime",
+              "integration/dx-proof-kit"
             ]
           },
           {

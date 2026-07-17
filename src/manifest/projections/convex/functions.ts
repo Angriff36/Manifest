@@ -61,10 +61,7 @@ import {
   isConvexVersionManagedField,
   renderConvexUpdateVersionOcc,
 } from './version-occ.js';
-import {
-  renderReadPolicies,
-  resolveConvexReadVisibility,
-} from './read-policies.js';
+import { renderReadPolicies, resolveConvexReadVisibility } from './read-policies.js';
 import {
   encryptedFieldNames,
   privateFieldNames,
@@ -636,17 +633,7 @@ export function generateQueries(
     // list/get/listBy — tenant + soft-delete filters applied in helpers.
     emitListEntityQuery(blocks, entity, table, rf, options, qfn, policyPrelude, finishRows);
     emitGetEntityQuery(blocks, entity, table, rf, options, qfn, policyPrelude, finishDoc);
-    emitListByIndexQueries(
-      blocks,
-      ir,
-      entity,
-      table,
-      rf,
-      options,
-      qfn,
-      policyPrelude,
-      finishRows,
-    );
+    emitListByIndexQueries(blocks, ir, entity, table, rf, options, qfn, policyPrelude, finishRows);
   }
 
   // System events table reads (when emitted): recent feed + the three indexed
@@ -1106,11 +1093,6 @@ function renderGovernedCreationEntry(
   const fkTargets = collectFkTargets(entity, ir, options);
   const params = cmd.parameters ?? [];
   const paramNames = new Set(params.map((param) => param.name));
-  const actionByTarget = new Map(
-    (cmd.actions ?? [])
-      .filter((action) => action.kind === 'mutate' && action.target)
-      .map((action) => [action.target!, action]),
-  );
   const seedLines: string[] = [];
 
   for (const property of entity.properties) {
@@ -1120,34 +1102,27 @@ function renderGovernedCreationEntry(
       continue;
     }
     if (isConvexVersionManagedField(entity, property.name)) continue;
-    const built = buildValidator(
-      entity,
-      property,
-      ir,
-      options,
-      fkTargets.get(property.name),
-    );
+    const built = buildValidator(entity, property, ir, options, fkTargets.get(property.name));
     diagnostics.push(...built.diagnostics);
     if (!built.validator) continue;
 
-    const action = actionByTarget.get(property.name);
-    if (action) {
-      const rendered = renderExpression(action.expression, {
-        selfVar: 'args',
-      });
-      if (rendered.unresolved.length === 0 && !/\bself\b|\bthis\b/.test(rendered.code)) {
-        seedLines.push(`      ${property.name}: ${rendered.code}`);
-        continue;
-      }
+    const fallback = creationSeedFallback(ir, property, built.validator);
+    // Allocation is the pre-command state. Declared defaults and automatic
+    // schema timestamps must win over values that command actions will produce.
+    if ((property.defaultValue !== undefined || property.autoNow) && fallback !== undefined) {
+      seedLines.push(`      ${property.name}: ${fallback}`);
+      continue;
     }
-    if (paramNames.has(property.name)) {
-      const fallback = creationSeedFallback(ir, property, built.validator);
+    const required = property.modifiers.includes('required') && !property.type.nullable;
+    // A required command input may be needed to satisfy the database schema
+    // (and relationship preloads) before guards run. Optional/action-produced
+    // fields remain absent until the governed command applies its mutations.
+    if (paramNames.has(property.name) && required) {
       seedLines.push(
         `      ${property.name}: args.${property.name}${fallback === undefined ? '' : ` ?? ${fallback}`}`,
       );
       continue;
     }
-    const fallback = creationSeedFallback(ir, property, built.validator);
     if (fallback !== undefined) {
       seedLines.push(`      ${property.name}: ${fallback}`);
       continue;

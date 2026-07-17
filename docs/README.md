@@ -67,6 +67,7 @@ How to integrate Manifest. These do not define semantics — see [`guides/`](./g
 
 - [Usage patterns](./guides/usage-patterns.md) — projections vs embedded runtime
 - [Embedded runtime](./guides/embedded-runtime.md)
+- [DX Proof Kit](./guides/dx-proof-kit.md) — capability catalog, proof registry, integration guard
 - [Event wiring](./guides/event-wiring.md)
 - [Complex workflows](./guides/complex-workflows.md)
 - [Hybrid integration](./guides/hybrid-integration.md)

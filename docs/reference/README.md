@@ -12,6 +12,7 @@ Programmatic and command-line reference for the Manifest toolchain.
 - [API reference](./api.md) — the public package surface and subpath exports
 - [Compiler & IR](./compiler-ir.md) — compiling source to IR, the `compileToIR` API
 - [Runtime engine](./runtime-engine.md) — `RuntimeEngine` concepts and `runCommand`
+- [DX Proof Kit](../guides/dx-proof-kit.md) — capability catalog, proof registry, integration guard
 - [Types](./types.md) — core TypeScript types
 - [Architecture](./architecture.md) — the compilation pipeline end to end
 

@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.14] - 2026-07-16
+
+### Fixed
+
+- **Convex governed creation selection:** only treat `mutate …At = now()` as a creation signal when the command also guards that timestamp as unset, so concluding commands like `QualityCheck.fail` no longer win `createVia*` over allocating commands like `open`.
+- **Convex creation seed bootstrap:** seed required fields and defaults so governed `createVia*` allocation matches command bootstrap semantics without relying on mutate-side writes for insert.
+
 ## [3.6.13] - 2026-07-16
 
 ### Added

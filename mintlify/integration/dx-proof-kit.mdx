@@ -1,0 +1,105 @@
+---
+title: 'DX Proof Kit'
+sidebarTitle: 'DX Proof Kit'
+description: 'Emit capability catalogs, proof registries, and integration guards from compiled Manifest programs — plus optional Convex test harness helpers.'
+---
+
+> **Verified (2026-07-16):** Stable subpaths `@angriff36/manifest/proof-kit` and
+> `@angriff36/manifest/proof-kit/convex-test` ship in **`@angriff36/manifest@3.6.13`**
+> (`package.json` SoT). Exact pin required (no `^`). Full guide:
+> [`docs/guides/dx-proof-kit.md`](https://github.com/Angriff36/Manifest/blob/main/docs/guides/dx-proof-kit.md).
+
+Prove that generated applications stay complete — without scraping TypeScript or
+maintaining parallel entity inventories by hand.
+
+## Purpose
+
+The DX Proof Kit turns the compiled program into:
+
+1. A **capability catalog** (entities, commands, hooks, events, reactions, proof status)
+2. A **proof registry** with CI validation (`runtime_proven` requires a real test file)
+3. An **integration guard** engine (file + line violations for feature-root bypasses)
+4. Optional **Convex test harness** helpers (apps inject `convex-test`)
+
+## Smallest valid example
+
+```typescript
+import {
+  emitCapabilityCatalog,
+  emitProofRegistry,
+  validateProofRegistry,
+} from '@angriff36/manifest/proof-kit';
+
+const catalog = emitCapabilityCatalog(ir, {
+  entityFilter: ['IngredientDemand', 'PurchaseNeed'],
+  versions: {
+    manifestVersion: '3.6.13',
+    projection: 'convex',
+    preset: { id: 'convex-application', version: '1.3.4' },
+  },
+});
+
+const registry = emitProofRegistry(ir, {
+  entityFilter: ['IngredientDemand', 'PurchaseNeed'],
+  versions: catalog.versions,
+  testBindings: [
+    {
+      proofId: 'IngredientDemandConfirmed->PurchaseNeed.create',
+      structuralTest: 'tests/event-reaction-projection.test.ts',
+      runtimeTest: 'tests/proofs/ingredient-demand-confirm.runtime.test.ts',
+    },
+  ],
+});
+
+const issues = validateProofRegistry(registry, {
+  rootDir: process.cwd(),
+  catalog,
+  installedManifestVersion: '3.6.13',
+});
+```
+
+## Observable effect
+
+- Committed `capability-catalog.json` / `proof-registry.json` stay aligned with IR
+- CI fails on version drift, missing runtime tests, or handwritten `runtime_proven`
+- Feature guards report exact file + line for raw Convex / table bypasses
+
+## Package surface
+
+| Subpath | Role |
+| --- | --- |
+| `@angriff36/manifest/proof-kit` | Catalog, registry, validator, guard — **no** `convex-test` required |
+| `@angriff36/manifest/proof-kit/convex-test` | Optional harness; app injects `convexTest` |
+
+Optional peers: `convex` (`>=1.32.0`), `convex-test` (`>=0.0.43`). Install
+`convex-test` as a **devDependency** in the application (not required to import
+the core proof-kit).
+
+## Use this when / Do not use this when
+
+**Use when** you ship a Convex Manifest app and need CI to prove reactions and
+commands stay wired and tested.
+
+**Do not use when** you need to change language semantics — update the spec and
+conformance first. The proof kit only observes the compiled program.
+
+Manifest does **not** own product decisions (for example unresolved receipt→stock).
+Those stay `blocked_by_product_decision` or `intentionally_unavailable` in the
+application registry.
+
+## Related
+
+- [Embedded Runtime](/integration/embedded-runtime)
+- [Projections](/integration/projections)
+- Ownership boundary:
+  [`docs/internal/plans/2026-07-16-dx-proof-kit-boundary.md`](https://github.com/Angriff36/Manifest/blob/main/docs/internal/plans/2026-07-16-dx-proof-kit-boundary.md)
+- Stable exports: [`docs/spec/sdk-stability.md`](https://github.com/Angriff36/Manifest/blob/main/docs/spec/sdk-stability.md)
+
+## Diagnostics
+
+| Code | Meaning |
+| --- | --- |
+| `RUNTIME_PROOF_MISSING_TEST` | `runtime_proven` but test file missing |
+| `HANDWRITTEN_RUNTIME_CLAIM` | `runtime_proven` without a `runtimeTest` path |
+| `VERSION_MISMATCH` | Registry version ≠ installed `@angriff36/manifest` |
+| `PRESET_MISMATCH` | Registry preset ≠ app `manifestPreset` |

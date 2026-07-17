@@ -4,6 +4,42 @@ function cap(value: string): string {
   return value.length ? value[0]!.toUpperCase() + value.slice(1) : value;
 }
 
+function isNullLiteral(expression: IRCommand['guards'][number]): boolean {
+  return expression.kind === 'literal' && expression.value.kind === 'null';
+}
+
+function isSelfProperty(expression: IRCommand['guards'][number], property: string): boolean {
+  return (
+    expression.kind === 'member' &&
+    expression.property === property &&
+    expression.object.kind === 'identifier' &&
+    (expression.object.name === 'self' || expression.object.name === 'this')
+  );
+}
+
+function guardsPropertyUnset(command: IRCommand, property: string): boolean {
+  return command.guards.some(
+    (guard) =>
+      guard.kind === 'binary' &&
+      (guard.operator === '==' || guard.operator === 'is') &&
+      ((isSelfProperty(guard.left, property) && isNullLiteral(guard.right)) ||
+        (isNullLiteral(guard.left) && isSelfProperty(guard.right, property))),
+  );
+}
+
+function initializesLifecycleTimestamp(command: IRCommand): boolean {
+  return (command.actions ?? []).some(
+    (action) =>
+      action.kind === 'mutate' &&
+      action.target?.endsWith('At') &&
+      action.target !== 'updatedAt' &&
+      action.expression.kind === 'call' &&
+      action.expression.callee.kind === 'identifier' &&
+      action.expression.callee.name === 'now' &&
+      guardsPropertyUnset(command, action.target),
+  );
+}
+
 /** Infer the broad command that initializes a command-created entity.
  *
  * Multi-file IR is canonically sorted, so source declaration order is not
@@ -34,9 +70,7 @@ export function commandCreationEntry(ir: IR, entity: IREntity): IRCommand | unde
           target !== 'id'
         );
       }).length;
-      const initializesAt = [...targets].some(
-        (target) => target.endsWith('At') && target !== 'updatedAt',
-      );
+      const initializesAt = initializesLifecycleTimestamp(command);
       return {
         command,
         score: targets.size,

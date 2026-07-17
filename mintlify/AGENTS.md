@@ -15,7 +15,7 @@ Last updated: 2026-07-15
 
 ## Source of truth (do not invent features)
 
-1. Repo root `package.json` — **version SoT** (currently **3.6.4**); `engines.node` is **`>=20`**
+1. Repo root `package.json` — **version SoT** (currently **3.6.13**); `engines.node` is **`>=20`**
 2. `docs/spec/ir/ir-v1.schema.json` → `docs/spec/semantics.md` → builtins → adapters → conformance
 3. Evidence inventory: `docs/CONFIRMED-FEATURES.md` (what exists) and `docs/TODO.md` (gaps)
 4. Historical roadmap `docs/FEATURE-LIST.md` is **not** trustworthy without the caveat header
