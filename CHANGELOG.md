@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.18] - 2026-07-17
+
+### Changed
+
+- fix: resolve declared relations and seed pre-state defaults in command evaluation
+
 ## [3.6.17] - 2026-07-17
 
 ### Fixed
