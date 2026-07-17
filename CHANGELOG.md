@@ -4,6 +4,19 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.17] - 2026-07-17
+
+### Fixed
+
+- **Convex `createVia*` parameter scope:** initialization handlers now destructure
+  command parameters from `args` into locals (same binding model as instance commands)
+  so constraints, guards, and mutates that reference parameters resolve instead of
+  throwing `ReferenceError` on bare names.
+- **Multi-file initialization ownership:** after IR merge, initialization plans are
+  re-derived with the merged tenant so `authenticatedOwnershipFields` survive
+  cross-file `use` + mixin composition (ownership is no longer empty for entities
+  defined outside the tenant-declaring file).
+
 ## [3.6.16] - 2026-07-17
 
 ### Changed

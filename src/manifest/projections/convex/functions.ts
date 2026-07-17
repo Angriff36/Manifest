@@ -1225,7 +1225,21 @@ function renderGovernedCreationEntry(
       `    ${param.name}: ${param.required ? paramValidator(param.type) : `v.optional(${paramValidator(param.type)})`}`,
   );
   const exportName = commandCreationExportName(entity.name, cmd.name);
-  const bodyText = [...draftLines, ...checks.lines, ...mutateLines, tail].join('\n');
+  // Same binding model as instance commands: params are locals. createVia keeps
+  // the `args` bag for draft seeding (`args.<input>`) and destructures into
+  // locals so constraint/guard/mutate expressions that reference parameters
+  // resolve (locals render verbatim via RenderScope).
+  const paramBindLine =
+    params.length > 0
+      ? `    const { ${params.map((parameter) => parameter.name).join(', ')} } = args;\n`
+      : '';
+  const bodyText = [
+    ...draftLines,
+    ...checks.lines,
+    ...mutateLines,
+    tail,
+    paramBindLine,
+  ].join('\n');
   const authLines = authBindings(bodyText, options, tenantScoped);
   const docVar = encryptionActive ? '__storedDoc' : 'doc';
 
@@ -1234,6 +1248,7 @@ function renderGovernedCreationEntry(
     `  args: {\n${argLines.join(',\n')}\n  },\n` +
     `  handler: async (ctx, args: any) => {\n` +
     (authLines.length ? authLines.join('\n') + '\n' : '') +
+    paramBindLine +
     `    const __draft: Record<string, any> = {\n${draftLines.join(',\n')}${draftLines.length ? '\n' : ''}    };\n` +
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
     `    const doc: Record<string, any> = {\n` +

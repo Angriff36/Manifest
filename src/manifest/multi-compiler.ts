@@ -33,6 +33,7 @@ import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
 import { Parser } from './parser.js';
 import { IRCompiler, computeIRHash } from './ir-compiler.js';
 import { resolveModuleGraph, ResolverHost } from './module-resolver.js';
+import { attachInitializationPlans } from './initialization-plan.js';
 import { checkReactionCompleteness } from './reaction-completeness.js';
 
 export interface CompileProjectOptions {
@@ -284,6 +285,14 @@ export async function compileProjectToIR(
     basePath,
   );
 
+  // Phase 4.25: Re-derive initialization plans against the merged program.
+  // Per-file compile only sees `tenant` when that file declares it; mixin-
+  // expanded ownership properties alone do not populate
+  // authenticatedOwnershipFields. After merge the singular tenant (and full
+  // entity shapes) are available — re-attach so multi-file `use` matches
+  // single-file ownership semantics.
+  attachInitializationPlans(mergedIR.entities, mergedIR.commands, mergedIR.tenant);
+
   // Phase 4.5: Whole-program reaction completeness. Deferred from the per-file
   // compiles (skipReactionCompleteness) because a reaction can listen for an
   // event emitted by a command in another file — only the merged IR has the full
@@ -324,7 +333,9 @@ export function mergeIR(irs: IR[]): IR {
       ? ir.provenance.sources.map((s) => ({ absPath: s.path, contentHash: s.contentHash }))
       : [{ absPath: ir.provenance.contentHash, contentHash: ir.provenance.contentHash }],
   );
-  return mergeIRs(irs, sources, '');
+  const merged = mergeIRs(irs, sources, '');
+  attachInitializationPlans(merged.entities, merged.commands, merged.tenant);
+  return merged;
 }
 
 /**

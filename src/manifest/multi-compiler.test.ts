@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { compileProjectToIR } from './multi-compiler';
 import { ResolverHost } from './module-resolver';
+import { ConvexProjection } from './projections/convex/generator.js';
 
 /**
  * In-memory ResolverHost for testing.
@@ -648,6 +649,150 @@ describe('Multi-Compiler', () => {
       );
       expect(autoProvided.some((d) => d.message.includes('Aaa.create'))).toBe(true);
       expect(autoProvided.some((d) => d.message.includes('Bbb.create'))).toBe(true);
+    });
+  });
+
+  describe('initialization ownership across multi-file use', () => {
+    const ownershipFixture = (opts: {
+      rootUses: string[];
+      secondEntityFile?: boolean;
+      transitive?: boolean;
+    }) => {
+      const rootUses = opts.rootUses.map((u) => `use "${u}"`).join('\n');
+      const files: Record<string, string> = {
+        '/project/foundation.manifest': `
+          tenant orgKey : string from context.orgKey
+          entity Owned {
+            property required id: string
+            property indexed required orgKey: string
+          }
+        `,
+        '/project/catalog.manifest': `
+          use "./foundation.manifest"
+          entity Widget mixin Owned {
+            property required name: string = ""
+            property introducedAt: datetime?
+            command introduce(name: string) {
+              guard self.introducedAt == null
+              mutate name = name
+              mutate introducedAt = now()
+            }
+            store Widget in durable
+          }
+        `,
+        '/project/root.manifest': `
+          ${rootUses}
+          entity RootThing mixin Owned {
+            property required title: string = ""
+            property openedAt: datetime?
+            command open(title: string) {
+              guard self.openedAt == null
+              mutate title = title
+              mutate openedAt = now()
+            }
+            store RootThing in durable
+          }
+        `,
+      };
+      if (opts.secondEntityFile) {
+        files['/project/inventory.manifest'] = `
+          use "./foundation.manifest"
+          entity Gadget mixin Owned {
+            property required label: string = ""
+            property introducedAt: datetime?
+            command introduce(label: string) {
+              guard self.introducedAt == null
+              mutate label = label
+              mutate introducedAt = now()
+            }
+            store Gadget in durable
+          }
+        `;
+      }
+      if (opts.transitive) {
+        files['/project/mid.manifest'] = `
+          use "./catalog.manifest"
+        `;
+      }
+      return files;
+    };
+
+    it('keeps authenticated ownership when the entity uses a trait from another file', async () => {
+      const host = createMemoryHost(
+        ownershipFixture({ rootUses: ['./foundation.manifest', './catalog.manifest'] }),
+      );
+      const result = await compileProjectToIR({
+        entries: ['/project/root.manifest'],
+        host,
+        basePath: '/project',
+      });
+      expect(result.ir).not.toBeNull();
+      const widget = result.ir!.commands.find(
+        (c) => c.entity === 'Widget' && c.name === 'introduce',
+      );
+      expect(widget?.initialization?.authenticatedOwnershipFields).toEqual(['orgKey']);
+      const root = result.ir!.commands.find((c) => c.entity === 'RootThing' && c.name === 'open');
+      expect(root?.initialization?.authenticatedOwnershipFields).toEqual(['orgKey']);
+    });
+
+    it('preserves ownership through a transitive use graph', async () => {
+      // mid re-exports catalog; root pulls foundation + mid so Owned and Widget both resolve.
+      const host = createMemoryHost(
+        ownershipFixture({
+          rootUses: ['./foundation.manifest', './mid.manifest'],
+          transitive: true,
+        }),
+      );
+      const result = await compileProjectToIR({
+        entries: ['/project/root.manifest'],
+        host,
+        basePath: '/project',
+      });
+      expect(result.ir).not.toBeNull();
+      const widget = result.ir!.commands.find(
+        (c) => c.entity === 'Widget' && c.name === 'introduce',
+      );
+      expect(widget?.initialization?.authenticatedOwnershipFields).toEqual(['orgKey']);
+    });
+
+    it('keeps ownership for multiple entities sharing the same trait', async () => {
+      const host = createMemoryHost(
+        ownershipFixture({
+          rootUses: ['./foundation.manifest', './catalog.manifest', './inventory.manifest'],
+          secondEntityFile: true,
+        }),
+      );
+      const result = await compileProjectToIR({
+        entries: ['/project/root.manifest'],
+        host,
+        basePath: '/project',
+      });
+      expect(result.ir).not.toBeNull();
+      for (const key of ['Widget.introduce', 'Gadget.introduce', 'RootThing.open']) {
+        const [entity, name] = key.split('.');
+        const cmd = result.ir!.commands.find((c) => c.entity === entity && c.name === name);
+        expect(cmd?.initialization?.authenticatedOwnershipFields).toEqual(['orgKey']);
+      }
+    });
+
+    it('emits authenticated ownership into the generated createVia draft from context', async () => {
+      const host = createMemoryHost(
+        ownershipFixture({ rootUses: ['./foundation.manifest', './catalog.manifest'] }),
+      );
+      const result = await compileProjectToIR({
+        entries: ['/project/root.manifest'],
+        host,
+        basePath: '/project',
+      });
+      expect(result.ir).not.toBeNull();
+      const code = new ConvexProjection().generate(result.ir!, {
+        surface: 'convex.mutations',
+        options: { authContextImport: './lib/authContext' },
+      }).artifacts[0]!.code;
+      expect(code).toContain('export const Widget_createViaIntroduce = mutation({');
+      expect(code).toContain('orgKey: __auth.orgKey');
+      expect(code).toContain('const { name } = args;');
+      expect(code).toContain('const { title } = args;');
     });
   });
 });

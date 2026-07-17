@@ -416,4 +416,165 @@ describe('Convex governed creation entries', () => {
     expect(code).toContain('ingredientId: args.ingredientId');
     expect(code).toContain('export const VendorOrderLine_createViaAddLine = mutation({');
   });
+
+  it('binds initialization parameters as locals so constraints, guards, and mutates resolve', () => {
+    const lengthTrimName: IRExpression = {
+      kind: 'binary',
+      operator: '>',
+      left: {
+        kind: 'call',
+        callee: identifier('length'),
+        args: [
+          {
+            kind: 'call',
+            callee: identifier('trim'),
+            args: [identifier('name')],
+          },
+        ],
+      },
+      right: { kind: 'literal', value: { kind: 'number', value: 0 } },
+    };
+    const costNonNeg: IRExpression = {
+      kind: 'binary',
+      operator: '>=',
+      left: identifier('costPerUnit'),
+      right: { kind: 'literal', value: { kind: 'number', value: 0 } },
+    };
+    const ir: IR = {
+      version: '1.0',
+      provenance: {
+        contentHash: 'params',
+        compilerVersion: 'test',
+        schemaVersion: '1.0',
+        compiledAt: '2026-01-01T00:00:00.000Z',
+      },
+      tenant: {
+        property: 'tenantId',
+        type: { name: 'string', nullable: false },
+        contextPath: 'context.tenantId',
+      },
+      modules: [],
+      values: [],
+      entities: [
+        {
+          name: 'CatalogItem',
+          properties: [
+            {
+              name: 'tenantId',
+              type: { name: 'string', nullable: false },
+              modifiers: ['required'],
+            },
+            {
+              name: 'name',
+              type: { name: 'string', nullable: false },
+              modifiers: ['required'],
+              defaultValue: { kind: 'string', value: '' },
+            },
+            {
+              name: 'costPerUnit',
+              type: { name: 'number', nullable: false },
+              modifiers: ['required'],
+              defaultValue: { kind: 'number', value: 0 },
+            },
+            {
+              name: 'sku',
+              type: { name: 'string', nullable: false },
+              modifiers: ['required'],
+              defaultValue: { kind: 'string', value: '' },
+            },
+            {
+              name: 'status',
+              type: { name: 'string', nullable: false },
+              modifiers: ['required'],
+              defaultValue: { kind: 'string', value: 'active' },
+            },
+            {
+              name: 'introducedAt',
+              type: { name: 'datetime', nullable: true },
+              modifiers: [],
+            },
+          ],
+          computedProperties: [],
+          relationships: [],
+          commands: ['introduce', 'rename'],
+          constraints: [],
+          policies: [],
+        },
+      ],
+      enums: [],
+      stores: [{ entity: 'CatalogItem', target: 'durable', config: {} }],
+      events: [],
+      commands: [
+        {
+          entity: 'CatalogItem',
+          name: 'introduce',
+          parameters: [
+            { name: 'name', type: { name: 'string', nullable: false }, required: true },
+            { name: 'costPerUnit', type: { name: 'number', nullable: false }, required: true },
+            { name: 'sku', type: { name: 'string', nullable: false }, required: true },
+          ],
+          guards: [equalsNull('introducedAt')],
+          constraints: [
+            {
+              name: 'nameRequired',
+              code: 'nameRequired',
+              expression: lengthTrimName,
+              severity: 'block',
+              message: 'name required',
+            },
+            {
+              name: 'costOk',
+              code: 'costOk',
+              expression: costNonNeg,
+              severity: 'block',
+              message: 'cost ok',
+            },
+          ],
+          actions: [
+            mutate('name', identifier('name')),
+            mutate('costPerUnit', identifier('costPerUnit')),
+            mutate('sku', identifier('sku')),
+            mutate('introducedAt', now()),
+          ],
+          emits: [],
+        },
+        {
+          entity: 'CatalogItem',
+          name: 'rename',
+          parameters: [
+            { name: 'name', type: { name: 'string', nullable: false }, required: true },
+          ],
+          guards: [notEqualsNull('introducedAt')],
+          actions: [mutate('name', identifier('name'))],
+          emits: [],
+        },
+      ],
+      policies: [],
+    };
+
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.mutations',
+      options: { authContextImport: './lib/authContext' },
+    }).artifacts[0]!.code;
+
+    const createVia = code.slice(
+      code.indexOf('export const CatalogItem_createViaIntroduce'),
+      code.indexOf('async function __runCatalogItemRename'),
+    );
+    expect(createVia).toContain('const { name, costPerUnit, sku } = args;');
+    expect(createVia).toContain('(((name).trim()).length > 0)');
+    expect(createVia).toContain('(costPerUnit >= 0)');
+    expect(createVia).toContain('name: name');
+    expect(createVia).toContain('costPerUnit: costPerUnit');
+    expect(createVia).toContain('sku: sku');
+    expect(createVia).toContain('(__draft.introducedAt == null)');
+    expect(createVia).toContain('tenantId: __auth.tenantId');
+    // Draft seeds still read the args bag; locals are for expression eval.
+    expect(createVia).toContain('name: args.name');
+
+    const rename = code.slice(code.indexOf('async function __runCatalogItemRename'));
+    expect(rename).toContain('{ docId, name }');
+    expect(rename).toContain('name: name');
+    expect(rename).not.toContain('const { name } = args;');
+  });
 });
