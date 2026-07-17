@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.15] - 2026-07-17
+
+### Changed
+
+- fix(loop): match capsule-pro GLM/MiniMax routing
+
 ## [3.6.14] - 2026-07-16
 
 ### Fixed
