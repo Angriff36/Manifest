@@ -2057,3 +2057,57 @@ describe('convex.mutations — aggregate count reactions (`count(E where fk == v
     expect(res.diagnostics.some((d) => d.code === 'CONVEX_AGGREGATE_UNINDEXED')).toBe(true);
   });
 });
+
+describe('convex.mutations — relation hydration helper assembly', () => {
+  it('defines __resolveRelation in the assembled mutations file when a relation guard is present', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Person', [prop('status', 'string', ['required'])]),
+      entity(
+        'Shift',
+        [prop('personId', 'string', ['required']), prop('total', 'number')],
+        [
+          {
+            name: 'person',
+            kind: 'belongsTo',
+            target: 'Person',
+            foreignKey: { fields: ['personId'], references: ['id'] },
+          },
+        ],
+      ),
+    ];
+    ir.stores = [durable('Person'), durable('Shift')];
+    ir.commands = [
+      {
+        name: 'start',
+        entity: 'Shift',
+        parameters: [],
+        guards: [
+          {
+            kind: 'binary',
+            operator: '!=',
+            left: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'self' },
+              property: 'person',
+            },
+            right: { kind: 'literal', value: { kind: 'null' } },
+          },
+        ],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'total',
+            expression: { kind: 'literal', value: { kind: 'number', value: 1 } },
+          },
+        ],
+        emits: [],
+      },
+    ];
+    const code = mutations(ir).artifacts[0].code;
+    // Regression: the helper must be assembled by generateMutations itself —
+    // hydration call sites without the definition are a runtime ReferenceError.
+    expect(code).toContain('__resolveRelation(');
+    expect(code).toContain('async function __resolveRelation');
+  });
+});

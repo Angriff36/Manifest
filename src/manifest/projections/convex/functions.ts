@@ -1876,6 +1876,7 @@ export function generateMutations(
   const needsDecrypt = !!options.encryptionImport && /\b__decryptDoc\b/.test(body);
   if (needsEncrypt) helpers.push(ENCRYPT_HELPER);
   if (needsDecrypt) helpers.push(DECRYPT_HELPER);
+  if (/\b__resolveRelation\(/.test(body)) helpers.push(RELATION_HELPER);
   if (/\bcheckRole\(/.test(body)) {
     helpers.push(
       `// Role hierarchy from IR (effective permissions after inheritance).\n` +
