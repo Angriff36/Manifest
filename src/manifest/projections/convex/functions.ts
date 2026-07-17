@@ -1101,6 +1101,7 @@ interface RelationHydration {
   lines: string[];
   relationVars: Readonly<Record<string, string>>;
   diagnostics: ProjectionDiagnostic[];
+  plan: ReturnType<typeof buildRelationDependencyPlan>;
 }
 
 /** Render only the relation locals required by this command's shared IR-derived plan. */
@@ -1113,6 +1114,7 @@ function renderRelationHydration(
   tenantScoped: boolean,
   writeTenantProp: string | undefined,
   supportedHasMany: ReadonlySet<string> = new Set(),
+  refine?: { relationNames: ReadonlySet<string>; varSuffix: string },
 ): RelationHydration {
   const lines: string[] = [];
   const relationVars: Record<string, string> = {};
@@ -1135,6 +1137,7 @@ function renderRelationHydration(
   };
 
   for (const dependency of plan.relations) {
+    if (refine && !refine.relationNames.has(dependency.relationName)) continue;
     if (dependency.kind === 'hasMany') {
       const onlyCountOf =
         dependency.accessModes.length === 1 && dependency.accessModes[0] === 'countOf';
@@ -1165,7 +1168,7 @@ function renderRelationHydration(
       continue;
     }
 
-    const variable = `__rel_${dependency.relationName}`;
+    const variable = `__rel_${dependency.relationName}${refine?.varSuffix ?? ''}`;
     const rawVariable = `${variable}Raw`;
     const localValues = dependency.localFields
       .map((field) =>
@@ -1212,7 +1215,7 @@ function renderRelationHydration(
     }
   }
 
-  return { lines, relationVars, diagnostics };
+  return { lines, relationVars, diagnostics, plan };
 }
 
 /**
@@ -1347,7 +1350,14 @@ function renderGovernedCreationEntry(
   }
 
   const versionLines = convexCreateVersionDocLines(entity);
-  const g7Scope: RenderScope = { selfVar: 'doc', idExpr: 'docId' };
+  // createVia never re-points reference fields between draft and doc (mutate
+  // lines re-bind the same command inputs), so emit payloads reuse the
+  // pre-check hydration locals.
+  const g7Scope: RenderScope = {
+    selfVar: 'doc',
+    idExpr: 'docId',
+    relationVars: relationHydration.relationVars,
+  };
   const g7 = unionEmitPayloadFields(cmd, g7Scope, 'docId');
   diagnostics.push(...g7.diagnostics);
   const events = renderEvents(
@@ -1580,7 +1590,11 @@ function generateMutation(
     // G7 `emit Event { field: expr }`: populate each event-row payload (and the
     // shared reaction payload below) with declared fields evaluated against the
     // post-action instance. `doc` is the created instance; `self.id` → Convex `_id`.
-    const g7Scope: RenderScope = { selfVar: 'doc', idExpr: '_id' };
+    const g7Scope: RenderScope = {
+      selfVar: 'doc',
+      idExpr: '_id',
+      relationVars: relationHydration.relationVars,
+    };
     const g7 = unionEmitPayloadFields(cmd, g7Scope, '_id');
     diagnostics.push(...g7.diagnostics);
     const events = renderEvents(
@@ -1730,17 +1744,51 @@ function generateMutation(
   // Post-action snapshot for G7 / schema synthesis. Current fields → `__after`;
   // previous-state fields → `compute` locals (pre-update expressions).
   const needsAfter = commandNeedsAfterSnapshot(ir, entity, cmd);
+  // Emit payloads see relations through hydrated locals. When a mutate action
+  // re-points one of the relation's reference fields, re-resolve from the
+  // post-update snapshot so the payload reflects the new target, matching the
+  // runtime's lazy post-mutation resolution.
+  const mutatedTargets = new Set(resolvedUpdates.map((update) => update.target));
+  const staleEmitRelations = new Set(
+    relationHydration.plan.relations
+      .filter(
+        (dependency) =>
+          dependency.phases.includes('emit') &&
+          dependency.localFields.some((field) => mutatedTargets.has(field)),
+      )
+      .map((dependency) => dependency.relationName),
+  );
+  const postHydration = staleEmitRelations.size
+    ? renderRelationHydration(
+        ir,
+        options,
+        entity,
+        cmd,
+        '__after',
+        tenantScoped,
+        writeTenantProp,
+        supportedHasMany,
+        { relationNames: staleEmitRelations, varSuffix: '__post' },
+      )
+    : undefined;
+  if (postHydration) diagnostics.push(...postHydration.diagnostics);
+  const emitRelationVars = {
+    ...relationHydration.relationVars,
+    ...(postHydration?.relationVars ?? {}),
+  };
   const g7Scope: RenderScope = {
-    selfVar: needsAfter ? '__after' : 'doc',
+    selfVar: needsAfter || postHydration !== undefined ? '__after' : 'doc',
     locals: actionLocals,
     idExpr: 'docId',
     beforeVar: 'doc',
+    relationVars: emitRelationVars,
   };
   const g7 = unionEmitPayloadFields(cmd, g7Scope, 'docId', computeLocals);
   diagnostics.push(...g7.diagnostics);
-  const useAfter = needsAfter;
+  const useAfter = needsAfter || postHydration !== undefined;
   const afterLine = useAfter
-    ? `    const __after: Record<string, any> = { ...doc, ...updates };\n`
+    ? `    const __after: Record<string, any> = { ...doc, ...updates };\n` +
+      (postHydration?.lines.length ? postHydration.lines.join('\n') + '\n' : '')
     : '';
   const events = renderEvents(
     resolveEventsTableName(ir, options),

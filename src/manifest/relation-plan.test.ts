@@ -206,3 +206,31 @@ describe('relation dependency plan', () => {
     });
   });
 });
+
+describe('emit phase collection', () => {
+  it('records emit payload dereferences as the emit phase', () => {
+    const { ir, shift, command } = fixture();
+    command.policies = [];
+    command.guards = [];
+    command.constraints = [];
+    command.actions = [
+      {
+        kind: 'mutate',
+        target: 'status',
+        expression: { kind: 'literal', value: { kind: 'string', value: 'flagged' } },
+      },
+    ];
+    command.emits = ['ShiftFlagged'];
+    command.emitPayloads = [
+      {
+        eventName: 'ShiftFlagged',
+        fields: [{ name: 'locationTenant', expression: member(self('location'), 'tenantId') }],
+      },
+    ];
+
+    const plan = buildRelationDependencyPlan(ir, shift, command);
+    const location = plan.relations.find((relation) => relation.relationName === 'location');
+    expect(location?.phases).toEqual(['emit']);
+    expect(location?.targetFieldsRead).toEqual(['tenantId']);
+  });
+});

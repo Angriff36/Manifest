@@ -20,7 +20,8 @@ export type RelationEvaluationPhase =
   | 'guard'
   | 'commandConstraint'
   | 'entityConstraint'
-  | 'action';
+  | 'action'
+  | 'emit';
 
 export type RelationAccessMode = 'value' | 'countOf';
 
@@ -56,6 +57,7 @@ const PHASE_ORDER: readonly RelationEvaluationPhase[] = [
   'commandConstraint',
   'entityConstraint',
   'action',
+  'emit',
 ];
 
 const ACCESS_ORDER: readonly RelationAccessMode[] = ['value', 'countOf'];
@@ -354,6 +356,11 @@ export function buildRelationDependencyPlan(
       collected,
       commandLocals,
     );
+  }
+  for (const emitPayload of command.emitPayloads ?? []) {
+    for (const field of emitPayload.fields) {
+      collectExpressionRelations(field.expression, 'emit', relationships, collected, commandLocals);
+    }
   }
 
   const tenantProperty = ir.tenant?.property;

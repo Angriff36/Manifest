@@ -240,3 +240,40 @@ describe('runtime command relation resolution', () => {
     expect(stored).not.toHaveProperty('_entity');
   });
 });
+
+describe('runtime emit payload relation resolution', () => {
+  it('resolves relation fields in emit payloads', async () => {
+    const ir = relationIR();
+    ir.events.push({ name: 'ShiftFlagged', channel: 'shift.flagged', payload: [] });
+    ir.commands.push({
+      name: 'flag',
+      entity: 'Shift',
+      parameters: [],
+      guards: [],
+      actions: [{ kind: 'mutate', target: 'status', expression: literal('flagged') }],
+      emits: ['ShiftFlagged'],
+      emitPayloads: [
+        {
+          eventName: 'ShiftFlagged',
+          fields: [{ name: 'personStatus', expression: member(self('person'), 'status') }],
+        },
+      ],
+    });
+    ir.entities.find((candidate) => candidate.name === 'Shift')!.commands.push('flag');
+
+    const runtime = new RuntimeEngine(ir, { tenantId: 't1' }, { generateId: () => 'flag-run' });
+    await runtime.createInstance('Person', { id: 'p1', tenantId: 'ignored', status: 'active' });
+    await runtime.createInstance('Shift', {
+      id: 's1',
+      tenantId: 'ignored',
+      personId: 'p1',
+      status: 'scheduled',
+    });
+
+    const result = await runtime.runCommand('flag', {}, { entityName: 'Shift', instanceId: 's1' });
+
+    expect(result.success).toBe(true);
+    const flagged = result.emittedEvents.find((event) => event.name === 'ShiftFlagged');
+    expect((flagged?.payload as Record<string, unknown>).personStatus).toBe('active');
+  });
+});

@@ -2111,3 +2111,90 @@ describe('convex.mutations — relation hydration helper assembly', () => {
     expect(code).toContain('async function __resolveRelation');
   });
 });
+
+describe('convex.mutations — emit payload relation hydration', () => {
+  function emitRelationIR(mutateFk: boolean): IR {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Person', [prop('status', 'string', ['required'])]),
+      entity(
+        'Shift',
+        [prop('personId', 'string', ['required']), prop('status', 'string', ['required'])],
+        [
+          {
+            name: 'person',
+            kind: 'belongsTo',
+            target: 'Person',
+            foreignKey: { fields: ['personId'], references: ['id'] },
+          },
+        ],
+      ),
+    ];
+    ir.stores = [durable('Person'), durable('Shift')];
+    ir.events = [{ name: 'ShiftFlagged', channel: 'shift.flagged', payload: [] }];
+    ir.commands = [
+      {
+        name: 'flag',
+        entity: 'Shift',
+        parameters: mutateFk
+          ? [{ name: 'personId', type: { name: 'string', nullable: false }, required: true }]
+          : [],
+        guards: [],
+        actions: [
+          ...(mutateFk
+            ? [
+                {
+                  kind: 'mutate' as const,
+                  target: 'personId',
+                  expression: { kind: 'identifier' as const, name: 'personId' },
+                },
+              ]
+            : []),
+          {
+            kind: 'mutate' as const,
+            target: 'status',
+            expression: { kind: 'literal' as const, value: { kind: 'string' as const, value: 'flagged' } },
+          },
+        ],
+        emits: ['ShiftFlagged'],
+        emitPayloads: [
+          {
+            eventName: 'ShiftFlagged',
+            fields: [
+              {
+                name: 'personStatus',
+                expression: {
+                  kind: 'member',
+                  object: {
+                    kind: 'member',
+                    object: { kind: 'identifier', name: 'self' },
+                    property: 'person',
+                  },
+                  property: 'status',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    return ir;
+  }
+
+  it('emit payloads read the hydrated relation local, not a raw doc property', () => {
+    const code = mutations(emitRelationIR(false)).artifacts[0].code;
+    expect(code).toContain('const __rel_person = await __resolveRelation(');
+    expect(code).toContain('__rel_person.status');
+    expect(code).not.toContain('doc.person.status');
+    expect(code).not.toContain('__after.person.status');
+    expect(code).toContain('async function __resolveRelation');
+  });
+
+  it('re-resolves from the post-update snapshot when a mutate re-points the reference field', () => {
+    const code = mutations(emitRelationIR(true)).artifacts[0].code;
+    expect(code).toContain('const __rel_person__post = await __resolveRelation(');
+    expect(code).toContain('__after.personId');
+    expect(code).toContain('__rel_person__post.status');
+    expect(code).not.toContain('doc.person.status');
+  });
+});
