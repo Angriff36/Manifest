@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.19] - 2026-07-17
+
+### Changed
+
+- fix: assemble __resolveRelation helper in generateMutations output
+
 ## [3.6.18] - 2026-07-17
 
 ### Changed
