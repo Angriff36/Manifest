@@ -17,6 +17,16 @@
 6. `docs/spec/manifest-vnext.md` (Constraints)
 7. `docs/spec/README.md`
 
+**Binding plans (scoped ownership — not language semantics):** Before changing
+proof-kit, Capsule↔Manifest integration guards, `./proof-kit` package exports,
+or consumer pin guidance, read
+`docs/internal/plans/2026-07-16-dx-proof-kit-boundary.md`. More generally,
+scan `docs/internal/plans/` for docs whose front matter / **Status** field says
+`Binding` for your surface — folder default is Tier B advisory
+(`docs/internal/DOCUMENTATION_GOVERNANCE.md`), but an explicit Binding status
+binds for its stated scope until graduated into `docs/internal/contracts/`.
+Plans never override Tier A (`docs/spec/**`).
+
 @RYAN_APPROVED 2026-07-15
 **Feature completion law:** `docs/internal/COMPLIANCE_MATRIX.md` is the binding
 source of truth for **Manifest-owned** feature completion. Agents MUST:

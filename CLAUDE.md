@@ -61,6 +61,11 @@ Any time documentation is encountered that is proven beyond a doubt to be false,
 - `docs/CONFIRMED-FEATURES.md` is existence inventory; `docs/TODO.md` is a working checklist — both must reconcile to the matrix, and the matrix wins completion disputes.
 @RYAN_APPROVED
 
+**Binding plans:** Before proof-kit / Capsule integration-guard / `./proof-kit`
+export work, read `docs/internal/plans/2026-07-16-dx-proof-kit-boundary.md`.
+Scan `docs/internal/plans/` for `Status: Binding` on your surface (see
+`AGENTS.md`). Plans never override `docs/spec/**`.
+
 **Versioning policy (owner decision 2026-07-14, NOT standard semver):**
 `major` (breaking) bumps the **minor digit** (`x.Y.z` → `x.(Y+1).0`);
 `minor` and `patch` both bump the **patch digit**. The keyword remap lives in

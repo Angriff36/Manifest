@@ -1,8 +1,11 @@
 # DX Proof Kit — dependency boundary
 
 **Created:** 2026-07-16  
-**Updated:** 2026-07-16  
-**Status:** Binding for the first vertical slice (IngredientDemand_confirm → PurchaseNeed)
+**Updated:** 2026-07-17  
+**Status:** Binding for proof-kit ownership + Capsule consumption (guard wrappers,
+exact registry pin, convex-test dependency split). First vertical slice was
+IngredientDemand_confirm → PurchaseNeed; boundary now also covers supply,
+production, and workforce feature-root wrappers.
 
 **User-facing guide (usage, not ownership):** [`docs/guides/dx-proof-kit.md`](../../guides/dx-proof-kit.md)  
 **Mintlify:** `mintlify/integration/dx-proof-kit.mdx`

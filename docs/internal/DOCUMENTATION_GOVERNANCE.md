@@ -39,15 +39,15 @@ Style and information-architecture rules for user pages live in
 ~~Earlier 2026-07-15 matrix drafts were gap-focused (~40 rows) and were **not** a full feature inventory.~~  
 **Update (2026-07-15):** The matrix enumerates **Manifest-owned** language, builtins, runtime, stores, **each** registered projection, CLI/SDK/packaging, and Manifest gaps. Builder-owned surfaces are `OUT_OF_SCOPE` here. Ownership law: `docs/internal/contracts/manifest-builder-boundary.md`. Builder consumption: `C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md`. Integration states: `MANIFEST_COMPLETE` / `BUILDER_CONSUMED` / `END_TO_END_VERIFIED` (see matrix). `FULLY_IMPLEMENTED` still requires filename + line range + commit SHA.
 
-| Document                             | Role                                                                                                      |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `docs/internal/COMPLIANCE_MATRIX.md` | **Completion SoT** — whether a **Manifest-owned** feature is done, partial, diagnostic-only, rejected, or not implemented |
-| `docs/internal/contracts/manifest-builder-boundary.md` | **Ownership boundary** — Manifest vs Builder; resolves which matrix owns a gap |
-| `C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md` | **Builder consumption SoT** — Manifest API consumed, pin, Builder location, focused test |
-| `docs/CONFIRMED-FEATURES.md`         | **Existence inventory** — what verifiably exists; must reconcile to the matrix; loses completion disputes |
-| `docs/TODO.md`                       | Working checklist of open items; closing an item requires updating the matrix first                       |
-| `docs/FEATURE-LIST.md`               | Historical roadmap names only — use to find missing matrix rows; never as completion proof                |
-| Tier A `docs/spec/**` + conformance  | **Semantics SoT** — what behavior means when it exists                                                    |
+| Document                                                    | Role                                                                                                                      |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `docs/internal/COMPLIANCE_MATRIX.md`                        | **Completion SoT** — whether a **Manifest-owned** feature is done, partial, diagnostic-only, rejected, or not implemented |
+| `docs/internal/contracts/manifest-builder-boundary.md`      | **Ownership boundary** — Manifest vs Builder; resolves which matrix owns a gap                                            |
+| `C:\projects\builder\docs\CAPABILITY_CONSUMPTION_MATRIX.md` | **Builder consumption SoT** — Manifest API consumed, pin, Builder location, focused test                                  |
+| `docs/CONFIRMED-FEATURES.md`                                | **Existence inventory** — what verifiably exists; must reconcile to the matrix; loses completion disputes                 |
+| `docs/TODO.md`                                              | Working checklist of open items; closing an item requires updating the matrix first                                       |
+| `docs/FEATURE-LIST.md`                                      | Historical roadmap names only — use to find missing matrix rows; never as completion proof                                |
+| Tier A `docs/spec/**` + conformance                         | **Semantics SoT** — what behavior means when it exists                                                                    |
 
 ### Proof protocol (mandatory for “fully implemented”)
 
@@ -131,6 +131,15 @@ Rules:
 - Proposal docs must explicitly state when they differ from current normative behavior.
 - `docs/internal/proposals/storage-projection/README.md` documents already-shipped
   Prisma projection behavior as a reference — advisory, not normative.
+- ~~Planning folders are always non-binding.~~
+  > **Correction (2026-07-17):** Folder default remains Tier B advisory, but an
+  > individual plan may declare `Status: Binding` for a **scoped ownership /
+  > integration** rule (example:
+  > `docs/internal/plans/2026-07-16-dx-proof-kit-boundary.md`). That status
+  > binds only for the stated scope; it never overrides Tier A language law.
+  > Prefer graduating durable Binding plans into `docs/internal/contracts/`.
+  > Agents must scan `docs/internal/plans/` for Binding status before changing
+  > proof-kit or Capsule↔Manifest integration surfaces (see `AGENTS.md`).
 
 ### Tier C: Guidance and integration docs (advisory)
 
@@ -365,7 +374,7 @@ confirmed in this file.
 | `docs/CONFIRMED-FEATURES.md`                                                                                 | C — Existence inventory    | What exists; loses completion disputes to the matrix                                                         |
 | `docs/TODO.md`                                                                                               | C — Working checklist      | Open items; update matrix first when closing                                                                 |
 | `docs/internal/proposals/`                                                                                   | B — Non-binding            | Design proposals, deferred work, drafts                                                                      |
-| `docs/plans/`, `docs/internal/plans/`, `docs/internal/notes/`, `docs/internal/context/`, `docs/superpowers/` | B — Non-binding            | Plans, WIP, agent design artifacts                                                                           |
+| `docs/plans/`, `docs/internal/plans/`, `docs/internal/notes/`, `docs/internal/context/`, `docs/superpowers/` | B — Non-binding (default)  | Plans/WIP; individual plans may opt in to scoped Binding via `Status: Binding` (never overrides Tier A)      |
 | `docs/internal/tools/`                                                                                       | C — Advisory               | CLI/API usage guides (internal)                                                                              |
 | `docs/internal/contracts/`                                                                                   | C — Advisory               | Signpost + scope boundary docs                                                                               |
 | `docs/internal/codedocs/`                                                                                    | D — Derivative             | Auto-generated API reference for tooling ingestion                                                           |
@@ -412,3 +421,9 @@ with a mandatory hard-proof protocol (filename + line range + git commit) for
 `FULLY_IMPLEMENTED`. Recorded in this file, `AGENTS.md`, and `CLAUDE.md` under
 `@RYAN_APPROVED 2026-07-15` so agents cannot treat roadmaps or unverified
 inventory prose as “done.”
+
+**Addendum (2026-07-17) — Binding plans opt-in:** Clarified that
+`docs/internal/plans/` defaults to Tier B, but a plan may declare
+`Status: Binding` for scoped ownership/integration (proof-kit boundary).
+Wired into `AGENTS.md` / `CLAUDE.md` so proof-kit and Capsule integration work
+cannot miss that plan. Does not change Tier A language law.
