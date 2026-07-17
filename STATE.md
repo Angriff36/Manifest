@@ -1,33 +1,17 @@
 # Loop State — Manifest
 
-<<<<<<< Updated upstream
-Last run: 2026-07-16T11:35:30Z (automated daily-triage workflow)
+Last run: never (awaiting first Claude Code cron triage tick)
 
 ## High Priority (loop is acting or waiting on human)
 
-- Maintain loop readiness score (current: **100**, level **L3**).
-- **CI failing** (latest `ci.yml` conclusion: failure) — investigate before language changes.
-- L1 report-only: human reviews this file before any L2 auto-fix path.
-
-## Watch List
-
-- capsule-v2 loop setup (deferred — not this repo)
-- Least-privilege tool scopes on loop skills
-- Confirm weekday triage signal stays useful
-=======
-Last run: never (awaiting first GLM/MiniMax triage tick)
-
-## High Priority (loop is acting or waiting on human)
-
-- Wire real triage: confirm Claude Code cron fires `scripts/loop-tick.sh` and
-  first worker updates this file with judged findings (not GHA scoreboard).
+- Confirm weekday Claude Code cron runs `$loop-triage` on Anthropic session
+  (not GLM/MiniMax). Cursor brain then reviews this file.
 
 ## Watch List
 
 - capsule-v2 loop setup (deferred)
-- GLM z.ai 529 overload when other heavy jobs share the plan — prefer MiniMax if triage fails
-- GHA `daily-triage.yml` is dogfood only — must not clobber this file's findings
->>>>>>> Stashed changes
+- L2 GLM/MiniMax dispatch stays OFF until graduation (capsule-pro pattern)
+- GHA dogfood must not clobber findings here
 
 ## Recent Noise (ignored this run)
 
@@ -38,8 +22,4 @@ Last run: never (awaiting first GLM/MiniMax triage tick)
 —
 
 ---
-<<<<<<< Updated upstream
-Run log: Updated by `.github/workflows/daily-triage.yml`. See `LOOP.md` for cadence and gates.
-=======
-Run log: `loop-run-log.md`. Architecture: `LOOP.md`. Brain: Cursor (`docs/internal/loop-overseer.md`).
->>>>>>> Stashed changes
+Architecture: `LOOP.md` (matches capsule-pro-loops). Overseer: `docs/internal/loop-overseer.md`.

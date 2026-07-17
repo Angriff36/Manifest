@@ -276,17 +276,16 @@ Domain completeness diagnostics enforce the **user-facing boundary** (see `docs/
 
 ## Loop operation
 
-Real Daily Triage (L1 report-only) — see [`LOOP.md`](./LOOP.md):
+Same routing as capsule-pro-loops — see [`LOOP.md`](./LOOP.md):
 
 | Role | Who |
 |------|-----|
-| Brain | Cursor — [`docs/internal/loop-overseer.md`](./docs/internal/loop-overseer.md) |
-| Work horses | GLM 5.2 ⇄ MiniMax-M3 via Claude Code (`scripts/loop-tick.sh`) |
+| Brain / triage | Claude Code cron (`$loop-triage` on Anthropic session) + Cursor watch ([`docs/internal/loop-overseer.md`](./docs/internal/loop-overseer.md)) |
+| Implementers (L2 OFF) | GLM 5.2 ⇄ MiniMax-M3 via `scripts/loop-dispatch.sh` + profile switch |
 | Review (L2 OFF) | Codex via `.claude/agents/loop-verifier.md` |
 
-- State spine: [`STATE.md`](./STATE.md) — **agent triage owns it**; GHA dogfood must not rewrite findings.
+- State spine: [`STATE.md`](./STATE.md) — triage owns it; GHA dogfood must not rewrite findings.
 - Binding denylist: [`loop-constraints.md`](./loop-constraints.md).
-- Smoke: `bash scripts/loop-triage.sh glm` or `minimax`.
 - Kill switch: `loop-pause-all` in `STATE.md`.
 
 ## Definition of "Done"

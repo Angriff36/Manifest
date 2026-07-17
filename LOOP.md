@@ -1,78 +1,69 @@
 # LOOP.md — Manifest Language
 
-Real agent loop (not the GHA scoreboard). Architecture mirrors the proven
-`capsule-pro-loops` setup, with **Cursor as brain**.
+Same routing as `capsule-pro-loops` (2026-07-13), with **Cursor** in the Fable
+brain seat. **Current phase: L1 report-only.**
 
-**Current phase: L1 report-only.** L2 implementers + Codex review are wired
-but **OFF** until graduation criteria below are met.
+## Model routing (matches capsule-pro)
 
-## Model routing
-
-| Role | Model / host | Mechanism |
-|------|----------------|-----------|
-| Brain (watch, prioritize, dispatch, send to review) | Cursor (this chat / Automation) | Reads `STATE.md`; never rubber-stamps workers; owns graduation calls |
-| Work horses (triage L1; implement L2 when ON) | GLM 5.2 ⇄ MiniMax-M3 via Claude Code | `scripts/loop-tick.sh` / `scripts/loop-triage.sh` / `scripts/loop-dispatch.sh` + `~/.claude/switch-claude-profile.sh` |
-| Review gate (L2 — **OFF**) | Codex (`gpt-5.6-sol` per `~/.codex/config.toml`) | `.claude/agents/loop-verifier.md` → `codex exec` / `codex review` |
+| Role | Model | Mechanism |
+|------|-------|-----------|
+| Scheduler | Claude Code cron | Weekday ticks (see `.claude/scheduled_tasks.json` locally) |
+| Brain (triage, state, dispatch) | Cursor (watch) + Claude Code cron tick | Cron runs `$loop-constraints` then `$loop-triage` on the **Anthropic / default Claude session** — owns `STATE.md`. Cursor reviews findings and decides dispatch. |
+| Implementers (L2 — **OFF**) | GLM 5.2 ⇄ MiniMax-M3, alternating per item | `scripts/loop-dispatch.sh <glm\|minimax> "<item>"` + `~/.claude/switch-claude-profile.sh` |
+| Review gate (L2 — **OFF**) | Codex (`gpt-5.6-sol`) | `.claude/agents/loop-verifier.md` wraps `codex exec` |
 | Circuit breaker | `loop-context` | `loop-ledger.json` |
-| Final gate | Human (Ryan) | Merges, denylist paths, Compliance Matrix proof |
+| Final gate | Human (Ryan) | Merges, denylist, Compliance Matrix proof |
 
-Worker credentials stay in `~/.claude/claude-glm.ps1` and
-`~/.claude/claude-minimax.ps1` — **never** commit tokens.
+**GLM/MiniMax are not the triage models.** They only run when the brain
+dispatches an L2 fix through `loop-dispatch.sh` (same as capsule-pro).
 
-## What runs when
-
-| Job | Cadence | What it does |
-|-----|---------|--------------|
-| **Real triage** | Claude Code cron weekdays `30 15 * * 1-5` (08:30 America/Los_Angeles ≈ 15:30 UTC) | `scripts/loop-tick.sh` → alternating GLM/MiniMax runs `$loop-constraints` then `$loop-triage` → updates `STATE.md` |
-| **Brain watch** | Cursor (you) after each tick / on demand | Read `STATE.md` + run log; prune noise; decide dispatch; send approved diffs to Codex |
-| **GHA dogfood** | `daily-triage.yml` weekdays 08:00 UTC | Audit score + CI health only — **does not own or rewrite triage findings** |
+Worker credentials: `~/.claude/claude-glm.ps1` / `claude-minimax.ps1` — never commit tokens.
 
 ## Active loops
 
 | Pattern | Cadence | Status |
 |---------|---------|--------|
-| Daily Triage | Weekdays ~08:30 local via Claude Code cron | L1 report-only |
+| Daily Triage | Weekdays `30 15 * * 1-5` (~08:30 America/Los_Angeles) | L1 report-only |
 | Minimal fix + Codex review | On brain dispatch | L2 — **OFF** |
+
+## Cron prompt (Claude Code — brain tick)
+
+```text
+In C:\Projects\Manifest: if STATE.md contains loop-pause-all, exit.
+Else run $loop-constraints then $loop-triage.
+Update STATE.md and append loop-run-log.md.
+L1 report-only — do not edit source, do not open fix PRs, do not switch to GLM/MiniMax.
+```
+
+Do **not** call `switch_claude_profile glm|minimax` on triage ticks.
 
 ## L1 → L2 graduation (all required)
 
 1. ≥1 week of L1 ticks with &lt;20% noise in High Priority
 2. One *manual* `loop-dispatch.sh` → Codex verifier round-trip proven
 3. Human flips implementer status in this file from **OFF** to ON
-4. Brain (Cursor) confirms denylist + `pnpm test` verifier path is solid
+4. Cursor brain confirms denylist + `pnpm test` path is solid
 
-## How the brain dispatches (L2, when ON)
+## L2 dispatch (when ON — same as capsule-pro)
 
 ```bash
-# After approving a High Priority item in STATE.md:
 bash scripts/loop-dispatch.sh glm "exact one-line fix target"
 # or
 bash scripts/loop-dispatch.sh minimax "exact one-line fix target"
-
-# Then (brain / Claude wrapper): invoke Agent loop-verifier on the printed worktree
-# Verdict APPROVE → draft PR; REJECT → log attempt + alternate worker or escalate
-```
-
-## Manual triage (smoke)
-
-```bash
-bash scripts/loop-triage.sh glm
-bash scripts/loop-triage.sh minimax
+# Brain then runs Agent loop-verifier (Codex) on the printed worktree
 ```
 
 ## Budget & kill switch
 
 - Caps: `loop-budget.md`
-- Run history: `loop-run-log.md`
-- Kill: put `loop-pause-all` in `STATE.md` High Priority → ticks exit immediately
+- Kill: `loop-pause-all` in `STATE.md`
+- GHA `daily-triage.yml` = dogfood scoreboard only — never rewrites triage findings
 
 ## Deferred
 
 - capsule-v2 loop setup — separate phase
-- Manifest DSL `schedule` for triage — wrong layer (agent ops ≠ runtime cron)
 
 ## Links
 
-- Overseer playbook: [`docs/internal/loop-overseer.md`](./docs/internal/loop-overseer.md)
+- Overseer: [`docs/internal/loop-overseer.md`](./docs/internal/loop-overseer.md)
 - Constraints: [`loop-constraints.md`](./loop-constraints.md)
-- Agents guide: [`AGENTS.md`](./AGENTS.md)

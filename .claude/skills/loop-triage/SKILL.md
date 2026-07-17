@@ -3,48 +3,37 @@ name: loop-triage
 description: >
   Manifest language-repo triage tick. Scans CI, PRs, issues, recent commits on
   main. Writes prioritized findings into STATE.md. L1: report only — never
-  edits code. Invoked by GLM/MiniMax workhorses via scripts/loop-triage.sh.
+  edits code. Runs on the Claude Code cron / brain session (Anthropic default),
+  NOT on GLM/MiniMax (those are L2 implementers via loop-dispatch.sh).
 user_invocable: true
 ---
 
 # Loop Triage — Manifest
 
-You are the triage pass of the Manifest loop (see `LOOP.md`). Run
-`$loop-constraints` first if it has not run this tick.
+Same role as capsule-pro-loops `loop-triage`: eyes for the brain tick.
+Run `$loop-constraints` first if it has not run this tick.
 
 ## Inputs (gather each run)
 
 - `STATE.md` — read FIRST
 - `LOOP.md` — phase (L1 vs L2) and routing
 - Recent commits: `git log --oneline -20 origin/main`
-- CI: `gh run list --limit 10` (note failures on main)
+- CI: `gh run list --limit 10`
 - Open PRs: `gh pr list --limit 15`
 - Open issues: `gh issue list --limit 15` when enabled
 - `loop-run-log.md` last entries
 
 ## Output — update STATE.md
 
-### High Priority (loop is acting or waiting on human)
-One line each: what, why it matters, suggested next action, effort guess.
-
-### Watch List
-Lower urgency; monitor only.
-
-### Recent Noise (ignored this run)
-Brief — helps tune this skill.
-
-### Post-Run Critique
-False positives, repeated items, one adjustment for next run.
-
-Also update `Last run:` timestamp (UTC) and append one JSON entry to
-`loop-run-log.md` including `"worker": "glm"|"minimax"` and `"outcome"`.
+### High Priority / Watch / Noise / Post-Run Critique
+Same sections as the loop-engineering daily-triage skill. Merge with prior
+items; prune resolved. Update `Last run` (UTC). Append JSON to `loop-run-log.md`
+with `"source": "claude-cron-triage"`.
 
 ## Rules
 
-- Be brutally concise. When in doubt: Watch or Noise, not High Priority.
-- Signal only — never invent architectural work from triage.
-- Respect high-scrutiny paths in `loop-constraints.md` (report/escalate only).
-- No actionable items → exit fast, log a no-op.
-- **L1 phase: do not edit any code, ever.** Report only.
-- Do not rewrite the whole STATE.md boilerplate from templates — merge with
-  prior High Priority / Watch items; prune resolved ones.
+- Be brutally concise. When in doubt: Watch or Noise.
+- Signal only — no architectural invention.
+- Respect `loop-constraints.md` high-scrutiny paths.
+- **L1: do not edit any code.** Do not call `loop-dispatch.sh`.
+- Do not switch Claude profiles to glm/minimax during triage.
