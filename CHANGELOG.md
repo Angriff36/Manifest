@@ -4,6 +4,15 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.13] - 2026-07-16
+
+### Added
+
+- DX Proof Kit: `@angriff36/manifest/proof-kit` capability catalog, proof registry, and integration guard engine (no `convex-test` dependency).
+- Optional `@angriff36/manifest/proof-kit/convex-test` adapter for reusable Convex runtime proof helpers (`convex-test` optional peer).
+- Assembly verification accepts optional proof-kit capability catalog JSON.
+- Stable export documentation for `./proof-kit` and `./proof-kit/convex-test` in `docs/spec/sdk-stability.md`.
+
 ## [3.6.12] - 2026-07-16
 
 ### Changed
