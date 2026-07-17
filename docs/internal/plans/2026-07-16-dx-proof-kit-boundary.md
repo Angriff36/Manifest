@@ -29,6 +29,10 @@ Deferred: Event/Culinary guard migration, broad reaction rollout, Explorer, Buil
 
 ## Capsule consumption (vertical slice)
 
-Until `@angriff36/manifest` is cut-released with `./proof-kit`, Capsule may pin
+~~Until `@angriff36/manifest` is cut-released with `./proof-kit`, Capsule may pin
 `file:../Manifest` locally to consume the new subpaths. After cut-release, pin
-the published exact version again (no `^`).
+the published exact version again (no `^`).~~
+
+**Correction (2026-07-16):** Published in `@angriff36/manifest@3.6.13`
+(`[release] v3.6.13` / tag `v3.6.13`). Capsule must pin the exact version
+`3.6.13` (no `^`).
