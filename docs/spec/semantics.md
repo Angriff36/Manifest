@@ -542,6 +542,48 @@ normalization is enabled.
   6. Execute actions in order.
   7. Emit declared events in order.
   8. Return a CommandResult with success status, emitted events, and the last action result.
+
+### Initialization Commands (atomic document construction)
+
+- When a command carries `IRCommand.initialization` (an `IRInitializationPlan`) and
+  is invoked without an `instanceId`, it is an **allocating** (initialization)
+  command. The compiler attaches this plan; projections and the reference runtime
+  MUST consume it and MUST NOT invent separate creation heuristics.
+- ~~Initialization used to persist a partially initialized document, then run
+  ordinary command mutations against that row (persist-before-mutate).~~
+  > **Correction (2026-07-16) @RYANSIGNED:** Initialization is atomic document
+  > construction. Runtimes and projections MUST follow this order and persist
+  > nothing when any step fails:
+  > 1. Validate command input (parameters, trusted injection, defaults).
+  > 2. Create a virtual pre-persistence **draft** from authenticated ownership,
+  >    declared defaults, initial lifecycle state, and permitted initialization
+  >    inputs. Command-owned fields that are not also initialization inputs are
+  >    absent from the draft until mutations run.
+  > 3. Evaluate authorization (policies) and genuine state-dependent business
+  >    invariants (dynamic guards / command constraints) against the draft.
+  > 4. Apply command mutations to the in-memory draft.
+  > 5. Validate the complete resulting document against the entity schema
+  >    (required fields, types, uniqueness, entity constraints).
+  > 6. Persist exactly one final valid document.
+  > 7. Emit events and run reactions against the persisted result.
+- Field validation belongs to the generated schema validator (scalars, enums,
+  arrays, optionality/nullability, references/value objects, simple ranges,
+  input-only cross-field rules). Authorization belongs to policies. Lifecycle
+  legality belongs to declared transitions (transition edges apply to subsequent
+  instance commands; the allocating write constructs the first legal document).
+  Defaults and initial values belong to field/entity initialization metadata.
+  Guards are reserved for dynamic business invariants that need the current
+  document, related data, authenticated user, or current time.
+- Authors MUST NOT be required to write guards that only restate facts already
+  known from field schemas, initialization-command identity, lifecycle
+  declarations, command mutation ownership, defaults, or generated authorization.
+  Such guards may still appear (classified on the plan as `redundantGuardIndexes`)
+  but are not required by the language.
+- A required final field MAY be populated solely by an initialization command
+  mutation without a placeholder property default. Compilers MUST NOT treat that
+  shape as a contradictory definition.
+- Generated public APIs MUST NOT accept values the generated entity schema rejects
+  (same field contract for Zod and platform validators).
 - Commands may declare a `retry` policy. When present, the runtime wraps execution and retries a failed attempt whose error code appears in the command's `retryOn` list. The runtime derives that code from the failed `CommandResult`: a concurrency conflict yields `CONCURRENCY_CONFLICT`; a structured (`CODE: message`) error surfaces its leading `CODE` verbatim (so a command that fails with `SUPPLIER_UNAVAILABLE: …` is retryable when `retryOn` lists `SUPPLIER_UNAVAILABLE`); an unstructured error mentioning `TIMEOUT` falls back to `TIMEOUT`. Policy denials, guard failures, and blocking constraint outcomes MUST NOT be retried.
 - `schedule` declarations compile to IR `schedules`. Runtimes expose `getSchedules()` and `runSchedule(name)`. The `RuntimeEngine` itself has no timer, so adapters decide when to invoke schedules; the reference package ships an optional worker (`startScheduleWorker` / `runSchedulesOnce` from `@angriff36/manifest/schedule-worker`) that evaluates cron and interval/every triggers on a tick loop and, when the IR declares approvals, sweeps approval expiry. Cron is matched in UTC to the minute (day-of-month and day-of-week follow the standard OR rule when both are restricted).
 - Entity `extends` and `mixin` composition is resolved at compile time. Precedence on name collision: own > later mixin > earlier mixin > parent. Cycles and unknown parents are compile errors.

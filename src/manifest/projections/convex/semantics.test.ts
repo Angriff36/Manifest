@@ -127,10 +127,12 @@ describe('M2 — transitions', () => {
     expect(code).toMatch(/__to = "cancelled"/);
   });
 
-  it('limits same-state lifecycle initialization to the generated creation wrapper', () => {
+  it('keeps instance-command transition bypass and emits atomic createVia for allocators', () => {
     const code = gen(orderIR(), 'convex.mutations').artifacts[0].code;
     expect(code).toContain('!(__creation && __from === __to) && Object.hasOwn(__allowed, __from)');
-    expect(code).toContain('await __runOrderAdvance(ctx, { ...args, docId }, true)');
+    expect(code).toContain('export const Order_createViaAdvance = mutation({');
+    expect(code).toContain('const __draft: Record<string, any> = {');
+    expect(code).not.toContain('await __runOrderAdvance(ctx, { ...args, docId }, true)');
     expect(code).not.toContain('__from !== __to && Object.hasOwn(__allowed, __from)');
   });
 

@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "normalized-ir-hash",
+    "irHash": "40bfb59250205bd4842f3aa4552e2e100597a8e80546e88846efed2a024579eb",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -244,7 +244,30 @@
           }
         }
       ],
-      "emits": []
+      "emits": [],
+      "initialization": {
+        "initializationInputs": [
+          "title"
+        ],
+        "authenticatedOwnershipFields": [],
+        "declaredDefaults": [
+          {
+            "property": "id",
+            "source": "defaultValue"
+          }
+        ],
+        "initialLifecycleState": [],
+        "commandOwnedFields": [
+          "title"
+        ],
+        "draftFields": [
+          "id",
+          "title"
+        ],
+        "finalDocumentRequirements": [],
+        "dynamicGuardIndexes": [],
+        "redundantGuardIndexes": []
+      }
     },
     {
       "name": "create",
@@ -271,7 +294,30 @@
           }
         }
       ],
-      "emits": []
+      "emits": [],
+      "initialization": {
+        "initializationInputs": [
+          "name"
+        ],
+        "authenticatedOwnershipFields": [],
+        "declaredDefaults": [
+          {
+            "property": "id",
+            "source": "defaultValue"
+          }
+        ],
+        "initialLifecycleState": [],
+        "commandOwnedFields": [
+          "name"
+        ],
+        "draftFields": [
+          "id",
+          "name"
+        ],
+        "finalDocumentRequirements": [],
+        "dynamicGuardIndexes": [],
+        "redundantGuardIndexes": []
+      }
     },
     {
       "name": "create",
@@ -314,7 +360,33 @@
           }
         }
       ],
-      "emits": []
+      "emits": [],
+      "initialization": {
+        "initializationInputs": [
+          "postId",
+          "tagId"
+        ],
+        "authenticatedOwnershipFields": [],
+        "declaredDefaults": [
+          {
+            "property": "id",
+            "source": "defaultValue"
+          }
+        ],
+        "initialLifecycleState": [],
+        "commandOwnedFields": [
+          "postId",
+          "tagId"
+        ],
+        "draftFields": [
+          "id",
+          "postId",
+          "tagId"
+        ],
+        "finalDocumentRequirements": [],
+        "dynamicGuardIndexes": [],
+        "redundantGuardIndexes": []
+      }
     }
   ],
   "policies": [],

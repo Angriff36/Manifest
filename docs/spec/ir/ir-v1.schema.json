@@ -968,6 +968,89 @@
         "failureEvent": {
           "type": "string",
           "description": "Auto-derived failure event name, synthesized when async is true. Format: {commandName}Failed."
+        },
+        "initialization": {
+          "$ref": "#/definitions/IRInitializationPlan",
+          "description": "Authoritative atomic construction plan for allocating commands. When present, runtime and projections MUST construct one final valid document (draft → mutate → validate → persist once) and MUST NOT persist a partial document before mutations."
+        }
+      }
+    },
+    "IRInitializationPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "initializationInputs",
+        "authenticatedOwnershipFields",
+        "declaredDefaults",
+        "initialLifecycleState",
+        "commandOwnedFields",
+        "draftFields",
+        "finalDocumentRequirements",
+        "dynamicGuardIndexes",
+        "redundantGuardIndexes"
+      ],
+      "properties": {
+        "initializationInputs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Client-facing command parameter names (excludes trustedSource)."
+        },
+        "authenticatedOwnershipFields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Fields filled from authenticated ownership / tenant context."
+        },
+        "declaredDefaults": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["property", "source"],
+            "properties": {
+              "property": { "type": "string" },
+              "source": {
+                "type": "string",
+                "enum": ["defaultValue", "autoNow", "timestamps", "version"]
+              }
+            }
+          }
+        },
+        "initialLifecycleState": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["property", "value"],
+            "properties": {
+              "property": { "type": "string" },
+              "value": { "$ref": "#/definitions/IRValue" }
+            }
+          }
+        },
+        "commandOwnedFields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Entity fields written by this command's actions."
+        },
+        "draftFields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Fields available on the pre-mutation draft for precondition evaluation."
+        },
+        "finalDocumentRequirements": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Required non-null entity fields that must exist on the final persisted document."
+        },
+        "dynamicGuardIndexes": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "Guard indexes that need runtime evaluation."
+        },
+        "redundantGuardIndexes": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "Guard indexes that only restate initialization facts (optional; not required by authors)."
         }
       }
     },

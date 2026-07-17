@@ -18,6 +18,7 @@ import {
   IRRole,
   IRSaga,
   IRProperty,
+  IRInitializationPlan,
   JobQueue,
   JobRecord,
 } from './ir';
@@ -42,6 +43,7 @@ import {
 import { getSchedulesFromIR } from './runtime-schedule.js';
 import type { IRSchedule } from './ir';
 import { RuntimeProfilingBridge } from './runtime-profiling-bridge.js';
+import { buildInitializationPlan } from './initialization-plan.js';
 import type { EventBus, EventBusMessage } from './events/event-bus';
 import {
   ReferentialActionApplier,
@@ -913,6 +915,11 @@ export class RuntimeEngine {
     instance: EntityInstance | null;
     /** Accumulated store-form (encrypted) field changes to flush once. */
     patch: Partial<EntityInstance>;
+    /**
+     * When `initialize`, mutates accumulate on the draft and flush performs a
+     * single `store.create` of the final document (atomic construction).
+     */
+    mode?: 'initialize';
   } | null = null;
 
   /**
@@ -928,6 +935,9 @@ export class RuntimeEngine {
 
   /** Last transition validation error (set by updateInstance, checked by _executeCommandInternal) */
   private lastTransitionError: string | null = null;
+
+  /** Constraint outcomes from a failed initialization persist (flush). */
+  private lastInitializationConstraintOutcomes: ConstraintOutcome[] | null = null;
 
   /**
    * Last fail-closed action error (set by executeAction for adapter actions that
@@ -2657,6 +2667,83 @@ export class RuntimeEngine {
     return mergedData;
   }
 
+  /**
+   * Build the virtual pre-persistence draft for an initialization command.
+   * Includes ownership, declared defaults, initial lifecycle state, and
+   * permitted initialization inputs. Command-owned fields that are not also
+   * initialization inputs are omitted until mutations run.
+   */
+  private buildInitializationDraft(
+    entity: IREntity,
+    plan: IRInitializationPlan,
+    input: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const draft: Record<string, unknown> = {};
+    const bodyId =
+      typeof input.id === 'string' && input.id !== '' ? input.id : this.nextRuntimeId();
+    draft.id = bodyId;
+
+    const propertyByName = new Map(entity.properties.map((property) => [property.name, property]));
+    const commandOwned = new Set(plan.commandOwnedFields);
+
+    for (const field of plan.authenticatedOwnershipFields) {
+      if (this.ir.tenant?.property === field) {
+        const tenantValue = this.resolveTenantValue();
+        if (tenantValue !== undefined && tenantValue !== null) draft[field] = tenantValue;
+        continue;
+      }
+      if (input[field] !== undefined) draft[field] = input[field];
+    }
+
+    for (const item of plan.declaredDefaults) {
+      // Identity is assigned above; do not let a property default clobber it.
+      if (item.property === 'id') continue;
+      if (commandOwned.has(item.property) && !(item.property in input)) continue;
+      if (item.source === 'defaultValue') {
+        const property = propertyByName.get(item.property);
+        if (property?.defaultValue !== undefined) {
+          draft[item.property] = this.irValueToJs(property.defaultValue);
+        }
+      } else if (item.source === 'autoNow' || item.source === 'timestamps') {
+        draft[item.property] = this.getNow();
+      } else if (item.source === 'version') {
+        if (item.property === entity.versionProperty) draft[item.property] = 1;
+        if (item.property === entity.versionAtProperty) draft[item.property] = this.getNow();
+      }
+    }
+
+    for (const item of plan.initialLifecycleState) {
+      if (draft[item.property] === undefined) {
+        draft[item.property] = this.irValueToJs(item.value);
+      }
+    }
+
+    for (const name of plan.initializationInputs) {
+      if (!propertyByName.has(name)) continue;
+      if (input[name] === undefined) continue;
+      draft[name] = input[name];
+    }
+
+    // Permitted body fields: any entity property present on the command input
+    // (legacy create body + same-named extras) joins the draft so schema
+    // validation sees caller-supplied values before persist.
+    for (const property of entity.properties) {
+      if (property.name === 'id') continue;
+      if (input[property.name] === undefined) continue;
+      draft[property.name] = input[property.name];
+    }
+
+    for (const key of Object.keys(draft)) {
+      if (draft[key] === undefined) delete draft[key];
+    }
+
+    if (entity.key && entity.key.length > 0 && !entity.key.includes('id')) {
+      draft.id = this.compositeId(entity, draft);
+    }
+
+    return draft;
+  }
+
   private reportConstraintOutcomes(constraintOutcomes: ConstraintOutcome[]): boolean {
     const blockingFailures = constraintOutcomes.filter(
       (o) => !o.passed && !o.overridden && o.severity === 'block',
@@ -2800,21 +2887,6 @@ export class RuntimeEngine {
       });
     }
     return outcomes;
-  }
-
-  /**
-   * Fields a create command's actions write (mutate/compute/persist targets).
-   * Used to exempt those fields from required-modifier enforcement, since they are
-   * set immediately after the auto-create persist.
-   */
-  private commandProducedFields(command: IRCommand): Set<string> {
-    const produced = new Set<string>();
-    for (const a of command.actions) {
-      if (a.target && (a.kind === 'mutate' || a.kind === 'compute' || a.kind === 'persist')) {
-        produced.add(a.target);
-      }
-    }
-    return produced;
   }
 
   /**
@@ -3060,8 +3132,14 @@ export class RuntimeEngine {
 
       const mergedData = { ...existing, ...data };
 
-      // Validate state transitions if entity declares them
-      if (entity.transitions && entity.transitions.length > 0) {
+      // Validate state transitions if entity declares them. Initialization
+      // construction writes the first legal document — transition edges apply to
+      // subsequent instance commands, not the allocating write.
+      if (
+        entity.transitions &&
+        entity.transitions.length > 0 &&
+        !(buffering && buf!.mode === 'initialize')
+      ) {
         for (const [prop, newValue] of Object.entries(data)) {
           const rules = entity.transitions.filter((t) => t.property === prop);
           if (rules.length === 0) continue;
@@ -4219,21 +4297,43 @@ export class RuntimeEngine {
       }
       input = paramResult.input;
 
-      const shouldAutoCreateInstance =
-        commandName === 'create' && !!options.entityName && !options.instanceId;
+      // Atomic initialization: allocate when the command carries an initialization
+      // plan and no instanceId was supplied. Literal `create` without a plan (legacy
+      // IR) still allocates by name for backward compatibility.
+      const shouldInitializeInstance =
+        !!options.entityName &&
+        !options.instanceId &&
+        (!!command.initialization || commandName === 'create');
       let autoCreateEntity: IREntity | undefined;
       let autoCreatePreparedData: Record<string, unknown> | undefined;
       let autoCreateEvalInput: Record<string, unknown> | undefined;
+      let initializationPlan = command.initialization;
 
-      if (shouldAutoCreateInstance && options.entityName) {
+      if (shouldInitializeInstance && options.entityName) {
         autoCreateEntity = this.getEntity(options.entityName);
         if (autoCreateEntity) {
-          const bodyId =
-            typeof input.id === 'string' && input.id !== '' ? input.id : this.nextRuntimeId();
-          autoCreatePreparedData = this.prepareCreateData(autoCreateEntity, {
-            ...input,
-            id: bodyId,
-          });
+          if (!initializationPlan) {
+            // Legacy IR without a compiler-attached plan: synthesize from entity + command.
+            initializationPlan = buildInitializationPlan(
+              autoCreateEntity,
+              command,
+              this.ir.tenant,
+            );
+          }
+          if (initializationPlan) {
+            autoCreatePreparedData = this.buildInitializationDraft(
+              autoCreateEntity,
+              initializationPlan,
+              input,
+            );
+          } else {
+            const bodyId =
+              typeof input.id === 'string' && input.id !== '' ? input.id : this.nextRuntimeId();
+            autoCreatePreparedData = this.prepareCreateData(autoCreateEntity, {
+              ...input,
+              id: bodyId,
+            });
+          }
           autoCreateEvalInput = { ...input, id: autoCreatePreparedData.id };
         }
       }
@@ -4390,54 +4490,27 @@ export class RuntimeEngine {
 
       let autoCreatedInstance: EntityInstance | undefined;
       let createConstraintOutcomes: ConstraintOutcome[] | undefined;
+      let initializingConstruction = false;
 
       if (
-        shouldAutoCreateInstance &&
+        shouldInitializeInstance &&
         options.entityName &&
         autoCreateEntity &&
         autoCreatePreparedData
       ) {
-        this.profilingBridge.startPhase('autoCreate');
-        const createResult = await this.persistPreparedCreate(
-          options.entityName,
-          autoCreateEntity,
-          autoCreatePreparedData,
-          this.requiredModifierOutcomes(
-            autoCreateEntity,
-            input,
-            this.commandProducedFields(command),
-          ),
-          options.overrideRequests,
-        );
-        this.profilingBridge.endPhase('autoCreate');
-        createConstraintOutcomes = createResult.constraintOutcomes;
-
-        if (!createResult.instance) {
-          const blocking = createConstraintOutcomes?.find(
-            (o) => !o.passed && !o.overridden && o.severity === 'block',
-          );
-          return {
-            success: false,
-            error:
-              blocking?.message || `Command blocked by constraint '${blocking?.constraintName}'`,
-            constraintOutcomes: createConstraintOutcomes,
-            overrideRequests: options.overrideRequests,
-            ...(options.correlationId !== undefined
-              ? { correlationId: options.correlationId }
-              : {}),
-            ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
-            emittedEvents: [...(this.activeCommandOverrides?.events ?? [])],
-          };
-        }
-
-        autoCreatedInstance = createResult.instance;
-        options.instanceId = createResult.instance.id;
+        // Bind the draft into command scope without persisting. Mutations run
+        // against this working copy; a single store.create happens at flush.
+        const draftId = String(autoCreatePreparedData.id);
+        options.instanceId = draftId;
+        initializingConstruction = true;
+        this.justCreatedInstanceIds.add(draftId);
+        autoCreatedInstance = autoCreatePreparedData as EntityInstance;
         if (this.activeCommandOverrides) {
-          this.activeCommandOverrides.context.instanceId = createResult.instance.id;
+          this.activeCommandOverrides.context.instanceId = draftId;
         }
         const createdEvalContext = this.buildEvalContext(
           autoCreateEvalInput ?? input,
-          createResult.instance,
+          autoCreatedInstance,
           options.entityName,
         );
         Object.assign(evalContext, createdEvalContext);
@@ -4489,6 +4562,7 @@ export class RuntimeEngine {
           id: options.instanceId,
           instance: autoCreatedInstance ?? instance ?? null,
           patch: {},
+          ...(initializingConstruction ? { mode: 'initialize' as const } : {}),
         };
       }
       try {
@@ -4625,7 +4699,51 @@ export class RuntimeEngine {
         // event emission and reaction dispatch so emitted events and any reactions
         // observe the final committed command state. An explicit `persist` action
         // may already have flushed and cleared the patch; this flushes the remainder.
+        // Initialization mode flushes via a single store.create of the final document.
         await this.flushCommandBuffer();
+        if (this.lastWriteRejection) {
+          const rej: { code: string; message: string; property?: string } =
+            this.lastWriteRejection;
+          this.lastWriteRejection = null;
+          const initOutcomes = this.lastInitializationConstraintOutcomes;
+          this.lastInitializationConstraintOutcomes = null;
+          return {
+            success: false,
+            error: `${rej.code}: ${rej.message}`,
+            constraintOutcomes: initOutcomes ?? [
+              {
+                code: rej.code,
+                constraintName: rej.property ?? rej.code,
+                severity: 'block',
+                passed: false,
+                formatted: rej.message,
+                message: rej.message,
+                ...(rej.property ? { details: { property: rej.property } } : {}),
+              },
+            ],
+            ...(workflowMeta.correlationId !== undefined
+              ? { correlationId: workflowMeta.correlationId }
+              : {}),
+            ...(workflowMeta.causationId !== undefined
+              ? { causationId: workflowMeta.causationId }
+              : {}),
+            emittedEvents: [],
+          };
+        }
+        // Entity-constraint OverrideApplied events from initialization persist
+        // land on activeCommandOverrides after the pre-action snapshot above.
+        if (this.activeCommandOverrides?.events.length) {
+          for (const event of this.activeCommandOverrides.events) {
+            if (!emittedEvents.includes(event)) emittedEvents.push(event);
+          }
+        }
+        if (initializingConstruction && options.entityName && options.instanceId) {
+          const persisted = await this.getInstanceRaw(options.entityName, options.instanceId);
+          if (persisted) {
+            autoCreatedInstance = persisted;
+            result = persisted;
+          }
+        }
       } finally {
         this.commandBuffer = prevBuffer;
       }
@@ -5385,7 +5503,46 @@ export class RuntimeEngine {
    */
   private async flushCommandBuffer(): Promise<void> {
     const cb = this.commandBuffer;
-    if (!cb || Object.keys(cb.patch).length === 0) return;
+    if (!cb) return;
+
+    if (cb.mode === 'initialize') {
+      if (!cb.instance) return;
+      const entity = this.getEntity(cb.entityName);
+      if (!entity) return;
+      const finalDoc = { ...cb.instance } as Record<string, unknown>;
+      // Optional undefined fields stay omitted from the persisted document.
+      for (const key of Object.keys(finalDoc)) {
+        if (finalDoc[key] === undefined) delete finalDoc[key];
+      }
+      const requiredOutcomes = this.requiredModifierOutcomes(entity, finalDoc);
+      const createResult = await this.persistPreparedCreate(
+        cb.entityName,
+        entity,
+        finalDoc,
+        requiredOutcomes,
+        this.activeCommandOverrides?.requests,
+      );
+      if (!createResult.instance) {
+        const blocking = createResult.constraintOutcomes?.find(
+          (o) => !o.passed && !o.overridden && o.severity === 'block',
+        );
+        this.lastInitializationConstraintOutcomes = createResult.constraintOutcomes ?? null;
+        this.lastWriteRejection = {
+          code: blocking?.code ?? 'E_REQUIRED',
+          property: blocking?.constraintName,
+          message:
+            blocking?.message ||
+            `Initialization blocked by constraint '${blocking?.constraintName}'`,
+        };
+        return;
+      }
+      cb.instance = createResult.instance;
+      cb.patch = {};
+      cb.mode = undefined;
+      return;
+    }
+
+    if (Object.keys(cb.patch).length === 0) return;
     const cbStore = this.stores.get(cb.entityName);
     if (cbStore) await cbStore.update(cb.id, cb.patch, this.activeTx ?? undefined);
     cb.patch = {};

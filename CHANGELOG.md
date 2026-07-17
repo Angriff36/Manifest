@@ -4,6 +4,24 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.16] - 2026-07-17
+
+### Changed
+
+- **Atomic initialization construction:** allocating commands carry an authoritative
+  `IRInitializationPlan`. Runtime and projections construct one final valid document
+  (draft → mutate → validate → persist once) and no longer persist a partial document
+  before initialization mutations. Convex `createVia*` entries consume the plan instead
+  of insert-then-govern-then-delete seed heuristics.
+- **Author DX:** `docs/spec/initialization-authoring.md` and semantics § Initialization
+  Commands document the responsibility split (schemas / policies / transitions /
+  defaults / dynamic guards only).
+
+### Fixed
+
+- Required final fields may be assigned solely by initialization command mutations
+  without placeholder defaults or “field is unset” guards.
+
 ## [3.6.15] - 2026-07-17
 
 ### Changed

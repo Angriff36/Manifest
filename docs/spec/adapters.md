@@ -277,7 +277,7 @@ Whether state mutation and outbox enqueue share a transaction depends on whether
 
 The engine opens **one** transaction per command attempt via `transactionProvider.withTransaction(fn)`, stores the opaque `TransactionHandle` on the engine for the scope of that attempt, and threads it into **every** write it performs during the attempt:
 
-- entity mutations — `Store.create(data, tx)` / `Store.update(id, data, tx)` / `Store.delete(id, tx)`, including the batched command-buffer flush and any eager auto-create;
+- entity mutations — `Store.create(data, tx)` / `Store.update(id, data, tx)` / `Store.delete(id, tx)`, including the batched command-buffer flush and atomic initialization `create` (no partial pre-mutation persist);
 - outbox enqueue — `OutboxStore.enqueue(entries, tx)`;
 - idempotency record — `IdempotencyStore.set(key, result, tx)`;
 - job enqueue — `JobQueue.enqueue(job, tx)`;

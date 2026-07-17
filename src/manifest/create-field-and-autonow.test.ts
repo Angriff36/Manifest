@@ -93,7 +93,11 @@ describe('create command leaves a guaranteed-null field unset', () => {
 }
 store Ticket in memory`);
     const warn = diagnostics.find(
-      (d) => d.severity === 'warning' && /never sets non-null field 'openedAt'/.test(d.message),
+      (d) =>
+        d.severity === 'warning' &&
+        /openedAt/.test(d.message) &&
+        (/never sets non-null field/.test(d.message) ||
+          /cannot construct a complete/.test(d.message)),
     );
     expect(warn).toBeDefined();
   });

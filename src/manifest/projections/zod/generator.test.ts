@@ -1323,15 +1323,53 @@ describe('ZodProjection', () => {
               type: { name: 'Status', nullable: false },
               modifiers: ['required'],
             },
+            {
+              name: 'tags',
+              type: { name: 'array', nullable: false, generic: { name: 'Status', nullable: false } },
+              modifiers: [],
+            },
           ]),
+        ],
+        commands: [
+          {
+            name: 'create',
+            entity: 'Article',
+            parameters: [
+              {
+                name: 'status',
+                type: { name: 'Status', nullable: false },
+                required: true,
+              },
+              {
+                name: 'tags',
+                type: {
+                  name: 'array',
+                  nullable: false,
+                  generic: { name: 'Status', nullable: false },
+                },
+                required: true,
+              },
+            ],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
         ],
       });
 
-      const result = projection.generate(ir, { surface: 'zod.entity' });
-      const code = firstCode(result);
-      expect(code).toContain('status: z.enum(["draft", "published", "archived"]),');
-      expect(code).not.toContain('z.unknown()');
-      expect(result.diagnostics.filter((d) => d.code === 'ZOD_UNKNOWN_TYPE')).toHaveLength(0);
+      const entityCode = firstCode(projection.generate(ir, { surface: 'zod.entity' }));
+      expect(entityCode).toContain('status: z.enum(["draft", "published", "archived"]),');
+      expect(entityCode).toContain(
+        'tags: z.array(z.enum(["draft", "published", "archived"])).optional(),',
+      );
+
+      const commandCode = firstCode(projection.generate(ir, { surface: 'zod.command' }));
+      expect(commandCode).toContain('status: z.enum(["draft", "published", "archived"])');
+      expect(commandCode).toContain(
+        'tags: z.array(z.enum(["draft", "published", "archived"]))',
+      );
+      expect(entityCode).not.toContain('z.unknown()');
+      expect(commandCode).not.toContain('z.unknown()');
     });
 
     it('maps timestamp alias like datetime (not z.unknown())', () => {

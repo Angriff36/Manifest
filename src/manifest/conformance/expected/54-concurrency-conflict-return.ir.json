@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "e8d51a3bee4d8f5d8f8e1ed5f4c3faa2a90dcc655aeeef046a6795ad712ba927",
+    "irHash": "9e812fafa394d2ee81e4bfbd6d1490a379d1ddf6ed549c6f146610ff6cd90912",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -100,7 +100,31 @@
       ],
       "emits": [
         "CounterCreated"
-      ]
+      ],
+      "initialization": {
+        "initializationInputs": [
+          "initialCount"
+        ],
+        "authenticatedOwnershipFields": [],
+        "declaredDefaults": [
+          {
+            "property": "version",
+            "source": "version"
+          }
+        ],
+        "initialLifecycleState": [],
+        "commandOwnedFields": [
+          "count",
+          "id"
+        ],
+        "draftFields": [
+          "id",
+          "version"
+        ],
+        "finalDocumentRequirements": [],
+        "dynamicGuardIndexes": [],
+        "redundantGuardIndexes": []
+      }
     },
     {
       "name": "increment",

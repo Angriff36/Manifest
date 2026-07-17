@@ -19,7 +19,6 @@ import type {
   IREntity,
   IRExpression,
   IRPolicy,
-  IRProperty,
   IRReactionParam,
   IRReactionRule,
   IRValue,
@@ -1063,111 +1062,192 @@ function authBindings(bodyText: string, options: Normalized, forceAuth = false):
   return lines;
 }
 
-function creationSeedFallback(ir: IR, property: IRProperty, validator: string): string | undefined {
-  if (property.defaultValue) return defaultToTs(property.defaultValue, validator);
-  if (property.autoNow) return 'Date.now()';
-  if (!property.modifiers.includes('required') || property.type.nullable) return undefined;
-  if (property.type.name === 'boolean') return 'false';
-  if (property.type.name === 'array' || property.type.name === 'list') return '[]';
-  if (/\bv\.int64\(\)/.test(validator)) return '0n';
-  if (/\bv\.number\(\)/.test(validator)) return '0';
-  if (/\bv\.string\(\)/.test(validator)) return '""';
-  const enumType = ir.enums.find((item) => item.name === property.type.name);
-  if (enumType?.values[0]) return JSON.stringify(enumType.values[0].name);
-  return undefined;
-}
-
+/**
+ * Emit an allocating `createVia*` mutation that performs atomic document
+ * construction from the command's IR initialization plan: draft → checks →
+ * mutations → single insert. No partial document is persisted before mutations.
+ */
 function renderGovernedCreationEntry(
   ir: IR,
   options: Normalized,
   entity: IREntity,
   cmd: IRCommand,
   table: string,
-  runnerName: string,
+  _runnerName: string,
   tenantScoped: boolean,
   writeTenantProp: string | undefined,
   encryptionActive: boolean,
   mutationEncrypted: string[],
 ): { code?: string; diagnostics: ProjectionDiagnostic[] } {
   const diagnostics: ProjectionDiagnostic[] = [];
-  const fkTargets = collectFkTargets(entity, ir, options);
-  const params = cmd.parameters ?? [];
-  const paramNames = new Set(params.map((param) => param.name));
-  const seedLines: string[] = [];
+  const plan = cmd.initialization;
+  if (!plan) {
+    diagnostics.push({
+      severity: 'warning',
+      code: 'CONVEX_CREATION_ENTRY_MISSING_PLAN',
+      entity: entity.name,
+      message: `Cannot emit governed creation entry for '${entity.name}.${cmd.name}': command has no IR initialization plan.`,
+    });
+    return { diagnostics };
+  }
 
-  for (const property of entity.properties) {
-    if (property.name === 'id') continue;
-    if (tenantScoped && property.name === writeTenantProp) {
-      seedLines.push(`      ${property.name}: __auth.${property.name}`);
-      continue;
+  const params = cmd.parameters ?? [];
+  const paramNames = new Set(params.map((parameter) => parameter.name));
+  const commandOwned = new Set(plan.commandOwnedFields);
+  const fkTargets = collectFkTargets(entity, ir, options);
+  const propertyByName = new Map(entity.properties.map((property) => [property.name, property]));
+
+  const draftLines: string[] = [];
+  for (const field of plan.authenticatedOwnershipFields) {
+    if (tenantScoped && field === writeTenantProp) {
+      draftLines.push(`      ${field}: __auth.${field}`);
     }
-    if (isConvexVersionManagedField(entity, property.name)) continue;
+  }
+  for (const item of plan.declaredDefaults) {
+    if (commandOwned.has(item.property)) continue;
+    const property = propertyByName.get(item.property);
+    if (!property) continue;
+    if (isConvexVersionManagedField(entity, item.property)) continue;
     const built = buildValidator(entity, property, ir, options, fkTargets.get(property.name));
     diagnostics.push(...built.diagnostics);
-    if (!built.validator) continue;
-
-    const fallback = creationSeedFallback(ir, property, built.validator);
-    // Allocation is the pre-command state. Declared defaults and automatic
-    // schema timestamps must win over values that command actions will produce.
-    if ((property.defaultValue !== undefined || property.autoNow) && fallback !== undefined) {
-      seedLines.push(`      ${property.name}: ${fallback}`);
-      continue;
-    }
-    const required = property.modifiers.includes('required') && !property.type.nullable;
-    // A required command input may be needed to satisfy the database schema
-    // (and relationship preloads) before guards run. Optional/action-produced
-    // fields remain absent until the governed command applies its mutations.
-    if (paramNames.has(property.name) && required) {
-      seedLines.push(
-        `      ${property.name}: args.${property.name}${fallback === undefined ? '' : ` ?? ${fallback}`}`,
+    if (item.source === 'defaultValue' && property.defaultValue !== undefined) {
+      draftLines.push(
+        `      ${item.property}: ${defaultToTs(property.defaultValue, built.validator)}`,
       );
-      continue;
+    } else if (item.source === 'autoNow' || item.source === 'timestamps') {
+      draftLines.push(`      ${item.property}: Date.now()`);
     }
-    if (fallback !== undefined) {
-      seedLines.push(`      ${property.name}: ${fallback}`);
-      continue;
-    }
-    if (property.modifiers.includes('required') && !property.type.nullable) {
+  }
+  for (const item of plan.initialLifecycleState) {
+    if (commandOwned.has(item.property)) continue;
+    if (draftLines.some((line) => line.includes(`${item.property}:`))) continue;
+    draftLines.push(`      ${item.property}: ${defaultToTs(item.value)}`);
+  }
+  for (const inputName of plan.initializationInputs) {
+    if (!propertyByName.has(inputName)) continue;
+    // Same-named inputs are visible on the draft for precondition evaluation.
+    draftLines.push(`      ${inputName}: args.${inputName}`);
+  }
+
+  const scope: RenderScope = {
+    selfVar: '__draft',
+    locals: [...paramNames],
+    resolveCollectionElementType: (collection) =>
+      resolveHasManyDocElementType(entity, collection, options),
+  };
+  const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), scope);
+  diagnostics.push(...checks.diagnostics);
+
+  const mutates = (cmd.actions ?? []).filter(
+    (action) =>
+      action.kind === 'mutate' &&
+      action.target &&
+      !(tenantScoped && action.target === writeTenantProp) &&
+      !isConvexVersionManagedField(entity, action.target),
+  );
+  const mutateLines: string[] = [];
+  for (const action of mutates) {
+    const { code, unresolved } = renderActionValue(entity, action.target, action.expression, {
+      selfVar: '__draft',
+      locals: [...paramNames],
+    });
+    if (unresolved.length) {
       diagnostics.push({
         severity: 'warning',
-        code: 'CONVEX_CREATION_ENTRY_UNSEEDABLE',
+        code: 'CONVEX_UNRESOLVED_ACTION',
         entity: entity.name,
-        message: `Cannot emit governed creation entry for '${entity.name}.${cmd.name}': required field '${property.name}' has no default, command value, or safe Convex seed.`,
+        message: `initialization action '${action.target}' unresolved (${unresolved.join('; ')}); omitted.`,
       });
-      return { diagnostics };
+      continue;
     }
+    mutateLines.push(`      ${action.target}: ${code}`);
   }
-  // This is an allocation shell, not the completed creation write. The
-  // governed command below performs the first version increment.
-  if (entity.versionProperty) seedLines.push(`      ${entity.versionProperty}: 0`);
-  if (entity.versionAtProperty) {
-    seedLines.push(`      ${entity.versionAtProperty}: Date.now()`);
+
+  for (const requirement of plan.finalDocumentRequirements) {
+    if (requirement === 'id') continue;
+    if (tenantScoped && requirement === writeTenantProp) continue;
+    if (commandOwned.has(requirement)) continue;
+    if (plan.declaredDefaults.some((item) => item.property === requirement)) continue;
+    if (plan.initialLifecycleState.some((item) => item.property === requirement)) continue;
+    if (plan.initializationInputs.includes(requirement)) continue;
+    if (plan.authenticatedOwnershipFields.includes(requirement)) continue;
+    const property = propertyByName.get(requirement);
+    if (!property || property.type.nullable) continue;
+    diagnostics.push({
+      severity: 'warning',
+      code: 'CONVEX_CREATION_ENTRY_INCOMPLETE',
+      entity: entity.name,
+      message: `Initialization command '${entity.name}.${cmd.name}' cannot satisfy required field '${requirement}' from the IR initialization plan.`,
+    });
+    return { diagnostics };
   }
+
+  const versionLines = convexCreateVersionDocLines(entity);
+  const g7Scope: RenderScope = { selfVar: 'doc', idExpr: 'docId' };
+  const g7 = unionEmitPayloadFields(cmd, g7Scope, 'docId');
+  diagnostics.push(...g7.diagnostics);
+  const events = renderEvents(
+    resolveEventsTableName(ir, options),
+    ir,
+    entity,
+    cmd,
+    'docId',
+    g7Scope,
+  );
+  diagnostics.push(...events.diagnostics);
+  const reactions = renderReactions(ir, options, cmd.emits ?? []);
+  diagnostics.push(...reactions.diagnostics);
+  const tail = [...events.lines, ...reactions.lines].join('\n');
+  const collision = reactionPayloadCollisionPlanner.plan(g7.fields, {
+    entity: entity.name,
+    command: cmd.name,
+  });
+  diagnostics.push(...collision.diagnostics);
+  const g7Entries = collision.reactionFields.map((field) => `${field.name}: ${field.code}`).join(', ');
+  const subjectLiteral = `_subject: { entity: ${JSON.stringify(entity.name)}, command: ${JSON.stringify(cmd.name)}, id: docId }`;
+  const envelopeResult = collision.includeEnvelopeResult
+    ? 'result: { _id: docId, id: docId, ...doc }'
+    : '';
+  const payloadParts = [
+    '_id: docId',
+    'id: docId',
+    '...doc',
+    ...(envelopeResult ? [envelopeResult] : []),
+    ...(g7Entries ? [g7Entries] : []),
+    subjectLiteral,
+  ].join(', ');
+  const payloadBinding = /\bpayload\b/.test(tail)
+    ? `    const payload: Record<string, any> = { ${payloadParts} };\n`
+    : '';
 
   const argLines = params.map(
     (param) =>
       `    ${param.name}: ${param.required ? paramValidator(param.type) : `v.optional(${paramValidator(param.type)})`}`,
   );
   const exportName = commandCreationExportName(entity.name, cmd.name);
-  const authLines = authBindings(seedLines.join('\n'), options, tenantScoped);
-  const seedVar = encryptionActive ? '__storedSeed' : '__seed';
+  const bodyText = [...draftLines, ...checks.lines, ...mutateLines, tail].join('\n');
+  const authLines = authBindings(bodyText, options, tenantScoped);
+  const docVar = encryptionActive ? '__storedDoc' : 'doc';
+
   const code =
     `export const ${exportName} = mutation({\n` +
     `  args: {\n${argLines.join(',\n')}\n  },\n` +
     `  handler: async (ctx, args: any) => {\n` +
     (authLines.length ? authLines.join('\n') + '\n' : '') +
-    `    const __seed: Record<string, any> = {\n${seedLines.join(',\n')}\n    };\n` +
+    `    const __draft: Record<string, any> = {\n${draftLines.join(',\n')}${draftLines.length ? '\n' : ''}    };\n` +
+    (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
+    `    const doc: Record<string, any> = {\n` +
+    `      ...__draft,\n` +
+    (mutateLines.length ? `${mutateLines.join(',\n')},\n` : '') +
+    (versionLines.length ? `${versionLines.join(',\n')},\n` : '') +
+    `    };\n` +
     (encryptionActive
-      ? `    const __storedSeed = await __encryptDoc(ctx, ${JSON.stringify(entity.name)}, ${JSON.stringify(mutationEncrypted)}, __seed);\n`
+      ? `    const __storedDoc = await __encryptDoc(ctx, ${JSON.stringify(entity.name)}, ${JSON.stringify(mutationEncrypted)}, doc);\n`
       : '') +
-    `    const docId = await ctx.db.insert("${table}", ${seedVar} as any);\n` +
-    `    try {\n` +
-    `      await ${runnerName}(ctx, { ...args, docId }, true);\n` +
-    `      return { docId };\n` +
-    `    } catch (error) {\n` +
-    `      await ctx.db.delete(docId);\n` +
-    `      throw error;\n` +
-    `    }\n` +
+    `    const docId = await ctx.db.insert("${table}", ${docVar} as any);\n` +
+    payloadBinding +
+    (tail ? tail + '\n' : '') +
+    `    return { docId };\n` +
     `  },\n});`;
   return { code, diagnostics };
 }

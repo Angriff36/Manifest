@@ -1,0 +1,13 @@
+{
+  "shouldFail": false,
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "Command 'PostTag.create' takes a manual 'postId' with no nested create on 'Post' (e.g. addMilestone) and no event reaction that supplies it. Consider a parent command that sets the FK from self.id, or an on Event reaction with params { postId: ... }."
+    },
+    {
+      "severity": "warning",
+      "message": "Command 'PostTag.create' takes a manual 'tagId' with no nested create on 'Tag' (e.g. addMilestone) and no event reaction that supplies it. Consider a parent command that sets the FK from self.id, or an on Event reaction with params { tagId: ... }."
+    }
+  ]
+}

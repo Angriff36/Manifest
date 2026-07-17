@@ -323,7 +323,7 @@ function eventGuestIR(): IR {
 }
 
 describe('Convex governed creation entries', () => {
-  it('allocates, governs, returns docId, and cleans up named creation commands', () => {
+  it('atomically constructs, governs, and returns docId without a partial seed insert', () => {
     const result = new ConvexProjection().generate(eventGuestIR(), {
       surface: 'convex.mutations',
       options: { authContextImport: './lib/authContext' },
@@ -331,15 +331,17 @@ describe('Convex governed creation entries', () => {
     const code = result.artifacts[0]!.code;
 
     expect(code).toContain('export const EventGuest_createViaInvite = mutation({');
+    expect(code).toContain('const __draft: Record<string, any> = {');
+    expect(code).toContain('const doc: Record<string, any> = {');
     expect(code).toContain('const docId = await ctx.db.insert("eventGuests"');
-    expect(code).toContain('await __runEventGuestInvite(ctx, { ...args, docId }, true)');
-    expect(code).toContain('await ctx.db.delete(docId)');
+    expect(code).not.toContain('await __runEventGuestInvite(ctx, { ...args, docId }, true)');
+    expect(code).not.toContain('await ctx.db.delete(docId)');
     expect(code).toContain('return { docId };');
     expect(code).toContain('tenantId: __auth.tenantId');
     expect(code).toContain('eventId: args.eventId');
   });
 
-  it('allows initial-state reassertion only through creation mode', () => {
+  it('keeps instance-command transition bypass separate from atomic createVia', () => {
     const code = new ConvexProjection().generate(eventGuestIR(), {
       surface: 'convex.mutations',
       options: { authContextImport: './lib/authContext' },
@@ -373,7 +375,7 @@ describe('Convex governed creation entries', () => {
     });
   });
 
-  it('allocates defaults without pre-applying command mutations, then governs and cleans up', () => {
+  it('builds a draft without command-owned timestamps, then persists one final document', () => {
     const code = new ConvexProjection().generate(governedCatalogIR(), {
       surface: 'convex.mutations',
       options: { authContextImport: './lib/authContext' },
@@ -383,19 +385,30 @@ describe('Convex governed creation entries', () => {
       code.indexOf('export const Ingredient_createViaIntroduce'),
       code.indexOf('async function __runIngredientDiscontinue'),
     );
-    expect(ingredientCreate).toContain('name: ""');
-    expect(ingredientCreate).not.toContain('introducedAt: Date.now()');
-    expect(ingredientCreate).toContain('await __runIngredientIntroduce');
-    expect(ingredientCreate).toContain('await ctx.db.delete(docId)');
+    expect(ingredientCreate).toContain('const __draft: Record<string, any> = {');
+    expect(ingredientCreate).toContain('status: "active"');
+    // Command-owned timestamp appears only on the final doc, not the draft shell.
+    const draftSection = ingredientCreate.slice(
+      ingredientCreate.indexOf('const __draft'),
+      ingredientCreate.indexOf('const doc:'),
+    );
+    expect(draftSection).not.toContain('introducedAt: Date.now()');
+    expect(ingredientCreate).toContain('introducedAt: Date.now()');
+    expect(ingredientCreate).not.toContain('await __runIngredientIntroduce');
+    expect(ingredientCreate).not.toContain('await ctx.db.delete(docId)');
 
     const recipeCreate = code.slice(
       code.indexOf('export const Recipe_createViaDraft'),
       code.indexOf('async function __runRecipePublish'),
     );
-    expect(recipeCreate).toContain('name: ""');
-    expect(recipeCreate).not.toContain('draftedAt: Date.now()');
-    expect(recipeCreate).toContain('await __runRecipeDraft');
-    expect(recipeCreate).toContain('await ctx.db.delete(docId)');
+    const recipeDraft = recipeCreate.slice(
+      recipeCreate.indexOf('const __draft'),
+      recipeCreate.indexOf('const doc:'),
+    );
+    expect(recipeDraft).not.toContain('draftedAt: Date.now()');
+    expect(recipeCreate).toContain('draftedAt: Date.now()');
+    expect(recipeCreate).not.toContain('await __runRecipeDraft');
+    expect(recipeCreate).not.toContain('await ctx.db.delete(docId)');
 
     expect(code).toContain('export const QualityCheck_createViaOpen = mutation({');
     expect(code).not.toContain('QualityCheck_createViaFail');

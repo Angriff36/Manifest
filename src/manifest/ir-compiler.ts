@@ -2,6 +2,7 @@ import { Parser } from './parser.js';
 import { expandEntityComposition, type EntityIndex } from './entity-composition.js';
 import { checkDomainCompleteness } from './domain-completeness.js';
 import { checkReactionCompleteness } from './reaction-completeness.js';
+import { attachInitializationPlans } from './initialization-plan.js';
 import { parseDurationToMs, isValidCronExpression } from './schedule-utils.js';
 import { CanonicalNameRegistry } from './canonical-names.js';
 import {
@@ -675,9 +676,12 @@ export class IRCompiler {
       ? this.transformTenant(program.tenant)
       : undefined;
 
-    // Static guard: a `create` command that leaves a non-null, default-less field
-    // unset is guaranteed to fail at persist time (the `createdAt must not be null`
-    // class). Flag it at compile time so it surfaces in the IDE/LSP and CLI validate.
+    // Attach authoritative initialization plans before create-null diagnostics so
+    // command-owned final fields are recognized as constructible.
+    attachInitializationPlans(entities, commands, tenant);
+
+    // Static guard: an initialization command that leaves a non-null, default-less
+    // field unset (and does not produce it) is a contradictory definition.
     this.checkRequiredFieldsSetOnCreate(entities, commands, tenant);
 
     // Static guard: duplicate event names collide in the event registry.
@@ -1559,25 +1563,9 @@ export class IRCompiler {
   }
 
   /**
-   * Flag `create` commands that leave a storage-required field unset. The runtime
-   * treats a command literally named `create` as instance creation
-   * (`commandName === 'create'`), and persists every non-null property — so a
-   * non-null, default-less property the command never sets becomes an explicit
-   * `null` write that the store rejects. That failure only ever surfaced at
-   * runtime against a real DB; this surfaces it as a compile-time warning
-   * (warning, not error, because the runtime also merges arbitrary caller input
-   * on create, so the field is not *provably* unset).
-   *
-   * Excluded (supplied by the runtime/store, not the command body): `id`,
-   * composite-key columns, relationship foreign keys, the tenant property,
-   * optimistic-concurrency version fields, and auto timestamps. Properties with a
-   * literal default or `autoNow` are already covered.
-   */
-  /**
-   * Types the runtime fills with a non-null zero value when a create command
-   * leaves them unset (mirrors `getDefaultForType` in the runtime engine). Every
-   * other non-null type fills with `null`, which a non-null store column rejects —
-   * those are the only guaranteed-failure cases this check flags.
+   * Types that receive a non-null zero fill when unset on a draft. Other non-null
+   * types stay absent until command ownership / defaults / ownership fill them —
+   * a required final field with none of those sources is a contradictory definition.
    */
   private static readonly ZERO_FILLABLE_TYPES = new Set([
     'string',
@@ -1588,26 +1576,25 @@ export class IRCompiler {
     'map',
   ]);
 
+  /**
+   * Flag initialization commands whose final document cannot satisfy a required
+   * non-null field. Command-owned fields (via the initialization plan) are NOT
+   * contradictions — they are assigned during atomic construction before persist.
+   */
   private checkRequiredFieldsSetOnCreate(
     entities: IREntity[],
     commands: IRCommand[],
     tenant: IRTenant | undefined,
   ): void {
     for (const entity of entities) {
-      const createCmd = commands.find(
-        (c) => c.name === 'create' && c.entity === entity.name && c.module === entity.module,
+      const initCommands = commands.filter(
+        (c) =>
+          c.entity === entity.name &&
+          c.module === entity.module &&
+          c.initialization !== undefined,
       );
-      if (!createCmd) continue;
+      if (initCommands.length === 0) continue;
 
-      // Fields the command itself produces.
-      const produced = new Set<string>();
-      for (const a of createCmd.actions) {
-        if (a.target && (a.kind === 'mutate' || a.kind === 'compute' || a.kind === 'persist')) {
-          produced.add(a.target);
-        }
-      }
-
-      // Fields supplied/managed outside the command body.
       const auto = new Set<string>(['id']);
       if (tenant?.property) auto.add(tenant.property);
       if (entity.versionProperty) auto.add(entity.versionProperty);
@@ -1622,24 +1609,23 @@ export class IRCompiler {
       }
 
       const qualified = entity.module ? `${entity.module}.${entity.name}` : entity.name;
-      for (const prop of entity.properties) {
-        if (prop.type.nullable) continue; // nullable column: a null write is legal
-        // Types the runtime zero-fills (string→"", number→0, …) persist fine even
-        // when unset; only types that fill with null are guaranteed to fail.
-        if (IRCompiler.ZERO_FILLABLE_TYPES.has(prop.type.name)) continue;
-        if (prop.defaultValue !== undefined) continue;
-        if (prop.autoNow) continue;
-        if (auto.has(prop.name)) continue;
-        if (produced.has(prop.name)) continue;
-        // Warning, not error: the runtime merges caller-supplied input on create,
-        // so the compiler cannot *prove* the field is unset — but a non-null field
-        // with no default that the command body never sets is the exact shape that
-        // persists `null` and is rejected by a non-null store column (the
-        // `createdAt must not be null` class). Surfaces in the IDE/LSP and validate.
-        this.emitDiagnostic(
-          'warning',
-          `Command '${qualified}.create' creates '${entity.name}' but never sets non-null field '${prop.name}' (type '${prop.type.name}', no default). If no caller supplies it, persisting writes null and a non-null store column rejects it. Add 'mutate ${prop.name} = ...', give '${prop.name}' a default (e.g. '= now()'), or make it optional ('${prop.name}: ${prop.type.name}?').`,
-        );
+      for (const initCmd of initCommands) {
+        const plan = initCmd.initialization!;
+        const produced = new Set(plan.commandOwnedFields);
+        const initInputs = new Set(plan.initializationInputs);
+        for (const prop of entity.properties) {
+          if (prop.type.nullable) continue;
+          if (IRCompiler.ZERO_FILLABLE_TYPES.has(prop.type.name)) continue;
+          if (prop.defaultValue !== undefined) continue;
+          if (prop.autoNow) continue;
+          if (auto.has(prop.name)) continue;
+          if (produced.has(prop.name)) continue;
+          if (initInputs.has(prop.name)) continue;
+          this.emitDiagnostic(
+            'warning',
+            `Initialization command '${qualified}.${initCmd.name}' cannot construct a complete '${entity.name}': non-null field '${prop.name}' (type '${prop.type.name}') has no default, ownership source, initialization input, or command mutation. Add 'mutate ${prop.name} = ...', give '${prop.name}' a default, accept it as a command parameter, or make it optional ('${prop.name}: ${prop.type.name}?').`,
+          );
+        }
       }
     }
   }

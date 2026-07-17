@@ -444,6 +444,37 @@ export interface IRWebhook {
   transform?: IRWebhookParam[];
 }
 
+/**
+ * Authoritative construction plan for an allocating (initialization) command.
+ * See docs/spec/semantics.md § Initialization Commands.
+ */
+export interface IRInitializationPlan {
+  /** Client-facing command parameter names (excludes trustedSource). */
+  initializationInputs: string[];
+  /** Fields filled from authenticated ownership / tenant context. */
+  authenticatedOwnershipFields: string[];
+  /** Declared defaults and automatic timestamps applied to the draft. */
+  declaredDefaults: Array<{
+    property: string;
+    source: 'defaultValue' | 'autoNow' | 'timestamps' | 'version';
+  }>;
+  /** Lifecycle property values present on the draft before command mutations. */
+  initialLifecycleState: Array<{ property: string; value: IRValue }>;
+  /** Entity fields written by this command's mutate/compute/persist actions. */
+  commandOwnedFields: string[];
+  /** Fields available on the pre-mutation draft for precondition evaluation. */
+  draftFields: string[];
+  /** Required non-null entity fields that must exist on the final document. */
+  finalDocumentRequirements: string[];
+  /** Guard indexes that need runtime evaluation (dynamic business invariants). */
+  dynamicGuardIndexes: number[];
+  /**
+   * Guard indexes that only restate initialization facts (e.g. command-owned
+   * field is unset). Retained for compatibility; not required by the language.
+   */
+  redundantGuardIndexes: number[];
+}
+
 export interface IRCommand {
   name: string;
   module?: string;
@@ -469,6 +500,11 @@ export interface IRCommand {
   completionEvent?: string;
   /** Auto-derived failure event name (set when async=true) */
   failureEvent?: string;
+  /**
+   * When present, this command allocates a new document via atomic construction.
+   * Absent on ordinary instance commands. Compiler-derived; projections/runtime consume.
+   */
+  initialization?: IRInitializationPlan;
 }
 
 export interface IRParameter {

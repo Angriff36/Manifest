@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "999fc370ecfd6afe02a7c3ce46245ce0368dfd3e77700b6f6a9278853216a124",
+    "irHash": "3de35da78740282fcedcf44c81f0f908edb2af925333fd85407bbe808b9ec84d",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -112,7 +112,31 @@
           }
         }
       ],
-      "emits": []
+      "emits": [],
+      "initialization": {
+        "initializationInputs": [
+          "amount",
+          "description"
+        ],
+        "authenticatedOwnershipFields": [],
+        "declaredDefaults": [],
+        "initialLifecycleState": [],
+        "commandOwnedFields": [
+          "amount",
+          "description"
+        ],
+        "draftFields": [
+          "amount",
+          "description",
+          "id"
+        ],
+        "finalDocumentRequirements": [
+          "amount",
+          "description"
+        ],
+        "dynamicGuardIndexes": [],
+        "redundantGuardIndexes": []
+      }
     }
   ],
   "policies": [],

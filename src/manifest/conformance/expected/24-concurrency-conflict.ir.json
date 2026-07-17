@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "a431e65ab0e2568e1993f6edcb690197aae81b07ecd208d5cc50ae4ac9bcd35c",
+    "irHash": "73e11a88bc681cc61b6d79b662a7c5d14f5194cc6edbda3633e03a55c88d2a75",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -163,7 +163,42 @@
       ],
       "emits": [
         "DocumentCreated"
-      ]
+      ],
+      "initialization": {
+        "initializationInputs": [
+          "content",
+          "title"
+        ],
+        "authenticatedOwnershipFields": [],
+        "declaredDefaults": [
+          {
+            "property": "version",
+            "source": "version"
+          },
+          {
+            "property": "versionAt",
+            "source": "version"
+          }
+        ],
+        "initialLifecycleState": [],
+        "commandOwnedFields": [
+          "content",
+          "id",
+          "title"
+        ],
+        "draftFields": [
+          "content",
+          "id",
+          "title",
+          "version",
+          "versionAt"
+        ],
+        "finalDocumentRequirements": [],
+        "dynamicGuardIndexes": [
+          0
+        ],
+        "redundantGuardIndexes": []
+      }
     },
     {
       "name": "update",
