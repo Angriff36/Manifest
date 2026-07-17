@@ -1,6 +1,6 @@
 # Convex projection — capability map
 
-**Date:** 2026-07-15  
+**Date:** 2026-07-17  
 **Authority:** this file + diagnostics emitted by `capabilities.ts` / `privacy.ts`.  
 **Rule:** every IR declaration is either Supported (generated + tested), Partial
 (limitation stated), or Unsupported (`CONVEX_UNSUPPORTED_*` / related warning).
@@ -15,29 +15,30 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 
 ## Supported
 
-| IR construct                                     | Surface                      | Notes                                                                                      |
-| ------------------------------------------------ | ---------------------------- | ------------------------------------------------------------------------------------------ |
-| Persistent entities + properties                 | schema                       | Skips `external`, memory/localStorage stores; skips `id` (→ `_id`)                         |
-| Enums / nullable / arrays (`array`/`list`)       | schema                       |                                                                                            |
-| Relationships belongsTo/ref FK + indexes         | schema + queries             | `referenceMode` convexId \| stringId                                                       |
-| `indexed`, tenant index, option indexes          | schema + queries             | Index/query parity                                                                         |
-| `searchable` (string/text/uuid)                  | schema                       | Emits `.searchIndex("search_<field>", { searchField })`; tenant → `filterFields` when set  |
-| Commands → mutations                             | mutations                    | Order: policies → guards → constraints → mutate → emit → react                             |
-| Command policies / guards / constraints          | mutations                    | Fail-closed; `CONVEX_UNRESOLVED_*` + denying throw; constraint `failWhen` polarity honored |
-| Roles + `roleAllows`                             | queries + mutations          | Target-aware `ROLE_PERMISSIONS` + `checkRole`                                              |
-| Events + G7 emit payloads                        | mutations                    | `manifestEvents` table                                                                     |
-| Reactions (resolve, fanOut, count aggregates)    | mutations                    |                                                                                            |
-| Transitions                                      | mutations                    | Pre-patch legality; always on                                                              |
-| `versionProperty` / `versionAtProperty` OCC      | schema + mutations           | Schema field synthesis; create seeds `1`; updates optional expected version + increment    |
-| Private properties (read strip)                  | queries                      | Always on; mutation path still sees stored values                                          |
-| Computed (self-only)                             | computed (+ optional inline) | `computedProperties: helpers \| inline`                                                    |
-| Schedules                                        | crons                        |                                                                                            |
-| Webhooks (route + transform + idempotency table) | http                         | Signature verification = Partial                                                           |
-| Sagas (steps + compensate/abort)                 | sagas                        | Step arg mapping = Partial                                                                 |
-| Tenant filter / soft-delete filter               | queries                      | Field-aware defaults                                                                       |
-| `authContextImport`                              | queries + mutations          | Author-owned identity seam                                                                 |
-| `encryptionImport` / encrypted properties        | queries + mutations          | Versioned envelope; decrypt before policy/read projection, encrypt before store writes     |
-| React client hooks (`useQuery` / `useMutation`)  | react                        | Skips only read-gated entities whose public policy queries cannot be rendered              |
+| IR construct                                     | Surface                      | Notes                                                                                        |
+| ------------------------------------------------ | ---------------------------- | -------------------------------------------------------------------------------------------- |
+| Persistent entities + properties                 | schema                       | Skips `external`, memory/localStorage stores; skips `id` (→ `_id`)                           |
+| Enums / nullable / arrays (`array`/`list`)       | schema                       |                                                                                              |
+| Relationships belongsTo/ref FK + indexes         | schema + queries             | `referenceMode` convexId \| stringId                                                         |
+| `indexed`, tenant index, option indexes          | schema + queries             | Index/query parity                                                                           |
+| `searchable` (string/text/uuid)                  | schema                       | Emits `.searchIndex("search_<field>", { searchField })`; tenant → `filterFields` when set    |
+| Commands → mutations                             | mutations                    | Order: policies → guards → constraints → mutate → emit → react                               |
+| Command policies / guards / constraints          | mutations                    | Fail-closed; `CONVEX_UNRESOLVED_*` + denying throw; constraint `failWhen` polarity honored   |
+| Roles + `roleAllows`                             | queries + mutations          | Target-aware `ROLE_PERMISSIONS` + `checkRole`                                                |
+| Events + G7 emit payloads                        | mutations                    | `manifestEvents` table                                                                       |
+| Reactions (resolve, fanOut, count aggregates)    | mutations                    |                                                                                              |
+| Transitions                                      | mutations                    | Pre-patch legality; same-state (`from === to`) allowed; always on                            |
+| Command idempotency (`idempotencyKey`)           | schema + mutations           | `commandIdempotencyKeys` table; optional arg; cached result before re-execution (default on) |
+| `versionProperty` / `versionAtProperty` OCC      | schema + mutations           | Schema field synthesis; create seeds `1`; updates optional expected version + increment      |
+| Private properties (read strip)                  | queries                      | Always on; mutation path still sees stored values                                            |
+| Computed (self-only)                             | computed (+ optional inline) | `computedProperties: helpers \| inline`                                                      |
+| Schedules                                        | crons                        |                                                                                              |
+| Webhooks (route + transform + idempotency table) | http                         | Signature verification = Partial                                                             |
+| Sagas (steps + compensate/abort)                 | sagas                        | Step arg mapping = Partial                                                                   |
+| Tenant filter / soft-delete filter               | queries                      | Field-aware defaults                                                                         |
+| `authContextImport`                              | queries + mutations          | Author-owned identity seam                                                                   |
+| `encryptionImport` / encrypted properties        | queries + mutations          | Versioned envelope; decrypt before policy/read projection, encrypt before store writes       |
+| React client hooks (`useQuery` / `useMutation`)  | react                        | Skips only read-gated entities whose public policy queries cannot be rendered                |
 
 ## Partial (limitation stated)
 

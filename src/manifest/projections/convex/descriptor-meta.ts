@@ -35,6 +35,12 @@ export const CONVEX_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     optionalOption('idempotencyTable', 'string', {
       default: CONVEX_PROJECTION_DEFAULTS.idempotencyTable,
     }),
+    optionalOption('enableCommandIdempotency', 'boolean', {
+      default: CONVEX_PROJECTION_DEFAULTS.enableCommandIdempotency,
+    }),
+    optionalOption('commandIdempotencyTable', 'string', {
+      default: CONVEX_PROJECTION_DEFAULTS.commandIdempotencyTable,
+    }),
     optionalOption('policyMode', 'enum', {
       default: CONVEX_PROJECTION_DEFAULTS.policyMode,
       enumValues: ['enforce', 'skip'],

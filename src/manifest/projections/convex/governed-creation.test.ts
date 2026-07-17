@@ -336,7 +336,7 @@ describe('Convex governed creation entries', () => {
     expect(code).toContain('const docId = await ctx.db.insert("eventGuests"');
     expect(code).not.toContain('await __runEventGuestInvite(ctx, { ...args, docId }, true)');
     expect(code).not.toContain('await ctx.db.delete(docId)');
-    expect(code).toContain('return { docId };');
+    expect(code).toMatch(/return \{ docId \}|const __result = \{ docId \}/);
     expect(code).toContain('tenantId: __auth.tenantId');
     expect(code).toContain('eventId: args.eventId');
   });
@@ -347,8 +347,9 @@ describe('Convex governed creation entries', () => {
       options: { authContextImport: './lib/authContext' },
     }).artifacts[0]!.code;
 
-    expect(code).toContain('!(__creation && __from === __to)');
-    expect(code).toContain('handler: __runEventGuestStayPending');
+    expect(code).toContain('__from !== __to');
+    expect(code).toContain('async function __runEventGuestStayPending');
+    expect(code).toContain('await __runEventGuestStayPending(ctx, args)');
     expect(code).not.toContain('await __runEventGuestStayPending(ctx, { ...args, docId }, true)');
   });
 

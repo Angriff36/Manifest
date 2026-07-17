@@ -48,6 +48,7 @@ import { collectUnsupportedDiagnostics, CONVEX_PROJECTION_CAPABILITIES } from '.
 import { isPersistentEntity, isPersistentStoreTarget } from './persist.js';
 import { CONVEX_DESCRIPTOR_META } from './descriptor-meta.js';
 import { synthesizeConvexVersionSchemaFields } from './version-occ.js';
+import { renderCommandIdempotencySchemaBlock } from './command-idempotency.js';
 import { generateReactClient } from './react-client.js';
 
 export { isPersistentEntity } from './persist.js';
@@ -623,6 +624,10 @@ export class ConvexProjection implements ProjectionTarget {
           `  })\n` +
           `    .index("by_key", ["key"])`,
       );
+    }
+
+    if (options.enableCommandIdempotency) {
+      blocks.push(renderCommandIdempotencySchemaBlock(options.commandIdempotencyTable));
     }
 
     if (entityBlockCount === 0) {

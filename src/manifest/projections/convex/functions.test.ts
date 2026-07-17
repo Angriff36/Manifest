@@ -2049,7 +2049,10 @@ describe('convex.mutations — aggregate count reactions (`count(E where fk == v
         ],
       },
     ] as IRReactionRule[];
-    const res = mutations(ir);
+    const res = new ConvexProjection().generate(ir, {
+      surface: 'convex.mutations',
+      options: { enableCommandIdempotency: false },
+    });
     const code = res.artifacts[0].code;
     // no index → plain query (no withIndex), predicate applied as a JS filter
     expect(code).not.toContain('withIndex(');

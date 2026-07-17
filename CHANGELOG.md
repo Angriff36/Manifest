@@ -4,6 +4,20 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.21] - 2026-07-17
+
+### Added
+
+- **Convex command idempotency:** optional `idempotencyKey` on create, instance, and
+  `createVia*` mutations; `commandIdempotencyKeys` table with get/set helpers; duplicate
+  invocations return cached results without re-running guards, writes, emits, or reactions.
+  Opt-out via `enableCommandIdempotency: false` in projection options.
+
+### Changed
+
+- **Convex same-state transitions:** instance lifecycle mutations allow `from === to`
+  (idempotent no-op transitions) instead of rejecting them at generation time.
+
 ## [3.6.20] - 2026-07-17
 
 ### Changed

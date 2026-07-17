@@ -66,9 +66,8 @@ export function renderTransitionChecks(
       ? JSON.stringify((u.expression as { value: { value: string } }).value.value)
       : `String(${u.renderedCode})`;
 
-    const invalidCondition = creationFlagVar
-      ? `!(${creationFlagVar} && __from === __to) && Object.hasOwn(__allowed, __from) && !__allowed[__from].includes(__to)`
-      : `Object.hasOwn(__allowed, __from) && !__allowed[__from].includes(__to)`;
+    const invalidCondition =
+      `__from !== __to && Object.hasOwn(__allowed, __from) && !__allowed[__from].includes(__to)`;
     lines.push(
       `    {`,
       `      const __cur = ${docVar}.${u.target};`,

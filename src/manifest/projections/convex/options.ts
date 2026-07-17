@@ -146,9 +146,24 @@ export interface ConvexProjectionOptions {
   /**
    * Name of the webhook idempotency-keys table auto-emitted in the schema when
    * any webhook declares `idempotencyHeader`. Default `"webhookIdempotencyKeys"`.
-   * The generated http surface also references this table name.
+   * The generated http surface also references this table name for dedup storage.
    */
   idempotencyTable?: string;
+
+  /**
+   * Emit command-level idempotency storage and accept optional `idempotencyKey`
+   * on every governed mutation. When supplied, duplicate keys return the cached
+   * mutation result without re-executing guards, writes, emits, or reactions.
+   * Default `true`.
+   */
+  enableCommandIdempotency?: boolean;
+
+  /**
+   * Table storing cached command results keyed by caller `idempotencyKey`.
+   * Default `"commandIdempotencyKeys"`. Emitted when
+   * {@link enableCommandIdempotency} is on.
+   */
+  commandIdempotencyTable?: string;
 
   /**
    * Authorization-policy enforcement in generated mutations. Default
@@ -223,6 +238,8 @@ export const CONVEX_PROJECTION_DEFAULTS = {
   emitEventsTable: true,
   eventsTable: 'manifestEvents',
   idempotencyTable: 'webhookIdempotencyKeys',
+  enableCommandIdempotency: true,
+  commandIdempotencyTable: 'commandIdempotencyKeys',
   policyMode: 'enforce' as 'enforce' | 'skip',
   includeTenantFilter: true,
   includeSoftDeleteFilter: true,
@@ -251,6 +268,8 @@ export type NormalizedConvexOptions = Required<
     | 'emitEventsTable'
     | 'eventsTable'
     | 'idempotencyTable'
+    | 'enableCommandIdempotency'
+    | 'commandIdempotencyTable'
     | 'policyMode'
     | 'includeTenantFilter'
     | 'includeSoftDeleteFilter'
@@ -309,6 +328,10 @@ export function normalizeOptions(
     emitEventsTable: input.emitEventsTable ?? CONVEX_PROJECTION_DEFAULTS.emitEventsTable,
     eventsTable: input.eventsTable ?? CONVEX_PROJECTION_DEFAULTS.eventsTable,
     idempotencyTable: input.idempotencyTable ?? CONVEX_PROJECTION_DEFAULTS.idempotencyTable,
+    enableCommandIdempotency:
+      input.enableCommandIdempotency ?? CONVEX_PROJECTION_DEFAULTS.enableCommandIdempotency,
+    commandIdempotencyTable:
+      input.commandIdempotencyTable ?? CONVEX_PROJECTION_DEFAULTS.commandIdempotencyTable,
     policyMode: input.policyMode ?? CONVEX_PROJECTION_DEFAULTS.policyMode,
     includeTenantFilter:
       input.includeTenantFilter ?? CONVEX_PROJECTION_DEFAULTS.includeTenantFilter,

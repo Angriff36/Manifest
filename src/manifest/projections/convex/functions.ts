@@ -77,6 +77,14 @@ import {
   unionEmitPayloadFields,
 } from './event-payload.js';
 import {
+  appendCommandIdempotencyArg,
+  commandIdempotencyEnabled,
+  renderCommandIdempotencyEpilogue,
+  renderCommandIdempotencyHelpers,
+  renderCommandIdempotencyPrologue,
+  renderCommandIdempotencyWrappedRunnerHandler,
+} from './command-idempotency.js';
+import {
   buildRelationDependencyPlan,
   type RelationDependency,
 } from '../../relation-plan.js';
@@ -1398,6 +1406,7 @@ function renderGovernedCreationEntry(
     (param) =>
       `    ${param.name}: ${param.required ? paramValidator(param.type) : `v.optional(${paramValidator(param.type)})`}`,
   );
+  appendCommandIdempotencyArg(argLines, options);
   const exportName = commandCreationExportName(entity.name, cmd.name);
   // Same binding model as instance commands: params are locals. createVia keeps
   // the `args` bag for draft seeding (`args.<input>`) and destructures into
@@ -1422,6 +1431,9 @@ function renderGovernedCreationEntry(
     `export const ${exportName} = mutation({\n` +
     `  args: {\n${argLines.join(',\n')}\n  },\n` +
     `  handler: async (ctx, args: any) => {\n` +
+    (commandIdempotencyEnabled(options)
+      ? `${renderCommandIdempotencyPrologue().join('\n')}\n`
+      : '') +
     (authLines.length ? authLines.join('\n') + '\n' : '') +
     paramBindLine +
     `    const __draft: Record<string, any> = {\n${draftLines.join(',\n')}${draftLines.length ? '\n' : ''}    };\n` +
@@ -1438,7 +1450,9 @@ function renderGovernedCreationEntry(
     `    const docId = await ctx.db.insert("${table}", ${docVar} as any);\n` +
     payloadBinding +
     (tail ? tail + '\n' : '') +
-    `    return { docId };\n` +
+    (commandIdempotencyEnabled(options)
+      ? `${renderCommandIdempotencyEpilogue(exportName, '{ docId }').join('\n')}\n`
+      : `    return { docId };\n`) +
     `  },\n});`;
   return { code, diagnostics };
 }
@@ -1565,6 +1579,7 @@ function generateMutation(
       argLines.push(`    ${p.name}: ${p.required ? validator : `v.optional(${validator})`}`);
       argNames.add(p.name);
     }
+    appendCommandIdempotencyArg(argLines, options);
 
     // mutate actions → doc fields (param → field mapping).
     for (const a of mutates) {
@@ -1638,6 +1653,7 @@ function generateMutation(
     const bodyText = [...relationHydration.lines, ...checks.lines, tail].join('\n');
     const authLines = authBindings(bodyText, options, tenantScoped);
 
+    const createReturn = stripPrivateFromReturn('{ _id, ...doc }', mutationPrivates);
     const body =
       `async function ${runnerName}(ctx: MutationCtx, args: any) {\n` +
       (authLines.length ? authLines.join('\n') + '\n' : '') +
@@ -1650,11 +1666,15 @@ function generateMutation(
       `    const _id = await ctx.db.insert("${table}", ${encryptionActive ? '__storedDoc' : 'doc'} as any);\n` +
       payloadBinding +
       (tail ? tail + '\n' : '') +
-      stripPrivateFromReturn('{ _id, ...doc }', mutationPrivates) +
+      `${createReturn}\n` +
       `}\n\n` +
       `export const ${name} = mutation({\n` +
       `  args: {\n${argLines.join(',\n')}\n  },\n` +
-      `  handler: ${runnerName},\n});`;
+      `  handler: ` +
+      (commandIdempotencyEnabled(options)
+        ? `async (ctx, args) => {\n${renderCommandIdempotencyPrologue().join('\n')}\n    const __result = await ${runnerName}(ctx, args);\n    if (args.idempotencyKey !== undefined) {\n      await __setCommandIdempotency(ctx, args.idempotencyKey, ${JSON.stringify(name)}, __result);\n    }\n    return __result;\n  }`
+        : runnerName) +
+      `,\n});`;
     return { code: body, diagnostics };
   }
 
@@ -1669,6 +1689,7 @@ function generateMutation(
   if (versionOcc.argLine) {
     argLines.push(versionOcc.argLine);
   }
+  appendCommandIdempotencyArg(argLines, options);
 
   // Non-create: command params are destructured locals; self.x → doc.x.
   const checkSpecs = commandChecks(ir, cmd, options.policyMode);
@@ -1880,7 +1901,7 @@ function generateMutation(
     `}\n\n` +
     `export const ${name} = mutation({\n` +
     `  args: {\n${argLines.join(',\n')}\n  },\n` +
-    `  handler: ${runnerName},\n});`;
+    `  handler: ${commandIdempotencyEnabled(options) ? renderCommandIdempotencyWrappedRunnerHandler(name, runnerName) : runnerName},\n});`;
 
   if (commandCreationEntry(ir, entity)?.name === cmd.name) {
     const creation = renderGovernedCreationEntry(
@@ -1925,6 +1946,9 @@ export function generateMutations(
   if (needsEncrypt) helpers.push(ENCRYPT_HELPER);
   if (needsDecrypt) helpers.push(DECRYPT_HELPER);
   if (/\b__resolveRelation\(/.test(body)) helpers.push(RELATION_HELPER);
+  if (commandIdempotencyEnabled(options) || /\b__getCommandIdempotency\b/.test(body)) {
+    helpers.push(renderCommandIdempotencyHelpers(options.commandIdempotencyTable));
+  }
   if (/\bcheckRole\(/.test(body)) {
     helpers.push(
       `// Role hierarchy from IR (effective permissions after inheritance).\n` +
