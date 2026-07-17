@@ -279,4 +279,43 @@ describe('Atomic initialization construction', () => {
       id: 'widget-1',
     });
   });
+
+  it('evaluates initialization guards against declared defaults for command-mutated fields', async () => {
+    const store = new TrackingStore();
+    const ir = await compile(`
+      entity IngredientDemand {
+        property id: string
+        property required status: string = "pending"
+        property required quantity: number
+
+        command calculate(quantity: number) {
+          guard self.status == "pending"
+          mutate quantity = quantity
+          mutate status = "calculated"
+        }
+      }
+
+      store IngredientDemand in memory
+    `);
+    const runtime = new RuntimeEngine(
+      ir,
+      {},
+      {
+        generateId: () => 'demand-1',
+        storeProvider: (name) => (name === 'IngredientDemand' ? store : undefined),
+      },
+    );
+    const result = await runtime.runCommand(
+      'calculate',
+      { quantity: 5 },
+      { entityName: 'IngredientDemand' },
+    );
+    expect(result.success).toBe(true);
+    expect(store.created).toHaveLength(1);
+    expect(store.created[0]).toMatchObject({
+      id: 'demand-1',
+      quantity: 5,
+      status: 'calculated',
+    });
+  });
 });

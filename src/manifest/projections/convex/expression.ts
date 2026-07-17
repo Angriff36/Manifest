@@ -39,6 +39,12 @@ export interface RenderScope {
   /** Already-bound local names (e.g. command parameters) that render verbatim. */
   locals?: readonly string[];
   /**
+   * Plan-derived relation locals. A mapped `self.person`, `this.person`, or
+   * bare `person` renders as the separate hydrated local instead of a physical
+   * document property. Chained access naturally continues from that local.
+   */
+  relationVars?: Readonly<Record<string, string>>;
+  /**
    * Convex document identity for `self.id` / `this.id` / bare `id`
    * (e.g. `_id` after insert, `docId` on updates). Schema has no `id` field —
    * only Convex `_id` — so without this, emit payloads serialize `undefined`.
@@ -145,6 +151,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
   const bareIsSelf = scope.bareIdentifierIsSelf !== false;
   const globals = new Set(scope.globals ?? DEFAULT_GLOBALS);
   const locals = new Set(scope.locals ?? []);
+  const relationVars = scope.relationVars ?? {};
   /** Stack of element types for nested `count_of`/aggregate lambda bodies. */
   const lambdaParamTypeStack: string[] = [];
   const fallbackLambdaType = scope.lambdaParamType ?? DEFAULT_LAMBDA_PARAM_TYPE;
@@ -163,6 +170,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
         if (e.name === 'uuid') return 'crypto.randomUUID()';
         if (e.name === 'self' || e.name === 'this') return scope.selfVar;
         if (globals.has(e.name) || locals.has(e.name)) return e.name;
+        if (bareIsSelf && relationVars[e.name]) return relationVars[e.name]!;
         if (e.name === 'id' && scope.idExpr) return scope.idExpr;
         if (bareIsSelf && scope.beforeVar) {
           const prev = previousPropertyName(e.name);
@@ -177,6 +185,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
           e.object.kind === 'identifier' &&
           (e.object.name === 'self' || e.object.name === 'this')
         ) {
+          if (relationVars[e.property]) return relationVars[e.property]!;
           if (e.property === 'id' && scope.idExpr) return scope.idExpr;
           if (scope.beforeVar) {
             const prev = previousPropertyName(e.property);

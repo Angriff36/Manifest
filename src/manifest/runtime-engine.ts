@@ -44,6 +44,12 @@ import { getSchedulesFromIR } from './runtime-schedule.js';
 import type { IRSchedule } from './ir';
 import { RuntimeProfilingBridge } from './runtime-profiling-bridge.js';
 import { buildInitializationPlan } from './initialization-plan.js';
+import {
+  buildRelationDependencyPlan,
+  relationReferenceMapping,
+  type RelationDependency,
+  type RelationDependencyPlan,
+} from './relation-plan.js';
 import type { EventBus, EventBusMessage } from './events/event-bus';
 import {
   ReferentialActionApplier,
@@ -1466,6 +1472,7 @@ export class RuntimeEngine {
     entityName: string,
     instance: EntityInstance,
     relationshipName: string,
+    dependency?: RelationDependency,
   ): Promise<EntityInstance | EntityInstance[] | null> {
     const key = `${entityName}.${relationshipName}`;
     const rel = this.relationshipIndex.get(key);
@@ -1500,35 +1507,36 @@ export class RuntimeEngine {
       case 'ref': {
         // For belongsTo/ref the foreign key lives on the source relationship.
         const rawRel = sourceEntity?.relationships.find((r) => r.name === relationshipName);
-        if (rawRel?.foreignKey && rawRel.foreignKey.fields.length > 1) {
-          // Composite FK: resolve the target by matching every FK column against
-          // the target's referenced columns. Generalizes the single-column
-          // `instance[fk] === target.id` lookup to N columns; picks the exact
-          // row even when several targets share an `id`/first-column value.
-          const targetEntity = this.getEntity(rel.targetEntity);
-          const pairs = this.fkColumnPairs(rawRel.foreignKey, targetEntity);
-          const unset = pairs.some(
-            ([local]) => instance[local] === undefined || instance[local] === null,
-          );
-          if (unset) {
-            result = null;
-          } else {
-            const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
-            result =
-              allTargets.find((t) =>
-                pairs.every(([local, remote]) => t[remote] === instance[local]),
-              ) ?? null;
-          }
+        if (!rawRel) {
+          result = null;
           break;
         }
-        // For belongsTo/ref: the foreign key on the source instance contains the target ID
-        const fkProperty = rel.foreignKey || `${rel.relationshipName}Id`;
-        const targetId = instance[fkProperty] as string | undefined;
-        if (!targetId) {
+        const targetEntity = this.getEntity(rel.targetEntity);
+        const mapping = dependency ?? {
+          ...relationReferenceMapping(sourceEntity!, rawRel, targetEntity),
+        };
+        const pairs = mapping.localFields.map(
+          (local, index) => [local, mapping.targetFields[index]!] as [string, string],
+        );
+        const unset = pairs.some(
+          ([local]) => instance[local] === undefined || instance[local] === null,
+        );
+        if (unset) {
           result = null;
-        } else {
-          result = (await this.getInstanceRaw(rel.targetEntity, targetId)) ?? null;
+          break;
         }
+        // Preserve the fast identity lookup for the single-column convention.
+        // Non-id and composite mappings must verify every declared pair.
+        if (pairs.length === 1 && pairs[0]![1] === 'id') {
+          result =
+            (await this.getInstanceRaw(rel.targetEntity, String(instance[pairs[0]![0]]))) ?? null;
+          break;
+        }
+        const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
+        result =
+          allTargets.find((target) =>
+            pairs.every(([local, remote]) => target[remote] === instance[local]),
+          ) ?? null;
         break;
       }
 
@@ -1641,6 +1649,26 @@ export class RuntimeEngine {
     });
 
     return result;
+  }
+
+  /**
+   * Resolve only the relations the command will evaluate. This primes the
+   * command-scoped resolver cache for both persisted instances and virtual
+   * initialization drafts without embedding hydrated objects in either row.
+   */
+  private async primeRelationDependencies(
+    plan: RelationDependencyPlan,
+    instance: EntityInstance | undefined,
+  ): Promise<void> {
+    if (!instance) return;
+    for (const dependency of plan.relations) {
+      await this.resolveRelationship(
+        plan.entityName,
+        instance,
+        dependency.relationName,
+        dependency,
+      );
+    }
   }
 
   private getNow(): number {
@@ -2670,8 +2698,9 @@ export class RuntimeEngine {
   /**
    * Build the virtual pre-persistence draft for an initialization command.
    * Includes ownership, declared defaults, initial lifecycle state, and
-   * permitted initialization inputs. Command-owned fields that are not also
-   * initialization inputs are omitted until mutations run.
+   * permitted initialization inputs. Declared defaults and initial lifecycle
+   * state seed guard-time pre-state even when the command later mutates the
+   * same field; mutations apply only when building the final document.
    */
   private buildInitializationDraft(
     entity: IREntity,
@@ -2684,7 +2713,6 @@ export class RuntimeEngine {
     draft.id = bodyId;
 
     const propertyByName = new Map(entity.properties.map((property) => [property.name, property]));
-    const commandOwned = new Set(plan.commandOwnedFields);
 
     for (const field of plan.authenticatedOwnershipFields) {
       if (this.ir.tenant?.property === field) {
@@ -2698,7 +2726,6 @@ export class RuntimeEngine {
     for (const item of plan.declaredDefaults) {
       // Identity is assigned above; do not let a property default clobber it.
       if (item.property === 'id') continue;
-      if (commandOwned.has(item.property) && !(item.property in input)) continue;
       if (item.source === 'defaultValue') {
         const property = propertyByName.get(item.property);
         if (property?.defaultValue !== undefined) {
@@ -4342,6 +4369,14 @@ export class RuntimeEngine {
         options.instanceId && options.entityName
           ? await this.getInstanceRaw(options.entityName, options.instanceId)
           : (autoCreatePreparedData as EntityInstance | undefined);
+
+      if (options.entityName) {
+        const relationEntity = autoCreateEntity ?? this.getEntity(options.entityName);
+        if (relationEntity) {
+          const relationPlan = buildRelationDependencyPlan(this.ir, relationEntity, command);
+          await this.primeRelationDependencies(relationPlan, instance);
+        }
+      }
 
       const evalContext = this.buildEvalContext(
         autoCreateEvalInput ?? input,

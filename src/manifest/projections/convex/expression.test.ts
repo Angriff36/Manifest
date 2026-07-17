@@ -32,6 +32,37 @@ describe('renderExpression — scopes & literals', () => {
     ).toBe('amount');
   });
 
+  it('renders plan-mapped self/this/bare relations as separate locals, including chaining', () => {
+    const relationVars = { person: '__rel_person' };
+    const chained: IRExpression = {
+      kind: 'member',
+      object: self('person'),
+      property: 'status',
+    };
+    const viaThis: IRExpression = {
+      kind: 'member',
+      object: { kind: 'identifier', name: 'this' },
+      property: 'person',
+    };
+
+    expect(renderExpression(self('person'), { ...DOC, relationVars }).code).toBe('__rel_person');
+    expect(renderExpression(viaThis, { ...DOC, relationVars }).code).toBe('__rel_person');
+    expect(renderExpression(id('person'), { ...DOC, relationVars }).code).toBe('__rel_person');
+    expect(renderExpression(chained, { ...DOC, relationVars }).code).toBe(
+      '__rel_person.status',
+    );
+  });
+
+  it('does not replace a plan relation when a command local shadows its bare name', () => {
+    expect(
+      renderExpression(id('person'), {
+        ...DOC,
+        locals: ['person'],
+        relationVars: { person: '__rel_person' },
+      }).code,
+    ).toBe('person');
+  });
+
   it('renders literal 0 / false / "" exactly (not treated as missing)', () => {
     expect(renderExpression(lit(0), DOC).code).toBe('0');
     expect(renderExpression(lit(false), DOC).code).toBe('false');

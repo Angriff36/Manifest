@@ -76,6 +76,10 @@ import {
   renderEvents,
   unionEmitPayloadFields,
 } from './event-payload.js';
+import {
+  buildRelationDependencyPlan,
+  type RelationDependency,
+} from '../../relation-plan.js';
 
 type Normalized = NormalizedOptions;
 
@@ -130,6 +134,36 @@ const READ_POLICY_HELPER = `function __allowsRead(policy: string, entity: string
     console.warn(\`[Manifest Convex] read policy '\${policy}' evaluation error for '\${entity}' (read denied)\`, error);
     return false;
   }
+}`;
+
+const RELATION_HELPER = `async function __resolveRelation(
+  ctx: any,
+  table: string,
+  localValues: readonly unknown[],
+  targetFields: readonly string[],
+  tenantField?: string,
+  tenantValue?: unknown,
+): Promise<any | null> {
+  if (localValues.some((value) => value == null)) return null;
+  const identityIndex = targetFields.indexOf("id");
+  let target: any | null;
+  if (identityIndex >= 0) {
+    target = await ctx.db.get(localValues[identityIndex] as any);
+  } else {
+    target = await ctx.db
+      .query(table)
+      .filter((q: any) =>
+        q.and(...targetFields.map((field, index) => q.eq(q.field(field), localValues[index]))),
+      )
+      .first();
+  }
+  if (!target) return null;
+  for (let index = 0; index < targetFields.length; index += 1) {
+    const field = targetFields[index] === "id" ? "_id" : targetFields[index];
+    if (target[field] !== localValues[index]) return null;
+  }
+  if (tenantField && target[tenantField] !== tenantValue) return null;
+  return target;
 }`;
 
 /**
@@ -667,6 +701,7 @@ export function generateQueries(
   const needsDecrypt = !!options.encryptionImport && /\b__decryptDoc\b/.test(body);
   const helpers: string[] = [];
   if (/\b__allowsRead\(/.test(body)) helpers.push(READ_POLICY_HELPER);
+  if (/\b__resolveRelation\(/.test(body)) helpers.push(RELATION_HELPER);
   if (/\bcheckRole\(/.test(body)) {
     helpers.push(
       `const ROLE_PERMISSIONS: Record<string, { action: string; target?: string }[]> = ${roleMapLiteral(ir)};\n\n` +
@@ -1062,6 +1097,124 @@ function authBindings(bodyText: string, options: Normalized, forceAuth = false):
   return lines;
 }
 
+interface RelationHydration {
+  lines: string[];
+  relationVars: Readonly<Record<string, string>>;
+  diagnostics: ProjectionDiagnostic[];
+}
+
+/** Render only the relation locals required by this command's shared IR-derived plan. */
+function renderRelationHydration(
+  ir: IR,
+  options: Normalized,
+  entity: IREntity,
+  command: IRCommand,
+  sourceVar: string,
+  tenantScoped: boolean,
+  writeTenantProp: string | undefined,
+  supportedHasMany: ReadonlySet<string> = new Set(),
+): RelationHydration {
+  const lines: string[] = [];
+  const relationVars: Record<string, string> = {};
+  const diagnostics: ProjectionDiagnostic[] = [];
+  const plan = buildRelationDependencyPlan(ir, entity, command);
+
+  const deny = (dependency: RelationDependency, reason: string): void => {
+    const variable = `__rel_${dependency.relationName}`;
+    relationVars[dependency.relationName] = variable;
+    diagnostics.push({
+      severity: 'error',
+      code: 'CONVEX_UNSUPPORTED_RELATION_ACCESS',
+      entity: entity.name,
+      message: `${entity.name}.${command.name} relation '${dependency.relationName}' ${reason}; emitted a denying throw (fail-closed).`,
+    });
+    lines.push(
+      `    throw new Error(${JSON.stringify(`${entity.name}.${command.name} relation '${dependency.relationName}' unsupported — denied`)});`,
+      `    const ${variable} = null as any;`,
+    );
+  };
+
+  for (const dependency of plan.relations) {
+    if (dependency.kind === 'hasMany') {
+      const onlyCountOf =
+        dependency.accessModes.length === 1 && dependency.accessModes[0] === 'countOf';
+      if (!dependency.through && onlyCountOf && supportedHasMany.has(dependency.relationName)) {
+        continue;
+      }
+      deny(dependency, 'uses an inverse/through access mode this command body cannot hydrate');
+      continue;
+    }
+    if (
+      dependency.through ||
+      (dependency.kind !== 'belongsTo' && dependency.kind !== 'ref')
+    ) {
+      deny(dependency, `uses unsupported relationship kind '${dependency.kind}'`);
+      continue;
+    }
+    if (
+      dependency.localFields.length === 0 ||
+      dependency.localFields.length !== dependency.targetFields.length
+    ) {
+      deny(dependency, 'has an invalid local/target reference mapping');
+      continue;
+    }
+
+    const target = ir.entities.find((candidate) => candidate.name === dependency.targetEntity);
+    if (!target) {
+      deny(dependency, `targets unknown entity '${dependency.targetEntity}'`);
+      continue;
+    }
+
+    const variable = `__rel_${dependency.relationName}`;
+    const rawVariable = `${variable}Raw`;
+    const localValues = dependency.localFields
+      .map((field) =>
+        tenantScoped && writeTenantProp === field
+          ? `__auth.${field}`
+          : `${sourceVar}.${field}`,
+      )
+      .join(', ');
+    const targetTable = resolveConvexTableName(target.name, options);
+    const enforceTenant =
+      tenantScoped &&
+      dependency.tenantOwnershipRequired &&
+      !!writeTenantProp &&
+      target.properties.some((property) => property.name === writeTenantProp);
+    const tenantArgs = enforceTenant
+      ? `, ${JSON.stringify(writeTenantProp)}, __auth.${writeTenantProp}`
+      : '';
+    const encryptedReads = encryptedFieldNames(target).filter((field) =>
+      dependency.targetFieldsRead.includes(field),
+    );
+    relationVars[dependency.relationName] = variable;
+
+    if (encryptedReads.length > 0 && !options.encryptionImport) {
+      diagnostics.push({
+        severity: 'error',
+        code: 'CONVEX_ENCRYPTION_IMPORT_REQUIRED',
+        entity: target.name,
+        message: `${entity.name}.${command.name} reads encrypted relation field(s) ${encryptedReads.join(', ')}; set options.encryptionImport. Emitted a denying throw (fail-closed).`,
+      });
+      lines.push(
+        `    throw new Error(${JSON.stringify(`${entity.name}.${command.name} encrypted relation access unsupported — denied`)});`,
+        `    const ${variable} = null as any;`,
+      );
+      continue;
+    }
+
+    lines.push(
+      `    const ${encryptedReads.length ? rawVariable : variable} = await __resolveRelation(ctx, ${JSON.stringify(targetTable)}, [${localValues}], ${JSON.stringify(dependency.targetFields)}${tenantArgs});`,
+    );
+    if (encryptedReads.length) {
+      lines.push(
+        `    const ${variable} = await __decryptDoc(ctx, ${JSON.stringify(target.name)}, ${JSON.stringify(encryptedReads)}, ${rawVariable});`,
+      );
+    }
+  }
+
+  return { lines, relationVars, diagnostics };
+}
+
 /**
  * Emit an allocating `createVia*` mutation that performs atomic document
  * construction from the command's IR initialization plan: draft → checks →
@@ -1104,7 +1257,6 @@ function renderGovernedCreationEntry(
     }
   }
   for (const item of plan.declaredDefaults) {
-    if (commandOwned.has(item.property)) continue;
     const property = propertyByName.get(item.property);
     if (!property) continue;
     if (isConvexVersionManagedField(entity, item.property)) continue;
@@ -1119,7 +1271,6 @@ function renderGovernedCreationEntry(
     }
   }
   for (const item of plan.initialLifecycleState) {
-    if (commandOwned.has(item.property)) continue;
     if (draftLines.some((line) => line.includes(`${item.property}:`))) continue;
     draftLines.push(`      ${item.property}: ${defaultToTs(item.value)}`);
   }
@@ -1129,9 +1280,21 @@ function renderGovernedCreationEntry(
     draftLines.push(`      ${inputName}: args.${inputName}`);
   }
 
+  const relationHydration = renderRelationHydration(
+    ir,
+    options,
+    entity,
+    cmd,
+    '__draft',
+    tenantScoped,
+    writeTenantProp,
+  );
+  diagnostics.push(...relationHydration.diagnostics);
+
   const scope: RenderScope = {
     selfVar: '__draft',
     locals: [...paramNames],
+    relationVars: relationHydration.relationVars,
     resolveCollectionElementType: (collection) =>
       resolveHasManyDocElementType(entity, collection, options),
   };
@@ -1150,6 +1313,7 @@ function renderGovernedCreationEntry(
     const { code, unresolved } = renderActionValue(entity, action.target, action.expression, {
       selfVar: '__draft',
       locals: [...paramNames],
+      relationVars: relationHydration.relationVars,
     });
     if (unresolved.length) {
       diagnostics.push({
@@ -1235,6 +1399,7 @@ function renderGovernedCreationEntry(
       : '';
   const bodyText = [
     ...draftLines,
+    ...relationHydration.lines,
     ...checks.lines,
     ...mutateLines,
     tail,
@@ -1250,6 +1415,7 @@ function renderGovernedCreationEntry(
     (authLines.length ? authLines.join('\n') + '\n' : '') +
     paramBindLine +
     `    const __draft: Record<string, any> = {\n${draftLines.join(',\n')}${draftLines.length ? '\n' : ''}    };\n` +
+    (relationHydration.lines.length ? relationHydration.lines.join('\n') + '\n' : '') +
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
     `    const doc: Record<string, any> = {\n` +
     `      ...__draft,\n` +
@@ -1305,8 +1471,19 @@ function generateMutation(
     // Command parameters that feed actions (and are not themselves fields) are
     // also exposed as args. All expressions resolve against `args`.
     const params = cmd.parameters ?? [];
+    const relationHydration = renderRelationHydration(
+      ir,
+      options,
+      entity,
+      cmd,
+      'args',
+      tenantScoped,
+      writeTenantProp,
+    );
+    diagnostics.push(...relationHydration.diagnostics);
     const scope: RenderScope = {
       selfVar: 'args',
+      relationVars: relationHydration.relationVars,
       resolveCollectionElementType: (collection) =>
         resolveHasManyDocElementType(entity, collection, options),
     };
@@ -1444,12 +1621,13 @@ function generateMutation(
     const payloadBinding = /\bpayload\b/.test(tail)
       ? `    const payload: Record<string, any> = { ${payloadParts} };\n`
       : '';
-    const bodyText = [...checks.lines, tail].join('\n');
+    const bodyText = [...relationHydration.lines, ...checks.lines, tail].join('\n');
     const authLines = authBindings(bodyText, options, tenantScoped);
 
     const body =
       `async function ${runnerName}(ctx: MutationCtx, args: any) {\n` +
       (authLines.length ? authLines.join('\n') + '\n' : '') +
+      (relationHydration.lines.length ? relationHydration.lines.join('\n') + '\n' : '') +
       `    const doc: Record<string, any> = {\n${docLines.join(',\n')}\n    };\n` +
       (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
       (encryptionActive
@@ -1483,9 +1661,26 @@ function generateMutation(
   const countOfRels = new Set<string>();
   for (const c of checkSpecs) collectCountOfHasManyRels(c.expr, countOfRels);
   const hasManyPreloads = renderCountOfHasManyPreloads(ir, entity, countOfRels, options, 'docId');
+  const supportedHasMany = new Set(
+    [...countOfRels].filter((relationName) =>
+      hasManyPreloads.some((line) => line.includes(`.${relationName} =`)),
+    ),
+  );
+  const relationHydration = renderRelationHydration(
+    ir,
+    options,
+    entity,
+    cmd,
+    'doc',
+    tenantScoped,
+    writeTenantProp,
+    supportedHasMany,
+  );
+  diagnostics.push(...relationHydration.diagnostics);
   const checks = renderChecks(entity.name, checkSpecs, {
     selfVar: 'doc',
     locals: paramNames,
+    relationVars: relationHydration.relationVars,
     resolveCollectionElementType: (collection) =>
       resolveHasManyDocElementType(entity, collection, options),
   });
@@ -1496,6 +1691,7 @@ function generateMutation(
   const compute = renderCommandComputeBindings(cmd, {
     selfVar: 'doc',
     locals: paramNames,
+    relationVars: relationHydration.relationVars,
   });
   diagnostics.push(...compute.diagnostics);
   const computeLocals = compute.localNames;
@@ -1513,6 +1709,7 @@ function generateMutation(
     const { code, unresolved } = renderActionValue(entity, a.target, a.expression, {
       selfVar: 'doc',
       locals: actionLocals,
+      relationVars: relationHydration.relationVars,
     });
     if (unresolved.length) {
       diagnostics.push({
@@ -1589,6 +1786,7 @@ function generateMutation(
   }
   const argDestructure = argDestructureParts.length ? `, ${argDestructureParts.join(', ')}` : '';
   const bodyText = [
+    ...relationHydration.lines,
     ...checks.lines,
     ...transitions.lines,
     ...versionOcc.checkLines,
@@ -1616,6 +1814,7 @@ function generateMutation(
       : `    const doc = await ctx.db.get(docId) as Record<string, any> | null;\n` +
         `    if (!doc) throw new Error(${JSON.stringify(`${entity.name} not found`)});\n` +
         ownershipLine) +
+    (relationHydration.lines.length ? relationHydration.lines.join('\n') + '\n' : '') +
     (hasManyPreloads.length ? hasManyPreloads.join('\n') + '\n' : '') +
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
     (compute.bindings.length ? computeBindingLines(compute.bindings).join('\n') + '\n' : '') +
