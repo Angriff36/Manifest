@@ -37,8 +37,8 @@ export function renderTransitionChecks(
   docVar: string,
   /** Rendered RHS expression per mutate target (already resolved). */
   updates: { target: string; expression: IRExpression; renderedCode: string }[],
-  /** True only while a generated creation entry initializes its seed document. */
-  creationFlagVar?: string,
+  /** @deprecated creation-only bypass removed; same-state transitions are allowed. */
+  _creationFlagVar?: string,
 ): TransitionCheckResult {
   const diagnostics: ProjectionDiagnostic[] = [];
   const byProp = transitionsByProperty(entity);
