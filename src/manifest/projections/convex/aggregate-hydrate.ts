@@ -343,7 +343,7 @@ export function renderAggregateHydration(
       const hop = node.hop;
       if (hop.kind === 'hasMany') {
         lines.push(
-          `${indent}${parentExpr}.${hop.relName} = await ctx.db.query(${JSON.stringify(hop.childTable)}).withIndex(${JSON.stringify(`by_${hop.fkField}`)}, (q) => q.eq(${JSON.stringify(hop.fkField)}, ${parentIdExpr})).collect();`,
+          `${indent}${parentExpr}.${hop.relName} = await ctx.db.query(${JSON.stringify(hop.childTable)}).withIndex(${JSON.stringify(`by_${hop.fkField}`)}, (q: any) => q.eq(${JSON.stringify(hop.fkField)}, ${parentIdExpr})).collect();`,
         );
         if (node.children.size > 0) {
           const item = `__agg${counter++}`;

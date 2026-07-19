@@ -302,15 +302,14 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
             lambdaParamTypeStack.pop();
             return `((${collCode}) ?? []).map(${mapCode})`;
           }
-          // flat_map
+          // flat_map — element rows are often relation-hydrated beyond Doc<> fields
+          // (nested belongsTo/hasMany). Keep callback params as Record to typecheck.
           if (e.args.length < 2) {
             unresolved.push("builtin 'flat_map()' missing mapper");
             return `((${collCode}) ?? [])`;
           }
           const mapper = e.args[1]!;
-          const elementType =
-            scope.resolveCollectionElementType?.(collection) ?? fallbackLambdaType;
-          lambdaParamTypeStack.push(elementType);
+          lambdaParamTypeStack.push(fallbackLambdaType);
           const mapCode = go(mapper);
           lambdaParamTypeStack.pop();
           return `((${collCode}) ?? []).flatMap(${mapCode})`;

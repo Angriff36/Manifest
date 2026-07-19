@@ -4,6 +4,14 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.26] - 2026-07-19
+
+### Fixed
+
+- **Convex aggregate typing:** hydrate index callbacks use `(q: any)`; `flat_map`
+  lambda params stay `Record<string, any>` so nested hydrated relations typecheck
+  in generated `convex/computed.ts`.
+
 ## [3.6.25] - 2026-07-19
 
 ### Added
