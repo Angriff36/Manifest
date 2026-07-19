@@ -964,17 +964,16 @@ function renderReactions(
     const label = `reaction ${reaction.event}→${reaction.targetEntity}.${reaction.targetCommand}`;
 
     // Fan-out reaction: dispatch the command on every target row where
-    // row.<matchField> == matchSource. matchSource + params resolve against the
-    // event payload (self === payload, matching the reference runtime). Each
-    // match runs the generated target command runner in the same transaction,
-    // so the target command's own governance/actions run. Prefer the schema index (FK/indexed fields
-    // carry by_<field>); fall back to a table-scan filter otherwise.
+    // row.<matchField> == matchSource. matchSource resolves against the event
+    // payload; params resolve per row with self/target = row and payload =
+    // event (matching the reference runtime). Each match runs the generated
+    // target command runner in the same transaction.
     if (reaction.fanOut) {
-      const fanScope: RenderScope = {
+      const matchScope: RenderScope = {
         selfVar: 'payload',
         globals: ['payload', 'user', 'context', 'args'],
       };
-      const src = renderExpression(reaction.fanOut.matchSource, fanScope);
+      const src = renderExpression(reaction.fanOut.matchSource, matchScope);
       if (src.unresolved.length) {
         diagnostics.push({
           severity: 'warning',
@@ -983,10 +982,14 @@ function renderReactions(
         });
         return;
       }
+      const rowScope: RenderScope = {
+        selfVar: '__row',
+        globals: ['payload', 'user', 'context', 'args', '__row', 'target'],
+      };
       const fanParams: string[] = [];
       const fanPreLines: string[] = [];
       for (const p of reaction.params ?? []) {
-        const r = buildParam(p, fanScope, label);
+        const r = buildParam(p, rowScope, label);
         fanPreLines.push(...r.preLines);
         if (r.entry) fanParams.push(r.entry);
       }
@@ -1005,9 +1008,10 @@ function renderReactions(
         ? `ctx.db.query("${targetTable}").withIndex("by_${field}", (q) => q.eq("${field}", ${src.code}))`
         : `ctx.db.query("${targetTable}").filter((q) => q.eq(q.field("${field}"), ${src.code}))`;
       const rowsVar = `fanRows${idx}`;
-      for (const pl of fanPreLines) lines.push(pl);
       lines.push(`    const ${rowsVar} = await ${queryExpr}.collect();`);
       lines.push(`    for (const __row of ${rowsVar}) {`);
+      lines.push(`      const target = __row;`);
+      for (const pl of fanPreLines) lines.push(`      ${pl.trimStart()}`);
       lines.push(
         `      await ${commandRunnerName(reaction.targetEntity, reaction.targetCommand)}(ctx, { docId: (__row as any)._id${fanParams.length ? ', ' + fanParams.join(', ') : ''} } as any);`,
       );

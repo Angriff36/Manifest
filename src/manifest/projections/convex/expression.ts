@@ -239,21 +239,81 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
         const callee = e.callee.kind === 'identifier' ? e.callee.name : undefined;
         // count_of: resolve the related-document element type before rendering
         // the predicate lambda so callback params are never implicit any.
-        if (callee === 'count_of') {
+        if (
+          callee === 'count_of' ||
+          callee === 'sum' ||
+          callee === 'map' ||
+          callee === 'filter' ||
+          callee === 'flat_map'
+        ) {
           if (e.args.length === 0) {
-            unresolved.push("builtin 'count_of()' missing collection");
-            return '/* unresolved count_of() */ 0';
+            unresolved.push(`builtin '${callee}()' missing collection`);
+            return callee === 'count_of' || callee === 'sum'
+              ? `/* unresolved ${callee}() */ 0`
+              : `/* unresolved ${callee}() */ []`;
           }
           const collection = e.args[0]!;
           const collCode = go(collection);
-          if (e.args.length === 1) return `((${collCode}) ?? []).length`;
-          const predicate = e.args[1]!;
+          if (callee === 'count_of') {
+            if (e.args.length === 1) return `((${collCode}) ?? []).length`;
+            const predicate = e.args[1]!;
+            const elementType =
+              scope.resolveCollectionElementType?.(collection) ?? fallbackLambdaType;
+            lambdaParamTypeStack.push(elementType);
+            const predCode = go(predicate);
+            lambdaParamTypeStack.pop();
+            return `((${collCode}) ?? []).filter(${predCode}).length`;
+          }
+          if (callee === 'sum') {
+            if (e.args.length === 1) {
+              return `((${collCode}) ?? []).reduce((acc: number, v: unknown) => acc + (typeof v === "number" ? v : 0), 0)`;
+            }
+            const mapper = e.args[1]!;
+            const elementType =
+              scope.resolveCollectionElementType?.(collection) ?? fallbackLambdaType;
+            lambdaParamTypeStack.push(elementType);
+            const mapCode = go(mapper);
+            lambdaParamTypeStack.pop();
+            return `((${collCode}) ?? []).map(${mapCode}).reduce((acc: number, v: unknown) => acc + (typeof v === "number" ? v : 0), 0)`;
+          }
+          if (callee === 'filter') {
+            if (e.args.length < 2) {
+              unresolved.push("builtin 'filter()' missing predicate");
+              return `((${collCode}) ?? [])`;
+            }
+            const predicate = e.args[1]!;
+            const elementType =
+              scope.resolveCollectionElementType?.(collection) ?? fallbackLambdaType;
+            lambdaParamTypeStack.push(elementType);
+            const predCode = go(predicate);
+            lambdaParamTypeStack.pop();
+            return `((${collCode}) ?? []).filter(${predCode})`;
+          }
+          if (callee === 'map') {
+            if (e.args.length < 2) {
+              unresolved.push("builtin 'map()' missing mapper");
+              return `((${collCode}) ?? [])`;
+            }
+            const mapper = e.args[1]!;
+            const elementType =
+              scope.resolveCollectionElementType?.(collection) ?? fallbackLambdaType;
+            lambdaParamTypeStack.push(elementType);
+            const mapCode = go(mapper);
+            lambdaParamTypeStack.pop();
+            return `((${collCode}) ?? []).map(${mapCode})`;
+          }
+          // flat_map
+          if (e.args.length < 2) {
+            unresolved.push("builtin 'flat_map()' missing mapper");
+            return `((${collCode}) ?? [])`;
+          }
+          const mapper = e.args[1]!;
           const elementType =
             scope.resolveCollectionElementType?.(collection) ?? fallbackLambdaType;
           lambdaParamTypeStack.push(elementType);
-          const predCode = go(predicate);
+          const mapCode = go(mapper);
           lambdaParamTypeStack.pop();
-          return `((${collCode}) ?? []).filter(${predCode}).length`;
+          return `((${collCode}) ?? []).flatMap(${mapCode})`;
         }
         const args = e.args.map(go);
         switch (callee) {
@@ -302,6 +362,12 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
             return `(${args[0]}).replace(${args[1]}, ${args[2]})`;
           case 'split':
             return `(${args[0]}).split(${args[1]})`;
+          case 'unique_of':
+            return `Array.from(new Set((${args[0]}) ?? []))`;
+          case 'max':
+            return `Math.max(${args.join(', ')})`;
+          case 'min':
+            return `Math.min(${args.join(', ')})`;
           default:
             if (!callee) {
               unresolved.push('non-identifier callee');

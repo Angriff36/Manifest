@@ -800,10 +800,18 @@ on <EventName> run <EntityType>.<commandName>
 
 - After a command emits events (step 6 in command execution), the runtime MUST evaluate all reaction rules whose `event` matches each emitted event name.
 - Matching reactions are evaluated in **declaration order** (order in the IR `reactions` array).
-- For each matching reaction:
+- For each matching **single-target** reaction (`resolve`):
   1. Evaluate `resolve` expression with the event payload as context → produces `instanceId`.
   2. Evaluate each `params[].expression` with the event payload as context → produces command input.
   3. Invoke `runCommand(targetEntity.targetCommand, input, {instanceId, correlationId, causationId})`.
+- For each matching **fan-out** reaction (`fanOut`):
+  1. Evaluate `matchSource` with the event payload as context → produces the match value.
+  2. Select every target instance where `instance[matchField] == matchValue`.
+  3. For **each** matched instance, evaluate each `params[].expression` with
+     context `{ payload: <event payload>, self: <matched instance>, target: <matched instance> }`
+     → produces that instance's command input (so per-row quantities can use
+     `self.requiredQuantity` with `payload.newHeadcount` / `payload.previousHeadcount`).
+  4. Invoke `runCommand` once per match with that instance's id and input.
 - Reaction-triggered commands are full command executions (policies, guards, actions, emits apply).
 - Events emitted by reaction-triggered commands MAY trigger further reactions (cascading).
 - A conforming runtime MUST enforce a maximum reaction depth (default: 10) to prevent infinite loops. When exceeded, the runtime MUST throw a `ManifestReactionDepthError`.

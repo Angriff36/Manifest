@@ -95,6 +95,12 @@ The `searchable` modifier may be applied to `string` properties to declare them 
 - `count_of(arr, predicate)` — count elements where `predicate` returns truthy
 - `filter(arr, predicate)` — return elements where `predicate` returns truthy
 - `map(arr, mapper)` — apply `mapper` to each element, return new array
+- `flat_map(arr, mapper)` — apply `mapper` to each element; concatenate array
+  results (non-array results are appended as single elements; null/undefined
+  skipped). Use for multi-hop collection traversal (e.g. lines → nested lists).
+- `unique_of(arr)` — stable de-duplication of array elements (primitives by
+  value; objects by `JSON.stringify` key). Named `unique_of` because `unique`
+  is a reserved property modifier.
 
 Aggregate functions are designed for computed properties over `hasMany` relationships:
 
@@ -205,7 +211,8 @@ precedence on name collision — reserved names cannot be overridden.
 > `now`, `uuid`, `trim`, `split`, `count`, `startsWith`, `endsWith`, `replace`,
 > `toUpperCase`, `toLowerCase`, `length`, `substring`, `indexOf`, `matches`, `search`,
 > `abs`, `round`, `floor`, `ceil`, `min`, `max`, `between`,
-> `sum`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map`,
+> `sum`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map`, `flat_map`,
+> `unique_of`,
 > `year`, `month`, `day`, `hours`, `minutes`, `seconds`,
 > `dateOf`, `timeOf`, `datetimeOf`, `addDuration`, `durationBetween`,
 > `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`,

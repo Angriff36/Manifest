@@ -158,7 +158,7 @@ export type BuiltinPurity = 'pure' | 'time-dependent' | 'random';
  *   now, uuid, trim, split, count, startsWith, endsWith, replace,
  *   toUpperCase, toLowerCase, length, substring, indexOf, matches,
  *   abs, round, floor, ceil, min, max, between,
- *   sum, avg, min_of, max_of, count_of, filter, map,
+ *   sum, avg, min_of, max_of, count_of, filter, map, flat_map, unique_of,
  *   year, month, day, hours, minutes, seconds
  */
 export interface BuiltinFunctionPlugin {
@@ -322,6 +322,8 @@ export const RESERVED_BUILTIN_NAMES: ReadonlySet<string> = new Set([
   'count_of',
   'filter',
   'map',
+  'flat_map',
+  'unique_of',
   'year',
   'month',
   'day',

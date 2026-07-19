@@ -22,8 +22,8 @@ describe('plugin-api', () => {
   });
 
   describe('RESERVED_BUILTIN_NAMES', () => {
-    it('contains all 47 builtins', () => {
-      expect(RESERVED_BUILTIN_NAMES.size).toBe(47);
+    it('contains all 49 builtins', () => {
+      expect(RESERVED_BUILTIN_NAMES.size).toBe(49);
     });
 
     it('includes core builtins', () => {
@@ -61,6 +61,8 @@ describe('plugin-api', () => {
       expect(RESERVED_BUILTIN_NAMES.has('count_of')).toBe(true);
       expect(RESERVED_BUILTIN_NAMES.has('filter')).toBe(true);
       expect(RESERVED_BUILTIN_NAMES.has('map')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('flat_map')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('unique_of')).toBe(true);
     });
 
     it('includes date builtins', () => {

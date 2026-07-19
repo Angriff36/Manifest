@@ -1926,6 +1926,38 @@ export class RuntimeEngine {
         }
         return Array.isArray(arr) ? arr : [];
       },
+      flat_map: (arr: unknown, mapper?: unknown) => {
+        if (Array.isArray(arr) && typeof mapper === 'function') {
+          return (async () => {
+            const result: unknown[] = [];
+            for (const element of arr as unknown[]) {
+              const mapped = await Promise.resolve(
+                (mapper as (...a: unknown[]) => unknown)(element),
+              );
+              if (Array.isArray(mapped)) result.push(...mapped);
+              else if (mapped !== undefined && mapped !== null) result.push(mapped);
+            }
+            return result;
+          })();
+        }
+        return Array.isArray(arr) ? arr : [];
+      },
+      // Named unique_of (not `unique`) — `unique` is a reserved property modifier.
+      unique_of: (arr: unknown) => {
+        if (!Array.isArray(arr)) return [];
+        const seen = new Set<unknown>();
+        const result: unknown[] = [];
+        for (const element of arr as unknown[]) {
+          const key =
+            element !== null && typeof element === 'object'
+              ? JSON.stringify(element)
+              : element;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          result.push(element);
+        }
+        return result;
+      },
 
       // Date builtins (UTC components; ts is milliseconds since epoch)
       year: (ts: unknown) => (typeof ts === 'number' ? new Date(ts).getUTCFullYear() : ts),
@@ -4893,12 +4925,6 @@ export class RuntimeEngine {
                 reaction.fanOut.matchSource,
                 reactionContext,
               );
-              const fanInput: Record<string, unknown> = {};
-              if (reaction.params) {
-                for (const p of reaction.params) {
-                  fanInput[p.name] = await this.evaluateExpression(p.expression, reactionContext);
-                }
-              }
               const matchField = reaction.fanOut.matchField;
               const matches = (await this.getAllInstancesRaw(reaction.targetEntity)).filter(
                 (inst) => (inst as Record<string, unknown>)[matchField] === matchValue,
@@ -4910,6 +4936,26 @@ export class RuntimeEngine {
                     reaction.event,
                     `${reaction.targetEntity}.${reaction.targetCommand}`,
                   );
+                }
+                // Per-target params: payload stays the event; self/target are the row
+                // so expressions can use requiredQuantity × headcount ratios, etc.
+                const targetInstance = {
+                  ...(m as Record<string, unknown>),
+                  _entity: reaction.targetEntity,
+                };
+                const fanParamContext: Record<string, unknown> = {
+                  payload: enrichedPayload,
+                  self: targetInstance,
+                  target: targetInstance,
+                };
+                const fanInput: Record<string, unknown> = {};
+                if (reaction.params) {
+                  for (const p of reaction.params) {
+                    fanInput[p.name] = await this.evaluateExpression(
+                      p.expression,
+                      fanParamContext,
+                    );
+                  }
                 }
                 this.reactionDepth++;
                 try {

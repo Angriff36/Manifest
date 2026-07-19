@@ -14,15 +14,22 @@ export type CommandEmitter = {
   explicitPayloadFieldNames: Set<string>;
 };
 
-function collectMemberChain(expr: IRExpression): string[] | null {
+type MemberChain = { root: 'payload' | 'self' | 'target'; chain: string[] };
+
+function collectMemberChain(expr: IRExpression): MemberChain | null {
   const chain: string[] = [];
   let spine: IRExpression | undefined = expr;
   while (spine?.kind === 'member' && typeof spine.property === 'string') {
     chain.unshift(spine.property);
     spine = spine.object;
   }
-  if (spine?.kind === 'identifier' && (spine.name === 'payload' || spine.name === 'self')) {
-    return chain.length > 0 ? chain : null;
+  if (
+    spine?.kind === 'identifier' &&
+    (spine.name === 'payload' || spine.name === 'self' || spine.name === 'target')
+  ) {
+    return chain.length > 0
+      ? { root: spine.name as MemberChain['root'], chain }
+      : null;
   }
   return null;
 }
@@ -35,9 +42,18 @@ function walkExpressionChildren(node: IRExpression, visit: (child: unknown) => v
 }
 
 export function collectPayloadChains(node: unknown, out: string[][]): void {
+  const rooted: MemberChain[] = [];
+  collectMemberChains(node, rooted);
+  for (const r of rooted) {
+    // Legacy callers treat self ≡ payload (single-target reactions).
+    if (r.root === 'payload' || r.root === 'self') out.push(r.chain);
+  }
+}
+
+function collectMemberChains(node: unknown, out: MemberChain[]): void {
   if (node == null || typeof node !== 'object') return;
   if (Array.isArray(node)) {
-    for (const n of node) collectPayloadChains(n, out);
+    for (const n of node) collectMemberChains(n, out);
     return;
   }
 
@@ -48,11 +64,11 @@ export function collectPayloadChains(node: unknown, out: string[][]): void {
       out.push(chain);
       return;
     }
-    walkExpressionChildren(expr, (child) => collectPayloadChains(child, out));
+    walkExpressionChildren(expr, (child) => collectMemberChains(child, out));
     return;
   }
 
-  walkExpressionChildren(expr, (child) => collectPayloadChains(child, out));
+  walkExpressionChildren(expr, (child) => collectMemberChains(child, out));
 }
 
 export function buildEmittersByEvent(commands: IRCommand[]): Map<string, CommandEmitter[]> {
@@ -131,20 +147,44 @@ export function checkReactionPayloadReferences(
   emit: ReactionCompletenessEmit,
 ): void {
   const label = `${reaction.event} → ${reaction.targetEntity}.${reaction.targetCommand}`;
-  const chains: string[][] = [];
-  if (reaction.resolve) collectPayloadChains(reaction.resolve, chains);
-  for (const p of reaction.params ?? []) collectPayloadChains(p.expression, chains);
+  const rooted: MemberChain[] = [];
+  if (reaction.resolve) collectMemberChains(reaction.resolve, rooted);
+  if (reaction.fanOut?.matchSource) collectMemberChains(reaction.fanOut.matchSource, rooted);
+  for (const p of reaction.params ?? []) collectMemberChains(p.expression, rooted);
 
   const eventFields = declaredEventPayload.get(reaction.event) ?? new Set<string>();
+  const targetProps = entityProps.get(reaction.targetEntity) ?? new Set<string>();
   const seen = new Set<string>();
+  const fanOut = !!reaction.fanOut;
 
-  for (const chain of chains) {
+  for (const { root, chain } of rooted) {
     const chainStr = chain.join('.');
-    if (seen.has(chainStr)) continue;
-    seen.add(chainStr);
+    const seenKey = `${root}.${chainStr}`;
+    if (seen.has(seenKey)) continue;
+    seen.add(seenKey);
 
     const head = chain[0];
     if (ENRICHED_PAYLOAD_FIELDS.has(head)) continue;
+
+    // Fan-out params bind self/target to the matched instance; payload stays the event.
+    if (fanOut && (root === 'self' || root === 'target')) {
+      if (!targetProps.has(head)) {
+        emit(
+          'error',
+          `Reaction '${label}' references ${root}.${chainStr} but '${head}' is not a property of target ${reaction.targetEntity} — undefined at runtime.`,
+        );
+      }
+      continue;
+    }
+
+    // Single-target reactions: self ≡ payload. Fan-out matchSource also uses payload context.
+    if (root === 'target') {
+      emit(
+        'error',
+        `Reaction '${label}' references target.${chainStr} but target binding is only available on fan-out reaction params.`,
+      );
+      continue;
+    }
 
     if (head === 'result') {
       checkResultPayloadReference(label, chain, emitters, entityProps, emit);
