@@ -27,9 +27,7 @@ function collectMemberChain(expr: IRExpression): MemberChain | null {
     spine?.kind === 'identifier' &&
     (spine.name === 'payload' || spine.name === 'self' || spine.name === 'target')
   ) {
-    return chain.length > 0
-      ? { root: spine.name as MemberChain['root'], chain }
-      : null;
+    return chain.length > 0 ? { root: spine.name as MemberChain['root'], chain } : null;
   }
   return null;
 }

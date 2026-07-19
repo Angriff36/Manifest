@@ -1949,9 +1949,7 @@ export class RuntimeEngine {
         const result: unknown[] = [];
         for (const element of arr as unknown[]) {
           const key =
-            element !== null && typeof element === 'object'
-              ? JSON.stringify(element)
-              : element;
+            element !== null && typeof element === 'object' ? JSON.stringify(element) : element;
           if (seen.has(key)) continue;
           seen.add(key);
           result.push(element);
@@ -4951,10 +4949,7 @@ export class RuntimeEngine {
                 const fanInput: Record<string, unknown> = {};
                 if (reaction.params) {
                   for (const p of reaction.params) {
-                    fanInput[p.name] = await this.evaluateExpression(
-                      p.expression,
-                      fanParamContext,
-                    );
+                    fanInput[p.name] = await this.evaluateExpression(p.expression, fanParamContext);
                   }
                 }
                 this.reactionDepth++;

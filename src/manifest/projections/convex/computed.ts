@@ -55,7 +55,14 @@ export function generateComputedHelpers(ir: IR, options: NormalizedOptions): Com
     if (fields.length === 0) continue;
     entityCount += 1;
 
-    const hydrate = renderEntityComputedHydration(ir, entity, options, '(doc as any)', 'docId', '  ');
+    const hydrate = renderEntityComputedHydration(
+      ir,
+      entity,
+      options,
+      '(doc as any)',
+      'docId',
+      '  ',
+    );
     if (hydrate.lines.length > 0) {
       blocks.push(
         `/** Preload nested relations for ${entity.name} computeds (mutates doc in place). */\n` +

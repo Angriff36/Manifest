@@ -99,10 +99,7 @@ describe('convex nested aggregate hydration', () => {
       joins: [
         {
           mid: {
-            lines: [
-              { leaf: { tags: ['milk', 'eggs'] } },
-              { leaf: { tags: ['eggs', 'wheat'] } },
-            ],
+            lines: [{ leaf: { tags: ['milk', 'eggs'] } }, { leaf: { tags: ['eggs', 'wheat'] } }],
           },
         },
         {
