@@ -4,6 +4,24 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.22] - 2026-07-19
+
+### Changed
+
+- fix(codegen): remove Generated At headers from core + standalone generators and CLI routes output
+- docs: sync all contracts/docs with generatedAt removal per Codex re-review
+- fix(projections): remove remaining generation-time stamps per Codex review
+- fix(llm-context): drop generatedAt from ManifestContextMeta type (determinism)
+- style: prettier (normalize line endings from Windows tooling)
+- style: prettier (normalize line endings from Windows tooling)
+- fix(projections): remove wall-clock timestamps from generated output
+- fix(cli): manifest fmt verifies syntax only, not cross-file semantics
+- ci: cut-release now formats code before building (release is the formatter)
+- docs: regenerate stale FEATURE-LIST via pnpm docs:feature-list (pre-existing main failure)
+- docs: add required spec headers to 3 files failing docs:check:spec-integrity
+- style: prettier --write on code files only (fix 8-day red CI format check)
+- [config] prettier is code-only: ignore *.md/*.mdx; corrected loop format procedure
+
 ## [3.6.21] - 2026-07-17
 
 ### Added
