@@ -188,6 +188,8 @@ describe('convex.react', () => {
     expect(code).toContain('../../schemas/manifest-schemas');
     expect(code).toContain('OrderCreateParamsSchema');
     expect(code).toContain('OrderCreateParamsSchema.parse(params)');
+    expect(code).toContain('__convexArgsFromZod');
+    expect(code).toContain('value instanceof Date ? value.getTime()');
     expect(code).toContain('docId, version, idempotencyKey');
   });
 });

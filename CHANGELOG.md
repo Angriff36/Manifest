@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.24] - 2026-07-19
+
+### Fixed
+
+- **`convex.react` Zod wire:** coerce Zod `Date` values to epoch millis for Convex;
+  accept `any` hook args so typed form payloads typecheck after parse.
+
 ## [3.6.23] - 2026-07-19
 
 ### Added

@@ -122,6 +122,15 @@ export function generateReactClient(
       lines.push(`  ${name},`);
     }
     lines.push(`} from ${JSON.stringify(zodImport)};`);
+    lines.push('');
+    // Zod datetime → Date; Convex mutations expect epoch millis.
+    lines.push(`function __convexArgsFromZod(parsed: Record<string, unknown>): Record<string, unknown> {`);
+    lines.push(`  const out: Record<string, unknown> = {};`);
+    lines.push(`  for (const [key, value] of Object.entries(parsed)) {`);
+    lines.push(`    out[key] = value instanceof Date ? value.getTime() : value;`);
+    lines.push(`  }`);
+    lines.push(`  return out;`);
+    lines.push(`}`);
   }
   lines.push('');
 
@@ -181,11 +190,11 @@ export function generateReactClient(
       lines.push(`export function ${hookName}() {`);
       if (zodImport) {
         lines.push(`  const mutate = useMutation(api.mutations.${mutName});`);
-        lines.push(`  return (args: Record<string, unknown>) => {`);
-        lines.push(`    const { docId, version, idempotencyKey, ...params } = args;`);
-        lines.push(`    const parsed = ${schemaName}.parse(params);`);
+        lines.push(`  return (args: any) => {`);
+        lines.push(`    const { docId, version, idempotencyKey, ...params } = args ?? {};`);
+        lines.push(`    const parsed = ${schemaName}.parse(params) as Record<string, unknown>;`);
         lines.push(
-          `    return mutate({ docId, version, idempotencyKey, ...parsed } as Parameters<typeof mutate>[0]);`,
+          `    return mutate({ docId, version, idempotencyKey, ...__convexArgsFromZod(parsed) } as any);`,
         );
         lines.push(`  };`);
       } else {
@@ -204,11 +213,12 @@ export function generateReactClient(
       lines.push(`export function useCreate${entity.name}() {`);
       if (zodImport) {
         lines.push(`  const mutate = useMutation(api.mutations.${mutationName});`);
-        lines.push(`  return (args: Record<string, unknown>) => {`);
-        lines.push(`    const { idempotencyKey, ...params } = args;`);
-        lines.push(`    const parsed = ${schemaName}.parse(params);`);
+        lines.push(`  return (args: any) => {`);
+        lines.push(`    const { idempotencyKey, ...params } = args ?? {};`);
+        lines.push(`    const parsed = ${schemaName}.parse(params) as Record<string, unknown>;`);
+        lines.push(`    const body = __convexArgsFromZod(parsed);`);
         lines.push(
-          `    return mutate((idempotencyKey !== undefined ? { ...parsed, idempotencyKey } : parsed) as Parameters<typeof mutate>[0]);`,
+          `    return mutate((idempotencyKey !== undefined ? { ...body, idempotencyKey } : body) as any);`,
         );
         lines.push(`  };`);
       } else {
