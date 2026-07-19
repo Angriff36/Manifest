@@ -95,7 +95,7 @@ describe('LlmContextProjection', () => {
       expect(ctx.meta.schemaVersion).toBe('1.0');
       expect(ctx.meta.contentHash).toBe('abc123');
       expect(ctx.meta.projection).toBe('llm-context');
-      expect(ctx.meta.generatedAt).toBeUndefined();
+      expect('generatedAt' in ctx.meta).toBe(false);
     });
 
     it('includes domain summary with correct counts', async () => {
