@@ -447,11 +447,9 @@ describe('SvelteKitProjection', () => {
     it('produces deterministic output', () => {
       const a = projection.generate(fullIR(), {
         surface: 'sveltekit.types',
-        options: { generatedAt: '2025-01-01T00:00:00.000Z' },
       });
       const b = projection.generate(fullIR(), {
         surface: 'sveltekit.types',
-        options: { generatedAt: '2025-01-01T00:00:00.000Z' },
       });
       expect(a.artifacts[0].code).toEqual(b.artifacts[0].code);
     });

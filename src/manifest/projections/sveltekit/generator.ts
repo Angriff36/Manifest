@@ -83,7 +83,6 @@ interface NormalizedOptions {
   emitFormActions: boolean;
   emitTypeImports: boolean;
   emitCompanions: boolean;
-  generatedAt: string;
 }
 
 /**
@@ -129,7 +128,6 @@ function normalizeOptions(opts: SvelteKitProjectionOptions = {}): NormalizedOpti
     emitFormActions: opts.emitFormActions ?? SVELTEKIT_DEFAULTS.emitFormActions,
     emitTypeImports: opts.emitTypeImports ?? SVELTEKIT_DEFAULTS.emitTypeImports,
     emitCompanions: opts.emitCompanions ?? SVELTEKIT_DEFAULTS.emitCompanions,
-    generatedAt: opts.generatedAt ?? new Date().toISOString(),
   };
 }
 
@@ -265,7 +263,6 @@ function emitHeader(options: NormalizedOptions, target: string): string {
     '/**',
     ` * Auto-generated SvelteKit ${target}`,
     ' * Generated from Manifest IR — DO NOT EDIT',
-    ` * Generated at: ${options.generatedAt}`,
     ' *',
     ' * Writes flow through the Manifest runtime to enforce',
     ' * guards, policies, and constraints. Reads MAY bypass the runtime',

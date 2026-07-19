@@ -52,10 +52,12 @@ Security is derived from entity policies when `includePolicySecurity` is enabled
 
 The options object is `OpenApiProjectionOptions` in `openapi/types.ts`. `basePath` (default `/api`) prefixes all routes. `info` overrides the title, version, description, contact, and license; the title defaults to a value derived from IR modules or `Manifest API`, and the version defaults to the IR provenance `schemaVersion` or `1.0.0`. `servers` lists server URLs (with optional variables), `securitySchemes` defines the named schemes in `components` (`apiKey`, `http`, `oauth2`, `openIdConnect`), and `security` sets global requirements.
 
-Boolean toggles default to true: `includeAuth` (auth on routes), `includeTenant` (tenant context), `includeConstraintErrors` (the error response schemas), and `includePolicySecurity` (per-operation security derived from policies). `generatedAt` accepts an ISO timestamp override for deterministic output in tests.
+Boolean toggles default to true: `includeAuth` (auth on routes), `includeTenant` (tenant context), `includeConstraintErrors` (the error response schemas), and `includePolicySecurity` (per-operation security derived from policies).
 
 ## Notes & limitations
 
-The feature summary lists `includeAuth`, `includeConstraintErrors`, and the `info`/`servers`/`securitySchemes`/`security` options; the source additionally exposes `includeTenant`, `includePolicySecurity`, and `generatedAt`, all documented above. The summary's note that `email` is among the mapped types is accurate (it maps to `string` with `format: email`); `url`/`uri` are also handled though the summary does not mention them.
+The feature summary lists `includeAuth`, `includeConstraintErrors`, and the `info`/`servers`/`securitySchemes`/`security` options; the source additionally exposes `includeTenant` and `includePolicySecurity`, documented above. The summary's note that `email` is among the mapped types is accurate (it maps to `string` with `format: email`); `url`/`uri` are also handled though the summary does not mention them.
 
 The summary describes the work against a test-suite total of 1218 with 10 pre-existing unrelated failures at the time of implementation; that figure is historical and not a current count.
+
+

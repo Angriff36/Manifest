@@ -8,7 +8,7 @@ The projection is registered under the name `llm-context` and lives at `src/mani
 
 The projection exposes three surfaces, each emitting a single JSON artifact.
 
-`llm-context.full` builds the complete context document (path hint `manifest-context.json`, artifact id `llm-context-full`). The document carries `$schema: "manifest-context/v1"` and these sections: `meta` (generation timestamp plus compiler version, schema version, and content hash from IR provenance), `domain` (counts of entities, commands, policies, constraints, enums, and events; the module list; and a `multiTenant` flag), `entities`, `commands`, `policies`, `constraints`, and `relationships`. Optional sections `enums`, `events`, `stores`, and the raw `ir` are appended according to options.
+`llm-context.full` builds the complete context document (path hint `manifest-context.json`, artifact id `llm-context-full`). The document carries `$schema: "manifest-context/v1"` and these sections: `meta` (compiler version, schema version, and content hash from IR provenance), `domain` (counts of entities, commands, policies, constraints, enums, and events; the module list; and a `multiTenant` flag), `entities`, `commands`, `policies`, `constraints`, and `relationships`. Optional sections `enums`, `events`, `stores`, and the raw `ir` are appended according to options.
 
 `llm-context.summary` builds the same document with `includeRawIR` and `includeExpressions` forced off — guard, action, constraint, and computed-property expressions are replaced with `"[omitted]"` and the raw IR is excluded (path hint `manifest-context-summary.json`).
 
@@ -46,7 +46,8 @@ For entities, a property is reported `required` when it carries the `required` m
 
 ## Notes & limitations
 
-The `emitHeader` option is declared and defaulted to `true`, but the generator emits pure JSON in all three modes and does not write a header comment — the option has no observable effect on output. The `meta.generatedAt` timestamp is taken from `new Date().toISOString()` at generation time, so the full and summary documents are not byte-for-byte reproducible across runs (the `llm-context.ir` surface, which passes the IR through unchanged, is stable). ~~There is no dedicated CLI command; invoke the projection programmatically through `getProjection('llm-context')`.~~
+The `emitHeader` option is declared and defaulted to `true`, but the generator emits pure JSON in all three modes and does not write a header comment — the option has no observable effect on output. As of the deterministic-generation change (2026-07-19), no surface emits a generation timestamp: identical IR produces byte-for-byte identical output on every run (`meta.generatedAt` was removed — consumers reading it must drop that field). ~~There is no dedicated CLI command; invoke the projection programmatically through `getProjection('llm-context')`.~~
 
 > **Correction (2026-07-15) @RYANSIGNED:** `manifest generate <ir> -p llm-context` works via the
 > registry. Programmatic `getProjection('llm-context')` remains valid.
+

@@ -80,5 +80,4 @@ export interface OpenApiProjectionOptions {
   includePolicySecurity?: boolean;
 
   /** ISO timestamp override for deterministic output (testing) */
-  generatedAt?: string;
 }

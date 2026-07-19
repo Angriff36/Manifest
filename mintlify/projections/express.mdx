@@ -48,7 +48,7 @@ Entity interface fields are optional unless the property has the `required` modi
 
 ## Options
 
-`ExpressProjectionOptions` accepts `framework` (`'express' | 'fastify'`, default `express`), `authImportPath` (default `./middleware/auth`), `authMiddlewareName` (default `requireAuth`), `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `validationImportPath` (default unset — no validation emitted), `basePath` (default `/api`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `emitTypes` (default `true`), `emitHeader` (default `true`), `publicReads` (default `false`), `includeComments` (default `true`), and `generatedAt` (an ISO timestamp override for deterministic output in tests).
+`ExpressProjectionOptions` accepts `framework` (`'express' | 'fastify'`, default `express`), `authImportPath` (default `./middleware/auth`), `authMiddlewareName` (default `requireAuth`), `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `validationImportPath` (default unset — no validation emitted), `basePath` (default `/api`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `emitTypes` (default `true`), `emitHeader` (default `true`), `publicReads` (default `false`), `includeComments` (default `true`).
 
 ## Notes & limitations
 
@@ -61,3 +61,4 @@ Entity interface fields are optional unless the property has the `required` modi
 </Note>
 
 There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only — emit Express/Fastify output by invoking `getProjection('express')` programmatically. Per-feature notes referencing `manifest generate <ir> -p express` describe an intended CLI path that is not present in the current `generate` command.
+

@@ -44,7 +44,7 @@ Entity interface fields are optional unless the property has the `required` modi
 
 ## Options
 
-`ExpressProjectionOptions` accepts `framework` (`'express' | 'fastify'`, default `express`), `authProvider` (`'clerk' | 'custom' | 'none'`, default `custom` — fail-closed stub; `clerk` binds `@clerk/express` getAuth; `none` sets anonymous user), `authImportPath` (default `./middleware/auth`), `authMiddlewareName` (default `requireAuth`), `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `validationImportPath` (default unset — no validation emitted), `basePath` (default `/api`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `emitTypes` (default `true`), `emitHeader` (default `true`), `publicReads` (default `false`), `includeComments` (default `true`), and `generatedAt` (an ISO timestamp override for deterministic output in tests).
+`ExpressProjectionOptions` accepts `framework` (`'express' | 'fastify'`, default `express`), `authProvider` (`'clerk' | 'custom' | 'none'`, default `custom` — fail-closed stub; `clerk` binds `@clerk/express` getAuth; `none` sets anonymous user), `authImportPath` (default `./middleware/auth`), `authMiddlewareName` (default `requireAuth`), `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `validationImportPath` (default unset — no validation emitted), `basePath` (default `/api`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `emitTypes` (default `true`), `emitHeader` (default `true`), `publicReads` (default `false`), `includeComments` (default `true`).
 
 ## Notes & limitations
 
@@ -55,3 +55,4 @@ The generated module imports the auth middleware and runtime factory from the co
 > **Correction (2026-07-15) @RYANSIGNED:** `manifest generate <ir> -p express` works via the
 > projection registry (`getProjection('express')`). Next.js still has a specialized path in
 > `generate.ts`; all other registered names (including `express`) use the registry walker.
+

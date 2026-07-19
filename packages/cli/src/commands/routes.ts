@@ -90,7 +90,6 @@ export async function routesCommand(options: RoutesCommandOptions = {}): Promise
         surface: 'routes.manifest',
         options: {
           basePath,
-          generatedAt: new Date().toISOString(),
         },
       });
 
@@ -158,7 +157,6 @@ export async function routesCommand(options: RoutesCommandOptions = {}): Promise
       const output = {
         $schema: 'https://manifest.lang/spec/routes-v1.schema.json',
         version: '1.0',
-        generatedAt: new Date().toISOString(),
         basePath,
         filesCompiled,
         routes: allRoutes,

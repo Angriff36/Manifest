@@ -66,7 +66,6 @@ export interface RouteEntry {
 export interface RouteManifest {
   $schema: string;
   version: '1.0';
-  generatedAt: string;
   basePath: string;
   routes: RouteEntry[];
 }
@@ -144,5 +143,4 @@ export interface RoutesProjectionOptions {
   /** Manual route declarations to merge into the surface */
   manualRoutes?: ManualRouteDeclaration[];
   /** ISO timestamp override for deterministic output (testing) */
-  generatedAt?: string;
 }

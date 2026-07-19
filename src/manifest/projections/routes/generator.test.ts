@@ -58,14 +58,12 @@ describe('RoutesProjection', () => {
 
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.manifest',
-        options: { generatedAt: '2026-01-01T00:00:00.000Z' },
       });
 
       const manifest = parseManifest(routeResult);
 
       expect(manifest.version).toBe('1.0');
       expect(manifest.basePath).toBe('/api');
-      expect(manifest.generatedAt).toBe('2026-01-01T00:00:00.000Z');
 
       // Should have list + detail routes for Recipe
       const recipeRoutes = manifest.routes.filter(
@@ -103,7 +101,6 @@ describe('RoutesProjection', () => {
 
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.manifest',
-        options: { generatedAt: '2026-01-01T00:00:00.000Z' },
       });
 
       const manifest = parseManifest(routeResult);
@@ -141,7 +138,7 @@ describe('RoutesProjection', () => {
       const result = await compileToIR(source);
       expect(result.ir).not.toBeNull();
 
-      const opts = { generatedAt: '2026-01-01T00:00:00.000Z' };
+      const opts = {};
 
       const result1 = firstCode(
         projection.generate(result.ir!, { surface: 'routes.manifest', options: opts }),
@@ -169,7 +166,6 @@ describe('RoutesProjection', () => {
 
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.manifest',
-        options: { generatedAt: '2026-01-01T00:00:00.000Z' },
       });
 
       const manifest = parseManifest(routeResult);
@@ -186,7 +182,7 @@ describe('RoutesProjection', () => {
 
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.manifest',
-        options: { basePath: '/v2/api', generatedAt: '2026-01-01T00:00:00.000Z' },
+        options: { basePath: '/v2/api' },
       });
 
       const manifest = parseManifest(routeResult);
@@ -201,7 +197,6 @@ describe('RoutesProjection', () => {
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.manifest',
         options: {
-          generatedAt: '2026-01-01T00:00:00.000Z',
           manualRoutes: [
             {
               id: 'health-check',
@@ -230,7 +225,6 @@ describe('RoutesProjection', () => {
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.manifest',
         options: {
-          generatedAt: '2026-01-01T00:00:00.000Z',
           manualRoutes: [
             { id: 'dup', path: '/a', method: 'GET' },
             { id: 'dup', path: '/b', method: 'POST' },
@@ -250,7 +244,6 @@ describe('RoutesProjection', () => {
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.manifest',
         options: {
-          generatedAt: '2026-01-01T00:00:00.000Z',
           manualRoutes: [{ id: 'collision', path: '/api/recipe/list', method: 'GET' }],
         },
       });
@@ -267,7 +260,6 @@ describe('RoutesProjection', () => {
       const withDefaults = parseManifest(
         projection.generate(result.ir!, {
           surface: 'routes.manifest',
-          options: { generatedAt: '2026-01-01T00:00:00.000Z' },
         }),
       );
       expect(withDefaults.routes[0].auth).toBe(true);
@@ -278,7 +270,6 @@ describe('RoutesProjection', () => {
         projection.generate(result.ir!, {
           surface: 'routes.manifest',
           options: {
-            generatedAt: '2026-01-01T00:00:00.000Z',
             includeAuth: false,
             includeTenant: false,
           },
@@ -306,7 +297,6 @@ describe('RoutesProjection', () => {
 
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.ts',
-        options: { generatedAt: '2026-01-01T00:00:00.000Z' },
       });
 
       const code = firstCode(routeResult);
@@ -336,7 +326,6 @@ describe('RoutesProjection', () => {
 
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.ts',
-        options: { generatedAt: '2026-01-01T00:00:00.000Z' },
       });
 
       const code = firstCode(routeResult);
@@ -363,7 +352,6 @@ describe('RoutesProjection', () => {
       const dflt = firstCode(
         projection.generate(result.ir!, {
           surface: 'routes.ts',
-          options: { generatedAt: '2026-01-01T00:00:00.000Z' },
         }),
       );
       expect(dflt).toContain('export function recipeCreatePath(): string');
@@ -374,7 +362,6 @@ describe('RoutesProjection', () => {
         projection.generate(result.ir!, {
           surface: 'routes.ts',
           options: {
-            generatedAt: '2026-01-01T00:00:00.000Z',
             concreteCommandRoutes: { enabled: true },
           },
         }),
@@ -402,7 +389,6 @@ describe('RoutesProjection', () => {
         projection.generate(result.ir!, {
           surface: 'routes.ts',
           options: {
-            generatedAt: '2026-01-01T00:00:00.000Z',
             appDir: 'app/api/v2',
             routeCasing: 'kebab-case',
           },
@@ -422,7 +408,6 @@ describe('RoutesProjection', () => {
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.ts',
         options: {
-          generatedAt: '2026-01-01T00:00:00.000Z',
           manualRoutes: [{ id: 'health-check', path: '/api/health', method: 'GET' }],
         },
       });
@@ -439,7 +424,6 @@ describe('RoutesProjection', () => {
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.ts',
         options: {
-          generatedAt: '2026-01-01T00:00:00.000Z',
           manualRoutes: [
             {
               id: 'user-profile',
@@ -471,7 +455,6 @@ describe('RoutesProjection', () => {
 
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.ts',
-        options: { generatedAt: '2026-01-01T00:00:00.000Z' },
       });
 
       const code = firstCode(routeResult);
@@ -487,7 +470,6 @@ describe('RoutesProjection', () => {
 
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.ts',
-        options: { generatedAt: '2026-01-01T00:00:00.000Z' },
       });
 
       const code = firstCode(routeResult);
@@ -501,7 +483,6 @@ describe('RoutesProjection', () => {
 
       const routeResult = projection.generate(result.ir!, {
         surface: 'routes.ts',
-        options: { generatedAt: '2026-01-01T00:00:00.000Z' },
       });
 
       expect(routeResult.artifacts[0].id).toBe('routes.ts');
@@ -559,7 +540,6 @@ describe('RoutesProjection', () => {
 
       const routeResult = projection.generate(ir, {
         surface: 'routes.manifest',
-        options: { generatedAt: '2026-01-01T00:00:00.000Z' },
       });
 
       const warningDiag = routeResult.diagnostics.find((d) => d.code === 'COMMAND_NO_ENTITY');

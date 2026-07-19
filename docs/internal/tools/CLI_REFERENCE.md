@@ -458,7 +458,6 @@ pnpm exec manifest routes --base-path /v1
 {
   "$schema": "https://manifest.lang/spec/routes-v1.schema.json",
   "version": "1.0",
-  "generatedAt": "2026-02-28T...",
   "basePath": "/api",
   "filesCompiled": 3,
   "routes": [
@@ -1059,3 +1058,4 @@ warning APPROVED_BYPASS_REQUIRED app/api/migration/route.ts — Direct write at 
 - **Quick Start**: `docs/QUICKSTART.md`
 - **Projections**: `docs/guides/writing-projections.md`
 - **API Reference**: ~~`docs/tools/API_REFERENCE.md`~~ `docs/internal/tools/API_REFERENCE.md`
+

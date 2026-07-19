@@ -135,7 +135,6 @@ export interface SvelteKitProjectionOptions {
   /**
    * ISO timestamp override for deterministic output (testing).
    */
-  generatedAt?: string;
 
   /**
    * Emit the companion modules generated SvelteKit code imports but no other

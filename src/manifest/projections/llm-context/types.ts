@@ -80,7 +80,6 @@ export interface ManifestContext {
 }
 
 export interface ManifestContextMeta {
-  generatedAt: string;
   compilerVersion: string;
   schemaVersion: string;
   contentHash: string;

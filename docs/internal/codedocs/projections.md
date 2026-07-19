@@ -92,7 +92,6 @@ const result = projection.generate(ir, {
         tenant: false,
       },
     ],
-    generatedAt: '2026-05-22T00:00:00.000Z',
   },
 });
 
@@ -117,3 +116,4 @@ console.log(JSON.parse(result.artifacts[0].code).routes);
 - Use both when you want generated code in your app and a machine-readable transport contract for CI or tooling.
 
 The [Next.js Projection Guide](guides/nextjs-projection.md) shows a full compile-and-generate workflow, and the [Projections API Reference](api-reference/projections.md) lists the exact surfaces, options, and import paths.
+

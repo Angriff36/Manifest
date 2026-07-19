@@ -23,7 +23,6 @@ import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
 interface GeneratedProvenance {
   compilerVersion: string;
   schemaVersion: string;
-  generatedAt: string;
 }
 
 export class CodeGenerator {
@@ -41,7 +40,6 @@ export class CodeGenerator {
     this.provenance = {
       compilerVersion: COMPILER_VERSION,
       schemaVersion: SCHEMA_VERSION,
-      generatedAt: new Date().toISOString(),
     };
 
     this.emitRuntime();
@@ -109,7 +107,6 @@ export class CodeGenerator {
     this.line(`// Provenance:`);
     this.line(`//   Compiler Version: ${this.provenance.compilerVersion}`);
     this.line(`//   Schema Version: ${this.provenance.schemaVersion}`);
-    this.line(`//   Generated At: ${this.provenance.generatedAt}`);
     this.line('//');
     this.line(
       '// Includes: Commands, Computed Properties, Relationships, Policies, Stores, Events',
