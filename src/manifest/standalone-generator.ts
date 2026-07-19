@@ -19,7 +19,6 @@ import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
 interface GeneratedProvenance {
   compilerVersion: string;
   schemaVersion: string;
-  generatedAt: string;
 }
 
 export class StandaloneGenerator {
@@ -33,7 +32,6 @@ export class StandaloneGenerator {
     this.provenance = {
       compilerVersion: COMPILER_VERSION,
       schemaVersion: SCHEMA_VERSION,
-      generatedAt: new Date().toISOString(),
     };
 
     this.emitImports(program);
@@ -83,7 +81,6 @@ export class StandaloneGenerator {
     this.line(`// Provenance:`);
     this.line(`//   Compiler Version: ${this.provenance.compilerVersion}`);
     this.line(`//   Schema Version: ${this.provenance.schemaVersion}`);
-    this.line(`//   Generated At: ${this.provenance.generatedAt}`);
     this.line('//');
     this.line('// This file imports from the runtime module');
     this.line();
