@@ -20,9 +20,18 @@
 **Binding plans (scoped ownership — not language semantics):** Before changing
 proof-kit, Capsule↔Manifest integration guards, `./proof-kit` package exports,
 or consumer pin guidance, read
-`docs/internal/plans/2026-07-16-dx-proof-kit-boundary.md`. More generally,
-scan `docs/internal/plans/` for docs whose front matter / **Status** field says
-`Binding` for your surface — folder default is Tier B advisory
+`docs/internal/plans/2026-07-16-dx-proof-kit-boundary.md`. Before changing
+command HTTP/MCP/agent surfaces, webhook directionality, or external write-path
+integration, read
+`docs/internal/plans/2026-07-17-command-api-surface-boundary.md` (`webhook` =
+inbound only; outbound = publish/outbox/EventBus; no separate AI API). Before
+authoring or tightening **domain** policies/guards/constraints in consumer
+`.manifest` models, read
+`docs/internal/plans/2026-07-19-domain-gating-restraint.md` — agents
+systematically overgate (freeze mid-ops stages, specialty read caps, confuse
+seed checks with business rules); do not ship busywork gates. More
+generally, scan `docs/internal/plans/` for docs whose front matter / **Status**
+field says `Binding` for your surface — folder default is Tier B advisory
 (`docs/internal/DOCUMENTATION_GOVERNANCE.md`), but an explicit Binding status
 binds for its stated scope until graduated into `docs/internal/contracts/`.
 Plans never override Tier A (`docs/spec/**`).
@@ -288,11 +297,11 @@ Domain completeness diagnostics enforce the **user-facing boundary** (see `docs/
 
 Same routing as capsule-pro-loops — see [`LOOP.md`](./LOOP.md):
 
-| Role | Who |
-|------|-----|
-| Brain / triage | Claude Code cron (`$loop-triage` on Anthropic session) + Cursor watch ([`docs/internal/loop-overseer.md`](./docs/internal/loop-overseer.md)) |
-| Implementers (L2 OFF) | GLM 5.2 ⇄ MiniMax-M3 via `scripts/loop-dispatch.sh` + profile switch |
-| Review (L2 OFF) | Codex via `.claude/agents/loop-verifier.md` |
+| Role                  | Who                                                                                                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Brain / triage        | Claude Code cron (`$loop-triage` on Anthropic session) + Cursor watch ([`docs/internal/loop-overseer.md`](./docs/internal/loop-overseer.md)) |
+| Implementers (L2 OFF) | GLM 5.2 ⇄ MiniMax-M3 via `scripts/loop-dispatch.sh` + profile switch                                                                         |
+| Review (L2 OFF)       | Codex via `.claude/agents/loop-verifier.md`                                                                                                  |
 
 - State spine: [`STATE.md`](./STATE.md) — triage owns it; GHA dogfood must not rewrite findings.
 - Binding denylist: [`loop-constraints.md`](./loop-constraints.md).

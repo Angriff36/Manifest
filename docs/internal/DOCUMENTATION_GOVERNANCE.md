@@ -1,6 +1,6 @@
 # Manifest Documentation Governance
 
-Last updated: 2026-07-15
+Last updated: 2026-07-17
 Status: Active
 Authority: Binding
 Enforced by: pnpm run docs:check, pnpm run docs:check:spec-integrity; feature-completion claims enforced by agent rules + `docs/internal/COMPLIANCE_MATRIX.md`
@@ -139,7 +139,11 @@ Rules:
   > binds only for the stated scope; it never overrides Tier A language law.
   > Prefer graduating durable Binding plans into `docs/internal/contracts/`.
   > Agents must scan `docs/internal/plans/` for Binding status before changing
-  > proof-kit or Capsule↔Manifest integration surfaces (see `AGENTS.md`).
+  > proof-kit, command-API/webhook surfaces, or Capsule↔Manifest integration
+  > surfaces (see `AGENTS.md`; example Binding plans:
+  > `2026-07-16-dx-proof-kit-boundary.md`,
+  > `2026-07-17-command-api-surface-boundary.md`,
+  > `2026-07-19-domain-gating-restraint.md`).
 
 ### Tier C: Guidance and integration docs (advisory)
 
@@ -427,3 +431,9 @@ inventory prose as “done.”
 `Status: Binding` for scoped ownership/integration (proof-kit boundary).
 Wired into `AGENTS.md` / `CLAUDE.md` so proof-kit and Capsule integration work
 cannot miss that plan. Does not change Tier A language law.
+
+**Addendum (2026-07-19) — Domain gating restraint:** Binding plan
+`2026-07-19-domain-gating-restraint.md` — agents must not overgate consumer
+domain policies/guards (freeze mid-ops, specialty read caps). Pointers in
+`AGENTS.md` / `CLAUDE.md`. Capsule twin:
+`C:/Projects/capsule/docs/architecture/domain-gating-restraint.md`.

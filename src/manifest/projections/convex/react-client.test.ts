@@ -166,4 +166,28 @@ describe('convex.react', () => {
     expect(code).toContain('useListSecret');
     expect(code).toContain('useGetSecret');
   });
+
+  it('wires mutation hooks to bundled Zod params when zodParamsImport is true', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Order', [prop('sku', 'string', ['required'])])];
+    ir.stores = [durable('Order')];
+    ir.commands = [
+      {
+        entity: 'Order',
+        name: 'create',
+        parameters: [{ name: 'sku', type: { name: 'string', nullable: false }, required: true }],
+        guards: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.react',
+      options: { zodParamsImport: true },
+    }).artifacts[0]!.code;
+    expect(code).toContain('../../schemas/manifest-schemas');
+    expect(code).toContain('OrderCreateParamsSchema');
+    expect(code).toContain('OrderCreateParamsSchema.parse(params)');
+    expect(code).toContain('docId, version, idempotencyKey');
+  });
 });

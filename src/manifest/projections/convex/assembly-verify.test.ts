@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 import type { IR, IREntity, IRProperty, IRStore, IRCommand } from '../../ir';
 import { ConvexProjection } from './generator.js';
 import { ContractTestsProjection } from '../contract-tests/generator.js';
+import { ZodProjection } from '../zod/generator.js';
 import { verifyConvexApplicationAssembly } from './assembly-verify.js';
 import { generateConvexSeedScript } from '../../seed-pack/convex-binding.js';
 import type { SeedPack } from '../../seed-pack/types.js';
@@ -71,8 +72,17 @@ describe('verifyConvexApplicationAssembly', () => {
       'convex.react',
     ] as const;
     const artifacts: { id: string; code: string }[] = surfaces.map((surface) => {
-      const res = convex.generate(ir, { surface });
+      const res = convex.generate(ir, {
+        surface,
+        ...(surface === 'convex.react' ? { options: { zodParamsImport: true } } : {}),
+      });
       return { id: surface, code: res.artifacts[0]?.code ?? '// empty' };
+    });
+
+    const zod = new ZodProjection().generate(ir, { surface: 'zod.schemas' });
+    artifacts.push({
+      id: 'zod.schemas',
+      code: zod.artifacts[0]!.code,
     });
 
     const ct = new ContractTestsProjection().generate(ir, {

@@ -541,9 +541,12 @@ export class ZodProjection implements ProjectionTarget {
     for (const command of commands) {
       const lines = generateCommandSchema(command, opts, diagnostics, valueObjectMap, enumMap);
       const code = this.wrapWithImport(lines, opts);
+      // Entity-qualified path — bare `schemas/${command.name}.schema.ts` collides
+      // when many entities share cancel/create/… Prefer zod.schemas bundle instead.
+      const entityPart = command.entity ? `${command.entity}_` : '';
       artifacts.push({
-        id: `zod.command.${command.name}`,
-        pathHint: `schemas/${command.name}.schema.ts`,
+        id: `zod.command.${entityPart}${command.name}`,
+        pathHint: `schemas/${entityPart}${command.name}.schema.ts`,
         contentType: 'typescript',
         code,
       });

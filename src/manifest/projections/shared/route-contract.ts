@@ -107,9 +107,9 @@ export function detailEnvelopeKey(entityName: string): string {
 /**
  * Canonical Zod command-params schema export name: `${Entity}${Command}ParamsSchema`
  * (e.g. `Recipe` + `create` → `RecipeCreateParamsSchema`). Capitalize-first only
- * (NOT word-splitting) to match the existing hono/express import derivation. The
- * zod projection currently emits `${Command}ParamsSchema` (no entity prefix) —
- * this is the name it must align to so hono/express imports resolve.
+ * (NOT word-splitting) to match hono/express/convex.react import derivation.
+ * Prefer the bundled `zod.schemas` module (`schemas/manifest-schemas.ts`) over
+ * per-command microfiles (`zod.command`), which collide on shared command names.
  */
 export function zodParamsSchemaName(entityName: string, commandName: string): string {
   return `${upperFirst(entityName)}${upperFirst(commandName)}ParamsSchema`;

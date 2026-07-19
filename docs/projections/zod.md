@@ -6,7 +6,10 @@ The Zod projection generates Zod validation schemas from compiled Manifest IR â€
 
 The projection registers under the name `zod` and declares three surfaces, `['zod.entity', 'zod.command', 'zod.schemas']`.
 
-`zod.entity` emits a schema file per entity (`id: zod.entity.<Entity>`, content type `typescript`, written at `schemas/<Entity>.schema.ts`). `zod.command` emits a schema file per command (`id: zod.command.<command>`, written at `schemas/<command>.schema.ts`). `zod.schemas` emits a single combined module containing all schemas (`id: 'zod.schemas'`, written at `schemas/manifest-schemas.ts`).
+`zod.entity` emits a schema file per entity (`id: zod.entity.<Entity>`, content type `typescript`, written at `schemas/<Entity>.schema.ts`). `zod.command` emits a schema file per command (`id: zod.command.<Entity>_<command>` when the command has an entity, written at `schemas/<Entity>_<command>.schema.ts`). `zod.schemas` emits a single combined module containing all schemas (`id: 'zod.schemas'`, written at `schemas/manifest-schemas.ts`).
+
+~~Convex apps should dump all three surfaces into git.~~
+> **Correction (2026-07-19) @RYANSIGNED:** The Convex application preset emits **only** `zod.schemas` and wires `convex.react` with `zodParamsImport: true`. Do not assemble `zod.entity` / `zod.command` microfiles for Capsule-style apps â€” they collide and are unused noise.
 
 Each entity schema is a `z.object()` with constraint refinements applied. When enabled, the projection also emits an `<Entity>ComputedSchema` that extends the base schema with the entity's computed properties, and `export type X = z.infer<typeof XSchema>` type aliases.
 

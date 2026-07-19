@@ -162,6 +162,32 @@ export function verifyConvexApplicationAssembly(
         : 'convex.react client surface present with resolvable api import',
   });
 
+  // Synced validation = bundled zod.schemas + react hooks that .parse params.
+  // Per-command zod.command microfiles are not part of this contract.
+  const zodBundle = codes.get('zod.schemas') ?? '';
+  const zodBundleOk =
+    zodBundle.includes('from ') &&
+    (zodBundle.includes('z.object') || zodBundle.includes("from 'zod'") || zodBundle.includes('from "zod"'));
+  checks.push({
+    id: 'synced-validation.bundle',
+    pass: zodBundleOk,
+    detail: zodBundleOk
+      ? 'zod.schemas bundled module present (schemas/manifest-schemas)'
+      : 'zod.schemas artifact missing — emit zod surface zod.schemas only (no per-command dump)',
+  });
+
+  const zodWired =
+    /manifest-schemas/.test(reactCode) &&
+    reactCode.includes('.parse(') &&
+    reactCode.includes('ParamsSchema');
+  checks.push({
+    id: 'synced-validation.react-wired',
+    pass: zodWired,
+    detail: zodWired
+      ? 'convex.react parses command params via bundled Zod schemas'
+      : 'convex.react must import manifest-schemas and call ParamsSchema.parse (pass zodParamsImport: true)',
+  });
+
   const seedCode = codes.get('scripts/seed-convex.ts') ?? '';
   const mutationsCode = codes.get('convex.mutations') ?? '';
   checks.push(...checkSeedScriptCoherence(seedCode, mutationsCode));

@@ -63,8 +63,14 @@ Any time documentation is encountered that is proven beyond a doubt to be false,
 
 **Binding plans:** Before proof-kit / Capsule integration-guard / `./proof-kit`
 export work, read `docs/internal/plans/2026-07-16-dx-proof-kit-boundary.md`.
-Scan `docs/internal/plans/` for `Status: Binding` on your surface (see
-`AGENTS.md`). Plans never override `docs/spec/**`.
+Before command HTTP/MCP/agent surfaces or webhook directionality, read
+`docs/internal/plans/2026-07-17-command-api-surface-boundary.md` (`webhook` =
+inbound only). Before authoring or tightening **domain** policies/guards in
+consumer `.manifest` models, read
+`docs/internal/plans/2026-07-19-domain-gating-restraint.md` — agents overgate
+by default; do not freeze mid-ops or invent specialty read caps. Scan
+`docs/internal/plans/` for `Status: Binding` on your surface (see `AGENTS.md`).
+Plans never override `docs/spec/**`.
 
 **Versioning policy (owner decision 2026-07-14, NOT standard semver):**
 `major` (breaking) bumps the **minor digit** (`x.Y.z` → `x.(Y+1).0`);
@@ -362,14 +368,7 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[proactive bridge @ 75% context — saved before compacting]
-Files (7):
-  src/manifest/projections/wiring/inspect/consumer-tracer.ts (edit)
-  src/manifest/projections/wiring/inspect/inspect.test.ts (edit)
-  C:/projects/builder/src/components/AssemblePanel.tsx (edit)
-  src/manifest/projections/convex/functions.ts (edit)
-  docs/internal/COMPLIANCE_MATRIX.md (edit)
-  C:/Users/Ryan/.claude/projects/C--projects-manifest/memory/project-wiring-browser-safe-fix.md (create)
-  C:/Users/Ryan/.claude/projects/C--projects-manifest/memory/MEMORY.md (edit)
+[Emergency bridge — running bridge was not updated]
+Files: STATE.md (edit), loop-run-log.md (edit)
 
 # === END COGNILAYER ===

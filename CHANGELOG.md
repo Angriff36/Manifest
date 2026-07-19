@@ -4,6 +4,23 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.23] - 2026-07-19
+
+### Added
+
+- **`convex.react` Zod wire:** option `zodParamsImport` (`true` or module path) makes
+  mutation/create hooks parse command params via the bundled `zod.schemas` module
+  (`schemas/manifest-schemas`) before calling Convex. Envelope fields
+  (`docId` / `version` / `idempotencyKey`) stay outside the parse.
+- **Assembly checks:** `synced-validation.bundle` and `synced-validation.react-wired`
+  require the Zod bundle artifact and a React client that calls `ParamsSchema.parse`.
+
+### Changed
+
+- **`zod.command` paths:** entity-qualified `schemas/<Entity>_<command>.schema.ts` so
+  shared names like `cancel` no longer collide. Convex apps should still prefer the
+  single `zod.schemas` bundle (Builder preset does).
+
 ## [3.6.22] - 2026-07-19
 
 ### Changed
@@ -12,7 +29,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - docs: sync all contracts/docs with generatedAt removal per Codex re-review
 - fix(projections): remove remaining generation-time stamps per Codex review
 - fix(llm-context): drop generatedAt from ManifestContextMeta type (determinism)
-- style: prettier (normalize line endings from Windows tooling)
 - style: prettier (normalize line endings from Windows tooling)
 - fix(projections): remove wall-clock timestamps from generated output
 - fix(cli): manifest fmt verifies syntax only, not cross-file semantics
