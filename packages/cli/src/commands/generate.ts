@@ -205,7 +205,10 @@ async function generateWithRegistryProjection(
   const registry = await import('@angriff36/manifest/projections');
   const projection = registry.getProjection(options.projection);
   if (!projection) {
-    const available = registry.getProjectionNames().sort((a, b) => a.localeCompare(b)).join(', ');
+    const available = registry
+      .getProjectionNames()
+      .sort((a, b) => a.localeCompare(b))
+      .join(', ');
     throw new Error(`Unknown projection: ${options.projection} (available: ${available})`);
   }
 
@@ -711,10 +714,7 @@ async function writeProjectionResult(
   }
 }
 
-async function finishGenerateCheckMode(
-  spinner: Ora,
-  options: GenerateOptions,
-): Promise<void> {
+async function finishGenerateCheckMode(spinner: Ora, options: GenerateOptions): Promise<void> {
   // The generation manifest is a generated file too: --check verifies the
   // committed one matches what this run would emit (byte-stable contract).
   if (!generationRecorder.isEmpty) {
@@ -731,9 +731,7 @@ async function finishGenerateCheckMode(
     for (const f of driftedFiles) {
       console.error(chalk.red(`    • ${f}`));
     }
-    console.error(
-      chalk.red('  Run `manifest generate` (without --check) and commit the result.'),
-    );
+    console.error(chalk.red('  Run `manifest generate` (without --check) and commit the result.'));
     if (options.throwOnError) throw new DriftError(driftedFiles.length);
     process.exit(1);
   }
@@ -817,9 +815,8 @@ export async function generateAllFromConfig(
   options: { check?: boolean; irOverride?: string } = {},
 ): Promise<void> {
   const { loadAllConfigs, layerProjectionOptions } = await import('../utils/config.js');
-  const { listConfiguredProjectionNames, getProjectionBlock } = await import(
-    '@angriff36/manifest/config'
-  );
+  const { listConfiguredProjectionNames, getProjectionBlock } =
+    await import('@angriff36/manifest/config');
   const { build } = await loadAllConfigs(process.cwd());
   const projections = build.projections ?? {};
   const names = listConfiguredProjectionNames(projections);

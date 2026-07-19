@@ -3,11 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  RateLimiter,
-  RateLimitConfig,
-  MemoryRateLimitStore,
-} from './runtime-rate-limit';
+import { RateLimiter, RateLimitConfig, MemoryRateLimitStore } from './runtime-rate-limit';
 
 describe('RateLimiter', () => {
   it('allows up to maxRequests then denies', async () => {
@@ -159,9 +155,7 @@ entity Counter {
 store Counter in memory
 `);
     if (!compiled.ir) {
-      throw new Error(
-        `Compile failed: ${compiled.diagnostics.map((d) => d.message).join('; ')}`,
-      );
+      throw new Error(`Compile failed: ${compiled.diagnostics.map((d) => d.message).join('; ')}`);
     }
     const store = new MemoryRateLimitStore();
     const a = new RuntimeEngine(compiled.ir, {}, { rateLimitStore: store, now: () => 1000 });

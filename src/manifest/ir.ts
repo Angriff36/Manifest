@@ -322,13 +322,7 @@ export interface IRSchedule {
 
 /** Built-in store target names. */
 export type BuiltinStoreTarget =
-  | 'memory'
-  | 'localStorage'
-  | 'postgres'
-  | 'supabase'
-  | 'durable'
-  | 'mongodb'
-  | 'eventSourced';
+  'memory' | 'localStorage' | 'postgres' | 'supabase' | 'durable' | 'mongodb' | 'eventSourced';
 
 export interface IREventSourcedConfig {
   snapshotInterval?: number;
@@ -563,8 +557,7 @@ export interface IRPolicy {
  * execution RBAC checks `execute`/`all`). Any other identifier is a custom,
  * capability-style permission token, opaque to the engine and matched exactly.
  */
-export type IRRolePermissionAction =
-  'read' | 'write' | 'delete' | 'execute' | 'all' | OpenString;
+export type IRRolePermissionAction = 'read' | 'write' | 'delete' | 'execute' | 'all' | OpenString;
 
 export interface IRRolePermission {
   action: IRRolePermissionAction;

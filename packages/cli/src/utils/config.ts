@@ -13,7 +13,10 @@ import fs from 'fs/promises';
 import path from 'path';
 import yaml from 'js-yaml';
 import { pathToFileURL } from 'url';
-import { resolveProjectionOptions as resolveProjectionOptionsForBuild, getProjectionBlock } from '@angriff36/manifest/config';
+import {
+  resolveProjectionOptions as resolveProjectionOptionsForBuild,
+  getProjectionBlock,
+} from '@angriff36/manifest/config';
 import type { ManifestBuildConfig } from '@angriff36/manifest/config';
 
 // ============================================================================

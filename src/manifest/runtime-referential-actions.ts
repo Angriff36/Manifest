@@ -178,8 +178,7 @@ export class ReferentialActionApplier {
       }
       // Single-column FK without references: local field → parent identity (`id`,
       // or the sole `key` column). Matches resolveRelationship's convention.
-      const remote =
-        parent?.key && parent.key.length === 1 ? parent.key[0]! : 'id';
+      const remote = parent?.key && parent.key.length === 1 ? parent.key[0]! : 'id';
       return [[fk.fields[0]!, remote]];
     }
     return [[`${rel.name}Id`, 'id']];
@@ -242,9 +241,7 @@ export class ReferentialActionApplier {
       }
 
       const children = await this.host.getAllInstancesRaw(childEntity.name);
-      const matching = children.filter((c) =>
-        this.childMatchesParent(c, pairs, ctx.parentBefore),
-      );
+      const matching = children.filter((c) => this.childMatchesParent(c, pairs, ctx.parentBefore));
 
       for (const child of matching) {
         const childId = String(child.id);

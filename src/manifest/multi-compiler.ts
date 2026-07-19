@@ -1,7 +1,4 @@
-import {
-  collectCanonicalDeclarations,
-  canonicalizeProgramNames,
-} from './canonicalize-program.js';
+import { collectCanonicalDeclarations, canonicalizeProgramNames } from './canonicalize-program.js';
 import { CanonicalNameRegistry } from './canonical-names.js';
 import {
   resolveNamingConfig,
@@ -73,9 +70,10 @@ function claimUniqueName(
   map.set(name, absPath);
 }
 
-function collectCrossFileNameUniqueness(
-  compiledIRs: Array<{ ir: IR; absPath: string }>,
-): { entityNames: Map<string, string>; diagnostics: IRDiagnostic[] } {
+function collectCrossFileNameUniqueness(compiledIRs: Array<{ ir: IR; absPath: string }>): {
+  entityNames: Map<string, string>;
+  diagnostics: IRDiagnostic[];
+} {
   const diagnostics: IRDiagnostic[] = [];
   const entityNames = new Map<string, string>();
   const enumNames = new Map<string, string>();
@@ -184,8 +182,10 @@ export async function compileProjectToIR(
       ? (options.naming as ResolvedNamingConfig)
       : resolveNamingConfig(options.naming as ManifestNamingInput | undefined);
 
-  const parsedPrograms: Array<{ absPath: string; program: ReturnType<Parser['parse']>['program'] }> =
-    [];
+  const parsedPrograms: Array<{
+    absPath: string;
+    program: ReturnType<Parser['parse']>['program'];
+  }> = [];
   for (const file of resolution.order) {
     const { program } = parser.parse(file.source);
     parsedPrograms.push({ absPath: file.absPath, program });
@@ -385,30 +385,48 @@ function mergeIRs(
     for (const mod of ir.modules) {
       const existing = moduleMap.get(mod.name);
       if (existing) {
-        existing.entities = [...new Set([...existing.entities, ...mod.entities])].sort((a, b) => a.localeCompare(b));
-        existing.enums = [...new Set([...existing.enums, ...mod.enums])].sort((a, b) => a.localeCompare(b));
-        existing.commands = [...new Set([...existing.commands, ...mod.commands])].sort((a, b) => a.localeCompare(b));
-        existing.stores = [...new Set([...existing.stores, ...mod.stores])].sort((a, b) => a.localeCompare(b));
-        existing.events = [...new Set([...existing.events, ...mod.events])].sort((a, b) => a.localeCompare(b));
-        existing.policies = [...new Set([...existing.policies, ...mod.policies])].sort((a, b) => a.localeCompare(b));
+        existing.entities = [...new Set([...existing.entities, ...mod.entities])].sort((a, b) =>
+          a.localeCompare(b),
+        );
+        existing.enums = [...new Set([...existing.enums, ...mod.enums])].sort((a, b) =>
+          a.localeCompare(b),
+        );
+        existing.commands = [...new Set([...existing.commands, ...mod.commands])].sort((a, b) =>
+          a.localeCompare(b),
+        );
+        existing.stores = [...new Set([...existing.stores, ...mod.stores])].sort((a, b) =>
+          a.localeCompare(b),
+        );
+        existing.events = [...new Set([...existing.events, ...mod.events])].sort((a, b) =>
+          a.localeCompare(b),
+        );
+        existing.policies = [...new Set([...existing.policies, ...mod.policies])].sort((a, b) =>
+          a.localeCompare(b),
+        );
         if (mod.reactions) {
-          existing.reactions = [
-            ...new Set([...(existing.reactions ?? []), ...mod.reactions]),
-          ].sort((a, b) => a.localeCompare(b));
+          existing.reactions = [...new Set([...(existing.reactions ?? []), ...mod.reactions])].sort(
+            (a, b) => a.localeCompare(b),
+          );
         }
         if (mod.roles) {
-          existing.roles = [...new Set([...(existing.roles ?? []), ...mod.roles])].sort((a, b) => a.localeCompare(b));
+          existing.roles = [...new Set([...(existing.roles ?? []), ...mod.roles])].sort((a, b) =>
+            a.localeCompare(b),
+          );
         }
         if (mod.sagas) {
-          existing.sagas = [...new Set([...(existing.sagas ?? []), ...mod.sagas])].sort((a, b) => a.localeCompare(b));
+          existing.sagas = [...new Set([...(existing.sagas ?? []), ...mod.sagas])].sort((a, b) =>
+            a.localeCompare(b),
+          );
         }
         if (mod.schedules) {
-          existing.schedules = [
-            ...new Set([...(existing.schedules ?? []), ...mod.schedules]),
-          ].sort((a, b) => a.localeCompare(b));
+          existing.schedules = [...new Set([...(existing.schedules ?? []), ...mod.schedules])].sort(
+            (a, b) => a.localeCompare(b),
+          );
         }
         if (mod.webhooks) {
-          existing.webhooks = [...new Set([...(existing.webhooks ?? []), ...mod.webhooks])].sort((a, b) => a.localeCompare(b));
+          existing.webhooks = [...new Set([...(existing.webhooks ?? []), ...mod.webhooks])].sort(
+            (a, b) => a.localeCompare(b),
+          );
         }
       } else {
         moduleMap.set(mod.name, { ...mod });

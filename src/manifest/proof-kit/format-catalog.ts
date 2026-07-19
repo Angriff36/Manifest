@@ -14,9 +14,7 @@ export function formatCapabilityCatalogMarkdown(catalog: CapabilityCatalog): str
     lines.push(`- Projection: \`${catalog.versions.projection}\``);
   }
   if (catalog.versions.preset) {
-    lines.push(
-      `- Preset: \`${catalog.versions.preset.id}@${catalog.versions.preset.version}\``,
-    );
+    lines.push(`- Preset: \`${catalog.versions.preset.id}@${catalog.versions.preset.version}\``);
   }
   lines.push(`- IR hash: \`${catalog.irHash || '(none)'}\``);
   lines.push('');

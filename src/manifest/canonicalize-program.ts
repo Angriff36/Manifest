@@ -127,26 +127,68 @@ function walkProgram(
   };
   for (const e of program.entities) walkEntity(e, registry, policy, push);
   for (const en of program.enums) {
-    en.name = decideName(en.name, registry.enum(en.name), policy.entities.mismatch, 'naming.entities', diags);
+    en.name = decideName(
+      en.name,
+      registry.enum(en.name),
+      policy.entities.mismatch,
+      'naming.entities',
+      diags,
+    );
     for (const v of en.values) {
-      v.name = decideName(v.name, registry.field(v.name), policy.fields.mismatch, 'naming.fields', diags);
+      v.name = decideName(
+        v.name,
+        registry.field(v.name),
+        policy.fields.mismatch,
+        'naming.fields',
+        diags,
+      );
     }
   }
   for (const v of program.values) {
-    v.name = decideName(v.name, registry.value(v.name), policy.entities.mismatch, 'naming.entities', diags);
+    v.name = decideName(
+      v.name,
+      registry.value(v.name),
+      policy.entities.mismatch,
+      'naming.entities',
+      diags,
+    );
     for (const p of v.properties) {
-      p.name = decideName(p.name, registry.field(p.name), policy.fields.mismatch, 'naming.fields', diags);
+      p.name = decideName(
+        p.name,
+        registry.field(p.name),
+        policy.fields.mismatch,
+        'naming.fields',
+        diags,
+      );
     }
   }
   for (const c of program.commands) walkCommand(c, registry, policy, push);
   for (const s of program.stores) {
-    s.entity = decideName(s.entity, registry.entity(s.entity), policy.entities.mismatch, 'naming.entities', diags);
+    s.entity = decideName(
+      s.entity,
+      registry.entity(s.entity),
+      policy.entities.mismatch,
+      'naming.entities',
+      diags,
+    );
   }
   for (const e of program.events) {
-    e.name = decideName(e.name, registry.event(e.name), policy.events.mismatch, 'naming.events', diags);
+    e.name = decideName(
+      e.name,
+      registry.event(e.name),
+      policy.events.mismatch,
+      'naming.events',
+      diags,
+    );
   }
   for (const r of program.reactions) {
-    r.event = decideName(r.event, registry.event(r.event), policy.events.mismatch, 'naming.events', diags);
+    r.event = decideName(
+      r.event,
+      registry.event(r.event),
+      policy.events.mismatch,
+      'naming.events',
+      diags,
+    );
     r.targetEntity = decideName(
       r.targetEntity,
       registry.entity(r.targetEntity),
@@ -235,10 +277,22 @@ function walkEntity(
     );
   }
   for (const p of entity.properties) {
-    p.name = decideName(p.name, registry.field(p.name), policy.fields.mismatch, 'naming.fields', diags);
+    p.name = decideName(
+      p.name,
+      registry.field(p.name),
+      policy.fields.mismatch,
+      'naming.fields',
+      diags,
+    );
   }
   for (const cp of entity.computedProperties) {
-    cp.name = decideName(cp.name, registry.field(cp.name), policy.fields.mismatch, 'naming.fields', diags);
+    cp.name = decideName(
+      cp.name,
+      registry.field(cp.name),
+      policy.fields.mismatch,
+      'naming.fields',
+      diags,
+    );
     rewriteExpr(cp.expression, registry, policy, note);
   }
   for (const r of entity.relationships) walkRelationship(entity.name, r, registry, policy, note);
@@ -261,15 +315,33 @@ function walkRelationship(
     'naming.relationships',
     diags,
   );
-  r.target = decideName(r.target, registry.entity(r.target), policy.entities.mismatch, 'naming.entities', diags);
+  r.target = decideName(
+    r.target,
+    registry.entity(r.target),
+    policy.entities.mismatch,
+    'naming.entities',
+    diags,
+  );
   const expectedFk = relationshipIdField(r.name, policy);
   if (r.fields) {
     r.fields = r.fields.map((field) => {
       if (nameKey(field) === 'tenantid') {
-        return decideName(field, registry.field(field), policy.fields.mismatch, 'naming.fields', diags);
+        return decideName(
+          field,
+          registry.field(field),
+          policy.fields.mismatch,
+          'naming.fields',
+          diags,
+        );
       }
       if (isMechanicalIdAlias(r.name, field, policy)) {
-        return decideName(field, expectedFk, policy.relationships.mismatch, 'naming.relationships.id', diags);
+        return decideName(
+          field,
+          expectedFk,
+          policy.relationships.mismatch,
+          'naming.relationships.id',
+          diags,
+        );
       }
       if (/id$/i.test(nameKey(field))) {
         const d: CanonicalizeDiagnostic = {
@@ -280,9 +352,21 @@ function walkRelationship(
         };
         diags.push(d);
         push(d);
-        return decideName(field, registry.field(field), policy.fields.mismatch, 'naming.fields', diags);
+        return decideName(
+          field,
+          registry.field(field),
+          policy.fields.mismatch,
+          'naming.fields',
+          diags,
+        );
       }
-      return decideName(field, registry.field(field), policy.fields.mismatch, 'naming.fields', diags);
+      return decideName(
+        field,
+        registry.field(field),
+        policy.fields.mismatch,
+        'naming.fields',
+        diags,
+      );
     });
   }
   for (const d of diags) push(d);
@@ -295,14 +379,32 @@ function walkCommand(
   push: Track,
 ): void {
   const diags: CanonicalizeDiagnostic[] = [];
-  c.name = decideName(c.name, registry.command(c.name), policy.commands.mismatch, 'naming.commands', diags);
+  c.name = decideName(
+    c.name,
+    registry.command(c.name),
+    policy.commands.mismatch,
+    'naming.commands',
+    diags,
+  );
   for (const p of c.parameters) {
-    p.name = decideName(p.name, registry.field(p.name), policy.fields.mismatch, 'naming.fields', diags);
+    p.name = decideName(
+      p.name,
+      registry.field(p.name),
+      policy.fields.mismatch,
+      'naming.fields',
+      diags,
+    );
   }
   for (const g of c.guards ?? []) rewriteExpr(g, registry, policy, push);
   for (const a of c.actions) {
     if (a.target) {
-      a.target = decideName(a.target, registry.field(a.target), policy.fields.mismatch, 'naming.fields', diags);
+      a.target = decideName(
+        a.target,
+        registry.field(a.target),
+        policy.fields.mismatch,
+        'naming.fields',
+        diags,
+      );
     }
     rewriteExpr(a.expression, registry, policy, push);
   }
@@ -324,7 +426,13 @@ function rewriteExpr(
   if (expr.type === 'Identifier') {
     const id = expr as { name: string };
     if (!isReservedIdentifier(id.name)) {
-      id.name = decideName(id.name, registry.identifier(id.name), policy.fields.mismatch, 'naming.fields', diags);
+      id.name = decideName(
+        id.name,
+        registry.identifier(id.name),
+        policy.fields.mismatch,
+        'naming.fields',
+        diags,
+      );
     }
   } else if (expr.type === 'MemberAccess') {
     const ma = expr as { object: ExpressionNode; property: string };

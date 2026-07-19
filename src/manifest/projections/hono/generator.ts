@@ -36,7 +36,6 @@ import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../sha
 import { resolveRouteContract, zodParamsSchemaName } from '../shared/route-contract.js';
 import { HONO_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 // ============================================================================
 // Constants
 // ============================================================================

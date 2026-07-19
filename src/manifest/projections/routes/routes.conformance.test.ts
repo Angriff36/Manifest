@@ -42,7 +42,10 @@ describe('Canonical routes conformance (vNext)', () => {
     const compiled = await compileToIR(source);
     expect(compiled.ir).not.toBeNull();
 
-    const opts = { surface: 'routes.manifest' as const, options: { generatedAt: '2026-01-01T00:00:00.000Z' } };
+    const opts = {
+      surface: 'routes.manifest' as const,
+      options: { generatedAt: '2026-01-01T00:00:00.000Z' },
+    };
     const a = projection.generate(compiled.ir!, opts);
     const b = projection.generate(compiled.ir!, opts);
 
@@ -75,8 +78,12 @@ describe('Canonical routes conformance (vNext)', () => {
     });
 
     const manifest = JSON.parse(result.artifacts[0].code);
-    const entityReads = manifest.routes.filter((r: { source: { kind: string } }) => r.source.kind === 'entity-read');
-    const manuals = manifest.routes.filter((r: { source: { kind: string } }) => r.source.kind === 'manual');
+    const entityReads = manifest.routes.filter(
+      (r: { source: { kind: string } }) => r.source.kind === 'entity-read',
+    );
+    const manuals = manifest.routes.filter(
+      (r: { source: { kind: string } }) => r.source.kind === 'manual',
+    );
 
     expect(entityReads.length).toBeGreaterThanOrEqual(2);
     expect(manuals).toHaveLength(1);

@@ -45,7 +45,6 @@ import type {
 import type { GraphQLProjectionOptions } from './types';
 import { GRAPHQL_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 // ============================================================================
 // Surface identifiers
 // ============================================================================
@@ -271,7 +270,9 @@ function buildAuthDirective(
 
   if (actions.size === 0) return '';
 
-  const actionsStr = Array.from(actions).sort((a, b) => a.localeCompare(b)).join(', ');
+  const actionsStr = Array.from(actions)
+    .sort((a, b) => a.localeCompare(b))
+    .join(', ');
   return ` @auth(requires: [${actionsStr.toUpperCase()}])`;
 }
 

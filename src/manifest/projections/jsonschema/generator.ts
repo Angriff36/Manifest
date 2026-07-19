@@ -25,7 +25,6 @@ import { analyzeConstraints } from '../../constraint-analysis.js';
 import type { JsonSchemaProjectionOptions } from './types';
 import { JSONSCHEMA_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 // ============================================================================
 // Constants
 // ============================================================================

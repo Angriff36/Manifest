@@ -38,7 +38,6 @@ import type {
 import type { OpenApiProjectionOptions } from './types';
 import { OPENAPI_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 // ============================================================================
 // OpenAPI 3.1 Types (inline to avoid external dependencies)
 // ============================================================================

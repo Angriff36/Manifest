@@ -31,7 +31,11 @@ function prop(name: string, typeName: string, modifiers: IRProperty['modifiers']
   return { name, type: { name: typeName, nullable: false }, modifiers };
 }
 
-function entity(name: string, props: IRProperty[], transitions?: IREntity['transitions']): IREntity {
+function entity(
+  name: string,
+  props: IRProperty[],
+  transitions?: IREntity['transitions'],
+): IREntity {
   return {
     name,
     properties: props,
@@ -47,10 +51,14 @@ function entity(name: string, props: IRProperty[], transitions?: IREntity['trans
 function orderIR(): IR {
   const ir = emptyIR();
   ir.entities = [
-    entity('Order', [prop('status', 'string', ['required'])], [
-      { property: 'status', from: 'draft', to: ['submitted', 'cancelled'] },
-      { property: 'status', from: 'submitted', to: ['shipped'] },
-    ]),
+    entity(
+      'Order',
+      [prop('status', 'string', ['required'])],
+      [
+        { property: 'status', from: 'draft', to: ['submitted', 'cancelled'] },
+        { property: 'status', from: 'submitted', to: ['shipped'] },
+      ],
+    ),
   ];
   ir.stores = [durable('Order')];
   ir.commands = [
@@ -59,7 +67,13 @@ function orderIR(): IR {
       entity: 'Order',
       parameters: [],
       guards: [],
-      actions: [{ kind: 'mutate', target: 'status', expression: { kind: 'literal', value: { kind: 'string', value: 'submitted' } } }],
+      actions: [
+        {
+          kind: 'mutate',
+          target: 'status',
+          expression: { kind: 'literal', value: { kind: 'string', value: 'submitted' } },
+        },
+      ],
       emits: [],
     },
   ];
@@ -89,7 +103,9 @@ describe('convex command idempotency', () => {
   });
 
   it('allows same-state lifecycle writes', () => {
-    const code = new ConvexProjection().generate(orderIR(), { surface: 'convex.mutations' }).artifacts[0]?.code ?? '';
+    const code =
+      new ConvexProjection().generate(orderIR(), { surface: 'convex.mutations' }).artifacts[0]
+        ?.code ?? '';
     expect(code).toContain('__from !== __to && Object.hasOwn(__allowed, __from)');
     expect(code).not.toContain('!(__creation && __from === __to)');
   });

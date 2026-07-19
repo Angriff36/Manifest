@@ -506,7 +506,6 @@ describe('Approval Workflow', () => {
       expect(result.ir).toBeNull();
     });
 
-
     it('should throw when approving non-existent request', async () => {
       ir = await compileToIR(APPROVAL_SOURCE);
       const runtime = new RuntimeEngine(ir);

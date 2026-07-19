@@ -5,12 +5,7 @@
 import type { IR } from '../ir.js';
 import { COMPILER_VERSION } from '../version.js';
 import { emitCapabilityCatalog, reactionProofId, type EmitCatalogOptions } from './emit-catalog.js';
-import type {
-  ProofKitVersions,
-  ProofRegistry,
-  ProofRegistryEntry,
-  ProofStatus,
-} from './types.js';
+import type { ProofKitVersions, ProofRegistry, ProofRegistryEntry, ProofStatus } from './types.js';
 import { PROOF_REGISTRY_SCHEMA } from './types.js';
 
 export interface ProofTestBinding {
@@ -47,7 +42,7 @@ export function emitProofRegistry(ir: IR, options: EmitRegistryOptions = {}): Pr
   const versions: ProofKitVersions = {
     manifestVersion: options.versions?.manifestVersion ?? COMPILER_VERSION,
     projection: options.versions?.projection ?? catalog.versions.projection ?? 'convex',
-    ...(options.versions?.preset ?? catalog.versions.preset
+    ...((options.versions?.preset ?? catalog.versions.preset)
       ? { preset: options.versions?.preset ?? catalog.versions.preset }
       : {}),
   };
@@ -68,9 +63,7 @@ export function emitProofRegistry(ir: IR, options: EmitRegistryOptions = {}): Pr
         runtimeTest: binding?.runtimeTest,
         status: evidenceStatus(binding, 'generated'),
         versions,
-        ...(binding?.lastVerifiedCommit
-          ? { lastVerifiedCommit: binding.lastVerifiedCommit }
-          : {}),
+        ...(binding?.lastVerifiedCommit ? { lastVerifiedCommit: binding.lastVerifiedCommit } : {}),
       });
     }
     for (const reaction of entity.reactions) {
@@ -88,9 +81,7 @@ export function emitProofRegistry(ir: IR, options: EmitRegistryOptions = {}): Pr
         runtimeTest: binding?.runtimeTest,
         status: evidenceStatus(binding, 'generated'),
         versions,
-        ...(binding?.lastVerifiedCommit
-          ? { lastVerifiedCommit: binding.lastVerifiedCommit }
-          : {}),
+        ...(binding?.lastVerifiedCommit ? { lastVerifiedCommit: binding.lastVerifiedCommit } : {}),
       });
     }
   }
@@ -101,9 +92,7 @@ export function emitProofRegistry(ir: IR, options: EmitRegistryOptions = {}): Pr
     if (proofs.some((p) => p.id === id)) continue;
     if (options.entityFilter) {
       const filter = new Set(
-        Array.isArray(options.entityFilter)
-          ? options.entityFilter
-          : [...options.entityFilter],
+        Array.isArray(options.entityFilter) ? options.entityFilter : [...options.entityFilter],
       );
       if (!filter.has(rule.targetEntity)) continue;
     }
@@ -119,9 +108,7 @@ export function emitProofRegistry(ir: IR, options: EmitRegistryOptions = {}): Pr
       runtimeTest: binding?.runtimeTest,
       status: evidenceStatus(binding, 'declared'),
       versions,
-      ...(binding?.lastVerifiedCommit
-        ? { lastVerifiedCommit: binding.lastVerifiedCommit }
-        : {}),
+      ...(binding?.lastVerifiedCommit ? { lastVerifiedCommit: binding.lastVerifiedCommit } : {}),
     });
   }
 

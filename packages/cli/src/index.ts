@@ -634,9 +634,7 @@ program
  */
 program
   .command('ci-gate')
-  .description(
-    'Run declarative drift gates (config snapshot, generated drift, IR schema pin)',
-  )
+  .description('Run declarative drift gates (config snapshot, generated drift, IR schema pin)')
   .option(
     '--write-snapshot',
     'Write the live effective config to driftGates.effectiveConfigSnapshot',

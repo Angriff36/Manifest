@@ -42,7 +42,6 @@ import { zodParamsSchemaName } from '../shared/route-contract.js';
 import type { ZodProjectionOptions } from './types';
 import { ZOD_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 // ============================================================================
 // Type mapping
 // ============================================================================

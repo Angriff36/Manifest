@@ -183,10 +183,7 @@ export class ConsumerTracer {
       proofLevel: 'ambiguous',
       source: { file: uiFile },
       consumerSymbol: usedSymbols[0],
-      trace: [
-        { label: normalizeRepoPath(uiFile), file: uiFile },
-        { label: `import ${specifier}` },
-      ],
+      trace: [{ label: normalizeRepoPath(uiFile), file: uiFile }, { label: `import ${specifier}` }],
       confidence: 'low',
     });
   }

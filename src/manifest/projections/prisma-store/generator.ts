@@ -8,7 +8,6 @@ import {
 import { normalizeStoreOptions } from './options.js';
 import { PRISMA_STORE_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 export const SURFACE_METADATA = 'prisma-store.metadata';
 export const SURFACE_REGISTRY = 'prisma-store.registry';
 export const SURFACES = [SURFACE_METADATA, SURFACE_REGISTRY] as const;

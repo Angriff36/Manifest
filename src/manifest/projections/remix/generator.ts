@@ -25,7 +25,6 @@ import type {
 import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
 import { REMIX_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 /**
  * Re-export the projection-interface types so downstream consumers of
  * `@angriff36/manifest/projections/remix` can type the projection

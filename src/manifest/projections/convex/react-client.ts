@@ -14,10 +14,7 @@
 import type { IR, IRCommand, IREntity } from '../../ir';
 import type { ProjectionDiagnostic } from '../interface';
 import { isPersistentEntity } from './persist.js';
-import {
-  resolveReactApiImportPath,
-  resolveReactClientPathHint,
-} from './react-api-import.js';
+import { resolveReactApiImportPath, resolveReactClientPathHint } from './react-api-import.js';
 import { resolveConvexReadVisibility } from './read-policies.js';
 import { commandCreationEntry, commandCreationExportName } from './creation-entry.js';
 

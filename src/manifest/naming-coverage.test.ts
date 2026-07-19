@@ -20,10 +20,10 @@ describe('naming — severities off/warn/error/fix', () => {
       entities: { casing: 'pascal', mismatch: 'off' },
       fields: { casing: 'camel', mismatch: 'off' },
     });
-    const result = await compileToIR(
-      `entity event_date { property required TITLE: string }`,
-      { useCache: false, naming },
-    );
+    const result = await compileToIR(`entity event_date { property required TITLE: string }`, {
+      useCache: false,
+      naming,
+    });
     expect(result.ir!.entities[0]!.name).toBe('event_date');
     expect(result.diagnostics.filter((d) => d.message.includes('Naming mismatch'))).toHaveLength(0);
   });

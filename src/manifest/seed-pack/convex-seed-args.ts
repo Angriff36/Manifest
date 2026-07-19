@@ -115,9 +115,7 @@ export function rowToArgsLiteral(
   columns: string[],
   cmd: IRCommand | undefined,
 ): string {
-  const paramNames = cmd
-    ? new Set((cmd.parameters ?? []).map((p) => p.name))
-    : undefined;
+  const paramNames = cmd ? new Set((cmd.parameters ?? []).map((p) => p.name)) : undefined;
   const types = paramTypeMap(cmd);
   const propTypes = propertyTypeMap(findEntity(ir, entityName));
   // Later columns overwrite earlier — template puts props then relationships.

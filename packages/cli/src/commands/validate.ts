@@ -257,9 +257,8 @@ export async function validateCommand(
 
     // Summary
     const summarySpinner = ora('Validation summary').start();
-    const { ValidationGatePolicy, resolveValidationFailOn } = await import(
-      '../utils/validation-gate-policy.js'
-    );
+    const { ValidationGatePolicy, resolveValidationFailOn } =
+      await import('../utils/validation-gate-policy.js');
     const configFailOn = await loadConfiguredFailOn();
     // --strict is the historical alias for failOn: warn
     const cliFailOn = options.failOn ?? (options.strict ? 'warn' : undefined);

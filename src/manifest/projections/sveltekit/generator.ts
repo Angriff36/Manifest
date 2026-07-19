@@ -36,7 +36,6 @@ import type { SvelteKitProjectionOptions } from './types';
 import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
 import { SVELTEKIT_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 // ============================================================================
 // Surface constants
 // ============================================================================

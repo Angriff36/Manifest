@@ -1792,9 +1792,7 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
     expect(code).toContain('withIndex("by_parentId", (q) => q.eq("parentId", payload.id))');
     // per-match governed dispatch (target's own mutation, with its docId)
     expect(code).toContain('for (const __row of fanRows0) {');
-    expect(code).toContain(
-      'await __runChildDeactivate(ctx, { docId: (__row as any)._id }',
-    );
+    expect(code).toContain('await __runChildDeactivate(ctx, { docId: (__row as any)._id }');
     // a fan-out reaction must NOT render the single-target resolve/patch path
     expect(code).not.toContain('reactionTarget0');
   });
@@ -1920,7 +1918,9 @@ describe('convex.mutations — aggregate count reactions (`count(E where fk == v
     ] as IRReactionRule[];
     const code = mutations(ir).artifacts[0].code;
     // Reaction self resolves to the flat emitted payload.
-    expect(code).toContain('withIndex("by_stationId", (q) => q.eq("stationId", payload.stationId))');
+    expect(code).toContain(
+      'withIndex("by_stationId", (q) => q.eq("stationId", payload.stationId))',
+    );
     // remaining equality predicate (status) applied as a JS filter, then counted
     expect(code).toContain('.filter((d) => (d as any).status === "in_progress")');
     expect(code).toContain('.length;');
@@ -1993,7 +1993,9 @@ describe('convex.mutations — aggregate count reactions (`count(E where fk == v
       },
     ] as IRReactionRule[];
     const code = mutations(ir).artifacts[0].code;
-    expect(code).toContain('withIndex("by_scheduleId", (q) => q.eq("scheduleId", payload.scheduleId))');
+    expect(code).toContain(
+      'withIndex("by_scheduleId", (q) => q.eq("scheduleId", payload.scheduleId))',
+    );
     // single predicate → no extra filter chain, just .length
     expect(code).toContain('__count0_rows.length;');
     expect(code).toContain('shiftCount: __count0');
@@ -2156,7 +2158,10 @@ describe('convex.mutations — emit payload relation hydration', () => {
           {
             kind: 'mutate' as const,
             target: 'status',
-            expression: { kind: 'literal' as const, value: { kind: 'string' as const, value: 'flagged' } },
+            expression: {
+              kind: 'literal' as const,
+              value: { kind: 'string' as const, value: 'flagged' },
+            },
           },
         ],
         emits: ['ShiftFlagged'],

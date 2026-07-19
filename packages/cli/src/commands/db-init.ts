@@ -77,10 +77,7 @@ function selectedSpecs(only?: string): DbSchemaSpec[] {
   return selected;
 }
 
-export function resolveDbSchemas(
-  packageRoot: string,
-  only?: string,
-): ResolvedSchema[] {
+export function resolveDbSchemas(packageRoot: string, only?: string): ResolvedSchema[] {
   const specs = selectedSpecs(only);
   const resolved: ResolvedSchema[] = [];
   for (const spec of specs) {
@@ -159,9 +156,7 @@ export async function dbInitCommand(options: DbInitOptions = {}): Promise<number
       const databaseUrl = options.databaseUrl ?? process.env.DATABASE_URL;
       if (!databaseUrl) {
         console.error(
-          chalk.red(
-            'DATABASE_URL is required for --apply (or pass --database-url <url>).',
-          ),
+          chalk.red('DATABASE_URL is required for --apply (or pass --database-url <url>).'),
         );
         return 1;
       }

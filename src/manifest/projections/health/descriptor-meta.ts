@@ -9,7 +9,7 @@ export const HEALTH_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     aggregateSurface('health.express'),
   ],
   options: [],
-  artifactCategories: ["health"],
+  artifactCategories: ['health'],
   packageDependencies: [],
   runtimeDependencies: [],
   compatibleCompanions: [],

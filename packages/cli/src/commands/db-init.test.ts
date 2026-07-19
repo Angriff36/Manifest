@@ -18,9 +18,17 @@ function makeFakePackageRoot(): string {
   for (const spec of MANIFEST_DB_SCHEMAS) {
     const abs = join(root, spec.rel);
     mkdirSync(join(abs, '..'), { recursive: true });
-    writeFileSync(abs, `-- ${spec.id}\nCREATE TABLE IF NOT EXISTS ${spec.id}_t (id TEXT);\n`, 'utf-8');
+    writeFileSync(
+      abs,
+      `-- ${spec.id}\nCREATE TABLE IF NOT EXISTS ${spec.id}_t (id TEXT);\n`,
+      'utf-8',
+    );
   }
-  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: '@angriff36/manifest' }), 'utf-8');
+  writeFileSync(
+    join(root, 'package.json'),
+    JSON.stringify({ name: '@angriff36/manifest' }),
+    'utf-8',
+  );
   return root;
 }
 

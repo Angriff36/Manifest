@@ -642,10 +642,7 @@ function emitIndexes(entity: IREntity, options: DrizzleProjectionOptions): strin
   ];
 }
 
-function emitConfiguredIndexes(
-  idx: IndexEntry[] | undefined,
-  varName: string,
-): string[] {
+function emitConfiguredIndexes(idx: IndexEntry[] | undefined, varName: string): string[] {
   if (!idx || idx.length === 0) return [];
   const lines: string[] = [];
   for (const entry of idx) {
@@ -825,7 +822,9 @@ export class DrizzleProjection implements ProjectionTarget {
 
       // Add type imports
       if (usedTypes.size > 0) {
-        const types = Array.from(usedTypes).sort((a, b) => a.localeCompare(b)).join(', ');
+        const types = Array.from(usedTypes)
+          .sort((a, b) => a.localeCompare(b))
+          .join(', ');
         header.push(`import { ${types} } from '${importPath}';`);
       }
     }

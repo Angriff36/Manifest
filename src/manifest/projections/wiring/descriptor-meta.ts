@@ -9,7 +9,7 @@ export const WIRING_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     aggregateSurface('wiring.all'),
   ],
   options: [],
-  artifactCategories: ["contract","bindings"],
+  artifactCategories: ['contract', 'bindings'],
   packageDependencies: [],
   runtimeDependencies: [],
   compatibleCompanions: [],

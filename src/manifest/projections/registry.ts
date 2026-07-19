@@ -10,10 +10,7 @@
 
 import type { ProjectionCapability, ProjectionTarget } from './interface';
 import { registerBuiltinProjections } from './builtins.js';
-import {
-  buildProjectionDescriptor,
-  validateAgainstDescriptor,
-} from './descriptor-build.js';
+import { buildProjectionDescriptor, validateAgainstDescriptor } from './descriptor-build.js';
 import { UnknownProjectionError } from './descriptor-types.js';
 import type {
   ProjectionDescriptor,

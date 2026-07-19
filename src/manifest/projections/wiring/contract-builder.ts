@@ -155,11 +155,7 @@ function applyTypeDerivedConstraints(
   }
 }
 
-function pathMatchesParam(
-  propertyPath: string,
-  paramName: string,
-  names: Set<string>,
-): boolean {
+function pathMatchesParam(propertyPath: string, paramName: string, names: Set<string>): boolean {
   const key = stripSelfPrefix(propertyPath);
   return names.has(propertyPath) || names.has(key) || key === paramName;
 }

@@ -11,7 +11,7 @@ export const ELASTICSEARCH_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     aggregateSurface('elasticsearch.client'),
   ],
   options: [],
-  artifactCategories: ["search"],
+  artifactCategories: ['search'],
   packageDependencies: ['@elastic/elasticsearch'],
   runtimeDependencies: [],
   compatibleCompanions: [],

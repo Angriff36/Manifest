@@ -1295,10 +1295,7 @@ export class RuntimeEngine {
     );
   }
 
-  private createConfiguredStore(
-    entityName: string,
-    storeConfig: IRStore | undefined,
-  ): Store {
+  private createConfiguredStore(entityName: string, storeConfig: IRStore | undefined): Store {
     if (!storeConfig) {
       return new MemoryStore(this.options.generateId);
     }
@@ -2073,7 +2070,9 @@ export class RuntimeEngine {
       const json = JSON.stringify(canonical, (_key: string, value: unknown) => {
         if (value && typeof value === 'object' && !Array.isArray(value)) {
           const sorted: Record<string, unknown> = {};
-          for (const k of Object.keys(value as Record<string, unknown>).sort((a, b) => a.localeCompare(b))) {
+          for (const k of Object.keys(value as Record<string, unknown>).sort((a, b) =>
+            a.localeCompare(b),
+          )) {
             sorted[k] = (value as Record<string, unknown>)[k];
           }
           return sorted;
@@ -4341,11 +4340,7 @@ export class RuntimeEngine {
         if (autoCreateEntity) {
           if (!initializationPlan) {
             // Legacy IR without a compiler-attached plan: synthesize from entity + command.
-            initializationPlan = buildInitializationPlan(
-              autoCreateEntity,
-              command,
-              this.ir.tenant,
-            );
+            initializationPlan = buildInitializationPlan(autoCreateEntity, command, this.ir.tenant);
           }
           if (initializationPlan) {
             autoCreatePreparedData = this.buildInitializationDraft(
@@ -4737,8 +4732,7 @@ export class RuntimeEngine {
         // Initialization mode flushes via a single store.create of the final document.
         await this.flushCommandBuffer();
         if (this.lastWriteRejection) {
-          const rej: { code: string; message: string; property?: string } =
-            this.lastWriteRejection;
+          const rej: { code: string; message: string; property?: string } = this.lastWriteRejection;
           this.lastWriteRejection = null;
           const initOutcomes = this.lastInitializationConstraintOutcomes;
           this.lastInitializationConstraintOutcomes = null;

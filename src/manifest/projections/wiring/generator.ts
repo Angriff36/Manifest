@@ -26,7 +26,6 @@ import { generateWiringBindings } from './bindings-generator.js';
 import type { WiringProjectionOptions } from './types.js';
 import { WIRING_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 const SURFACE_CONTRACT = 'wiring.contract' as const;
 const SURFACE_BINDINGS = 'wiring.bindings' as const;
 const SURFACE_ALL = 'wiring.all' as const;

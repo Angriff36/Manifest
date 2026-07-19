@@ -73,9 +73,7 @@ describeLive('PostgresRateLimitStore (live database)', () => {
     };
     const limiter = new RateLimiter(store);
     const results = await Promise.all(
-      Array.from({ length: 10 }, (_, i) =>
-        limiter.checkRateLimit('user:race', config, 10_000 + i),
-      ),
+      Array.from({ length: 10 }, (_, i) => limiter.checkRateLimit('user:race', config, 10_000 + i)),
     );
     const allowed = results.filter((r) => r.allowed).length;
     expect(allowed).toBe(5);

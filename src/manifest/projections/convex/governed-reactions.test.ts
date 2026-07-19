@@ -13,7 +13,11 @@ function entity(name: string, commands: string[]): IREntity {
     name,
     properties: [
       { name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-      { name: 'eventId', type: { name: 'string', nullable: false }, modifiers: ['required', 'indexed'] },
+      {
+        name: 'eventId',
+        type: { name: 'string', nullable: false },
+        modifiers: ['required', 'indexed'],
+      },
       { name: 'status', type: { name: 'string', nullable: false }, modifiers: ['required'] },
     ],
     computedProperties: [],
@@ -88,11 +92,20 @@ function reactionIR(): IR {
   return {
     version: '1.0',
     provenance: {
-      contentHash: 'h', compilerVersion: 'test', schemaVersion: '1.0', compiledAt: '2026-01-01T00:00:00.000Z',
+      contentHash: 'h',
+      compilerVersion: 'test',
+      schemaVersion: '1.0',
+      compiledAt: '2026-01-01T00:00:00.000Z',
     },
-    modules: [], values: [], entities, enums: [],
+    modules: [],
+    values: [],
+    entities,
+    enums: [],
     stores: entities.map((item) => ({ entity: item.name, target: 'durable', config: {} })),
-    events: [], commands, policies: [], reactions,
+    events: [],
+    commands,
+    policies: [],
+    reactions,
   };
 }
 

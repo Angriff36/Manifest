@@ -9,22 +9,11 @@
 import type { ProjectionCapability } from './interface.js';
 
 /** How a surface addresses IR when generating. */
-export type ProjectionInvocationScope =
-  | 'aggregate'
-  | 'entity'
-  | 'command'
-  | 'configuration-driven';
+export type ProjectionInvocationScope = 'aggregate' | 'entity' | 'command' | 'configuration-driven';
 
 /** JSON-ish option type for Builder forms and validation. */
 export type ProjectionOptionValueType =
-  | 'string'
-  | 'boolean'
-  | 'number'
-  | 'enum'
-  | 'object'
-  | 'array'
-  | 'record'
-  | 'unknown';
+  'string' | 'boolean' | 'number' | 'enum' | 'object' | 'array' | 'record' | 'unknown';
 
 export interface ProjectionSurfaceDescriptor {
   /** Stable surface id (e.g. `nextjs.route`, `convex.schema`). */
@@ -55,12 +44,7 @@ export interface ProjectionOptionDescriptor {
 }
 
 export type ProjectionPrerequisiteKind =
-  | 'schedules'
-  | 'webhooks'
-  | 'realtime'
-  | 'configured-views'
-  | 'ir-feature'
-  | 'options';
+  'schedules' | 'webhooks' | 'realtime' | 'configured-views' | 'ir-feature' | 'options';
 
 export interface ProjectionPrerequisiteDescriptor {
   kind: ProjectionPrerequisiteKind;

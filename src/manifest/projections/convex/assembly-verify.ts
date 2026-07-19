@@ -9,10 +9,7 @@
 import { describeProjection, hasProjection } from '../registry.js';
 import type { IR } from '../../ir.js';
 import type { ConvexSeedBinding } from '../../seed-pack/convex-binding.js';
-import {
-  checkEventPayloadContract,
-  checkSeedScriptCoherence,
-} from './assembly-seed-checks.js';
+import { checkEventPayloadContract, checkSeedScriptCoherence } from './assembly-seed-checks.js';
 
 export const CONVEX_ASSEMBLY_REQUIRED_SURFACES = [
   'convex.schema',
@@ -140,7 +137,8 @@ export function verifyConvexApplicationAssembly(
     checks.push({
       id: 'seed-binding',
       pass: false,
-      detail: 'seedBinding not provided — call describeConvexSeedBinding / generateConvexSeedScript',
+      detail:
+        'seedBinding not provided — call describeConvexSeedBinding / generateConvexSeedScript',
     });
   }
 
@@ -148,9 +146,7 @@ export function verifyConvexApplicationAssembly(
   // Builder preset writes src/lib/manifest-convex-react.ts → must reach
   // convex/_generated/api via ../../… One-level ../ resolves under src/convex.
   const brokenReactApiImport = /from\s+["']\.\.\/convex\/_generated\/api["']/.test(reactCode);
-  const correctBuilderImport = /from\s+["']\.\.\/\.\.\/convex\/_generated\/api["']/.test(
-    reactCode,
-  );
+  const correctBuilderImport = /from\s+["']\.\.\/\.\.\/convex\/_generated\/api["']/.test(reactCode);
   const reactOk =
     reactCode.includes('convex/react') &&
     reactCode.includes('useMutation') &&

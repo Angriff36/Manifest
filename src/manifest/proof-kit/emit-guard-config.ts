@@ -30,18 +30,16 @@ export function emitIntegrationGuardConfig(
   options: EmitGuardConfigOptions,
 ): IntegrationGuardConfig {
   const versions: ProofKitVersions = {
-    manifestVersion: options.versions?.manifestVersion ?? catalog.versions.manifestVersion ?? COMPILER_VERSION,
+    manifestVersion:
+      options.versions?.manifestVersion ?? catalog.versions.manifestVersion ?? COMPILER_VERSION,
     projection: options.versions?.projection ?? catalog.versions.projection,
-    ...(options.versions?.preset ?? catalog.versions.preset
+    ...((options.versions?.preset ?? catalog.versions.preset)
       ? { preset: options.versions?.preset ?? catalog.versions.preset }
       : {}),
   };
 
   const ownedTables = [
-    ...new Set([
-      ...catalog.entities.map((e) => e.table),
-      ...(options.extraOwnedTables ?? []),
-    ]),
+    ...new Set([...catalog.entities.map((e) => e.table), ...(options.extraOwnedTables ?? [])]),
   ].sort();
 
   return {

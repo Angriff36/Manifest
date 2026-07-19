@@ -24,7 +24,6 @@ import type {
 import type { AnalyticsProjectionOptions, AnalyticsProvider } from './types';
 import { ANALYTICS_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 // ============================================================================
 // Surface constants
 // ============================================================================

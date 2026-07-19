@@ -9,7 +9,7 @@ export const STORYBOOK_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     aggregateSurface('storybook.all'),
   ],
   options: [],
-  artifactCategories: ["documentation","stories"],
+  artifactCategories: ['documentation', 'stories'],
   packageDependencies: ['storybook'],
   runtimeDependencies: [],
   compatibleCompanions: [],

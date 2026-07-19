@@ -64,11 +64,7 @@ export class ReactionPayloadCollisionPlanner {
         continue;
       }
 
-      if (
-        field.name === '_subject' ||
-        field.name === '_eventName' ||
-        field.name === '_channel'
-      ) {
+      if (field.name === '_subject' || field.name === '_eventName' || field.name === '_channel') {
         diagnostics.push({
           severity: 'warning',
           code: 'CONVEX_PAYLOAD_FIELD_COLLISION',

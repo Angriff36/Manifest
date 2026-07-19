@@ -219,8 +219,7 @@ export function resolveConvexReadVisibility(
 } {
   const gated = hasReadPolicies(ir, entityName);
   const policies = renderReadPolicies(ir, entityName, selfVar);
-  const authSeam =
-    typeof authContextImport === 'string' && authContextImport.length > 0;
+  const authSeam = typeof authContextImport === 'string' && authContextImport.length > 0;
   const clientReadable = !gated || (authSeam && policies.renderable);
   return { gated, clientReadable, policies };
 }

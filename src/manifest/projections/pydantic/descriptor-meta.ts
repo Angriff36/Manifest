@@ -10,7 +10,7 @@ export const PYDANTIC_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     aggregateSurface('pydantic.client'),
   ],
   options: [],
-  artifactCategories: ["models","client"],
+  artifactCategories: ['models', 'client'],
   packageDependencies: [],
   runtimeDependencies: [],
   compatibleCompanions: [],

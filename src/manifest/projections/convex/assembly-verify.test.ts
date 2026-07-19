@@ -53,9 +53,7 @@ describe('verifyConvexApplicationAssembly', () => {
       {
         entity: 'Task',
         name: 'create',
-        parameters: [
-          { name: 'title', type: { name: 'string', nullable: false }, required: true },
-        ],
+        parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }],
         guards: [],
         actions: [],
         emits: [],

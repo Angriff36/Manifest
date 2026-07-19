@@ -42,7 +42,6 @@ import { ES_TYPE_MAPPING, UNSUPPORTED_ES_TYPES, type ESFieldType } from './type-
 import type { ElasticsearchIndexDefinition, ESFieldOverride } from './types.js';
 import { ELASTICSEARCH_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 // ============================================================================
 // Surface constants
 // ============================================================================

@@ -66,8 +66,7 @@ export function detectStorageNameChanges(
     if (prev && prev !== entity) {
       diags.push({
         severity: 'error',
-        message:
-          `Storage table collision on ${projection}: entities '${prev}' and '${entity}' both map to '${mapped}'.`,
+        message: `Storage table collision on ${projection}: entities '${prev}' and '${entity}' both map to '${mapped}'.`,
       });
     } else {
       tableOwners.set(k, entity);
@@ -75,7 +74,10 @@ export function detectStorageNameChanges(
   }
 
   const fieldOwners = new Map<string, string>();
-  for (const [key, col] of Object.entries({ ...(proposed.fields ?? {}), ...(legacy?.fields ?? {}) })) {
+  for (const [key, col] of Object.entries({
+    ...(proposed.fields ?? {}),
+    ...(legacy?.fields ?? {}),
+  })) {
     const entity = key.split('.')[0] ?? '';
     const storage = legacy?.fields?.[key] ?? col;
     const ownerKey = `${entity}::${nameKey(storage)}`;
@@ -83,8 +85,7 @@ export function detectStorageNameChanges(
     if (prev && prev !== key) {
       diags.push({
         severity: 'error',
-        message:
-          `Storage field collision on ${projection}: '${prev}' and '${key}' both map to '${storage}' on '${entity}'.`,
+        message: `Storage field collision on ${projection}: '${prev}' and '${key}' both map to '${storage}' on '${entity}'.`,
       });
     } else {
       fieldOwners.set(ownerKey, key);

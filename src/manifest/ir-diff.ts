@@ -598,7 +598,8 @@ function diffCommands(oldCommands: IRCommand[], newCommands: IRCommand[]): Comma
     const guardsChanged = JSON.stringify(old.guards) !== JSON.stringify(cmd.guards);
     const actionsChanged = JSON.stringify(old.actions) !== JSON.stringify(cmd.actions);
     const emitsChanged =
-      JSON.stringify([...old.emits].sort((a, b) => a.localeCompare(b))) !== JSON.stringify([...cmd.emits].sort((a, b) => a.localeCompare(b)));
+      JSON.stringify([...old.emits].sort((a, b) => a.localeCompare(b))) !==
+      JSON.stringify([...cmd.emits].sort((a, b) => a.localeCompare(b)));
     const returnsChanged =
       serializeIRType(old.returns ?? { name: 'void', nullable: false }) !==
       serializeIRType(cmd.returns ?? { name: 'void', nullable: false });

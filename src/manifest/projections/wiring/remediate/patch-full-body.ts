@@ -137,7 +137,10 @@ function findPartialPayloadSpan(
   );
 }
 
-function spanFromInvocation(content: string, inv: { index: number; payloadSource: string }): PayloadSpan | undefined {
+function spanFromInvocation(
+  content: string,
+  inv: { index: number; payloadSource: string },
+): PayloadSpan | undefined {
   if (!inv.payloadSource.startsWith('{') || /\.\.\./.test(inv.payloadSource)) return undefined;
   const payloadStart = content.indexOf(inv.payloadSource, inv.index);
   if (payloadStart < 0) return undefined;

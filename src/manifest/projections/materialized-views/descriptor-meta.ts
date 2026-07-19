@@ -1,9 +1,5 @@
 import type { ProjectionDescriptorMeta } from '../descriptor-types.js';
-import {
-  configurationSurface,
-  optionalOption,
-  requiredOption,
-} from '../descriptor-helpers.js';
+import { configurationSurface, optionalOption, requiredOption } from '../descriptor-helpers.js';
 import { MATERIALIZED_VIEWS_PROJECTION_DEFAULTS } from './options.js';
 
 export const MATERIALIZED_VIEWS_DESCRIPTOR_META: ProjectionDescriptorMeta = {

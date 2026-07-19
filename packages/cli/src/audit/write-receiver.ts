@@ -69,26 +69,17 @@ export class DirectWriteScanner {
     const hits: DirectWriteMatch[] = [];
     const rx = escapeRegExp(this.receiver);
 
-    const prisma = new RegExp(
-      `\\b${rx}\\s*\\.\\s*\\w+\\s*\\.\\s*(${WRITE_METHODS})\\s*\\(`,
-      'g',
-    );
+    const prisma = new RegExp(`\\b${rx}\\s*\\.\\s*\\w+\\s*\\.\\s*(${WRITE_METHODS})\\s*\\(`, 'g');
     for (const m of content.matchAll(prisma)) {
       hits.push({ flavor: 'prisma', label: `${this.receiver}.${m[1]}` });
     }
 
-    const drizzle = new RegExp(
-      `\\b${rx}\\s*\\.\\s*(insert|update|delete)\\s*\\(`,
-      'g',
-    );
+    const drizzle = new RegExp(`\\b${rx}\\s*\\.\\s*(insert|update|delete)\\s*\\(`, 'g');
     for (const m of content.matchAll(drizzle)) {
       hits.push({ flavor: 'drizzle', label: `drizzle.${m[1]}` });
     }
 
-    const kysely = new RegExp(
-      `\\b${rx}\\s*\\.\\s*(insertInto|updateTable|deleteFrom)\\s*\\(`,
-      'g',
-    );
+    const kysely = new RegExp(`\\b${rx}\\s*\\.\\s*(insertInto|updateTable|deleteFrom)\\s*\\(`, 'g');
     for (const m of content.matchAll(kysely)) {
       hits.push({ flavor: 'kysely', label: `kysely.${m[1]}` });
     }
@@ -96,7 +87,8 @@ export class DirectWriteScanner {
     // Tagged or plain template literals that look like DML SQL.
     // Conservative: requires INSERT/UPDATE/DELETE as a word near the start of
     // the template body (after optional whitespace/comments).
-    const rawSql = /(?:sql|query|execute)?\s*`[\s\n]*(?:\/\*[\s\S]*?\*\/\s*)?(INSERT|UPDATE|DELETE)\b/gi;
+    const rawSql =
+      /(?:sql|query|execute)?\s*`[\s\n]*(?:\/\*[\s\S]*?\*\/\s*)?(INSERT|UPDATE|DELETE)\b/gi;
     for (const m of content.matchAll(rawSql)) {
       hits.push({ flavor: 'raw-sql', label: `raw-sql.${m[1]!.toLowerCase()}` });
     }

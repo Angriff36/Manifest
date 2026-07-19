@@ -11,8 +11,7 @@ export type ValidationFailOn = (typeof VALIDATION_FAIL_ON_VALUES)[number];
 
 export function isValidationFailOn(value: unknown): value is ValidationFailOn {
   return (
-    typeof value === 'string' &&
-    (VALIDATION_FAIL_ON_VALUES as readonly string[]).includes(value)
+    typeof value === 'string' && (VALIDATION_FAIL_ON_VALUES as readonly string[]).includes(value)
   );
 }
 

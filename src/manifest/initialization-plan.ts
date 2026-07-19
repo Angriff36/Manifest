@@ -67,11 +67,7 @@ function initializesLifecycleTimestamp(command: IRCommand): boolean {
  * same-named parameter, literal, or lifecycle `now()` — not an arbitrary
  * compute/local expression (those are ordinary instance updates).
  */
-function allocatesRequiredField(
-  command: IRCommand,
-  entity: IREntity,
-  target: string,
-): boolean {
+function allocatesRequiredField(command: IRCommand, entity: IREntity, target: string): boolean {
   const property = entity.properties.find((item) => item.name === target);
   if (!property) return false;
   if (
@@ -256,10 +252,7 @@ export function buildInitializationPlan(
  * Plans are attached when missing so hand-built IR (tests) and legacy IR
  * still resolve through the same authority function.
  */
-export function selectInitializationCommand(
-  ir: IR,
-  entity: IREntity,
-): IRCommand | undefined {
+export function selectInitializationCommand(ir: IR, entity: IREntity): IRCommand | undefined {
   const commands = ir.commands.filter((command) => command.entity === entity.name);
   for (const command of commands) {
     if (!command.initialization) {

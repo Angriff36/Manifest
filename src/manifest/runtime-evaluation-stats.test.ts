@@ -7,7 +7,10 @@ import { compileToIR } from './ir-compiler';
 import { RuntimeEngine } from './runtime-engine';
 
 describe('EvaluationStats instrumentation counters', () => {
-  async function engine(source: string, limits?: { maxEvaluationSteps?: number; maxExpressionDepth?: number }) {
+  async function engine(
+    source: string,
+    limits?: { maxEvaluationSteps?: number; maxExpressionDepth?: number },
+  ) {
     const { ir } = await compileToIR(source);
     expect(ir).not.toBeNull();
     return new RuntimeEngine(ir!, {}, { evaluationLimits: limits });

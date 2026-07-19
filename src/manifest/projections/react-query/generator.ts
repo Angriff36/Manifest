@@ -29,7 +29,6 @@ import { resolveRouteContract, type RouteContract } from '../shared/route-contra
 import { irTypeToTypeScript } from '../shared/typescript-types.js';
 import { REACT_QUERY_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 // ---------------------------------------------------------------------------
 // Options
 // ---------------------------------------------------------------------------

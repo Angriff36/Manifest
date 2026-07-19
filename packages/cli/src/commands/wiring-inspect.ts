@@ -115,7 +115,5 @@ function colorInspectLine(line: string): string {
 }
 
 function isInspectSectionHeader(line: string): boolean {
-  return INSPECT_SECTION_HEADERS.some(
-    (header) => line === header || line.startsWith(`${header} `),
-  );
+  return INSPECT_SECTION_HEADERS.some((header) => line === header || line.startsWith(`${header} `));
 }

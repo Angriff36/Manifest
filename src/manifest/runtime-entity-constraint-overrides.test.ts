@@ -56,9 +56,13 @@ async function compileToIR(source: string): Promise<IR> {
 describe('entity-level constraint overrides', () => {
   it('blocks create when overrideable entity constraint fails without authorization', async () => {
     const ir = await compileToIR(SOURCE);
-    const runtime = new RuntimeEngine(ir, { user: { id: 'u1', role: 'user' } }, {
-      now: () => 1_700_000_000_000,
-    });
+    const runtime = new RuntimeEngine(
+      ir,
+      { user: { id: 'u1', role: 'user' } },
+      {
+        now: () => 1_700_000_000_000,
+      },
+    );
 
     const created = await runtime.createInstance('Person', {
       id: 'p1',
@@ -93,9 +97,13 @@ describe('entity-level constraint overrides', () => {
 
   it('allows create via explicit OverrideRequest when authorized', async () => {
     const ir = await compileToIR(SOURCE);
-    const runtime = new RuntimeEngine(ir, { user: { id: 'u2', role: 'user' } }, {
-      now: () => 1_700_000_000_000,
-    });
+    const runtime = new RuntimeEngine(
+      ir,
+      { user: { id: 'u2', role: 'user' } },
+      {
+        now: () => 1_700_000_000_000,
+      },
+    );
 
     const override: OverrideRequest = {
       constraintCode: 'minAge',
@@ -119,9 +127,13 @@ describe('entity-level constraint overrides', () => {
 
   it('allows update that would violate entity constraint when auto-policy authorizes', async () => {
     const ir = await compileToIR(SOURCE);
-    const runtime = new RuntimeEngine(ir, { user: { id: 'admin-1', role: 'admin' } }, {
-      now: () => 1_700_000_000_000,
-    });
+    const runtime = new RuntimeEngine(
+      ir,
+      { user: { id: 'admin-1', role: 'admin' } },
+      {
+        now: () => 1_700_000_000_000,
+      },
+    );
 
     await runtime.createInstance('Person', { id: 'p4', age: 21, name: 'Pat' });
     const updated = await runtime.updateInstance('Person', 'p4', { age: 14 });
@@ -132,9 +144,13 @@ describe('entity-level constraint overrides', () => {
 
   it('honors entity overrides during Entity.create command auto-create', async () => {
     const ir = await compileToIR(SOURCE);
-    const runtime = new RuntimeEngine(ir, { user: { id: 'admin-1', role: 'admin' } }, {
-      now: () => 1_700_000_000_000,
-    });
+    const runtime = new RuntimeEngine(
+      ir,
+      { user: { id: 'admin-1', role: 'admin' } },
+      {
+        now: () => 1_700_000_000_000,
+      },
+    );
 
     const result = await runtime.runCommand(
       'create',

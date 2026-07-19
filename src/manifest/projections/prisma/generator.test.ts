@@ -1240,7 +1240,12 @@ describe('PrismaProjection — relationship diagnostics for unhandleable shapes'
       bareEntity('Book'),
       bareEntity('AuthorBook', {
         relationships: [
-          { name: 'author', kind: 'belongsTo', target: 'Author', foreignKey: { fields: ['authorId'] } },
+          {
+            name: 'author',
+            kind: 'belongsTo',
+            target: 'Author',
+            foreignKey: { fields: ['authorId'] },
+          },
           { name: 'book', kind: 'belongsTo', target: 'Book', foreignKey: { fields: ['bookId'] } },
         ],
         properties: [

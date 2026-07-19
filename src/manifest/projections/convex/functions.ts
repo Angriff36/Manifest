@@ -84,10 +84,7 @@ import {
   renderCommandIdempotencyPrologue,
   renderCommandIdempotencyWrappedRunnerHandler,
 } from './command-idempotency.js';
-import {
-  buildRelationDependencyPlan,
-  type RelationDependency,
-} from '../../relation-plan.js';
+import { buildRelationDependencyPlan, type RelationDependency } from '../../relation-plan.js';
 
 type Normalized = NormalizedOptions;
 
@@ -1155,10 +1152,7 @@ function renderRelationHydration(
       deny(dependency, 'uses an inverse/through access mode this command body cannot hydrate');
       continue;
     }
-    if (
-      dependency.through ||
-      (dependency.kind !== 'belongsTo' && dependency.kind !== 'ref')
-    ) {
+    if (dependency.through || (dependency.kind !== 'belongsTo' && dependency.kind !== 'ref')) {
       deny(dependency, `uses unsupported relationship kind '${dependency.kind}'`);
       continue;
     }
@@ -1180,9 +1174,7 @@ function renderRelationHydration(
     const rawVariable = `${variable}Raw`;
     const localValues = dependency.localFields
       .map((field) =>
-        tenantScoped && writeTenantProp === field
-          ? `__auth.${field}`
-          : `${sourceVar}.${field}`,
+        tenantScoped && writeTenantProp === field ? `__auth.${field}` : `${sourceVar}.${field}`,
       )
       .join(', ');
     const targetTable = resolveConvexTableName(target.name, options);
@@ -1385,7 +1377,9 @@ function renderGovernedCreationEntry(
     command: cmd.name,
   });
   diagnostics.push(...collision.diagnostics);
-  const g7Entries = collision.reactionFields.map((field) => `${field.name}: ${field.code}`).join(', ');
+  const g7Entries = collision.reactionFields
+    .map((field) => `${field.name}: ${field.code}`)
+    .join(', ');
   const subjectLiteral = `_subject: { entity: ${JSON.stringify(entity.name)}, command: ${JSON.stringify(cmd.name)}, id: docId }`;
   const envelopeResult = collision.includeEnvelopeResult
     ? 'result: { _id: docId, id: docId, ...doc }'
