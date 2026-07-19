@@ -4,6 +4,22 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.25] - 2026-07-19
+
+### Added
+
+- **Runtime aggregates:** `flat_map` and `unique_of` builtins for multi-hop collection
+  pipelines (e.g. allergen unions across nested recipe/ingredient graphs).
+- **Fan-out reaction params:** evaluated per matched target row with `self`/`target`
+  bound to the instance (payload remains the event).
+
+### Fixed
+
+- **Convex nested aggregate hydration:** preload every hasMany/belongsTo hop for
+  aggregate chains (`flat_map` / `unique_of` / `sum` / …), not only the first
+  `count_of(self.<rel>)` hop. Emits `hydrateComputedRelationsFor*` helpers and
+  nested preloads in mutations/inline queries.
+
 ## [3.6.24] - 2026-07-19
 
 ### Fixed
