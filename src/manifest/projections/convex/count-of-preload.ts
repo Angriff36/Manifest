@@ -7,7 +7,8 @@
  * loads and assigns them onto the local `doc` before governance checks run.
  */
 
-import type { IR, IREntity, IRExpression, IRRelationship } from '../../ir';
+import type { IR, IREntity, IRExpression } from '../../ir';
+import { planAndRenderAggregateHydration } from './aggregate-hydrate.js';
 import type { NormalizedOptions } from './generator.js';
 import { resolveConvexTableName } from './generator.js';
 
@@ -89,23 +90,10 @@ export function collectCountOfHasManyRels(expr: IRExpression | undefined, out: S
   }
 }
 
-/** Non-tenant FK column for a belongsTo/ref (mirrors generator.resolveReferenceField). */
-function inverseFkField(
-  childEntityName: string,
-  inverse: IRRelationship,
-  tenantProp: string | undefined,
-  options: NormalizedOptions,
-): string {
-  const override = options.references[childEntityName]?.[inverse.name];
-  if (override) return override;
-  const fields = inverse.foreignKey?.fields ?? [];
-  const nonTenant = fields.find((f) => f !== tenantProp);
-  return nonTenant ?? `${inverse.name}Id`;
-}
-
 /**
  * Emit lines that load each hasMany collection onto `doc.<relName>` via the
  * inverse FK index. `docIdExpr` is the Convex document id expression (e.g. `docId`).
+ * One-hop only — nested aggregate chains use {@link planAndRenderAggregateHydration}.
  */
 export function renderCountOfHasManyPreloads(
   ir: IR,
@@ -114,30 +102,19 @@ export function renderCountOfHasManyPreloads(
   options: NormalizedOptions,
   docIdExpr: string,
 ): string[] {
-  const lines: string[] = [];
-  const tenantProp = ir.tenant?.property;
-  const seen = new Set<string>();
-
+  const synthetic: IRExpression[] = [];
   for (const relName of relNames) {
-    if (seen.has(relName)) continue;
-    seen.add(relName);
-
-    const rel = entity.relationships.find((r) => r.name === relName && r.kind === 'hasMany');
-    if (!rel || rel.through) continue;
-
-    const target = ir.entities.find((e) => e.name === rel.target);
-    if (!target) continue;
-
-    const inverse = target.relationships.find(
-      (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === entity.name,
-    );
-    if (!inverse) continue;
-
-    const fkField = inverseFkField(target.name, inverse, tenantProp, options);
-    const childTable = resolveConvexTableName(rel.target, options);
-    lines.push(
-      `    (doc as any).${relName} = await ctx.db.query(${JSON.stringify(childTable)}).withIndex(${JSON.stringify(`by_${fkField}`)}, (q) => q.eq(${JSON.stringify(fkField)}, ${docIdExpr})).collect();`,
-    );
+    synthetic.push({
+      kind: 'call',
+      callee: { kind: 'identifier', name: 'count_of' },
+      args: [
+        {
+          kind: 'member',
+          object: { kind: 'identifier', name: 'self' },
+          property: relName,
+        },
+      ],
+    });
   }
-  return lines;
+  return planAndRenderAggregateHydration(ir, entity, synthetic, options, docIdExpr).lines;
 }

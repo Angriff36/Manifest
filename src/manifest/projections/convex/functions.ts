@@ -37,12 +37,13 @@ import {
 } from './generator.js';
 import { resolveConvexValidator } from './type-mapping.js';
 import { ReactionPayloadCollisionPlanner } from './reactionPayloadCollision.js';
+import { planAndRenderAggregateHydration } from './aggregate-hydrate.js';
 import {
   codeUsesDocType,
   collectCountOfHasManyRels,
-  renderCountOfHasManyPreloads,
   resolveHasManyDocElementType,
 } from './count-of-preload.js';
+import { renderEntityComputedHydration, renderInlineComputedFields } from './computed.js';
 import {
   renderExpression,
   isNullLiteral,
@@ -68,7 +69,6 @@ import {
   stripPrivateFromReturn,
   stripPrivateFromRows,
 } from './privacy.js';
-import { renderInlineComputedFields } from './computed.js';
 import {
   commandNeedsAfterSnapshot,
   computeBindingLines,
@@ -542,6 +542,14 @@ export function generateQueries(
             diagnostics: [] as ProjectionDiagnostic[],
           };
     diagnostics.push(...inlineComputed.diagnostics);
+    const inlineHydrateDoc =
+      options.computedProperties === 'inline' && inlineComputed.fields.length > 0
+        ? renderEntityComputedHydration(ir, entity, options, '(__doc as any)', '__doc._id')
+        : { lines: [] as string[] };
+    const inlineHydrateRow =
+      options.computedProperties === 'inline' && inlineComputed.fields.length > 0
+        ? renderEntityComputedHydration(ir, entity, options, '(__row as any)', '__row._id')
+        : { lines: [] as string[] };
     const allPolicyChecks = [...listPolicyPlan.contextChecks, ...listPolicyPlan.rowChecks];
     const policyAuthLines = (): string[] => {
       const text = allPolicyChecks.map((check) => check.code).join('\n');
@@ -565,15 +573,31 @@ export function generateQueries(
       ];
     };
 
+    const hydrateThenProjectRows = (sourceExpr: string): string => {
+      const assigns = inlineComputed.fields.map((f) => `${f.name}: ${f.code}`).join(', ');
+      const hydrate = inlineHydrateRow.lines.map((line) => `      ${line.trimStart()}`).join('\n');
+      return (
+        `const __projectedRows: any[] = [];\n` +
+        `    for (const __row of ${sourceExpr} as any[]) {\n` +
+        (hydrate ? `${hydrate}\n` : '') +
+        `      __projectedRows.push({ ...(__row as any), ${assigns} });\n` +
+        `    }\n` +
+        `    ${stripPrivateFromRows('__projectedRows', privates)}`
+      );
+    };
+
     /** Finalize rows: decrypt → read policies → computed/private public projection. */
     const finishRows = (rowsExpr: string): string => {
       if (encrypted.length === 0 && !policyGated) {
         if (inlineComputed.fields.length === 0) {
           return stripPrivateFromRows(rowsExpr, privates);
         }
-        const assigns = inlineComputed.fields.map((f) => `${f.name}: ${f.code}`).join(', ');
-        const mapped = `(${rowsExpr}).map((__row) => ({ ...(__row as any), ${assigns} }))`;
-        return stripPrivateFromRows(mapped, privates);
+        if (inlineHydrateRow.lines.length === 0) {
+          const assigns = inlineComputed.fields.map((f) => `${f.name}: ${f.code}`).join(', ');
+          const mapped = `(${rowsExpr}).map((__row) => ({ ...(__row as any), ${assigns} }))`;
+          return stripPrivateFromRows(mapped, privates);
+        }
+        return hydrateThenProjectRows(rowsExpr);
       }
 
       const lines: string[] = [];
@@ -598,6 +622,10 @@ export function generateQueries(
         }
       }
       if (inlineComputed.fields.length > 0) {
+        if (inlineHydrateRow.lines.length > 0) {
+          lines.push(`    ${hydrateThenProjectRows(visibleExpr)}`);
+          return lines.join('\n');
+        }
         const assigns = inlineComputed.fields.map((f) => `${f.name}: ${f.code}`).join(', ');
         visibleExpr = `(${visibleExpr}).map((__row) => ({ ...(__row as any), ${assigns} }))`;
       }
@@ -606,6 +634,8 @@ export function generateQueries(
     };
     /** Finalize one doc: decrypt → read policies → computed/private projection. */
     const finishDoc = (docExpr: string): string => {
+      const hydrateBlock =
+        inlineHydrateDoc.lines.length > 0 ? `${inlineHydrateDoc.lines.join('\n')}\n` : '';
       if (encrypted.length === 0 && !policyGated) {
         if (inlineComputed.fields.length === 0) {
           return stripPrivateFromDoc(docExpr, privates);
@@ -617,6 +647,7 @@ export function generateQueries(
           return (
             `const __doc = ${docExpr};\n` +
             `    if (!__doc) return __doc;\n` +
+            hydrateBlock +
             `    return { ...(__doc as any), ${assigns} };`
           );
         }
@@ -624,6 +655,7 @@ export function generateQueries(
         return (
           `const __doc = ${docExpr};\n` +
           `    if (!__doc) return __doc;\n` +
+          hydrateBlock +
           `    const __out = { ...(__doc as any), ${assigns} };\n` +
           `    ${dels}\n` +
           `    return __out;`
@@ -648,6 +680,7 @@ export function generateQueries(
           );
         }
       }
+      if (hydrateBlock) lines.push(hydrateBlock.trimEnd());
       const assigns = inlineComputed.fields
         .map((f) => `${f.name}: ${f.code.replace(/\b__row\b/g, '__doc')}`)
         .join(', ');
@@ -1691,11 +1724,20 @@ function generateMutation(
 
   // Non-create: command params are destructured locals; self.x → doc.x.
   const checkSpecs = commandChecks(ir, cmd, options.policyMode);
+  const aggregateExprs = checkSpecs.map((c) => c.expr);
+  const aggregateHydration = planAndRenderAggregateHydration(
+    ir,
+    entity,
+    aggregateExprs,
+    options,
+    'docId',
+  );
+  const hasManyPreloads = aggregateHydration.lines;
+  // Preserve one-hop count_of support detection for relation-plan skip logic.
   const countOfRels = new Set<string>();
   for (const c of checkSpecs) collectCountOfHasManyRels(c.expr, countOfRels);
-  const hasManyPreloads = renderCountOfHasManyPreloads(ir, entity, countOfRels, options, 'docId');
   const supportedHasMany = new Set(
-    [...countOfRels].filter((relationName) =>
+    [...countOfRels, ...aggregateHydration.rootHasMany].filter((relationName) =>
       hasManyPreloads.some((line) => line.includes(`.${relationName} =`)),
     ),
   );
