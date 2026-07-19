@@ -90,7 +90,6 @@ interface NormalizedOptions {
   emitHeader: boolean;
   publicReads: boolean;
   includeComments: boolean;
-  generatedAt: string;
   emitCompanions: boolean;
 }
 
@@ -111,7 +110,6 @@ function normalizeOptions(opts: HonoProjectionOptions): NormalizedOptions {
     emitHeader: opts.emitHeader ?? true,
     publicReads: opts.publicReads ?? false,
     includeComments: opts.includeComments ?? true,
-    generatedAt: opts.generatedAt ?? new Date().toISOString(),
     emitCompanions: opts.emitCompanions ?? true,
   };
 }

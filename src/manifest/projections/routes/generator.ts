@@ -302,7 +302,6 @@ function buildRouteManifest(
   const manifest: RouteManifest = {
     $schema: 'https://manifest.lang/spec/routes-v1.schema.json',
     version: '1.0',
-    generatedAt: options.generatedAt ?? new Date().toISOString(),
     basePath,
     routes,
   };

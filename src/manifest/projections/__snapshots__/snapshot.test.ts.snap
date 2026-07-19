@@ -188,7 +188,6 @@ export function trackAssignTask(
   "analytics.tracking-plan": "{
   "$schema": "https://json.schemastore.org/tracking-plan.json",
   "provider": "segment",
-  "generatedAt": "2025-01-01T00:00:00.000Z",
   "source": {
     "irVersion": "1.0",
     "contentHash": "snapshot-fixture-hash"
@@ -9064,7 +9063,6 @@ exports[`projection snapshots > routes > generated artifacts match snapshot 1`] 
   "routes.manifest": "{
   "$schema": "https://manifest.lang/spec/routes-v1.schema.json",
   "version": "1.0",
-  "generatedAt": "2025-01-01T00:00:00.000Z",
   "basePath": "/api",
   "routes": [
     {

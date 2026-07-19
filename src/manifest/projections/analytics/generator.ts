@@ -430,7 +430,6 @@ function generateTrackingPlan(
     $schema: 'https://json.schemastore.org/tracking-plan.json',
     provider: opts.provider,
     namespace: opts.eventNamespace || undefined,
-    generatedAt: new Date().toISOString(),
     source: {
       irVersion: ir.version,
       contentHash: ir.provenance.contentHash,

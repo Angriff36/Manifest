@@ -83,7 +83,6 @@ interface NormalizedOptions {
   emitFormActions: boolean;
   emitTypeImports: boolean;
   emitCompanions: boolean;
-  generatedAt: string;
 }
 
 /**
@@ -129,7 +128,6 @@ function normalizeOptions(opts: SvelteKitProjectionOptions = {}): NormalizedOpti
     emitFormActions: opts.emitFormActions ?? SVELTEKIT_DEFAULTS.emitFormActions,
     emitTypeImports: opts.emitTypeImports ?? SVELTEKIT_DEFAULTS.emitTypeImports,
     emitCompanions: opts.emitCompanions ?? SVELTEKIT_DEFAULTS.emitCompanions,
-    generatedAt: opts.generatedAt ?? new Date().toISOString(),
   };
 }
 

@@ -120,7 +120,6 @@ export interface HonoProjectionOptions {
   /**
    * ISO timestamp override for deterministic output (testing).
    */
-  generatedAt?: string;
 
   /**
    * Emit the companion modules the generated router imports but no other

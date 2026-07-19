@@ -547,11 +547,8 @@ describe('AnalyticsProjection', () => {
       const r1 = projection.generate(ir, { surface: 'analytics.tracking-plan' });
       const r2 = projection.generate(ir, { surface: 'analytics.tracking-plan' });
 
-      // Strip the generatedAt field for comparison
       const p1 = JSON.parse(r1.artifacts[0].code);
       const p2 = JSON.parse(r2.artifacts[0].code);
-      delete p1.generatedAt;
-      delete p2.generatedAt;
 
       expect(JSON.stringify(p1)).toBe(JSON.stringify(p2));
     });
