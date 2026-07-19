@@ -99,9 +99,7 @@ describe('Date/time write-time validation', () => {
     expect(
       await engine.createInstance('Event', { ...validData, stamped: Infinity }),
     ).toBeUndefined();
-    expect(
-      await engine.createInstance('Event', { ...validData, stamped: 'soon' }),
-    ).toBeUndefined();
+    expect(await engine.createInstance('Event', { ...validData, stamped: 'soon' })).toBeUndefined();
     expect(await engine.createInstance('Event', { ...validData, stamped: 1e16 })).toBeUndefined();
 
     const result = await engine.runCommand(

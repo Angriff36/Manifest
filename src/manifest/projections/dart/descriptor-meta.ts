@@ -12,7 +12,7 @@ export const DART_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     aggregateSurface('dart.package'),
   ],
   options: [],
-  artifactCategories: ["models","client"],
+  artifactCategories: ['models', 'client'],
   packageDependencies: [],
   runtimeDependencies: [],
   compatibleCompanions: [],

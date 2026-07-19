@@ -1325,7 +1325,11 @@ describe('ZodProjection', () => {
             },
             {
               name: 'tags',
-              type: { name: 'array', nullable: false, generic: { name: 'Status', nullable: false } },
+              type: {
+                name: 'array',
+                nullable: false,
+                generic: { name: 'Status', nullable: false },
+              },
               modifiers: [],
             },
           ]),
@@ -1365,9 +1369,7 @@ describe('ZodProjection', () => {
 
       const commandCode = firstCode(projection.generate(ir, { surface: 'zod.command' }));
       expect(commandCode).toContain('status: z.enum(["draft", "published", "archived"])');
-      expect(commandCode).toContain(
-        'tags: z.array(z.enum(["draft", "published", "archived"]))',
-      );
+      expect(commandCode).toContain('tags: z.array(z.enum(["draft", "published", "archived"]))');
       expect(entityCode).not.toContain('z.unknown()');
       expect(commandCode).not.toContain('z.unknown()');
     });

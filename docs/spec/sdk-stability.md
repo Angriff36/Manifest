@@ -1,5 +1,9 @@
 # SDK Stability
 
+Last updated: 2026-07-19
+Status: Active
+Authority: Binding
+
 This policy defines the `@angriff36/manifest` package exports that are stable
 for Builder and other platform consumers.
 

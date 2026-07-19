@@ -33,7 +33,6 @@ import type { MaterializedViewDefinition, MaterializedViewIndex } from './types.
 import { MATERIALIZED_VIEWS_DESCRIPTOR_META } from './descriptor-meta.js';
 import { translateExpression } from './expression-to-sql.js';
 
-
 // ============================================================================
 // Surface identifiers
 // ============================================================================

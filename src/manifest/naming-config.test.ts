@@ -78,8 +78,8 @@ describe('naming-config — public config API', () => {
       'convex',
     );
     expect(opts.naming).toBe('snake_case');
-    expect((opts.__manifestNaming as { projections: { convex: unknown } }).projections.convex).toEqual(
-      { tables: { Order: 'orders_v1' } },
-    );
+    expect(
+      (opts.__manifestNaming as { projections: { convex: unknown } }).projections.convex,
+    ).toEqual({ tables: { Order: 'orders_v1' } });
   });
 });

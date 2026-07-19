@@ -48,9 +48,7 @@ describe('renderExpression — scopes & literals', () => {
     expect(renderExpression(self('person'), { ...DOC, relationVars }).code).toBe('__rel_person');
     expect(renderExpression(viaThis, { ...DOC, relationVars }).code).toBe('__rel_person');
     expect(renderExpression(id('person'), { ...DOC, relationVars }).code).toBe('__rel_person');
-    expect(renderExpression(chained, { ...DOC, relationVars }).code).toBe(
-      '__rel_person.status',
-    );
+    expect(renderExpression(chained, { ...DOC, relationVars }).code).toBe('__rel_person.status');
   });
 
   it('does not replace a plan relation when a command local shadows its bare name', () => {

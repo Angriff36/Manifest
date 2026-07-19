@@ -13,10 +13,7 @@ export const ZOD_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     optionalCommandSurface('zod.command'),
     aggregateSurface('zod.schemas'),
   ],
-  options: [
-    optionalOption('exportName', 'string'),
-    optionalOption('includeComments', 'boolean'),
-  ],
+  options: [optionalOption('exportName', 'string'), optionalOption('includeComments', 'boolean')],
   artifactCategories: ['validation', 'schemas'],
   packageDependencies: ['zod'],
   runtimeDependencies: [],

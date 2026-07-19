@@ -221,22 +221,12 @@ function stripCommentsForColonScan(s: string): string {
   return out.join('');
 }
 
-function advanceScanString(
-  s: string,
-  index: number,
-  ch: string,
-  inStr: string,
-): string | null {
+function advanceScanString(s: string, index: number, ch: string, inStr: string): string | null {
   if (ch === inStr && s[index - 1] !== '\\') return null;
   return inStr;
 }
 
-function pushBlankedComment(
-  s: string,
-  start: number,
-  after: number,
-  out: string[],
-): number {
+function pushBlankedComment(s: string, start: number, after: number, out: string[]): number {
   let i = start;
   while (i < after) {
     out.push(s[i] === '\n' || s[i] === '\r' ? s[i]! : ' ');

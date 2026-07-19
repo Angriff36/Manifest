@@ -199,10 +199,14 @@ export function getLanguageMetadata(): LanguageMetadata {
   const contextualTopLevelConstructs = [...CONTEXTUAL_TOP_LEVEL_CONSTRUCTS];
   const contextualKeywords = [...CONTEXTUAL_KEYWORDS];
   const keywordPrimitives = assertKeywordSubset('primitiveTypes', KEYWORD_PRIMITIVE_TYPES);
-  const primitiveTypes = [...keywordPrimitives, ...DATE_TIME_TYPE_NAMES].sort((a, b) => a.localeCompare(b));
+  const primitiveTypes = [...keywordPrimitives, ...DATE_TIME_TYPE_NAMES].sort((a, b) =>
+    a.localeCompare(b),
+  );
   const builtinNames = listCoreBuiltinNames();
   const builtins = builtinNames.map((name) => ({ name }));
-  const documentationIds = [...new Set([...keywords, ...builtinNames])].sort((a, b) => a.localeCompare(b));
+  const documentationIds = [...new Set([...keywords, ...builtinNames])].sort((a, b) =>
+    a.localeCompare(b),
+  );
 
   return {
     keywords,

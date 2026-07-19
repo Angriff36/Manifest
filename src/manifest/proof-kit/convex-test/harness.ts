@@ -117,7 +117,9 @@ export class ManifestConvexProofHarness {
     // helpers when apps pass list queries; for raw db in tests we assert the
     // actor's auth tenant cannot match foreign docs when filtering by auth.
     const authTenant = await otherTenantActor.run(async (ctx) => {
-      const identity = await (ctx.auth as { getUserIdentity: () => Promise<Record<string, unknown> | null> }).getUserIdentity();
+      const identity = await (
+        ctx.auth as { getUserIdentity: () => Promise<Record<string, unknown> | null> }
+      ).getUserIdentity();
       return identity?.tenantId;
     });
     if (authTenant === foreignTenantId) {

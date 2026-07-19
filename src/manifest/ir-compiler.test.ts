@@ -1604,9 +1604,9 @@ describe('IRCompiler', () => {
 
       expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       expect(result.ir).not.toBeNull();
-      const rel = result.ir!.entities.find((e) => e.name === 'User')!.relationships.find(
-        (r) => r.name === 'posts',
-      );
+      const rel = result
+        .ir!.entities.find((e) => e.name === 'User')!
+        .relationships.find((r) => r.name === 'posts');
       expect(rel?.through).toBe('AuthorPost');
       expect(rel?.target).toBe('Post');
     });

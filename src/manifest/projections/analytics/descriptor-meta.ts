@@ -9,7 +9,7 @@ export const ANALYTICS_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     aggregateSurface('analytics.handlers'),
   ],
   options: [],
-  artifactCategories: ["analytics"],
+  artifactCategories: ['analytics'],
   packageDependencies: [],
   runtimeDependencies: [],
   compatibleCompanions: [],

@@ -900,8 +900,7 @@ function prismaReferentialAttrs(
   const isMutualCycle =
     !isSelfRelation &&
     !!targetEntity?.relationships.some(
-      (r) =>
-        (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === entity.name && !r.through,
+      (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === entity.name && !r.through,
     );
   const cycleDefault =
     isSelfRelation || isMutualCycle

@@ -346,12 +346,7 @@ declare const RolePermissionOpenStringBrand: unique symbol;
 type RolePermissionOpenString = string & { readonly [RolePermissionOpenStringBrand]?: true };
 
 export type RolePermissionAction =
-  | 'read'
-  | 'write'
-  | 'delete'
-  | 'execute'
-  | 'all'
-  | RolePermissionOpenString;
+  'read' | 'write' | 'delete' | 'execute' | 'all' | RolePermissionOpenString;
 
 export interface RolePermissionNode {
   kind: 'allow' | 'deny';

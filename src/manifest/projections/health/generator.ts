@@ -25,7 +25,6 @@ import type { HealthCheckProjectionOptions } from './types';
 import { normalizeHealthOptions } from './types.js';
 import { HEALTH_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 // ============================================================================
 // Surface identifiers
 // ============================================================================

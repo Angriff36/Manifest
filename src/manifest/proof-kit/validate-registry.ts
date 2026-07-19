@@ -54,9 +54,7 @@ export function validateProofRegistry(
   options: ValidateProofRegistryOptions,
 ): ProofValidationIssue[] {
   const issues: ProofValidationIssue[] = [];
-  const exists =
-    options.fileExists ??
-    ((abs: string) => existsSync(abs));
+  const exists = options.fileExists ?? ((abs: string) => existsSync(abs));
 
   if (registry.versions.manifestVersion !== options.installedManifestVersion) {
     issues.push({
@@ -116,7 +114,8 @@ export function validateProofRegistry(
         if (!stillDeclared && options.catalog.entities.length > 0) {
           // Only flag disappearance when catalog includes related entities.
           const related = options.catalog.entities.some(
-            (e) => e.entity === proof.entity || e.commands.some((c) => c.emits.includes(proof.event!)),
+            (e) =>
+              e.entity === proof.entity || e.commands.some((c) => c.emits.includes(proof.event!)),
           );
           if (related) {
             issues.push({

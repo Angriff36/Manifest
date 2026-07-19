@@ -31,12 +31,15 @@ export class CiGateRunner {
   async run(): Promise<{ ok: boolean; failures: string[] }> {
     const { loadAllConfigs } = await import('../utils/config.js');
     const { build } = await loadAllConfigs(this.cwd);
-    const gates = new DriftGatesResolver().resolve(build.driftGates as DriftGatesConfig | undefined, {
-      effectiveConfigSnapshot: this.options.effectiveConfigSnapshot,
-      failOnConfigDrift: this.options.failOnConfigDrift,
-      failOnGeneratedDrift: this.options.failOnGeneratedDrift,
-      pinIrSchemaVersion: this.options.pinIrSchemaVersion,
-    });
+    const gates = new DriftGatesResolver().resolve(
+      build.driftGates as DriftGatesConfig | undefined,
+      {
+        effectiveConfigSnapshot: this.options.effectiveConfigSnapshot,
+        failOnConfigDrift: this.options.failOnConfigDrift,
+        failOnGeneratedDrift: this.options.failOnGeneratedDrift,
+        pinIrSchemaVersion: this.options.pinIrSchemaVersion,
+      },
+    );
 
     const failures: string[] = [];
 

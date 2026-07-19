@@ -162,7 +162,8 @@ export type ManifestProjectionsConfig = {
   /** Shared options merged under each projection's `options` (per-projection wins). */
   defaults?: Record<string, unknown>;
 } & {
-  [projectionName: string]: ManifestProjectionConfig | string[] | Record<string, unknown> | undefined;
+  [projectionName: string]:
+    ManifestProjectionConfig | string[] | Record<string, unknown> | undefined;
 };
 
 /**

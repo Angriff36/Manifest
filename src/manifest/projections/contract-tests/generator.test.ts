@@ -104,9 +104,7 @@ describe('contract-tests projection', () => {
     const code = res.artifacts[0]!.code;
     expect(code).not.toContain('listSecret');
     expect(code).not.toContain('getSecret');
-    expect(
-      res.diagnostics.some((d) => d.code === 'CONTRACT_TESTS_SKIP_INTERNAL_QUERY'),
-    ).toBe(true);
+    expect(res.diagnostics.some((d) => d.code === 'CONTRACT_TESTS_SKIP_INTERNAL_QUERY')).toBe(true);
   });
 
   it('asserts list/get for read-gated entities when authContextImport is set', () => {
@@ -141,8 +139,8 @@ describe('contract-tests projection', () => {
     const code = res.artifacts[0]!.code;
     expect(code).toContain('listSecret');
     expect(code).toContain('getSecret');
-    expect(
-      res.diagnostics.some((d) => d.code === 'CONTRACT_TESTS_SKIP_INTERNAL_QUERY'),
-    ).toBe(false);
+    expect(res.diagnostics.some((d) => d.code === 'CONTRACT_TESTS_SKIP_INTERNAL_QUERY')).toBe(
+      false,
+    );
   });
 });

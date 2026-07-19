@@ -1,5 +1,9 @@
 # Projection Descriptors
 
+Last updated: 2026-07-19
+Status: Active
+Authority: Binding
+
 Builder-facing contract for **how** to invoke a registered projection.
 Published from `@angriff36/manifest/projections`.
 

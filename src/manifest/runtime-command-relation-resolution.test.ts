@@ -79,9 +79,7 @@ function relationIR(): IR {
   const create: IRCommand = {
     name: 'create',
     entity: 'Shift',
-    parameters: [
-      { name: 'personId', type: { name: 'string', nullable: false }, required: true },
-    ],
+    parameters: [{ name: 'personId', type: { name: 'string', nullable: false }, required: true }],
     guards: [
       compare('!=', self('person'), nullLiteral),
       compare('==', member(self('person'), 'status'), literal('active')),
@@ -149,7 +147,7 @@ describe('runtime command relation resolution', () => {
     const result = await runtime.runCommand('create', { personId: 'p1' }, { entityName: 'Shift' });
 
     expect(result.success).toBe(true);
-    expect((await runtime.getAllInstances('Shift'))).toHaveLength(1);
+    expect(await runtime.getAllInstances('Shift')).toHaveLength(1);
   });
 
   it('rejects an initialization guard when the relation target is missing', async () => {
@@ -187,7 +185,11 @@ describe('runtime command relation resolution', () => {
       status: 'scheduled',
     });
 
-    const result = await runtime.runCommand('activate', {}, { entityName: 'Shift', instanceId: 's1' });
+    const result = await runtime.runCommand(
+      'activate',
+      {},
+      { entityName: 'Shift', instanceId: 's1' },
+    );
 
     expect(result.success).toBe(true);
     expect((await runtime.getInstance('Shift', 's1'))?.status).toBe('active');

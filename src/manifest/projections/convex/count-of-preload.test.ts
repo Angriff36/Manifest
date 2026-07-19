@@ -44,11 +44,7 @@ function entity(name: string, props: IRProperty[], rels: IREntity['relationships
 }
 
 /** Mirror Event.beginExecution readiness: count_of(self.rel, (x) => status checks) == 0 */
-function countOfOpenStatus(
-  rel: string,
-  param: string,
-  openStatuses: string[],
-): IRExpression {
+function countOfOpenStatus(rel: string, param: string, openStatuses: string[]): IRExpression {
   let body: IRExpression | undefined;
   for (const status of openStatuses) {
     const cmp: IRExpression = {
@@ -57,9 +53,7 @@ function countOfOpenStatus(
       left: { kind: 'member', object: { kind: 'identifier', name: param }, property: 'status' },
       right: { kind: 'literal', value: { kind: 'string', value: status } },
     };
-    body = body
-      ? { kind: 'binary', operator: 'and', left: body, right: cmp }
-      : cmp;
+    body = body ? { kind: 'binary', operator: 'and', left: body, right: cmp } : cmp;
   }
   return {
     kind: 'binary',
@@ -151,11 +145,7 @@ describe('PB023 — count_of hasMany lambda guards in convex.mutations', () => {
               left: countOfOpenStatus('prepTasks', 't', ['completed', 'cancelled']),
               right: countOfOpenStatus('packLists', 'p', ['dispatched', 'cancelled']),
             },
-            right: countOfOpenStatus('deliveries', 'd', [
-              'delivered',
-              'cancelled',
-              'failed',
-            ]),
+            right: countOfOpenStatus('deliveries', 'd', ['delivered', 'cancelled', 'failed']),
           },
         ],
         actions: [

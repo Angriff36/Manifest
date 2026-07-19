@@ -30,11 +30,7 @@ function lineOf(source: string, index: number): number {
   return source.slice(0, index).split(/\r?\n/).length;
 }
 
-function isExcepted(
-  file: string,
-  rule: string,
-  config: IntegrationGuardConfig,
-): boolean {
+function isExcepted(file: string, rule: string, config: IntegrationGuardConfig): boolean {
   return config.exceptions.some((ex) => {
     if (!file.includes(ex.pathIncludes)) return false;
     return !ex.rule || ex.rule === rule;
@@ -144,9 +140,7 @@ function inspectConvexLibFile(
   const file = normalized(relativePath);
   const violations: GuardViolation[] = [];
 
-  const insert = source.match(
-    new RegExp(`ctx\\.db\\.insert\\(\\s*["'](?:${tablePattern})["']`),
-  );
+  const insert = source.match(new RegExp(`ctx\\.db\\.insert\\(\\s*["'](?:${tablePattern})["']`));
   if (insert) {
     push(
       violations,

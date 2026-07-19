@@ -138,7 +138,9 @@ export function canonicalTableName(entityName: string, policy?: ResolvedNamingCo
   const entity = canonicalEntityName(entityName, undefined, policy);
   const irregular =
     policy?.irregularPlurals?.[entity] ??
-    Object.entries(policy?.irregularPlurals ?? {}).find(([k]) => nameKey(k) === nameKey(entity))?.[1];
+    Object.entries(policy?.irregularPlurals ?? {}).find(
+      ([k]) => nameKey(k) === nameKey(entity),
+    )?.[1];
   const rule = policy?.tables ?? {
     casing: 'camel' as const,
     pluralization: 'automatic' as const,

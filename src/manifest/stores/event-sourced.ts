@@ -139,9 +139,7 @@ export function eventSourcedOptionsFromConfig(
         ? interval.value
         : undefined,
     exposeEventLog:
-      expose?.kind === 'boolean' && typeof expose.value === 'boolean'
-        ? expose.value
-        : undefined,
+      expose?.kind === 'boolean' && typeof expose.value === 'boolean' ? expose.value : undefined,
     generateId,
   };
 }

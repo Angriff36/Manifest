@@ -8,10 +8,7 @@ import {
   commandCreationEntry,
   commandCreationExportName,
 } from '../projections/convex/creation-entry.js';
-import {
-  normalizeOptions,
-  resolveConvexTableName,
-} from '../projections/convex/options.js';
+import { normalizeOptions, resolveConvexTableName } from '../projections/convex/options.js';
 import type {
   CapabilityCatalog,
   CommandCapability,
@@ -75,10 +72,7 @@ function collectRoleAllows(expr: IRExpression | undefined, out: Set<string>): vo
 
 function capabilitiesForEntity(ir: IR, entity: IREntity): string[] {
   const out = new Set<string>();
-  const policyNames = new Set([
-    ...(entity.policies ?? []),
-    ...(entity.defaultPolicies ?? []),
-  ]);
+  const policyNames = new Set([...(entity.policies ?? []), ...(entity.defaultPolicies ?? [])]);
   for (const policy of ir.policies ?? []) {
     if (policy.entity === entity.name || policyNames.has(policy.name)) {
       collectRoleAllows(policy.expression, out);
@@ -102,9 +96,7 @@ function commandCapability(
     emits: [...(cmd.emits ?? [])].sort(),
     requiredCapabilities: caps,
     allocating: isCreate || !!isCreationEntry,
-    ...(isCreate || isCreationEntry
-      ? { useCreateAlias: `useCreate${entity.name}` }
-      : {}),
+    ...(isCreate || isCreationEntry ? { useCreateAlias: `useCreate${entity.name}` } : {}),
   };
 }
 
@@ -112,11 +104,7 @@ export function reactionProofId(rule: IRReactionRule): string {
   return `${rule.event}->${rule.targetEntity}.${rule.targetCommand}`;
 }
 
-function statusFor(
-  id: string,
-  opts: EmitCatalogOptions,
-  baseline: ProofStatus,
-): ProofStatus {
+function statusFor(id: string, opts: EmitCatalogOptions, baseline: ProofStatus): ProofStatus {
   const decision = opts.productDecisionIds?.get(id);
   if (decision) return decision;
   if (opts.runtimeProofIds?.has(id)) return 'runtime_proven';
@@ -212,10 +200,7 @@ function entityCapability(
 }
 
 /** Build a deterministic capability catalog from compiled IR. */
-export function emitCapabilityCatalog(
-  ir: IR,
-  options: EmitCatalogOptions = {},
-): CapabilityCatalog {
+export function emitCapabilityCatalog(ir: IR, options: EmitCatalogOptions = {}): CapabilityCatalog {
   const versions: ProofKitVersions = {
     manifestVersion: options.versions?.manifestVersion ?? COMPILER_VERSION,
     projection: options.versions?.projection ?? 'convex',
@@ -225,18 +210,14 @@ export function emitCapabilityCatalog(
   const convexOpts = normalizeOptions(options.convexOptions);
   const filter = options.entityFilter
     ? new Set(
-        Array.isArray(options.entityFilter)
-          ? options.entityFilter
-          : [...options.entityFilter],
+        Array.isArray(options.entityFilter) ? options.entityFilter : [...options.entityFilter],
       )
     : null;
 
   const entities = ir.entities
     .filter((e) => !e.external)
     .filter((e) => !filter || filter.has(e.name))
-    .map((e) =>
-      entityCapability(e, ir, resolveConvexTableName(e.name, convexOpts), options),
-    )
+    .map((e) => entityCapability(e, ir, resolveConvexTableName(e.name, convexOpts), options))
     .sort((a, b) => a.entity.localeCompare(b.entity));
 
   return {

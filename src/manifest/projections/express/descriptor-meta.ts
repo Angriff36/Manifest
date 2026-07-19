@@ -1,9 +1,5 @@
 import type { ProjectionDescriptorMeta } from '../descriptor-types.js';
-import {
-  aggregateSurface,
-  entitySurface,
-  optionalOption,
-} from '../descriptor-helpers.js';
+import { aggregateSurface, entitySurface, optionalOption } from '../descriptor-helpers.js';
 
 export const EXPRESS_DESCRIPTOR_META: ProjectionDescriptorMeta = {
   displayName: 'Express',
@@ -28,7 +24,7 @@ export const EXPRESS_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     }),
     optionalOption('emitCompanions', 'boolean', { default: true }),
   ],
-  artifactCategories: ["routes","types","companions"],
+  artifactCategories: ['routes', 'types', 'companions'],
   packageDependencies: ['express'],
   runtimeDependencies: [],
   compatibleCompanions: [],

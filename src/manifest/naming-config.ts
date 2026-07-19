@@ -13,14 +13,7 @@ import { normalizeNaming } from './projections/shared/naming.js';
 export type NamingRuleSeverity = 'off' | 'warn' | 'error' | 'fix';
 
 /** Configurable casing styles for identifiers / storage names. */
-export type NamingCasing =
-  | 'preserve'
-  | 'camel'
-  | 'pascal'
-  | 'snake'
-  | 'kebab'
-  | 'upper'
-  | 'lower';
+export type NamingCasing = 'preserve' | 'camel' | 'pascal' | 'snake' | 'kebab' | 'upper' | 'lower';
 
 export type PluralizationMode = 'preserve' | 'automatic' | 'explicit';
 
@@ -173,7 +166,10 @@ export function validateNamingConfig(raw: unknown): NamingConfigDiagnostic[] {
   if (raw == null) return diags;
   if (isLegacyNamingConvention(raw)) return diags;
   if (typeof raw !== 'object' || Array.isArray(raw)) {
-    diags.push({ severity: 'error', message: 'naming must be an object or the string "snake_case".' });
+    diags.push({
+      severity: 'error',
+      message: 'naming must be an object or the string "snake_case".',
+    });
     return diags;
   }
   const o = raw as NamingNormalizationConfig;
@@ -181,7 +177,11 @@ export function validateNamingConfig(raw: unknown): NamingConfigDiagnostic[] {
   const casings = new Set(['preserve', 'camel', 'pascal', 'snake', 'kebab', 'upper', 'lower']);
   const plurals = new Set(['preserve', 'automatic', 'explicit']);
 
-  const checkCategory = (label: string, rule: NamingCategoryRule | undefined, allow: NamingCasing[]) => {
+  const checkCategory = (
+    label: string,
+    rule: NamingCategoryRule | undefined,
+    allow: NamingCasing[],
+  ) => {
     if (!rule) return;
     if (rule.casing != null && !allow.includes(rule.casing)) {
       diags.push({
@@ -203,12 +203,49 @@ export function validateNamingConfig(raw: unknown): NamingConfigDiagnostic[] {
     }
   };
 
-  checkCategory('entities', o.entities, ['preserve', 'pascal', 'camel', 'snake', 'kebab', 'upper', 'lower']);
-  checkCategory('fields', o.fields, ['preserve', 'camel', 'pascal', 'snake', 'kebab', 'upper', 'lower']);
-  checkCategory('relationships', o.relationships, ['preserve', 'camel', 'pascal', 'snake', 'kebab']);
+  checkCategory('entities', o.entities, [
+    'preserve',
+    'pascal',
+    'camel',
+    'snake',
+    'kebab',
+    'upper',
+    'lower',
+  ]);
+  checkCategory('fields', o.fields, [
+    'preserve',
+    'camel',
+    'pascal',
+    'snake',
+    'kebab',
+    'upper',
+    'lower',
+  ]);
+  checkCategory('relationships', o.relationships, [
+    'preserve',
+    'camel',
+    'pascal',
+    'snake',
+    'kebab',
+  ]);
   checkCategory('commands', o.commands, ['preserve', 'camel', 'pascal', 'snake', 'kebab']);
-  checkCategory('events', o.events, ['preserve', 'pascal', 'camel', 'snake', 'kebab', 'upper', 'lower']);
-  checkCategory('collections', o.collections, ['preserve', 'camel', 'pascal', 'snake', 'kebab', 'lower']);
+  checkCategory('events', o.events, [
+    'preserve',
+    'pascal',
+    'camel',
+    'snake',
+    'kebab',
+    'upper',
+    'lower',
+  ]);
+  checkCategory('collections', o.collections, [
+    'preserve',
+    'camel',
+    'pascal',
+    'snake',
+    'kebab',
+    'lower',
+  ]);
   checkCategory('tables', o.tables, ['preserve', 'camel', 'pascal', 'snake', 'kebab', 'lower']);
 
   for (const key of ['collections', 'tables'] as const) {
@@ -278,7 +315,10 @@ function validateAliases(aliases: Record<string, string>): NamingConfigDiagnosti
   const key = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   for (const [from, to] of Object.entries(aliases)) {
     if (!from || !to) {
-      diags.push({ severity: 'error', message: `naming.aliases entry '${from}' → '${to}' is empty.` });
+      diags.push({
+        severity: 'error',
+        message: `naming.aliases entry '${from}' → '${to}' is empty.`,
+      });
       continue;
     }
     if (key(from) === key(to)) {
@@ -363,7 +403,10 @@ export function resolveNamingConfig(raw?: ManifestNamingInput | null): ResolvedN
   const enabled = o.normalization === true;
   const base = RECOMMENDED_WHEN_ENABLED;
 
-  const cat = (rule: NamingCategoryRule | undefined, fallback: ResolvedCategoryRule): ResolvedCategoryRule => ({
+  const cat = (
+    rule: NamingCategoryRule | undefined,
+    fallback: ResolvedCategoryRule,
+  ): ResolvedCategoryRule => ({
     casing: rule?.casing ?? fallback.casing,
     mismatch: enabled ? (rule?.mismatch ?? fallback.mismatch) : 'off',
   });

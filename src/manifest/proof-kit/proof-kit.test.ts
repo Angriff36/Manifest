@@ -75,10 +75,7 @@ function sliceIR(): IR {
       params: [],
     },
   ];
-  const entities = [
-    entity('IngredientDemand', ['confirm']),
-    entity('PurchaseNeed', ['create']),
-  ];
+  const entities = [entity('IngredientDemand', ['confirm']), entity('PurchaseNeed', ['create'])];
   return {
     version: '1.0',
     provenance: {
@@ -112,20 +109,13 @@ describe('proof-kit catalog + registry', () => {
         projection: 'convex',
         preset: { id: 'convex-application', version: '1.3.4' },
       },
-      runtimeProofIds: new Set([
-        reactionProofId(ir.reactions![0]!),
-      ]),
+      runtimeProofIds: new Set([reactionProofId(ir.reactions![0]!)]),
     });
 
     expect(catalog.schemaVersion).toBe('manifest-capability-catalog/v1');
-    expect(catalog.entities.map((e) => e.entity)).toEqual([
-      'IngredientDemand',
-      'PurchaseNeed',
-    ]);
+    expect(catalog.entities.map((e) => e.entity)).toEqual(['IngredientDemand', 'PurchaseNeed']);
     expect(catalog.entities[0]!.table).toBe('ingredientDemands');
-    expect(catalog.entities[1]!.allocatingCreate?.useCreateAlias).toBe(
-      'useCreatePurchaseNeed',
-    );
+    expect(catalog.entities[1]!.allocatingCreate?.useCreateAlias).toBe('useCreatePurchaseNeed');
     expect(catalog.entities[0]!.requiredRolesOrCapabilities).toContain('inventoryAccess');
     const reaction = catalog.entities[0]!.reactions.find((r) =>
       r.id.includes('IngredientDemandConfirmed'),
@@ -143,7 +133,10 @@ describe('proof-kit catalog + registry', () => {
     const proofId = reactionProofId(ir.reactions![0]!);
     const registry = emitProofRegistry(ir, {
       entityFilter: ['IngredientDemand', 'PurchaseNeed'],
-      versions: { manifestVersion: COMPILER_VERSION, preset: { id: 'convex-application', version: '1.3.4' } },
+      versions: {
+        manifestVersion: COMPILER_VERSION,
+        preset: { id: 'convex-application', version: '1.3.4' },
+      },
       testBindings: [
         {
           proofId,

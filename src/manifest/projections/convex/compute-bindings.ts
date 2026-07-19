@@ -61,7 +61,10 @@ export function computeBindingLines(bindings: ComputeBinding[]): string[] {
 }
 
 /** Merge compute binding names into a render scope's locals. */
-export function withComputeLocals(scope: RenderScope, computeLocals: readonly string[]): RenderScope {
+export function withComputeLocals(
+  scope: RenderScope,
+  computeLocals: readonly string[],
+): RenderScope {
   if (computeLocals.length === 0) return scope;
   const locals = [...(scope.locals ?? [])];
   for (const name of computeLocals) {

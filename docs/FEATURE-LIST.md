@@ -6,7 +6,7 @@
 > This document proves that a capability is registered or has executable evidence; it does **not** independently prove completion.
 > Completion status is governed by [`docs/platform/FEATURE_MATRIX.md`](platform/FEATURE_MATRIX.md). Language meaning is governed by `docs/spec/**`.
 
-Package version: `3.6.7`
+Package version: `3.6.21`
 
 Generated sources:
 
@@ -21,457 +21,459 @@ Generated sources:
 
 The public language-metadata registry currently reports 19 top-level constructs, 14 primitive types, 9 property modifiers, and 47 runtime built-ins.
 
-| Registry                  | Values                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Top-level constructs      | `entity`, `enum`, `command`, `module`, `policy`, `store`, `event`, `saga`, `tenant`, `webhook`, `use`, `flow`, `effect`, `expose`, `compose`, `on`, `value`, `role`, `schedule`                                                                                                                                                                                                                                                                                                                                                     |
-| Relationship kinds        | `hasMany`, `hasOne`, `belongsTo`, `ref`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| Command/action constructs | `guard`, `when`, `mutate`, `emit`, `publish`, `persist`, `compute`, `effect`, `returns`, `async`                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| Primitive types           | `any`, `boolean`, `date`, `datetime`, `decimal`, `duration`, `list`, `map`, `money`, `number`, `string`, `time`, `timestamp`, `void`                                                                                                                                                                                                                                                                                                                                                                                                |
-| Property modifiers        | `required`, `unique`, `indexed`, `private`, `readonly`, `optional`, `searchable`, `encrypted`, `masked`                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| Contextual keywords       | `compensate`, `count`, `cron`, `every`, `external`, `interval`, `masked`, `method`, `mixin`, `on_failure`, `on_timeout`, `policies`, `rateLimit`, `realtime`, `retry`, `role`, `schedule`, `stage`, `step`, `unmask`, `value`                                                                                                                                                                                                                                                                                                       |
-| Operators                 | `!`, `!=`, `%`, `&`, `&&`, `*`, `+`, `-`, `->`, `.`, `..`, `/`, `:`, `<`, `<=`, `=`, `==`, `=>`, `>`, `>=`, `?`, `?.`, `                                                                                                                                                                                                                                                                                                                                                                                                            | `, ` |  | ` |
-| Runtime built-ins         | `abs`, `addDuration`, `avg`, `between`, `ceil`, `count`, `count_of`, `dateOf`, `datetimeOf`, `day`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`, `endsWith`, `filter`, `flag`, `floor`, `hasPermission`, `hours`, `indexOf`, `length`, `map`, `matches`, `max`, `max_of`, `min`, `min_of`, `minutes`, `month`, `now`, `replace`, `roleAllows`, `round`, `search`, `seconds`, `split`, `startsWith`, `substring`, `sum`, `timeOf`, `toLowerCase`, `toUpperCase`, `trim`, `uuid`, `year` |
+| Registry | Values |
+| --- | --- |
+| Top-level constructs | `entity`, `enum`, `command`, `module`, `policy`, `store`, `event`, `saga`, `tenant`, `webhook`, `use`, `flow`, `effect`, `expose`, `compose`, `on`, `value`, `role`, `schedule` |
+| Relationship kinds | `hasMany`, `hasOne`, `belongsTo`, `ref` |
+| Command/action constructs | `guard`, `when`, `mutate`, `emit`, `publish`, `persist`, `compute`, `effect`, `returns`, `async` |
+| Primitive types | `any`, `boolean`, `date`, `datetime`, `decimal`, `duration`, `list`, `map`, `money`, `number`, `string`, `time`, `timestamp`, `void` |
+| Property modifiers | `required`, `unique`, `indexed`, `private`, `readonly`, `optional`, `searchable`, `encrypted`, `masked` |
+| Contextual keywords | `compensate`, `count`, `cron`, `every`, `external`, `interval`, `masked`, `method`, `mixin`, `on_failure`, `on_timeout`, `policies`, `rateLimit`, `realtime`, `retry`, `role`, `schedule`, `stage`, `step`, `unmask`, `value` |
+| Operators | `-`, `->`, `:`, `!`, `!=`, `?`, `?.`, `.`, `..`, `*`, `/`, `&`, `&&`, `%`, `+`, `<`, `<=`, `=`, `==`, `=>`, `>`, `>=`, `|`, `||` |
+| Runtime built-ins | `abs`, `addDuration`, `avg`, `between`, `ceil`, `count`, `count_of`, `dateOf`, `datetimeOf`, `day`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`, `endsWith`, `filter`, `flag`, `floor`, `hasPermission`, `hours`, `indexOf`, `length`, `map`, `matches`, `max`, `max_of`, `min`, `min_of`, `minutes`, `month`, `now`, `replace`, `roleAllows`, `round`, `search`, `seconds`, `split`, `startsWith`, `substring`, `sum`, `timeOf`, `toLowerCase`, `toUpperCase`, `trim`, `uuid`, `year` |
 
 ## Registered projections
 
 29 projections are registered. 1 declare a structured capability matrix; an undeclared matrix means “not yet declared,” not “unsupported.”
 
-| Projection           | Surfaces                                                                                                                                                                                                                         | Safe to invoke | Capabilities                             |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ---------------------------------------- |
-| `analytics`          | `analytics.tracking-plan`, `analytics.events`, `analytics.handlers`                                                                                                                                                              | no             | undeclared                               |
-| `contract-tests`     | `contract-tests.convex`                                                                                                                                                                                                          | yes            | undeclared                               |
-| `convex`             | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react`                                                                                          | yes            | 21 supported / 9 partial / 6 unsupported |
-| `dart`               | `dart.entity`, `dart.command`, `dart.models`, `dart.client`, `dart.providers`, `dart.package`                                                                                                                                    | no             | undeclared                               |
-| `drizzle`            | `drizzle.schema`                                                                                                                                                                                                                 | yes            | undeclared                               |
-| `dynamodb`           | `dynamodb.cloudformation`, `dynamodb.cdk`, `dynamodb.terraform`                                                                                                                                                                  | yes            | undeclared                               |
-| `elasticsearch`      | `elasticsearch.mapping`, `elasticsearch.indexTemplate`, `elasticsearch.ingestPipeline`, `elasticsearch.indexer`, `elasticsearch.client`                                                                                          | yes            | undeclared                               |
-| `express`            | `express.router`, `express.entity`, `express.types`, `express.companions`, `express.webhooks`, `express.all`                                                                                                                     | yes            | undeclared                               |
-| `graphql`            | `graphql.schema`, `graphql.resolvers`                                                                                                                                                                                            | yes            | undeclared                               |
-| `health`             | `health.handler`, `health.nextjs`, `health.express`                                                                                                                                                                              | yes            | undeclared                               |
-| `hono`               | `hono.router`, `hono.entity`, `hono.types`, `hono.companions`, `hono.webhooks`, `hono.all`                                                                                                                                       | yes            | undeclared                               |
-| `jsonschema`         | `jsonschema.entity`, `jsonschema.schemas`                                                                                                                                                                                        | yes            | undeclared                               |
-| `kysely`             | `kysely.types`                                                                                                                                                                                                                   | yes            | undeclared                               |
-| `llm-context`        | `llm-context.full`, `llm-context.summary`, `llm-context.ir`                                                                                                                                                                      | yes            | undeclared                               |
-| `materialized-views` | `materialized-views.ddl`                                                                                                                                                                                                         | yes            | undeclared                               |
-| `mermaid`            | `mermaid.er`, `mermaid.state`, `mermaid.sequence`, `mermaid.all`                                                                                                                                                                 | yes            | undeclared                               |
-| `nextjs`             | `nextjs.route`, `nextjs.detail`, `nextjs.command`, `nextjs.dispatcher`, `nextjs.subscribe`, `nextjs.subscriptionHook`, `nextjs.sharedRuntime`, `nextjs.schedule`, `nextjs.webhook`, `nextjs.companions`, `ts.types`, `ts.client` | yes            | undeclared                               |
-| `openapi`            | `openapi.spec`                                                                                                                                                                                                                   | yes            | undeclared                               |
-| `prisma`             | `prisma.schema`                                                                                                                                                                                                                  | yes            | undeclared                               |
-| `prisma-store`       | `prisma-store.metadata`, `prisma-store.registry`                                                                                                                                                                                 | yes            | undeclared                               |
-| `pydantic`           | `pydantic.entity`, `pydantic.command`, `pydantic.models`, `pydantic.client`                                                                                                                                                      | no             | undeclared                               |
-| `react-query`        | `react-query.hooks`, `react-query.provider`                                                                                                                                                                                      | yes            | undeclared                               |
-| `remix`              | `remix.list`, `remix.detail`, `remix.command`, `remix.types`, `remix.client`, `remix.companions`                                                                                                                                 | yes            | undeclared                               |
-| `routes`             | `routes.manifest`, `routes.ts`                                                                                                                                                                                                   | yes            | undeclared                               |
-| `storybook`          | `storybook.entity`, `storybook.command`, `storybook.all`                                                                                                                                                                         | no             | undeclared                               |
-| `sveltekit`          | `sveltekit.server`, `sveltekit.load`, `sveltekit.command`, `sveltekit.types`, `sveltekit.client`, `sveltekit.companions`                                                                                                         | yes            | undeclared                               |
-| `terraform`          | `terraform.hcl`                                                                                                                                                                                                                  | yes            | undeclared                               |
-| `wiring`             | `wiring.contract`, `wiring.bindings`, `wiring.all`                                                                                                                                                                               | yes            | undeclared                               |
-| `zod`                | `zod.entity`, `zod.command`, `zod.schemas`                                                                                                                                                                                       | yes            | undeclared                               |
+| Projection | Surfaces | Safe to invoke | Capabilities |
+| --- | --- | --- | --- |
+| `analytics` | `analytics.tracking-plan`, `analytics.events`, `analytics.handlers` | no | undeclared |
+| `contract-tests` | `contract-tests.convex` | yes | undeclared |
+| `convex` | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react` | yes | 21 supported / 9 partial / 6 unsupported |
+| `dart` | `dart.entity`, `dart.command`, `dart.models`, `dart.client`, `dart.providers`, `dart.package` | no | undeclared |
+| `drizzle` | `drizzle.schema` | yes | undeclared |
+| `dynamodb` | `dynamodb.cloudformation`, `dynamodb.cdk`, `dynamodb.terraform` | yes | undeclared |
+| `elasticsearch` | `elasticsearch.mapping`, `elasticsearch.indexTemplate`, `elasticsearch.ingestPipeline`, `elasticsearch.indexer`, `elasticsearch.client` | yes | undeclared |
+| `express` | `express.router`, `express.entity`, `express.types`, `express.companions`, `express.webhooks`, `express.all` | yes | undeclared |
+| `graphql` | `graphql.schema`, `graphql.resolvers` | yes | undeclared |
+| `health` | `health.handler`, `health.nextjs`, `health.express` | yes | undeclared |
+| `hono` | `hono.router`, `hono.entity`, `hono.types`, `hono.companions`, `hono.webhooks`, `hono.all` | yes | undeclared |
+| `jsonschema` | `jsonschema.entity`, `jsonschema.schemas` | yes | undeclared |
+| `kysely` | `kysely.types` | yes | undeclared |
+| `llm-context` | `llm-context.full`, `llm-context.summary`, `llm-context.ir` | yes | undeclared |
+| `materialized-views` | `materialized-views.ddl` | yes | undeclared |
+| `mermaid` | `mermaid.er`, `mermaid.state`, `mermaid.sequence`, `mermaid.all` | yes | undeclared |
+| `nextjs` | `nextjs.route`, `nextjs.detail`, `nextjs.command`, `nextjs.dispatcher`, `nextjs.subscribe`, `nextjs.subscriptionHook`, `nextjs.sharedRuntime`, `nextjs.schedule`, `nextjs.webhook`, `nextjs.companions`, `ts.types`, `ts.client` | yes | undeclared |
+| `openapi` | `openapi.spec` | yes | undeclared |
+| `prisma` | `prisma.schema` | yes | undeclared |
+| `prisma-store` | `prisma-store.metadata`, `prisma-store.registry` | yes | undeclared |
+| `pydantic` | `pydantic.entity`, `pydantic.command`, `pydantic.models`, `pydantic.client` | no | undeclared |
+| `react-query` | `react-query.hooks`, `react-query.provider` | yes | undeclared |
+| `remix` | `remix.list`, `remix.detail`, `remix.command`, `remix.types`, `remix.client`, `remix.companions` | yes | undeclared |
+| `routes` | `routes.manifest`, `routes.ts` | yes | undeclared |
+| `storybook` | `storybook.entity`, `storybook.command`, `storybook.all` | no | undeclared |
+| `sveltekit` | `sveltekit.server`, `sveltekit.load`, `sveltekit.command`, `sveltekit.types`, `sveltekit.client`, `sveltekit.companions` | yes | undeclared |
+| `terraform` | `terraform.hcl` | yes | undeclared |
+| `wiring` | `wiring.contract`, `wiring.bindings`, `wiring.all` | yes | undeclared |
+| `zod` | `zod.entity`, `zod.command`, `zod.schemas` | yes | undeclared |
 
 ## Registered CLI commands
 
 71 built-in command paths are registered in Commander. Project-specific plugin commands are intentionally excluded.
 
-| Command path                     |
-| -------------------------------- |
-| `manifest analyze`               |
-| `manifest audit-bypasses`        |
-| `manifest audit-governance`      |
-| `manifest audit-routes`          |
-| `manifest build`                 |
-| `manifest cache-status`          |
-| `manifest changelog`             |
-| `manifest check`                 |
-| `manifest ci-gate`               |
-| `manifest compile`               |
-| `manifest config`                |
-| `manifest config inspect`        |
+| Command path |
+| --- |
+| `manifest analyze` |
+| `manifest audit-bypasses` |
+| `manifest audit-governance` |
+| `manifest audit-routes` |
+| `manifest build` |
+| `manifest cache-status` |
+| `manifest changelog` |
+| `manifest check` |
+| `manifest ci-gate` |
+| `manifest compile` |
+| `manifest config` |
+| `manifest config inspect` |
 | `manifest config print-defaults` |
-| `manifest config validate`       |
-| `manifest coverage`              |
-| `manifest db`                    |
-| `manifest db init`               |
-| `manifest diagram`               |
-| `manifest diff`                  |
-| `manifest diff breaking`         |
-| `manifest diff ir-vs-ir`         |
-| `manifest diff source-vs-ir`     |
-| `manifest docs`                  |
-| `manifest doctor`                |
-| `manifest duplicates`            |
-| `manifest emit`                  |
-| `manifest emit registries`       |
-| `manifest enforce-surface`       |
-| `manifest fmt`                   |
-| `manifest generate`              |
-| `manifest generate-from-prompt`  |
-| `manifest generate-tests`        |
-| `manifest harness`               |
-| `manifest init`                  |
-| `manifest inspect`               |
-| `manifest inspect entity`        |
-| `manifest install-hooks`         |
-| `manifest integration-check`     |
-| `manifest lint-routes`           |
-| `manifest load-test`             |
-| `manifest migrate`               |
-| `manifest mock`                  |
-| `manifest pack`                  |
-| `manifest plugins`               |
-| `manifest plugins list`          |
-| `manifest preflight`             |
-| `manifest profile`               |
-| `manifest repl`                  |
-| `manifest routes`                |
-| `manifest runtime-check`         |
-| `manifest scan`                  |
-| `manifest seed`                  |
-| `manifest seed fill`             |
-| `manifest seed template`         |
-| `manifest seed validate`         |
-| `manifest unpack`                |
-| `manifest validate`              |
-| `manifest validate-ai`           |
-| `manifest versions`              |
-| `manifest versions changelog`    |
-| `manifest versions diff`         |
-| `manifest versions list`         |
-| `manifest versions rollback`     |
-| `manifest versions save`         |
-| `manifest versions show`         |
-| `manifest versions tag`          |
-| `manifest versions verify`       |
-| `manifest watch`                 |
-| `manifest wiring-coverage`       |
-| `manifest wiring-inspect`        |
-| `manifest wiring-remediate`      |
+| `manifest config validate` |
+| `manifest coverage` |
+| `manifest db` |
+| `manifest db init` |
+| `manifest diagram` |
+| `manifest diff` |
+| `manifest diff breaking` |
+| `manifest diff ir-vs-ir` |
+| `manifest diff source-vs-ir` |
+| `manifest docs` |
+| `manifest doctor` |
+| `manifest duplicates` |
+| `manifest emit` |
+| `manifest emit registries` |
+| `manifest enforce-surface` |
+| `manifest fmt` |
+| `manifest generate` |
+| `manifest generate-from-prompt` |
+| `manifest generate-tests` |
+| `manifest harness` |
+| `manifest init` |
+| `manifest inspect` |
+| `manifest inspect entity` |
+| `manifest install-hooks` |
+| `manifest integration-check` |
+| `manifest lint-routes` |
+| `manifest load-test` |
+| `manifest migrate` |
+| `manifest mock` |
+| `manifest pack` |
+| `manifest plugins` |
+| `manifest plugins list` |
+| `manifest preflight` |
+| `manifest profile` |
+| `manifest repl` |
+| `manifest routes` |
+| `manifest runtime-check` |
+| `manifest scan` |
+| `manifest seed` |
+| `manifest seed fill` |
+| `manifest seed template` |
+| `manifest seed validate` |
+| `manifest unpack` |
+| `manifest validate` |
+| `manifest validate-ai` |
+| `manifest versions` |
+| `manifest versions changelog` |
+| `manifest versions diff` |
+| `manifest versions list` |
+| `manifest versions rollback` |
+| `manifest versions save` |
+| `manifest versions show` |
+| `manifest versions tag` |
+| `manifest versions verify` |
+| `manifest watch` |
+| `manifest wiring-coverage` |
+| `manifest wiring-inspect` |
+| `manifest wiring-remediate` |
 
 ## Conformance evidence
 
 100 source fixtures are present. Expected IR, diagnostics, and results files are compiler-derived executable evidence; their presence is not a substitute for the matrix proof protocol.
 
-| Fixture                                       | Expected evidence                                                                                                                       |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `01-entity-properties.manifest`               | `01-entity-properties.ir.json`, `01-entity-properties.diagnostics.json`, `01-entity-properties.results.json`                            |
-| `02-relationships.manifest`                   | `02-relationships.ir.json`, `02-relationships.results.json`                                                                             |
-| `03-computed-properties.manifest`             | `03-computed-properties.ir.json`, `03-computed-properties.results.json`                                                                 |
-| `04-command-mutate-emit.manifest`             | `04-command-mutate-emit.ir.json`, `04-command-mutate-emit.results.json`                                                                 |
-| `05-guard-denial.manifest`                    | `05-guard-denial.ir.json`, `05-guard-denial.results.json`                                                                               |
-| `06-policy-denial.manifest`                   | `06-policy-denial.ir.json`, `06-policy-denial.results.json`                                                                             |
-| `07-reserved-word-identifier.manifest`        | `07-reserved-word-identifier.diagnostics.json`                                                                                          |
-| `08-keywords-in-expressions.manifest`         | `08-keywords-in-expressions.ir.json`, `08-keywords-in-expressions.diagnostics.json`, `08-keywords-in-expressions.results.json`          |
-| `09-compute-action.manifest`                  | `09-compute-action.ir.json`, `09-compute-action.results.json`                                                                           |
-| `10-evaluation-context.manifest`              | `10-evaluation-context.ir.json`, `10-evaluation-context.results.json`                                                                   |
-| `11-guard-ordering-diagnostics.manifest`      | `11-guard-ordering-diagnostics.ir.json`, `11-guard-ordering-diagnostics.results.json`                                                   |
-| `12-negative-compilation.manifest`            | `12-negative-compilation.diagnostics.json`                                                                                              |
-| `13-round-trip-stability.manifest`            | `13-round-trip-stability.ir.json`, `13-round-trip-stability.results.json`                                                               |
-| `14-operator-equality.manifest`               | `14-operator-equality.ir.json`, `14-operator-equality.results.json`                                                                     |
-| `15-event-log.manifest`                       | `15-event-log.ir.json`, `15-event-log.results.json`                                                                                     |
-| `16-builtin-functions.manifest`               | `16-builtin-functions.ir.json`, `16-builtin-functions.diagnostics.json`, `16-builtin-functions.results.json`                            |
-| `17-tiny-app.manifest`                        | `17-tiny-app.ir.json`, `17-tiny-app.diagnostics.json`, `17-tiny-app.results.json`                                                       |
-| `18-empty-string-defaults.manifest`           | `18-empty-string-defaults.ir.json`, `18-empty-string-defaults.results.json`                                                             |
-| `19-entity-constraints.manifest`              | `19-entity-constraints.ir.json`, `19-entity-constraints.diagnostics.json`, `19-entity-constraints.results.json`                         |
-| `20-blog-app.manifest`                        | `20-blog-app.ir.json`, `20-blog-app.diagnostics.json`, `20-blog-app.results.json`                                                       |
-| `21-constraint-outcomes.manifest`             | `21-constraint-outcomes.ir.json`, `21-constraint-outcomes.diagnostics.json`, `21-constraint-outcomes.results.json`                      |
-| `22-override-authorization.manifest`          | `22-override-authorization.ir.json`, `22-override-authorization.results.json`                                                           |
-| `23-workflow-idempotency.manifest`            | `23-workflow-idempotency.ir.json`, `23-workflow-idempotency.results.json`                                                               |
-| `24-concurrency-conflict.manifest`            | `24-concurrency-conflict.ir.json`, `24-concurrency-conflict.results.json`                                                               |
-| `25-command-constraints.manifest`             | `25-command-constraints.ir.json`, `25-command-constraints.results.json`                                                                 |
-| `26-performance-constraints.manifest`         | `26-performance-constraints.ir.json`, `26-performance-constraints.diagnostics.json`, `26-performance-constraints.results.json`          |
-| `27-vnext-integration.manifest`               | `27-vnext-integration.ir.json`, `27-vnext-integration.diagnostics.json`, `27-vnext-integration.results.json`                            |
-| `28-unclosed-braces.manifest`                 | `28-unclosed-braces.diagnostics.json`                                                                                                   |
-| `29-missing-colon.manifest`                   | `29-missing-colon.diagnostics.json`                                                                                                     |
-| `30-incomplete-expression.manifest`           | `30-incomplete-expression.diagnostics.json`                                                                                             |
-| `31-invalid-operators.manifest`               | `31-invalid-operators.diagnostics.json`                                                                                                 |
-| `32-constraint-without-expression.manifest`   | `32-constraint-without-expression.diagnostics.json`                                                                                     |
-| `33-malformed-relationship.manifest`          | `33-malformed-relationship.diagnostics.json`                                                                                            |
-| `34-command-with-reserved-name.manifest`      | `34-command-with-reserved-name.diagnostics.json`                                                                                        |
-| `35-unclosed-command-block.manifest`          | `35-unclosed-command-block.diagnostics.json`                                                                                            |
-| `36-constraint-severity.manifest`             | `36-constraint-severity.ir.json`, `36-constraint-severity.diagnostics.json`, `36-constraint-severity.results.json`                      |
-| `37-allowed-duplicate-command-names.manifest` | `37-allowed-duplicate-command-names.ir.json`, `37-allowed-duplicate-command-names.diagnostics.json`                                     |
-| `38-state-transitions.manifest`               | `38-state-transitions.ir.json`, `38-state-transitions.results.json`                                                                     |
-| `39-duplicate-constraint-codes.manifest`      | `39-duplicate-constraint-codes.diagnostics.json`                                                                                        |
-| `40-array-properties.manifest`                | `40-array-properties.ir.json`, `40-array-properties.diagnostics.json`, `40-array-properties.results.json`                               |
-| `52-override-allowed.manifest`                | `52-override-allowed.ir.json`, `52-override-allowed.results.json`                                                                       |
-| `53-override-denied.manifest`                 | `53-override-denied.ir.json`, `53-override-denied.results.json`                                                                         |
-| `54-concurrency-conflict-return.manifest`     | `54-concurrency-conflict-return.ir.json`, `54-concurrency-conflict-return.results.json`                                                 |
-| `55-default-policies.manifest`                | `55-default-policies.ir.json`, `55-default-policies.diagnostics.json`, `55-default-policies.results.json`                               |
-| `56-decimal-type.manifest`                    | `56-decimal-type.ir.json`, `56-decimal-type.diagnostics.json`                                                                           |
-| `56-expression-builtins.manifest`             | `56-expression-builtins.ir.json`, `56-expression-builtins.diagnostics.json`, `56-expression-builtins.results.json`                      |
-| `57-enum-type.manifest`                       | `57-enum-type.ir.json`, `57-enum-type.diagnostics.json`                                                                                 |
-| `57-range-constraint-builtins.manifest`       | `57-range-constraint-builtins.ir.json`                                                                                                  |
-| `60-value-objects.manifest`                   | `60-value-objects.ir.json`, `60-value-objects.diagnostics.json`                                                                         |
-| `61-tenant-isolation.manifest`                | `61-tenant-isolation.ir.json`                                                                                                           |
-| `62-timestamp-auto-fields.manifest`           | `62-timestamp-auto-fields.ir.json`, `62-timestamp-auto-fields.diagnostics.json`, `62-timestamp-auto-fields.results.json`                |
-| `63-regex-constraints.manifest`               | `63-regex-constraints.ir.json`, `63-regex-constraints.diagnostics.json`, `63-regex-constraints.results.json`                            |
-| `64-aggregate-computed-properties.manifest`   | `64-aggregate-computed-properties.ir.json`, `64-aggregate-computed-properties.results.json`                                             |
-| `65-computed-property-caching.manifest`       | `65-computed-property-caching.ir.json`, `65-computed-property-caching.results.json`                                                     |
-| `66-feature-flags.manifest`                   | `66-feature-flags.ir.json`                                                                                                              |
-| `67-event-reactions.manifest`                 | `67-event-reactions.ir.json`, `67-event-reactions.results.json`                                                                         |
-| `68-approval-workflow.manifest`               | `68-approval-workflow.ir.json`                                                                                                          |
-| `69-async-commands.manifest`                  | `69-async-commands.ir.json`                                                                                                             |
-| `70-cross-entity-constraints.manifest`        | `70-cross-entity-constraints.ir.json`, `70-cross-entity-constraints.results.json`                                                       |
-| `71-role-hierarchy.manifest`                  | `71-role-hierarchy.ir.json`, `71-role-hierarchy.results.json`                                                                           |
-| `72-command-retry-policy.manifest`            | `72-command-retry-policy.ir.json`                                                                                                       |
-| `73-map-type.manifest`                        | `73-map-type.ir.json`, `73-map-type.diagnostics.json`                                                                                   |
-| `74-rate-limit-command.manifest`              | `74-rate-limit-command.ir.json`, `74-rate-limit-command.results.json`                                                                   |
-| `75-rate-limit-policy.manifest`               | `75-rate-limit-policy.ir.json`                                                                                                          |
-| `76-scheduled-commands.manifest`              | `76-scheduled-commands.ir.json`                                                                                                         |
-| `77-entity-extends.manifest`                  | `77-entity-extends.ir.json`                                                                                                             |
-| `78-entity-mixin.manifest`                    | `78-entity-mixin.ir.json`, `78-entity-mixin.diagnostics.json`                                                                           |
-| `79-entity-extends-and-mixin.manifest`        | `79-entity-extends-and-mixin.ir.json`, `79-entity-extends-and-mixin.diagnostics.json`                                                   |
-| `80-entity-extends-unknown-parent.manifest`   | `80-entity-extends-unknown-parent.diagnostics.json`                                                                                     |
-| `81-entity-extends-cycle.manifest`            | `81-entity-extends-cycle.diagnostics.json`                                                                                              |
-| `82-dynamodb-store.manifest`                  | `82-dynamodb-store.ir.json`                                                                                                             |
-| `83-event-sourced.manifest`                   | `83-event-sourced.ir.json`                                                                                                              |
-| `84-generic-entity.manifest`                  | `84-generic-entity.ir.json`, `84-generic-entity.diagnostics.json`                                                                       |
-| `85-generic-arity-mismatch.manifest`          | `85-generic-arity-mismatch.diagnostics.json`                                                                                            |
-| `86-readmodel.manifest`                       | `86-readmodel.ir.json`, `86-readmodel.diagnostics.json`, `86-readmodel.results.json`                                                    |
-| `87-federation.manifest`                      | `87-federation.ir.json`                                                                                                                 |
-| `88-saga-orchestration.manifest`              | `88-saga-orchestration.ir.json`                                                                                                         |
-| `89-full-text-search.manifest`                | `89-full-text-search.ir.json`, `89-full-text-search.results.json`                                                                       |
-| `90-webhook-trigger.manifest`                 | `90-webhook-trigger.ir.json`                                                                                                            |
-| `91-encrypted-properties.manifest`            | `91-encrypted-properties.ir.json`, `91-encrypted-properties.diagnostics.json`                                                           |
-| `92-date-time-types.manifest`                 | `92-date-time-types.ir.json`, `92-date-time-types.results.json`                                                                         |
-| `93-data-masking.manifest`                    | `93-data-masking.ir.json`, `93-data-masking.results.json`                                                                               |
-| `94-unlowered-constructs.manifest`            | `94-unlowered-constructs.ir.json`, `94-unlowered-constructs.diagnostics.json`                                                           |
-| `95-computed-in-guard.manifest`               | `95-computed-in-guard.diagnostics.json`                                                                                                 |
-| `96-fanout-reaction.manifest`                 | `96-fanout-reaction.ir.json`                                                                                                            |
-| `97-aggregate-count-reaction.manifest`        | `97-aggregate-count-reaction.ir.json`                                                                                                   |
-| `98-hasone-relationship.manifest`             | `98-hasone-relationship.ir.json`, `98-hasone-relationship.results.json`                                                                 |
-| `99-ref-relationship.manifest`                | `99-ref-relationship.ir.json`, `99-ref-relationship.results.json`                                                                       |
-| `100-policy-ratelimit-execution.manifest`     | `100-policy-ratelimit-execution.ir.json`, `100-policy-ratelimit-execution.results.json`                                                 |
-| `101-foreignkey-through-conflict.manifest`    | `101-foreignkey-through-conflict.diagnostics.json`                                                                                      |
-| `102-through-join.manifest`                   | `102-through-join.ir.json`, `102-through-join.results.json`                                                                             |
-| `103-approval-escalate-unsupported.manifest`  | `103-approval-escalate-unsupported.diagnostics.json`                                                                                    |
-| `104-ok-severity-passes.manifest`             | `104-ok-severity-passes.ir.json`, `104-ok-severity-passes.diagnostics.json`, `104-ok-severity-passes.results.json`                      |
-| `105-failwhen-explicit.manifest`              | `105-failwhen-explicit.ir.json`, `105-failwhen-explicit.results.json`                                                                   |
-| `106-failwhen-legacy-heuristic.manifest`      | `106-failwhen-legacy-heuristic.ir.json`, `106-failwhen-legacy-heuristic.diagnostics.json`, `106-failwhen-legacy-heuristic.results.json` |
-| `107-compute-used-as-mutate.manifest`         | `107-compute-used-as-mutate.ir.json`, `107-compute-used-as-mutate.diagnostics.json`                                                     |
-| `108-publish-unknown-event.manifest`          | `108-publish-unknown-event.diagnostics.json`                                                                                            |
-| `109-composite-key-runtime.manifest`          | `109-composite-key-runtime.ir.json`, `109-composite-key-runtime.results.json`                                                           |
-| `110-behavior-unsupported.manifest`           | `110-behavior-unsupported.diagnostics.json`                                                                                             |
-| `111-approval-escalate.manifest`              | `111-approval-escalate.ir.json`                                                                                                         |
+| Fixture | Expected evidence |
+| --- | --- |
+| `01-entity-properties.manifest` | `01-entity-properties.ir.json`, `01-entity-properties.diagnostics.json`, `01-entity-properties.results.json` |
+| `02-relationships.manifest` | `02-relationships.ir.json`, `02-relationships.results.json` |
+| `03-computed-properties.manifest` | `03-computed-properties.ir.json`, `03-computed-properties.results.json` |
+| `04-command-mutate-emit.manifest` | `04-command-mutate-emit.ir.json`, `04-command-mutate-emit.results.json` |
+| `05-guard-denial.manifest` | `05-guard-denial.ir.json`, `05-guard-denial.results.json` |
+| `06-policy-denial.manifest` | `06-policy-denial.ir.json`, `06-policy-denial.results.json` |
+| `07-reserved-word-identifier.manifest` | `07-reserved-word-identifier.diagnostics.json` |
+| `08-keywords-in-expressions.manifest` | `08-keywords-in-expressions.ir.json`, `08-keywords-in-expressions.diagnostics.json`, `08-keywords-in-expressions.results.json` |
+| `09-compute-action.manifest` | `09-compute-action.ir.json`, `09-compute-action.results.json` |
+| `10-evaluation-context.manifest` | `10-evaluation-context.ir.json`, `10-evaluation-context.results.json` |
+| `11-guard-ordering-diagnostics.manifest` | `11-guard-ordering-diagnostics.ir.json`, `11-guard-ordering-diagnostics.results.json` |
+| `12-negative-compilation.manifest` | `12-negative-compilation.diagnostics.json` |
+| `13-round-trip-stability.manifest` | `13-round-trip-stability.ir.json`, `13-round-trip-stability.results.json` |
+| `14-operator-equality.manifest` | `14-operator-equality.ir.json`, `14-operator-equality.results.json` |
+| `15-event-log.manifest` | `15-event-log.ir.json`, `15-event-log.results.json` |
+| `16-builtin-functions.manifest` | `16-builtin-functions.ir.json`, `16-builtin-functions.diagnostics.json`, `16-builtin-functions.results.json` |
+| `17-tiny-app.manifest` | `17-tiny-app.ir.json`, `17-tiny-app.diagnostics.json`, `17-tiny-app.results.json` |
+| `18-empty-string-defaults.manifest` | `18-empty-string-defaults.ir.json`, `18-empty-string-defaults.results.json` |
+| `19-entity-constraints.manifest` | `19-entity-constraints.ir.json`, `19-entity-constraints.diagnostics.json`, `19-entity-constraints.results.json` |
+| `20-blog-app.manifest` | `20-blog-app.ir.json`, `20-blog-app.diagnostics.json`, `20-blog-app.results.json` |
+| `21-constraint-outcomes.manifest` | `21-constraint-outcomes.ir.json`, `21-constraint-outcomes.diagnostics.json`, `21-constraint-outcomes.results.json` |
+| `22-override-authorization.manifest` | `22-override-authorization.ir.json`, `22-override-authorization.results.json` |
+| `23-workflow-idempotency.manifest` | `23-workflow-idempotency.ir.json`, `23-workflow-idempotency.results.json` |
+| `24-concurrency-conflict.manifest` | `24-concurrency-conflict.ir.json`, `24-concurrency-conflict.results.json` |
+| `25-command-constraints.manifest` | `25-command-constraints.ir.json`, `25-command-constraints.results.json` |
+| `26-performance-constraints.manifest` | `26-performance-constraints.ir.json`, `26-performance-constraints.diagnostics.json`, `26-performance-constraints.results.json` |
+| `27-vnext-integration.manifest` | `27-vnext-integration.ir.json`, `27-vnext-integration.diagnostics.json`, `27-vnext-integration.results.json` |
+| `28-unclosed-braces.manifest` | `28-unclosed-braces.diagnostics.json` |
+| `29-missing-colon.manifest` | `29-missing-colon.diagnostics.json` |
+| `30-incomplete-expression.manifest` | `30-incomplete-expression.diagnostics.json` |
+| `31-invalid-operators.manifest` | `31-invalid-operators.diagnostics.json` |
+| `32-constraint-without-expression.manifest` | `32-constraint-without-expression.diagnostics.json` |
+| `33-malformed-relationship.manifest` | `33-malformed-relationship.diagnostics.json` |
+| `34-command-with-reserved-name.manifest` | `34-command-with-reserved-name.diagnostics.json` |
+| `35-unclosed-command-block.manifest` | `35-unclosed-command-block.diagnostics.json` |
+| `36-constraint-severity.manifest` | `36-constraint-severity.ir.json`, `36-constraint-severity.diagnostics.json`, `36-constraint-severity.results.json` |
+| `37-allowed-duplicate-command-names.manifest` | `37-allowed-duplicate-command-names.ir.json`, `37-allowed-duplicate-command-names.diagnostics.json` |
+| `38-state-transitions.manifest` | `38-state-transitions.ir.json`, `38-state-transitions.results.json` |
+| `39-duplicate-constraint-codes.manifest` | `39-duplicate-constraint-codes.diagnostics.json` |
+| `40-array-properties.manifest` | `40-array-properties.ir.json`, `40-array-properties.diagnostics.json`, `40-array-properties.results.json` |
+| `52-override-allowed.manifest` | `52-override-allowed.ir.json`, `52-override-allowed.results.json` |
+| `53-override-denied.manifest` | `53-override-denied.ir.json`, `53-override-denied.results.json` |
+| `54-concurrency-conflict-return.manifest` | `54-concurrency-conflict-return.ir.json`, `54-concurrency-conflict-return.results.json` |
+| `55-default-policies.manifest` | `55-default-policies.ir.json`, `55-default-policies.diagnostics.json`, `55-default-policies.results.json` |
+| `56-decimal-type.manifest` | `56-decimal-type.ir.json`, `56-decimal-type.diagnostics.json` |
+| `56-expression-builtins.manifest` | `56-expression-builtins.ir.json`, `56-expression-builtins.diagnostics.json`, `56-expression-builtins.results.json` |
+| `57-enum-type.manifest` | `57-enum-type.ir.json`, `57-enum-type.diagnostics.json` |
+| `57-range-constraint-builtins.manifest` | `57-range-constraint-builtins.ir.json` |
+| `60-value-objects.manifest` | `60-value-objects.ir.json`, `60-value-objects.diagnostics.json` |
+| `61-tenant-isolation.manifest` | `61-tenant-isolation.ir.json` |
+| `62-timestamp-auto-fields.manifest` | `62-timestamp-auto-fields.ir.json`, `62-timestamp-auto-fields.diagnostics.json`, `62-timestamp-auto-fields.results.json` |
+| `63-regex-constraints.manifest` | `63-regex-constraints.ir.json`, `63-regex-constraints.diagnostics.json`, `63-regex-constraints.results.json` |
+| `64-aggregate-computed-properties.manifest` | `64-aggregate-computed-properties.ir.json`, `64-aggregate-computed-properties.results.json` |
+| `65-computed-property-caching.manifest` | `65-computed-property-caching.ir.json`, `65-computed-property-caching.results.json` |
+| `66-feature-flags.manifest` | `66-feature-flags.ir.json` |
+| `67-event-reactions.manifest` | `67-event-reactions.ir.json`, `67-event-reactions.results.json` |
+| `68-approval-workflow.manifest` | `68-approval-workflow.ir.json` |
+| `69-async-commands.manifest` | `69-async-commands.ir.json` |
+| `70-cross-entity-constraints.manifest` | `70-cross-entity-constraints.ir.json`, `70-cross-entity-constraints.results.json` |
+| `71-role-hierarchy.manifest` | `71-role-hierarchy.ir.json`, `71-role-hierarchy.results.json` |
+| `72-command-retry-policy.manifest` | `72-command-retry-policy.ir.json` |
+| `73-map-type.manifest` | `73-map-type.ir.json`, `73-map-type.diagnostics.json` |
+| `74-rate-limit-command.manifest` | `74-rate-limit-command.ir.json`, `74-rate-limit-command.results.json` |
+| `75-rate-limit-policy.manifest` | `75-rate-limit-policy.ir.json` |
+| `76-scheduled-commands.manifest` | `76-scheduled-commands.ir.json` |
+| `77-entity-extends.manifest` | `77-entity-extends.ir.json` |
+| `78-entity-mixin.manifest` | `78-entity-mixin.ir.json`, `78-entity-mixin.diagnostics.json` |
+| `79-entity-extends-and-mixin.manifest` | `79-entity-extends-and-mixin.ir.json`, `79-entity-extends-and-mixin.diagnostics.json` |
+| `80-entity-extends-unknown-parent.manifest` | `80-entity-extends-unknown-parent.diagnostics.json` |
+| `81-entity-extends-cycle.manifest` | `81-entity-extends-cycle.diagnostics.json` |
+| `82-dynamodb-store.manifest` | `82-dynamodb-store.ir.json` |
+| `83-event-sourced.manifest` | `83-event-sourced.ir.json` |
+| `84-generic-entity.manifest` | `84-generic-entity.ir.json`, `84-generic-entity.diagnostics.json` |
+| `85-generic-arity-mismatch.manifest` | `85-generic-arity-mismatch.diagnostics.json` |
+| `86-readmodel.manifest` | `86-readmodel.ir.json`, `86-readmodel.diagnostics.json`, `86-readmodel.results.json` |
+| `87-federation.manifest` | `87-federation.ir.json` |
+| `88-saga-orchestration.manifest` | `88-saga-orchestration.ir.json` |
+| `89-full-text-search.manifest` | `89-full-text-search.ir.json`, `89-full-text-search.results.json` |
+| `90-webhook-trigger.manifest` | `90-webhook-trigger.ir.json` |
+| `91-encrypted-properties.manifest` | `91-encrypted-properties.ir.json`, `91-encrypted-properties.diagnostics.json` |
+| `92-date-time-types.manifest` | `92-date-time-types.ir.json`, `92-date-time-types.results.json` |
+| `93-data-masking.manifest` | `93-data-masking.ir.json`, `93-data-masking.results.json` |
+| `94-unlowered-constructs.manifest` | `94-unlowered-constructs.ir.json`, `94-unlowered-constructs.diagnostics.json` |
+| `95-computed-in-guard.manifest` | `95-computed-in-guard.diagnostics.json` |
+| `96-fanout-reaction.manifest` | `96-fanout-reaction.ir.json` |
+| `97-aggregate-count-reaction.manifest` | `97-aggregate-count-reaction.ir.json` |
+| `98-hasone-relationship.manifest` | `98-hasone-relationship.ir.json`, `98-hasone-relationship.results.json` |
+| `99-ref-relationship.manifest` | `99-ref-relationship.ir.json`, `99-ref-relationship.results.json` |
+| `100-policy-ratelimit-execution.manifest` | `100-policy-ratelimit-execution.ir.json`, `100-policy-ratelimit-execution.results.json` |
+| `101-foreignkey-through-conflict.manifest` | `101-foreignkey-through-conflict.diagnostics.json` |
+| `102-through-join.manifest` | `102-through-join.ir.json`, `102-through-join.diagnostics.json`, `102-through-join.results.json` |
+| `103-approval-escalate-unsupported.manifest` | `103-approval-escalate-unsupported.diagnostics.json` |
+| `104-ok-severity-passes.manifest` | `104-ok-severity-passes.ir.json`, `104-ok-severity-passes.diagnostics.json`, `104-ok-severity-passes.results.json` |
+| `105-failwhen-explicit.manifest` | `105-failwhen-explicit.ir.json`, `105-failwhen-explicit.results.json` |
+| `106-failwhen-legacy-heuristic.manifest` | `106-failwhen-legacy-heuristic.ir.json`, `106-failwhen-legacy-heuristic.diagnostics.json`, `106-failwhen-legacy-heuristic.results.json` |
+| `107-compute-used-as-mutate.manifest` | `107-compute-used-as-mutate.ir.json`, `107-compute-used-as-mutate.diagnostics.json` |
+| `108-publish-unknown-event.manifest` | `108-publish-unknown-event.diagnostics.json` |
+| `109-composite-key-runtime.manifest` | `109-composite-key-runtime.ir.json`, `109-composite-key-runtime.results.json` |
+| `110-behavior-unsupported.manifest` | `110-behavior-unsupported.diagnostics.json` |
+| `111-approval-escalate.manifest` | `111-approval-escalate.ir.json` |
 
 ## Published package export map
 
-71 package subpaths are declared in `package.json#exports`. A declared export is a distribution surface, not a completion claim.
+73 package subpaths are declared in `package.json#exports`. A declared export is a distribution surface, not a completion claim.
 
-| Export                             |
-| ---------------------------------- |
-| `.`                                |
-| `./agent-sdk`                      |
-| `./approval`                       |
-| `./approval/memory`                |
-| `./approval/postgres`              |
-| `./audit`                          |
-| `./audit/memory`                   |
-| `./audit/postgres`                 |
-| `./binary-ir`                      |
-| `./breaking-change`                |
-| `./compiler`                       |
-| `./config`                         |
-| `./coverage`                       |
-| `./debug`                          |
-| `./domain-completeness`            |
-| `./events`                         |
-| `./events/redis`                   |
-| `./federation`                     |
-| `./generate-tests`                 |
-| `./idempotency/memory`             |
-| `./idempotency/postgres`           |
-| `./ir`                             |
-| `./ir-compiler`                    |
-| `./ir-diff`                        |
-| `./ir-version-store`               |
-| `./jobs/postgres`                  |
-| `./jobs/worker`                    |
-| `./language-metadata`              |
-| `./lexer`                          |
-| `./mcp-server`                     |
-| `./module-resolver`                |
-| `./multi-compiler`                 |
-| `./outbox`                         |
-| `./outbox/memory`                  |
-| `./outbox/postgres`                |
-| `./outbox/redis`                   |
-| `./outbox/worker`                  |
-| `./package.json`                   |
-| `./parser`                         |
-| `./plugin-api`                     |
-| `./plugin-loader`                  |
-| `./profiling`                      |
-| `./projections`                    |
-| `./projections/analytics`          |
-| `./projections/contract-tests`     |
-| `./projections/convex`             |
-| `./projections/drizzle`            |
-| `./projections/kysely`             |
-| `./projections/llm-context`        |
+| Export |
+| --- |
+| `.` |
+| `./agent-sdk` |
+| `./approval` |
+| `./approval/memory` |
+| `./approval/postgres` |
+| `./audit` |
+| `./audit/memory` |
+| `./audit/postgres` |
+| `./binary-ir` |
+| `./breaking-change` |
+| `./compiler` |
+| `./config` |
+| `./coverage` |
+| `./debug` |
+| `./domain-completeness` |
+| `./events` |
+| `./events/redis` |
+| `./federation` |
+| `./generate-tests` |
+| `./idempotency/memory` |
+| `./idempotency/postgres` |
+| `./ir` |
+| `./ir-compiler` |
+| `./ir-diff` |
+| `./ir-version-store` |
+| `./jobs/postgres` |
+| `./jobs/worker` |
+| `./language-metadata` |
+| `./lexer` |
+| `./mcp-server` |
+| `./module-resolver` |
+| `./multi-compiler` |
+| `./outbox` |
+| `./outbox/memory` |
+| `./outbox/postgres` |
+| `./outbox/redis` |
+| `./outbox/worker` |
+| `./package.json` |
+| `./parser` |
+| `./plugin-api` |
+| `./plugin-loader` |
+| `./profiling` |
+| `./projections` |
+| `./projections/analytics` |
+| `./projections/contract-tests` |
+| `./projections/convex` |
+| `./projections/drizzle` |
+| `./projections/kysely` |
+| `./projections/llm-context` |
 | `./projections/materialized-views` |
-| `./projections/mermaid`            |
-| `./projections/nextjs`             |
-| `./projections/openapi`            |
-| `./projections/prisma`             |
-| `./projections/prisma-store`       |
-| `./projections/react-query`        |
-| `./projections/routes`             |
-| `./projections/wiring`             |
-| `./projections/zod`                |
-| `./rate-limit/memory`              |
-| `./rate-limit/postgres`            |
-| `./reaction-completeness`          |
-| `./registry/emit`                  |
-| `./runtime-engine`                 |
-| `./schedule-worker`                |
-| `./seed-pack`                      |
-| `./stores`                         |
-| `./stores/prisma-generic`          |
-| `./transactions/postgres`          |
-| `./types`                          |
-| `./webhooks`                       |
+| `./projections/mermaid` |
+| `./projections/nextjs` |
+| `./projections/openapi` |
+| `./projections/prisma` |
+| `./projections/prisma-store` |
+| `./projections/react-query` |
+| `./projections/routes` |
+| `./projections/wiring` |
+| `./projections/zod` |
+| `./proof-kit` |
+| `./proof-kit/convex-test` |
+| `./rate-limit/memory` |
+| `./rate-limit/postgres` |
+| `./reaction-completeness` |
+| `./registry/emit` |
+| `./runtime-engine` |
+| `./schedule-worker` |
+| `./seed-pack` |
+| `./stores` |
+| `./stores/prisma-generic` |
+| `./transactions/postgres` |
+| `./types` |
+| `./webhooks` |
 
 ## Open Manifest-owned gaps
 
 Generated from every non-complete Manifest-owned row in the binding `docs/platform/FEATURE_MATRIX.md`. Builder-owned `OUT_OF_SCOPE` items and proven `FULLY_IMPLEMENTED` rows are excluded.
 
-| Matrix section                               | Gap                                                                                                                  | Status                                   | Evidence / disposition                                                                   |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
-| 2. Language (DSL) — full inventory           | `date` / `time` / `datetime` / `duration`                                                                            | `CLAIMED_NEEDS_PROOF`                    | fixture `92`                                                                             |
-| 2. Language (DSL) — full inventory           | `decimal` / `money` types                                                                                            | `CLAIMED_NEEDS_PROOF`                    | fixture `56`; runtime = number                                                           |
-| 2. Language (DSL) — full inventory           | `extends` inheritance + cycle detection                                                                              | `CLAIMED_NEEDS_PROOF`                    | fixtures `77`–`79`, `81`                                                                 |
-| 2. Language (DSL) — full inventory           | `map` / record type                                                                                                  | `CLAIMED_NEEDS_PROOF`                    | fixture `73`                                                                             |
-| 2. Language (DSL) — full inventory           | `mixin` composition                                                                                                  | `CLAIMED_NEEDS_PROOF`                    | fixture `78`                                                                             |
-| 2. Language (DSL) — full inventory           | `private` / `encrypted` / `masked` privacy                                                                           | `CLAIMED_NEEDS_PROOF`                    | fixtures `91`, `93`                                                                      |
-| 2. Language (DSL) — full inventory           | `searchable` declarations                                                                                            | `CLAIMED_NEEDS_PROOF`                    | fixture `89`                                                                             |
-| 2. Language (DSL) — full inventory           | Aggregate `count()` in reactions                                                                                     | `CLAIMED_NEEDS_PROOF`                    | fixture `97`                                                                             |
-| 2. Language (DSL) — full inventory           | Appendix E: `.length` vs `length()`                                                                                  | `NOT_IMPLEMENTED`                        | backlog                                                                                  |
-| 2. Language (DSL) — full inventory           | Appendix E: `map<K,V>` two-param form                                                                                | `NOT_IMPLEMENTED`                        | backlog — arbitrary keys; `map<string,V>` sugar is §1                                    |
-| 2. Language (DSL) — full inventory           | Appendix E: command-body policy clause                                                                               | `NOT_IMPLEMENTED`                        | backlog                                                                                  |
-| 2. Language (DSL) — full inventory           | Appendix E: retry/rateLimit field-name ergonomics                                                                    | `NOT_IMPLEMENTED`                        | backlog                                                                                  |
-| 2. Language (DSL) — full inventory           | Approvals (multi-stage, `onTimeout: cancel`)                                                                         | `CLAIMED_NEEDS_PROOF`                    | fixture `68`                                                                             |
-| 2. Language (DSL) — full inventory           | Array types `T[]` / `array<T>`                                                                                       | `CLAIMED_NEEDS_PROOF`                    | fixture `40`                                                                             |
-| 2. Language (DSL) — full inventory           | Async / background commands                                                                                          | `CLAIMED_NEEDS_PROOF`                    | fixture `69`                                                                             |
-| 2. Language (DSL) — full inventory           | Auto timestamps / `autoNow` (`now()`/`today()`)                                                                      | `CLAIMED_NEEDS_PROOF`                    | fixture `62`                                                                             |
-| 2. Language (DSL) — full inventory           | Command `retry` policy                                                                                               | `CLAIMED_NEEDS_PROOF`                    | fixture `72`                                                                             |
-| 2. Language (DSL) — full inventory           | Command/policy `rateLimit`                                                                                           | `CLAIMED_NEEDS_PROOF`                    | fixtures `74`, `75`, `100`                                                               |
-| 2. Language (DSL) — full inventory           | Commands (params, guards, mutate, emit, emitPayloads)                                                                | `CLAIMED_NEEDS_PROOF`                    | fixture `04`                                                                             |
-| 2. Language (DSL) — full inventory           | Composite primary keys (`key`)                                                                                       | `CLAIMED_NEEDS_PROOF`                    | fixture `109`                                                                            |
-| 2. Language (DSL) — full inventory           | Computed caching (`request`/`session`/`ttl`)                                                                         | `CLAIMED_NEEDS_PROOF`                    | fixture `65`                                                                             |
-| 2. Language (DSL) — full inventory           | Computed properties                                                                                                  | `CLAIMED_NEEDS_PROOF`                    | fixture `03`                                                                             |
-| 2. Language (DSL) — full inventory           | Constraint override authorization                                                                                    | `CLAIMED_NEEDS_PROOF`                    | fixture `22`                                                                             |
-| 2. Language (DSL) — full inventory           | Constraints severity `ok`/`warn`/`block`                                                                             | `CLAIMED_NEEDS_PROOF`                    | fixtures `21`, `36`                                                                      |
-| 2. Language (DSL) — full inventory           | Entities + typed properties + defaults                                                                               | `CLAIMED_NEEDS_PROOF`                    | fixture `01`                                                                             |
-| 2. Language (DSL) — full inventory           | Entity `behavior` blocks                                                                                             | `REJECTED_LOUD → proven reject`          | see §1 / fixture `110`                                                                   |
-| 2. Language (DSL) — full inventory           | Enum types                                                                                                           | `CLAIMED_NEEDS_PROOF`                    | fixture `57`                                                                             |
-| 2. Language (DSL) — full inventory           | Events + reactions (`on Event run`)                                                                                  | `CLAIMED_NEEDS_PROOF`                    | fixtures `67`, `96`                                                                      |
-| 2. Language (DSL) — full inventory           | Federation                                                                                                           | `NOT_IMPLEMENTED or PARTIAL`             | `docs/internal/features/federation.md` — prove or strike                                 |
-| 2. Language (DSL) — full inventory           | Generic / parameterized entities `Entity<T>`                                                                         | `NOT_IMPLEMENTED`                        | fixtures `84`–`85` negative only                                                         |
-| 2. Language (DSL) — full inventory           | Language keyword `softDelete`                                                                                        | `NOT_IMPLEMENTED`                        | projection config only                                                                   |
-| 2. Language (DSL) — full inventory           | Modules + `use` imports                                                                                              | `CLAIMED_NEEDS_PROOF`                    | module-resolver tests                                                                    |
-| 2. Language (DSL) — full inventory           | Multi-tenancy (`tenant`)                                                                                             | `CLAIMED_NEEDS_PROOF`                    | fixture `61`                                                                             |
-| 2. Language (DSL) — full inventory           | Optimistic concurrency `versionProperty`                                                                             | `CLAIMED_NEEDS_PROOF`                    | fixture `24`                                                                             |
-| 2. Language (DSL) — full inventory           | Policies read/write/delete/execute/all/override                                                                      | `CLAIMED_NEEDS_PROOF`                    | fixture `06`                                                                             |
-| 2. Language (DSL) — full inventory           | Property modifiers (`required`/`unique`/`indexed`/`private`/`readonly`/`optional`/`searchable`/`encrypted`/`masked`) | `CLAIMED_NEEDS_PROOF / PARTIAL`          | compile+IR; runtime `optional` unused (§6)                                               |
-| 2. Language (DSL) — full inventory           | Range constraints                                                                                                    | `CLAIMED_NEEDS_PROOF`                    | `docs/internal/features/range-constraints.md`                                            |
-| 2. Language (DSL) — full inventory           | Reaction fan-out                                                                                                     | `CLAIMED_NEEDS_PROOF`                    | fixture `96`                                                                             |
-| 2. Language (DSL) — full inventory           | Realtime subscriptions (language/runtime)                                                                            | `PARTIAL / DIAGNOSTIC_ONLY`              | Convex diagnostic; Next.js may differ — prove per target                                 |
-| 2. Language (DSL) — full inventory           | Regex constraints                                                                                                    | `CLAIMED_NEEDS_PROOF`                    | `docs/internal/features/regex-constraints.md`                                            |
-| 2. Language (DSL) — full inventory           | Relationships `hasMany` / `hasOne` / `belongsTo` / `ref`                                                             | `CLAIMED_NEEDS_PROOF`                    | fixtures `02`, `98`, `99`                                                                |
-| 2. Language (DSL) — full inventory           | Roles / RBAC hierarchy + deny                                                                                        | `CLAIMED_NEEDS_PROOF`                    | fixture `71`                                                                             |
-| 2. Language (DSL) — full inventory           | Sagas + compensation                                                                                                 | `CLAIMED_NEEDS_PROOF`                    | fixture `88`                                                                             |
-| 2. Language (DSL) — full inventory           | Schedules cron/interval/every                                                                                        | `CLAIMED_NEEDS_PROOF`                    | fixture `76`                                                                             |
-| 2. Language (DSL) — full inventory           | Security features surface (doc)                                                                                      | `CLAIMED_NEEDS_PROOF / PARTIAL`          | `docs/internal/features/security-features.md` — verify vs privacy/encryption             |
-| 2. Language (DSL) — full inventory           | State transitions                                                                                                    | `CLAIMED_NEEDS_PROOF`                    | fixture `38`                                                                             |
-| 2. Language (DSL) — full inventory           | Store declarations                                                                                                   | `CLAIMED_NEEDS_PROOF`                    | multiple fixtures                                                                        |
-| 2. Language (DSL) — full inventory           | Value objects / embedded types                                                                                       | `CLAIMED_NEEDS_PROOF`                    | fixture `60`                                                                             |
-| 2. Language (DSL) — full inventory           | Webhooks + HMAC                                                                                                      | `CLAIMED_NEEDS_PROOF`                    | fixture `90`                                                                             |
-| 3. Expression builtins (47)                  | `flag(name)` + provider and/or static map                                                                            | `CLAIMED_NEEDS_PROOF + §1 for flags map` | See feature matrix                                                                       |
-| 3. Expression builtins (47)                  | `hasPermission` / `roleAllows`                                                                                       | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 3. Expression builtins (47)                  | `today()` compile-time only → `autoNow`                                                                              | `CLAIMED_NEEDS_PROOF`                    | not runtime callable                                                                     |
-| 3. Expression builtins (47)                  | Array/aggregate builtins                                                                                             | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 3. Expression builtins (47)                  | Core `now`, `uuid`                                                                                                   | `CLAIMED_NEEDS_PROOF`                    | `RuntimeEngine.getBuiltins()`; fixture `16`                                              |
-| 3. Expression builtins (47)                  | Custom builtins via plugin API                                                                                       | `CLAIMED_NEEDS_PROOF`                    | plugin-api                                                                               |
-| 3. Expression builtins (47)                  | Date component builtins                                                                                              | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 3. Expression builtins (47)                  | Date/time helpers (`dateOf`…`durationSeconds`)                                                                       | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 3. Expression builtins (47)                  | Math builtins                                                                                                        | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 3. Expression builtins (47)                  | String builtins (trim…search)                                                                                        | `CLAIMED_NEEDS_PROOF`                    | builtins.md                                                                              |
-| 4. Runtime engine & adapters                 | `EncryptionProvider`                                                                                                 | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 4. Runtime engine & adapters                 | `IRDiagnostic.code` optional                                                                                         | `CLAIMED_NEEDS_PROOF`                    | seeded codes 2026-07-15                                                                  |
-| 4. Runtime engine & adapters                 | `RuntimeContext` fields                                                                                              | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 4. Runtime engine & adapters                 | ~~WASM expression compatibility layer~~                                                                              | `REMOVED 2026-07-15`                     | Quarantined prototype deleted — no `.wasm` artifact, never on default RuntimeEngine path |
-| 4. Runtime engine & adapters                 | Batched persistence                                                                                                  | `CLAIMED_NEEDS_PROOF`                    | `runtime-command-batched-persistence.test.ts`                                            |
-| 4. Runtime engine & adapters                 | Command order (rateLimit → policies → constraints → guards → actions → emits)                                        | `CLAIMED_NEEDS_PROOF`                    | semantics.md § Commands                                                                  |
-| 4. Runtime engine & adapters                 | Deterministic mode / effect boundary                                                                                 | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 4. Runtime engine & adapters                 | EventBus (in-process)                                                                                                | `CLAIMED_NEEDS_PROOF`                    | `runtime-eventbus.test.ts`                                                               |
-| 4. Runtime engine & adapters                 | IdempotencyStore                                                                                                     | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 4. Runtime engine & adapters                 | JobQueue / async worker path                                                                                         | `CLAIMED_NEEDS_PROOF`                    | fixture `69`                                                                             |
-| 4. Runtime engine & adapters                 | Middleware (4 hooks)                                                                                                 | `CLAIMED_NEEDS_PROOF`                    | runtime-middleware feature doc                                                           |
-| 5. Stores & persistence subsystems           | Approval store memory/postgres                                                                                       | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 5. Stores & persistence subsystems           | Custom store via plugin API                                                                                          | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 5. Stores & persistence subsystems           | DynamoDB store                                                                                                       | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 5. Stores & persistence subsystems           | GenericPrismaStore                                                                                                   | `CLAIMED_NEEDS_PROOF`                    | `stores/prisma-generic/`                                                                 |
-| 5. Stores & persistence subsystems           | Idempotency store memory/postgres                                                                                    | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 5. Stores & persistence subsystems           | LocalStorageStore                                                                                                    | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 5. Stores & persistence subsystems           | MemoryStore                                                                                                          | `CLAIMED_NEEDS_PROOF`                    | runtime-engine                                                                           |
-| 5. Stores & persistence subsystems           | Outbox: memory/postgres/redis/mongodb/dynamodb                                                                       | `CLAIMED_NEEDS_PROOF`                    | `outbox/stores/*`                                                                        |
-| 5. Stores & persistence subsystems           | PostgresStore                                                                                                        | `CLAIMED_NEEDS_PROOF`                    | `stores.node.ts`                                                                         |
-| 5. Stores & persistence subsystems           | SupabaseStore                                                                                                        | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 5. Stores & persistence subsystems           | Turso / libSQL store                                                                                                 | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | `ir.tenant` in all web projections                                                                                   | `PARTIAL`                                | wiring matrix                                                                            |
-| 6. Projections — every registered target     | analytics                                                                                                            | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | contract-tests                                                                                                       | `CLAIMED_NEEDS_PROOF`                    | See COMPLIANCE_MATRIX (list/get + mutations; auth visibility)                            |
-| 6. Projections — every registered target     | convex                                                                                                               | `PARTIAL`                                | core generate + auth seam; many `CONVEX_UNSUPPORTED_*` (§7)                              |
-| 6. Projections — every registered target     | Convex approvals/masking/retry/rateLimit                                                                             | `DIAGNOSTIC_ONLY`                        | `CONVEX_UNSUPPORTED_*` (searchable + versionProperty + realtime/cache PARTIAL §1)        |
-| 6. Projections — every registered target     | Convex complete lambda lowering                                                                                      | `PARTIAL`                                | See feature matrix                                                                       |
-| 6. Projections — every registered target     | dart                                                                                                                 | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | drizzle                                                                                                              | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | dynamodb (projection)                                                                                                | `CLAIMED_NEEDS_PROOF`                    | distinct from DynamoDB store                                                             |
-| 6. Projections — every registered target     | elasticsearch                                                                                                        | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | express                                                                                                              | `CLAIMED_NEEDS_PROOF`                    | `authProvider` §1                                                                        |
-| 6. Projections — every registered target     | graphql                                                                                                              | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | health                                                                                                               | `PARTIAL`                                | generator registered; live IR/store/outbox checks still TODO stubs; docs §7              |
-| 6. Projections — every registered target     | hono                                                                                                                 | `CLAIMED_NEEDS_PROOF`                    | `authProvider` §1                                                                        |
-| 6. Projections — every registered target     | jsonschema                                                                                                           | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | kysely                                                                                                               | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | llm-context                                                                                                          | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | mermaid                                                                                                              | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | Module-based output splitting                                                                                        | `PARTIAL`                                | See feature matrix                                                                       |
-| 6. Projections — every registered target     | mongoose folder                                                                                                      | `NOT_IMPLEMENTED / unregistered`         | folder exists; **not** in `builtins.ts` register list — verify before claiming           |
-| 6. Projections — every registered target     | nextjs                                                                                                               | `CLAIMED_NEEDS_PROOF`                    | createManifestRuntime, executionMode                                                     |
-| 6. Projections — every registered target     | openapi                                                                                                              | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | prisma                                                                                                               | `CLAIMED_NEEDS_PROOF`                    | multi-schema, naming options                                                             |
-| 6. Projections — every registered target     | prisma-store                                                                                                         | `CLAIMED_NEEDS_PROOF`                    | softDelete config (not language keyword)                                                 |
-| 6. Projections — every registered target     | pydantic                                                                                                             | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | react-query                                                                                                          | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | remix                                                                                                                | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | routes                                                                                                               | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | storybook                                                                                                            | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | sveltekit                                                                                                            | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | terraform                                                                                                            | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | wiring                                                                                                               | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 6. Projections — every registered target     | zod                                                                                                                  | `CLAIMED_NEEDS_PROOF`                    | enum/list/timestamp alias fixed 2026-07-15 per TODO                                      |
-| 7. CLI, SDK, config, packaging, docs tooling | `@angriff36/manifest/agent-sdk`                                                                                      | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 7. CLI, SDK, config, packaging, docs tooling | `@angriff36/manifest/seed-pack`                                                                                      | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 7. CLI, SDK, config, packaging, docs tooling | AI: generate-from-prompt, gen-tests, validate-ai                                                                     | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 7. CLI, SDK, config, packaging, docs tooling | CLI compile/generate/build/watch/validate/fmt/init                                                                   | `CLAIMED_NEEDS_PROOF`                    | `packages/cli`                                                                           |
-| 7. CLI, SDK, config, packaging, docs tooling | Config schema + `manifest config *`                                                                                  | `CLAIMED_NEEDS_PROOF`                    | G0/G1                                                                                    |
-| 7. CLI, SDK, config, packaging, docs tooling | Conformance suite (~99 fixtures)                                                                                     | `CLAIMED_NEEDS_PROOF`                    | `src/manifest/conformance/`                                                              |
-| 7. CLI, SDK, config, packaging, docs tooling | Dev: repl, mock, harness, load-test, profile, seed…                                                                  | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 7. CLI, SDK, config, packaging, docs tooling | diff / versions / migrate / changelog                                                                                | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 7. CLI, SDK, config, packaging, docs tooling | enforce-surface / audit-* / lint-routes                                                                              | `CLAIMED_NEEDS_PROOF / PARTIAL`          | ORM shapes incomplete                                                                    |
-| 7. CLI, SDK, config, packaging, docs tooling | enforce-surface Drizzle/Kysely/raw-SQL                                                                               | `PARTIAL`                                | See feature matrix                                                                       |
-| 7. CLI, SDK, config, packaging, docs tooling | IR version control / versions CLI                                                                                    | `CLAIMED_NEEDS_PROOF`                    | `docs/internal/features/ir-version-control.md`                                           |
-| 7. CLI, SDK, config, packaging, docs tooling | Published `@angriff36/manifest` npm                                                                                  | `CLAIMED_NEEDS_PROOF`                    | pin `package.json` each release                                                          |
-| 7. CLI, SDK, config, packaging, docs tooling | Restore `newguard.json`                                                                                              | `NOT_IMPLEMENTED`                        | See feature matrix                                                                       |
-| 7. CLI, SDK, config, packaging, docs tooling | Snapshot testing tooling                                                                                             | `CLAIMED_NEEDS_PROOF`                    | `docs/internal/features/snapshot-testing.md`                                             |
-| 7. CLI, SDK, config, packaging, docs tooling | wiring-coverage/inspect/remediate                                                                                    | `CLAIMED_NEEDS_PROOF`                    | See feature matrix                                                                       |
-| 8. Open gaps / phantoms (checklist mirror)   | `manifest generate-fixtures`                                                                                         | `NOT_IMPLEMENTED`                        | phantom CLI                                                                              |
-| 8. Open gaps / phantoms (checklist mirror)   | `manifest test constraints` / ConstraintTestHarness                                                                  | `NOT_IMPLEMENTED`                        | phantom CLI                                                                              |
-| 8. Open gaps / phantoms (checklist mirror)   | `projection.generateRoute` / `generateTypes` / `generateClient` API                                                  | `NOT_IMPLEMENTED`                        | phantom projection API                                                                   |
-| 8. Open gaps / phantoms (checklist mirror)   | ~~Full WASM runtime~~                                                                                                | `REMOVED 2026-07-15`                     | Prototype deleted; TypeScript evaluator is the only path                                 |
-| 8. Open gaps / phantoms (checklist mirror)   | Config `env(VAR)` / `MANIFEST_ENV` overlays / top-level `stores:` YAML                                               | `NOT_IMPLEMENTED`                        | phantom config                                                                           |
-| 8. Open gaps / phantoms (checklist mirror)   | Convex unsupported surfaces (approvals/masking/retry/rateLimit)                                                      | `DIAGNOSTIC_ONLY`                        | See feature matrix                                                                       |
-| 8. Open gaps / phantoms (checklist mirror)   | Default encryption provider (common no-vendor case)                                                                  | `NOT_IMPLEMENTED`                        | fail-closed by design until provider set                                                 |
-| 8. Open gaps / phantoms (checklist mirror)   | Kysely `columnMappings` actually applied                                                                             | `NOT_IMPLEMENTED / PARTIAL`              | option declared, unused                                                                  |
-| 8. Open gaps / phantoms (checklist mirror)   | softDelete language keyword                                                                                          | `NOT_IMPLEMENTED`                        | Manifest language gap (projection config exists)                                         |
+| Matrix section | Gap | Status | Evidence / disposition |
+| --- | --- | --- | --- |
+| 2. Language (DSL) — full inventory | `date` / `time` / `datetime` / `duration` | `CLAIMED_NEEDS_PROOF` | fixture `92` |
+| 2. Language (DSL) — full inventory | `decimal` / `money` types | `CLAIMED_NEEDS_PROOF` | fixture `56`; runtime = number |
+| 2. Language (DSL) — full inventory | `extends` inheritance + cycle detection | `CLAIMED_NEEDS_PROOF` | fixtures `77`–`79`, `81` |
+| 2. Language (DSL) — full inventory | `map` / record type | `CLAIMED_NEEDS_PROOF` | fixture `73` |
+| 2. Language (DSL) — full inventory | `mixin` composition | `CLAIMED_NEEDS_PROOF` | fixture `78` |
+| 2. Language (DSL) — full inventory | `private` / `encrypted` / `masked` privacy | `CLAIMED_NEEDS_PROOF` | fixtures `91`, `93` |
+| 2. Language (DSL) — full inventory | `searchable` declarations | `CLAIMED_NEEDS_PROOF` | fixture `89` |
+| 2. Language (DSL) — full inventory | Aggregate `count()` in reactions | `CLAIMED_NEEDS_PROOF` | fixture `97` |
+| 2. Language (DSL) — full inventory | Appendix E: `.length` vs `length()` | `NOT_IMPLEMENTED` | backlog |
+| 2. Language (DSL) — full inventory | Appendix E: `map<K,V>` two-param form | `NOT_IMPLEMENTED` | backlog — arbitrary keys; `map<string,V>` sugar is §1 |
+| 2. Language (DSL) — full inventory | Appendix E: command-body policy clause | `NOT_IMPLEMENTED` | backlog |
+| 2. Language (DSL) — full inventory | Appendix E: retry/rateLimit field-name ergonomics | `NOT_IMPLEMENTED` | backlog |
+| 2. Language (DSL) — full inventory | Approvals (multi-stage, `onTimeout: cancel`) | `CLAIMED_NEEDS_PROOF` | fixture `68` |
+| 2. Language (DSL) — full inventory | Array types `T[]` / `array<T>` | `CLAIMED_NEEDS_PROOF` | fixture `40` |
+| 2. Language (DSL) — full inventory | Async / background commands | `CLAIMED_NEEDS_PROOF` | fixture `69` |
+| 2. Language (DSL) — full inventory | Auto timestamps / `autoNow` (`now()`/`today()`) | `CLAIMED_NEEDS_PROOF` | fixture `62` |
+| 2. Language (DSL) — full inventory | Command `retry` policy | `CLAIMED_NEEDS_PROOF` | fixture `72` |
+| 2. Language (DSL) — full inventory | Command/policy `rateLimit` | `CLAIMED_NEEDS_PROOF` | fixtures `74`, `75`, `100` |
+| 2. Language (DSL) — full inventory | Commands (params, guards, mutate, emit, emitPayloads) | `CLAIMED_NEEDS_PROOF` | fixture `04` |
+| 2. Language (DSL) — full inventory | Composite primary keys (`key`) | `CLAIMED_NEEDS_PROOF` | fixture `109` |
+| 2. Language (DSL) — full inventory | Computed caching (`request`/`session`/`ttl`) | `CLAIMED_NEEDS_PROOF` | fixture `65` |
+| 2. Language (DSL) — full inventory | Computed properties | `CLAIMED_NEEDS_PROOF` | fixture `03` |
+| 2. Language (DSL) — full inventory | Constraint override authorization | `CLAIMED_NEEDS_PROOF` | fixture `22` |
+| 2. Language (DSL) — full inventory | Constraints severity `ok`/`warn`/`block` | `CLAIMED_NEEDS_PROOF` | fixtures `21`, `36` |
+| 2. Language (DSL) — full inventory | Entities + typed properties + defaults | `CLAIMED_NEEDS_PROOF` | fixture `01` |
+| 2. Language (DSL) — full inventory | Entity `behavior` blocks | `REJECTED_LOUD → proven reject` | see §1 / fixture `110` |
+| 2. Language (DSL) — full inventory | Enum types | `CLAIMED_NEEDS_PROOF` | fixture `57` |
+| 2. Language (DSL) — full inventory | Events + reactions (`on Event run`) | `CLAIMED_NEEDS_PROOF` | fixtures `67`, `96` |
+| 2. Language (DSL) — full inventory | Federation | `NOT_IMPLEMENTED or PARTIAL` | `docs/internal/features/federation.md` — prove or strike |
+| 2. Language (DSL) — full inventory | Generic / parameterized entities `Entity<T>` | `NOT_IMPLEMENTED` | fixtures `84`–`85` negative only |
+| 2. Language (DSL) — full inventory | Language keyword `softDelete` | `NOT_IMPLEMENTED` | projection config only |
+| 2. Language (DSL) — full inventory | Modules + `use` imports | `CLAIMED_NEEDS_PROOF` | module-resolver tests |
+| 2. Language (DSL) — full inventory | Multi-tenancy (`tenant`) | `CLAIMED_NEEDS_PROOF` | fixture `61` |
+| 2. Language (DSL) — full inventory | Optimistic concurrency `versionProperty` | `CLAIMED_NEEDS_PROOF` | fixture `24` |
+| 2. Language (DSL) — full inventory | Policies read/write/delete/execute/all/override | `CLAIMED_NEEDS_PROOF` | fixture `06` |
+| 2. Language (DSL) — full inventory | Property modifiers (`required`/`unique`/`indexed`/`private`/`readonly`/`optional`/`searchable`/`encrypted`/`masked`) | `CLAIMED_NEEDS_PROOF / PARTIAL` | compile+IR; runtime `optional` unused (§6) |
+| 2. Language (DSL) — full inventory | Range constraints | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/range-constraints.md` |
+| 2. Language (DSL) — full inventory | Reaction fan-out | `CLAIMED_NEEDS_PROOF` | fixture `96` |
+| 2. Language (DSL) — full inventory | Realtime subscriptions (language/runtime) | `PARTIAL / DIAGNOSTIC_ONLY` | Convex diagnostic; Next.js may differ — prove per target |
+| 2. Language (DSL) — full inventory | Regex constraints | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/regex-constraints.md` |
+| 2. Language (DSL) — full inventory | Relationships `hasMany` / `hasOne` / `belongsTo` / `ref` | `CLAIMED_NEEDS_PROOF` | fixtures `02`, `98`, `99` |
+| 2. Language (DSL) — full inventory | Roles / RBAC hierarchy + deny | `CLAIMED_NEEDS_PROOF` | fixture `71` |
+| 2. Language (DSL) — full inventory | Sagas + compensation | `CLAIMED_NEEDS_PROOF` | fixture `88` |
+| 2. Language (DSL) — full inventory | Schedules cron/interval/every | `CLAIMED_NEEDS_PROOF` | fixture `76` |
+| 2. Language (DSL) — full inventory | Security features surface (doc) | `CLAIMED_NEEDS_PROOF / PARTIAL` | `docs/internal/features/security-features.md` — verify vs privacy/encryption |
+| 2. Language (DSL) — full inventory | State transitions | `CLAIMED_NEEDS_PROOF` | fixture `38` |
+| 2. Language (DSL) — full inventory | Store declarations | `CLAIMED_NEEDS_PROOF` | multiple fixtures |
+| 2. Language (DSL) — full inventory | Value objects / embedded types | `CLAIMED_NEEDS_PROOF` | fixture `60` |
+| 2. Language (DSL) — full inventory | Webhooks + HMAC | `CLAIMED_NEEDS_PROOF` | fixture `90` |
+| 3. Expression builtins (47) | `flag(name)` + provider and/or static map | `CLAIMED_NEEDS_PROOF + §1 for flags map` | See feature matrix |
+| 3. Expression builtins (47) | `hasPermission` / `roleAllows` | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 3. Expression builtins (47) | `today()` compile-time only → `autoNow` | `CLAIMED_NEEDS_PROOF` | not runtime callable |
+| 3. Expression builtins (47) | Array/aggregate builtins | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 3. Expression builtins (47) | Core `now`, `uuid` | `CLAIMED_NEEDS_PROOF` | `RuntimeEngine.getBuiltins()`; fixture `16` |
+| 3. Expression builtins (47) | Custom builtins via plugin API | `CLAIMED_NEEDS_PROOF` | plugin-api |
+| 3. Expression builtins (47) | Date component builtins | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 3. Expression builtins (47) | Date/time helpers (`dateOf`…`durationSeconds`) | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 3. Expression builtins (47) | Math builtins | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 3. Expression builtins (47) | String builtins (trim…search) | `CLAIMED_NEEDS_PROOF` | builtins.md |
+| 4. Runtime engine & adapters | `EncryptionProvider` | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 4. Runtime engine & adapters | `IRDiagnostic.code` optional | `CLAIMED_NEEDS_PROOF` | seeded codes 2026-07-15 |
+| 4. Runtime engine & adapters | `RuntimeContext` fields | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 4. Runtime engine & adapters | ~~WASM expression compatibility layer~~ | `REMOVED 2026-07-15` | Quarantined prototype deleted — no `.wasm` artifact, never on default RuntimeEngine path |
+| 4. Runtime engine & adapters | Batched persistence | `CLAIMED_NEEDS_PROOF` | `runtime-command-batched-persistence.test.ts` |
+| 4. Runtime engine & adapters | Command order (rateLimit → policies → constraints → guards → actions → emits) | `CLAIMED_NEEDS_PROOF` | semantics.md § Commands |
+| 4. Runtime engine & adapters | Deterministic mode / effect boundary | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 4. Runtime engine & adapters | EventBus (in-process) | `CLAIMED_NEEDS_PROOF` | `runtime-eventbus.test.ts` |
+| 4. Runtime engine & adapters | IdempotencyStore | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 4. Runtime engine & adapters | JobQueue / async worker path | `CLAIMED_NEEDS_PROOF` | fixture `69` |
+| 4. Runtime engine & adapters | Middleware (4 hooks) | `CLAIMED_NEEDS_PROOF` | runtime-middleware feature doc |
+| 5. Stores & persistence subsystems | Approval store memory/postgres | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 5. Stores & persistence subsystems | Custom store via plugin API | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 5. Stores & persistence subsystems | DynamoDB store | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 5. Stores & persistence subsystems | GenericPrismaStore | `CLAIMED_NEEDS_PROOF` | `stores/prisma-generic/` |
+| 5. Stores & persistence subsystems | Idempotency store memory/postgres | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 5. Stores & persistence subsystems | LocalStorageStore | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 5. Stores & persistence subsystems | MemoryStore | `CLAIMED_NEEDS_PROOF` | runtime-engine |
+| 5. Stores & persistence subsystems | Outbox: memory/postgres/redis/mongodb/dynamodb | `CLAIMED_NEEDS_PROOF` | `outbox/stores/*` |
+| 5. Stores & persistence subsystems | PostgresStore | `CLAIMED_NEEDS_PROOF` | `stores.node.ts` |
+| 5. Stores & persistence subsystems | SupabaseStore | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 5. Stores & persistence subsystems | Turso / libSQL store | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | `ir.tenant` in all web projections | `PARTIAL` | wiring matrix |
+| 6. Projections — every registered target | analytics | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | contract-tests | `CLAIMED_NEEDS_PROOF` | See `docs/internal/COMPLIANCE_MATRIX.md` (list/get + mutations; auth visibility) |
+| 6. Projections — every registered target | convex | `PARTIAL` | core generate + auth seam; many `CONVEX_UNSUPPORTED_*` (§7) |
+| 6. Projections — every registered target | Convex approvals/masking/retry/rateLimit | `DIAGNOSTIC_ONLY` | `CONVEX_UNSUPPORTED_*` (searchable + versionProperty + realtime/cache PARTIAL §1) |
+| 6. Projections — every registered target | Convex complete lambda lowering | `PARTIAL` | See feature matrix |
+| 6. Projections — every registered target | dart | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | drizzle | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | dynamodb (projection) | `CLAIMED_NEEDS_PROOF` | distinct from DynamoDB store |
+| 6. Projections — every registered target | elasticsearch | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | express | `CLAIMED_NEEDS_PROOF` | `authProvider` §1 |
+| 6. Projections — every registered target | graphql | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | health | `PARTIAL` | generator registered; live IR/store/outbox checks still TODO stubs; docs §7 |
+| 6. Projections — every registered target | hono | `CLAIMED_NEEDS_PROOF` | `authProvider` §1 |
+| 6. Projections — every registered target | jsonschema | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | kysely | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | llm-context | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | mermaid | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | Module-based output splitting | `PARTIAL` | See feature matrix |
+| 6. Projections — every registered target | mongoose folder | `NOT_IMPLEMENTED / unregistered` | folder exists; **not** in `builtins.ts` register list — verify before claiming |
+| 6. Projections — every registered target | nextjs | `CLAIMED_NEEDS_PROOF` | createManifestRuntime, executionMode |
+| 6. Projections — every registered target | openapi | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | prisma | `CLAIMED_NEEDS_PROOF` | multi-schema, naming options |
+| 6. Projections — every registered target | prisma-store | `CLAIMED_NEEDS_PROOF` | softDelete config (not language keyword) |
+| 6. Projections — every registered target | pydantic | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | react-query | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | remix | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | routes | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | storybook | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | sveltekit | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | terraform | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | wiring | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 6. Projections — every registered target | zod | `CLAIMED_NEEDS_PROOF` | enum/list/timestamp alias fixed 2026-07-15 per TODO |
+| 7. CLI, SDK, config, packaging, docs tooling | `@angriff36/manifest/agent-sdk` | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 7. CLI, SDK, config, packaging, docs tooling | `@angriff36/manifest/seed-pack` | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 7. CLI, SDK, config, packaging, docs tooling | AI: generate-from-prompt, gen-tests, validate-ai | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 7. CLI, SDK, config, packaging, docs tooling | CLI compile/generate/build/watch/validate/fmt/init | `CLAIMED_NEEDS_PROOF` | `packages/cli` |
+| 7. CLI, SDK, config, packaging, docs tooling | Config schema + `manifest config *` | `CLAIMED_NEEDS_PROOF` | G0/G1 |
+| 7. CLI, SDK, config, packaging, docs tooling | Conformance suite (~99 fixtures) | `CLAIMED_NEEDS_PROOF` | `src/manifest/conformance/` |
+| 7. CLI, SDK, config, packaging, docs tooling | Dev: repl, mock, harness, load-test, profile, seed… | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 7. CLI, SDK, config, packaging, docs tooling | diff / versions / migrate / changelog | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 7. CLI, SDK, config, packaging, docs tooling | enforce-surface / audit-* / lint-routes | `CLAIMED_NEEDS_PROOF / PARTIAL` | ORM shapes incomplete |
+| 7. CLI, SDK, config, packaging, docs tooling | enforce-surface Drizzle/Kysely/raw-SQL | `PARTIAL` | See feature matrix |
+| 7. CLI, SDK, config, packaging, docs tooling | IR version control / versions CLI | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/ir-version-control.md` |
+| 7. CLI, SDK, config, packaging, docs tooling | Published `@angriff36/manifest` npm | `CLAIMED_NEEDS_PROOF` | pin `package.json` each release |
+| 7. CLI, SDK, config, packaging, docs tooling | Restore `newguard.json` | `NOT_IMPLEMENTED` | See feature matrix |
+| 7. CLI, SDK, config, packaging, docs tooling | Snapshot testing tooling | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/snapshot-testing.md` |
+| 7. CLI, SDK, config, packaging, docs tooling | wiring-coverage/inspect/remediate | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 8. Open gaps / phantoms (checklist mirror) | `manifest generate-fixtures` | `NOT_IMPLEMENTED` | phantom CLI |
+| 8. Open gaps / phantoms (checklist mirror) | `manifest test constraints` / ConstraintTestHarness | `NOT_IMPLEMENTED` | phantom CLI |
+| 8. Open gaps / phantoms (checklist mirror) | `projection.generateRoute` / `generateTypes` / `generateClient` API | `NOT_IMPLEMENTED` | phantom projection API |
+| 8. Open gaps / phantoms (checklist mirror) | ~~Full WASM runtime~~ | `REMOVED 2026-07-15` | Prototype deleted; TypeScript evaluator is the only path |
+| 8. Open gaps / phantoms (checklist mirror) | Config `env(VAR)` / `MANIFEST_ENV` overlays / top-level `stores:` YAML | `NOT_IMPLEMENTED` | phantom config |
+| 8. Open gaps / phantoms (checklist mirror) | Convex unsupported surfaces (approvals/masking/retry/rateLimit) | `DIAGNOSTIC_ONLY` | See feature matrix |
+| 8. Open gaps / phantoms (checklist mirror) | Default encryption provider (common no-vendor case) | `NOT_IMPLEMENTED` | fail-closed by design until provider set |
+| 8. Open gaps / phantoms (checklist mirror) | Kysely `columnMappings` actually applied | `NOT_IMPLEMENTED / PARTIAL` | option declared, unused |
+| 8. Open gaps / phantoms (checklist mirror) | softDelete language keyword | `NOT_IMPLEMENTED` | Manifest language gap (projection config exists) |

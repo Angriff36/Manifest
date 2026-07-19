@@ -33,9 +33,8 @@ interface CompileOptions {
 }
 
 async function resolveCompileGate(options: CompileOptions) {
-  const { ValidationGatePolicy, resolveValidationFailOn } = await import(
-    '../utils/validation-gate-policy.js'
-  );
+  const { ValidationGatePolicy, resolveValidationFailOn } =
+    await import('../utils/validation-gate-policy.js');
   let configFailOn: unknown;
   try {
     const { loadAllConfigs } = await import('../utils/config.js');

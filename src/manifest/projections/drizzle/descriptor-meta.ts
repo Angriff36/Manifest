@@ -3,11 +3,9 @@ import { aggregateSurface } from '../descriptor-helpers.js';
 
 export const DRIZZLE_DESCRIPTOR_META: ProjectionDescriptorMeta = {
   displayName: 'Drizzle',
-  surfaces: [
-    aggregateSurface('drizzle.schema'),
-  ],
+  surfaces: [aggregateSurface('drizzle.schema')],
   options: [],
-  artifactCategories: ["schema"],
+  artifactCategories: ['schema'],
   packageDependencies: ['drizzle-orm'],
   runtimeDependencies: [],
   compatibleCompanions: [],

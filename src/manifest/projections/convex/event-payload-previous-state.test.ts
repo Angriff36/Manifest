@@ -7,10 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import type { IR, IRCommand, IREntity, IRProperty, IRStore } from '../../ir.js';
 import { ConvexProjection } from './generator.js';
-import {
-  renderCommandComputeBindings,
-  renderEmitPayloadFields,
-} from './event-payload.js';
+import { renderCommandComputeBindings, renderEmitPayloadFields } from './event-payload.js';
 
 function emptyIR(): IR {
   return {
@@ -142,16 +139,12 @@ describe('event payload previous-state (compute bindings)', () => {
 
   it('does not prefix-guess previousQuantity → doc.quantity when compute uses quantityOnHand', () => {
     const ir = emptyIR();
-    ir.entities = [
-      entity('InventoryItem', [prop('quantityOnHand', 'number', ['required'])]),
-    ];
+    ir.entities = [entity('InventoryItem', [prop('quantityOnHand', 'number', ['required'])])];
     ir.stores = [durable('InventoryItem')];
     const cmd: IRCommand = {
       name: 'adjustQuantity',
       entity: 'InventoryItem',
-      parameters: [
-        { name: 'delta', type: { name: 'number', nullable: false }, required: true },
-      ],
+      parameters: [{ name: 'delta', type: { name: 'number', nullable: false }, required: true }],
       guards: [],
       constraints: [],
       actions: [

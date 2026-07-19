@@ -10,10 +10,7 @@ interface FlameGraphPanelProps {
   disabled: boolean;
 }
 
-function resolveSelectedCommandLabel(
-  current: string,
-  options: ProfilerCommandOption[],
-): string {
+function resolveSelectedCommandLabel(current: string, options: ProfilerCommandOption[]): string {
   if (current && options.some((option) => option.label === current)) {
     return current;
   }

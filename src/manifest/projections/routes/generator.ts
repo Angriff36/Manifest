@@ -31,7 +31,6 @@ import type {
 import { resolveRouteContract, type RouteContract } from '../shared/route-contract.js';
 import { ROUTES_DESCRIPTOR_META } from './descriptor-meta.js';
 
-
 // ============================================================================
 // Helpers
 // ============================================================================

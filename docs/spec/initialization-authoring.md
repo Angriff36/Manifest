@@ -1,4 +1,8 @@
 ---
+
+Last updated: 2026-07-19
+Status: Active
+Authority: Binding
 title: Initialization authoring guide
 status: source-of-truth
 authority: Manifest language (semantics)

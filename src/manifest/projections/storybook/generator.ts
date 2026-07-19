@@ -152,7 +152,8 @@ function defaultValueForType(type: IRType): string {
   if (name === 'number' || name === 'float' || name === 'decimal' || name === 'money') return '0';
   if (name === 'int' || name === 'integer') return '0';
   if (name === 'boolean' || name === 'bool') return 'false';
-  if (name === 'date' || name === 'datetime' || name === 'timestamp') return 'new Date().toISOString()';
+  if (name === 'date' || name === 'datetime' || name === 'timestamp')
+    return 'new Date().toISOString()';
   return "''";
 }
 
@@ -165,7 +166,8 @@ function sampleValueForType(type: IRType, ir: IR): string {
   if (name === 'number' || name === 'float' || name === 'decimal' || name === 'money') return '1';
   if (name === 'int' || name === 'integer') return '1';
   if (name === 'boolean' || name === 'bool') return 'true';
-  if (name === 'date' || name === 'datetime' || name === 'timestamp') return "'2025-01-01T00:00:00.000Z'";
+  if (name === 'date' || name === 'datetime' || name === 'timestamp')
+    return "'2025-01-01T00:00:00.000Z'";
   // enum: use first value
   const enumDef = ir.enums.find((e) => e.name === name);
   if (enumDef && enumDef.values.length > 0) return `'${enumDef.values[0].name}'`;

@@ -542,9 +542,7 @@ describe('Convex governed creation entries', () => {
         {
           entity: 'CatalogItem',
           name: 'rename',
-          parameters: [
-            { name: 'name', type: { name: 'string', nullable: false }, required: true },
-          ],
+          parameters: [{ name: 'name', type: { name: 'string', nullable: false }, required: true }],
           guards: [notEqualsNull('introducedAt')],
           actions: [mutate('name', identifier('name'))],
           emits: [],

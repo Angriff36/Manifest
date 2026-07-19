@@ -12,9 +12,7 @@ export interface AssemblySeedCheck {
 }
 
 function mutationExports(mutationsCode: string): Set<string> {
-  return new Set(
-    [...mutationsCode.matchAll(/export const (\w+) = mutation\(/g)].map((m) => m[1]!),
-  );
+  return new Set([...mutationsCode.matchAll(/export const (\w+) = mutation\(/g)].map((m) => m[1]!));
 }
 
 function seedMutationRefs(seedCode: string): string[] {
@@ -71,9 +69,10 @@ export function checkSeedScriptCoherence(
 
   // String literals passed where create args are clearly numeric epoch fields
   // (dueDate/createdAt/etc. as JSON strings) — coarse static gate.
-  const badTemporal = /"(dueDate|createdAt|updatedAt|completedDate|scheduledDate|expiresAt|nextRunAt)"\s*:\s*"/.test(
-    seedCode,
-  );
+  const badTemporal =
+    /"(dueDate|createdAt|updatedAt|completedDate|scheduledDate|expiresAt|nextRunAt)"\s*:\s*"/.test(
+      seedCode,
+    );
   checks.push({
     id: 'seed-script-temporal-types',
     pass: !badTemporal,
@@ -113,8 +112,7 @@ export function checkEventPayloadContract(
   }
 
   const emptyInserts: string[] = [];
-  const re =
-    /type:\s*"([^"]+)"[\s\S]*?payload:\s*\{\s*\}/g;
+  const re = /type:\s*"([^"]+)"[\s\S]*?payload:\s*\{\s*\}/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(mutationsCode)) !== null) {
     const name = m[1]!;

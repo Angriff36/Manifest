@@ -3,12 +3,9 @@ import { aggregateSurface } from '../descriptor-helpers.js';
 
 export const ROUTES_DESCRIPTOR_META: ProjectionDescriptorMeta = {
   displayName: 'Routes',
-  surfaces: [
-    aggregateSurface('routes.manifest'),
-    aggregateSurface('routes.ts'),
-  ],
+  surfaces: [aggregateSurface('routes.manifest'), aggregateSurface('routes.ts')],
   options: [],
-  artifactCategories: ["routes"],
+  artifactCategories: ['routes'],
   packageDependencies: [],
   runtimeDependencies: [],
   compatibleCompanions: [],

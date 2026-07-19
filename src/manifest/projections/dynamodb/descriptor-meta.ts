@@ -9,7 +9,7 @@ export const DYNAMODB_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     aggregateSurface('dynamodb.terraform'),
   ],
   options: [],
-  artifactCategories: ["infrastructure"],
+  artifactCategories: ['infrastructure'],
   packageDependencies: ['aws-cdk-lib'],
   runtimeDependencies: [],
   compatibleCompanions: [],

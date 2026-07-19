@@ -5,10 +5,7 @@ import { checkReactionCompleteness } from './reaction-completeness.js';
 import { attachInitializationPlans } from './initialization-plan.js';
 import { parseDurationToMs, isValidCronExpression } from './schedule-utils.js';
 import { CanonicalNameRegistry } from './canonical-names.js';
-import {
-  collectCanonicalDeclarations,
-  canonicalizeProgramNames,
-} from './canonicalize-program.js';
+import { collectCanonicalDeclarations, canonicalizeProgramNames } from './canonicalize-program.js';
 import {
   resolveNamingConfig,
   type ManifestNamingInput,
@@ -139,7 +136,9 @@ export async function computeIRHash(ir: IR): Promise<string> {
   const json = JSON.stringify(canonical, (_key: string, value: unknown) => {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       const sorted: Record<string, unknown> = {};
-      for (const k of Object.keys(value as Record<string, unknown>).sort((a, b) => a.localeCompare(b))) {
+      for (const k of Object.keys(value as Record<string, unknown>).sort((a, b) =>
+        a.localeCompare(b),
+      )) {
         sorted[k] = (value as Record<string, unknown>)[k];
       }
       return sorted;
@@ -429,7 +428,9 @@ export class IRCompiler {
   ): Promise<IR> {
     // Optional identifier normalization (off by default for back-compat).
     if (namingPolicy.normalization) {
-      const registry = nameRegistry ?? collectCanonicalDeclarations([program], new CanonicalNameRegistry(namingPolicy));
+      const registry =
+        nameRegistry ??
+        collectCanonicalDeclarations([program], new CanonicalNameRegistry(namingPolicy));
       registry.setPolicy(namingPolicy);
       for (const d of canonicalizeProgramNames(program, registry, namingPolicy)) {
         this.emitDiagnostic(d.severity, d.message);
@@ -1589,9 +1590,7 @@ export class IRCompiler {
     for (const entity of entities) {
       const initCommands = commands.filter(
         (c) =>
-          c.entity === entity.name &&
-          c.module === entity.module &&
-          c.initialization !== undefined,
+          c.entity === entity.name && c.module === entity.module && c.initialization !== undefined,
       );
       if (initCommands.length === 0) continue;
 

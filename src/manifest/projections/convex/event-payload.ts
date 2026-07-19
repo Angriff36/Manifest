@@ -79,10 +79,7 @@ export function payloadRenderScope(
   idVar: string,
   computeLocals: readonly string[] = [],
 ): RenderScope {
-  return withComputeLocals(
-    { ...scope, idExpr: convexIdentityExpr(scope, idVar) },
-    computeLocals,
-  );
+  return withComputeLocals({ ...scope, idExpr: convexIdentityExpr(scope, idVar) }, computeLocals);
 }
 
 function eventSchemaFields(ir: IR, eventName: string): IREventField[] {
@@ -123,10 +120,7 @@ export function synthesizePayloadFromEventSchema(
       continue;
     }
     const typeName = f.type?.name?.toLowerCase() ?? '';
-    if (
-      (typeName === 'datetime' || typeName === 'date') &&
-      /(At|Date|Time)$/.test(f.name)
-    ) {
+    if ((typeName === 'datetime' || typeName === 'date') && /(At|Date|Time)$/.test(f.name)) {
       fields.push({ name: f.name, code: 'Date.now()' });
       continue;
     }
@@ -281,11 +275,7 @@ export function renderEvents(
  * True when any emit needs post-action instance scope (`__after`) for schema
  * synthesis or G7 fields on a non-create command.
  */
-export function commandNeedsAfterSnapshot(
-  ir: IR,
-  entity: IREntity,
-  cmd: IRCommand,
-): boolean {
+export function commandNeedsAfterSnapshot(ir: IR, entity: IREntity, cmd: IRCommand): boolean {
   if (cmd.emitPayloads && cmd.emitPayloads.length > 0) {
     return (cmd.emitPayloads ?? []).some((ep) => ep.fields.length > 0);
   }

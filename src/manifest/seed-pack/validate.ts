@@ -107,8 +107,7 @@ function validateTableRows(
     for (const propName of props) {
       const prop = findProperty(entity, propName);
       if (!prop) continue;
-      const required =
-        prop.modifiers.includes('required') && !prop.modifiers.includes('optional');
+      const required = prop.modifiers.includes('required') && !prop.modifiers.includes('optional');
       if (required && isBlankCell(row[propName])) {
         errors.push({
           code: 'required_blank',

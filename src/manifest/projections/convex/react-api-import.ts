@@ -24,10 +24,7 @@ function normalizeRepoPath(p: string): string {
  * Relative TypeScript import from one project-root file to another module path.
  * `toModule` may omit `.ts` (Convex `api` import style).
  */
-export function relativeImportBetweenArtifacts(
-  fromArtifact: string,
-  toModule: string,
-): string {
+export function relativeImportBetweenArtifacts(fromArtifact: string, toModule: string): string {
   const from = normalizeRepoPath(fromArtifact);
   const to = normalizeRepoPath(toModule).replace(/\.(tsx?|jsx?)$/, '');
   const fromDir = from.split('/');

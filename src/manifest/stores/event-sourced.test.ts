@@ -77,10 +77,14 @@ describe('RuntimeEngine + eventSourced store', () => {
     const compiler = new IRCompiler();
     const compiled = await compiler.compileToIR(source);
     expect(compiled.ir).toBeTruthy();
-    const rt = new RuntimeEngine(compiled.ir!, {}, {
-      generateId: () => 'acct-1',
-      now: () => 1000,
-    });
+    const rt = new RuntimeEngine(
+      compiled.ir!,
+      {},
+      {
+        generateId: () => 'acct-1',
+        now: () => 1000,
+      },
+    );
     await rt.createInstance('BankAccount', { id: 'acct-1', balance: 0, owner: 'alice' });
     const result = await rt.runCommand(
       'deposit',

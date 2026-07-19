@@ -81,9 +81,9 @@ describe('naming normalization enabled', () => {
       { useCache: false, naming },
     );
     expect(result.ir!.entities[0]!.name).toBe('event_date');
-    expect(result.diagnostics.some((d) => d.severity === 'warning' && d.message.includes('event_date'))).toBe(
-      true,
-    );
+    expect(
+      result.diagnostics.some((d) => d.severity === 'warning' && d.message.includes('event_date')),
+    ).toBe(true);
   });
 
   it('error mismatch fails closed without rewriting', async () => {
@@ -91,13 +91,13 @@ describe('naming normalization enabled', () => {
       normalization: true,
       entities: { casing: 'pascal', mismatch: 'error' },
     });
-    const result = await compileToIR(
-      `entity event_date { property required title: string }`,
-      { useCache: false, naming },
-    );
-    expect(result.diagnostics.some((d) => d.severity === 'error' && d.message.includes('event_date'))).toBe(
-      true,
-    );
+    const result = await compileToIR(`entity event_date { property required title: string }`, {
+      useCache: false,
+      naming,
+    });
+    expect(
+      result.diagnostics.some((d) => d.severity === 'error' && d.message.includes('event_date')),
+    ).toBe(true);
   });
 
   it('errors on different-word FK unless aliased', async () => {
@@ -114,7 +114,7 @@ describe('naming normalization enabled', () => {
       normalization: true,
       aliases: { writer: 'author' },
     });
-    // writerId is still a different field spelling of authorId mechanically? 
+    // writerId is still a different field spelling of authorId mechanically?
     // nameKey(writerId)=writerid, nameKey(authorId)=authorid — alias on relationship
     // name 'author' doesn't make writerId mechanical. Alias should map writer→author
     // for relationship names; for FK field writerId, alias of "writer" prefix...

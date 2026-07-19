@@ -27,9 +27,7 @@ function groupCapabilities(
   };
 }
 
-function normalizeSurfaces(
-  meta: ProjectionDescriptorMeta,
-): ProjectionSurfaceDescriptor[] {
+function normalizeSurfaces(meta: ProjectionDescriptorMeta): ProjectionSurfaceDescriptor[] {
   return meta.surfaces.map((s) => ({
     id: s.id,
     scope: s.scope,
@@ -40,10 +38,7 @@ function normalizeSurfaces(
   }));
 }
 
-function surfacesCoverTarget(
-  target: ProjectionTarget,
-  meta: ProjectionDescriptorMeta,
-): boolean {
+function surfacesCoverTarget(target: ProjectionTarget, meta: ProjectionDescriptorMeta): boolean {
   const registered = new Set(target.surfaces);
   const declared = new Set(meta.surfaces.map((s) => s.id));
   if (registered.size !== declared.size) return false;
@@ -125,9 +120,7 @@ export function validateAgainstDescriptor(
   for (const option of descriptor.requiredOptions) {
     const value = opts[option.name];
     const missing =
-      value === undefined ||
-      value === null ||
-      (Array.isArray(value) && value.length === 0);
+      value === undefined || value === null || (Array.isArray(value) && value.length === 0);
     if (missing) {
       blockers.push(
         `Projection "${descriptor.name}" requires option "${option.name}" ` +

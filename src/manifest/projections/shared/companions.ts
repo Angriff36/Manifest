@@ -255,7 +255,9 @@ export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): 
     lines.push('  auth?: Record<string, unknown>,');
     lines.push('): Promise<RuntimeEngine> {');
     lines.push('  let resolvedContext: ManifestContext = context;');
-    lines.push('  if (typeof (manifestConfig as RuntimeConfigLike | undefined)?.resolveUser === "function") {');
+    lines.push(
+      '  if (typeof (manifestConfig as RuntimeConfigLike | undefined)?.resolveUser === "function") {',
+    );
     lines.push('    const authInput = auth ?? {');
     lines.push(
       '      userId: (context as { actorId?: string }).actorId ?? (context as { user?: { id?: string } }).user?.id,',
@@ -267,9 +269,7 @@ export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): 
     lines.push('      resolvedContext = {');
     lines.push('        ...context,');
     lines.push('        user: { ...(context as { user?: object }).user, ...user },');
-    lines.push(
-      '        actorId: (context as { actorId?: string }).actorId ?? userRecord.id,',
-    );
+    lines.push('        actorId: (context as { actorId?: string }).actorId ?? userRecord.id,');
     lines.push(
       '        tenantId: (context as { tenantId?: string }).tenantId ?? userRecord.tenantId,',
     );

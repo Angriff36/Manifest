@@ -655,7 +655,7 @@
           transform: translateX(-50%) rotate(90deg);
         }
       }
-    
+
       /* ---- agent-spec extras ---- */
       .tree {
         font-family: var(--mono);
@@ -669,9 +669,18 @@
         white-space: pre;
         overflow-x: auto;
       }
-      .tree .hl { color: var(--cyan-br); }
-      .tree .dim { color: var(--paper-mute); }
-      .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
+      .tree .hl {
+        color: var(--cyan-br);
+      }
+      .tree .dim {
+        color: var(--paper-mute);
+      }
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 14px 0 6px;
+      }
       .st {
         font-family: var(--mono);
         font-size: 10.5px;
@@ -681,16 +690,32 @@
         border-radius: 2px;
         border: 1px solid var(--line);
       }
-      .st.full { color: var(--green); border-color: rgba(127,176,105,0.45); background: rgba(127,176,105,0.1); }
-      .st.part { color: var(--amber-br); border-color: rgba(224,166,74,0.45); background: rgba(224,166,74,0.1); }
-      .st.none { color: var(--rose); border-color: rgba(224,108,117,0.45); background: rgba(224,108,117,0.1); }
-      .st.ign { color: var(--paper-mute); }
+      .st.full {
+        color: var(--green);
+        border-color: rgba(127, 176, 105, 0.45);
+        background: rgba(127, 176, 105, 0.1);
+      }
+      .st.part {
+        color: var(--amber-br);
+        border-color: rgba(224, 166, 74, 0.45);
+        background: rgba(224, 166, 74, 0.1);
+      }
+      .st.none {
+        color: var(--rose);
+        border-color: rgba(224, 108, 117, 0.45);
+        background: rgba(224, 108, 117, 0.1);
+      }
+      .st.ign {
+        color: var(--paper-mute);
+      }
       .forbid li {
         margin: 8px 0 8px 18px;
         color: var(--paper-dim);
         font-size: 14px;
       }
-      .forbid li code { color: var(--cyan-br); }
+      .forbid li code {
+        color: var(--cyan-br);
+      }
       .checklist label {
         display: flex;
         gap: 10px;
@@ -700,10 +725,21 @@
         font-size: 13.5px;
         color: var(--paper-dim);
       }
-      .checklist label:last-child { border-bottom: 0; }
-      .checklist input { margin-top: 3px; accent-color: var(--cyan); }
-      table.cap { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
-      table.cap th, table.cap td {
+      .checklist label:last-child {
+        border-bottom: 0;
+      }
+      .checklist input {
+        margin-top: 3px;
+        accent-color: var(--cyan);
+      }
+      table.cap {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-top: 12px;
+      }
+      table.cap th,
+      table.cap td {
         text-align: left;
         padding: 10px 12px;
         border-bottom: 1px solid var(--line);
@@ -716,7 +752,11 @@
         text-transform: uppercase;
         color: var(--paper-mute);
       }
-      table.cap td.m { font-family: var(--mono); font-size: 12px; color: var(--paper); }
+      table.cap td.m {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--paper);
+      }
       .toc {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -725,10 +765,16 @@
         font-family: var(--mono);
         font-size: 12.5px;
       }
-      .toc a { color: var(--paper-dim); }
-      .toc a:hover { color: var(--cyan-br); }
-      .toc span { color: var(--amber); margin-right: 8px; }
-
+      .toc a {
+        color: var(--paper-dim);
+      }
+      .toc a:hover {
+        color: var(--cyan-br);
+      }
+      .toc span {
+        color: var(--amber);
+        margin-right: 8px;
+      }
     </style>
   </head>
   <body>
@@ -737,14 +783,14 @@
       <div class="wrap">
         <div class="kicker">Manifest · agent build-spec · Convex host</div>
         <h1>
-          Build the app from<br /><span class="em">.manifest</span>
-          <span class="slash">/</span><br />not from hand-rolled Convex
+          Build the app from<br /><span class="em">.manifest</span> <span class="slash">/</span
+          ><br />not from hand-rolled Convex
         </h1>
         <p class="lede">
           This is the handoff document for an agent building a Capsule-class product on the
-          <strong>Convex projection</strong>. It covers language meaning, source-of-truth rules,
-          the feature→Convex capability matrix, frontend consumption, auth/tenant, forbidden
-          patterns, workflows, and current limitations — not just the compiler pipeline.
+          <strong>Convex projection</strong>. It covers language meaning, source-of-truth rules, the
+          feature→Convex capability matrix, frontend consumption, auth/tenant, forbidden patterns,
+          workflows, and current limitations — not just the compiler pipeline.
         </p>
         <div class="meta-row">
           <span class="chip">authority · <b>IR</b></span>
@@ -808,9 +854,7 @@
           <span class="sec-num">02</span>
           <h2>What is authoritative</h2>
         </div>
-        <p class="sec-sub">
-          One source of truth. Everything else is derivative or glue.
-        </p>
+        <p class="sec-sub">One source of truth. Everything else is derivative or glue.</p>
         <table class="cap">
           <thead>
             <tr>
@@ -859,8 +903,8 @@
           handlers that duplicate reactions · crons that duplicate <code>schedule</code> · webhook
           endpoints that duplicate <code>webhook</code>. If you think you need those, first check
           whether Manifest already has the concept. One real gap to cover yourself: the generated
-          webhook httpAction does <b>not</b> verify HMAC signatures — put a verifying edge in
-          front of it (do not reimplement the route).
+          webhook httpAction does <b>not</b> verify HMAC signatures — put a verifying edge in front
+          of it (do not reimplement the route).
         </div>
       </div>
     </section>
@@ -875,30 +919,42 @@
         <p class="sec-sub">
           What a <code>.manifest</code> author is declaring — not “tables,” but governed behavior.
         </p>
-        <div class="tree" style="margin-top: 28px"><span class="hl">entity</span> Order
- ├── <span class="hl">property</span> …          <span class="dim">persisted fields (+ modifiers)</span>
- ├── <span class="hl">computed</span> …           <span class="dim">derived; never a Convex column</span>
- ├── <span class="hl">relationship</span> …       <span class="dim">hasMany / hasOne / belongsTo / ref</span>
- ├── <span class="hl">constraint</span> …         <span class="dim">validation (block/warn)</span>
- ├── <span class="hl">policy</span> …             <span class="dim">authz: read / write / execute</span>
- ├── <span class="hl">transition</span> …         <span class="dim">legal status moves</span>
- ├── <span class="hl">command</span> claim(…)
- │    ├── <span class="hl">guard</span> …          <span class="dim">halt on first falsey</span>
- │    ├── <span class="hl">mutate</span> …         <span class="dim">working-copy field writes</span>
- │    ├── <span class="hl">emit</span> Event      <span class="dim">named IR event + optional payload</span>
- │    └── <span class="hl">retry / rateLimit / approval</span>  <span class="dim">when declared</span>
- └── <span class="hl">store in</span> supabase|postgres|durable|memory
+        <div class="tree" style="margin-top: 28px">
+          <span class="hl">entity</span> Order ├── <span class="hl">property</span> …
+          <span class="dim">persisted fields (+ modifiers)</span> ├──
+          <span class="hl">computed</span> …
+          <span class="dim">derived; never a Convex column</span> ├──
+          <span class="hl">relationship</span> …
+          <span class="dim">hasMany / hasOne / belongsTo / ref</span> ├──
+          <span class="hl">constraint</span> … <span class="dim">validation (block/warn)</span> ├──
+          <span class="hl">policy</span> …
+          <span class="dim">authz: read / write / execute</span> ├──
+          <span class="hl">transition</span> … <span class="dim">legal status moves</span> ├──
+          <span class="hl">command</span> claim(…) │ ├── <span class="hl">guard</span> …
+          <span class="dim">halt on first falsey</span> │ ├── <span class="hl">mutate</span> …
+          <span class="dim">working-copy field writes</span> │ ├──
+          <span class="hl">emit</span> Event
+          <span class="dim">named IR event + optional payload</span> │ └──
+          <span class="hl">retry / rateLimit / approval</span>
+          <span class="dim">when declared</span> └──
+          <span class="hl">store in</span> supabase|postgres|durable|memory
 
-<span class="hl">event</span> TaskClaimed: "…" { … }
-<span class="hl">on</span> TaskClaimed <span class="hl">run</span> Station.sync…   <span class="dim">reaction (real runtime wiring)</span>
-<span class="hl">schedule</span> … <span class="hl">cron</span> "…" <span class="hl">run</span> Entity.cmd
-<span class="hl">webhook</span> … "/path" <span class="hl">run</span> Entity.cmd
-<span class="hl">saga</span> Checkout { steps + compensate }
+          <span class="hl">event</span> TaskClaimed: "…" { … }
+          <span class="hl">on</span> TaskClaimed <span class="hl">run</span> Station.sync…
+          <span class="dim">reaction (real runtime wiring)</span> <span class="hl">schedule</span> …
+          <span class="hl">cron</span> "…" <span class="hl">run</span> Entity.cmd
+          <span class="hl">webhook</span> … "/path" <span class="hl">run</span> Entity.cmd
+          <span class="hl">saga</span> Checkout { steps + compensate }
 
-<span class="dim">// Parsed but NOT lowered to IR (no runtime effect) — do not rely on these:</span>
-<span class="hl">compose</span> … { <span class="hl">connect</span> … }     <span class="dim">→ use reactions instead</span>
-<span class="hl">expose</span> … as rest …      <span class="dim">→ use projections (Convex/Next/Express)</span>
-<span class="hl">flow</span> / <span class="hl">effect</span>               <span class="dim">→ stubs; warnings only</span></div>
+          <span class="dim"
+            >// Parsed but NOT lowered to IR (no runtime effect) — do not rely on these:</span
+          >
+          <span class="hl">compose</span> … { <span class="hl">connect</span> … }
+          <span class="dim">→ use reactions instead</span> <span class="hl">expose</span> … as rest
+          … <span class="dim">→ use projections (Convex/Next/Express)</span>
+          <span class="hl">flow</span> / <span class="hl">effect</span>
+          <span class="dim">→ stubs; warnings only</span>
+        </div>
         <div class="note" style="margin-top: 22px">
           <b>Command execution order (normative)</b>
           Build context → <strong>policies</strong> → <strong>guards</strong> (ordered, halt on
@@ -971,7 +1027,12 @@
               <td class="m">policy / roles</td>
               <td class="m">policy checks + ROLE_PERMISSIONS / checkRole</td>
               <td><span class="st part">partial</span></td>
-              <td>Enforced in <b>mutations and generated entity queries</b> when <code>authContextImport</code> is set. Predicates requiring unsupported <code>flag()</code>, relationship traversal, or <code>rateLimit</code> semantics remain <code>internalQuery</code> fail-closed. Don't re-auth in handlers</td>
+              <td>
+                Enforced in <b>mutations and generated entity queries</b> when
+                <code>authContextImport</code> is set. Predicates requiring unsupported
+                <code>flag()</code>, relationship traversal, or <code>rateLimit</code> semantics
+                remain <code>internalQuery</code> fail-closed. Don't re-auth in handlers
+              </td>
             </tr>
             <tr>
               <td class="m">event + emit</td>
@@ -995,7 +1056,11 @@
               <td class="m">webhook</td>
               <td class="m">http.ts httpAction</td>
               <td><span class="st part">partial</span></td>
-              <td>Do not add Express/Next webhook routes for the same path. Caveat: the generated httpAction does <b>not</b> verify HMAC signatures — front it with a verifying edge until generated enforcement ships</td>
+              <td>
+                Do not add Express/Next webhook routes for the same path. Caveat: the generated
+                httpAction does <b>not</b> verify HMAC signatures — front it with a verifying edge
+                until generated enforcement ships
+              </td>
             </tr>
             <tr>
               <td class="m">saga</td>
@@ -1019,13 +1084,19 @@
               <td class="m">transition</td>
               <td class="m">mutations.ts status checks</td>
               <td><span class="st full">full</span></td>
-              <td>Illegal status moves throw in generated mutations — do not duplicate state-machine checks in app code</td>
+              <td>
+                Illegal status moves throw in generated mutations — do not duplicate state-machine
+                checks in app code
+              </td>
             </tr>
             <tr>
               <td class="m">approval / retry / rateLimit</td>
               <td class="m">—</td>
               <td><span class="st none">not projected</span></td>
-              <td>Language/IR may exist; Convex surfaces do not emit these — do not fake in app without an explicit plan</td>
+              <td>
+                Language/IR may exist; Convex surfaces do not emit these — do not fake in app
+                without an explicit plan
+              </td>
             </tr>
             <tr>
               <td class="m">compose / connect</td>
@@ -1110,12 +1181,16 @@
             </div>
             <div class="node green">
               <div class="nf">convex/lib/authContext.ts</div>
-              <div class="nd"><code>getAuthContext(ctx)</code> → role + tenant (+ system callers).</div>
+              <div class="nd">
+                <code>getAuthContext(ctx)</code> → role + tenant (+ system callers).
+              </div>
               <span class="tag hand">hand-written glue</span>
             </div>
             <div class="node green">
               <div class="nf">app UI</div>
-              <div class="nd">Pages/forms calling generated <code>api.*</code> — no business rules.</div>
+              <div class="nd">
+                Pages/forms calling generated <code>api.*</code> — no business rules.
+              </div>
               <span class="tag hand">hand-written</span>
             </div>
           </div>
@@ -1133,7 +1208,10 @@
             </div>
             <div class="node amber">
               <div class="nf">convex/queries.ts</div>
-              <div class="nd">list / get / listBy… · tenant + soft-delete filtered. Read/all-gated entities emit internalQuery (fail-closed).</div>
+              <div class="nd">
+                list / get / listBy… · tenant + soft-delete filtered. Read/all-gated entities emit
+                internalQuery (fail-closed).
+              </div>
               <span class="tag gen">convex.queries</span>
             </div>
             <div class="node amber">
@@ -1227,10 +1305,10 @@
           against <code>api</code> from <code>convex/_generated/api</code>. The separate TanStack
           Query projection targets HTTP/Next stacks — not the primary Convex path.
           <b>Authorization caveat:</b> generated queries apply tenant + soft-delete filters but do
-          <b>not</b> evaluate read/<code>all</code> policies (<code>CONVEX_UNSUPPORTED_READ_POLICY</code>).
-          Entities gated by such policies emit <code>internalQuery</code> — fail-closed, not
-          callable from clients. To surface their data in UI, write a policy-enforcing public
-          query that wraps the internal one.
+          <b>not</b> evaluate read/<code>all</code> policies
+          (<code>CONVEX_UNSUPPORTED_READ_POLICY</code>). Entities gated by such policies emit
+          <code>internalQuery</code> — fail-closed, not callable from clients. To surface their data
+          in UI, write a policy-enforcing public query that wraps the internal one.
         </p>
         <table class="cap" style="margin-top: 28px">
           <thead>
@@ -1273,7 +1351,9 @@
             </tr>
             <tr>
               <td>Derived totals / labels</td>
-              <td>Manifest <code>computed</code> (display via query fields you store, or client calc)</td>
+              <td>
+                Manifest <code>computed</code> (display via query fields you store, or client calc)
+              </td>
               <td>Persist computeds as columns (projection forbids it)</td>
             </tr>
             <tr>
@@ -1344,9 +1424,7 @@
             Queries fail closed: no auth → no rows (when tenant filter is on and the entity declares
             the column).
           </li>
-          <li>
-            <code>policyMode: 'skip'</code> is for local demos only — never ship it.
-          </li>
+          <li><code>policyMode: 'skip'</code> is for local demos only — never ship it.</li>
         </ul>
       </div>
     </section>
@@ -1367,9 +1445,9 @@
             <div class="body">
               <span class="cmd">create manifest.config.ts</span>
               <p>
-                Add <code>src/**/*.manifest</code> (or project convention), IR
-                <code>output</code>, and <code>projections.convex</code> with
-                <code>authContextImport</code>. Create <code>convex/lib/authContext.ts</code>.
+                Add <code>src/**/*.manifest</code> (or project convention), IR <code>output</code>,
+                and <code>projections.convex</code> with <code>authContextImport</code>. Create
+                <code>convex/lib/authContext.ts</code>.
               </p>
             </div>
           </div>
@@ -1381,9 +1459,9 @@
             <div class="body">
               <span class="cmd">write *.manifest</span>
               <p>
-                Entities, commands, events, reactions, stores (durable path), schedules/webhooks/sagas
-                as needed. Prefer reactions over <code>compose</code>. Prefer projections over
-                <code>expose</code>.
+                Entities, commands, events, reactions, stores (durable path),
+                schedules/webhooks/sagas as needed. Prefer reactions over <code>compose</code>.
+                Prefer projections over <code>expose</code>.
               </p>
             </div>
           </div>
@@ -1394,7 +1472,9 @@
             </div>
             <div class="body">
               <span class="cmd">manifest compile <span class="fl">--all</span></span>
-              <p>Merged IR to <code>config.output</code>. Fix error diagnostics before generating.</p>
+              <p>
+                Merged IR to <code>config.output</code>. Fix error diagnostics before generating.
+              </p>
             </div>
           </div>
           <div class="phase">
@@ -1418,7 +1498,10 @@
             </div>
             <div class="body">
               <span class="cmd">npx convex dev</span>
-              <p>Types <code>_generated/api</code> and pushes functions. Then build UI against <code>api</code>.</p>
+              <p>
+                Types <code>_generated/api</code> and pushes functions. Then build UI against
+                <code>api</code>.
+              </p>
             </div>
           </div>
           <div class="phase">
@@ -1451,7 +1534,9 @@
             </div>
             <div class="body">
               <span class="cmd">npx convex deploy</span>
-              <p>Plus the frontend deploy. Ordering: compile → generate → convex deploy → app build.</p>
+              <p>
+                Plus the frontend deploy. Ordering: compile → generate → convex deploy → app build.
+              </p>
             </div>
           </div>
         </div>
@@ -1467,7 +1552,8 @@
         </div>
         <p class="sec-sub">
           Assume nothing in Manifest syntax “just works” on Convex until it appears as
-          <span class="st full">full</span> or documented <span class="st part">partial</span> above.
+          <span class="st full">full</span> or documented
+          <span class="st part">partial</span> above.
         </p>
         <table class="cap" style="margin-top: 22px">
           <thead>
@@ -1482,12 +1568,11 @@
               <td>
                 Entities/properties/relationships · commands with guards/constraints/policies
                 (enforced in mutations; read/<code>all</code>-gated entities emit
-                <code>internalQuery</code> — expressions not evaluated in queries) ·
-                events/emits · reactions · schedules → crons · webhooks → http (routing/transform
-                only — see Partial for signatures) · tenant-scoped
-                reads/writes · roles/checkRole · events table · transitions (status checks in
-                generated mutations) · fan-out / aggregate-count reaction
-                params (when indexed)
+                <code>internalQuery</code> — expressions not evaluated in queries) · events/emits ·
+                reactions · schedules → crons · webhooks → http (routing/transform only — see
+                Partial for signatures) · tenant-scoped reads/writes · roles/checkRole · events
+                table · transitions (status checks in generated mutations) · fan-out /
+                aggregate-count reaction params (when indexed)
               </td>
             </tr>
             <tr>
@@ -1496,20 +1581,23 @@
                 Computeds (no columns; usable in some emit/reaction exprs) · sagas (shared
                 <code>input</code> only) · referential actions (diagnostic only) · memory stores
                 (skipped) · webhook <code>signature</code> (declared but NOT enforced — the
-                generated httpAction performs no HMAC verification; require a verifying
-                edge/proxy in front of the endpoint until generated enforcement exists)
+                generated httpAction performs no HMAC verification; require a verifying edge/proxy
+                in front of the endpoint until generated enforcement exists)
               </td>
             </tr>
             <tr>
               <td><span class="st ign">Ignored (parse-only)</span></td>
-              <td><code>compose</code>/<code>connect</code> · <code>expose</code> · <code>flow</code> · <code>effect</code></td>
+              <td>
+                <code>compose</code>/<code>connect</code> · <code>expose</code> ·
+                <code>flow</code> · <code>effect</code>
+              </td>
             </tr>
             <tr>
               <td><span class="st none">Not in Convex projection</span></td>
               <td>
-                approval / retry / rateLimit surfaces · live RuntimeEngine adapters
-                (outbox/EventBus as Node packages) · Prisma-style migrations · TanStack hooks as the
-                Convex default client
+                approval / retry / rateLimit surfaces · live RuntimeEngine adapters (outbox/EventBus
+                as Node packages) · Prisma-style migrations · TanStack hooks as the Convex default
+                client
               </td>
             </tr>
           </tbody>
@@ -1531,14 +1619,27 @@
           <h2>Forbidden manual patterns</h2>
         </div>
         <ul class="forbid" style="margin-top: 20px">
-          <li>Editing <code>convex/schema.ts</code>, <code>mutations.ts</code>, <code>queries.ts</code>, <code>crons.ts</code>, <code>http.ts</code>, or <code>sagas.ts</code> by hand.</li>
+          <li>
+            Editing <code>convex/schema.ts</code>, <code>mutations.ts</code>,
+            <code>queries.ts</code>, <code>crons.ts</code>, <code>http.ts</code>, or
+            <code>sagas.ts</code> by hand.
+          </li>
           <li>Writing a Convex mutation that re-implements a Manifest command.</li>
-          <li>Adding a cron/webhook/event handler that duplicates <code>schedule</code> / <code>webhook</code> / <code>reaction</code>.</li>
+          <li>
+            Adding a cron/webhook/event handler that duplicates <code>schedule</code> /
+            <code>webhook</code> / <code>reaction</code>.
+          </li>
           <li>Client-supplied <code>tenantId</code> / auth user ids on create forms.</li>
-          <li>Bypassing generated mutations to <code>ctx.db.patch</code> from a custom action for domain writes.</li>
+          <li>
+            Bypassing generated mutations to <code>ctx.db.patch</code> from a custom action for
+            domain writes.
+          </li>
           <li>Using <code>compose</code>/<code>expose</code> as if they executed — they don't.</li>
           <li>Shipping with <code>policyMode: 'skip'</code>.</li>
-          <li>Saying “Manifest probably doesn't support X” without checking the matrix / skill catalog first.</li>
+          <li>
+            Saying “Manifest probably doesn't support X” without checking the matrix / skill catalog
+            first.
+          </li>
         </ul>
       </div>
     </section>
@@ -1583,14 +1684,18 @@
             <div class="num"></div>
             <div>
               <div class="st">event row + reactions</div>
-              <div class="sd">Cascades in declaration order; tenant threaded on creates when needed.</div>
+              <div class="sd">
+                Cascades in declaration order; tenant threaded on creates when needed.
+              </div>
             </div>
           </div>
           <div class="step">
             <div class="num"></div>
             <div>
               <div class="st">Queries stay lean</div>
-              <div class="sd">Reactive reads with tenant/soft-delete filters — not the full policy gate.</div>
+              <div class="sd">
+                Reactive reads with tenant/soft-delete filters — not the full policy gate.
+              </div>
             </div>
           </div>
         </div>
@@ -1605,15 +1710,42 @@
           <h2>Capability checklist (before claiming “done”)</h2>
         </div>
         <div class="checklist" style="margin-top: 24px">
-          <label><input type="checkbox" /> Domain behavior lives in <code>.manifest</code> (commands/guards/policies/reactions), not in custom Convex mutations.</label>
-          <label><input type="checkbox" /> Every persisted entity uses durable/postgres/supabase store (not memory) if it must appear in Convex.</label>
-          <label><input type="checkbox" /> Cascades use <code>on Event run …</code> — no hand event handlers; no reliance on <code>compose</code>.</label>
-          <label><input type="checkbox" /> Schedules/webhooks declared natively and emitted to crons/http — no duplicate platform wiring.</label>
-          <label><input type="checkbox" /> <code>authContextImport</code> implemented; <code>policyMode: 'enforce'</code> for non-demo.</label>
-          <label><input type="checkbox" /> UI uses generated <code>api.queries</code> / <code>api.mutations</code> only for domain I/O.</label>
-          <label><input type="checkbox" /> Forms never ask for tenant/auth/auto timestamp fields.</label>
-          <label><input type="checkbox" /> <code>manifest generate --all --check</code> is green in CI.</label>
-          <label><input type="checkbox" /> Known partials (saga args, computeds-as-columns, approvals-on-Convex) are not silently assumed complete.</label>
+          <label
+            ><input type="checkbox" /> Domain behavior lives in
+            <code>.manifest</code> (commands/guards/policies/reactions), not in custom Convex
+            mutations.</label
+          >
+          <label
+            ><input type="checkbox" /> Every persisted entity uses durable/postgres/supabase store
+            (not memory) if it must appear in Convex.</label
+          >
+          <label
+            ><input type="checkbox" /> Cascades use <code>on Event run …</code> — no hand event
+            handlers; no reliance on <code>compose</code>.</label
+          >
+          <label
+            ><input type="checkbox" /> Schedules/webhooks declared natively and emitted to
+            crons/http — no duplicate platform wiring.</label
+          >
+          <label
+            ><input type="checkbox" /> <code>authContextImport</code> implemented;
+            <code>policyMode: 'enforce'</code> for non-demo.</label
+          >
+          <label
+            ><input type="checkbox" /> UI uses generated <code>api.queries</code> /
+            <code>api.mutations</code> only for domain I/O.</label
+          >
+          <label
+            ><input type="checkbox" /> Forms never ask for tenant/auth/auto timestamp fields.</label
+          >
+          <label
+            ><input type="checkbox" /> <code>manifest generate --all --check</code> is green in
+            CI.</label
+          >
+          <label
+            ><input type="checkbox" /> Known partials (saga args, computeds-as-columns,
+            approvals-on-Convex) are not silently assumed complete.</label
+          >
         </div>
         <div class="note" style="margin-top: 28px">
           <b>Companion docs</b>
@@ -1633,10 +1765,8 @@
         </div>
         <div>
           Agent build-spec for Manifest on Convex. Order:
-          <span style="color: var(--cyan-br)"
-            >compile → generate → convex dev/deploy → UI</span
-          >.
-          If you need a construct, check the matrix before writing TypeScript.
+          <span style="color: var(--cyan-br)">compile → generate → convex dev/deploy → UI</span>. If
+          you need a construct, check the matrix before writing TypeScript.
         </div>
       </div>
     </footer>

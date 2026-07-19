@@ -165,9 +165,7 @@ export function generateConvexSeedScript(
       const reason = !isConvexPersistentEntity(ir, table.entity)
         ? 'not a Convex-persistent store'
         : 'no create command in IR';
-      lines.push(
-        `  // skip ${table.entity}: ${reason} (${table.rows.length} rows unused)`,
-      );
+      lines.push(`  // skip ${table.entity}: ${reason} (${table.rows.length} rows unused)`);
       continue;
     }
     const create = findCreateCommand(ir, table.entity);
@@ -180,9 +178,7 @@ export function generateConvexSeedScript(
         );
         continue;
       }
-      lines.push(
-        `  await client.mutation(api.mutations.${b.createMutation}, ${args} as any);`,
-      );
+      lines.push(`  await client.mutation(api.mutations.${b.createMutation}, ${args} as any);`);
     }
   }
 

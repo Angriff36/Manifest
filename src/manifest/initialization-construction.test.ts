@@ -138,11 +138,7 @@ describe('Atomic initialization construction', () => {
       }
     `);
     const runtime = new RuntimeEngine(ir, {}, { generateId: () => 'card-1' });
-    const omitted = await runtime.runCommand(
-      'create',
-      { title: 'T' },
-      { entityName: 'Card' },
-    );
+    const omitted = await runtime.runCommand('create', { title: 'T' }, { entityName: 'Card' });
     expect(omitted.success).toBe(true);
     expect(omitted.instance).toMatchObject({ id: 'card-1', title: 'T' });
     expect('notes' in (omitted.instance as object)).toBe(false);
@@ -178,11 +174,7 @@ describe('Atomic initialization construction', () => {
         storeProvider: (name) => (name === 'Secret' ? store : undefined),
       },
     );
-    const result = await runtime.runCommand(
-      'create',
-      { title: 'nope' },
-      { entityName: 'Secret' },
-    );
+    const result = await runtime.runCommand('create', { title: 'nope' }, { entityName: 'Secret' });
     expect(result.success).toBe(false);
     expect(result.policyDenial).toBeDefined();
     expect(store.created).toHaveLength(0);
@@ -231,11 +223,7 @@ describe('Atomic initialization construction', () => {
     `);
     expect(ir.commands.find((command) => command.name === 'open')?.initialization).toBeDefined();
     const runtime = new RuntimeEngine(ir, {}, { generateId: () => 'ticket-1' });
-    const result = await runtime.runCommand(
-      'open',
-      { title: 'T' },
-      { entityName: 'Ticket' },
-    );
+    const result = await runtime.runCommand('open', { title: 'T' }, { entityName: 'Ticket' });
     expect(result.success).toBe(true);
     expect(result.instance).toMatchObject({ id: 'ticket-1', title: 'T', status: 'open' });
   });
@@ -265,11 +253,7 @@ describe('Atomic initialization construction', () => {
         storeProvider: (name) => (name === 'Widget' ? store : undefined),
       },
     );
-    const result = await runtime.runCommand(
-      'create',
-      { title: 'W' },
-      { entityName: 'Widget' },
-    );
+    const result = await runtime.runCommand('create', { title: 'W' }, { entityName: 'Widget' });
     expect(result.success).toBe(true);
     expect(store.created).toHaveLength(1);
     expect(store.created[0]).toMatchObject({ stampedAt: 55 });

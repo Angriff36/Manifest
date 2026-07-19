@@ -198,12 +198,7 @@ function enqueueRelativeImports(
   const nextDepth = current.depth + 1;
   for (const imp of parseImportSpecifiers(content)) {
     if (!imp.specifier.startsWith('.')) continue;
-    const resolved = resolveImportPath(
-      current.file,
-      imp.specifier,
-      fileContents,
-      caseInsensitive,
-    );
+    const resolved = resolveImportPath(current.file, imp.specifier, fileContents, caseInsensitive);
     if (resolved) queue.push({ file: resolved, depth: nextDepth });
   }
   for (const specifier of parseSideEffectImports(content)) {

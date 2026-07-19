@@ -3,11 +3,9 @@ import { aggregateSurface } from '../descriptor-helpers.js';
 
 export const OPENAPI_DESCRIPTOR_META: ProjectionDescriptorMeta = {
   displayName: 'OpenAPI',
-  surfaces: [
-    aggregateSurface('openapi.spec'),
-  ],
+  surfaces: [aggregateSurface('openapi.spec')],
   options: [],
-  artifactCategories: ["openapi"],
+  artifactCategories: ['openapi'],
   packageDependencies: [],
   runtimeDependencies: [],
   compatibleCompanions: [],

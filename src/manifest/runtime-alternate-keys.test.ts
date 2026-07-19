@@ -42,12 +42,8 @@ describe('alternateKeys runtime enforcement', () => {
   it('allows same sku under a different orgId', async () => {
     const ir = await compile(source);
     const rt = new RuntimeEngine(ir, {});
-    expect(
-      await rt.createInstance('Item', { id: 'a', orgId: 'o1', sku: 'same' }),
-    ).toBeTruthy();
-    expect(
-      await rt.createInstance('Item', { id: 'b', orgId: 'o2', sku: 'same' }),
-    ).toBeTruthy();
+    expect(await rt.createInstance('Item', { id: 'a', orgId: 'o1', sku: 'same' })).toBeTruthy();
+    expect(await rt.createInstance('Item', { id: 'b', orgId: 'o2', sku: 'same' })).toBeTruthy();
   });
 
   it('rejects update that collides on an alternate key group', async () => {

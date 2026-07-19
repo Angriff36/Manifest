@@ -5,15 +5,13 @@
 
 /** Split an identifier into words on camel/Pascal/snake/kebab boundaries. */
 export function splitWords(s: string): string[] {
-  return (
-    s
-      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-      .replace(/[\s_-]+/g, ' ')
-      .trim()
-      .split(' ')
-      .filter(Boolean)
-  );
+  return s
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[\s_-]+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean);
 }
 
 export function toSnakeCase(s: string): string {

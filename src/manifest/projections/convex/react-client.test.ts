@@ -35,11 +35,7 @@ function durable(name: string): IRStore {
   return { entity: name, target: 'durable', config: {} };
 }
 
-function prop(
-  name: string,
-  typeName: string,
-  modifiers: IRProperty['modifiers'] = [],
-): IRProperty {
+function prop(name: string, typeName: string, modifiers: IRProperty['modifiers'] = []): IRProperty {
   return { name, type: { name: typeName, nullable: false }, modifiers };
 }
 
@@ -60,18 +56,13 @@ const react = (ir: IR) => new ConvexProjection().generate(ir, { surface: 'convex
 describe('convex.react api import path', () => {
   it('derives Builder preset layout: src/lib → ../../convex/_generated/api', () => {
     expect(resolveReactClientPathHint(undefined)).toBe('src/lib/manifest-convex-react.ts');
-    expect(resolveReactClientPathHint('convex/schema.ts')).toBe(
-      'src/lib/manifest-convex-react.ts',
+    expect(resolveReactClientPathHint('convex/schema.ts')).toBe('src/lib/manifest-convex-react.ts');
+    expect(
+      relativeImportBetweenArtifacts('src/lib/manifest-convex-react.ts', 'convex/_generated/api'),
+    ).toBe('../../convex/_generated/api');
+    expect(resolveReactApiImportPath('src/lib/manifest-convex-react.ts', undefined)).toBe(
+      '../../convex/_generated/api',
     );
-    expect(
-      relativeImportBetweenArtifacts(
-        'src/lib/manifest-convex-react.ts',
-        'convex/_generated/api',
-      ),
-    ).toBe('../../convex/_generated/api');
-    expect(
-      resolveReactApiImportPath('src/lib/manifest-convex-react.ts', undefined),
-    ).toBe('../../convex/_generated/api');
   });
 
   it('emits the derived Builder import (not ../ which resolves under src/convex)', () => {

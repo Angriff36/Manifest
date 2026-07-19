@@ -146,9 +146,11 @@ describe('projection descriptors — capabilities connection', () => {
     expect(d.capabilities.declared).toBe(true);
     expect(d.capabilities.supported.length).toBeGreaterThan(0);
     const target = listProjections().find((p) => p.name === 'convex')!;
-    expect(d.capabilities.supported.length + d.capabilities.partial.length + d.capabilities.unsupported.length).toBe(
-      target.capabilities!.length,
-    );
+    expect(
+      d.capabilities.supported.length +
+        d.capabilities.partial.length +
+        d.capabilities.unsupported.length,
+    ).toBe(target.capabilities!.length);
   });
 
   it('marks undeclared capability matrices as declared:false', () => {

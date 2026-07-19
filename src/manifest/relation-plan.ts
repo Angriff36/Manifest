@@ -7,21 +7,10 @@
  * scanners or foreign-key fallback rules.
  */
 
-import type {
-  IR,
-  IRCommand,
-  IREntity,
-  IRExpression,
-  IRRelationship,
-} from './ir.js';
+import type { IR, IRCommand, IREntity, IRExpression, IRRelationship } from './ir.js';
 
 export type RelationEvaluationPhase =
-  | 'policy'
-  | 'guard'
-  | 'commandConstraint'
-  | 'entityConstraint'
-  | 'action'
-  | 'emit';
+  'policy' | 'guard' | 'commandConstraint' | 'entityConstraint' | 'action' | 'emit';
 
 export type RelationAccessMode = 'value' | 'countOf';
 
@@ -246,14 +235,7 @@ function collectExpressionRelations(
       return;
     case 'array':
       for (const element of expression.elements) {
-        collectExpressionRelations(
-          element,
-          phase,
-          relationships,
-          collected,
-          locals,
-          accessMode,
-        );
+        collectExpressionRelations(element, phase, relationships, collected, locals, accessMode);
       }
       return;
     case 'object':
@@ -378,7 +360,8 @@ export function buildRelationDependencyPlan(
       !!targetEntity?.properties.some((property) => property.name === tenantProperty);
     const tenantParticipates =
       !!tenantProperty &&
-      (mapping.localFields.includes(tenantProperty) || mapping.targetFields.includes(tenantProperty));
+      (mapping.localFields.includes(tenantProperty) ||
+        mapping.targetFields.includes(tenantProperty));
 
     relations.push({
       relationName: relationship.name,

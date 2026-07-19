@@ -3,10 +3,7 @@
  * Public lookup API (`describeProjection`, …) lives on the projections registry.
  */
 
-export {
-  buildProjectionDescriptor,
-  validateAgainstDescriptor,
-} from './descriptor-build.js';
+export { buildProjectionDescriptor, validateAgainstDescriptor } from './descriptor-build.js';
 
 export type {
   ProjectionCapabilityGroups,
