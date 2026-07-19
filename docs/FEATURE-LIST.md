@@ -6,7 +6,7 @@
 > This document proves that a capability is registered or has executable evidence; it does **not** independently prove completion.
 > Completion status is governed by [`docs/platform/FEATURE_MATRIX.md`](platform/FEATURE_MATRIX.md). Language meaning is governed by `docs/spec/**`.
 
-Package version: `3.6.21`
+Package version: `3.6.26`
 
 Generated sources:
 
@@ -19,7 +19,7 @@ Generated sources:
 
 ## Language discovery surface
 
-The public language-metadata registry currently reports 19 top-level constructs, 14 primitive types, 9 property modifiers, and 47 runtime built-ins.
+The public language-metadata registry currently reports 19 top-level constructs, 14 primitive types, 9 property modifiers, and 49 runtime built-ins.
 
 | Registry | Values |
 | --- | --- |
@@ -30,7 +30,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | Property modifiers | `required`, `unique`, `indexed`, `private`, `readonly`, `optional`, `searchable`, `encrypted`, `masked` |
 | Contextual keywords | `compensate`, `count`, `cron`, `every`, `external`, `interval`, `masked`, `method`, `mixin`, `on_failure`, `on_timeout`, `policies`, `rateLimit`, `realtime`, `retry`, `role`, `schedule`, `stage`, `step`, `unmask`, `value` |
 | Operators | `-`, `->`, `:`, `!`, `!=`, `?`, `?.`, `.`, `..`, `*`, `/`, `&`, `&&`, `%`, `+`, `<`, `<=`, `=`, `==`, `=>`, `>`, `>=`, `|`, `||` |
-| Runtime built-ins | `abs`, `addDuration`, `avg`, `between`, `ceil`, `count`, `count_of`, `dateOf`, `datetimeOf`, `day`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`, `endsWith`, `filter`, `flag`, `floor`, `hasPermission`, `hours`, `indexOf`, `length`, `map`, `matches`, `max`, `max_of`, `min`, `min_of`, `minutes`, `month`, `now`, `replace`, `roleAllows`, `round`, `search`, `seconds`, `split`, `startsWith`, `substring`, `sum`, `timeOf`, `toLowerCase`, `toUpperCase`, `trim`, `uuid`, `year` |
+| Runtime built-ins | `abs`, `addDuration`, `avg`, `between`, `ceil`, `count`, `count_of`, `dateOf`, `datetimeOf`, `day`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`, `endsWith`, `filter`, `flag`, `flat_map`, `floor`, `hasPermission`, `hours`, `indexOf`, `length`, `map`, `matches`, `max`, `max_of`, `min`, `min_of`, `minutes`, `month`, `now`, `replace`, `roleAllows`, `round`, `search`, `seconds`, `split`, `startsWith`, `substring`, `sum`, `timeOf`, `toLowerCase`, `toUpperCase`, `trim`, `unique_of`, `uuid`, `year` |
 
 ## Registered projections
 
