@@ -124,7 +124,9 @@ export function generateReactClient(
     lines.push(`} from ${JSON.stringify(zodImport)};`);
     lines.push('');
     // Zod datetime → Date; Convex mutations expect epoch millis.
-    lines.push(`function __convexArgsFromZod(parsed: Record<string, unknown>): Record<string, unknown> {`);
+    lines.push(
+      `function __convexArgsFromZod(parsed: Record<string, unknown>): Record<string, unknown> {`,
+    );
     lines.push(`  const out: Record<string, unknown> = {};`);
     lines.push(`  for (const [key, value] of Object.entries(parsed)) {`);
     lines.push(`    out[key] = value instanceof Date ? value.getTime() : value;`);
