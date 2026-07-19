@@ -18,9 +18,9 @@ export interface FmtOptions {
   glob?: string;
 }
 
-async function loadCompiler() {
-  const module = await import('@angriff36/manifest/ir-compiler');
-  return module.compileToIR;
+async function loadParser() {
+  const module = await import('@angriff36/manifest/parser');
+  return module.Parser;
 }
 
 /**
@@ -70,18 +70,27 @@ async function getManifestFiles(
   return files.map((file) => path.resolve(process.cwd(), file));
 }
 
+/**
+ * Whitespace normalization must not break SYNTAX — that is the only invariant
+ * fmt can violate, so only parser errors are checked. Semantic resolution
+ * (cross-file mixins, event references) is deliberately NOT run: a single
+ * file using `mixes TenantScoped` from another file is perfectly formattable
+ * even though it cannot compile standalone (fixed 2026-07-19; previously fmt
+ * ran the full IR compiler per file and refused 33/36 files in multi-file
+ * projects).
+ */
 async function verifyParses(filePath: string, source: string): Promise<string[]> {
-  const compileToIR = await loadCompiler();
-  const result = await compileToIR(source, { sourcePath: filePath });
-  return result.diagnostics
-    .filter((diagnostic) => diagnostic.severity === 'error')
-    .map((diagnostic) => {
+  const Parser = await loadParser();
+  const { errors } = new Parser().parse(source);
+  return errors.map(
+    (error: { message: string; position?: { line?: number; column?: number } }) => {
       const location =
-        diagnostic.line !== undefined
-          ? `${path.relative(process.cwd(), filePath)}:${diagnostic.line}:${diagnostic.column ?? 1}`
+        error.position?.line !== undefined
+          ? `${path.relative(process.cwd(), filePath)}:${error.position.line}:${error.position.column ?? 1}`
           : path.relative(process.cwd(), filePath);
-      return `${location}: ${diagnostic.message}`;
-    });
+      return `${location}: ${error.message}`;
+    },
+  );
 }
 
 export async function fmtCommand(
