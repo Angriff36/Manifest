@@ -15,3 +15,7 @@ docs/spec/ir/*.schema.json
 junk/
 .tmp/
 .tmp-pack/
+
+# Docs keep author formatting - prettier is for code only (policy 2026-07-19)
+*.md
+*.mdx
