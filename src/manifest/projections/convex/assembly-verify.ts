@@ -167,7 +167,9 @@ export function verifyConvexApplicationAssembly(
   const zodBundle = codes.get('zod.schemas') ?? '';
   const zodBundleOk =
     zodBundle.includes('from ') &&
-    (zodBundle.includes('z.object') || zodBundle.includes("from 'zod'") || zodBundle.includes('from "zod"'));
+    (zodBundle.includes('z.object') ||
+      zodBundle.includes("from 'zod'") ||
+      zodBundle.includes('from "zod"'));
   checks.push({
     id: 'synced-validation.bundle',
     pass: zodBundleOk,
