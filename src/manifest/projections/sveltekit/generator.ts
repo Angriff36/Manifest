@@ -265,7 +265,6 @@ function emitHeader(options: NormalizedOptions, target: string): string {
     '/**',
     ` * Auto-generated SvelteKit ${target}`,
     ' * Generated from Manifest IR — DO NOT EDIT',
-    ` * Generated at: ${options.generatedAt}`,
     ' *',
     ' * Writes flow through the Manifest runtime to enforce',
     ' * guards, policies, and constraints. Reads MAY bypass the runtime',

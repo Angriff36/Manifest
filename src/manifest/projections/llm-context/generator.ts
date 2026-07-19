@@ -108,7 +108,6 @@ function irValueToJson(v: IRValue): unknown {
 
 function buildMeta(ir: IR): ManifestContextMeta {
   return {
-    generatedAt: new Date().toISOString(),
     compilerVersion: ir.provenance.compilerVersion,
     schemaVersion: ir.provenance.schemaVersion,
     contentHash: ir.provenance.contentHash,
