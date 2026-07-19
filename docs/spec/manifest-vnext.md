@@ -474,7 +474,6 @@ The route manifest (`routes.manifest.json`) MUST conform to this structure:
 {
   "$schema": "https://manifest.lang/spec/routes-v1.schema.json",
   "version": "1.0",
-  "generatedAt": "<ISO timestamp>",
   "basePath": "/api",
   "routes": [
     {
@@ -546,3 +545,4 @@ The route manifest (`routes.manifest.json`) MUST conform to this structure:
 | Documentation authority | ~~`docs/DOCUMENTATION_GOVERNANCE.md`~~ `docs/internal/DOCUMENTATION_GOVERNANCE.md` (corrected 2026-07-15) |
 | Compliance tracking     | `docs/internal/COMPLIANCE_MATRIX.md` (~~`docs/COMPLIANCE_MATRIX.md`~~ path corrected 2026-07-15)          |
 | Route surface boundary  | `docs/guides/external-projections.md`                                                                     |
+

@@ -108,7 +108,6 @@ class RoutesProjection {
 | `includeAuth`   | `boolean`                  | `true`                     | Whether emitted entries include auth expectations.   |
 | `includeTenant` | `boolean`                  | `true`                     | Whether emitted entries include tenant expectations. |
 | `manualRoutes`  | `ManualRouteDeclaration[]` | `[]`                       | Extra transport routes to merge into the manifest.   |
-| `generatedAt`   | `string`                   | `new Date().toISOString()` | Optional deterministic timestamp override.           |
 
 ### Route Types
 
@@ -135,7 +134,6 @@ interface RouteEntry {
 interface RouteManifest {
   $schema: string;
   version: '1.0';
-  generatedAt: string;
   basePath: string;
   routes: RouteEntry[];
 }
@@ -224,3 +222,5 @@ const registries = emitRegistries(ir);
 ```
 
 This is the intended composition model in the source tree: one IR, many tooling outputs, no duplicated semantics.
+
+

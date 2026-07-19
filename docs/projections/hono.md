@@ -42,7 +42,7 @@ Entity interface fields are optional unless the property has the `required` modi
 
 ## Options
 
-`HonoProjectionOptions` accepts `authProvider` (`'clerk' | 'custom' | 'none'`, default `custom` — fail-closed stub; `clerk` binds `@hono/clerk-auth` getAuth; `none` sets anonymous user), `authImportPath` (default `./middleware/auth`), `authMiddlewareName` (default `requireAuth`), `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `validationImportPath` (default unset — no validation emitted), `basePath` (default `/api`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `emitTypes` (default `true`), `emitHeader` (default `true`), `publicReads` (default `false`), `includeComments` (default `true`), and `generatedAt` (ISO timestamp override for deterministic output). Note that, unlike the Express projection, there is no `framework` option — the target is always Hono.
+`HonoProjectionOptions` accepts `authProvider` (`'clerk' | 'custom' | 'none'`, default `custom` — fail-closed stub; `clerk` binds `@hono/clerk-auth` getAuth; `none` sets anonymous user), `authImportPath` (default `./middleware/auth`), `authMiddlewareName` (default `requireAuth`), `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `validationImportPath` (default unset — no validation emitted), `basePath` (default `/api`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `emitTypes` (default `true`), `emitHeader` (default `true`), `publicReads` (default `false`), `includeComments` (default `true`). Note that, unlike the Express projection, there is no `framework` option — the target is always Hono.
 
 ## Notes & limitations
 
@@ -52,3 +52,4 @@ The generated app imports its auth middleware and runtime factory from the confi
 
 > **Correction (2026-07-15) @RYANSIGNED:** `manifest generate <ir> -p hono` works via the
 > projection registry. Same facade-vs-`RuntimeEngine` caveat as Express.
+

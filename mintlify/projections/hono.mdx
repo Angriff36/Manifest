@@ -48,7 +48,7 @@ Entity interface fields are optional unless the property has the `required` modi
 
 ## Options
 
-`HonoProjectionOptions` accepts `authImportPath` (default `./middleware/auth`), `authMiddlewareName` (default `requireAuth`), `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `validationImportPath` (default unset — no validation emitted), `basePath` (default `/api`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `emitTypes` (default `true`), `emitHeader` (default `true`), `publicReads` (default `false`), `includeComments` (default `true`), and `generatedAt` (ISO timestamp override for deterministic output). Note that, unlike the Express projection, there is no `framework` option — the target is always Hono.
+`HonoProjectionOptions` accepts `authImportPath` (default `./middleware/auth`), `authMiddlewareName` (default `requireAuth`), `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `validationImportPath` (default unset — no validation emitted), `basePath` (default `/api`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `emitTypes` (default `true`), `emitHeader` (default `true`), `publicReads` (default `false`), `includeComments` (default `true`). Note that, unlike the Express projection, there is no `framework` option — the target is always Hono.
 
 ## Notes & limitations
 
@@ -62,3 +62,4 @@ Entity interface fields are optional unless the property has the `required` modi
 </Note>
 
 There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only, so emit Hono output by invoking `getProjection('hono')` programmatically. Extending the CLI's `generate` to accept `hono` would be separate work.
+
