@@ -107,6 +107,19 @@ jobs:
         # pnpm workspace — one root install covers packages/* too.
         run: pnpm install --frozen-lockfile
 
+      # Owner policy 2026-07-19: "the release should literally be the thing
+      # that formats." Normalize code style (prettier is code-only; *.md/*.mdx
+      # are prettierignored) so every published version ships formatted, even
+      # if interim commits drifted. Committed separately from the version bump;
+      # pushed with it after publish succeeds.
+      - name: Format code (release formats)
+        run: |
+          pnpm exec prettier --write .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- . ':(exclude)package.json' ':(exclude)src/manifest/version.ts' ':(exclude)CHANGELOG.md'
+          git diff --cached --quiet || git commit -m "style: format code for release (prettier --write, code-only)"
+
       - name: Build root library
         run: pnpm run build:lib
 
