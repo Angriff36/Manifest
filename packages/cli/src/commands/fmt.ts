@@ -82,15 +82,13 @@ async function getManifestFiles(
 async function verifyParses(filePath: string, source: string): Promise<string[]> {
   const Parser = await loadParser();
   const { errors } = new Parser().parse(source);
-  return errors.map(
-    (error: { message: string; position?: { line?: number; column?: number } }) => {
-      const location =
-        error.position?.line !== undefined
-          ? `${path.relative(process.cwd(), filePath)}:${error.position.line}:${error.position.column ?? 1}`
-          : path.relative(process.cwd(), filePath);
-      return `${location}: ${error.message}`;
-    },
-  );
+  return errors.map((error: { message: string; position?: { line?: number; column?: number } }) => {
+    const location =
+      error.position?.line !== undefined
+        ? `${path.relative(process.cwd(), filePath)}:${error.position.line}:${error.position.column ?? 1}`
+        : path.relative(process.cwd(), filePath);
+    return `${location}: ${error.message}`;
+  });
 }
 
 export async function fmtCommand(
