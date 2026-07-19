@@ -84,4 +84,20 @@ describe('fmtCommand', () => {
 
     expect(process.exitCode ?? 0).toBe(0);
   });
+
+  it('formats files with cross-file references (mixins/events unresolvable standalone)', async () => {
+    // Regression (2026-07-19): fmt ran the full IR compiler per file, so any
+    // file using cross-file mixins or reacting to another file's events was
+    // rejected as "failed to parse". Formatting only needs syntax.
+    const raw =
+      'entity PurchaseNeed mixin TenantScoped, SoftDeletable {\n  property required unit: string  \n}\n\non VendorOrderSubmitted fanOut PurchaseNeed where vendorOrderId = payload.vendorOrderId\n  run markDraftOrdered\n\n';
+    const filePath = path.join(tempDir, 'PurchaseNeed.manifest');
+    await fs.writeFile(filePath, raw, 'utf-8');
+
+    await fmtCommand(filePath, { write: true });
+
+    expect(process.exitCode ?? 0).toBe(0);
+    const updated = await fs.readFile(filePath, 'utf-8');
+    expect(updated).toBe(formatManifestSource(raw));
+  });
 });
