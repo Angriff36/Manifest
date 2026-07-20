@@ -428,9 +428,7 @@ function generateParameterLine(
   // runtime (e.g. Convex document ids). Keep RFC uuid validation only for
   // non-FK uuid params (correlation tokens, external ids, etc.).
   const isOpaqueFk =
-    param.type.name === 'uuid' &&
-    opaqueFkParamNames != null &&
-    opaqueFkParamNames.has(param.name);
+    param.type.name === 'uuid' && opaqueFkParamNames != null && opaqueFkParamNames.has(param.name);
   let expr = isOpaqueFk
     ? 'z.string().min(1)'
     : irTypeToZod(param.type, diagnostics, valueObjectMap, enumMap);
