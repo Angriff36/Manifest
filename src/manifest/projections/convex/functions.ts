@@ -1291,6 +1291,7 @@ function renderGovernedCreationEntry(
   const propertyByName = new Map(entity.properties.map((property) => [property.name, property]));
 
   const draftLines: string[] = [];
+  const draftValueExpressions = new Map<string, string>();
   for (const field of plan.authenticatedOwnershipFields) {
     if (tenantScoped && field === writeTenantProp) {
       draftLines.push(`      ${field}: __auth.${field}`);
@@ -1303,20 +1304,32 @@ function renderGovernedCreationEntry(
     const built = buildValidator(entity, property, ir, options, fkTargets.get(property.name));
     diagnostics.push(...built.diagnostics);
     if (item.source === 'defaultValue' && property.defaultValue !== undefined) {
-      draftLines.push(
-        `      ${item.property}: ${defaultToTs(property.defaultValue, built.validator)}`,
-      );
+      const value = defaultToTs(property.defaultValue, built.validator);
+      draftLines.push(`      ${item.property}: ${value}`);
+      draftValueExpressions.set(item.property, value);
     } else if (item.source === 'autoNow' || item.source === 'timestamps') {
       draftLines.push(`      ${item.property}: Date.now()`);
+      draftValueExpressions.set(item.property, 'Date.now()');
     }
   }
   for (const item of plan.initialLifecycleState) {
     if (draftLines.some((line) => line.includes(`${item.property}:`))) continue;
-    draftLines.push(`      ${item.property}: ${defaultToTs(item.value)}`);
+    const value = defaultToTs(item.value);
+    draftLines.push(`      ${item.property}: ${value}`);
+    draftValueExpressions.set(item.property, value);
   }
   for (const inputName of plan.initializationInputs) {
     if (!propertyByName.has(inputName)) continue;
     // Same-named inputs are visible on the draft for precondition evaluation.
+    const fallback = draftValueExpressions.get(inputName);
+    if (fallback !== undefined) {
+      const lineIndex = draftLines.findIndex((line) =>
+        line.trimStart().startsWith(`${inputName}:`),
+      );
+      draftLines[lineIndex] =
+        `      ${inputName}: args.${inputName} !== undefined ? args.${inputName} : ${fallback}`;
+      continue;
+    }
     draftLines.push(`      ${inputName}: args.${inputName}`);
   }
 

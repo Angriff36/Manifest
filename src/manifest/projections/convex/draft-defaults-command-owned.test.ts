@@ -12,6 +12,46 @@ async function compile(source: string) {
 }
 
 describe('Convex draft defaults for command-owned fields', () => {
+  it('seeds a property default when an optional command parameter and mutate both own that property', async () => {
+    const ir = await compile(`
+      entity PrepTask {
+        property id: string
+        property required name: string
+        property required category: string = "finish_at_event"
+
+        command open(name: string, optional category: string) {
+          mutate name = name
+          mutate category = category != null ? category : self.category
+        }
+      }
+
+      store PrepTask in memory
+    `);
+
+    ir.stores = [{ entity: 'PrepTask', target: 'durable', config: {} }];
+
+    const open = ir.commands.find((command) => command.name === 'open')!;
+    expect(open.initialization?.commandOwnedFields).toContain('category');
+    expect(open.initialization?.declaredDefaults).toContainEqual({
+      property: 'category',
+      source: 'defaultValue',
+    });
+
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.mutations',
+    }).artifacts[0]!.code;
+    const start = code.indexOf('export const PrepTask_createViaOpen');
+    const createSection = code.slice(start);
+    const draftSection = createSection.slice(
+      createSection.indexOf('const __draft'),
+      createSection.indexOf('const doc:'),
+    );
+
+    expect(draftSection).toContain(
+      'category: args.category !== undefined ? args.category : "finish_at_event"',
+    );
+  });
+
   it('seeds declared default status into __draft for guard-time pre-state and mutates the final doc', async () => {
     const ir = await compile(`
       entity IngredientDemand {

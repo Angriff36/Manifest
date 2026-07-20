@@ -124,10 +124,16 @@ function initialLifecycleState(entity: IREntity): IRInitializationPlan['initialL
 function declaredDefaults(
   entity: IREntity,
   commandOwned: Set<string>,
+  optionalParameters: Set<string>,
 ): IRInitializationPlan['declaredDefaults'] {
   const defaults: IRInitializationPlan['declaredDefaults'] = [];
   for (const property of entity.properties) {
-    if (commandOwned.has(property.name)) continue;
+    // A command-owned default normally belongs to the command mutation. Keep it
+    // off the draft unless an optional same-named parameter can fall back to
+    // `self.<field>` before that mutation runs.
+    if (commandOwned.has(property.name) && !optionalParameters.has(property.name)) {
+      continue;
+    }
     if (property.defaultValue !== undefined) {
       defaults.push({ property: property.name, source: 'defaultValue' });
     } else if (property.autoNow) {
@@ -205,7 +211,12 @@ export function buildInitializationPlan(
   }
   authenticatedOwnershipFields.sort((left, right) => left.localeCompare(right));
 
-  const defaults = declaredDefaults(entity, ownedSet);
+  const optionalParameters = new Set(
+    (command.parameters ?? [])
+      .filter((parameter) => !parameter.required)
+      .map((parameter) => parameter.name),
+  );
+  const defaults = declaredDefaults(entity, ownedSet, optionalParameters);
   const lifecycle = initialLifecycleState(entity);
   const draftFieldSet = new Set<string>(['id', ...authenticatedOwnershipFields]);
   for (const item of defaults) draftFieldSet.add(item.property);
