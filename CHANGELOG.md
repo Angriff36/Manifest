@@ -4,9 +4,20 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.29] - 2026-07-20
+
+### Fixed
+
+- **Zod command schemas:** relationship FK parameters typed as `uuid` in Manifest
+  now emit `z.string().min(1)` instead of `z.string().uuid()`. Opaque store ids
+  (e.g. Convex document ids) were rejected by client hooks that parse via
+  `schemas/manifest-schemas.ts`. Non-FK uuid params keep RFC uuid validation.
+
 ## [3.6.28] - 2026-07-20
 
-_Auto-generated stub — expand with real release notes._
+### Changed
+
+- Release workflow bump only (no feature delta vs 3.6.27).
 
 ## [3.6.27] - 2026-07-20
 

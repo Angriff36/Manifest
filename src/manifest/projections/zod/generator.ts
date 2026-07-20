@@ -339,12 +339,37 @@ function generateComputedPropertyLine(
 // Command schema generation
 // ============================================================================
 
+/** Tenant/org columns are context-owned; never treat them as client identity FKs. */
+const CONTEXT_OWNED_FK_FIELDS = new Set(['tenantId', 'orgId', 'organizationId']);
+
+/**
+ * Collect local FK column names from IR relationships.
+ *
+ * Manifest authors type many identity FKs as `uuid`, but Convex (and other
+ * opaque-id stores) do not store RFC-4122 UUIDs. Client command schemas must
+ * accept the store's opaque document ids — `z.string().uuid()` rejects them.
+ */
+function collectOpaqueFkParamNames(ir: IR): Set<string> {
+  const names = new Set<string>();
+  for (const entity of ir.entities ?? []) {
+    for (const rel of entity.relationships ?? []) {
+      for (const field of rel.foreignKey?.fields ?? []) {
+        if (!CONTEXT_OWNED_FK_FIELDS.has(field)) {
+          names.add(field);
+        }
+      }
+    }
+  }
+  return names;
+}
+
 function generateCommandSchema(
   command: IRCommand,
   analysisOptions: ZodProjectionOptions,
   diagnostics: ProjectionDiagnostic[],
   valueObjectMap?: Map<string, IRValueObject>,
   enumMap?: Map<string, IREnum>,
+  opaqueFkParamNames?: Set<string>,
 ): string[] {
   const lines: string[] = [];
   const opts = normalizeOptions(analysisOptions);
@@ -364,7 +389,13 @@ function generateCommandSchema(
   } else {
     lines.push(`export const ${schemaName} = z.object({`);
     for (const param of command.parameters) {
-      const paramLine = generateParameterLine(param, diagnostics, valueObjectMap, enumMap);
+      const paramLine = generateParameterLine(
+        param,
+        diagnostics,
+        valueObjectMap,
+        enumMap,
+        opaqueFkParamNames,
+      );
       lines.push(`  ${param.name}: ${paramLine},`);
     }
     lines.push('});');
@@ -391,8 +422,18 @@ function generateParameterLine(
   diagnostics: ProjectionDiagnostic[],
   valueObjectMap?: Map<string, IRValueObject>,
   enumMap?: Map<string, IREnum>,
+  opaqueFkParamNames?: Set<string>,
 ): string {
-  let expr = irTypeToZod(param.type, diagnostics, valueObjectMap, enumMap);
+  // Relationship FK params typed as `uuid` in source are opaque store ids at
+  // runtime (e.g. Convex document ids). Keep RFC uuid validation only for
+  // non-FK uuid params (correlation tokens, external ids, etc.).
+  const isOpaqueFk =
+    param.type.name === 'uuid' &&
+    opaqueFkParamNames != null &&
+    opaqueFkParamNames.has(param.name);
+  let expr = isOpaqueFk
+    ? 'z.string().min(1)'
+    : irTypeToZod(param.type, diagnostics, valueObjectMap, enumMap);
 
   if (param.type.nullable) {
     expr += '.nullable()';
@@ -536,10 +577,18 @@ export class ZodProjection implements ProjectionTarget {
       (ir.values ?? []).map((v) => [v.name, v]),
     );
     const enumMap = new Map<string, IREnum>((ir.enums ?? []).map((e) => [e.name, e]));
+    const opaqueFkParamNames = collectOpaqueFkParamNames(ir);
     const artifacts: ProjectionArtifact[] = [];
 
     for (const command of commands) {
-      const lines = generateCommandSchema(command, opts, diagnostics, valueObjectMap, enumMap);
+      const lines = generateCommandSchema(
+        command,
+        opts,
+        diagnostics,
+        valueObjectMap,
+        enumMap,
+        opaqueFkParamNames,
+      );
       const code = this.wrapWithImport(lines, opts);
       // Entity-qualified path — bare `schemas/${command.name}.schema.ts` collides
       // when many entities share cancel/create/… Prefer zod.schemas bundle instead.
@@ -564,6 +613,7 @@ export class ZodProjection implements ProjectionTarget {
       (ir.values ?? []).map((v) => [v.name, v]),
     );
     const enumMap = new Map<string, IREnum>((ir.enums ?? []).map((e) => [e.name, e]));
+    const opaqueFkParamNames = collectOpaqueFkParamNames(ir);
     const lines: string[] = [];
 
     for (const entity of ir.entities) {
@@ -573,7 +623,14 @@ export class ZodProjection implements ProjectionTarget {
     }
 
     for (const command of ir.commands) {
-      const cmdLines = generateCommandSchema(command, opts, diagnostics, valueObjectMap, enumMap);
+      const cmdLines = generateCommandSchema(
+        command,
+        opts,
+        diagnostics,
+        valueObjectMap,
+        enumMap,
+        opaqueFkParamNames,
+      );
       lines.push(...cmdLines);
       lines.push('');
     }

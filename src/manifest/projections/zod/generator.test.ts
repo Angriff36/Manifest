@@ -768,6 +768,78 @@ describe('ZodProjection', () => {
       expect(code).toContain('note: z.string(),');
     });
 
+    it('emits opaque string schemas for uuid command params that are relationship FKs', () => {
+      // Convex (and similar stores) use opaque document ids, not RFC UUIDs.
+      // FK params typed as uuid in Manifest must accept those ids in client Zod.
+      const ir = makeMinimalIR({
+        entities: [
+          bareEntity(
+            'PackList',
+            [
+              {
+                name: 'id',
+                type: { name: 'uuid', nullable: false },
+                modifiers: ['required'],
+              },
+              {
+                name: 'eventId',
+                type: { name: 'uuid', nullable: false },
+                modifiers: ['required'],
+              },
+              {
+                name: 'tenantId',
+                type: { name: 'uuid', nullable: false },
+                modifiers: ['required'],
+              },
+            ],
+            {
+              relationships: [
+                {
+                  name: 'event',
+                  kind: 'belongsTo',
+                  target: 'Event',
+                  foreignKey: { fields: ['tenantId', 'eventId'], references: ['tenantId', 'id'] },
+                },
+              ],
+            },
+          ),
+        ],
+        commands: [
+          {
+            name: 'open',
+            entity: 'PackList',
+            parameters: [
+              {
+                name: 'eventId',
+                type: { name: 'uuid', nullable: false },
+                required: true,
+              },
+              {
+                name: 'name',
+                type: { name: 'string', nullable: false },
+                required: true,
+              },
+              {
+                name: 'correlationId',
+                type: { name: 'uuid', nullable: false },
+                required: false,
+              },
+            ],
+            guards: [],
+            actions: [],
+            emits: [],
+          },
+        ],
+      });
+
+      const result = projection.generate(ir, { surface: 'zod.command' });
+      const code = firstCode(result);
+      expect(code).toContain('eventId: z.string().min(1),');
+      expect(code).not.toContain('eventId: z.string().uuid()');
+      expect(code).toContain('correlationId: z.string().uuid().optional(),');
+      expect(code).toContain('name: z.string(),');
+    });
+
     it('generates empty object for command with no parameters', () => {
       const ir = makeMinimalIR({
         commands: [
