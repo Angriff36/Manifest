@@ -28,3 +28,7 @@ Append one entry per run. Prune entries older than 30 days.
 =======
 <!-- Agent triage (GLM/MiniMax) and GHA dogfood append below. Prefer agent entries for STATE.md truth. -->
 >>>>>>> Stashed changes
+
+```json
+{"run_id":"2026-07-20T09:01:28Z","pattern":"daily-triage","source":"gha-dogfood","duration_s":11,"readiness_score":100,"readiness_level":"L3","ci_status":"failure","outcome":"ci-red","workflow_run":"29729856855","note":"Scoreboard only — agent triage owns STATE.md"}
+```
