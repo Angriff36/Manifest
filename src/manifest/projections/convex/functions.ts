@@ -877,6 +877,65 @@ function commandChecks(ir: IR, cmd: IRCommand, policyMode: 'enforce' | 'skip'): 
   return checks;
 }
 
+/**
+ * `match … else create` allocate path: insert a draft row (tenant + defaults +
+ * param fields that are entity properties), then run the command runner with
+ * the new docId. Mirrors RuntimeEngine omitting instanceId so initialization
+ * commands can allocate.
+ */
+function renderMatchElseCreateCall(
+  indent: string,
+  matchIdVar: string,
+  runner: string,
+  args: string,
+  entity: IREntity,
+  table: string,
+  tenantScoped: boolean,
+  writeTenantProp: string | undefined,
+): string[] {
+  const defaultLines = entity.properties
+    .filter(
+      (property) =>
+        property.defaultValue !== undefined &&
+        !isConvexVersionManagedField(entity, property.name) &&
+        property.name !== writeTenantProp,
+    )
+    .map(
+      (property) =>
+        `${indent}    ${property.name}: ${defaultToTs(property.defaultValue)},`,
+    );
+  const propNames = entity.properties
+    .map((property) => property.name)
+    .filter(
+      (name) =>
+        name !== 'id' &&
+        name !== writeTenantProp &&
+        !isConvexVersionManagedField(entity, name),
+    );
+  const argsExpr = args.length > 0 ? `{ ${args} }` : '{}';
+  return [
+    `${indent}if (${matchIdVar}) {`,
+    `${indent}  await ${runner}(ctx, { docId: ${matchIdVar}${args ? ', ' + args : ''} } as any);`,
+    `${indent}} else {`,
+    `${indent}  const __elseArgs: Record<string, any> = ${argsExpr};`,
+    `${indent}  const __elseDoc: Record<string, any> = {`,
+    ...(tenantScoped && writeTenantProp
+      ? [`${indent}    ${writeTenantProp}: __auth.${writeTenantProp},`]
+      : []),
+    ...defaultLines,
+    `${indent}    createdAt: Date.now(),`,
+    `${indent}    updatedAt: Date.now(),`,
+    `${indent}    version: 0,`,
+    `${indent}  };`,
+    `${indent}  for (const __k of ${JSON.stringify(propNames)} as string[]) {`,
+    `${indent}    if (__elseArgs[__k] !== undefined) __elseDoc[__k] = __elseArgs[__k];`,
+    `${indent}  }`,
+    `${indent}  const __elseId = await ctx.db.insert(${JSON.stringify(table)}, __elseDoc as any);`,
+    `${indent}  await ${runner}(ctx, { docId: __elseId, ...__elseArgs } as any);`,
+    `${indent}}`,
+  ];
+}
+
 /** Render reaction fan-out for the events a command emits. */
 function renderReactions(
   ir: IR,
@@ -1091,13 +1150,34 @@ function renderReactions(
           `      const ${matchId} = ${matchRows}.length > 0 ? (${matchRows}[0] as any)._id : null;`,
         );
         if (reaction.elseCreate) {
-          lines.push(`      if (${matchId}) {`);
-          lines.push(
-            `        await ${runner}(ctx, { docId: ${matchId}${fanArgs ? ', ' + fanArgs : ''} } as any);`,
-          );
-          lines.push(`      } else {`);
-          lines.push(`        await ${runner}(ctx, { ${fanArgs} } as any);`);
-          lines.push(`      }`);
+          const targetEnt =
+            ir.entities.find((e) => e.name === reaction.targetEntity) ?? matchEntity;
+          const targetTable = resolveConvexTableName(reaction.targetEntity, options);
+          const writeTenant = options.tenantIdProperty ?? ir.tenant?.property;
+          const targetTenantScoped =
+            !!options.authContextImport &&
+            !!writeTenant &&
+            !!targetEnt?.properties.some((p) => p.name === writeTenant);
+          if (!targetEnt) {
+            diagnostics.push({
+              severity: 'error',
+              code: 'CONVEX_ELSE_CREATE_UNKNOWN_ENTITY',
+              message: `${label} else create targets unknown entity '${reaction.targetEntity}'.`,
+            });
+          } else {
+            lines.push(
+              ...renderMatchElseCreateCall(
+                '      ',
+                matchId,
+                runner,
+                fanArgs,
+                targetEnt,
+                targetTable,
+                targetTenantScoped,
+                writeTenant,
+              ),
+            );
+          }
         } else {
           lines.push(
             `      if (${matchId}) await ${runner}(ctx, { docId: ${matchId}${fanArgs ? ', ' + fanArgs : ''} } as any);`,
@@ -1179,13 +1259,32 @@ function renderReactions(
         const runner = commandRunnerName(reaction.targetEntity, reaction.targetCommand);
         const args = paramEntries.length ? paramEntries.join(', ') : '';
         if (reaction.elseCreate) {
-          lines.push(`    if (${matchIdVar}) {`);
-          lines.push(
-            `      await ${runner}(ctx, { docId: ${matchIdVar}${args ? ', ' + args : ''} } as any);`,
-          );
-          lines.push(`    } else {`);
-          lines.push(`      await ${runner}(ctx, { ${args} } as any);`);
-          lines.push(`    }`);
+          const targetEnt = ir.entities.find((e) => e.name === reaction.targetEntity);
+          const writeTenant = options.tenantIdProperty ?? ir.tenant?.property;
+          const targetTenantScoped =
+            !!options.authContextImport &&
+            !!writeTenant &&
+            !!targetEnt?.properties.some((p) => p.name === writeTenant);
+          if (!targetEnt) {
+            diagnostics.push({
+              severity: 'error',
+              code: 'CONVEX_ELSE_CREATE_UNKNOWN_ENTITY',
+              message: `${label} else create targets unknown entity '${reaction.targetEntity}'.`,
+            });
+          } else {
+            lines.push(
+              ...renderMatchElseCreateCall(
+                '    ',
+                matchIdVar,
+                runner,
+                args,
+                targetEnt,
+                targetTable,
+                targetTenantScoped,
+                writeTenant,
+              ),
+            );
+          }
         } else {
           lines.push(
             `    if (${matchIdVar}) await ${runner}(ctx, { docId: ${matchIdVar}${args ? ', ' + args : ''} } as any);`,

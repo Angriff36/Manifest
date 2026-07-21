@@ -2303,3 +2303,52 @@ describe('convex.mutations — emit payload relation hydration', () => {
     expect(code).not.toContain('doc.person.status');
   });
 });
+
+describe('ConvexProjection — match else create allocate', () => {
+  it('allocates a draft row before calling the command runner', async () => {
+    const { compileToIR } = await import('../../ir-compiler.js');
+    const source = `
+      entity Need {
+        property required id: string
+        property required weekKey: string
+        property required qty: number = 0
+        command open(weekKey: string, qty: number) {
+          mutate weekKey = weekKey
+          mutate qty = qty
+          emit NeedOpened { weekKey: weekKey, qty: qty }
+        }
+        store in durable
+      }
+      entity Draft {
+        property required id: string
+        property required weekKey: string
+        property required qty: number = 0
+        property status: string = "draft"
+        command ensure(weekKey: string, qty: number) {
+          mutate weekKey = weekKey
+          mutate qty = qty
+          mutate status = "draft"
+        }
+        store in durable
+      }
+      event NeedOpened: "need.opened" {
+        weekKey: string
+        qty: number
+      }
+      on NeedOpened run Draft.ensure
+        match weekKey = payload.weekKey
+        else create
+        params { weekKey: payload.weekKey, qty: payload.qty }
+    `;
+    const { ir, diagnostics } = await compileToIR(source);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    const code = mutations(ir!).artifacts[0]!.code;
+    expect(code).toContain('const __elseDoc: Record<string, any> = {');
+    expect(code).toContain('await ctx.db.insert("drafts", __elseDoc as any)');
+    expect(code).toContain('await __runDraftEnsure(ctx, { docId: __elseId');
+    // Must not call the runner without a docId on the allocate path.
+    expect(code).not.toMatch(
+      /else \{\s*await __runDraftEnsure\(ctx, \{ weekKey:/,
+    );
+  });
+});

@@ -20,6 +20,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.6.40] - 2026-07-21
+
+### Fixed
+
+- **Convex match else create allocate:** reaction `else create` now inserts a draft
+  document (tenant + defaults + param fields) before invoking the command runner.
+  Previously the Convex projection called the runner without `docId`, which threw
+  at `ctx.db.get`. Aligns with RuntimeEngine omitting `instanceId` on allocate.
+  Proof: `functions.test.ts` (match else create allocate).
+
+## [3.6.39] - 2026-07-21
+
 ### Added
 
 - **Fan-out + match else create:** `on Event fanOut Source where … run Target.cmd match … else create`
