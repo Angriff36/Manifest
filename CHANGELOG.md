@@ -4,6 +4,15 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.33] - 2026-07-21
+
+### Fixed
+
+- **Convex command HTTP dispatcher:** only the entity's *selected* initialization
+  command routes to `createVia*`. Peer commands that also carry an IR
+  initialization plan stay on the instance mutation with `docId`/`version`
+  (avoids phantom `createViaRemove` / `createViaDetach` refs).
+
 ## [3.6.32] - 2026-07-21
 
 ### Fixed

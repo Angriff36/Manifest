@@ -7,6 +7,7 @@
  * Request bodies never supply tenant/role/user/`__auth`.
  */
 
+import { selectInitializationCommand } from '../../initialization-plan.js';
 import type { IR, IRCommand } from '../../ir.js';
 import type { ProjectionDiagnostic } from '../interface.js';
 import { commandCreationExportName } from './creation-entry.js';
@@ -32,6 +33,18 @@ export interface DispatcherCommandEntry {
   paramNames: string[];
 }
 
+/** Entity.command keys that allocate through the Convex createVia* entry. */
+function createViaCommandKeys(ir: IR): Set<string> {
+  const keys = new Set<string>();
+  for (const entity of ir.entities ?? []) {
+    const selected = selectInitializationCommand(ir, entity);
+    if (selected && selected.name !== 'create') {
+      keys.add(`${entity.name}.${selected.name}`);
+    }
+  }
+  return keys;
+}
+
 /**
  * Collect entity-scoped commands for the HTTP dispatcher registry.
  * Generated at projection time from IR — not a hand-maintained lookup table.
@@ -41,18 +54,19 @@ export function collectDispatcherCommands(
   options: NormalizedConvexOptions,
 ): DispatcherCommandEntry[] {
   const forbidden = new Set<string>(DISPATCHER_FORBIDDEN_BODY_KEYS);
+  const createViaKeys = createViaCommandKeys(ir);
   const out: DispatcherCommandEntry[] = [];
 
   for (const cmd of ir.commands ?? []) {
     const entity = cmd.entity;
     if (!entity) continue;
 
-    const paramNames = clientOwnedParamNames(cmd, options, forbidden);
+    const allocates = allocatesDocument(entity, cmd, createViaKeys);
+    const paramNames = clientOwnedParamNames(cmd, options, forbidden, allocates);
     out.push({
       entity,
       command: cmd.name,
-      // Initialization allocates via createVia*; instance commands use Entity_command.
-      mutationExport: dispatcherMutationExport(entity, cmd),
+      mutationExport: dispatcherMutationExport(entity, cmd, createViaKeys),
       paramNames,
     });
   }
@@ -64,12 +78,24 @@ export function collectDispatcherCommands(
   });
 }
 
-function allocatesDocument(cmd: IRCommand): boolean {
-  return !!cmd.initialization || cmd.name === 'create' || cmd.name.startsWith('createVia');
+function allocatesDocument(
+  entity: string,
+  cmd: IRCommand,
+  createViaKeys: Set<string>,
+): boolean {
+  return (
+    cmd.name === 'create' ||
+    cmd.name.startsWith('createVia') ||
+    createViaKeys.has(`${entity}.${cmd.name}`)
+  );
 }
 
-function dispatcherMutationExport(entity: string, cmd: IRCommand): string {
-  if (cmd.initialization && cmd.name !== 'create') {
+function dispatcherMutationExport(
+  entity: string,
+  cmd: IRCommand,
+  createViaKeys: Set<string>,
+): string {
+  if (createViaKeys.has(`${entity}.${cmd.name}`)) {
     return commandCreationExportName(entity, cmd.name);
   }
   return `${entity}_${cmd.name}`;
@@ -79,6 +105,7 @@ function clientOwnedParamNames(
   cmd: IRCommand,
   options: NormalizedConvexOptions,
   forbidden: Set<string>,
+  allocates: boolean,
 ): string[] {
   const names: string[] = [];
   for (const p of cmd.parameters ?? []) {
@@ -87,8 +114,8 @@ function clientOwnedParamNames(
     names.push(p.name);
   }
   // Instance commands target an existing Convex document — forward docId + OCC
-  // version. Create / createVia / initialization commands allocate a new row.
-  if (!allocatesDocument(cmd)) {
+  // version. Create / createVia / selected initialization commands allocate.
+  if (!allocates) {
     if (!names.includes('docId')) names.unshift('docId');
     if (!names.includes('version')) names.push('version');
   }

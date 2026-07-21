@@ -399,17 +399,63 @@ describe('convex.http — authenticated command dispatcher', () => {
 
   function irWithInitializationReserveCommand(): IR {
     const ir = irWithInstanceReserveCommand();
-    ir.commands![0]!.initialization = {
+    ir.entities = [
+      {
+        name: 'InventoryReservation',
+        properties: [
+          {
+            name: 'inventoryItemId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
+          },
+          {
+            name: 'quantity',
+            type: { name: 'number', nullable: false },
+            modifiers: ['required'],
+          },
+        ],
+        computedProperties: [],
+        relationships: [],
+        commands: ['reserve', 'release'],
+        constraints: [],
+        policies: [],
+      },
+    ];
+    const plan = {
       initializationInputs: ['inventoryItemId', 'quantity'],
       authenticatedOwnershipFields: [],
       declaredDefaults: [],
       initialLifecycleState: [],
       commandOwnedFields: ['inventoryItemId', 'quantity'],
       draftFields: ['inventoryItemId', 'quantity'],
-      finalDocumentRequirements: [],
+      finalDocumentRequirements: ['inventoryItemId', 'quantity'],
       dynamicGuardIndexes: [],
       redundantGuardIndexes: [],
     };
+    ir.commands![0]!.initialization = plan;
+    // Peer instance command may also carry a plan in hand-built IR; only the
+    // selected initialization command may route to createVia*.
+    ir.commands!.push({
+      name: 'release',
+      entity: 'InventoryReservation',
+      parameters: [
+        {
+          name: 'reason',
+          type: { name: 'string', nullable: false },
+          required: true,
+        },
+      ],
+      guards: [],
+      actions: [],
+      emits: [],
+      initialization: {
+        ...plan,
+        initializationInputs: ['reason'],
+        commandOwnedFields: ['reason'],
+        draftFields: ['reason'],
+        finalDocumentRequirements: [],
+      },
+    });
     return ir;
   }
 
@@ -431,14 +477,21 @@ describe('convex.http — authenticated command dispatcher', () => {
     expect(code).not.toMatch(/params: \[[^\]]*"actorId"/);
   });
 
-  it('routes initialization commands to createVia mutations without docId', () => {
-    const code = gen(irWithInitializationReserveCommand(), 'convex.http').artifacts[0].code;
+  it('routes selected initialization commands to createVia mutations without docId', () => {
+    const code = gen(irWithInitializationReserveCommand(), 'convex.http').artifacts[0]
+      .code;
     expect(code).toContain('"InventoryReservation.reserve"');
     expect(code).toContain('ref: api.mutations.InventoryReservation_createViaReserve');
     expect(code).not.toContain('ref: api.mutations.InventoryReservation_reserve');
     expect(code).toContain('"inventoryItemId"');
     expect(code).toContain('"quantity"');
-    expect(code).not.toMatch(/"InventoryReservation\.reserve": \{\s*ref:[^}]*"docId"/);
+    expect(code).not.toMatch(
+      /"InventoryReservation\.reserve": \{\s*ref:[^}]*"docId"/,
+    );
+    // Peer commands stay on the instance mutation + docId even if they carry a plan.
+    expect(code).toContain('ref: api.mutations.InventoryReservation_release');
+    expect(code).not.toContain('InventoryReservation_createViaRelease');
+    expect(code).toMatch(/"InventoryReservation\.release": \{[\s\S]*?"docId"/);
   });
 
   it('never copies caller-supplied auth fields into mutation args', () => {
