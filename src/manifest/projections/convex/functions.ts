@@ -1016,6 +1016,8 @@ function renderReactions(
       }
       const rowScope: RenderScope = {
         selfVar: '__row',
+        // Convex documents store the primary key as `_id`; map `self.id` / bare `id`.
+        idExpr: '(__row as any)._id',
         globals: ['payload', 'user', 'context', 'args', '__row', 'target'],
       };
       const fanParams: string[] = [];

@@ -1935,6 +1935,8 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
     expect(code).toContain('withIndex("by_orderId"');
     expect(code).toContain('__runShipmentCreate');
     expect(code).toMatch(/__runShipmentCreate\(ctx, \{[^}]*lineItemId/);
+    expect(code).toContain('lineItemId: (__row as any)._id');
+    expect(code).not.toContain('lineItemId: __row.id');
     expect(code).not.toMatch(/__runShipmentCreate\(ctx, \{ docId:/);
   });
 });

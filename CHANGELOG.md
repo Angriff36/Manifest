@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.37] - 2026-07-21
+
+### Fixed
+
+- **Convex fan-out foreach-create params:** `self.id` / bare `id` in fanOut `params`
+  now render as `(__row as any)._id` (Convex primary key), not `__row.id`.
+
 ## [3.6.36] - 2026-07-21
 
 ### Added
