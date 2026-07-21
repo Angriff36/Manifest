@@ -454,7 +454,7 @@
     "fast-check": "^3.23.2",
     "globals": "^15.15.0",
     "jszip": "^3.10.1",
-    "lucide-react": "^0.344.0",
+    "lucide-react": "^1.25.0",
     "lz-string": "^1.5.0",
     "postcss": "^8.5.19",
     "prettier": "^3.9.5",
