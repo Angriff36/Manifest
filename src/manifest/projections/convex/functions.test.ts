@@ -2347,8 +2347,6 @@ describe('ConvexProjection — match else create allocate', () => {
     expect(code).toContain('await ctx.db.insert("drafts", __elseDoc as any)');
     expect(code).toContain('await __runDraftEnsure(ctx, { docId: __elseId');
     // Must not call the runner without a docId on the allocate path.
-    expect(code).not.toMatch(
-      /else \{\s*await __runDraftEnsure\(ctx, \{ weekKey:/,
-    );
+    expect(code).not.toMatch(/else \{\s*await __runDraftEnsure\(ctx, \{ weekKey:/);
   });
 });

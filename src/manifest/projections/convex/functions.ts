@@ -910,9 +910,7 @@ function renderMatchElseCreateCall(
     .map((property) => property.name)
     .filter(
       (name) =>
-        name !== 'id' &&
-        name !== writeTenantProp &&
-        !isConvexVersionManagedField(entity, name),
+        name !== 'id' && name !== writeTenantProp && !isConvexVersionManagedField(entity, name),
     );
   const argsExpr = args.length > 0 ? `{ ${args} }` : '{}';
   return [
