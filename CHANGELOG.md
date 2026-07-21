@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.39] - 2026-07-21
+
+### Changed
+
+- feat(lang): fanOut match else create for per-row upserts
+
 ## [3.6.38] - 2026-07-21
 
 ### Changed
