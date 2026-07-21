@@ -78,11 +78,7 @@ export function collectDispatcherCommands(
   });
 }
 
-function allocatesDocument(
-  entity: string,
-  cmd: IRCommand,
-  createViaKeys: Set<string>,
-): boolean {
+function allocatesDocument(entity: string, cmd: IRCommand, createViaKeys: Set<string>): boolean {
   return (
     cmd.name === 'create' ||
     cmd.name.startsWith('createVia') ||

@@ -478,16 +478,13 @@ describe('convex.http — authenticated command dispatcher', () => {
   });
 
   it('routes selected initialization commands to createVia mutations without docId', () => {
-    const code = gen(irWithInitializationReserveCommand(), 'convex.http').artifacts[0]
-      .code;
+    const code = gen(irWithInitializationReserveCommand(), 'convex.http').artifacts[0].code;
     expect(code).toContain('"InventoryReservation.reserve"');
     expect(code).toContain('ref: api.mutations.InventoryReservation_createViaReserve');
     expect(code).not.toContain('ref: api.mutations.InventoryReservation_reserve');
     expect(code).toContain('"inventoryItemId"');
     expect(code).toContain('"quantity"');
-    expect(code).not.toMatch(
-      /"InventoryReservation\.reserve": \{\s*ref:[^}]*"docId"/,
-    );
+    expect(code).not.toMatch(/"InventoryReservation\.reserve": \{\s*ref:[^}]*"docId"/);
     // Peer commands stay on the instance mutation + docId even if they carry a plan.
     expect(code).toContain('ref: api.mutations.InventoryReservation_release');
     expect(code).not.toContain('InventoryReservation_createViaRelease');
