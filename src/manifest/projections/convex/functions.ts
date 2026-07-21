@@ -900,10 +900,12 @@ function renderMatchElseCreateCall(
         !isConvexVersionManagedField(entity, property.name) &&
         property.name !== writeTenantProp,
     )
-    .map(
-      (property) =>
-        `${indent}    ${property.name}: ${defaultToTs(property.defaultValue)},`,
-    );
+    .map((property) => {
+      const defaultValue = property.defaultValue;
+      if (defaultValue === undefined) return '';
+      return `${indent}    ${property.name}: ${defaultToTs(defaultValue)},`;
+    })
+    .filter((line) => line.length > 0);
   const propNames = entity.properties
     .map((property) => property.name)
     .filter(
