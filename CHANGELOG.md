@@ -16,6 +16,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Fan-out + match else create:** `on Event fanOut Source where … run Target.cmd match … else create`
+  upserts a target row per source match (natural-key match uses fanOut param context).
+
+## [3.6.38] - 2026-07-21
+
+### Added
+
 - **Aggregate sum (entity where):** `sum(Entity where field == value, …, of quantityField)`
   in reaction params (mirror of `count(Entity where …)`). Runtime + Convex projection
   sum the named numeric field on matching rows. Spec: `docs/spec/builtins.md`.

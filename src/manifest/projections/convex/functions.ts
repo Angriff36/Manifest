@@ -1066,14 +1066,49 @@ function renderReactions(
       lines.push(`    for (const __row of ${rowsVar}) {`);
       lines.push(`      const target = __row;`);
       for (const pl of fanPreLines) lines.push(`      ${pl.trimStart()}`);
-      if (crossEntity) {
-        // Foreach-create (and other cross-entity fanOut): no docId from the source row.
+      const runner = commandRunnerName(reaction.targetEntity, reaction.targetCommand);
+      const fanArgs = fanParams.join(', ');
+      if (reaction.match && reaction.match.length > 0) {
+        const targetTable = resolveConvexTableName(reaction.targetEntity, options);
+        const firstPred = reaction.match[0]!;
+        const firstVal = renderExpression(firstPred.source, rowScope);
+        const matchRaw = `__fanMatch${idx}_raw`;
+        const matchRows = `__fanMatch${idx}_rows`;
+        const matchId = `__fanMatch${idx}_id`;
         lines.push(
-          `      await ${commandRunnerName(reaction.targetEntity, reaction.targetCommand)}(ctx, { ${fanParams.join(', ')} } as any);`,
+          `      const ${matchRaw} = await ctx.db.query("${targetTable}").withIndex("by_${firstPred.field}", (q) => q.eq("${firstPred.field}", ${firstVal.code})).collect();`,
         );
+        const filters = [`(d as any).${firstPred.field} === ${firstVal.code}`];
+        for (const m of reaction.match.slice(1)) {
+          const mv = renderExpression(m.source, rowScope);
+          filters.push(`(d as any).${m.field} === ${mv.code}`);
+        }
+        filters.push(`(d as any).deletedAt == null`);
+        lines.push(
+          `      const ${matchRows} = ${matchRaw}.filter((d) => ${filters.join(' && ')}).sort((a, b) => String((a as any)._id).localeCompare(String((b as any)._id)));`,
+        );
+        lines.push(
+          `      const ${matchId} = ${matchRows}.length > 0 ? (${matchRows}[0] as any)._id : null;`,
+        );
+        if (reaction.elseCreate) {
+          lines.push(`      if (${matchId}) {`);
+          lines.push(
+            `        await ${runner}(ctx, { docId: ${matchId}${fanArgs ? ', ' + fanArgs : ''} } as any);`,
+          );
+          lines.push(`      } else {`);
+          lines.push(`        await ${runner}(ctx, { ${fanArgs} } as any);`);
+          lines.push(`      }`);
+        } else {
+          lines.push(
+            `      if (${matchId}) await ${runner}(ctx, { docId: ${matchId}${fanArgs ? ', ' + fanArgs : ''} } as any);`,
+          );
+        }
+      } else if (crossEntity) {
+        // Foreach-create (and other cross-entity fanOut): no docId from the source row.
+        lines.push(`      await ${runner}(ctx, { ${fanArgs} } as any);`);
       } else {
         lines.push(
-          `      await ${commandRunnerName(reaction.targetEntity, reaction.targetCommand)}(ctx, { docId: (__row as any)._id${fanParams.length ? ', ' + fanParams.join(', ') : ''} } as any);`,
+          `      await ${runner}(ctx, { docId: (__row as any)._id${fanArgs ? ', ' + fanArgs : ''} } as any);`,
         );
       }
       lines.push(`    }`);

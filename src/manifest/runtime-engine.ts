@@ -4954,11 +4954,42 @@ export class RuntimeEngine {
                     fanInput[p.name] = await this.evaluateExpression(p.expression, fanParamContext);
                   }
                 }
-                // Same-entity: bind matched row. Cross-entity (foreach-create): omit
-                // instanceId so `create` allocates a new targetEntity per source row.
-                const fanInstanceId = crossEntity
-                  ? undefined
-                  : String((m as Record<string, unknown>).id ?? '');
+                // Optional per-row natural-key upsert (fanOut + match else create).
+                let fanInstanceId: string | undefined;
+                if (reaction.match && reaction.match.length > 0) {
+                  const resolvedPreds = await Promise.all(
+                    reaction.match.map(async (pred) => ({
+                      field: pred.field,
+                      value: await this.evaluateExpression(pred.source, fanParamContext),
+                    })),
+                  );
+                  const candidates = (
+                    await this.getAllInstancesRaw(reaction.targetEntity)
+                  ).filter((inst) => {
+                    const r = inst as Record<string, unknown>;
+                    if (r.deletedAt != null) return false;
+                    return resolvedPreds.every((p) => r[p.field] === p.value);
+                  });
+                  candidates.sort((a, b) =>
+                    String((a as Record<string, unknown>).id ?? '').localeCompare(
+                      String((b as Record<string, unknown>).id ?? ''),
+                    ),
+                  );
+                  if (candidates.length === 0) {
+                    if (!reaction.elseCreate) continue;
+                    fanInstanceId = undefined;
+                  } else {
+                    fanInstanceId = String(
+                      (candidates[0] as Record<string, unknown>).id ?? '',
+                    );
+                  }
+                } else {
+                  // Same-entity: bind matched row. Cross-entity (foreach-create): omit
+                  // instanceId so `create` allocates a new targetEntity per source row.
+                  fanInstanceId = crossEntity
+                    ? undefined
+                    : String((m as Record<string, unknown>).id ?? '');
+                }
                 this.reactionDepth++;
                 try {
                   const fanResult = await this.runCommand(reaction.targetCommand, fanInput, {

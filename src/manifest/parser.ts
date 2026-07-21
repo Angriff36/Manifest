@@ -1491,6 +1491,50 @@ export class Parser {
         }
       }
       this.skipNL();
+      // Optional natural-key upsert per fanOut source row:
+      //   match f = e, … [else create]
+      let match: { field: string; source: ExpressionNode }[] | undefined;
+      let elseCreate = false;
+      if (this.check('KEYWORD', 'match')) {
+        this.advance();
+        match = [];
+        this.skipNL();
+        while (!this.isEnd()) {
+          this.skipNL();
+          if (
+            this.check('KEYWORD', 'else') ||
+            this.check('KEYWORD', 'params') ||
+            this.check('KEYWORD', 'on') ||
+            this.check('KEYWORD', 'entity') ||
+            this.check('KEYWORD', 'event')
+          ) {
+            break;
+          }
+          if (!this.check('IDENTIFIER')) break;
+          const field = this.consumeIdentifier().value;
+          this.consume('OPERATOR', '=');
+          const source = this.parseExpr();
+          match.push({ field, source });
+          if (this.check('PUNCTUATION', ',')) {
+            this.advance();
+            this.skipNL();
+            continue;
+          }
+          this.skipNL();
+          break;
+        }
+        this.skipNL();
+        if (this.check('KEYWORD', 'else')) {
+          this.advance();
+          this.skipNL();
+          const elseWord = this.consumeIdentifier().value;
+          if (elseWord !== 'create') {
+            throw new Error(`Expected 'create' after reaction 'else', got '${elseWord}'`);
+          }
+          elseCreate = true;
+          this.skipNL();
+        }
+      }
       const params = this.parseReactionParams();
       return {
         type: 'Reaction',
@@ -1502,6 +1546,8 @@ export class Parser {
           matchSource,
           ...(fanMatchEntity ? { matchEntity: fanMatchEntity } : {}),
         },
+        ...(match ? { match } : {}),
+        ...(elseCreate ? { elseCreate: true } : {}),
         ...(params ? { params } : {}),
         position,
       };

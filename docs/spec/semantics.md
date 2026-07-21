@@ -830,14 +830,17 @@ on <EventName> run <EntityType>.<commandName>
      → produces that row's command input (so per-row quantities can use
      `self.requiredQuantity` with `payload.newHeadcount` / `payload.previousHeadcount`).
   4. Invoke `runCommand(targetEntity.targetCommand, input, options)` once per match:
-     - **Same-entity** (`matchEntity` absent or equal to `targetEntity`): pass
-       `instanceId` of the matched row (legacy cascade: cancel/deactivate children).
-     - **Cross-entity** (`matchEntity` present and ≠ `targetEntity`): do **not** pass
-       the matched row's id as `instanceId`. When `targetCommand` is `create`, this
-       is the foreach-create path (allocate one new `targetEntity` per matched source
-       row). Non-`create` cross-entity fan-out is reserved; conforming runtimes MUST
-       still omit the source row's `instanceId` so the command is not bound to the
-       wrong entity type.
+     - **With optional `match` / `else create`:** resolve `targetEntity` by the
+       natural-key predicates (same rules as single-target match; params/`self`
+       still bind to the fanOut source row). Zero matches + `else create` allocates;
+       zero matches without `else create` skips that source row.
+     - **Same-entity** without `match` (`matchEntity` absent or equal to
+       `targetEntity`): pass `instanceId` of the matched row (legacy cascade).
+     - **Cross-entity** without `match` (`matchEntity` present and ≠
+       `targetEntity`): do **not** pass the matched row's id as `instanceId`.
+       When `targetCommand` is `create`, this is the foreach-create path.
+       Non-`create` cross-entity fan-out without `match` is reserved; conforming
+       runtimes MUST still omit the source row's `instanceId`.
 - Reaction-triggered commands are full command executions (policies, guards, actions, emits apply).
 - Events emitted by reaction-triggered commands MAY trigger further reactions (cascading).
 - A conforming runtime MUST enforce a maximum reaction depth (default: 10) to prevent infinite loops. When exceeded, the runtime MUST throw a `ManifestReactionDepthError`.

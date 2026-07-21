@@ -70,6 +70,86 @@ describe('reaction match else create', () => {
     expect(reaction?.match?.[1]?.field).toBe('vendorId');
   });
 
+  it('fanOut + match else create upserts one target row per source key', async () => {
+    const fanSource = `
+      entity Order {
+        property required id: string
+        property status: string = "open"
+        hasMany lines: Line
+        command place() {
+          mutate status = "placed"
+          emit OrderPlaced { orderId: self.id }
+        }
+        store in memory
+      }
+      entity Line {
+        property required id: string
+        property orderId: string = ""
+        property sku: string = ""
+        property qty: number = 0
+        belongsTo order: Order
+        command set(orderId: string, sku: string, qty: number) {
+          mutate orderId = orderId
+          mutate sku = sku
+          mutate qty = qty
+        }
+        store in memory
+      }
+      entity Pick {
+        property required id: string
+        property required orderId: string
+        property required sku: string
+        property required qty: number
+        belongsTo order: Order
+        command sync(orderId: string, sku: string, qty: number) {
+          mutate orderId = orderId
+          mutate sku = sku
+          mutate qty = qty
+        }
+        store in memory
+      }
+      event OrderPlaced: "order.placed" { orderId: string }
+      on OrderPlaced fanOut Line where orderId = payload.orderId
+        run Pick.sync
+        match orderId = payload.orderId, sku = self.sku
+        else create
+        params {
+          orderId: payload.orderId
+          sku: self.sku
+          qty: self.qty
+        }
+    `;
+    let seq = 0;
+    const { ir, diagnostics } = await compileToIR(fanSource);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expect(ir!.reactions?.[0]?.fanOut).toBeTruthy();
+    expect(ir!.reactions?.[0]?.elseCreate).toBe(true);
+    const engine = new RuntimeEngine(
+      ir!,
+      {},
+      { now: () => 1000, generateId: () => `f-${++seq}` },
+    );
+    await engine.createInstance('Order', { id: 'o1', status: 'open' } as EntityInstance);
+    await engine.createInstance('Line', {
+      id: 'l1',
+      orderId: 'o1',
+      sku: 'onion',
+      qty: 3,
+    } as EntityInstance);
+    await engine.createInstance('Line', {
+      id: 'l2',
+      orderId: 'o1',
+      sku: 'onion',
+      qty: 5,
+    } as EntityInstance);
+    await engine.runCommand('place', {}, { entityName: 'Order', instanceId: 'o1' });
+    const picks = (await engine.getAllInstances('Pick')) as EntityInstance[];
+    // Two source lines share sku — match collapses to one Pick, last write wins qty.
+    expect(picks).toHaveLength(1);
+    expect(picks[0]?.sku).toBe('onion');
+    expect(picks[0]?.qty).toBe(5);
+  });
+
   it('creates on first open and updates the same draft on the second', async () => {
     let seq = 0;
     const { ir, diagnostics } = await compileToIR(source());
