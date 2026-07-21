@@ -1,8 +1,8 @@
 # Convex projection
 
 Projects Manifest IR to a [Convex](https://convex.dev) backend. Eight surfaces
-ship today: schema, queries, mutations, crons, http (webhooks), sagas,
-computed helpers, and the React client (`convex.react`).
+ship today: schema, queries, mutations, crons, http (webhooks + authenticated
+command dispatcher), sagas, computed helpers, and the React client (`convex.react`).
 
 Design spec: `docs/superpowers/specs/2026-06-15-convex-projection-design.md`.
 Agent build-spec (language model, capability matrix, frontend rules, limits,
@@ -18,7 +18,7 @@ workflow): `docs/convex-projection-wiring.html`.
 | `convex.queries`   | `convex/queries.ts` (`list`/`get`/`listBy<Field>` reactive reads)              | ✅ Phase 2 |
 | `convex.mutations` | `convex/mutations.ts` (governed `mutation` per command)                        | ✅ Phase 2 |
 | `convex.crons`     | `convex/crons.ts` (`cronJobs()` scheduling command mutations)                  | ✅ Phase 3 |
-| `convex.http`      | `convex/http.ts` (`httpRouter`/`httpAction` webhooks → commands)               | ✅ Phase 3 |
+| `convex.http`      | `convex/http.ts` (webhooks + authenticated `POST /api/manifest/.../commands/...`) | ✅ Phase 3 |
 | `convex.sagas`     | `convex/sagas.ts` (orchestrator `action`s + compensation)                      | ✅ Phase 3 |
 | `convex.computed`  | `convex/computed.ts` (`compute<Entity>(doc)` pure helpers)                     | ✅ M4      |
 | `convex.react`     | `src/lib/manifest-convex-react.ts` (`useQuery`/`useMutation` client hooks)     | ✅ P4      |
@@ -29,7 +29,11 @@ workflow): `docs/convex-projection-wiring.html`.
   or `crons.interval(id, { minutes }, ...)`; params resolved from the schedule AST.
 - **`convex.http`** — each IR webhook → `http.route({ path, method, handler: httpAction })`
   that reads `request.json()`, maps `transform` params against `body`, and
-  `ctx.runMutation`s the command.
+  `ctx.runMutation`s the command. Also emits the authenticated command
+  dispatcher (`pathPrefix: "/api/manifest/"`, `POST`) that requires
+  `ctx.auth.getUserIdentity()`, strips identity fields from the body, and
+  `runMutation`s the same governed command mutation (RuntimeContext via
+  `getAuthContext`). Disable with `options.dispatcher.enabled: false`.
 - **`convex.sagas`** — each IR saga → an orchestrator `action` that runs steps
   via `ctx.runMutation`, tracks completed steps, and (when `onFailure:
 compensate`) runs each completed step's compensating command in reverse.

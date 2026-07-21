@@ -199,6 +199,18 @@ The dispatcher is the canonical write path. Consumers SHOULD prefer it. Per-comm
 
 The dispatcher targets Next.js 15 App Router. Dynamic route segment params are async: `ctx.params` is typed `Promise<{ entity: string; command: string }>` and MUST be `await`ed before reading. See the official Next.js route handler reference for the canonical shape.
 
+~~The dispatcher targets Next.js 15 App Router only.~~
+> **Correction (2026-07-20):** The same canonical path is also emitted by the
+> Convex projection (`convex.http`) as an `httpRouter`
+> `pathPrefix: "/api/manifest/"` `POST` route. Authentication uses Convex
+> `ctx.auth.getUserIdentity()` (Bearer JWT on the HTTP action); identity
+> propagates into `ctx.runMutation` of the existing governed command mutation,
+> which derives Manifest RuntimeContext via the consumer `getAuthContext`
+> seam. The request body MUST NOT supply tenant/role/user/`__auth`. Provider
+> HMAC callbacks remain separate inbound `webhook` decls on the same `http.ts`.
+> Evidence: `src/manifest/projections/convex/http-dispatcher.ts`,
+> `orchestration.test.ts` (authenticated command dispatcher).
+
 Downstream governance integrations MAY add CI gates (via `manifest audit-governance`) that flag any non-alias direct command route.
 
 ## Audit Sink

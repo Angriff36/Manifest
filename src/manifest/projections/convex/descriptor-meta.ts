@@ -61,6 +61,9 @@ export const CONVEX_DESCRIPTOR_META: ProjectionDescriptorMeta = {
       default: CONVEX_PROJECTION_DEFAULTS.computedProperties,
       enumValues: ['helpers', 'inline'],
     }),
+    optionalOption('dispatcher', 'object', {
+      default: CONVEX_PROJECTION_DEFAULTS.dispatcher,
+    }),
     optionalOption('apiImportPath', 'string', {
       // When omitted, derived from client pathHint → convex/_generated/api.
       // Default below is that derivation for the Builder preset client path.
@@ -76,7 +79,8 @@ export const CONVEX_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     },
     {
       kind: 'webhooks',
-      description: 'IR webhooks drive convex.http routes; empty webhooks yield empty http.',
+      description:
+        'IR webhooks drive convex.http provider routes; entity commands also drive the authenticated dispatcher at POST /api/manifest/{entity}/commands/{command}.',
       required: false,
       surfaces: ['convex.http'],
     },

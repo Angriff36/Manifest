@@ -371,3 +371,68 @@ describe('convex.sagas', () => {
     ).toBe(true);
   });
 });
+
+describe('convex.http — authenticated command dispatcher', () => {
+  function irWithReserveCommand(): IR {
+    const ir = emptyIR();
+    ir.commands = [
+      {
+        name: 'reserve',
+        entity: 'InventoryReservation',
+        parameters: [
+          { name: 'inventoryItemId', type: { name: 'string', nullable: false }, required: true },
+          { name: 'quantity', type: { name: 'number', nullable: false }, required: true },
+          {
+            name: 'actorId',
+            type: { name: 'string', nullable: false },
+            required: true,
+            trustedSource: 'context.actorId',
+          },
+        ],
+        guards: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    return ir;
+  }
+
+  it('requires getUserIdentity (401) and dispatches to the governed mutation', () => {
+    const code = gen(irWithReserveCommand(), 'convex.http').artifacts[0].code;
+    expect(code).toContain('pathPrefix: "/api/manifest/"');
+    expect(code).toContain('method: "POST"');
+    expect(code).toContain('const identity = await ctx.auth.getUserIdentity()');
+    expect(code).toContain('status: 401');
+    expect(code).toContain('"InventoryReservation.reserve"');
+    expect(code).toContain('ref: api.mutations.InventoryReservation_reserve');
+    expect(code).toContain('await ctx.runMutation(entry.ref, args as any)');
+    expect(code).toContain('"inventoryItemId"');
+    expect(code).toContain('"quantity"');
+    // trustedSource / identity params are not client-owned
+    expect(code).not.toMatch(/params: \[[^\]]*"actorId"/);
+  });
+
+  it('never copies caller-supplied auth fields into mutation args', () => {
+    const code = gen(irWithReserveCommand(), 'convex.http').artifacts[0].code;
+    expect(code).toContain('DISPATCHER_FORBIDDEN_BODY_KEYS');
+    expect(code).toContain('"__auth"');
+    expect(code).toContain('"tenantId"');
+    expect(code).toContain('"role"');
+    expect(code).toContain('"user"');
+    expect(code).toContain('if (DISPATCHER_FORBIDDEN_BODY_KEYS.has(name)) continue');
+    // Must not accept a body.__auth passthrough pattern
+    expect(code).not.toContain('__auth: body');
+    expect(code).not.toContain('tenantId: body');
+    expect(code).not.toContain('role: body');
+  });
+
+  it('can be disabled via options.dispatcher.enabled', () => {
+    const res = new ConvexProjection().generate(irWithReserveCommand(), {
+      surface: 'convex.http',
+      options: { dispatcher: { enabled: false } },
+    });
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_DISPATCHER_DISABLED')).toBe(true);
+    expect(res.artifacts[0].code).not.toContain('pathPrefix: "/api/manifest/"');
+    expect(res.artifacts[0].code).not.toContain('COMMAND_DISPATCH');
+  });
+});

@@ -1,12 +1,13 @@
 # Convex projection — capability map
 
-**Date:** 2026-07-17  
+**Date:** 2026-07-20  
+~~**Date:** 2026-07-17~~  
+~~**Date:** 2026-07-14~~  
+
 **Authority:** this file + diagnostics emitted by `capabilities.ts` / `privacy.ts`.  
 **Rule:** every IR declaration is either Supported (generated + tested), Partial
 (limitation stated), or Unsupported (`CONVEX_UNSUPPORTED_*` / related warning).
 "Parsed but ignored" without a diagnostic is a bug.
-
-~~Date: 2026-07-14~~
 
 See also: `README.md`, `docs/internal/proposals/2026-07-14-convex-computed-properties.md`,
 roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption-roadmap.md`.
@@ -34,9 +35,10 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Computed (self-only)                             | computed (+ optional inline) | `computedProperties: helpers \| inline`                                                      |
 | Schedules                                        | crons                        |                                                                                              |
 | Webhooks (route + transform + idempotency table) | http                         | Signature verification = Partial                                                             |
+| Authenticated command dispatcher                 | http                         | `POST /api/manifest/{entity}/commands/{command}`; `ctx.auth` → existing mutation             |
 | Sagas (steps + compensate/abort)                 | sagas                        | Step arg mapping = Partial                                                                   |
 | Tenant filter / soft-delete filter               | queries                      | Field-aware defaults                                                                         |
-| `authContextImport`                              | queries + mutations          | Author-owned identity seam                                                                   |
+| `authContextImport`                              | queries + mutations          | Author-owned identity seam (also used after HTTP auth propagates into `runMutation`)         |
 | `encryptionImport` / encrypted properties        | queries + mutations          | Versioned envelope; decrypt before policy/read projection, encrypt before store writes       |
 | React client hooks (`useQuery` / `useMutation`)  | react                        | Skips only read-gated entities whose public policy queries cannot be rendered                |
 
