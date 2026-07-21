@@ -373,7 +373,7 @@ describe('convex.sagas', () => {
 });
 
 describe('convex.http — authenticated command dispatcher', () => {
-  function irWithReserveCommand(): IR {
+  function irWithInstanceReserveCommand(): IR {
     const ir = emptyIR();
     ir.commands = [
       {
@@ -397,8 +397,24 @@ describe('convex.http — authenticated command dispatcher', () => {
     return ir;
   }
 
+  function irWithInitializationReserveCommand(): IR {
+    const ir = irWithInstanceReserveCommand();
+    ir.commands![0]!.initialization = {
+      initializationInputs: ['inventoryItemId', 'quantity'],
+      authenticatedOwnershipFields: [],
+      declaredDefaults: [],
+      initialLifecycleState: [],
+      commandOwnedFields: ['inventoryItemId', 'quantity'],
+      draftFields: ['inventoryItemId', 'quantity'],
+      finalDocumentRequirements: [],
+      dynamicGuardIndexes: [],
+      redundantGuardIndexes: [],
+    };
+    return ir;
+  }
+
   it('requires getUserIdentity (401) and dispatches to the governed mutation', () => {
-    const code = gen(irWithReserveCommand(), 'convex.http').artifacts[0].code;
+    const code = gen(irWithInstanceReserveCommand(), 'convex.http').artifacts[0].code;
     expect(code).toContain('pathPrefix: "/api/manifest/"');
     expect(code).toContain('method: "POST"');
     expect(code).toContain('const identity = await ctx.auth.getUserIdentity()');
@@ -415,8 +431,21 @@ describe('convex.http — authenticated command dispatcher', () => {
     expect(code).not.toMatch(/params: \[[^\]]*"actorId"/);
   });
 
+  it('routes initialization commands to createVia mutations without docId', () => {
+    const code = gen(irWithInitializationReserveCommand(), 'convex.http').artifacts[0]
+      .code;
+    expect(code).toContain('"InventoryReservation.reserve"');
+    expect(code).toContain('ref: api.mutations.InventoryReservation_createViaReserve');
+    expect(code).not.toContain('ref: api.mutations.InventoryReservation_reserve');
+    expect(code).toContain('"inventoryItemId"');
+    expect(code).toContain('"quantity"');
+    expect(code).not.toMatch(
+      /"InventoryReservation\.reserve": \{\s*ref:[^}]*"docId"/,
+    );
+  });
+
   it('never copies caller-supplied auth fields into mutation args', () => {
-    const code = gen(irWithReserveCommand(), 'convex.http').artifacts[0].code;
+    const code = gen(irWithInstanceReserveCommand(), 'convex.http').artifacts[0].code;
     expect(code).toContain('DISPATCHER_FORBIDDEN_BODY_KEYS');
     expect(code).toContain('"__auth"');
     expect(code).toContain('"tenantId"');
@@ -430,7 +459,7 @@ describe('convex.http — authenticated command dispatcher', () => {
   });
 
   it('can be disabled via options.dispatcher.enabled', () => {
-    const res = new ConvexProjection().generate(irWithReserveCommand(), {
+    const res = new ConvexProjection().generate(irWithInstanceReserveCommand(), {
       surface: 'convex.http',
       options: { dispatcher: { enabled: false } },
     });

@@ -4,11 +4,21 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.32] - 2026-07-21
+
+### Fixed
+
+- **Convex command HTTP dispatcher:** initialization commands (e.g.
+  `InventoryReservation.reserve`) now dispatch to `createVia*` mutations and omit
+  `docId`/`version`, matching the allocating Convex entry. Instance commands still
+  forward `docId` + `version`.
+
 ## [3.6.31] - 2026-07-21
 
-### Changed
+### Fixed
 
-- fix(convex): forward docId and version on dispatcher instance commands
+- **Convex command HTTP dispatcher:** instance commands forward client `docId` and
+  OCC `version` so HTTP callers can target existing rows.
 
 ## [3.6.30] - 2026-07-21
 

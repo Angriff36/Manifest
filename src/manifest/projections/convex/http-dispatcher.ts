@@ -9,6 +9,7 @@
 
 import type { IR, IRCommand } from '../../ir.js';
 import type { ProjectionDiagnostic } from '../interface.js';
+import { commandCreationExportName } from './creation-entry.js';
 import type { NormalizedConvexOptions } from './options.js';
 
 /** Body keys that must never become mutation args (caller cannot override identity). */
@@ -50,7 +51,8 @@ export function collectDispatcherCommands(
     out.push({
       entity,
       command: cmd.name,
-      mutationExport: `${entity}_${cmd.name}`,
+      // Initialization allocates via createVia*; instance commands use Entity_command.
+      mutationExport: dispatcherMutationExport(entity, cmd),
       paramNames,
     });
   }
@@ -60,6 +62,21 @@ export function collectDispatcherCommands(
     const bk = `${b.entity}.${b.command}`;
     return ak < bk ? -1 : ak > bk ? 1 : 0;
   });
+}
+
+function allocatesDocument(cmd: IRCommand): boolean {
+  return (
+    !!cmd.initialization ||
+    cmd.name === 'create' ||
+    cmd.name.startsWith('createVia')
+  );
+}
+
+function dispatcherMutationExport(entity: string, cmd: IRCommand): string {
+  if (cmd.initialization && cmd.name !== 'create') {
+    return commandCreationExportName(entity, cmd.name);
+  }
+  return `${entity}_${cmd.name}`;
 }
 
 function clientOwnedParamNames(
@@ -75,9 +92,7 @@ function clientOwnedParamNames(
   }
   // Instance commands target an existing Convex document — forward docId + OCC
   // version. Create / createVia / initialization commands allocate a new row.
-  const allocatesDocument =
-    !!cmd.initialization || cmd.name === 'create' || cmd.name.startsWith('createVia');
-  if (!allocatesDocument) {
+  if (!allocatesDocument(cmd)) {
     if (!names.includes('docId')) names.unshift('docId');
     if (!names.includes('version')) names.push('version');
   }
