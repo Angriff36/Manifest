@@ -1110,20 +1110,35 @@ function renderReactions(
       const isFk = !!matchEntity && collectReferenceFields(matchEntity, ir, options).has(field);
       const matchProp = matchEntity?.properties.find((p) => p.name === field);
       const indexed = !!matchProp && (matchProp.modifiers.includes('indexed') || isFk);
-      if (!indexed) {
+      // Entity identity is Convex `_id`. Matching `where id = …` must not look for a
+      // document field named "id" (tables usually have none) — use db.get instead.
+      const isIdentityMatch = field === 'id';
+      if (!indexed && !isIdentityMatch) {
         diagnostics.push({
           severity: 'info',
           code: 'CONVEX_FANOUT_UNINDEXED',
           message: `fan-out ${label} matches on non-indexed '${matchEntityName}.${field}'; rendered an unindexed filter (mark it indexed for speed).`,
         });
       }
-      const queryExpr = indexed
-        ? `ctx.db.query("${matchTable}").withIndex("by_${field}", (q) => q.eq("${field}", ${src.code}))`
-        : `ctx.db.query("${matchTable}").filter((q) => q.eq(q.field("${field}"), ${src.code}))`;
       const rowsVar = `fanRows${idx}`;
-      lines.push(
-        `    const ${rowsVar} = (await ${queryExpr}.collect()).filter((d) => (d as any).deletedAt == null);`,
-      );
+      if (isIdentityMatch) {
+        const idVar = `__fanId${idx}`;
+        const docVar = `__fanDoc${idx}`;
+        lines.push(`    const ${idVar} = ${src.code};`);
+        lines.push(
+          `    const ${docVar} = ${idVar} != null && ${idVar} !== "" ? await ctx.db.get(${idVar} as any) : null;`,
+        );
+        lines.push(
+          `    const ${rowsVar} = ${docVar} != null && (${docVar} as any).deletedAt == null ? [${docVar}] : [];`,
+        );
+      } else {
+        const queryExpr = indexed
+          ? `ctx.db.query("${matchTable}").withIndex("by_${field}", (q) => q.eq("${field}", ${src.code}))`
+          : `ctx.db.query("${matchTable}").filter((q) => q.eq(q.field("${field}"), ${src.code}))`;
+        lines.push(
+          `    const ${rowsVar} = (await ${queryExpr}.collect()).filter((d) => (d as any).deletedAt == null);`,
+        );
+      }
       lines.push(`    for (const __row of ${rowsVar}) {`);
       lines.push(`      const target = __row;`);
       for (const pl of fanPreLines) lines.push(`      ${pl.trimStart()}`);

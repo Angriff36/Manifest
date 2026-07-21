@@ -1943,6 +1943,109 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
     expect(code).not.toContain('lineItemId: __row.id');
     expect(code).not.toMatch(/__runShipmentCreate\(ctx, \{ docId:/);
   });
+
+  it('fanOut where id = … loads the source row via db.get (Convex identity), not field("id")', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Person', [prop('status', 'string', ['required'])]),
+      entity(
+        'Assignment',
+        [
+          prop('eventId', 'string', ['required']),
+          prop('personId', 'string', ['required']),
+          prop('role', 'string', ['required']),
+        ],
+        [],
+      ),
+    ];
+    ir.stores = [durable('Person'), durable('Assignment')];
+    ir.commands = [
+      {
+        name: 'approve',
+        entity: 'Person',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: ['EventApproved'],
+      },
+      {
+        name: 'assign',
+        entity: 'Assignment',
+        parameters: [
+          { name: 'eventId', type: { name: 'string', nullable: false }, required: true },
+          { name: 'personId', type: { name: 'string', nullable: false }, required: true },
+          { name: 'role', type: { name: 'string', nullable: false }, required: true },
+        ],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    ir.reactions = [
+      {
+        event: 'EventApproved',
+        targetEntity: 'Assignment',
+        targetCommand: 'assign',
+        fanOut: {
+          matchField: 'id',
+          matchEntity: 'Person',
+          matchSource: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'payload' },
+            property: 'assignedToId',
+          },
+        },
+        match: [
+          {
+            field: 'eventId',
+            source: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'payload' },
+              property: 'eventId',
+            },
+          },
+          {
+            field: 'personId',
+            source: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'self' },
+              property: 'id',
+            },
+          },
+        ],
+        elseCreate: true,
+        params: [
+          {
+            name: 'eventId',
+            expression: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'payload' },
+              property: 'eventId',
+            },
+          },
+          {
+            name: 'personId',
+            expression: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'self' },
+              property: 'id',
+            },
+          },
+          {
+            name: 'role',
+            expression: { kind: 'literal', value: 'event_lead' },
+          },
+        ],
+      },
+    ] as IRReactionRule[];
+
+    const code = mutations(ir).artifacts[0].code;
+    expect(code).toContain('await ctx.db.get(__fanId');
+    expect(code).not.toContain('q.field("id")');
+    expect(code).toContain('personId: (__row as any)._id');
+  });
 });
 
 describe('convex.mutations — aggregate count reactions (`count(E where fk == v, ...)`)', () => {
