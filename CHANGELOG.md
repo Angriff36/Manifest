@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.35] - 2026-07-21
+
+### Changed
+
+- docs(mintlify): add Context7 AI chat widget
+
 ## [3.6.34] - 2026-07-21
 
 _Auto-generated stub — expand with real release notes._
