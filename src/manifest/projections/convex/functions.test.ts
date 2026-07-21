@@ -1915,7 +1915,7 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
             name: 'lineItemId',
             expression: {
               kind: 'member',
-              object: { kind: 'identifier', name: '__row' },
+              object: { kind: 'identifier', name: 'self' },
               property: 'id',
             },
           },
@@ -1923,7 +1923,7 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
             name: 'quantity',
             expression: {
               kind: 'member',
-              object: { kind: 'identifier', name: '__row' },
+              object: { kind: 'identifier', name: 'self' },
               property: 'quantity',
             },
           },
