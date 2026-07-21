@@ -65,11 +65,7 @@ export function collectDispatcherCommands(
 }
 
 function allocatesDocument(cmd: IRCommand): boolean {
-  return (
-    !!cmd.initialization ||
-    cmd.name === 'create' ||
-    cmd.name.startsWith('createVia')
-  );
+  return !!cmd.initialization || cmd.name === 'create' || cmd.name.startsWith('createVia');
 }
 
 function dispatcherMutationExport(entity: string, cmd: IRCommand): string {
