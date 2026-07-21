@@ -4,15 +4,27 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.36] - 2026-07-21
+
+### Added
+
+- **Fan-out foreach-create:** `on Event fanOut MatchEntity where field = expr run TargetEntity.create`
+  with params bound to each matched source row (`self` / `target`). Same-entity
+  `run command` fan-out is unchanged. Spec: `docs/spec/semantics.md` § Reactions;
+  IR `fanOut.matchEntity`; runtime + Convex omit source `instanceId`/`docId` on
+  cross-entity dispatch. Conformance `112-fanout-foreach-create`; proof in
+  `runtime-fanout-reaction.test.ts`.
+
 ## [3.6.35] - 2026-07-21
 
 ### Changed
 
 - docs(mintlify): add Context7 AI chat widget
+- Release bump only (foreach-create landed in 3.6.36 — this cut did not include that commit).
 
 ## [3.6.34] - 2026-07-21
 
-_Auto-generated stub — expand with real release notes._
+_Release bump (auto-stub at cut time)._
 
 ## [3.6.33] - 2026-07-21
 

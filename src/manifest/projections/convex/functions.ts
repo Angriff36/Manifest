@@ -992,7 +992,6 @@ function renderReactions(
   };
 
   matched.forEach((reaction, idx) => {
-    const targetTable = resolveConvexTableName(reaction.targetEntity, options);
     const targetEntity = ir.entities.find((e) => e.name === reaction.targetEntity);
     const label = `reaction ${reaction.event}→${reaction.targetEntity}.${reaction.targetCommand}`;
 
@@ -1027,27 +1026,38 @@ function renderReactions(
         if (r.entry) fanParams.push(r.entry);
       }
       const field = reaction.fanOut.matchField;
-      const isFk = !!targetEntity && collectReferenceFields(targetEntity, ir, options).has(field);
-      const targetProp = targetEntity?.properties.find((p) => p.name === field);
-      const indexed = !!targetProp && (targetProp.modifiers.includes('indexed') || isFk);
+      const matchEntityName = reaction.fanOut.matchEntity ?? reaction.targetEntity;
+      const matchEntity = ir.entities.find((e) => e.name === matchEntityName);
+      const matchTable = resolveConvexTableName(matchEntityName, options);
+      const crossEntity = matchEntityName !== reaction.targetEntity;
+      const isFk = !!matchEntity && collectReferenceFields(matchEntity, ir, options).has(field);
+      const matchProp = matchEntity?.properties.find((p) => p.name === field);
+      const indexed = !!matchProp && (matchProp.modifiers.includes('indexed') || isFk);
       if (!indexed) {
         diagnostics.push({
           severity: 'info',
           code: 'CONVEX_FANOUT_UNINDEXED',
-          message: `fan-out ${label} matches on non-indexed '${field}'; rendered an unindexed filter (mark '${reaction.targetEntity}.${field}' indexed for speed).`,
+          message: `fan-out ${label} matches on non-indexed '${matchEntityName}.${field}'; rendered an unindexed filter (mark it indexed for speed).`,
         });
       }
       const queryExpr = indexed
-        ? `ctx.db.query("${targetTable}").withIndex("by_${field}", (q) => q.eq("${field}", ${src.code}))`
-        : `ctx.db.query("${targetTable}").filter((q) => q.eq(q.field("${field}"), ${src.code}))`;
+        ? `ctx.db.query("${matchTable}").withIndex("by_${field}", (q) => q.eq("${field}", ${src.code}))`
+        : `ctx.db.query("${matchTable}").filter((q) => q.eq(q.field("${field}"), ${src.code}))`;
       const rowsVar = `fanRows${idx}`;
       lines.push(`    const ${rowsVar} = await ${queryExpr}.collect();`);
       lines.push(`    for (const __row of ${rowsVar}) {`);
       lines.push(`      const target = __row;`);
       for (const pl of fanPreLines) lines.push(`      ${pl.trimStart()}`);
-      lines.push(
-        `      await ${commandRunnerName(reaction.targetEntity, reaction.targetCommand)}(ctx, { docId: (__row as any)._id${fanParams.length ? ', ' + fanParams.join(', ') : ''} } as any);`,
-      );
+      if (crossEntity) {
+        // Foreach-create (and other cross-entity fanOut): no docId from the source row.
+        lines.push(
+          `      await ${commandRunnerName(reaction.targetEntity, reaction.targetCommand)}(ctx, { ${fanParams.join(', ')} } as any);`,
+        );
+      } else {
+        lines.push(
+          `      await ${commandRunnerName(reaction.targetEntity, reaction.targetCommand)}(ctx, { docId: (__row as any)._id${fanParams.length ? ', ' + fanParams.join(', ') : ''} } as any);`,
+        );
+      }
       lines.push(`    }`);
       return;
     }

@@ -1842,6 +1842,101 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
     expect(code).not.toContain('withIndex("by_owner"');
     expect(res.diagnostics.some((d) => d.code === 'CONVEX_FANOUT_UNINDEXED')).toBe(true);
   });
+
+  it('foreach-create: queries matchEntity and calls Target.create without source docId', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Order', [prop('status', 'string', ['required'])]),
+      entity(
+        'LineItem',
+        [prop('orderId', 'string', ['required']), prop('quantity', 'number', ['required'])],
+        [
+          {
+            name: 'order',
+            kind: 'belongsTo',
+            target: 'Order',
+            foreignKey: { fields: ['orderId'] },
+          },
+        ],
+      ),
+      entity(
+        'Shipment',
+        [prop('lineItemId', 'string', ['required']), prop('quantity', 'number', ['required'])],
+        [
+          {
+            name: 'lineItem',
+            kind: 'belongsTo',
+            target: 'LineItem',
+            foreignKey: { fields: ['lineItemId'] },
+          },
+        ],
+      ),
+    ];
+    ir.stores = [durable('Order'), durable('LineItem'), durable('Shipment')];
+    ir.commands = [
+      {
+        name: 'place',
+        entity: 'Order',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: ['OrderPlaced'],
+      },
+      {
+        name: 'create',
+        entity: 'Shipment',
+        parameters: [
+          { name: 'lineItemId', type: { name: 'string', nullable: false }, required: true },
+          { name: 'quantity', type: { name: 'number', nullable: false }, required: true },
+        ],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    ir.reactions = [
+      {
+        event: 'OrderPlaced',
+        targetEntity: 'Shipment',
+        targetCommand: 'create',
+        fanOut: {
+          matchField: 'orderId',
+          matchEntity: 'LineItem',
+          matchSource: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'payload' },
+            property: 'orderId',
+          },
+        },
+        params: [
+          {
+            name: 'lineItemId',
+            expression: {
+              kind: 'member',
+              object: { kind: 'identifier', name: '__row' },
+              property: 'id',
+            },
+          },
+          {
+            name: 'quantity',
+            expression: {
+              kind: 'member',
+              object: { kind: 'identifier', name: '__row' },
+              property: 'quantity',
+            },
+          },
+        ],
+      },
+    ] as IRReactionRule[];
+
+    const code = mutations(ir).artifacts[0].code;
+    expect(code).toContain('withIndex("by_orderId"');
+    expect(code).toContain('__runShipmentCreate');
+    expect(code).toMatch(/__runShipmentCreate\(ctx, \{[^}]*lineItemId/);
+    expect(code).not.toMatch(/__runShipmentCreate\(ctx, \{ docId:/);
+  });
 });
 
 describe('convex.mutations — aggregate count reactions (`count(E where fk == v, ...)`)', () => {

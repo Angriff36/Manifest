@@ -281,11 +281,18 @@ export interface ReactionNode extends ASTNode {
   resolve?: ExpressionNode;
   params?: ReactionParamMapping[];
   /**
-   * Fan-out: dispatch `targetCommand` on EVERY `targetEntity` row where
-   * `row.<matchField> == matchSource` (evaluated against the event payload),
-   * instead of one resolved target. The collection match replaces `resolve`.
+   * Fan-out: for each row of `matchEntity` (defaults to `targetEntity`) where
+   * `row.<matchField> == matchSource`, run `targetEntity.targetCommand`.
+   * When `matchEntity !== targetEntity` (e.g. `fanOut LineItem … run Shipment.create`),
+   * params bind `self`/`target` to the matched source row and create runs without
+   * that row's instance id.
    */
-  fanOut?: { matchField: string; matchSource: ExpressionNode };
+  fanOut?: {
+    matchField: string;
+    matchSource: ExpressionNode;
+    /** Entity queried for matches; omitted ⇒ same as targetEntity. */
+    matchEntity?: string;
+  };
 }
 
 export interface SagaStepNode extends ASTNode {

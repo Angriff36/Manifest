@@ -4924,7 +4924,9 @@ export class RuntimeEngine {
                 reactionContext,
               );
               const matchField = reaction.fanOut.matchField;
-              const matches = (await this.getAllInstancesRaw(reaction.targetEntity)).filter(
+              const matchEntity = reaction.fanOut.matchEntity ?? reaction.targetEntity;
+              const crossEntity = matchEntity !== reaction.targetEntity;
+              const matches = (await this.getAllInstancesRaw(matchEntity)).filter(
                 (inst) => (inst as Record<string, unknown>)[matchField] === matchValue,
               );
               for (const m of matches) {
@@ -4935,16 +4937,16 @@ export class RuntimeEngine {
                     `${reaction.targetEntity}.${reaction.targetCommand}`,
                   );
                 }
-                // Per-target params: payload stays the event; self/target are the row
-                // so expressions can use requiredQuantity × headcount ratios, etc.
-                const targetInstance = {
+                // Per-row params: payload stays the event; self/target are the matched
+                // source row (matchEntity) so qty × headcount can use self.*.
+                const matchedRow = {
                   ...(m as Record<string, unknown>),
-                  _entity: reaction.targetEntity,
+                  _entity: matchEntity,
                 };
                 const fanParamContext: Record<string, unknown> = {
                   payload: enrichedPayload,
-                  self: targetInstance,
-                  target: targetInstance,
+                  self: matchedRow,
+                  target: matchedRow,
                 };
                 const fanInput: Record<string, unknown> = {};
                 if (reaction.params) {
@@ -4952,11 +4954,16 @@ export class RuntimeEngine {
                     fanInput[p.name] = await this.evaluateExpression(p.expression, fanParamContext);
                   }
                 }
+                // Same-entity: bind matched row. Cross-entity (foreach-create): omit
+                // instanceId so `create` allocates a new targetEntity per source row.
+                const fanInstanceId = crossEntity
+                  ? undefined
+                  : String((m as Record<string, unknown>).id ?? '');
                 this.reactionDepth++;
                 try {
                   const fanResult = await this.runCommand(reaction.targetCommand, fanInput, {
                     entityName: reaction.targetEntity,
-                    instanceId: String((m as Record<string, unknown>).id ?? ''),
+                    ...(fanInstanceId !== undefined ? { instanceId: fanInstanceId } : {}),
                     correlationId: workflowMeta.correlationId,
                     causationId: emitted.name,
                   });

@@ -152,12 +152,25 @@ on GigCancelled fanOut GigStaff where gigId = self.id
 
 This dispatches `GigStaff.unassign` on **every** `GigStaff` row where `row.gigId == self.id` (the source instance's id, read from the event payload). Each match runs the target command through the normal pipeline — its own guards, policies, actions, and emits fire — exactly like a hand-written after-emit handler, but declared.
 
-- `where <field> = <sourceExpr>` selects the collection; `<field>` is a property on the target entity (an indexed or foreign-key field is preferred — the Convex projection reads it via `withIndex`, falling back to a filter otherwise).
+- `where <field> = <sourceExpr>` selects the collection; `<field>` is a property on the matched entity (an indexed or foreign-key field is preferred — the Convex projection reads it via `withIndex`, falling back to a filter otherwise).
 - `<sourceExpr>` is evaluated against the event payload (`self.id` / `payload.*`), so it sees the source entity's id and any declared `emit Event { field }` values.
-- `params` maps the same way as a single-target reaction and is shared across all matches.
+- `params` maps the same way as a single-target reaction and is shared across all matches. Inside fan-out, `self` / `__row` refer to the current matched row.
 - The reaction depth limit and `correlationId`/`causationId` propagation apply per dispatched command.
 
-Fan-out is the declarative replacement for the common "query children by FK, loop, dispatch" middleware pattern: cancel every line item, release every reservation, deactivate every child account, close every tip pool in a period, etc.
+**Foreach-create (cross-entity):** when `run` names a different entity's command (usually `create`), Manifest matches the `fanOut` collection and dispatches the target command **without** binding the matched row as `instanceId` / `docId`. Use matched-row fields in `params` to seed the new child:
+
+```manifest
+on OrderPlaced fanOut LineItem where orderId = payload.orderId
+  run Shipment.create
+  params {
+    lineItemId: self.id
+    quantity: self.quantity
+  }
+```
+
+Same-entity `run unassign` still updates each matched row in place. Cross-entity `run Target.create` is the declarative foreach-create path (conformance fixture 112; Manifest 3.6.36+).
+
+Fan-out is the declarative replacement for the common "query children by FK, loop, dispatch" middleware pattern: cancel every line item, create a shipment per line, release every reservation, deactivate every child account, close every tip pool in a period, etc.
 
 ## Aggregate count expressions
 

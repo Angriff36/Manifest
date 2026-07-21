@@ -1,0 +1,407 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "ffcf7431df6152b976500398b5ab60e84597ece509bc0faa4200d493460588ed",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Order",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "pending"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "items",
+          "kind": "hasMany",
+          "target": "LineItem"
+        }
+      ],
+      "commands": [
+        "place"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "LineItem",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "orderId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "product",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "order",
+          "kind": "belongsTo",
+          "target": "Order",
+          "foreignKey": {
+            "fields": [
+              "orderId"
+            ],
+            "references": [
+              "id"
+            ]
+          }
+        },
+        {
+          "name": "shipments",
+          "kind": "hasMany",
+          "target": "Shipment"
+        }
+      ],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Shipment",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "lineItemId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "pending"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "lineItem",
+          "kind": "belongsTo",
+          "target": "LineItem",
+          "foreignKey": {
+            "fields": [
+              "lineItemId"
+            ],
+            "references": [
+              "id"
+            ]
+          }
+        }
+      ],
+      "commands": [
+        "create"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Order",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "LineItem",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Shipment",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "OrderPlaced",
+      "channel": "order.placed",
+      "payload": [
+        {
+          "name": "orderId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "place",
+      "entity": "Order",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "placed"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "OrderPlaced"
+      ],
+      "emitPayloads": [
+        {
+          "eventName": "OrderPlaced",
+          "fields": [
+            {
+              "name": "orderId",
+              "expression": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "id"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "create",
+      "entity": "Shipment",
+      "parameters": [
+        {
+          "name": "lineItemId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "lineItemId",
+          "expression": {
+            "kind": "identifier",
+            "name": "lineItemId"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "quantity",
+          "expression": {
+            "kind": "identifier",
+            "name": "quantity"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "pending"
+            }
+          }
+        }
+      ],
+      "emits": [],
+      "initialization": {
+        "initializationInputs": [
+          "lineItemId",
+          "quantity"
+        ],
+        "authenticatedOwnershipFields": [],
+        "declaredDefaults": [],
+        "initialLifecycleState": [
+          {
+            "property": "status",
+            "value": {
+              "kind": "string",
+              "value": "pending"
+            }
+          }
+        ],
+        "commandOwnedFields": [
+          "lineItemId",
+          "quantity",
+          "status"
+        ],
+        "draftFields": [
+          "id",
+          "lineItemId",
+          "quantity",
+          "status"
+        ],
+        "finalDocumentRequirements": [],
+        "dynamicGuardIndexes": [],
+        "redundantGuardIndexes": []
+      }
+    }
+  ],
+  "policies": [],
+  "reactions": [
+    {
+      "event": "OrderPlaced",
+      "targetEntity": "Shipment",
+      "targetCommand": "create",
+      "fanOut": {
+        "matchField": "orderId",
+        "matchSource": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "payload"
+          },
+          "property": "orderId"
+        },
+        "matchEntity": "LineItem"
+      },
+      "params": [
+        {
+          "name": "lineItemId",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "id"
+          }
+        },
+        {
+          "name": "quantity",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "quantity"
+          }
+        }
+      ]
+    }
+  ]
+}

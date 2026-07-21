@@ -74,8 +74,10 @@ on ParentDeactivated fanOut Child where parentId = self.id
   run deactivate
 ```
 
-- `fanOut <Target> where <field> = <sourceExpr>` selects the collection — `<field>` is a property on the target entity (foreign key preferred), `<sourceExpr>` is evaluated against the event payload (`self.*` / `payload.*`).
-- `run <command>` names the target command (no `Entity.` prefix — the target entity is already given). An optional shared `params { ... }` block applies to every match.
+- `fanOut <MatchEntity> where <field> = <sourceExpr>` selects the collection — `<field>` is a property on the **matched** entity (foreign key preferred), `<sourceExpr>` is evaluated against the event payload (`self.*` / `payload.*`).
+- `run <command>` — same-entity cascade: command on `MatchEntity` (legacy: cancel/deactivate every child).
+- `run <TargetEntity>.<command>` — cross-entity foreach: iterate `MatchEntity` rows, run the command on `TargetEntity`. For `create`, each match allocates a **new** target row; params bind `self`/`target` to the matched source row (`lineItemId: self.id`, `quantity: self.quantity`).
+- Optional shared `params { ... }` applies to every match.
 - ~~Each match runs the target command through the full pipeline (guards, policies, actions, emits). The reaction depth limit and `correlationId`/`causationId` propagation apply per dispatched command.~~
 >
 > **Correction (2026-07-15) @RYANSIGNED:** Each match dispatches via `RuntimeEngine.runCommand` (policies → constraints → guards → actions → emits; plus rateLimit/approval when declared). `correlationId` is preserved across the chain; `causationId` on each reaction-triggered command is the triggering event's **name** (`emitted.name`), not an emit/instance id (`docs/spec/semantics.md` § Reactions). There is **no** silent skip when the resolved instance is missing — the target command still runs with unbound `self`/`this`.

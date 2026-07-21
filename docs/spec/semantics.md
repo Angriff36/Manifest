@@ -806,12 +806,21 @@ on <EventName> run <EntityType>.<commandName>
   3. Invoke `runCommand(targetEntity.targetCommand, input, {instanceId, correlationId, causationId})`.
 - For each matching **fan-out** reaction (`fanOut`):
   1. Evaluate `matchSource` with the event payload as context → produces the match value.
-  2. Select every target instance where `instance[matchField] == matchValue`.
+  2. Let `matchEntity` be `fanOut.matchEntity` if present, otherwise `targetEntity`.
+     Select every **matchEntity** instance where `instance[matchField] == matchValue`.
   3. For **each** matched instance, evaluate each `params[].expression` with
      context `{ payload: <event payload>, self: <matched instance>, target: <matched instance> }`
-     → produces that instance's command input (so per-row quantities can use
+     → produces that row's command input (so per-row quantities can use
      `self.requiredQuantity` with `payload.newHeadcount` / `payload.previousHeadcount`).
-  4. Invoke `runCommand` once per match with that instance's id and input.
+  4. Invoke `runCommand(targetEntity.targetCommand, input, options)` once per match:
+     - **Same-entity** (`matchEntity` absent or equal to `targetEntity`): pass
+       `instanceId` of the matched row (legacy cascade: cancel/deactivate children).
+     - **Cross-entity** (`matchEntity` present and ≠ `targetEntity`): do **not** pass
+       the matched row's id as `instanceId`. When `targetCommand` is `create`, this
+       is the foreach-create path (allocate one new `targetEntity` per matched source
+       row). Non-`create` cross-entity fan-out is reserved; conforming runtimes MUST
+       still omit the source row's `instanceId` so the command is not bound to the
+       wrong entity type.
 - Reaction-triggered commands are full command executions (policies, guards, actions, emits apply).
 - Events emitted by reaction-triggered commands MAY trigger further reactions (cascading).
 - A conforming runtime MUST enforce a maximum reaction depth (default: 10) to prevent infinite loops. When exceeded, the runtime MUST throw a `ManifestReactionDepthError`.

@@ -1357,6 +1357,7 @@ export class IRCompiler {
             fanOut: {
               matchField: r.fanOut.matchField,
               matchSource: this.transformExpression(r.fanOut.matchSource),
+              ...(r.fanOut.matchEntity ? { matchEntity: r.fanOut.matchEntity } : {}),
             },
           }
         : {}),

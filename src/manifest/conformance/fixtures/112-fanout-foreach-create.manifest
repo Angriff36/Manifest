@@ -1,0 +1,53 @@
+// Cross-entity fanOut: for each LineItem on an Order, create a Shipment.
+// Syntax: fanOut <MatchEntity> … run <TargetEntity>.create
+
+entity Order {
+  property required id: string
+  property status: string = "pending"
+  hasMany items: LineItem
+
+  command place() {
+    mutate status = "placed"
+    emit OrderPlaced { orderId: self.id }
+  }
+
+  store in memory
+}
+
+entity LineItem {
+  property required id: string
+  property orderId: string = ""
+  property product: string = ""
+  property quantity: number = 0
+  belongsTo order: Order fields [orderId] references [id]
+  hasMany shipments: Shipment
+
+  store in memory
+}
+
+entity Shipment {
+  property required id: string
+  property lineItemId: string = ""
+  property quantity: number = 0
+  property status: string = "pending"
+  belongsTo lineItem: LineItem fields [lineItemId] references [id]
+
+  command create(lineItemId: string, quantity: number) {
+    mutate lineItemId = lineItemId
+    mutate quantity = quantity
+    mutate status = "pending"
+  }
+
+  store in memory
+}
+
+event OrderPlaced: "order.placed" {
+  orderId: string
+}
+
+on OrderPlaced fanOut LineItem where orderId = payload.orderId
+  run Shipment.create
+  params {
+    lineItemId: self.id
+    quantity: self.quantity
+  }

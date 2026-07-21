@@ -366,11 +366,18 @@ export interface IRReactionRule {
   resolve?: IRExpression;
   params?: IRReactionParam[];
   /**
-   * Fan-out match: dispatch `targetCommand` on every `targetEntity` row where
-   * `row.<matchField> == matchSource` (evaluated against the event payload).
-   * When present, `resolve` is unused — the collection match replaces it.
+   * Fan-out match: for each `matchEntity` row (defaults to `targetEntity`) where
+   * `row.<matchField> == matchSource`, run `targetEntity.targetCommand`.
+   * Cross-entity form (`matchEntity` set, ≠ `targetEntity`) is the foreach-create
+   * path: params bind `self`/`target` to the matched source row; `create` omits
+   * instanceId so a new target row is allocated per match.
    */
-  fanOut?: { matchField: string; matchSource: IRExpression };
+  fanOut?: {
+    matchField: string;
+    matchSource: IRExpression;
+    /** Entity queried for matches; absent ⇒ query `targetEntity` (legacy same-entity fanOut). */
+    matchEntity?: string;
+  };
   module?: string;
   entity?: string;
 }

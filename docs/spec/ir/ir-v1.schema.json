@@ -1810,14 +1810,18 @@
           "properties": {
             "matchField": {
               "type": "string",
-              "description": "Field on the target entity to match against matchSource"
+              "description": "Field on the matched (source) entity to compare to matchSource"
             },
             "matchSource": {
               "$ref": "#/definitions/IRExpression",
-              "description": "Expression evaluated against the event payload; the command runs on every target row where row.<matchField> == matchSource"
+              "description": "Expression evaluated against the event payload; every matchEntity row with row.<matchField> == matchSource is selected"
+            },
+            "matchEntity": {
+              "type": "string",
+              "description": "Entity queried for matches. When absent, equals targetEntity (same-entity fanOut). When set and different from targetEntity, params bind self/target to each matched source row and create runs without that row's instance id (foreach-create)."
             }
           },
-          "description": "When present, dispatch targetCommand on every targetEntity row matching matchField == matchSource (a 1:N cascade), instead of one resolved target."
+          "description": "1:N cascade: for each matchEntity (default targetEntity) row matching matchField == matchSource, run targetEntity.targetCommand. Cross-entity form enables foreach-create (e.g. fanOut LineItem run Shipment.create)."
         },
         "params": {
           "type": "array",

@@ -146,4 +146,84 @@ describe('fan-out reactions', () => {
     const children = (await engine.getAllInstances('Child')) as EntityInstance[];
     expect(children.find((c) => c.id === 'c1')?.reason).toBe('parent deactivated');
   });
+
+  it('foreach-create: fanOut MatchEntity run Target.create allocates one target per match', async () => {
+    const source = `
+      entity Order {
+        property required id: string
+        property status: string = "pending"
+        hasMany items: LineItem
+        command place() {
+          mutate status = "placed"
+          emit OrderPlaced { orderId: self.id }
+        }
+        store in memory
+      }
+      entity LineItem {
+        property required id: string
+        property orderId: string = ""
+        property quantity: number = 0
+        belongsTo order: Order fields [orderId] references [id]
+        store in memory
+      }
+      entity Shipment {
+        property required id: string
+        property lineItemId: string = ""
+        property quantity: number = 0
+        property status: string = "pending"
+        belongsTo lineItem: LineItem fields [lineItemId] references [id]
+        command create(lineItemId: string, quantity: number) {
+          mutate lineItemId = lineItemId
+          mutate quantity = quantity
+          mutate status = "pending"
+        }
+        store in memory
+      }
+      event OrderPlaced: "order.placed" { orderId: string }
+      on OrderPlaced fanOut LineItem where orderId = payload.orderId
+        run Shipment.create
+        params {
+          lineItemId: self.id
+          quantity: self.quantity
+        }
+    `;
+    const { ir, diagnostics } = await compileToIR(source);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expect(ir!.reactions?.[0]).toMatchObject({
+      targetEntity: 'Shipment',
+      targetCommand: 'create',
+      fanOut: { matchField: 'orderId', matchEntity: 'LineItem' },
+    });
+
+    let n = 0;
+    const engine = new RuntimeEngine(ir!, {}, {
+      now: () => 1000,
+      generateId: () => `gen-${++n}`,
+    });
+    await engine.createInstance('Order', { id: 'o1', status: 'pending' } as EntityInstance);
+    await engine.createInstance('LineItem', {
+      id: 'li1',
+      orderId: 'o1',
+      quantity: 2,
+    } as EntityInstance);
+    await engine.createInstance('LineItem', {
+      id: 'li2',
+      orderId: 'o1',
+      quantity: 5,
+    } as EntityInstance);
+    await engine.createInstance('LineItem', {
+      id: 'liOther',
+      orderId: 'o2',
+      quantity: 9,
+    } as EntityInstance);
+
+    const result = await engine.runCommand('place', {}, { entityName: 'Order', instanceId: 'o1' });
+    expect(result.success).toBe(true);
+
+    const shipments = (await engine.getAllInstances('Shipment')) as EntityInstance[];
+    expect(shipments).toHaveLength(2);
+    expect(shipments.map((s) => s.lineItemId).sort()).toEqual(['li1', 'li2']);
+    expect(shipments.find((s) => s.lineItemId === 'li1')?.quantity).toBe(2);
+    expect(shipments.find((s) => s.lineItemId === 'li2')?.quantity).toBe(5);
+  });
 });

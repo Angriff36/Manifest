@@ -1453,30 +1453,43 @@ export class Parser {
    *     resolve <expression>
    *     params { <name>: <expression>, ... }
    *
-   *   on <Event> fanOut <EntityType> where <matchField> = <sourceExpr>
+   *   on <Event> fanOut <MatchEntity> where <matchField> = <sourceExpr>
    *     run <commandName>
+   *     — or —
+   *     run <TargetEntity>.<commandName>
    *     params { <name>: <expression>, ... }
    *
-   * The fan-out form dispatches the command on EVERY target row where
-   * `row.<matchField> == <sourceExpr>` (evaluated against the event payload);
-   * the collection match replaces `resolve`.
+   * Same-entity form (`run <cmd>`) dispatches on every MatchEntity row (legacy).
+   * Cross-entity form (`run Target.cmd`) iterates MatchEntity rows and runs the
+   * command on Target (foreach-create when cmd is `create`).
    */
   private parseReaction(): ReactionNode {
     const position = this.current()?.position;
     this.consume('KEYWORD', 'on');
     const event = this.consumeIdentifier().value;
 
-    // Fan-out form: on <Event> fanOut <Target> where <field> = <source> run <cmd>
+    // Fan-out form: on <Event> fanOut <Match> where <field> = <source> run [Target.]<cmd>
     if (this.check('KEYWORD', 'fanOut')) {
       this.advance(); // consume 'fanOut'
-      const targetEntity = this.consumeIdentifier().value;
+      const matchEntity = this.consumeIdentifier().value;
       this.consume('KEYWORD', 'where');
       const matchField = this.consumeIdentifier().value;
       this.consume('OPERATOR', '=');
       const matchSource = this.parseExpr();
       this.skipNL();
       this.consume('KEYWORD', 'run');
-      const targetCommand = this.consumeIdentifier().value;
+      const runHead = this.consumeIdentifier().value;
+      let targetEntity = matchEntity;
+      let targetCommand = runHead;
+      let fanMatchEntity: string | undefined;
+      if (this.check('OPERATOR', '.')) {
+        this.advance();
+        targetEntity = runHead;
+        targetCommand = this.consumeIdentifier().value;
+        if (targetEntity !== matchEntity) {
+          fanMatchEntity = matchEntity;
+        }
+      }
       this.skipNL();
       const params = this.parseReactionParams();
       return {
@@ -1484,7 +1497,11 @@ export class Parser {
         event,
         targetEntity,
         targetCommand,
-        fanOut: { matchField, matchSource },
+        fanOut: {
+          matchField,
+          matchSource,
+          ...(fanMatchEntity ? { matchEntity: fanMatchEntity } : {}),
+        },
         ...(params ? { params } : {}),
         position,
       };

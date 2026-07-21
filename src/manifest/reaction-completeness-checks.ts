@@ -151,7 +151,8 @@ export function checkReactionPayloadReferences(
   for (const p of reaction.params ?? []) collectMemberChains(p.expression, rooted);
 
   const eventFields = declaredEventPayload.get(reaction.event) ?? new Set<string>();
-  const targetProps = entityProps.get(reaction.targetEntity) ?? new Set<string>();
+  const matchEntityName = reaction.fanOut?.matchEntity ?? reaction.targetEntity;
+  const matchProps = entityProps.get(matchEntityName) ?? new Set<string>();
   const seen = new Set<string>();
   const fanOut = !!reaction.fanOut;
 
@@ -164,12 +165,12 @@ export function checkReactionPayloadReferences(
     const head = chain[0];
     if (ENRICHED_PAYLOAD_FIELDS.has(head)) continue;
 
-    // Fan-out params bind self/target to the matched instance; payload stays the event.
+    // Fan-out params bind self/target to the matched source row (matchEntity).
     if (fanOut && (root === 'self' || root === 'target')) {
-      if (!targetProps.has(head)) {
+      if (!matchProps.has(head)) {
         emit(
           'error',
-          `Reaction '${label}' references ${root}.${chainStr} but '${head}' is not a property of target ${reaction.targetEntity} — undefined at runtime.`,
+          `Reaction '${label}' references ${root}.${chainStr} but '${head}' is not a property of match entity ${matchEntityName} — undefined at runtime.`,
         );
       }
       continue;
