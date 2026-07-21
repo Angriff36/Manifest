@@ -4,20 +4,6 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [3.6.39] - 2026-07-21
-
-### Changed
-
-- feat(lang): fanOut match else create for per-row upserts
-
-## [3.6.38] - 2026-07-21
-
-### Changed
-
-- [loop] throughput redesign: queue-drain per tick, no one-fix cap; high-scrutiny paths attemptable via flagged draft PR; retire resolved prettier saga (PR #52), keep durable formatting policy
-- feat(lang): aggregate sum(Entity where) and reaction match else create
-- fix: resolve committed stash-conflict markers in loop-run-log (keep both comment and 07-16 run entry)
-
 ## [Unreleased]
 
 ## [3.6.40] - 2026-07-21
@@ -48,6 +34,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   finds a target by natural-key equalities (skip soft-deleted; deterministic id pick
   on ties) or allocates when `else create` and none match. Spec: `docs/spec/semantics.md`
   § Reactions. Proof: `runtime-reaction-match-else-create.test.ts`.
+
+### Changed
+
+- [loop] throughput redesign: queue-drain per tick, no one-fix cap; high-scrutiny paths attemptable via flagged draft PR; retire resolved prettier saga (PR #52), keep durable formatting policy
+- fix: resolve committed stash-conflict markers in loop-run-log (keep both comment and 07-16 run entry)
 
 ## [3.6.37] - 2026-07-21
 
