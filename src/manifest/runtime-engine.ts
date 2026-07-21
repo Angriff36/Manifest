@@ -4926,13 +4926,11 @@ export class RuntimeEngine {
               const matchField = reaction.fanOut.matchField;
               const matchEntity = reaction.fanOut.matchEntity ?? reaction.targetEntity;
               const crossEntity = matchEntity !== reaction.targetEntity;
-              const matches = (await this.getAllInstancesRaw(matchEntity)).filter(
-                (inst) => {
-                  const row = inst as Record<string, unknown>;
-                  if (row.deletedAt != null) return false;
-                  return row[matchField] === matchValue;
-                },
-              );
+              const matches = (await this.getAllInstancesRaw(matchEntity)).filter((inst) => {
+                const row = inst as Record<string, unknown>;
+                if (row.deletedAt != null) return false;
+                return row[matchField] === matchValue;
+              });
               for (const m of matches) {
                 if (this.reactionDepth >= RuntimeEngine.MAX_REACTION_DEPTH) {
                   throw new ManifestReactionDepthError(
