@@ -74,11 +74,7 @@ describe('reaction match else create', () => {
     let seq = 0;
     const { ir, diagnostics } = await compileToIR(source());
     expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    const engine = new RuntimeEngine(
-      ir!,
-      {},
-      { now: () => 1000, generateId: () => `id-${++seq}` },
-    );
+    const engine = new RuntimeEngine(ir!, {}, { now: () => 1000, generateId: () => `id-${++seq}` });
 
     await engine.createInstance('Need', {
       id: 'n1',
