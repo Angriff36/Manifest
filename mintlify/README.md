@@ -2,9 +2,31 @@
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-07-15
+Last updated: 2026-07-21
 
 Public product docs for **`@angriff36/manifest`**.
+
+## Mintlify hosting — verified facts only (2026-07-21)
+
+**Not Manifest:** Mintlify org `capsule` / `capsule.mintlify.site` /
+`angriff36/docs` is an old Mint Starter Kit. Ignore it for product docs.
+
+**Verified for Manifest:**
+
+| Fact                                         | Evidence                                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Public docs URL                              | https://manifest-b1e8623f.mintlify.app                                               |
+| Deploy source                                | [`Angriff36/Manifest`](https://github.com/Angriff36/Manifest) `mintlify/`            |
+| Deployer                                     | GitHub App **`mintlify[bot]`** (app id `222410`) → check-run **Mintlify Deployment** |
+| Last successful host update seen             | commit `8489323` → `environment_url` = that public URL                               |
+| Mintlify project external_id (on check-runs) | success `6a5efe62882c6f3a67f67091`; failed update `6a5f2ffa24cb57c060672fda`         |
+
+**Deploy:** push `main`. No Mintlify dashboard login required.
+`mintlify[bot]` check-run **Mintlify Deployment** updates the public URL.
+GitHub App install on this account: `https://github.com/settings/installations/134880568`.
+
+**Not verified:** which Mintlify dashboard login owns that host (the `capsule`
+org UI is only the old starter kit — not this site).
 
 ~~This directory used to ship as an unmodified Mintlify starter kit (placeholder
 README / AGENTS / CONTRIBUTING).~~
@@ -12,8 +34,11 @@ README / AGENTS / CONTRIBUTING).~~
 > **Correction (2026-07-15) @RYANSIGNED:** Content here is Manifest-specific.
 > ~~Version SoT is the repo root `package.json` (**3.6.4**).~~
 >
-> **Correction (2026-07-20):** Version SoT is the repo root `package.json`
-> (**3.6.32**). Node **`>=20`**. Do not invent features; prefer
+> ~~**Correction (2026-07-20):** Version SoT is the repo root `package.json`
+> (**3.6.32**).~~
+>
+> **Correction (2026-07-21):** Version SoT is the repo root `package.json`
+> (**3.6.41**). Node **`>=20`**. Do not invent features; prefer
 > `docs/CONFIRMED-FEATURES.md` + the spec chain.
 
 ## Context7 AI chat widget

@@ -414,15 +414,12 @@ on InvoiceCreated run Shipping.prepareShipment
   }
 ```
 
-~~```typescript
-const result = await runtime.runCommand('Order', 'submit', {
-  instanceId: 'order-001',
-  amount: 250,
-});
-```~~
+~~Wrong (entity-first): `runtime.runCommand('Order', 'submit', { instanceId, amount })`.~~
 
 > **Correction (2026-07-15) @RYANSIGNED:** `runCommand(commandName, input, options?)` — not
 > entity-first. `amount` is command input; `entityName` / `instanceId` go in options.
+> Do **not** wrap fenced code in `~~…~~` — Mintlify MDX treats the fence as broken and
+> parses `{…}` as JSX (`Could not parse expression with acorn`), which blocks deploy.
 
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';
