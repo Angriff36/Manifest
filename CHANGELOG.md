@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.31] - 2026-07-21
+
+### Changed
+
+- fix(convex): forward docId and version on dispatcher instance commands
+
 ## [3.6.30] - 2026-07-21
 
 ### Changed
