@@ -1790,6 +1790,10 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
     expect(code).not.toContain('import { api } from "./_generated/api";');
     // indexed FK field → withIndex by_parentId; matchSource self.id → payload.id
     expect(code).toContain('withIndex("by_parentId", (q) => q.eq("parentId", payload.id))');
+    // soft-deleted fanOut sources are excluded before the dispatch loop
+    expect(code).toContain(
+      'const fanRows0 = (await ctx.db.query("children").withIndex("by_parentId", (q) => q.eq("parentId", payload.id)).collect()).filter((d) => (d as any).deletedAt == null);',
+    );
     // per-match governed dispatch (target's own mutation, with its docId)
     expect(code).toContain('for (const __row of fanRows0) {');
     expect(code).toContain('await __runChildDeactivate(ctx, { docId: (__row as any)._id }');

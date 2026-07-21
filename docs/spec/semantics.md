@@ -824,7 +824,9 @@ on <EventName> run <EntityType>.<commandName>
 - For each matching **fan-out** reaction (`fanOut`):
   1. Evaluate `matchSource` with the event payload as context → produces the match value.
   2. Let `matchEntity` be `fanOut.matchEntity` if present, otherwise `targetEntity`.
-     Select every **matchEntity** instance where `instance[matchField] == matchValue`.
+     Select every **matchEntity** instance where `instance[matchField] == matchValue`
+     and `deletedAt` is null (soft-deleted source rows are excluded — same rule as
+     `match` target selection — so cascades do not abort on retired parents/children).
   3. For **each** matched instance, evaluate each `params[].expression` with
      context `{ payload: <event payload>, self: <matched instance>, target: <matched instance> }`
      → produces that row's command input (so per-row quantities can use

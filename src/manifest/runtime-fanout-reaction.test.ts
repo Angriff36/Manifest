@@ -106,6 +106,61 @@ describe('fan-out reactions', () => {
     expect(statusOf('c5')).toBe('active');
   });
 
+  it('skips soft-deleted fanOut source rows so cascades do not abort', async () => {
+    const source = `
+      entity Parent {
+        property required id: string
+        property status: string = "active"
+        hasMany children: Child
+        command deactivate() {
+          mutate status = "inactive"
+          emit ParentDeactivated {}
+        }
+        store in memory
+      }
+      entity Child {
+        property required id: string
+        property parentId: string = ""
+        property status: string = "active"
+        property deletedAt: datetime?
+        belongsTo parent: Parent
+        command deactivate() {
+          guard self.deletedAt == null
+          mutate status = "inactive"
+        }
+        store in memory
+      }
+      event ParentDeactivated: "parent.deactivated" {}
+      on ParentDeactivated fanOut Child where parentId = self.id
+        run deactivate
+    `;
+    const { ir, diagnostics } = await compileToIR(source);
+    expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    const engine = new RuntimeEngine(ir!, {}, { now: () => 1000, generateId: () => 'gen-id' });
+    await engine.createInstance('Parent', { id: 'p1', status: 'active' } as EntityInstance);
+    await engine.createInstance('Child', {
+      id: 'live',
+      parentId: 'p1',
+      status: 'active',
+    } as EntityInstance);
+    await engine.createInstance('Child', {
+      id: 'gone',
+      parentId: 'p1',
+      status: 'active',
+      deletedAt: 500,
+    } as EntityInstance);
+
+    const result = await engine.runCommand(
+      'deactivate',
+      {},
+      { entityName: 'Parent', instanceId: 'p1' },
+    );
+    expect(result.success).toBe(true);
+    const children = (await engine.getAllInstances('Child')) as EntityInstance[];
+    expect(children.find((c) => c.id === 'live')?.status).toBe('inactive');
+    expect(children.find((c) => c.id === 'gone')?.status).toBe('active');
+  });
+
   it('runs the target command with its own params on each match', async () => {
     const sourceWithReason = `
       entity Parent {

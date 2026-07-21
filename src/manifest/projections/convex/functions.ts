@@ -1121,7 +1121,7 @@ function renderReactions(
         ? `ctx.db.query("${matchTable}").withIndex("by_${field}", (q) => q.eq("${field}", ${src.code}))`
         : `ctx.db.query("${matchTable}").filter((q) => q.eq(q.field("${field}"), ${src.code}))`;
       const rowsVar = `fanRows${idx}`;
-      lines.push(`    const ${rowsVar} = await ${queryExpr}.collect();`);
+      lines.push(`    const ${rowsVar} = (await ${queryExpr}.collect()).filter((d) => (d as any).deletedAt == null);`);
       lines.push(`    for (const __row of ${rowsVar}) {`);
       lines.push(`      const target = __row;`);
       for (const pl of fanPreLines) lines.push(`      ${pl.trimStart()}`);

@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.6.41] - 2026-07-21
+
+### Fixed
+
+- **Fan-out soft-delete exclusion:** `fanOut` source selection now skips rows with
+  `deletedAt != null` (same rule as `match` targets). Soft-deleted parents/children
+  no longer abort cascades when the target command guards `deletedAt == null`.
+  Spec: `docs/spec/semantics.md` § Reactions. Proof: `runtime-fanout-reaction.test.ts`,
+  Convex projection filter in `functions.ts`.
+
 ## [3.6.40] - 2026-07-21
 
 ### Fixed
