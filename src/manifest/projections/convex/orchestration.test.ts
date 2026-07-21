@@ -408,6 +408,9 @@ describe('convex.http — authenticated command dispatcher', () => {
     expect(code).toContain('await ctx.runMutation(entry.ref, args as any)');
     expect(code).toContain('"inventoryItemId"');
     expect(code).toContain('"quantity"');
+    // Instance commands forward docId (+ optional OCC version)
+    expect(code).toContain('"docId"');
+    expect(code).toContain('"version"');
     // trustedSource / identity params are not client-owned
     expect(code).not.toMatch(/params: \[[^\]]*"actorId"/);
   });

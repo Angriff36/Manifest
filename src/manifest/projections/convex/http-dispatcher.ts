@@ -73,6 +73,16 @@ function clientOwnedParamNames(
     if (forbidden.has(p.name)) continue;
     names.push(p.name);
   }
+  // Instance commands target an existing Convex document — forward docId + OCC
+  // version. Create / createVia / initialization commands allocate a new row.
+  const allocatesDocument =
+    !!cmd.initialization ||
+    cmd.name === 'create' ||
+    cmd.name.startsWith('createVia');
+  if (!allocatesDocument) {
+    if (!names.includes('docId')) names.unshift('docId');
+    if (!names.includes('version')) names.push('version');
+  }
   if (options.enableCommandIdempotency && !names.includes('idempotencyKey')) {
     names.push('idempotencyKey');
   }

@@ -494,11 +494,11 @@ const http = httpRouter();
 const COMMAND_DISPATCH = {
   "Task.assignTask": {
     ref: api.mutations.Task_assignTask,
-    params: ["idempotencyKey"] as const,
+    params: ["docId","version","idempotencyKey"] as const,
   },
   "Task.updateStatus": {
     ref: api.mutations.Task_updateStatus,
-    params: ["newStatus","idempotencyKey"] as const,
+    params: ["docId","newStatus","version","idempotencyKey"] as const,
   },
 } as const;
 
