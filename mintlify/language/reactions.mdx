@@ -157,7 +157,13 @@ This dispatches `GigStaff.unassign` on **every** `GigStaff` row where `row.gigId
 - `params` maps the same way as a single-target reaction and is shared across all matches. Inside fan-out, `self` / `__row` refer to the current matched row.
 - The reaction depth limit and `correlationId`/`causationId` propagation apply per dispatched command.
 
-**Foreach-create (cross-entity):** when `run` names a different entity's command (usually `create`), Manifest matches the `fanOut` collection and dispatches the target command **without** binding the matched row as `instanceId` / `docId`. Use matched-row fields in `params` to seed the new child:
+Fan-out is the declarative replacement for the common "query children by FK, loop, dispatch" middleware pattern: cancel every line item, create a shipment per line, release every reservation, deactivate every child account, close every tip pool in a period, etc.
+
+## Foreach-create (cross-entity fan-out)
+
+Same-entity `fanOut … run unassign` updates each matched row in place. **Foreach-create** is the cross-entity form: match one collection, then `run Target.create` (or another target-entity command) **without** binding the matched row as `instanceId` / `docId`. Each match allocates a new target row; use matched-row fields in `params` to seed it (`self` is the fan-out source row).
+
+Shipped in Manifest **3.6.36+** (conformance fixture `112-fanout-foreach-create`).
 
 ```manifest
 on OrderPlaced fanOut LineItem where orderId = payload.orderId
@@ -168,9 +174,7 @@ on OrderPlaced fanOut LineItem where orderId = payload.orderId
   }
 ```
 
-Same-entity `run unassign` still updates each matched row in place. Cross-entity `run Target.create` is the declarative foreach-create path (conformance fixture 112; Manifest 3.6.36+).
-
-Fan-out is the declarative replacement for the common "query children by FK, loop, dispatch" middleware pattern: cancel every line item, create a shipment per line, release every reservation, deactivate every child account, close every tip pool in a period, etc.
+This is how you declare “for each matching source row, create a child” — not a separate `foreach` keyword. The keywords are still `fanOut` + `run Target.create`.
 
 ## Aggregate count expressions
 
