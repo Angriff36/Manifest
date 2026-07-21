@@ -124,11 +124,7 @@ describe('reaction match else create', () => {
     expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(ir!.reactions?.[0]?.fanOut).toBeTruthy();
     expect(ir!.reactions?.[0]?.elseCreate).toBe(true);
-    const engine = new RuntimeEngine(
-      ir!,
-      {},
-      { now: () => 1000, generateId: () => `f-${++seq}` },
-    );
+    const engine = new RuntimeEngine(ir!, {}, { now: () => 1000, generateId: () => `f-${++seq}` });
     await engine.createInstance('Order', { id: 'o1', status: 'open' } as EntityInstance);
     await engine.createInstance('Line', {
       id: 'l1',

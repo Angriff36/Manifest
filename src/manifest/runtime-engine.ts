@@ -4963,13 +4963,13 @@ export class RuntimeEngine {
                       value: await this.evaluateExpression(pred.source, fanParamContext),
                     })),
                   );
-                  const candidates = (
-                    await this.getAllInstancesRaw(reaction.targetEntity)
-                  ).filter((inst) => {
-                    const r = inst as Record<string, unknown>;
-                    if (r.deletedAt != null) return false;
-                    return resolvedPreds.every((p) => r[p.field] === p.value);
-                  });
+                  const candidates = (await this.getAllInstancesRaw(reaction.targetEntity)).filter(
+                    (inst) => {
+                      const r = inst as Record<string, unknown>;
+                      if (r.deletedAt != null) return false;
+                      return resolvedPreds.every((p) => r[p.field] === p.value);
+                    },
+                  );
                   candidates.sort((a, b) =>
                     String((a as Record<string, unknown>).id ?? '').localeCompare(
                       String((b as Record<string, unknown>).id ?? ''),
@@ -4979,9 +4979,7 @@ export class RuntimeEngine {
                     if (!reaction.elseCreate) continue;
                     fanInstanceId = undefined;
                   } else {
-                    fanInstanceId = String(
-                      (candidates[0] as Record<string, unknown>).id ?? '',
-                    );
+                    fanInstanceId = String((candidates[0] as Record<string, unknown>).id ?? '');
                   }
                 } else {
                   // Same-entity: bind matched row. Cross-entity (foreach-create): omit
