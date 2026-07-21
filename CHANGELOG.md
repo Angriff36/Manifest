@@ -4,6 +4,15 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.30] - 2026-07-21
+
+### Changed
+
+- test(convex): update http snapshot for authenticated command dispatcher
+- docs(matrix): fix dispatcher evidence line range
+- docs(matrix): prove Convex authenticated command HTTP dispatcher
+- feat(convex): emit authenticated command HTTP dispatcher
+
 ## [3.6.29] - 2026-07-20
 
 ### Fixed
