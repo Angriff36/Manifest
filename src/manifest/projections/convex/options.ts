@@ -227,6 +227,18 @@ export interface ConvexProjectionOptions {
    * Missing/unresolved computeds always surface as diagnostics (no silent drop).
    */
   computedProperties?: 'helpers' | 'inline';
+
+  /**
+   * Authenticated HTTP command dispatcher at
+   * `POST /api/manifest/{entity}/commands/{command}` (Convex `httpRouter`
+   * `pathPrefix`). Default `{ enabled: true }`. Uses `ctx.auth.getUserIdentity()`
+   * then `ctx.runMutation` on the existing governed command mutation — never
+   * accepts identity fields from the request body.
+   */
+  dispatcher?: {
+    /** When false, omit the authenticated command HTTP route. Default true. */
+    enabled?: boolean;
+  };
 }
 
 /**
@@ -245,6 +257,7 @@ export const CONVEX_PROJECTION_DEFAULTS = {
   includeSoftDeleteFilter: true,
   deletedAtProperty: 'deletedAt',
   computedProperties: 'helpers' as 'helpers' | 'inline',
+  dispatcher: { enabled: true },
 } as const;
 
 /**
@@ -281,6 +294,7 @@ export type NormalizedConvexOptions = Required<
     ConvexProjectionOptions,
     'naming' | 'tenantIdProperty' | 'authContextImport' | 'encryptionImport'
   > & {
+    dispatcher: { enabled: boolean };
     /** @internal App-wide naming policy when injected by config resolution. */
     manifestNaming?: ManifestNamingInjection;
   };
@@ -342,6 +356,9 @@ export function normalizeOptions(
     tenantIdProperty: input.tenantIdProperty,
     authContextImport: input.authContextImport,
     encryptionImport: input.encryptionImport,
+    dispatcher: {
+      enabled: input.dispatcher?.enabled ?? CONVEX_PROJECTION_DEFAULTS.dispatcher.enabled,
+    },
     naming,
     manifestNaming,
   };

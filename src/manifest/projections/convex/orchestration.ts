@@ -3,6 +3,8 @@
  *
  * - Schedules → `convex/crons.ts` (`cronJobs()` scheduling the command mutations).
  * - Webhooks  → `convex/http.ts` (`httpRouter` + `httpAction` invoking commands).
+ * - Authenticated command dispatcher → same `convex/http.ts`
+ *   (`POST /api/manifest/{entity}/commands/{command}` via `pathPrefix`).
  * - Sagas     → `convex/sagas.ts` (orchestrator `action`s that run each step via
  *   `ctx.runMutation`, compensating completed steps in reverse on failure).
  *
@@ -16,6 +18,7 @@ import type { IR, IRSchedule, IRWebhook, IRSaga } from '../../ir';
 import type { ProjectionDiagnostic } from '../interface';
 import { normalizeOptions } from './options.js';
 import { renderExpression, DEFAULT_GLOBALS } from './expression.js';
+import { emitDispatcherRoute } from './http-dispatcher.js';
 
 export interface OrchestrationResult {
   code: string;
@@ -196,11 +199,18 @@ export function generateHttp(
     );
   }
 
-  if (routes.length === 0) {
+  const { code: dispatcherCode, commandCount: dispatcherCommands } = emitDispatcherRoute(
+    ir,
+    options,
+    diagnostics,
+  );
+
+  if (routes.length === 0 && dispatcherCommands === 0) {
     diagnostics.push({
       severity: 'info',
       code: 'CONVEX_NO_WEBHOOKS',
-      message: 'No webhooks declared; emitted an empty http router.',
+      message:
+        'No webhooks declared and no authenticated command dispatcher routes; emitted an empty http router.',
     });
   }
 
@@ -231,13 +241,20 @@ export function generateHttp(
     ...(hasIdempotency ? [`import { v } from "convex/values";`] : []),
   ];
 
+  const summary =
+    `// ${routes.length} webhook route(s).` +
+    (dispatcherCommands > 0
+      ? ` ${dispatcherCommands} authenticated command dispatcher target(s).`
+      : '');
+
   const code =
-    `${HEADER}\n// ${routes.length} webhook route(s).\n\n` +
+    `${HEADER}\n${summary}\n\n` +
     `${importLines.join('\n')}\n` +
     (hasSignature ? `\n${HMAC_HELPERS}\n` : '') +
     (hasIdempotency ? `\n${idempotencyMutation}\n` : '') +
     `\nconst http = httpRouter();\n\n` +
-    `${routes.join('\n\n')}${routes.length ? '\n\n' : '\n'}` +
+    `${routes.join('\n\n')}${routes.length ? '\n\n' : ''}` +
+    (dispatcherCode ? `${dispatcherCode}\n` : '') +
     `export default http;\n`;
   return { code, diagnostics };
 }

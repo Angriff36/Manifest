@@ -38,6 +38,11 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   { feature: 'Computed self-only properties', status: 'supported' },
   { feature: 'Schedules', status: 'supported' },
   { feature: 'Webhooks', status: 'supported' },
+  {
+    feature: 'Authenticated command dispatcher',
+    status: 'supported',
+    note: 'POST /api/manifest/{entity}/commands/{command}; ctx.auth → governed mutation.',
+  },
   { feature: 'Sagas', status: 'supported' },
   { feature: 'Tenant / soft-delete filters', status: 'supported' },
   { feature: 'authContextImport', status: 'supported' },
