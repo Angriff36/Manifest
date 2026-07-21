@@ -362,8 +362,15 @@ export interface IRReactionRule {
   event: string;
   targetEntity: string;
   targetCommand: string;
-  /** Single-target resolution (absent for `fanOut` reactions). */
+  /** Single-target resolution (absent for `fanOut` / `match` reactions). */
   resolve?: IRExpression;
+  /**
+   * Natural-key match against `targetEntity` (ANDed equalities). Mutually
+   * exclusive with `resolve`. See `elseCreate`.
+   */
+  match?: { field: string; source: IRExpression }[];
+  /** With `match`: zero matches → run command without instanceId (allocate). */
+  elseCreate?: boolean;
   params?: IRReactionParam[];
   /**
    * Fan-out match: for each `matchEntity` row (defaults to `targetEntity`) where
@@ -615,9 +622,11 @@ export type IRExpression =
   | { kind: 'lambda'; params: string[]; body: IRExpression }
   | {
       kind: 'aggregate';
-      op: 'count';
+      op: 'count' | 'sum';
       entity: string;
       predicates: { field: string; value: IRExpression }[];
+      /** Required when `op` is `sum` — numeric property to add. */
+      field?: string;
     };
 
 export interface IRDiagnostic {

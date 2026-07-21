@@ -277,8 +277,16 @@ export interface ReactionNode extends ASTNode {
   event: string;
   targetEntity: string;
   targetCommand: string;
-  /** Single-target resolution (absent for `fanOut` reactions). */
+  /** Single-target resolution (absent for `fanOut` / `match` reactions). */
   resolve?: ExpressionNode;
+  /**
+   * Natural-key match: find `targetEntity` rows where every predicate holds.
+   * Mutually exclusive with `resolve`. With `elseCreate`, zero matches allocate
+   * a new instance (omit instanceId) then run the command.
+   */
+  match?: { field: string; source: ExpressionNode }[];
+  /** When set with `match`, zero matches → create path (no instanceId). */
+  elseCreate?: boolean;
   params?: ReactionParamMapping[];
   /**
    * Fan-out: for each row of `matchEntity` (defaults to `targetEntity`) where
@@ -457,7 +465,8 @@ export type ExpressionNode =
   | ArrayNode
   | ObjectNode
   | LambdaNode
-  | AggregateCountNode;
+  | AggregateCountNode
+  | AggregateSumNode;
 
 export interface LiteralNode extends ASTNode {
   type: 'Literal';
@@ -582,6 +591,22 @@ export interface AggregateCountNode extends ASTNode {
   entity: string;
   /** ANDed equality predicates (field on the counted entity == value). */
   predicates: { field: string; value: ExpressionNode }[];
+}
+
+/**
+ * Aggregate sum expression:
+ * `sum(Entity where field == value, ..., of quantityField)`.
+ *
+ * Sums the numeric `of` property on rows matching every ANDed equality
+ * predicate. Non-finite / null field values contribute 0. Deterministic:
+ * addition is order-independent for finite numbers.
+ */
+export interface AggregateSumNode extends ASTNode {
+  type: 'AggregateSum';
+  entity: string;
+  predicates: { field: string; value: ExpressionNode }[];
+  /** Numeric property on matching rows to sum. */
+  of: string;
 }
 
 export interface UseNode extends ASTNode {

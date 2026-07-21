@@ -909,13 +909,21 @@ function renderReactions(
     label: string,
   ): { preLines: string[]; entry: string | null } => {
     const e = p.expression;
-    if (e.kind === 'aggregate' && e.op === 'count') {
+    if (e.kind === 'aggregate' && (e.op === 'count' || e.op === 'sum')) {
       const childEntity = ir.entities.find((en) => en.name === e.entity);
       if (!childEntity) {
         diagnostics.push({
           severity: 'error',
           code: 'CONVEX_AGGREGATE_UNKNOWN_ENTITY',
-          message: `${label} param '${p.name}' counts unknown entity '${e.entity}'; omitted.`,
+          message: `${label} param '${p.name}' ${e.op}s unknown entity '${e.entity}'; omitted.`,
+        });
+        return { preLines: [], entry: null };
+      }
+      if (e.op === 'sum' && !e.field) {
+        diagnostics.push({
+          severity: 'error',
+          code: 'CONVEX_AGGREGATE_SUM_MISSING_FIELD',
+          message: `${label} param '${p.name}' sum is missing 'of' field; omitted.`,
         });
         return { preLines: [], entry: null };
       }
@@ -932,7 +940,7 @@ function renderReactions(
           diagnostics.push({
             severity: 'warning',
             code: 'CONVEX_UNRESOLVED_AGGREGATE_PREDICATE',
-            message: `${label} param '${p.name}' count predicate value unresolved (${r.unresolved.join('; ')}).`,
+            message: `${label} param '${p.name}' ${e.op} predicate value unresolved (${r.unresolved.join('; ')}).`,
           });
         }
         return r;
@@ -942,8 +950,8 @@ function renderReactions(
       const remaining = indexedPred
         ? e.predicates.filter((pr) => pr !== indexedPred)
         : e.predicates;
-      const rowsVar = `__count${countCounter}_rows`;
-      const countVar = `__count${countCounter}`;
+      const rowsVar = `__agg${countCounter}_rows`;
+      const aggVar = `__agg${countCounter}`;
       countCounter++;
       const preLines: string[] = [];
 
@@ -956,7 +964,7 @@ function renderReactions(
         diagnostics.push({
           severity: 'info',
           code: 'CONVEX_AGGREGATE_UNINDEXED',
-          message: `${label} param '${p.name}' counts '${e.entity}' with no indexed/foreign-key predicate; rendered a table scan (mark an equality field indexed for speed).`,
+          message: `${label} param '${p.name}' ${e.op}s '${e.entity}' with no indexed/foreign-key predicate; rendered a table scan (mark an equality field indexed for speed).`,
         });
       }
       preLines.push(`    const ${rowsVar} = await ${queryHead}.collect();`);
@@ -974,9 +982,17 @@ function renderReactions(
         }
         filters.push(`(d as any).${rf.tenantProp} === __tenant`);
       }
+      const filteredVar = `${rowsVar}f`;
       const chain = filters.length ? filters.map((f) => `.filter((d) => ${f})`).join('') : '';
-      preLines.push(`    const ${countVar} = ${rowsVar}${chain}.length;`);
-      return { preLines, entry: `${p.name}: ${countVar}` };
+      if (e.op === 'count') {
+        preLines.push(`    const ${aggVar} = ${rowsVar}${chain}.length;`);
+      } else {
+        preLines.push(`    const ${filteredVar} = ${rowsVar}${chain};`);
+        preLines.push(
+          `    const ${aggVar} = ${filteredVar}.reduce((acc, d) => { const n = Number((d as any).${e.field}); return acc + (Number.isFinite(n) ? n : 0); }, 0);`,
+        );
+      }
+      return { preLines, entry: `${p.name}: ${aggVar}` };
     }
 
     const { code, unresolved } = renderExpression(e, scope);
@@ -1092,10 +1108,65 @@ function renderReactions(
       paramEntries.unshift(`${tenantProp}: payload.${tenantProp}`);
     }
     for (const pl of paramPreLines) lines.push(pl);
-    if (reaction.targetCommand === 'create') {
+    if (reaction.match && reaction.match.length > 0) {
+      const targetTable = resolveConvexTableName(reaction.targetEntity, options);
+      const matchScope: RenderScope = {
+        selfVar: 'payload',
+        globals: ['payload', 'user', 'context', 'args'],
+      };
+      const matchRawVar = `__match${idx}_raw`;
+      const matchRowsVar = `__match${idx}_rows`;
+      const matchIdVar = `__match${idx}_id`;
+      const firstPred = reaction.match[0]!;
+      const firstVal = renderExpression(firstPred.source, matchScope);
+      if (firstVal.unresolved.length) {
+        diagnostics.push({
+          severity: 'warning',
+          code: 'CONVEX_UNRESOLVED_REACTION_MATCH',
+          message: `${label} match predicate unresolved; skipped.`,
+        });
+      } else {
+        lines.push(
+          `    const ${matchRawVar} = await ctx.db.query("${targetTable}").withIndex("by_${firstPred.field}", (q) => q.eq("${firstPred.field}", ${firstVal.code})).collect();`,
+        );
+        const matchFilters: string[] = [`(d as any).${firstPred.field} === ${firstVal.code}`];
+        for (const m of reaction.match.slice(1)) {
+          const mv = renderExpression(m.source, matchScope);
+          matchFilters.push(`(d as any).${m.field} === ${mv.code}`);
+        }
+        matchFilters.push(`(d as any).deletedAt == null`);
+        lines.push(
+          `    const ${matchRowsVar} = ${matchRawVar}.filter((d) => ${matchFilters.join(' && ')}).sort((a, b) => String((a as any)._id).localeCompare(String((b as any)._id)));`,
+        );
+        lines.push(
+          `    const ${matchIdVar} = ${matchRowsVar}.length > 0 ? (${matchRowsVar}[0] as any)._id : null;`,
+        );
+        const runner = commandRunnerName(reaction.targetEntity, reaction.targetCommand);
+        const args = paramEntries.length ? paramEntries.join(', ') : '';
+        if (reaction.elseCreate) {
+          lines.push(`    if (${matchIdVar}) {`);
+          lines.push(
+            `      await ${runner}(ctx, { docId: ${matchIdVar}${args ? ', ' + args : ''} } as any);`,
+          );
+          lines.push(`    } else {`);
+          lines.push(`      await ${runner}(ctx, { ${args} } as any);`);
+          lines.push(`    }`);
+        } else {
+          lines.push(
+            `    if (${matchIdVar}) await ${runner}(ctx, { docId: ${matchIdVar}${args ? ', ' + args : ''} } as any);`,
+          );
+        }
+      }
+    } else if (reaction.targetCommand === 'create') {
       lines.push(
         `    await ${commandRunnerName(reaction.targetEntity, reaction.targetCommand)}(ctx, { ${paramEntries.join(', ')} } as any);`,
       );
+    } else if (!reaction.resolve) {
+      diagnostics.push({
+        severity: 'warning',
+        code: 'CONVEX_REACTION_MISSING_TARGET',
+        message: `${label} has neither resolve nor match; skipped.`,
+      });
     } else {
       const resolve = renderExpression(reaction.resolve, {
         selfVar: 'payload',

@@ -141,6 +141,8 @@ export const KEYWORDS = new Set([
   'resolve',
   'params',
   'fanOut',
+  'match',
+  'else',
   // approval workflow keywords
   'approval',
   'stages',

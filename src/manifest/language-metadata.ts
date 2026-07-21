@@ -95,6 +95,7 @@ const CONTEXTUAL_KEYWORDS = [
   'masked',
   'method',
   'mixin',
+  'of',
   'on_failure',
   'on_timeout',
   'policies',
@@ -105,6 +106,7 @@ const CONTEXTUAL_KEYWORDS = [
   'schedule',
   'stage',
   'step',
+  'sum',
   'unmask',
   'value',
 ] as const;

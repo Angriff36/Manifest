@@ -1507,12 +1507,82 @@ export class Parser {
       };
     }
 
-    // Single-target form: on <Event> run <EntityType>.<command> resolve <expr>
+    // Single-target form:
+    //   on <Event> run <Entity>.<command> resolve <expr> [params {…}]
+    //   on <Event> run <Entity>.<command> match f = e, … [else create] [params {…}]
     this.consume('KEYWORD', 'run');
     const targetEntity = this.consumeIdentifier().value;
     this.consume('OPERATOR', '.');
     const targetCommand = this.consumeIdentifier().value;
     this.skipNL();
+
+    if (this.check('KEYWORD', 'match')) {
+      this.advance();
+      const match: { field: string; source: ExpressionNode }[] = [];
+      this.skipNL();
+      while (!this.isEnd()) {
+        this.skipNL();
+        if (
+          this.check('KEYWORD', 'else') ||
+          this.check('KEYWORD', 'params') ||
+          this.check('KEYWORD', 'on') ||
+          this.check('KEYWORD', 'entity') ||
+          this.check('KEYWORD', 'event') ||
+          this.check('KEYWORD', 'enum') ||
+          this.check('KEYWORD', 'module') ||
+          this.check('KEYWORD', 'use') ||
+          this.check('KEYWORD', 'webhook') ||
+          this.check('KEYWORD', 'saga') ||
+          this.check('KEYWORD', 'policy') ||
+          this.check('KEYWORD', 'store')
+        ) {
+          break;
+        }
+        if (!this.check('IDENTIFIER')) break;
+        const field = this.consumeIdentifier().value;
+        this.consume('OPERATOR', '=');
+        const source = this.parseExpr();
+        match.push({ field, source });
+        if (this.check('PUNCTUATION', ',')) {
+          this.advance();
+          this.skipNL();
+          continue;
+        }
+        this.skipNL();
+        break;
+      }
+      if (match.length === 0) {
+        this.errors.push({
+          message: `reaction match requires at least one field = expression predicate`,
+          position,
+          severity: 'error',
+        });
+      }
+      let elseCreate = false;
+      this.skipNL();
+      if (this.check('KEYWORD', 'else')) {
+        this.advance();
+        this.skipNL();
+        // `create` is a bare identifier (not reserved); validate by value.
+        const elseWord = this.consumeIdentifier().value;
+        if (elseWord !== 'create') {
+          throw new Error(`Expected 'create' after reaction 'else', got '${elseWord}'`);
+        }
+        elseCreate = true;
+        this.skipNL();
+      }
+      const params = this.parseReactionParams();
+      return {
+        type: 'Reaction',
+        event,
+        targetEntity,
+        targetCommand,
+        match,
+        ...(elseCreate ? { elseCreate: true } : {}),
+        ...(params ? { params } : {}),
+        position,
+      };
+    }
 
     // Parse 'resolve' clause
     this.consume('KEYWORD', 'resolve');
@@ -2314,10 +2384,10 @@ export class Parser {
       return { type: 'Literal', value: null, dataType: 'null' };
     }
     // Aggregate count expression — `count(Entity where field == value, ...)`.
-    // `count` is a contextual keyword (NOT reserved): recognized only when it
-    // starts the unambiguous aggregate shape `count ( <Entity> where`. Any other
-    // `count(...)` parses as an ordinary function call below / in parsePostfix.
+    // `count` / `sum` are contextual keywords (NOT reserved): recognized only when
+    // they start `count|sum ( <Entity> where`. Other calls parse normally.
     if (this.isAggregateCountLookahead()) return this.parseAggregateCount();
+    if (this.isAggregateSumLookahead()) return this.parseAggregateSum();
     if (this.check('PUNCTUATION', '[')) {
       this.advance();
       const els: ExpressionNode[] = [];
@@ -2438,6 +2508,69 @@ export class Parser {
       });
     }
     return { type: 'AggregateCount', entity, predicates, position };
+  }
+
+  /**
+   * True when upcoming tokens form `sum ( <Entity> where ...`.
+   */
+  private isAggregateSumLookahead(): boolean {
+    if (!this.check('IDENTIFIER', 'sum')) return false;
+    const t1 = this.tokens[this.pos + 1];
+    const t2 = this.tokens[this.pos + 2];
+    const t3 = this.tokens[this.pos + 3];
+    return (
+      !!t1 &&
+      t1.type === 'PUNCTUATION' &&
+      t1.value === '(' &&
+      !!t2 &&
+      t2.type === 'IDENTIFIER' &&
+      !!t3 &&
+      t3.type === 'KEYWORD' &&
+      t3.value === 'where'
+    );
+  }
+
+  /**
+   * Parses `sum(Entity where field == value, ..., of quantityField)`.
+   */
+  private parseAggregateSum(): ExpressionNode {
+    const position = this.current()?.position;
+    this.advance(); // consume 'sum'
+    this.consume('PUNCTUATION', '(');
+    const entity = this.consumeIdentifier().value;
+    this.consume('KEYWORD', 'where');
+    const predicates: { field: string; value: ExpressionNode }[] = [];
+    this.skipNL();
+    while (!this.isEnd()) {
+      this.skipNL();
+      if (this.check('IDENTIFIER', 'of') || this.check('PUNCTUATION', ')')) break;
+      const field = this.consumeIdentifier().value;
+      this.consume('OPERATOR', '==');
+      const value = this.parseExpr();
+      predicates.push({ field, value });
+      if (this.check('PUNCTUATION', ',')) this.advance();
+      this.skipNL();
+    }
+    if (!this.check('IDENTIFIER', 'of')) {
+      this.errors.push({
+        message: `sum(${entity} where ...) requires 'of <field>' naming the numeric property to sum`,
+        position,
+        severity: 'error',
+      });
+      this.consume('PUNCTUATION', ')');
+      return { type: 'AggregateSum', entity, predicates, of: '', position };
+    }
+    this.advance(); // of
+    const of = this.consumeIdentifier().value;
+    this.consume('PUNCTUATION', ')');
+    if (predicates.length === 0) {
+      this.errors.push({
+        message: `sum(${entity} where ...) requires at least one equality predicate (the foreign-key match)`,
+        position,
+        severity: 'error',
+      });
+    }
+    return { type: 'AggregateSum', entity, predicates, of, position };
   }
 
   private check(type: string, value?: string) {

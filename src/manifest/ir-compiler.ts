@@ -1352,6 +1352,15 @@ export class IRCompiler {
       targetEntity: r.targetEntity,
       targetCommand: r.targetCommand,
       ...(r.resolve ? { resolve: this.transformExpression(r.resolve) } : {}),
+      ...(r.match
+        ? {
+            match: r.match.map((m) => ({
+              field: m.field,
+              source: this.transformExpression(m.source),
+            })),
+          }
+        : {}),
+      ...(r.elseCreate ? { elseCreate: true } : {}),
       ...(r.fanOut
         ? {
             fanOut: {
@@ -2001,6 +2010,23 @@ export class IRCompiler {
           op: 'count' as const,
           entity: ac.entity,
           predicates: ac.predicates.map((p) => ({
+            field: p.field,
+            value: this.transformExpression(p.value),
+          })),
+        };
+      }
+      case 'AggregateSum': {
+        const as_ = expr as {
+          entity: string;
+          predicates: { field: string; value: ExpressionNode }[];
+          of: string;
+        };
+        return {
+          kind: 'aggregate',
+          op: 'sum' as const,
+          entity: as_.entity,
+          field: as_.of,
+          predicates: as_.predicates.map((p) => ({
             field: p.field,
             value: this.transformExpression(p.value),
           })),

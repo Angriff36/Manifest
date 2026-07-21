@@ -4974,7 +4974,57 @@ export class RuntimeEngine {
               }
               continue;
             }
-            // Single-target reaction: fanOut reactions have no resolve and continue above.
+            // Match-else-create: natural-key lookup on targetEntity.
+            if (reaction.match && reaction.match.length > 0) {
+              const resolvedPreds = await Promise.all(
+                reaction.match.map(async (m) => ({
+                  field: m.field,
+                  value: await this.evaluateExpression(m.source, reactionContext),
+                })),
+              );
+              const candidates = (await this.getAllInstancesRaw(reaction.targetEntity)).filter(
+                (inst) => {
+                  const r = inst as Record<string, unknown>;
+                  if (r.deletedAt != null) return false;
+                  return resolvedPreds.every((p) => r[p.field] === p.value);
+                },
+              );
+              candidates.sort((a, b) =>
+                String((a as Record<string, unknown>).id ?? '').localeCompare(
+                  String((b as Record<string, unknown>).id ?? ''),
+                ),
+              );
+              const reactionInput: Record<string, unknown> = {};
+              if (reaction.params) {
+                for (const param of reaction.params) {
+                  reactionInput[param.name] = await this.evaluateExpression(
+                    param.expression,
+                    reactionContext,
+                  );
+                }
+              }
+              let reactionInstanceId: string | undefined;
+              if (candidates.length === 0) {
+                if (!reaction.elseCreate) continue;
+                reactionInstanceId = undefined;
+              } else {
+                reactionInstanceId = String((candidates[0] as Record<string, unknown>).id ?? '');
+              }
+              this.reactionDepth++;
+              try {
+                const matchResult = await this.runCommand(reaction.targetCommand, reactionInput, {
+                  entityName: reaction.targetEntity,
+                  ...(reactionInstanceId !== undefined ? { instanceId: reactionInstanceId } : {}),
+                  correlationId: workflowMeta.correlationId,
+                  causationId: emitted.name,
+                });
+                if (matchResult.emittedEvents) emittedEvents.push(...matchResult.emittedEvents);
+              } finally {
+                this.reactionDepth--;
+              }
+              continue;
+            }
+            // Single-target reaction: fanOut / match reactions continue above.
             if (!reaction.resolve) continue;
             const resolvedId = await this.evaluateExpression(reaction.resolve, reactionContext);
             // Evaluate param mappings
@@ -5773,13 +5823,11 @@ export class RuntimeEngine {
         }
 
         case 'aggregate': {
-          // count(Entity where field == value, ...) — count rows of `entity`
+          // count/sum(Entity where field == value, …) — scan rows of `entity`
           // matching every ANDed equality predicate. Predicate values resolve in
-          // the surrounding context (reaction params: the event payload). Count
-          // is order-independent, so this is deterministic for a given store
-          // snapshot regardless of row ordering.
-          if (expr.op !== 'count') return undefined;
-          // Resolve predicate values once (they do not depend on the counted row).
+          // the surrounding context (reaction params: the event payload). Both
+          // ops are order-independent for a given store snapshot.
+          if (expr.op !== 'count' && expr.op !== 'sum') return undefined;
           const resolved = await Promise.all(
             expr.predicates.map(async (p) => ({
               field: p.field,
@@ -5787,7 +5835,24 @@ export class RuntimeEngine {
             })),
           );
           const rows = await this.getAllInstancesRaw(expr.entity);
-          let count = 0;
+          if (expr.op === 'count') {
+            let count = 0;
+            for (const row of rows) {
+              const r = row as Record<string, unknown>;
+              let match = true;
+              for (const pred of resolved) {
+                if (r[pred.field] !== pred.value) {
+                  match = false;
+                  break;
+                }
+              }
+              if (match) count++;
+            }
+            return count;
+          }
+          const sumField = expr.field;
+          if (!sumField) return 0;
+          let total = 0;
           for (const row of rows) {
             const r = row as Record<string, unknown>;
             let match = true;
@@ -5797,9 +5862,12 @@ export class RuntimeEngine {
                 break;
               }
             }
-            if (match) count++;
+            if (!match) continue;
+            const raw = r[sumField];
+            const n = typeof raw === 'number' ? raw : Number(raw);
+            if (Number.isFinite(n)) total += n;
           }
-          return count;
+          return total;
         }
 
         default:

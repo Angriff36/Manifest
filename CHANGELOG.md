@@ -4,6 +4,18 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Aggregate sum (entity where):** `sum(Entity where field == value, …, of quantityField)`
+  in reaction params (mirror of `count(Entity where …)`). Runtime + Convex projection
+  sum the named numeric field on matching rows. Spec: `docs/spec/builtins.md`.
+- **Reaction match else create:** `on Event run Entity.cmd match f = e, … else create`
+  finds a target by natural-key equalities (skip soft-deleted; deterministic id pick
+  on ties) or allocates when `else create` and none match. Spec: `docs/spec/semantics.md`
+  § Reactions. Proof: `runtime-reaction-match-else-create.test.ts`.
+
 ## [3.6.37] - 2026-07-21
 
 ### Fixed

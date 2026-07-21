@@ -115,6 +115,16 @@ entity Order {
 
 Evidence: conformance fixture `64-aggregate-computed-properties.manifest`.
 
+### Entity-scoped aggregates (reaction params)
+
+In addition to array aggregates, reaction `params` may use entity scans:
+
+- `count(Entity where field == value, …)` — count matching rows (ANDed equalities; ≥1 predicate required)
+- `sum(Entity where field == value, …, of quantityField)` — sum a numeric property on matching rows; non-finite values contribute `0`
+
+These are distinct from `count_of` / `sum(arr, mapper)`. No group-by or joins.
+Evidence: `runtime-aggregate-count.test.ts`, `runtime-aggregate-sum.test.ts`.
+
 ### Date (UTC, timestamp in ms)
 
 - `year(ts)`, `month(ts)` (1–12), `day(ts)`, `hours(ts)`, `minutes(ts)`, `seconds(ts)`

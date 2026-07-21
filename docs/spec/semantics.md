@@ -785,6 +785,11 @@ Reactions declare event-driven command dispatch within the Manifest governance b
 on <EventName> run <EntityType>.<commandName>
   resolve <expression>
   params { <paramName>: <expression>, ... }
+
+on <EventName> run <EntityType>.<commandName>
+  match <field> = <expression>, …
+  [else create]
+  params { <paramName>: <expression>, ... }
 ```
 
 ### Compilation
@@ -794,6 +799,12 @@ on <EventName> run <EntityType>.<commandName>
 - `targetEntity`: Entity type to invoke the command on.
 - `targetCommand`: Command name on the target entity.
 - `resolve`: Expression evaluated against the event payload to produce the target instance ID.
+  Mutually exclusive with `match`.
+- `match` / `elseCreate`: Natural-key lookup on `targetEntity` (ANDed `field = expr`
+  predicates). When zero rows match and `elseCreate` is set, the command runs without
+  `instanceId` (allocate / createVia path). When multiple rows match, the runtime
+  picks the lexicographically smallest `id` (deterministic). Soft-deleted rows
+  (`deletedAt != null`) are excluded from the match set.
 - `params`: Optional array of `{name, expression}` mappings from event payload to command input.
 
 ### Runtime Semantics
@@ -804,6 +815,12 @@ on <EventName> run <EntityType>.<commandName>
   1. Evaluate `resolve` expression with the event payload as context → produces `instanceId`.
   2. Evaluate each `params[].expression` with the event payload as context → produces command input.
   3. Invoke `runCommand(targetEntity.targetCommand, input, {instanceId, correlationId, causationId})`.
+- For each matching **match** reaction (`match`):
+  1. Evaluate each match predicate source against the event payload.
+  2. Select `targetEntity` instances where every predicate holds and `deletedAt` is null.
+  3. If none match and `elseCreate` is absent: no-op.
+  4. If none match and `elseCreate` is set: invoke the command with no `instanceId`.
+  5. If one or more match: invoke with `instanceId` of the lexicographically smallest id.
 - For each matching **fan-out** reaction (`fanOut`):
   1. Evaluate `matchSource` with the event payload as context → produces the match value.
   2. Let `matchEntity` be `fanOut.matchEntity` if present, otherwise `targetEntity`.

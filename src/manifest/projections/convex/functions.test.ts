@@ -2022,9 +2022,9 @@ describe('convex.mutations — aggregate count reactions (`count(E where fk == v
     expect(code).toContain('.filter((d) => (d as any).status === "in_progress")');
     expect(code).toContain('.length;');
     // the count variable is bound to the reaction param and patched onto the parent
-    expect(code).toContain('currentTaskCount: __count0');
+    expect(code).toContain('currentTaskCount: __agg0');
     expect(code).toContain(
-      'await __runStationSyncTaskCount(ctx, { docId: reactionTarget0, currentTaskCount: __count0 } as any)',
+      'await __runStationSyncTaskCount(ctx, { docId: reactionTarget0, currentTaskCount: __agg0 } as any)',
     );
   });
 
@@ -2094,8 +2094,8 @@ describe('convex.mutations — aggregate count reactions (`count(E where fk == v
       'withIndex("by_scheduleId", (q) => q.eq("scheduleId", payload.scheduleId))',
     );
     // single predicate → no extra filter chain, just .length
-    expect(code).toContain('__count0_rows.length;');
-    expect(code).toContain('shiftCount: __count0');
+    expect(code).toContain('__agg0_rows.length;');
+    expect(code).toContain('shiftCount: __agg0');
   });
 
   it('renders a table scan + diagnostic when no predicate field is indexed', () => {
