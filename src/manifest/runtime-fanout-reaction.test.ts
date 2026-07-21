@@ -196,10 +196,14 @@ describe('fan-out reactions', () => {
     });
 
     let n = 0;
-    const engine = new RuntimeEngine(ir!, {}, {
-      now: () => 1000,
-      generateId: () => `gen-${++n}`,
-    });
+    const engine = new RuntimeEngine(
+      ir!,
+      {},
+      {
+        now: () => 1000,
+        generateId: () => `gen-${++n}`,
+      },
+    );
     await engine.createInstance('Order', { id: 'o1', status: 'pending' } as EntityInstance);
     await engine.createInstance('LineItem', {
       id: 'li1',
