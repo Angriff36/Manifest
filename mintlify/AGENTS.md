@@ -2,7 +2,7 @@
 
 Authority: Advisory (product docs workspace under `mintlify/`)
 Enforced by: None
-Last updated: 2026-07-17
+Last updated: 2026-07-20
 
 > For Mintlify product knowledge (components, `docs.json`, writing standards),
 > install the Mintlify skill: `npx skills add https://mintlify.com/docs`
@@ -15,7 +15,7 @@ Last updated: 2026-07-17
 
 ## Source of truth (do not invent features)
 
-1. Repo root `package.json` — **version SoT** (currently **3.6.23**); `engines.node` is **`>=20`**
+1. Repo root `package.json` — **version SoT** (currently **3.6.32**); `engines.node` is **`>=20`**
 2. `docs/spec/ir/ir-v1.schema.json` → `docs/spec/semantics.md` → builtins → adapters → conformance
 3. Evidence inventory: `docs/CONFIRMED-FEATURES.md` (what exists) and `docs/TODO.md` (gaps)
 4. Historical roadmap `docs/FEATURE-LIST.md` is **not** trustworthy without the caveat header

@@ -10,8 +10,21 @@ Public product docs for **`@angriff36/manifest`**.
 README / AGENTS / CONTRIBUTING).~~
 
 > **Correction (2026-07-15) @RYANSIGNED:** Content here is Manifest-specific.
-> Version SoT is the repo root `package.json` (**3.6.4**). Node **`>=20`**.
-> Do not invent features; prefer `docs/CONFIRMED-FEATURES.md` + the spec chain.
+> ~~Version SoT is the repo root `package.json` (**3.6.4**).~~
+>
+> **Correction (2026-07-20):** Version SoT is the repo root `package.json`
+> (**3.6.32**). Node **`>=20`**. Do not invent features; prefer
+> `docs/CONFIRMED-FEATURES.md` + the spec chain.
+
+## Context7 AI chat widget
+
+`context7-widget.js` loads the Context7 chat assistant (library
+`/angriff36/manifest`) on every page. Mintlify auto-includes `.js` files in this
+directory.
+
+Before the widget works in production, enable it and allow your docs domains in
+[Context7 admin](https://context7.com/angriff36/manifest/admin) (Chat tab), e.g.
+`manifest-b1e8623f.mintlify.app` and any custom domain.
 
 ## Local preview
 
