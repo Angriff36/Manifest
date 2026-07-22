@@ -229,7 +229,7 @@ event taskCompleted: "kitchen.task.completed" {
 
 ## For AI Agents: Critical Constraints
 
-This repository enforces **strict semantic invariants**. Read `AGENTS.md` and `house-style.md` before making changes.
+This repository enforces **strict semantic invariants**. Read `AGENTS.md` and `docs/internal/contracts/house-style.md` before making changes.
 
 ### Core Invariants
 
@@ -261,31 +261,31 @@ For any change:
 1. **Determine purpose**: Language change (meaning) or tooling change (projection)?
 2. **Locate governing law**: Find exact spec sections and conformance fixtures
 3. **Update in order**: Spec → Tests → Implementation (if meaning changes)
-4. **Prove it**: `npm test` must pass; document any nonconformance
+4. **Prove it**: `pnpm test` must pass; document any nonconformance
 
 ## Development
 
 ### Prerequisites
 
-- Node.js 18+
-- npm
+- Node.js >=20
+- pnpm
 
 ### Setup
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### Commands
 
-- `npm test` - Run all 448 tests (must pass)
-- `npm run test:watch` - Run tests in watch mode
-- `npm run dev` - Start development server with Runtime UI
-- `npm run conformance:regen` - Regenerate expected IR outputs from fixtures
-- `npm run bench` - Run performance benchmarks
-- `npm run build` - Build for production
-- `npm run typecheck` - TypeScript type checking
-- `npm run lint` - ESLint validation
+- `pnpm test` - Run all tests (must pass)
+- `pnpm run test:watch` - Run tests in watch mode
+- `pnpm run dev` - Start development server with Runtime UI
+- `pnpm run conformance:regen` - Regenerate expected IR outputs from fixtures
+- `pnpm run bench` - Run performance benchmarks
+- `pnpm run build` - Build for production
+- `pnpm run typecheck` - TypeScript type checking
+- `pnpm run lint` - ESLint validation
 
 ### Manifest CLI
 

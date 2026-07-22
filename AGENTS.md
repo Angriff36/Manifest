@@ -67,14 +67,14 @@ If any implementation behavior differs, it must be called out as
 Run these after implementing to get immediate feedback:
 
 ```bash
-npm test                    # Conformance + runtime tests (must pass)
-npm run typecheck          # TypeScript check (no emit)
-npm run lint               # ESLint
-npm run dev                # Kitchen/Runtime manual smoke test (localhost:5173)
-npm run conformance:regen  # Regenerate expected outputs after fixture changes
+pnpm test                    # Conformance + runtime tests (must pass)
+pnpm run typecheck          # TypeScript check (no emit)
+pnpm run lint               # ESLint
+pnpm run dev                # Kitchen/Runtime manual smoke test (localhost:5173)
+pnpm run conformance:regen  # Regenerate expected outputs after fixture changes
 ```
 
-**Critical**: `npm test` must remain green. No exceptions.
+**Critical**: `pnpm test` must remain green. No exceptions.
 
 ---
 

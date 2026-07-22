@@ -370,6 +370,6 @@ Last: [first session]
 
 ## Last Session Bridge
 [Emergency bridge — running bridge was not updated]
-Files: mintlify/language/events.mdx (edit), mintlify/adapters/event-sourced-store.mdx (create), docs/CONFIRMED-FEATURES.md (edit)
+Files: mintlify/language/events.mdx (edit), IMPLEMENTATION_PLAN.md (edit)
 
 # === END COGNILAYER ===
