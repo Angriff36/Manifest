@@ -1,7 +1,7 @@
 ---
 title: Manifest Feature Matrix
 created: 2026-02-28
-updated: 2026-07-15
+updated: 2026-07-22
 source_of_truth: true
 source_of_truth_for: none — canonical completion status lives in docs/internal/COMPLIANCE_MATRIX.md
 scope: Manifest-owned feature completion only — language/syntax, compiler/AST/IR, runtime semantics, projections, analysis/verification APIs, stable public SDK contracts
@@ -144,7 +144,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | `mixin` composition                                                                                                  | CLAIMED_NEEDS_PROOF           | fixture `78`                                                                 |
 | [ ]    | Generic / parameterized entities `Entity<T>`                                                                         | NOT_IMPLEMENTED               | fixtures `84`–`85` negative only                                             |
 | [~]    | Value objects / embedded types                                                                                       | CLAIMED_NEEDS_PROOF           | fixture `60`                                                                 |
-| [~]    | Enum types                                                                                                           | CLAIMED_NEEDS_PROOF           | fixture `57`                                                                 |
+| [x]    | Enum types                                                                                                           | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — parse `parser.ts:465-508` @ `68dc9c26…`; IR `ir-compiler.ts:506-508,1019-1028`; fixture `57`; Zod `z.enum` @ `3052dc56…` |
 | [~]    | `decimal` / `money` types                                                                                            | CLAIMED_NEEDS_PROOF           | fixture `56`; runtime = number                                               |
 | [~]    | `map` / record type                                                                                                  | CLAIMED_NEEDS_PROOF           | fixture `73`                                                                 |
 | [~]    | Array types `T[]` / `array<T>`                                                                                       | CLAIMED_NEEDS_PROOF           | fixture `40`                                                                 |
@@ -154,7 +154,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | Relationships `hasMany` / `hasOne` / `belongsTo` / `ref`                                                             | CLAIMED_NEEDS_PROOF           | fixtures `02`, `98`, `99`                                                    |
 | [x]    | Referential actions `onDelete`/`onUpdate`                                                                            | FULLY_IMPLEMENTED             | see §1                                                                       |
 | [x]    | Many-to-many `through`                                                                                               | FULLY_IMPLEMENTED             | see §1                                                                       |
-| [~]    | Auto timestamps / `autoNow` (`now()`/`today()`)                                                                      | CLAIMED_NEEDS_PROOF           | fixture `62`                                                                 |
+| [x]    | Auto timestamps / `autoNow` (`now()`/`today()`)                                                                      | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — parse `parser.ts:411-413,459` @ `4cfff8ec…`; IR inject + `autoNow` lower `ir-compiler.ts:841-858,876,1051-1067` @ `68afb8ab…`; runtime `runtime-engine.ts:2674-2705,3185-3186`; fixture `62`; `create-field-and-autonow.test.ts` @ `849e368…` |
 | [~]    | `private` / `encrypted` / `masked` privacy                                                                           | CLAIMED_NEEDS_PROOF           | fixtures `91`, `93`                                                          |
 | [~]    | `searchable` declarations                                                                                            | CLAIMED_NEEDS_PROOF           | fixture `89`                                                                 |
 | [~]    | Multi-tenancy (`tenant`)                                                                                             | CLAIMED_NEEDS_PROOF           | fixture `61`                                                                 |
@@ -172,7 +172,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | Policies read/write/delete/execute/all/override                                                                      | CLAIMED_NEEDS_PROOF           | fixture `06`                                                                 |
 | [~]    | State transitions                                                                                                    | CLAIMED_NEEDS_PROOF           | fixture `38`                                                                 |
 | [~]    | Aggregate `count()` in reactions                                                                                     | CLAIMED_NEEDS_PROOF           | fixture `97`                                                                 |
-| [~]    | Events + reactions (`on Event run`)                                                                                  | CLAIMED_NEEDS_PROOF           | fixtures `67`, `96`                                                          |
+| [x]    | Events + reactions (`on Event run`)                                                                                  | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — parse/IR/runtime + Reactions suite @ `83e6c4f…`; fixture `67` emit; fan-out fixture `96` separate row |
 | [~]    | Reaction fan-out                                                                                                     | CLAIMED_NEEDS_PROOF           | fixture `96`                                                                 |
 | [~]    | Sagas + compensation                                                                                                 | CLAIMED_NEEDS_PROOF           | fixture `88`                                                                 |
 | [~]    | Approvals (multi-stage, `onTimeout: cancel`)                                                                         | CLAIMED_NEEDS_PROOF           | fixture `68`                                                                 |

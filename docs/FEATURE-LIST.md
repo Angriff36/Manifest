@@ -354,7 +354,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Approvals (multi-stage, `onTimeout: cancel`) | `CLAIMED_NEEDS_PROOF` | fixture `68` |
 | 2. Language (DSL) — full inventory | Array types `T[]` / `array<T>` | `CLAIMED_NEEDS_PROOF` | fixture `40` |
 | 2. Language (DSL) — full inventory | Async / background commands | `CLAIMED_NEEDS_PROOF` | fixture `69` |
-| 2. Language (DSL) — full inventory | Auto timestamps / `autoNow` (`now()`/`today()`) | `CLAIMED_NEEDS_PROOF` | fixture `62` |
 | 2. Language (DSL) — full inventory | Command `retry` policy | `CLAIMED_NEEDS_PROOF` | fixture `72` |
 | 2. Language (DSL) — full inventory | Command/policy `rateLimit` | `CLAIMED_NEEDS_PROOF` | fixtures `74`, `75`, `100` |
 | 2. Language (DSL) — full inventory | Commands (params, guards, mutate, emit, emitPayloads) | `CLAIMED_NEEDS_PROOF` | fixture `04` |
@@ -365,8 +364,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Constraints severity `ok`/`warn`/`block` | `CLAIMED_NEEDS_PROOF` | fixtures `21`, `36` |
 | 2. Language (DSL) — full inventory | Entities + typed properties + defaults | `CLAIMED_NEEDS_PROOF` | fixture `01` |
 | 2. Language (DSL) — full inventory | Entity `behavior` blocks | `REJECTED_LOUD → proven reject` | see §1 / fixture `110` |
-| 2. Language (DSL) — full inventory | Enum types | `CLAIMED_NEEDS_PROOF` | fixture `57` |
-| 2. Language (DSL) — full inventory | Events + reactions (`on Event run`) | `CLAIMED_NEEDS_PROOF` | fixtures `67`, `96` |
 | 2. Language (DSL) — full inventory | Generic / parameterized entities `Entity<T>` | `NOT_IMPLEMENTED` | fixtures `84`–`85` negative only |
 | 2. Language (DSL) — full inventory | Language keyword `softDelete` | `NOT_IMPLEMENTED` | projection config only |
 | 2. Language (DSL) — full inventory | Modules + `use` imports | `CLAIMED_NEEDS_PROOF` | module-resolver tests |
