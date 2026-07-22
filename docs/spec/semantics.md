@@ -1041,6 +1041,7 @@ is the canonical success case.
 ## Expressions
 
 - Literal, identifier, member access, unary, binary, call, conditional, array, object, and lambda expressions are supported.
+- Member access `expr.length` on a string or array receiver MUST return the same value as `length(expr)`. On any other receiver it MUST evaluate to `undefined` (not throw). See `docs/spec/builtins.md` § String.
 - The following operators MUST be supported by the default runtime:
   - Binary: `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `>`, `<=`, `>=`, `and`, `or`, `in`, `contains`
   - Unary: `!`, `not`, `-`

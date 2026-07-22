@@ -21,10 +21,13 @@ command testStringOps(input: string) {
   compute upper = toUpperCase(input)
   compute lower = toLowerCase(input)
   compute charCount = length(input)
+  compute alsoCharCount = input.length
   compute slice = substring(input, 0, 5)
   compute foundAt = indexOf(input, "world")
 }
 ```
+
+`input.length` is sugar for `length(input)` on strings and arrays (same for `self.tags.length`). Prefer either form; they evaluate the same.
 
 Numeric helpers `abs`, `round`, `floor`, `ceil`, `min`, and `max` and the array helper `sum` appear in the same fixture, and the date components `year`/`month`/`day`/`hours`/`minutes`/`seconds` operate on a millisecond timestamp.
 

@@ -64,6 +64,7 @@ Evidence: conformance fixture `56-expression-builtins.manifest`.
 - `replace(s, search, replacement)` — global literal replace (search is escaped for regex)
 - `toUpperCase(s)`, `toLowerCase(s)`
 - `length(v)` — string or array length
+- Member sugar: `s.length` / `arr.length` — equivalent to `length(s)` / `length(arr)` for string and array receivers (other receivers → `undefined`). Evidence: `runtime-member-length.test.ts`.
 - `substring(s, start, end?)`, `indexOf(s, search)`
 - `matches(s, pattern)` — regex test; returns `true` if `s` matches the regex `pattern`, `false` if `s` is non-string, `pattern` is non-string, or `pattern` is an invalid regex. Compile-time validation emits an error diagnostic when `pattern` is a literal with invalid regex syntax.
 - `search(text, query)` — full-text match. Returns `true` iff every whitespace-delimited word token in `query` appears as a whole word (case-insensitive) in `text`. Returns `false` if either argument is non-string or query is empty. Deterministic and pure. Evidence: conformance fixture `89-full-text-search.manifest`.

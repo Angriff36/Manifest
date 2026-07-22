@@ -85,7 +85,11 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
     status: 'supported',
     note: 'Create seeds version=1; updates optional expected version + increment (VERSION_MISMATCH throw)',
   },
-  { feature: 'masked / unmask when', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_MASKED' },
+  {
+    feature: 'masked / unmask when',
+    status: 'supported',
+    note: 'Read-time masking on list/get; unmaskWhen lowered when expression is Convex-renderable (secure default if user/context missing)',
+  },
   {
     feature: 'searchable (string-like → .searchIndex)',
     status: 'supported',
@@ -152,14 +156,6 @@ export function collectUnsupportedDiagnostics(
     }
 
     for (const p of entity.properties) {
-      if (p.modifiers.includes('masked')) {
-        out.push({
-          severity: 'warning',
-          code: 'CONVEX_UNSUPPORTED_MASKED',
-          entity: entity.name,
-          message: `Property '${entity.name}.${p.name}' is masked; the Convex projection does not apply read-time masking.`,
-        });
-      }
       if (p.modifiers.includes('searchable') && persistent) {
         if (!isConvexSearchIndexFieldType(p.type.name)) {
           out.push({

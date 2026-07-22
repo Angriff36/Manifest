@@ -5737,6 +5737,13 @@ export class RuntimeEngine {
 
         case 'member': {
           const obj = await this.evaluateExpression(expr.object, context);
+          // `.length` on string/array is sugar for length(v) (Appendix E).
+          if (
+            expr.property === 'length' &&
+            (typeof obj === 'string' || Array.isArray(obj))
+          ) {
+            return obj.length;
+          }
           if (obj && typeof obj === 'object') {
             // Check if this is an entity instance that may have relationships
             // Works for direct self/this access AND chained traversal (self.order.customer)

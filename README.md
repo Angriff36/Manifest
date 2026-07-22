@@ -17,7 +17,7 @@ The language compiles to an **Intermediate Representation (IR)** that serves as 
 ## Installation
 
 ```bash
-npm install @angriff36/manifest
+pnpm install @angriff36/manifest
 # or: pnpm add @angriff36/manifest
 ```
 

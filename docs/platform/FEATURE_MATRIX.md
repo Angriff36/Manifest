@@ -124,6 +124,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Park unpublished sub-packages (mcp/lsp/stdlib/vscode) | FULLY_IMPLEMENTED     | `packages/mcp-server/package.json` (+ lsp/stdlib/vscode) `"private": true` @ `500f14712174bee2c989c869980ced8fd1397505`; `src/manifest/parked-packages.test.ts:1-28` @ same; `docs/reference/packages-and-distribution.md`                         |
 | [x]    | Language type `timestamp` (= `datetime` alias)        | FULLY_IMPLEMENTED     | `src/manifest/date-time.ts:12-18` @ `22c7792cf045450ab02fdccd982bfbf5551f4978`; `runtime-engine.ts:2676-2694` @ same; `runtime-datetime-validation.test.ts` @ same; `projections/shared/typescript-types.ts:21-24` @ same; semantics § Date/Time   |
 | [x]    | Appendix E: `map<string,V>` sugar (= `map<V>`)        | FULLY_IMPLEMENTED     | `src/manifest/parser.ts:1316-1341` @ `dc52bb5daa23fad540252654862a3b1db5ed23c6`; fixture `73`; semantics Properties; non-string keys still unsupported                                                                                             |
+| [x]    | Appendix E: `.length` member ≡ `length(v)`            | FULLY_IMPLEMENTED     | `runtime-engine.ts` member eval; `docs/spec/builtins.md` + `semantics.md`; `runtime-member-length.test.ts` — SHA after commit                                                                                                                   |
 
 ---
 
@@ -187,7 +188,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [ ]    | Appendix E: `map<K,V>` two-param form                                                                                | NOT_IMPLEMENTED               | backlog — arbitrary keys; `map<string,V>` sugar is §1                        |
 | [ ]    | Appendix E: retry/rateLimit field-name ergonomics                                                                    | NOT_IMPLEMENTED               | backlog                                                                      |
 | [ ]    | Appendix E: command-body policy clause                                                                               | NOT_IMPLEMENTED               | backlog                                                                      |
-| [ ]    | Appendix E: `.length` vs `length()`                                                                                  | NOT_IMPLEMENTED               | backlog                                                                      |
+| [x]    | Appendix E: `.length` vs `length()`                                                                                  | FULLY_IMPLEMENTED             | §1 — string/array member sugar                                               |
 
 ~~Language type `timestamp` (vs `datetime`) — NOT_IMPLEMENTED / zod alias only~~ → **FULLY_IMPLEMENTED** §1 (2026-07-15).
 
@@ -301,7 +302,8 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | Projection descriptor API                      | FULLY_IMPLEMENTED     | §1                                                                                |
 | [ ]    | `ir.tenant` in all web projections             | PARTIAL               | wiring matrix                                                                     |
 | [ ]    | Module-based output splitting                  | PARTIAL               |                                                                                   |
-| [ ]    | Convex approvals/masking/retry/rateLimit       | DIAGNOSTIC_ONLY       | `CONVEX_UNSUPPORTED_*` (searchable + versionProperty + realtime/cache PARTIAL §1) |
+| [ ]    | Convex approvals/retry/rateLimit               | DIAGNOSTIC_ONLY       | `CONVEX_UNSUPPORTED_*` (masking closed §1)                                        |
+| [x]    | Convex `masked` / `unmask when`                | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | Convex `searchable` → `.searchIndex`           | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | Convex `versionProperty` OCC                   | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | Convex realtime / computed-cache PARTIAL       | FULLY_IMPLEMENTED     | §1                                                                                |
@@ -359,7 +361,8 @@ Keep in sync with `docs/TODO.md`. The canonical `docs/internal/COMPLIANCE_MATRIX
 | [x]    | EventSourcedStore                                                      | FULLY_IMPLEMENTED     | §1                                                                       |
 | [ ]    | softDelete language keyword                                            | NOT_IMPLEMENTED       | Manifest language gap (projection config exists)                         |
 | [x]    | Materialized-views SQL expression lowering                             | FULLY_IMPLEMENTED     | §1                                                                       |
-| [ ]    | Convex unsupported surfaces (approvals/masking/retry/rateLimit)        | DIAGNOSTIC_ONLY       |
+| [ ]    | Convex unsupported surfaces (approvals/retry/rateLimit)                | DIAGNOSTIC_ONLY       |
+| [x]    | Convex `masked` / `unmask when`                                        | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | Config G5 `projections.enabled`/`defaults`                             | FULLY_IMPLEMENTED     | §1                                                                       |
 | [x]    | Config G2 `validation.failOn`                                          | FULLY_IMPLEMENTED     | §1                                                                       |
 | [x]    | Config G10 `driftGates` / `manifest ci-gate`                           | FULLY_IMPLEMENTED     | §1                                                                       |

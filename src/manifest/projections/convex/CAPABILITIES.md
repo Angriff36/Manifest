@@ -1,6 +1,7 @@
 # Convex projection — capability map
 
-**Date:** 2026-07-20  
+**Date:** 2026-07-22  
+~~**Date:** 2026-07-20~~  
 ~~**Date:** 2026-07-17~~  
 ~~**Date:** 2026-07-14~~  
 
@@ -32,6 +33,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Command idempotency (`idempotencyKey`)           | schema + mutations           | `commandIdempotencyKeys` table; optional arg; cached result before re-execution (default on) |
 | `versionProperty` / `versionAtProperty` OCC      | schema + mutations           | Schema field synthesis; create seeds `1`; updates optional expected version + increment      |
 | Private properties (read strip)                  | queries                      | Always on; mutation path still sees stored values                                            |
+| `masked` / `unmask when`                         | queries                      | Read-time strategies on list/get; unmaskWhen when Convex-renderable; mutations stay unmasked |
 | Computed (self-only)                             | computed (+ optional inline) | `computedProperties: helpers \| inline`                                                      |
 | Schedules                                        | crons                        |                                                                                              |
 | Webhooks (route + transform + idempotency table) | http                         | Signature verification = Partial                                                             |
@@ -61,7 +63,6 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | IR construct                                  | Diagnostic code                    |
 | --------------------------------------------- | ---------------------------------- |
 | Approvals                                     | `CONVEX_UNSUPPORTED_APPROVAL`      |
-| `masked` / `unmask when`                      | `CONVEX_UNSUPPORTED_MASKED`        |
 | `searchable` (non-string types)               | `CONVEX_UNSUPPORTED_SEARCHABLE`    |
 | Command/policy `retry`                        | `CONVEX_UNSUPPORTED_RETRY`         |
 | Command/policy `rateLimit`                    | `CONVEX_UNSUPPORTED_RATE_LIMIT`    |

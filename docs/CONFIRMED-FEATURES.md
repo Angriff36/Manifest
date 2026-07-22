@@ -221,8 +221,10 @@ web projections, module-based output splitting.
 ~~**Convex projection — diagnostics-only surfaces:** approvals, masking,
 searchable, versionProperty/optimistic concurrency, retry, rateLimit~~
 > **Correction (2026-07-22):** `searchable` → `.searchIndex` and
-> `versionProperty` OCC shipped (2026-07-15; see `docs/TODO.md`). Remaining
-> diagnostics-only: **approvals, masking, retry, rateLimit**
+> `versionProperty` OCC shipped (2026-07-15; see `docs/TODO.md`).
+> **Correction (2026-07-22):** `masked` / `unmask when` read-time masking on
+> Convex list/get (`masking-emit.ts`; no `CONVEX_UNSUPPORTED_MASKED`).
+> Remaining diagnostics-only: **approvals, retry, rateLimit**
 > (`CONVEX_UNSUPPORTED_*`). Realtime / computed-cache are PARTIAL info
 > diagnostics, not unsupported.
 

@@ -70,6 +70,14 @@ import {
   stripPrivateFromRows,
 } from './privacy.js';
 import {
+  MASK_HELPER,
+  maskAndStripPrivateDoc,
+  maskAndStripPrivateRows,
+  maskAuthExpr,
+  maskedFieldEmits,
+  maskedFieldsNeedAuth,
+} from './masking-emit.js';
+import {
   commandNeedsAfterSnapshot,
   computeBindingLines,
   renderCommandComputeBindings,
@@ -534,6 +542,10 @@ export function generateQueries(
     const rf = resolveReadFilter(ir, entity, options);
     const privates = privateFieldNames(entity);
     const encrypted = encryptedFieldNames(entity);
+    const maskedFields = maskedFieldEmits(entity);
+    const maskAuth = maskAuthExpr(maskedFieldsNeedAuth(maskedFields));
+    const maskNeedsAuthLocals =
+      maskedFieldsNeedAuth(maskedFields) && !!options.authContextImport;
     const inlineComputed =
       options.computedProperties === 'inline'
         ? renderInlineComputedFields(entity, '__row', options)
@@ -573,6 +585,15 @@ export function generateQueries(
       ];
     };
 
+    const maskAuthLocals = (): string[] => {
+      if (!maskNeedsAuthLocals) return [];
+      return [
+        `    const __auth = (await getAuthContext(ctx)) as any;`,
+        `    const user = (__auth.user ?? __auth) as any;`,
+        `    const context = (__auth.context ?? __auth) as any;`,
+      ];
+    };
+
     const hydrateThenProjectRows = (sourceExpr: string): string => {
       const assigns = inlineComputed.fields.map((f) => `${f.name}: ${f.code}`).join(', ');
       const hydrate = inlineHydrateRow.lines.map((line) => `      ${line.trimStart()}`).join('\n');
@@ -582,25 +603,28 @@ export function generateQueries(
         (hydrate ? `${hydrate}\n` : '') +
         `      __projectedRows.push({ ...(__row as any), ${assigns} });\n` +
         `    }\n` +
-        `    ${stripPrivateFromRows('__projectedRows', privates)}`
+        `    ${maskAndStripPrivateRows('__projectedRows', maskedFields, privates, maskAuth)}`
       );
     };
 
-    /** Finalize rows: decrypt → read policies → computed/private public projection. */
+    /** Finalize rows: decrypt → read policies → computed → mask → private strip. */
     const finishRows = (rowsExpr: string): string => {
+      const authLocals =
+        maskNeedsAuthLocals && !(policyGated && policyEnforceable) ? maskAuthLocals() : [];
       if (encrypted.length === 0 && !policyGated) {
+        const prefix = authLocals.length ? `${authLocals.join('\n')}\n    ` : '';
         if (inlineComputed.fields.length === 0) {
-          return stripPrivateFromRows(rowsExpr, privates);
+          return prefix + maskAndStripPrivateRows(rowsExpr, maskedFields, privates, maskAuth);
         }
         if (inlineHydrateRow.lines.length === 0) {
           const assigns = inlineComputed.fields.map((f) => `${f.name}: ${f.code}`).join(', ');
           const mapped = `(${rowsExpr}).map((__row) => ({ ...(__row as any), ${assigns} }))`;
-          return stripPrivateFromRows(mapped, privates);
+          return prefix + maskAndStripPrivateRows(mapped, maskedFields, privates, maskAuth);
         }
-        return hydrateThenProjectRows(rowsExpr);
+        return prefix + hydrateThenProjectRows(rowsExpr);
       }
 
-      const lines: string[] = [];
+      const lines: string[] = [...authLocals];
       const plainExpr =
         encrypted.length > 0 && options.encryptionImport
           ? `await Promise.all((${rowsExpr}).map((row) => __decryptDoc(ctx, ${JSON.stringify(entity.name)}, ${JSON.stringify(encrypted)}, row)))`
@@ -629,40 +653,35 @@ export function generateQueries(
         const assigns = inlineComputed.fields.map((f) => `${f.name}: ${f.code}`).join(', ');
         visibleExpr = `(${visibleExpr}).map((__row) => ({ ...(__row as any), ${assigns} }))`;
       }
-      lines.push(`    ${stripPrivateFromRows(visibleExpr, privates)}`);
+      lines.push(`    ${maskAndStripPrivateRows(visibleExpr, maskedFields, privates, maskAuth)}`);
       return lines.join('\n');
     };
-    /** Finalize one doc: decrypt → read policies → computed/private projection. */
+    /** Finalize one doc: decrypt → read policies → computed → mask → private strip. */
     const finishDoc = (docExpr: string): string => {
       const hydrateBlock =
         inlineHydrateDoc.lines.length > 0 ? `${inlineHydrateDoc.lines.join('\n')}\n` : '';
+      const authLocals =
+        maskNeedsAuthLocals && !(policyGated && policyEnforceable) ? maskAuthLocals() : [];
       if (encrypted.length === 0 && !policyGated) {
+        const prefix = authLocals.length ? `${authLocals.join('\n')}\n    ` : '';
         if (inlineComputed.fields.length === 0) {
-          return stripPrivateFromDoc(docExpr, privates);
+          return prefix + maskAndStripPrivateDoc(docExpr, maskedFields, privates, maskAuth);
         }
         const assigns = inlineComputed.fields
           .map((f) => `${f.name}: ${f.code.replace(/\b__row\b/g, '__doc')}`)
           .join(', ');
-        if (privates.length === 0) {
-          return (
-            `const __doc = ${docExpr};\n` +
-            `    if (!__doc) return __doc;\n` +
-            hydrateBlock +
-            `    return { ...(__doc as any), ${assigns} };`
-          );
-        }
-        const dels = privates.map((p) => `delete (__out as any).${p};`).join(' ');
         return (
+          prefix +
           `const __doc = ${docExpr};\n` +
           `    if (!__doc) return __doc;\n` +
           hydrateBlock +
-          `    const __out = { ...(__doc as any), ${assigns} };\n` +
-          `    ${dels}\n` +
-          `    return __out;`
+          `    const __hydrated = { ...(__doc as any), ${assigns} };\n` +
+          `    ${maskAndStripPrivateDoc('__hydrated', maskedFields, privates, maskAuth)}`
         );
       }
 
       const lines: string[] = [
+        ...authLocals,
         `const __rawDoc = ${docExpr};`,
         `    if (!__rawDoc) return __rawDoc;`,
       ];
@@ -684,20 +703,14 @@ export function generateQueries(
       const assigns = inlineComputed.fields
         .map((f) => `${f.name}: ${f.code.replace(/\b__row\b/g, '__doc')}`)
         .join(', ');
-      if (privates.length === 0) {
+      if (inlineComputed.fields.length > 0) {
+        lines.push(`    const __hydrated = { ...(__doc as any), ${assigns} };`);
         lines.push(
-          inlineComputed.fields.length > 0
-            ? `    return { ...(__doc as any), ${assigns} };`
-            : `    return __doc;`,
+          `    ${maskAndStripPrivateDoc('__hydrated', maskedFields, privates, maskAuth)}`,
         );
-        return lines.join('\n');
+      } else {
+        lines.push(`    ${maskAndStripPrivateDoc('__doc', maskedFields, privates, maskAuth)}`);
       }
-      const dels = privates.map((p) => `delete (__out as any).${p};`).join(' ');
-      lines.push(
-        `    const __out = { ...(__doc as any)${assigns ? `, ${assigns}` : ''} };`,
-        `    ${dels}`,
-        `    return __out;`,
-      );
       return lines.join('\n');
     };
 
@@ -739,6 +752,7 @@ export function generateQueries(
   const needsDecrypt = !!options.encryptionImport && /\b__decryptDoc\b/.test(body);
   const helpers: string[] = [];
   if (/\b__allowsRead\(/.test(body)) helpers.push(READ_POLICY_HELPER);
+  if (/\b__maskDoc\(/.test(body)) helpers.push(MASK_HELPER);
   if (/\b__resolveRelation\(/.test(body)) helpers.push(RELATION_HELPER);
   if (/\bcheckRole\(/.test(body)) {
     helpers.push(

@@ -369,7 +369,8 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[auto-bridge snapshot @ 10 changes]
-Files: mintlify/adapters/outbox.mdx (edit), mintlify/adapters/audit-sink.mdx (edit), C:/Users/Ryan/.claude/projects/C--projects-aboardai/memory/mcp-server-leak-2026-07-04.md (edit), IMPLEMENTATION_PLAN.md (edit), C:/projects/aboardai/apps/server/tests/unit/providers/codex-config-manager.test.ts (create), packages/cli/src/commands/changelog.ts (edit), C:/projects/aboardai/apps/server/src/providers/codex-config-manager.ts (edit)
+[pre-compact bridge — saved before context compaction]
+Files (1):
+  docs/internal/COMPLIANCE_MATRIX.md (edit)
 
 # === END COGNILAYER ===

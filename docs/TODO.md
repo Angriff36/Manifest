@@ -49,8 +49,6 @@ non-binding navigation mirror only.
       `111-approval-escalate`. Spec: semantics.md § Approval timeout actions.
       ~~still missing / REJECTED_LOUD / needs spec-first design~~
       ~~Wrongly marked OUT_OF_SCOPE 2026-07-15; reopened same day.~~
-      ~~`APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` (fixture 103); schema allows
-      only `cancel`.~~
 - [x] **Referential actions at runtime** — fixed 2026-07-15: `deleteInstance` /
       `updateInstance` enforce child-side `onDelete`/`onUpdate`
       (`cascade`/`restrict`/`setNull`/`setDefault`/`noAction`); evidence in
@@ -122,9 +120,14 @@ non-binding navigation mirror only.
       `encryptionImport` encrypts create/patch values into the reference-runtime
       envelope and decrypts reads before policy/public projection. Missing seam
       is the hard `CONVEX_ENCRYPTION_IMPORT_REQUIRED` diagnostic.
+- [x] **Convex `masked` / `unmask when` read-time masking** — fixed 2026-07-22:
+      `masking-emit.ts` + query list/get wiring; strategies + renderable
+      `unmaskWhen`; private+masked still stripped; mutations stay unmasked;
+      `CONVEX_UNSUPPORTED_MASKED` removed. Proof: `masking-emit.test.ts`.
 - [ ] **Convex projection remaining diagnostics-only surfaces** — approvals,
-      masking, retry, rateLimit emit `CONVEX_UNSUPPORTED_*` (good) but generate
+      retry, rateLimit emit `CONVEX_UNSUPPORTED_*` (good) but generate
       no Convex enforcement.
+      ~~masking~~
       ~~approvals, masking, computed-cache, realtime, retry, rateLimit~~
       ~~searchable / versionProperty still diagnostic-only~~
       ~~realtime / computed-cache still unsupported~~
@@ -215,8 +218,9 @@ non-binding navigation mirror only.
       ~~`map<K,V>` two-param form~~ **Done (2026-07-15):** `map<string, V>` sugar
       for `map<V>` (non-string keys still unsupported),
       retry/rateLimit field-name ergonomics,
-      reserved-word ergonomics, command-body policy clause, `.length` vs
-      `length()`.
+      reserved-word ergonomics, command-body policy clause,
+      ~~`.length` vs `length()`~~ **Done (2026-07-22):** `s.length` / `arr.length`
+      ≡ `length(v)` in reference runtime (`runtime-member-length.test.ts`).
       ~~no `timestamp` type (note: zod now accepts `timestamp` as a
       datetime alias; language/spec still use `datetime`).~~
       **Done (2026-07-15):** `timestamp` is a language/runtime alias of
