@@ -131,8 +131,13 @@ depend on application identity or key management:
   > **Correction (2026-07-22):** `flagProviderImport` MUST name a module
   > exporting `flag(name: string): unknown`. When set (with
   > `authContextImport`), read/`all` policies that call `flag()` are enforced on
-  > public queries. Without it, those queries stay `internalQuery`. Relationship
-  > traversal on read policies remains internal.
+  > public queries. Without it, those queries stay `internalQuery`.
+  > ~~Relationship traversal on read policies remains internal.~~
+  >
+  > **Correction (2026-07-22):** Read policies that traverse `belongsTo` / `ref`
+  > hydrate related rows via `__resolveRelation` before policy evaluation (same
+  > helper as mutations). `hasMany` / `through` traversal still keeps queries
+  > `internalQuery` with `CONVEX_UNSUPPORTED_READ_POLICY_RELATIONSHIP`.
 - `flagProviderImport` — see correction above (feature-flag seam).
 - `encryptionImport` MUST name a module exporting `encrypt` and `decrypt`.
   `encrypt(plaintext, metadata)` returns `{ ciphertext, keyId }`;

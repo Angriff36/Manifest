@@ -669,7 +669,7 @@ describe('convex.queries — read-policy lockdown', () => {
     );
   });
 
-  it('keeps relationship-traversing read queries internal until relationships can be loaded', () => {
+  it('hydrates belongsTo relations for public read-policy queries', () => {
     const ir = emptyIR();
     const doc = entity('Doc', [prop('ownerId', 'string')]);
     doc.relationships = [
@@ -698,7 +698,47 @@ describe('convex.queries — read-policy lockdown', () => {
       surface: 'convex.queries',
       options: { authContextImport: './lib/authContext' },
     });
-    expect(result.artifacts[0].code).toContain('export const listDoc = internalQuery({');
+    const code = result.artifacts[0].code;
+    expect(code).toContain('export const listDoc = query({');
+    expect(code).toContain('__resolveRelation(ctx, "people", [__row.ownerId]');
+    expect(code).toContain('__resolveRelation(ctx, "people", [__doc.ownerId]');
+    expect(code).toContain('__rel_owner == null');
+    expect(
+      result.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_READ_POLICY_RELATIONSHIP'),
+    ).toBe(false);
+  });
+
+  it('keeps hasMany relationship-traversing read queries internal', () => {
+    const ir = emptyIR();
+    const person = entity('Person', [prop('name', 'string')]);
+    person.relationships = [
+      { name: 'docs', kind: 'hasMany', target: 'Doc', foreignKey: { fields: ['ownerId'] } },
+    ];
+    const doc = entity('Doc', [prop('ownerId', 'string')]);
+    ir.entities = [person, doc];
+    ir.stores = [durable('Person'), durable('Doc')];
+    ir.policies = [
+      {
+        name: 'hasDocs',
+        entity: 'Person',
+        action: 'read',
+        expression: {
+          kind: 'binary',
+          operator: '!=',
+          left: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'self' },
+            property: 'docs',
+          },
+          right: { kind: 'literal', value: { kind: 'null' } },
+        },
+      },
+    ] as IRPolicy[];
+    const result = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { authContextImport: './lib/authContext' },
+    });
+    expect(result.artifacts[0].code).toContain('export const listPerson = internalQuery({');
     expect(
       result.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_READ_POLICY_RELATIONSHIP'),
     ).toBe(true);

@@ -3,8 +3,13 @@
  */
 
 import type { IR, IRExpression, IRPolicy } from '../../ir';
+import type { RelationDependency } from '../../relation-plan.js';
 import type { ProjectionDiagnostic } from '../interface';
 import { renderExpression } from './expression.js';
+import {
+  buildReadPolicyRelationPlan,
+  isHydratableReadRelation,
+} from './read-policy-relations.js';
 
 /**
  * True when read/`all` policies (entity-scoped or global) gate this entity.
@@ -83,48 +88,14 @@ function expressionCalls(expr: IRExpression, builtin: string): boolean {
   return walk(expr);
 }
 
-function expressionTraversesRelationship(
-  expr: IRExpression,
-  relationshipNames: ReadonlySet<string>,
-): boolean {
-  const walk = (node: IRExpression): boolean => {
-    if (
-      node.kind === 'member' &&
-      node.object.kind === 'identifier' &&
-      (node.object.name === 'self' || node.object.name === 'this') &&
-      relationshipNames.has(node.property)
-    ) {
-      return true;
-    }
-    switch (node.kind) {
-      case 'member':
-        return walk(node.object);
-      case 'binary':
-        return walk(node.left) || walk(node.right);
-      case 'unary':
-        return walk(node.operand);
-      case 'call':
-        return walk(node.callee) || node.args.some(walk);
-      case 'conditional':
-        return walk(node.condition) || walk(node.consequent) || walk(node.alternate);
-      case 'array':
-        return node.elements.some(walk);
-      case 'object':
-        return node.properties.some((property) => walk(property.value));
-      case 'lambda':
-        return walk(node.body);
-      default:
-        return false;
-    }
-  };
-  return walk(expr);
-}
-
 export interface RenderedReadPolicies {
   contextChecks: RenderedReadPolicyCheck[];
   rowChecks: RenderedReadPolicyCheck[];
   diagnostics: ProjectionDiagnostic[];
   renderable: boolean;
+  /** belongsTo/ref dependencies to hydrate before row checks (empty when none). */
+  relationDeps: RelationDependency[];
+  relationVars: Record<string, string>;
 }
 
 export interface RenderedReadPolicyCheck {
@@ -135,6 +106,57 @@ export interface RenderedReadPolicyCheck {
 export interface ReadPolicyRenderOptions {
   /** When set, `flag()` in read policies is renderable (import supplies `flag`). */
   flagProviderImport?: string;
+}
+
+function collectTraversedRelationNames(
+  expr: IRExpression,
+  relationshipNames: ReadonlySet<string>,
+): string[] {
+  const found = new Set<string>();
+  const walk = (node: IRExpression): void => {
+    if (
+      node.kind === 'member' &&
+      node.object.kind === 'identifier' &&
+      (node.object.name === 'self' || node.object.name === 'this') &&
+      relationshipNames.has(node.property)
+    ) {
+      found.add(node.property);
+    }
+    switch (node.kind) {
+      case 'member':
+        walk(node.object);
+        break;
+      case 'binary':
+        walk(node.left);
+        walk(node.right);
+        break;
+      case 'unary':
+        walk(node.operand);
+        break;
+      case 'call':
+        walk(node.callee);
+        node.args.forEach(walk);
+        break;
+      case 'conditional':
+        walk(node.condition);
+        walk(node.consequent);
+        walk(node.alternate);
+        break;
+      case 'array':
+        node.elements.forEach(walk);
+        break;
+      case 'object':
+        node.properties.forEach((property) => walk(property.value));
+        break;
+      case 'lambda':
+        walk(node.body);
+        break;
+      default:
+        break;
+    }
+  };
+  walk(expr);
+  return [...found];
 }
 
 /** Render policy predicates for a generated read handler. */
@@ -148,13 +170,24 @@ export function renderReadPolicies(
   const rowChecks: RenderedReadPolicyCheck[] = [];
   const diagnostics: ProjectionDiagnostic[] = [];
   let renderable = true;
-  const relationshipNames = new Set(
-    ir.entities
-      .find((entity) => entity.name === entityName)
-      ?.relationships.map((rel) => rel.name) ?? [],
-  );
+  const entity = ir.entities.find((candidate) => candidate.name === entityName);
+  const relationshipNames = new Set(entity?.relationships.map((rel) => rel.name) ?? []);
   const flagSeam =
     typeof options.flagProviderImport === 'string' && options.flagProviderImport.length > 0;
+
+  const plan = entity
+    ? buildReadPolicyRelationPlan(ir, entity)
+    : { relations: [] as RelationDependency[] };
+  const hydratableByName = new Map(
+    plan.relations
+      .filter(isHydratableReadRelation)
+      .map((dependency) => [dependency.relationName, dependency] as const),
+  );
+  const relationVars: Record<string, string> = {};
+  for (const name of hydratableByName.keys()) {
+    relationVars[name] = `__rel_${name}`;
+  }
+  const usedRelationDeps = new Map<string, RelationDependency>();
 
   for (const policy of selectReadPolicies(ir, entityName)) {
     if (policy.rateLimit) {
@@ -177,17 +210,26 @@ export function renderReadPolicies(
       });
       continue;
     }
-    if (expressionTraversesRelationship(policy.expression, relationshipNames)) {
+    const traversed = collectTraversedRelationNames(policy.expression, relationshipNames);
+    const unsupported = traversed.filter((name) => !hydratableByName.has(name));
+    if (unsupported.length > 0) {
       renderable = false;
       diagnostics.push({
         severity: 'error',
         code: 'CONVEX_UNSUPPORTED_READ_POLICY_RELATIONSHIP',
         entity: entityName,
-        message: `Read policy '${policy.name}' traverses a relationship; generated Convex queries remain internal until relationship preloading preserves runtime semantics.`,
+        message: `Read policy '${policy.name}' traverses relationship(s) ${unsupported.join(', ')} that Convex queries cannot hydrate (hasMany/through/invalid mapping); queries remain internal.`,
       });
       continue;
     }
-    const rendered = renderExpression(policy.expression, { selfVar });
+    for (const name of traversed) {
+      const dep = hydratableByName.get(name);
+      if (dep) usedRelationDeps.set(name, dep);
+    }
+    const rendered = renderExpression(policy.expression, {
+      selfVar,
+      relationVars: traversed.length > 0 ? relationVars : undefined,
+    });
     if (rendered.unresolved.length > 0) {
       renderable = false;
       diagnostics.push({
@@ -204,7 +246,14 @@ export function renderReadPolicies(
     });
   }
 
-  return { contextChecks, rowChecks, diagnostics, renderable };
+  return {
+    contextChecks,
+    rowChecks,
+    diagnostics,
+    renderable,
+    relationDeps: [...usedRelationDeps.values()],
+    relationVars,
+  };
 }
 
 /**

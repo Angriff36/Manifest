@@ -62,6 +62,7 @@ import {
   renderConvexUpdateVersionOcc,
 } from './version-occ.js';
 import { renderReadPolicies, resolveConvexReadVisibility } from './read-policies.js';
+import { renderReadPolicyRelationHydration } from './read-policy-relations.js';
 import {
   encryptedFieldNames,
   privateFieldNames,
@@ -542,12 +543,13 @@ export function generateQueries(
     const docPolicyPlan = renderReadPolicies(ir, entity.name, '__doc', {
       flagProviderImport: options.flagProviderImport,
     });
-    diagnostics.push(...listPolicyPlan.diagnostics);
+    diagnostics.push(...listPolicyPlan.diagnostics, ...docPolicyPlan.diagnostics);
     const policyGated = visibility.gated;
     const policyEnforceable = visibility.clientReadable;
     const qfn = policyEnforceable ? 'query' : 'internalQuery';
     const table = resolveConvexTableName(entity.name, options);
     const rf = resolveReadFilter(ir, entity, options);
+    const readRelationTenantProp = rf.hasTenant ? rf.tenantProp : undefined;
     const privates = privateFieldNames(entity);
     const encrypted = encryptedFieldNames(entity);
     const maskedFields = maskedFieldEmits(entity);
@@ -641,8 +643,24 @@ export function generateQueries(
       let visibleExpr = '__plainRows';
       if (policyGated && policyEnforceable) {
         if (listPolicyPlan.rowChecks.length > 0) {
+          const rowHydration =
+            listPolicyPlan.relationDeps.length > 0
+              ? renderReadPolicyRelationHydration(
+                  ir,
+                  options,
+                  entity,
+                  listPolicyPlan.relationDeps,
+                  '__row',
+                  readRelationTenantProp,
+                )
+              : { lines: [] as string[], diagnostics: [] as ProjectionDiagnostic[] };
+          diagnostics.push(...rowHydration.diagnostics);
           lines.push(`    const __visibleRows: any[] = [];`);
           lines.push(`    for (const __row of __plainRows) {`);
+          for (const hydrateLine of rowHydration.lines) {
+            // Hydration helpers emit 4-space indent; nest under the for-body.
+            lines.push(`  ${hydrateLine}`);
+          }
           for (const check of listPolicyPlan.rowChecks) {
             lines.push(
               `      if (!__allowsRead(${JSON.stringify(check.policyName)}, ${JSON.stringify(entity.name)}, () => ${check.code})) continue;`,
@@ -701,6 +719,18 @@ export function generateQueries(
         lines.push(`    const __doc = __rawDoc;`);
       }
       if (policyGated && policyEnforceable) {
+        if (docPolicyPlan.relationDeps.length > 0) {
+          const docHydration = renderReadPolicyRelationHydration(
+            ir,
+            options,
+            entity,
+            docPolicyPlan.relationDeps,
+            '__doc',
+            readRelationTenantProp,
+          );
+          diagnostics.push(...docHydration.diagnostics);
+          lines.push(...docHydration.lines);
+        }
         for (const check of docPolicyPlan.rowChecks) {
           lines.push(
             `    if (!__allowsRead(${JSON.stringify(check.policyName)}, ${JSON.stringify(entity.name)}, () => ${check.code})) return null;`,

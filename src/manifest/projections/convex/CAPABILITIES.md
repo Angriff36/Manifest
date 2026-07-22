@@ -55,7 +55,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | `trustedSource` params        | Exposed as normal args unless auth/create seam injects                                                                       | `CONVEX_PARTIAL_TRUSTED_SOURCE` (info) |
 | Referential onDelete/onUpdate | No schema cascade                                                                                                            | `CONVEX_REFERENTIAL_ACTION_DEFERRED`   |
 | Computed relation aggregates  | Self-only helpers; `count_of`/`sum`/`avg`/`min_of`/`max_of`/`filter`/`map`/`flat_map` on hydrated hasMany in mutations      | Unresolved → `CONVEX_UNRESOLVED_COMPUTED` |
-| Read/`all` policies           | Public with `authContextImport` (+ `flagProviderImport` when policies call `flag()`); relationship traversal and read `rateLimit` remain internal | `CONVEX_UNSUPPORTED_READ_POLICY_*`     |
+| Read/`all` policies           | Public with `authContextImport` (+ `flagProviderImport` when policies call `flag()`); `belongsTo`/`ref` hydration on reads; `hasMany`/`through` and read `rateLimit` remain internal | `CONVEX_UNSUPPORTED_READ_POLICY_*`     |
 | `policyMode: 'skip'`          | Omits authorization only                                                                                                     | Documented escape hatch                |
 | `realtime` hint               | Convex queries already reactive; no SSE artifact                                                                             | `CONVEX_PARTIAL_REALTIME` (info)       |
 | Computed `cache` directives   | Helpers stay pure; Manifest cache strategies not lowered                                                                     | `CONVEX_PARTIAL_COMPUTED_CACHE` (info) |

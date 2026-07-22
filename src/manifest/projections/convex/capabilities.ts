@@ -28,7 +28,7 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   {
     feature: 'Read/all policies on generated queries',
     status: 'partial',
-    note: 'Renderable predicates with authContextImport; flag() public when flagProviderImport set; relationship traversal and read rateLimit stay internal (fail closed). Write/execute policy rateLimit emits on mutations.',
+    note: 'Renderable predicates with authContextImport; flag() public when flagProviderImport set; belongsTo/ref read-policy hydration; hasMany/through + read rateLimit stay internal (fail closed). Write/execute policy rateLimit emits on mutations.',
   },
   { feature: 'Roles + roleAllows', status: 'supported' },
   { feature: 'Events + emit payloads', status: 'supported' },
