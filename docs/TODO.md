@@ -163,6 +163,11 @@ non-binding navigation mirror only.
       ~~command retry (REJECTED_LOUD)~~
       ~~command rateLimit~~
       ~~masking~~
+- [x] **Convex §6 projection row PARTIAL → FULLY_IMPLEMENTED** — closed
+      2026-07-22: capability map honesty — read policies / relation aggregates /
+      `policyMode: 'skip'` marked supported; only intentional
+      `CONVEX_PARTIAL_REALTIME` / `CONVEX_PARTIAL_COMPUTED_CACHE` remain Partial.
+      Proof: `capabilities-status.test.ts` + matrix §6.
 - [x] **Next.js reads `ir.tenant`** — fixed 2026-07-22: `normalizeOptions(options, ir)`
       turns on tenant filtering and uses `ir.tenant.property` when declared;
       explicit options still win. Proof: `nextjs/generator.test.ts`.
@@ -190,7 +195,9 @@ non-binding navigation mirror only.
       `config-validate.test.ts`.
 - [x] **Config vNext G2 (`validation.failOn`)** — fixed 2026-07-15: CI exit
       policy for `compile`/`validate` (`block`/`warn`/`never`); `--fail-on` CLI + `validate --strict` alias; does not change language severities. Rule
-      registries / requireDescriptions remain open.
+      ~~registries / requireDescriptions remain open~~ **Update (2026-07-22):**
+      `validation.rules` shipped; `requireDescriptions` still open (no IR
+      description field).
 - [x] **Config vNext G10 (`driftGates`)** — fixed 2026-07-15: `manifest ci-gate`
       enforces `effectiveConfigSnapshot` / `failOnConfigDrift` /
       `failOnGeneratedDrift` / `pinIrSchemaVersion`; `--write-snapshot` refreshes

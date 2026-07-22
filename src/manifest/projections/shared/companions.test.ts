@@ -162,4 +162,41 @@ describe('generateRuntimeFactoryModule', () => {
       generateRuntimeFactoryModule({ ir: tinyIR }),
     );
   });
+
+  it('Config G7 — emits deterministicMode on zero-config and config-import factories', () => {
+    const zero = generateRuntimeFactoryModule({ ir: tinyIR, deterministicMode: true });
+    expect(zero).toContain('return new RuntimeEngine(ir, context, { deterministicMode: true });');
+
+    const withConfig = generateRuntimeFactoryModule({
+      ir: tinyIR,
+      runtimeConfigImport: '../../manifest.config',
+      deterministicMode: true,
+    });
+    expect(withConfig).toContain(
+      'return new RuntimeEngine(ir, resolvedContext, { storeProvider, deterministicMode: true });',
+    );
+  });
+
+  it('Config G7 — emits now/generateId and defaultContext merge', () => {
+    const code = generateRuntimeFactoryModule({
+      ir: tinyIR,
+      forbidWallClock: true,
+      seed: 42,
+      defaultContext: { source: 'api' },
+    });
+    expect(code).toContain('const now = () => 42;');
+    expect(code).toContain('const generateId = () => "id-42-" + String(++__manifestIdSeq);');
+    expect(code).toContain('"source":"api"');
+    expect(code).toContain('now, generateId');
+  });
+
+  it('Config G7 — emits maxParallelCommands on the factory', () => {
+    const code = generateRuntimeFactoryModule({
+      ir: tinyIR,
+      maxParallelCommands: 4,
+    });
+    expect(code).toContain(
+      'return new RuntimeEngine(ir, context, { maxParallelCommands: 4 });',
+    );
+  });
 });

@@ -33,6 +33,7 @@ import type {
 import type { HonoProjectionOptions } from './types';
 import type { RouteCasing } from '../shared/naming.js';
 import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
+import { resolveRuntimeFactoryFanIn } from '../../runtime-config.js';
 import { resolveRouteContract, zodParamsSchemaName } from '../shared/route-contract.js';
 import { HONO_DESCRIPTOR_META } from './descriptor-meta.js';
 
@@ -91,6 +92,8 @@ interface NormalizedOptions {
   publicReads: boolean;
   includeComments: boolean;
   emitCompanions: boolean;
+  /** Config G7 — from top-level `runtime` via `__manifestRuntime`. */
+  runtimeFanIn: ReturnType<typeof resolveRuntimeFactoryFanIn>;
 }
 
 /**
@@ -99,6 +102,7 @@ interface NormalizedOptions {
  * options always win. Tenant context stays on by default (historical Hono).
  */
 function normalizeOptions(opts: HonoProjectionOptions, ir?: IR): NormalizedOptions {
+  const fanIn = resolveRuntimeFactoryFanIn(opts as Record<string, unknown>);
   return {
     authImportPath: opts.authImportPath ?? './middleware/auth',
     authProvider: opts.authProvider ?? 'custom',
@@ -116,6 +120,7 @@ function normalizeOptions(opts: HonoProjectionOptions, ir?: IR): NormalizedOptio
     publicReads: opts.publicReads ?? false,
     includeComments: opts.includeComments ?? true,
     emitCompanions: opts.emitCompanions ?? true,
+    runtimeFanIn: fanIn,
   };
 }
 
@@ -693,7 +698,13 @@ function generateRuntimeCompanionModule(ir: IR, options: NormalizedOptions): str
       : 'createManifestEngine';
 
   const lines: string[] = [];
-  lines.push(generateRuntimeFactoryModule({ ir, exportName: engineFactory }).trimEnd());
+  lines.push(
+    generateRuntimeFactoryModule({
+      ir,
+      exportName: engineFactory,
+      ...options.runtimeFanIn,
+    }).trimEnd(),
+  );
   lines.push('');
   lines.push('// ── Router-facing runtime facade ────────────────────────────────────────');
   lines.push('// Adapts RuntimeEngine to the argument shapes the generated routes call.');

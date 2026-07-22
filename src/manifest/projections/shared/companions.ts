@@ -133,6 +133,18 @@ export interface RuntimeFactoryModuleInput {
    * generated routes import.
    */
   exportName?: string;
+  /**
+   * Config G7 — when true, emit `deterministicMode: true` on RuntimeEngine options.
+   */
+  deterministicMode?: boolean;
+  /** Config G7 — inject RuntimeOptions.now (fixed ms). */
+  forbidWallClock?: boolean;
+  /** Config G7 — fixed now ms + generateId seed prefix. */
+  seed?: number;
+  /** Config G7 — merged under caller context (caller wins). */
+  defaultContext?: Record<string, unknown>;
+  /** Config G7 — RuntimeOptions.maxParallelCommands on the factory. */
+  maxParallelCommands?: number;
 }
 
 /**
@@ -147,8 +159,75 @@ export interface RuntimeFactoryModuleInput {
  * so no type-only subpath (which may not exist in the package `exports` map)
  * needs to resolve in the app.
  */
+function formatRuntimeEngineOptions(args: {
+  withStoreProvider: boolean;
+  deterministicMode: boolean;
+  injectNow: boolean;
+  injectGenerateId: boolean;
+  maxParallelCommands: number | undefined;
+}): string {
+  const parts: string[] = [];
+  if (args.withStoreProvider) parts.push('storeProvider');
+  if (args.deterministicMode) parts.push('deterministicMode: true');
+  if (args.injectNow) parts.push('now');
+  if (args.injectGenerateId) parts.push('generateId');
+  if (
+    typeof args.maxParallelCommands === 'number' &&
+    Number.isInteger(args.maxParallelCommands) &&
+    args.maxParallelCommands >= 1
+  ) {
+    parts.push(`maxParallelCommands: ${args.maxParallelCommands}`);
+  }
+  if (parts.length === 0) return '';
+  return `, { ${parts.join(', ')} }`;
+}
+
+function emitDeterminismHelpers(
+  lines: string[],
+  args: { forbidWallClock: boolean; seed: number | undefined },
+): { injectNow: boolean; injectGenerateId: boolean } {
+  const seed = args.seed ?? 0;
+  const injectNow = args.forbidWallClock === true;
+  const injectGenerateId = typeof args.seed === 'number';
+  if (injectNow) {
+    lines.push(`const now = () => ${JSON.stringify(seed)};`);
+  }
+  if (injectGenerateId) {
+    lines.push(`let __manifestIdSeq = 0;`);
+    lines.push(
+      `const generateId = () => ${JSON.stringify(`id-${seed}-`)} + String(++__manifestIdSeq);`,
+    );
+  }
+  if (injectNow || injectGenerateId) lines.push('');
+  return { injectNow, injectGenerateId };
+}
+
+function emitContextMerge(
+  lines: string[],
+  defaultContext: Record<string, unknown> | undefined,
+  contextExpr: string,
+): string {
+  if (!defaultContext || Object.keys(defaultContext).length === 0) return contextExpr;
+  lines.push(
+    `const __manifestDefaultContext = ${JSON.stringify(defaultContext)} as ManifestContext;`,
+  );
+  lines.push(
+    `const __manifestMergedContext = { ...__manifestDefaultContext, ...${contextExpr} } as ManifestContext;`,
+  );
+  return '__manifestMergedContext';
+}
+
 export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): string {
-  const { ir, runtimeConfigImport, exportName = 'createManifestRuntime' } = input;
+  const {
+    ir,
+    runtimeConfigImport,
+    exportName = 'createManifestRuntime',
+    deterministicMode = false,
+    forbidWallClock = false,
+    seed,
+    defaultContext,
+    maxParallelCommands,
+  } = input;
   const durableStores = ir.stores.filter(
     (store) => !['memory', 'localStorage'].includes(store.target),
   );
@@ -188,6 +267,10 @@ export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): 
   lines.push('');
   lines.push(`const ir = ${irJson} as unknown as ManifestIR;`);
   lines.push('');
+  const { injectNow, injectGenerateId } = emitDeterminismHelpers(lines, {
+    forbidWallClock,
+    seed,
+  });
 
   if (runtimeConfigImport) {
     lines.push('// Mirrors createStoreProvider from @angriff36/manifest (CLI utils): resolves a');
@@ -254,29 +337,40 @@ export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): 
     lines.push('  context: ManifestContext = {},');
     lines.push('  auth?: Record<string, unknown>,');
     lines.push('): Promise<RuntimeEngine> {');
-    lines.push('  let resolvedContext: ManifestContext = context;');
+    const mergedBase = emitContextMerge(lines, defaultContext, 'context');
+    lines.push(`  let resolvedContext: ManifestContext = ${mergedBase};`);
     lines.push(
       '  if (typeof (manifestConfig as RuntimeConfigLike | undefined)?.resolveUser === "function") {',
     );
     lines.push('    const authInput = auth ?? {');
     lines.push(
-      '      userId: (context as { actorId?: string }).actorId ?? (context as { user?: { id?: string } }).user?.id,',
+      '      userId: (resolvedContext as { actorId?: string }).actorId ?? (resolvedContext as { user?: { id?: string } }).user?.id,',
     );
     lines.push('    };');
     lines.push('    const user = await resolveUser(authInput);');
     lines.push('    if (user && typeof user === "object") {');
     lines.push('      const userRecord = user as { id?: string; tenantId?: string };');
     lines.push('      resolvedContext = {');
-    lines.push('        ...context,');
-    lines.push('        user: { ...(context as { user?: object }).user, ...user },');
-    lines.push('        actorId: (context as { actorId?: string }).actorId ?? userRecord.id,');
+    lines.push('        ...resolvedContext,');
+    lines.push('        user: { ...(resolvedContext as { user?: object }).user, ...user },');
     lines.push(
-      '        tenantId: (context as { tenantId?: string }).tenantId ?? userRecord.tenantId,',
+      '        actorId: (resolvedContext as { actorId?: string }).actorId ?? userRecord.id,',
+    );
+    lines.push(
+      '        tenantId: (resolvedContext as { tenantId?: string }).tenantId ?? userRecord.tenantId,',
     );
     lines.push('      } as ManifestContext;');
     lines.push('    }');
     lines.push('  }');
-    lines.push('  return new RuntimeEngine(ir, resolvedContext, { storeProvider });');
+    lines.push(
+      `  return new RuntimeEngine(ir, resolvedContext${formatRuntimeEngineOptions({
+        withStoreProvider: true,
+        deterministicMode,
+        injectNow,
+        injectGenerateId,
+        maxParallelCommands,
+      })});`,
+    );
     lines.push('}');
   } else {
     lines.push(`export async function ${exportName}(`);
@@ -287,7 +381,15 @@ export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): 
         `  throw new Error(${JSON.stringify(`A storeProvider is required for durable stores: ${durableStoreSummary}. Configure runtimeConfigImport; zero-config runtime creation is fail-closed.`)});`,
       );
     } else {
-      lines.push('  return new RuntimeEngine(ir, context);');
+      const ctxExpr = emitContextMerge(lines, defaultContext, 'context');
+      const opts = formatRuntimeEngineOptions({
+        withStoreProvider: false,
+        deterministicMode,
+        injectNow,
+        injectGenerateId,
+        maxParallelCommands,
+      });
+      lines.push(`  return new RuntimeEngine(ir, ${ctxExpr}${opts});`);
     }
     lines.push('}');
   }

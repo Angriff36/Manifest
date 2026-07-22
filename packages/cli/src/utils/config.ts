@@ -37,9 +37,14 @@ export interface ManifestConfig {
   // Defaults to: prisma/schema.prisma, schema.prisma, or db/schema.prisma
   prismaSchema?: string;
 
-  /** Config G2 — CI exit policy for compile/validate. */
+  /** Config G2 — CI exit policy + optional additive rule registry. */
   validation?: {
     failOn?: 'block' | 'warn' | 'never';
+    rules?: {
+      'missing-policy'?: 'off' | 'warn' | 'error';
+      'unused-entity'?: 'off' | 'warn' | 'error';
+      'orphan-relationship'?: 'off' | 'warn' | 'error';
+    };
   };
 
   /**
@@ -63,6 +68,23 @@ export interface ManifestConfig {
     deterministic?: boolean;
     lockfile?: string;
     failIfStale?: boolean;
+  };
+
+  /**
+   * Config G7 — central runtime knobs for generate (executionMode +
+   * determinism.deterministicMode + stores → runtimeConfigImport).
+   */
+  runtime?: {
+    executionMode?: 'inline' | 'externalExecutor';
+    determinism?: {
+      deterministicMode?: boolean;
+      forbidWallClock?: boolean;
+      seed?: number;
+    };
+    /** Fans into projection `runtimeConfigImport` when unset. */
+    stores?: string;
+    /** Merged under createManifestRuntime caller context (caller wins). */
+    defaultContext?: Record<string, unknown>;
   };
 
   /** Config G10 — declarative CI drift gates for `manifest ci-gate`. */

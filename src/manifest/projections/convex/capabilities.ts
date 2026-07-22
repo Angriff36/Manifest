@@ -27,7 +27,7 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   { feature: 'Command policies / guards / constraints (in mutations)', status: 'supported' },
   {
     feature: 'Read/all policies on generated queries',
-    status: 'partial',
+    status: 'supported',
     note: 'Renderable predicates with authContextImport; flag() public when flagProviderImport set; belongsTo/ref + hasMany + hasMany-through (single-column join FKs) hydration. Read/all policy rateLimit REJECTED_LOUD (queries cannot mutate buckets). Unhydratable relation edges stay internal (fail closed). Write/execute/delete policy rateLimit emits on mutations.',
   },
   { feature: 'Roles + roleAllows', status: 'supported' },
@@ -89,15 +89,19 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   },
   {
     feature: 'Computed relation aggregates',
-    status: 'partial',
-    note: 'Unresolved unless self-only or count via reactions.',
+    status: 'supported',
+    note: 'Self-only helpers; count_of/sum/avg/min_of/max_of/filter/map/flat_map on hydrated hasMany in mutations (+ nested hydrate). Unresolved expressions → CONVEX_UNRESOLVED_COMPUTED (never silent drop).',
   },
   {
     feature: 'Encrypted properties',
     status: 'supported',
     note: 'Runtime-compatible envelope via encryptionImport; missing seam is a hard diagnostic.',
   },
-  { feature: "policyMode: 'skip'", status: 'partial', note: 'Omits authorization only.' },
+  {
+    feature: "policyMode: 'skip'",
+    status: 'supported',
+    note: 'Documented escape hatch — omits authorization policy checks only (guards/constraints still run).',
+  },
   {
     feature: 'Approvals',
     status: 'unsupported',

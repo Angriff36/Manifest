@@ -23,6 +23,7 @@ import type {
   RemixProjectionOptions,
 } from '../interface';
 import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
+import { resolveRuntimeFactoryFanIn } from '../../runtime-config.js';
 import { REMIX_DESCRIPTOR_META } from './descriptor-meta.js';
 
 /**
@@ -67,6 +68,8 @@ interface NormalizedRemixOptions {
   unauthorizedStatus: number;
   remixVersion: 'v2' | 'v7';
   emitCompanions: boolean;
+  /** Config G7 — from top-level `runtime` via `__manifestRuntime`. */
+  runtimeFanIn: ReturnType<typeof resolveRuntimeFactoryFanIn>;
   tenantProvider?: {
     importPath: string;
     functionName: string;
@@ -104,6 +107,7 @@ export const REMIX_DEFAULTS = {
  * Explicit options always win.
  */
 function normalizeOptions(options?: RemixProjectionOptions, ir?: IR): NormalizedRemixOptions {
+  const fanIn = resolveRuntimeFactoryFanIn(options as Record<string, unknown> | undefined);
   return {
     authProvider: options?.authProvider ?? REMIX_DEFAULTS.authProvider,
     authImportPath: options?.authImportPath ?? REMIX_DEFAULTS.authImportPath,
@@ -125,6 +129,7 @@ function normalizeOptions(options?: RemixProjectionOptions, ir?: IR): Normalized
     unauthorizedStatus: options?.unauthorizedStatus ?? REMIX_DEFAULTS.unauthorizedStatus,
     remixVersion: options?.remixVersion ?? REMIX_DEFAULTS.remixVersion,
     emitCompanions: options?.emitCompanions ?? REMIX_DEFAULTS.emitCompanions,
+    runtimeFanIn: fanIn,
     tenantProvider: options?.tenantProvider,
   };
 }
@@ -952,7 +957,7 @@ function generateCompanions(ir: IR, options: NormalizedRemixOptions): Projection
   emit(
     'remix.companions.runtime',
     options.runtimeImportPath,
-    () => generateRuntimeFactoryModule({ ir }),
+    () => generateRuntimeFactoryModule({ ir, ...options.runtimeFanIn }),
     'runtime factory',
   );
 

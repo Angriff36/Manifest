@@ -61,24 +61,34 @@ describe('layerProjectionOptions (per-projection + global naming merge)', () => 
 
   it('layers the global naming under a projection that did not set its own', () => {
     expect(layerProjectionOptions(build, 'prisma')).toEqual({
+      __manifestRuntime: { deterministicMode: false, executionMode: 'inline', storesPath: undefined, defaultContext: undefined, forbidWallClock: false, seed: undefined, maxParallelCommands: undefined },
       provider: 'postgresql',
       naming: 'snake_case',
     });
   });
 
   it('lets a per-projection naming override the global default', () => {
-    expect(layerProjectionOptions(build, 'zod')).toEqual({ naming: 'camelCase' });
+    expect(layerProjectionOptions(build, 'zod')).toEqual({
+      __manifestRuntime: { deterministicMode: false, executionMode: 'inline', storesPath: undefined, defaultContext: undefined, forbidWallClock: false, seed: undefined, maxParallelCommands: undefined },
+      naming: 'camelCase',
+    });
   });
 
   it('returns just the global naming for an unconfigured projection', () => {
-    expect(layerProjectionOptions(build, 'kysely')).toEqual({ naming: 'snake_case' });
+    expect(layerProjectionOptions(build, 'kysely')).toEqual({
+      __manifestRuntime: { deterministicMode: false, executionMode: 'inline', storesPath: undefined, defaultContext: undefined, forbidWallClock: false, seed: undefined, maxParallelCommands: undefined },
+      naming: 'snake_case',
+    });
   });
 
   it('is a no-op (no naming key) when no global naming is set', () => {
     const noNaming: ManifestConfig = {
       projections: { prisma: { options: { provider: 'sqlite' } } },
     };
-    expect(layerProjectionOptions(noNaming, 'prisma')).toEqual({ provider: 'sqlite' });
+    expect(layerProjectionOptions(noNaming, 'prisma')).toEqual({
+      __manifestRuntime: { deterministicMode: false, executionMode: 'inline', storesPath: undefined, defaultContext: undefined, forbidWallClock: false, seed: undefined, maxParallelCommands: undefined },
+      provider: 'sqlite',
+    });
   });
 });
 

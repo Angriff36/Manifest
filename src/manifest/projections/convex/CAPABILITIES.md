@@ -51,14 +51,14 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | `encryptionImport` / encrypted properties        | queries + mutations          | Versioned envelope; decrypt before policy/read projection, encrypt before store writes       |
 | `trustedSource` (`from context.*`)               | mutations + http dispatcher  | Omitted from client args; injected from `getAuthContext` (`__auth.context ?? __auth`)          |
 | React client hooks (`useQuery` / `useMutation`)  | react                        | Skips only read-gated entities whose public policy queries cannot be rendered                |
+| Computed relation aggregates                     | computed + mutations         | Self-only helpers; `count_of`/`sum`/`avg`/`min_of`/`max_of`/`filter`/`map`/`flat_map` on hydrated hasMany; unresolved → `CONVEX_UNRESOLVED_COMPUTED` |
+| Read/`all` policies on queries                   | queries                      | Public with `authContextImport` (+ `flagProviderImport` for `flag()`); belongsTo/ref/hasMany/through hydration; unhydratable edges internal; read `rateLimit` Unsupported (error) |
+| `policyMode: 'skip'`                             | mutations                    | Documented escape hatch — omits authorization only (guards/constraints still run)            |
 
-## Partial (limitation stated)
+## Partial (intentional platform semantics — not unfinished emit)
 
 | IR construct                  | Limitation                                                                                                                   | Diagnostic / note                      |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| Computed relation aggregates  | Self-only helpers; `count_of`/`sum`/`avg`/`min_of`/`max_of`/`filter`/`map`/`flat_map` on hydrated hasMany in mutations      | Unresolved → `CONVEX_UNRESOLVED_COMPUTED` |
-| Read/`all` policies           | Public with `authContextImport` (+ `flagProviderImport` when policies call `flag()`); relationship hydration for belongsTo/ref/hasMany/through (single-column FKs). Unhydratable edges stay internal. Read `rateLimit` is Unsupported (error). | `CONVEX_UNSUPPORTED_READ_POLICY_*`     |
-| `policyMode: 'skip'`          | Omits authorization only                                                                                                     | Documented escape hatch                |
 | `realtime` hint               | Convex queries already reactive; no SSE artifact                                                                             | `CONVEX_PARTIAL_REALTIME` (info)       |
 | Computed `cache` directives   | Helpers stay pure; Manifest cache strategies not lowered                                                                     | `CONVEX_PARTIAL_COMPUTED_CACHE` (info) |
 

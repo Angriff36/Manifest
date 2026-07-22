@@ -21,13 +21,14 @@
  *
  * Scope note: these types describe the config surface that ACTUALLY ships today
  * (see docs/spec/config/manifest.config.md). Config G5 (`projections.enabled` /
- * `projections.defaults`), Config G2 (`validation.failOn`), Config G3
- * (`mergeIntegrity`), Config G4 (`provenance`), Config G8 (`hooks.lifecycle`),
+ * `projections.defaults`), Config G2 (`validation.failOn` + `rules`), Config G3
+ * (`mergeIntegrity`), Config G4 (`provenance`), Config G7 (`runtime` including
+ * concurrency.maxParallelCommands), Config G8 (`hooks.lifecycle`),
  * Config G9 (`plugins.order`/`capabilities`), and Config G10 (`driftGates`)
- * are modelled. Still proposed only: G2 rule registries / requireDescriptions,
- * G7 runtime config (see manifest-config-vnext.md). The JSON schema at
- * docs/spec/config/manifest.config.schema.json remains the executable contract
- * that `manifest config validate` enforces for the YAML/build config.
+ * are modelled. Still proposed only: G2 `requireDescriptions` (no IR description
+ * field). The JSON
+ * schema at docs/spec/config/manifest.config.schema.json remains the executable
+ * contract that `manifest config validate` enforces for the YAML/build config.
  */
 
 import type { NamingConventionInput } from './projections/shared/naming.js';
@@ -39,6 +40,8 @@ import {
 } from './naming-config.js';
 import type { ManifestMergeIntegrityConfig } from './merge-integrity.js';
 import type { ManifestProvenanceConfig } from './provenance-config.js';
+import type { ManifestRuntimeBuildConfig } from './runtime-config.js';
+import { applyRuntimeConfigToProjectionOptions } from './runtime-config.js';
 
 export type { NamingConventionInput };
 export type {
@@ -60,6 +63,30 @@ export {
   resolveCompiledAt,
   resolveProvenanceConfig,
 } from './provenance-config.js';
+export type {
+  ManifestRuntimeBuildConfig,
+  ManifestRuntimeConcurrencyConfig,
+  ManifestRuntimeDeterminismConfig,
+  ResolvedRuntimeConfig,
+  RuntimeExecutionMode,
+} from './runtime-config.js';
+export {
+  MANIFEST_RUNTIME_BAG_KEY,
+  applyRuntimeConfigToProjectionOptions,
+  readManifestRuntimeMeta,
+  resolveRuntimeConfig,
+} from './runtime-config.js';
+export type {
+  ValidationRuleDiagnostic,
+  ValidationRuleId,
+  ValidationRuleSeverity,
+  ValidationRulesConfig,
+} from './validation-rules.js';
+export {
+  VALIDATION_RULE_IDS,
+  resolveValidationRules,
+  runValidationRules,
+} from './validation-rules.js';
 export {
   resolveNamingConfig,
   extractNamingConvention,
@@ -156,6 +183,12 @@ export interface ManifestValidationConfig {
    * - `never`: always exit 0 (report-only)
    */
   failOn?: ManifestValidationFailOn;
+  /**
+   * Config G2 — optional additive lint rules (`off` | `warn` | `error`).
+   * Does not change language severities. `requireDescriptions` is not shipped
+   * (entities/commands have no IR description field yet).
+   */
+  rules?: import('./validation-rules.js').ValidationRulesConfig;
 }
 
 /** Config G10 — declarative CI drift gates (`manifest ci-gate`). */
@@ -341,6 +374,11 @@ export interface ManifestBuildConfig {
    * failIfStale). IR always includes required provenance fields.
    */
   provenance?: ManifestProvenanceConfig;
+  /**
+   * Config G7 — central runtime knobs for generate (executionMode → nextjs
+   * dispatcher; determinism.deterministicMode → factory RuntimeOptions).
+   */
+  runtime?: ManifestRuntimeBuildConfig;
   /** Config G10 — declarative drift gates for `manifest ci-gate`. */
   driftGates?: ManifestDriftGatesConfig;
   /**
@@ -486,6 +524,7 @@ export function resolveProjectionOptions(
   if (resolved.normalization || Object.keys(resolved.projections).length > 0) {
     projectionOptions.__manifestNaming = resolved;
   }
+  applyRuntimeConfigToProjectionOptions(build?.runtime, projectionName, projectionOptions);
   return projectionOptions;
 }
 

@@ -20,16 +20,18 @@ describe('resolveRuntimeConfig', () => {
       forbidWallClock: false,
       seed: undefined,
       defaultContext: undefined,
+      maxParallelCommands: undefined,
     });
   });
 
-  it('honors executionMode, determinism, stores, and defaultContext', () => {
+  it('honors executionMode, determinism, stores, defaultContext, and concurrency', () => {
     expect(
       resolveRuntimeConfig({
         executionMode: 'externalExecutor',
         determinism: { deterministicMode: true, forbidWallClock: true, seed: 42 },
         stores: './manifest.config',
         defaultContext: { source: 'api' },
+        concurrency: { maxParallelCommands: 8 },
       }),
     ).toEqual({
       executionMode: 'externalExecutor',
@@ -38,7 +40,14 @@ describe('resolveRuntimeConfig', () => {
       forbidWallClock: true,
       seed: 42,
       defaultContext: { source: 'api' },
+      maxParallelCommands: 8,
     });
+  });
+
+  it('ignores non-positive maxParallelCommands', () => {
+    expect(
+      resolveRuntimeConfig({ concurrency: { maxParallelCommands: 0 } }).maxParallelCommands,
+    ).toBeUndefined();
   });
 });
 
@@ -113,7 +122,18 @@ describe('resolveRuntimeFactoryFanIn', () => {
       forbidWallClock: true,
       seed: 7,
       defaultContext: { source: 'api' },
+      maxParallelCommands: undefined,
     });
+  });
+
+  it('fans concurrency.maxParallelCommands into factory fan-in', () => {
+    const bag: Record<string, unknown> = {};
+    applyRuntimeConfigToProjectionOptions(
+      { concurrency: { maxParallelCommands: 3 } },
+      'express',
+      bag,
+    );
+    expect(resolveRuntimeFactoryFanIn(bag).maxParallelCommands).toBe(3);
   });
 });
 

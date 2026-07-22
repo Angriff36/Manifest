@@ -95,7 +95,9 @@ describe('projections.enabled / defaults (Config G5)', () => {
       },
       'zod',
     );
-    expect(opts).toEqual({
+    // Exclude internal metadata keys (__manifestRuntime) from assertion
+    const { __manifestRuntime, ...userOptions } = opts;
+    expect(userOptions).toEqual({
       includeComments: true,
       indentSize: 4,
       strict: true,
@@ -121,7 +123,9 @@ describe('resolveProjectionOptions — global naming inheritance', () => {
       { naming: 'snake_case', projections: { prisma: { options: { provider: 'postgresql' } } } },
       'prisma',
     );
-    expect(opts).toEqual({ provider: 'postgresql', naming: 'snake_case' });
+    // Exclude internal metadata keys (__manifestRuntime, __manifestNaming) from assertion
+    const { __manifestRuntime, __manifestNaming, ...userOptions } = opts;
+    expect(userOptions).toEqual({ provider: 'postgresql', naming: 'snake_case' });
   });
 
   it('lets a per-projection naming override the global default', () => {
@@ -140,17 +144,28 @@ describe('resolveProjectionOptions — global naming inheritance', () => {
       { projections: { prisma: { options: { provider: 'mysql' } } } },
       'prisma',
     );
-    expect(opts).toEqual({ provider: 'mysql' });
+    // Exclude internal metadata keys (__manifestRuntime) from assertion
+    const { __manifestRuntime, ...userOptions } = opts;
+    expect(userOptions).toEqual({ provider: 'mysql' });
     expect(opts.naming).toBeUndefined();
   });
 
   it('returns an empty bag (no naming) for an unknown projection with no global', () => {
-    expect(resolveProjectionOptions({}, 'prisma')).toEqual({});
-    expect(resolveProjectionOptions(undefined, 'prisma')).toEqual({});
+    // Exclude internal metadata keys (__manifestRuntime) from assertion
+    const opts1 = resolveProjectionOptions({}, 'prisma');
+    const { __manifestRuntime: _, ...userOpts1 } = opts1;
+    expect(userOpts1).toEqual({});
+
+    const opts2 = resolveProjectionOptions(undefined, 'prisma');
+    const { __manifestRuntime: __, ...userOpts2 } = opts2;
+    expect(userOpts2).toEqual({});
   });
 
   it('surfaces the global naming even when the projection block is absent', () => {
-    expect(resolveProjectionOptions({ naming: 'snake_case' }, 'prisma')).toEqual({
+    const opts = resolveProjectionOptions({ naming: 'snake_case' }, 'prisma');
+    // Exclude internal metadata keys (__manifestRuntime, __manifestNaming) from assertion
+    const { __manifestRuntime, __manifestNaming, ...userOptions } = opts;
+    expect(userOptions).toEqual({
       naming: 'snake_case',
     });
   });

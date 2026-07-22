@@ -375,7 +375,10 @@ export class IRCompiler {
       (options?.useCache ?? true) && !options?.compositionContext && !options?.nameRegistry;
     if (useCache) {
       const contentHash = await computeContentHash(source);
-      const cached = this.cache.get(contentHash);
+      // Config G4 — cache key must include deterministic provenance mode
+      // since it affects the compiledAt field and thus the IR hash
+      const cacheKey = `${contentHash}:${options?.deterministicProvenance ? 'det' : 'wall'}`;
+      const cached = this.cache.get(cacheKey);
       if (cached) {
         return { ir: cached as IR, diagnostics: [] };
       }
@@ -421,7 +424,9 @@ export class IRCompiler {
     // vNext: Cache the compiled IR
     if (useCache && ir) {
       const contentHash = await computeContentHash(source);
-      this.cache.set(contentHash, ir);
+      // Config G4 — cache key must include deterministic provenance mode
+      const cacheKey = `${contentHash}:${options?.deterministicProvenance ? 'det' : 'wall'}`;
+      this.cache.set(cacheKey, ir);
     }
 
     return { ir, diagnostics: this.diagnostics };

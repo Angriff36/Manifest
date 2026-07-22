@@ -2,8 +2,8 @@
  * Config G7 — central runtime build knobs (generation fan-in).
  *
  * Shipped: executionMode → nextjs dispatcher; deterministicMode / stores /
- * forbidWallClock+seed (now/generateId) / defaultContext → web factories.
- * Defer: concurrency (no RuntimeEngine seam yet).
+ * forbidWallClock+seed (now/generateId) / defaultContext → web factories;
+ * concurrency.maxParallelCommands → RuntimeOptions.maxParallelCommands.
  */
 
 export const RUNTIME_EXECUTION_MODES = ['inline', 'externalExecutor'] as const;
@@ -27,6 +27,14 @@ export interface ManifestRuntimeDeterminismConfig {
   seed?: number;
 }
 
+export interface ManifestRuntimeConcurrencyConfig {
+  /**
+   * Maps to RuntimeOptions.maxParallelCommands on the generated factory.
+   * Positive integer only; invalid values are ignored (unlimited).
+   */
+  maxParallelCommands?: number;
+}
+
 export interface ManifestRuntimeBuildConfig {
   /** Single source for dispatcher execution mode (nextjs). Default: inline. */
   executionMode?: RuntimeExecutionMode;
@@ -38,6 +46,8 @@ export interface ManifestRuntimeBuildConfig {
   stores?: string;
   /** Merged under caller context in createManifestRuntime (caller wins). */
   defaultContext?: Record<string, unknown>;
+  /** Top-level parallel runCommand budget for generated factories. */
+  concurrency?: ManifestRuntimeConcurrencyConfig;
 }
 
 export interface ResolvedRuntimeConfig {
@@ -47,6 +57,7 @@ export interface ResolvedRuntimeConfig {
   forbidWallClock: boolean;
   seed: number | undefined;
   defaultContext: Record<string, unknown> | undefined;
+  maxParallelCommands: number | undefined;
 }
 
 /** Internal bag key injected by resolveProjectionOptions. */
@@ -59,6 +70,7 @@ export interface ManifestRuntimeBagMeta {
   forbidWallClock: boolean;
   seed?: number;
   defaultContext?: Record<string, unknown>;
+  maxParallelCommands?: number;
 }
 
 export function isRuntimeExecutionMode(value: unknown): value is RuntimeExecutionMode {
@@ -70,6 +82,10 @@ export function isRuntimeExecutionMode(value: unknown): value is RuntimeExecutio
 
 function resolveSeed(raw: unknown): number | undefined {
   return typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
+}
+
+function resolveMaxParallelCommands(raw: unknown): number | undefined {
+  return typeof raw === 'number' && Number.isInteger(raw) && raw >= 1 ? raw : undefined;
 }
 
 function resolveDefaultContext(
@@ -95,6 +111,7 @@ export function resolveRuntimeConfig(
     forbidWallClock: raw?.determinism?.forbidWallClock === true,
     seed: resolveSeed(raw?.determinism?.seed),
     defaultContext: resolveDefaultContext(raw?.defaultContext),
+    maxParallelCommands: resolveMaxParallelCommands(raw?.concurrency?.maxParallelCommands),
   };
 }
 
@@ -115,6 +132,7 @@ export function applyRuntimeConfigToProjectionOptions(
     forbidWallClock: resolved.forbidWallClock,
     seed: resolved.seed,
     defaultContext: resolved.defaultContext,
+    maxParallelCommands: resolved.maxParallelCommands,
   };
   bag[MANIFEST_RUNTIME_BAG_KEY] = meta;
 
@@ -160,6 +178,7 @@ export function readManifestRuntimeMeta(
     defaultContext: resolveDefaultContext(
       rec.defaultContext as Record<string, unknown> | undefined,
     ),
+    maxParallelCommands: resolveMaxParallelCommands(rec.maxParallelCommands),
   };
 }
 
@@ -169,6 +188,7 @@ export interface RuntimeFactoryFanIn {
   forbidWallClock: boolean;
   seed: number | undefined;
   defaultContext: Record<string, unknown> | undefined;
+  maxParallelCommands: number | undefined;
 }
 
 /** Factory knobs for companions — reads bag meta + optional explicit import. */
@@ -186,5 +206,6 @@ export function resolveRuntimeFactoryFanIn(
     forbidWallClock: meta?.forbidWallClock === true,
     seed: meta?.seed,
     defaultContext: meta?.defaultContext,
+    maxParallelCommands: meta?.maxParallelCommands,
   };
 }

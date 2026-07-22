@@ -8,6 +8,7 @@ import { glob } from 'glob';
 import chalk from 'chalk';
 import ora, { Ora } from 'ora';
 import type { IR } from '@angriff36/manifest/ir';
+import type { ResolvedProvenanceConfig } from '@angriff36/manifest/config';
 import { writeTextFile } from '../utils/dry-run-fs.js';
 
 async function loadCompiler() {
@@ -82,14 +83,29 @@ async function getManifestFiles(source: string, options: CompileOptions): Promis
 interface CompileDiagnostic {
   severity?: string;
   message?: string;
+  code?: string;
   line?: number;
   column?: number;
+}
+
+async function collectValidationRuleDiagnostics(
+  ir: IR | null | undefined,
+): Promise<CompileDiagnostic[]> {
+  if (!ir) return [];
+  const { loadConfig } = await import('../utils/config.js');
+  const { runValidationRules } = await import('@angriff36/manifest/config');
+  const cfg = await loadConfig(process.cwd());
+  return runValidationRules(ir, cfg?.validation?.rules).map((d) => ({
+    severity: d.severity,
+    message: d.code ? `${d.code}: ${d.message}` : d.message,
+    code: d.code,
+  }));
 }
 
 interface CompiledFile {
   filePath: string;
   outputPath: string;
-  ir: unknown;
+  ir: IR | null;
   diagnostics: CompileDiagnostic[];
 }
 
@@ -152,10 +168,30 @@ async function writeCompiledFile(
   compiled: CompiledFile,
   options: CompileOptions,
   spinner: Ora,
+  provenancePolicy?: ResolvedProvenanceConfig,
 ): Promise<void> {
-  const { stabilizeProvenance } = await import('../utils/provenance-lockfile.js');
+  const { stabilizeProvenance, evaluateProvenanceStale } = await import('../utils/provenance-lockfile.js');
   const { computeIRHash } = await loadCompiler();
-  await stabilizeProvenance(compiled.ir as IR, compiled.outputPath, computeIRHash);
+
+  // Config G4 — check staleness BEFORE writing output
+  if (provenancePolicy?.failIfStale && provenancePolicy.lockfile) {
+    const stale = await evaluateProvenanceStale(
+      process.cwd(),
+      provenancePolicy,
+      compiled.ir!.provenance,
+    );
+    if (stale) {
+      spinner.fail(chalk.red(`Provenance check failed: ${stale}`));
+      throw new Error(stale);
+    }
+  }
+
+  await stabilizeProvenance(
+    compiled.ir as IR,
+    compiled.outputPath,
+    computeIRHash,
+    provenancePolicy?.deterministic ?? false,
+  );
 
   const jsonContent = options.pretty
     ? JSON.stringify(compiled.ir, null, 2)
@@ -171,33 +207,23 @@ async function writeCompiledFile(
 
 function printDiagnostics(diagnostics: CompileDiagnostic[]): void {
   if (diagnostics.length === 0) return;
-
   console.log('');
   console.log(chalk.bold('Diagnostics:'));
-  diagnostics.forEach((d: CompileDiagnostic) => {
+  for (const d of diagnostics) {
     const location =
       d.line !== undefined ? ` [${d.line}${d.column !== undefined ? `:${d.column}` : ''}]` : '';
-    if (d.severity === 'error') {
-      console.error(chalk.red(`  ✖${location} ${d.message}`));
-    } else if (d.severity === 'warning') {
-      console.warn(chalk.yellow(`  ⚠${location} ${d.message}`));
-    } else {
-      console.log(chalk.gray(`  ℹ${location} ${d.message}`));
-    }
-  });
+    const line = `  ${d.severity === 'error' ? '✖' : d.severity === 'warning' ? '⚠' : 'ℹ'}${location} ${d.message}`;
+    if (d.severity === 'error') console.error(chalk.red(line));
+    else if (d.severity === 'warning') console.warn(chalk.yellow(line));
+    else console.log(chalk.gray(line));
+  }
 }
 
-/**
- * Load the multi-compiler for merged compilation
- */
 async function loadMultiCompiler() {
   const module = await import('@angriff36/manifest/multi-compiler');
   return { compileProjectToIR: module.compileProjectToIR };
 }
 
-/**
- * Create a ResolverHost backed by the real filesystem
- */
 function createFsHost() {
   return {
     async readFile(absPath: string): Promise<string> {
@@ -296,12 +322,13 @@ async function compileMerged(source: string | undefined, options: CompileOptions
       provenance: cfg?.provenance,
     });
 
-    // Print diagnostics
-    const diagnostics = result.diagnostics as CompileDiagnostic[];
+    // Print diagnostics (+ Config G2 validation.rules)
+    const ruleDiags = await collectValidationRuleDiagnostics(result.ir as IR | null);
+    const diagnostics = [...(result.diagnostics as CompileDiagnostic[]), ...ruleDiags];
     const errors = diagnostics.filter((d: CompileDiagnostic) => d.severity === 'error');
     const warnings = diagnostics.filter((d: CompileDiagnostic) => d.severity === 'warning');
 
-    if (options.diagnostics || errors.length > 0) {
+    if (options.diagnostics || errors.length > 0 || ruleDiags.length > 0) {
       printDiagnostics(diagnostics);
     }
 
@@ -325,10 +352,24 @@ async function compileMerged(source: string | undefined, options: CompileOptions
         )
       : path.resolve(process.cwd(), 'merged.ir.json');
 
-    const { stabilizeProvenance, finalizeProvenanceLock } =
+    const { stabilizeProvenance, finalizeProvenanceLock, evaluateProvenanceStale } =
       await import('../utils/provenance-lockfile.js');
     const { computeIRHash } = await loadCompiler();
-    await stabilizeProvenance(result.ir as IR, outputPath, computeIRHash);
+    const { resolveProvenanceConfig } = await import('@angriff36/manifest/config');
+    const provenancePolicy = resolveProvenanceConfig(cfg?.provenance);
+
+    // Config G4 — check staleness BEFORE writing any output
+    const stale = await evaluateProvenanceStale(
+      process.cwd(),
+      provenancePolicy,
+      result.ir!.provenance,
+    );
+    if (stale) {
+      mergeSpinner.fail(chalk.red(`Provenance check failed: ${stale}`));
+      process.exit(1);
+    }
+
+    await stabilizeProvenance(result.ir as IR, outputPath, computeIRHash, provenancePolicy.deterministic);
     const jsonContent = options.pretty
       ? JSON.stringify(result.ir, null, 2)
       : JSON.stringify(result.ir);
@@ -339,7 +380,8 @@ async function compileMerged(source: string | undefined, options: CompileOptions
       `Merged ${result.sources.length} file(s) ${arrow} ${path.relative(process.cwd(), outputPath)}`,
     );
 
-    await finalizeProvenanceLock(result.ir as IR, options);
+    // Config G4 — write lockfile only after IR is successfully written
+    await finalizeProvenanceLock(result.ir as IR, { dryRun: options.dryRun, cwd: process.cwd() });
 
     if (warnings.length > 0) {
       console.log(chalk.yellow(`  ${warnings.length} warning(s)`));
@@ -456,16 +498,24 @@ export async function compileCommand(
       }),
     ) as CompileDiagnostic[];
 
+    // Config G2 — per-file IR rule registry (additive)
+    const ruleDiagnostics: CompileDiagnostic[] = [];
+    for (const file of compiledFiles) {
+      ruleDiagnostics.push(...(await collectValidationRuleDiagnostics(file.ir)));
+    }
+
     const allErrors = [
       ...compileErrors,
       ...registryDiagnostics.filter((d) => d.severity === 'error'),
+      ...ruleDiagnostics.filter((d) => d.severity === 'error'),
     ];
-    if (options.diagnostics || allErrors.length > 0) {
-      printDiagnostics([...allDiagnostics, ...registryDiagnostics]);
+    const combined = [...allDiagnostics, ...registryDiagnostics, ...ruleDiagnostics];
+    if (options.diagnostics || allErrors.length > 0 || ruleDiagnostics.length > 0) {
+      printDiagnostics(combined);
     }
 
     const gate = await resolveCompileGate(options);
-    const warningCount = allDiagnostics.filter((d) => d.severity === 'warning').length;
+    const warningCount = combined.filter((d) => d.severity === 'warning').length;
 
     if (errorCount > 0 || allErrors.length > 0) {
       spinner.warn(`Compiled 0 file(s), ${errorCount + allErrors.length} failed`);
@@ -475,10 +525,16 @@ export async function compileCommand(
       return;
     }
 
+    // Config G4 — load provenance policy for staleness checks
+    const { loadConfig } = await import('../utils/config.js');
+    const { resolveProvenanceConfig } = await import('@angriff36/manifest/config');
+    const cfg = await loadConfig(process.cwd());
+    const provenancePolicy = resolveProvenanceConfig(cfg?.provenance);
+
     let successCount = 0;
     for (const compiled of compiledFiles) {
       const fileSpinner = ora().start();
-      await writeCompiledFile(compiled, options, fileSpinner);
+      await writeCompiledFile(compiled, options, fileSpinner, provenancePolicy);
       successCount++;
     }
 

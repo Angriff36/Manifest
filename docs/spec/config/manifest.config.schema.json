@@ -28,13 +28,38 @@
     "validation": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Config G2 — CI exit policy for compile/validate. Does not change language diagnostic severities (a block is still a block).",
+      "description": "Config G2 — CI exit policy + optional additive rule registry. Does not change language diagnostic severities (a block is still a block).",
       "properties": {
         "failOn": {
           "type": "string",
           "enum": ["block", "warn", "never"],
           "default": "block",
           "description": "When to exit non-zero: 'block' = errors only (default); 'warn' = errors or warnings; 'never' = always exit 0 after reporting (report-only)."
+        },
+        "rules": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional additive lint rules (off by default). Emit CONFIG_VALIDATION_RULE_* diagnostics.",
+          "properties": {
+            "missing-policy": {
+              "type": "string",
+              "enum": ["off", "warn", "error"],
+              "default": "off",
+              "description": "Entity has commands but no targeting policies and empty defaultPolicies."
+            },
+            "unused-entity": {
+              "type": "string",
+              "enum": ["off", "warn", "error"],
+              "default": "off",
+              "description": "Entity has no store, no commands, and is not referenced by relationships."
+            },
+            "orphan-relationship": {
+              "type": "string",
+              "enum": ["off", "warn", "error"],
+              "default": "off",
+              "description": "belongsTo/ref without hasMany/hasOne inverse on the parent."
+            }
+          }
         }
       }
     },
@@ -45,6 +70,10 @@
     "provenance": {
       "$ref": "#/definitions/ProvenanceConfig",
       "description": "Config G4 — IR provenance stamps (deterministic compiledAt, lockfile, failIfStale)."
+    },
+    "runtime": {
+      "$ref": "#/definitions/RuntimeConfig",
+      "description": "Config G7 — central runtime knobs for generate (executionMode, determinism.deterministicMode)."
     },
     "driftGates": {
       "type": "object",
@@ -649,6 +678,61 @@
           "type": "boolean",
           "default": false,
           "description": "With deterministic + lockfile: fail when contentHash matches lock but irHash drifted."
+        }
+      }
+    },
+    "RuntimeConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Config G7 — generation fan-in for runtime factory + nextjs dispatcher (determinism, stores, defaultContext, concurrency).",
+      "properties": {
+        "executionMode": {
+          "type": "string",
+          "enum": ["inline", "externalExecutor"],
+          "default": "inline",
+          "description": "When set, fills projections.nextjs.options.dispatcher.executionMode if that key is unset."
+        },
+        "determinism": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Runtime determinism knobs consumed by the generated createManifestRuntime factory.",
+          "properties": {
+            "deterministicMode": {
+              "type": "boolean",
+              "default": false,
+              "description": "Emit RuntimeOptions.deterministicMode on the generated factory (adapter actions fail closed)."
+            },
+            "forbidWallClock": {
+              "type": "boolean",
+              "default": false,
+              "description": "When true, emit RuntimeOptions.now as a fixed function (seed ms, or 0)."
+            },
+            "seed": {
+              "type": "number",
+              "description": "Fixed now() ms when forbidWallClock; also seeds generateId sequence prefix."
+            }
+          }
+        },
+        "stores": {
+          "type": "string",
+          "description": "Import path for ManifestRuntimeConfig store bindings. Fans into projection runtimeConfigImport when unset (nextjs/express/hono/remix/sveltekit)."
+        },
+        "defaultContext": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Merged under createManifestRuntime caller context (caller wins)."
+        },
+        "concurrency": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Top-level parallel runCommand budget for generated RuntimeEngine factories.",
+          "properties": {
+            "maxParallelCommands": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Emit RuntimeOptions.maxParallelCommands. Excess top-level calls fail closed with PARALLEL_COMMAND_LIMIT (nested reaction/saga calls do not consume the budget)."
+            }
+          }
         }
       }
     },

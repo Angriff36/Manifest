@@ -14,6 +14,7 @@ import type {
   ProjectionTarget,
 } from '../interface';
 import { generateRuntimeFactoryModule, resolveLocalImportPathHint } from '../shared/companions.js';
+import { resolveRuntimeFactoryFanIn } from '../../runtime-config.js';
 import {
   type NamingConventionInput,
   type RouteCasing,
@@ -150,6 +151,8 @@ interface NormalizedNextJsOptions {
   routeCasing: RouteCasing;
   routeSegments: Record<string, string>;
   runtimeConfigImport?: string;
+  /** Config G7 — from top-level `runtime` via `__manifestRuntime`. */
+  runtimeFanIn: ReturnType<typeof resolveRuntimeFactoryFanIn>;
   runtimeImportPath: string;
   sharedRuntimeImportPath: string;
   strictMode: boolean;
@@ -245,6 +248,7 @@ function normalizeOptions(options?: NextJsProjectionOptions, ir?: IR): Normalize
     dateSerialization: options?.dateSerialization ?? NEXTJS_DEFAULTS.dateSerialization,
     emitCompanions: options?.emitCompanions ?? NEXTJS_DEFAULTS.emitCompanions,
     runtimeConfigImport: options?.runtimeConfigImport,
+    runtimeFanIn: resolveRuntimeFactoryFanIn(options as Record<string, unknown> | undefined),
     apiBasePath: options?.apiBasePath,
     dispatcherBasePath: options?.dispatcherBasePath,
     clientFetchAdapter: options?.client?.fetchAdapter
@@ -1841,7 +1845,9 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
       () =>
         generateRuntimeFactoryModule({
           ir,
-          runtimeConfigImport: options.runtimeConfigImport,
+          ...options.runtimeFanIn,
+          runtimeConfigImport:
+            options.runtimeConfigImport ?? options.runtimeFanIn.runtimeConfigImport,
         }),
       'runtime factory',
     );

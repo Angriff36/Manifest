@@ -155,23 +155,34 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 
 > The types cover the config surface that ships **today**, including Config G5
 > (`projections.enabled` / `projections.defaults`), Config G2
-> (`validation.failOn`), Config G3 (`mergeIntegrity`), Config G8–G10, and
-> related keys. Still proposed only: G2 rule registries / requireDescriptions,
-> G4 provenance config, G7 runtime — see
+> (`validation.failOn` + `rules`), Config G3 (`mergeIntegrity`), Config G4
+> (`provenance`), Config G7 (`runtime` generation slice + concurrency), Config
+> G8–G10, and related keys. Still proposed only: G2 `requireDescriptions` — see
 > [design proposal](../../internal/proposals/config/manifest-config-vnext.md).
 >
 > ~~The richer vNext sections (validation, merge integrity, provenance, runtime,
 > drift gates) are a design proposal, not implemented~~ — **Correction
-> (2026-07-15):** G5 shipped; G2 `failOn` shipped (rules registry still open);
+> (2026-07-15):** G5 shipped; G2 `failOn` shipped;
 > G10 and other Part-2 keys remain unbuilt.
 >
 > ~~Correction (2026-07-15): G5 shipped; G2/G10 remain~~ — **Update
 > (2026-07-15):** G2 `validation.failOn` also shipped.
 >
+> **Correction (2026-07-22):** G2 `validation.rules` shipped (`missing-policy`,
+> `unused-entity`, `orphan-relationship`). `requireDescriptions` deferred (no IR
+> description field).
+>
 > **Correction (2026-07-22):** G3 `mergeIntegrity` shipped (`error` \| `lastWins`).
 >
 > **Correction (2026-07-22):** G4 `provenance` shipped (`deterministic`,
 > `lockfile`, `failIfStale`). `gitSha` field token accepted but not written yet.
+>
+> ~~**Correction (2026-07-22):** G7 `runtime` shipped … Remainder deferred:
+> `concurrency`.~~
+> **Correction (2026-07-22):** G7 `runtime` shipped (`executionMode` → nextjs
+> dispatcher; `determinism.deterministicMode` / `forbidWallClock` / `seed` →
+> web factories; `stores` → `runtimeConfigImport`; `defaultContext` merge;
+> `concurrency.maxParallelCommands` → `RuntimeOptions.maxParallelCommands`).
 
 ---
 
@@ -182,9 +193,10 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 | `src`          | `**/*.manifest`   | string | Glob for source `.manifest` files.                                                                                                                        |
 | `output`       | `ir/`             | string | Directory for compiled IR JSON.                                                                                                                           |
 | `prismaSchema` | (auto-discovered) | string | Optional path to a Prisma schema for property alignment scans. When omitted, Manifest checks `prisma/schema.prisma`, `schema.prisma`, `db/schema.prisma`. |
-| `validation`   | (see G2)          | object | Config G2 CI exit policy (`failOn`). Does not change language severities.                                                                                 |
+| `validation`   | (see G2)          | object | Config G2 CI exit policy (`failOn`) + optional additive `rules`. Does not change language severities.                                                     |
 | `mergeIntegrity` | (see G3)        | object | Config G3 multi-module merge collision policy (`onDuplicateEntity` / `onDuplicateCommand`). Default remains strict `error`.                              |
 | `provenance`   | (see G4)          | object | Config G4 IR provenance (`deterministic`, `lockfile`, `failIfStale`).                                                                                     |
+| `runtime`      | (see G7)          | object | Config G7 runtime knobs for generate (`executionMode`, determinism, `stores`, `defaultContext`).                                                          |
 | `driftGates`   | (see G10)         | object | Config G10 declarative CI gates for `manifest ci-gate`.                                                                                                   |
 | `projections`  | `{}`              | object | Per-projection config blocks, plus optional G5 `enabled` / `defaults` (see below).                                                                         |
 | `env`          | `{}`              | object | Environment-variable declarations for `manifest preflight`. Grouped under `stores`, `auth`, `adapters`, `custom`.                                         |
@@ -194,7 +206,9 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 
 ---
 
-## `validation.failOn` (Config G2)
+## `validation` (Config G2)
+
+### `validation.failOn`
 
 Added 2026-07-15. Controls whether `manifest compile` / `manifest validate`
 exit non-zero after reporting diagnostics. **Does not** change language
@@ -210,6 +224,34 @@ validation:
 | `block` | Error-severity diagnostics only (default)  |
 | `warn`  | Errors **or** warnings                     |
 | `never` | Never (report-only; still prints findings) |
+
+### `validation.rules`
+
+Added 2026-07-22. Optional additive lint rules for `manifest compile` (single-file
+and `--merge`). Rules are **off** by default. They do **not** change language
+severities — they emit extra `CONFIG_VALIDATION_RULE_*` diagnostics that
+`failOn` can gate.
+
+```yaml
+validation:
+  failOn: warn
+  rules:
+    missing-policy: warn          # commands but no policies / defaultPolicies
+    unused-entity: error          # no store, no commands, unreferenced
+    orphan-relationship: warn     # belongsTo/ref without parent inverse
+```
+
+| Rule | When it fires |
+| --- | --- |
+| `missing-policy` | Entity has commands, no targeting policies, empty `defaultPolicies` |
+| `unused-entity` | Entity has no store, no commands, and is not relationship-referenced |
+| `orphan-relationship` | `belongsTo` / `ref` with no `hasMany` / `hasOne` inverse |
+
+`requireDescriptions` and conformance knobs from the vNext proposal remain unbuilt
+(no entity/command description field on IR yet).
+
+CLI overrides: `--fail-on <policy>` on `compile` / `validate`. `validate --strict`
+is an alias for `--fail-on warn`.
 
 ## `mergeIntegrity` (Config G3)
 
@@ -257,11 +299,37 @@ provenance:
 CLI already reuses prior `compiledAt` when source `contentHash` is unchanged
 (`stabilizeProvenance`) so default compiles stay git-stable without this block.
 
-CLI overrides: `--fail-on <policy>` on `compile` / `validate`. `validate --strict`
-is an alias for `--fail-on warn`.
+## `runtime` (Config G7)
 
-Rule registries / `requireDescriptions` / conformance knobs from the vNext
-proposal remain unbuilt.
+Added 2026-07-22. Generation-time knobs for projected HTTP apps. Does **not**
+change `RuntimeEngine` semantics (command order stays law).
+
+```yaml
+runtime:
+  executionMode: inline   # or externalExecutor — nextjs dispatcher default
+  determinism:
+    deterministicMode: true   # RuntimeEngine.deterministicMode via factory
+    forbidWallClock: true     # inject RuntimeOptions.now (no Date.now)
+    seed: 42                  # fixed now ms + generateId prefix
+  stores: ./manifest.config   # fans into projection runtimeConfigImport when unset
+  defaultContext:
+    source: api               # merged under caller context (caller wins)
+  concurrency:
+    maxParallelCommands: 8    # RuntimeOptions.maxParallelCommands (fail closed)
+```
+
+| Key | Default | Behavior |
+| --- | ------- | -------- |
+| `executionMode` | unset | When set and nextjs `dispatcher.executionMode` is unset, fans into generated dispatcher |
+| `determinism.deterministicMode` | `false` | When `true`, generated factory constructs `RuntimeEngine` with `deterministicMode: true` (nextjs/express/hono/remix/sveltekit) |
+| `determinism.forbidWallClock` | `false` | When `true`, emit `now: () => seed\|0` on the factory |
+| `determinism.seed` | unset | Fixed `now` ms when forbidWallClock; also seeds `generateId` sequence |
+| `stores` | unset | Import path for `ManifestRuntimeConfig`; fans into `runtimeConfigImport` when unset on those projections |
+| `defaultContext` | unset | JSON object merged under caller context in `createManifestRuntime` |
+| `concurrency.maxParallelCommands` | unset | Positive integer → `RuntimeOptions.maxParallelCommands`; excess top-level `runCommand` calls fail with `PARALLEL_COMMAND_LIMIT` (nested reaction/saga calls do not consume the budget) |
+
+Per-projection `dispatcher.executionMode` / `runtimeConfigImport` win over
+top-level `runtime`.
 
 ---
 

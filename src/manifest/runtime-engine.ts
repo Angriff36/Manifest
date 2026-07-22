@@ -229,6 +229,15 @@ export interface RuntimeOptions {
    * See docs/spec/adapters.md for the normative exception.
    */
   deterministicMode?: boolean;
+  /**
+   * Cap concurrent top-level `runCommand` invocations on this engine instance.
+   * Nested reaction/saga `runCommand` calls (commandExecutionDepth > 0) do not
+   * consume the budget. When the limit is exceeded, the call fails closed with
+   * `PARALLEL_COMMAND_LIMIT` (does not queue). Omit or unset = unlimited.
+   * Config G7 `runtime.concurrency.maxParallelCommands` fans into generated
+   * factories via this option.
+   */
+  maxParallelCommands?: number;
   /** Optional complexity limits for expression evaluation */
   evaluationLimits?: EvaluationLimits;
   /**
@@ -972,6 +981,12 @@ export class RuntimeEngine {
    * readonly blocks there.
    */
   private commandExecutionDepth = 0;
+
+  /**
+   * Count of top-level `runCommand` calls currently in flight (depth === 0 at
+   * entry). Used with {@link RuntimeOptions.maxParallelCommands}.
+   */
+  private topLevelInFlightCommands = 0;
 
   /**
    * The transaction handle for the command attempt currently in flight, or
@@ -3330,6 +3345,25 @@ export class RuntimeEngine {
     const auditRecordId = auditEnabled ? this.nextRuntimeId() : undefined;
     const auditOccurredAt = auditEnabled ? this.getNow() : 0;
 
+    // Config G7 concurrency: only top-level calls consume the parallel budget
+    // (nested reaction/saga re-entries already have commandExecutionDepth > 0).
+    const isTopLevelCommand = this.commandExecutionDepth === 0;
+    const parallelLimit = this.options.maxParallelCommands;
+    if (
+      isTopLevelCommand &&
+      typeof parallelLimit === 'number' &&
+      Number.isInteger(parallelLimit) &&
+      parallelLimit >= 1 &&
+      this.topLevelInFlightCommands >= parallelLimit
+    ) {
+      return {
+        success: false,
+        error: `PARALLEL_COMMAND_LIMIT: maxParallelCommands=${parallelLimit} already in flight`,
+        emittedEvents: [],
+      };
+    }
+    if (isTopLevelCommand) this.topLevelInFlightCommands += 1;
+
     let result: CommandResult | undefined;
     let thrown: unknown;
     // Event bus: the top-level runCommand owns the outbound batch; nested
@@ -3476,6 +3510,7 @@ export class RuntimeEngine {
       thrown = e;
       throw e;
     } finally {
+      if (isTopLevelCommand) this.topLevelInFlightCommands -= 1;
       if (this.profilingBridge.isEnabled() && result !== undefined) {
         this.profilingBridge.complete(result.success, this.ir.entities.length, this.stores.size);
       }

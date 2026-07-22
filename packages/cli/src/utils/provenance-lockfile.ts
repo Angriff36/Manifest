@@ -20,10 +20,21 @@ export async function readProvenanceLockfile(
 ): Promise<ProvenanceLockfile | null> {
   const abs = path.resolve(cwd, relativePath);
   try {
+    await fs.access(abs); // Check existence first
     const raw = await fs.readFile(abs, 'utf8');
-    return JSON.parse(raw) as ProvenanceLockfile;
-  } catch {
-    return null;
+    const parsed = JSON.parse(raw) as ProvenanceLockfile;
+    // Validate basic shape to reject malformed lockfiles
+    if (!parsed || typeof parsed !== 'object' || !parsed.contentHash || !parsed.compilerVersion) {
+      throw new Error('Invalid lockfile: missing required fields');
+    }
+    return parsed;
+  } catch (error) {
+    // Distinguish ENOENT (missing) from other errors (invalid/unreadable)
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null; // File doesn't exist — not an error
+    }
+    // File exists but is unreadable or invalid — surface the error
+    throw new Error(`Failed to read lockfile: ${(error as Error).message}`);
   }
 }
 
@@ -59,12 +70,17 @@ export async function evaluateProvenanceStale(
 /**
  * Idempotent provenance: if an existing output IR was produced from the SAME
  * source (identical contentHash), reuse its compiledAt and recompute irHash.
+ * Bypassed when deterministic provenance is enabled (fixed compiledAt required).
  */
 export async function stabilizeProvenance(
   ir: IR,
   outputPath: string,
   computeIRHash: (ir: IR) => Promise<string>,
+  deterministicProvenance: boolean,
 ): Promise<void> {
+  // Deterministic mode always uses fixed compiledAt — never reuse wall-clock
+  if (deterministicProvenance) return;
+
   const priorRaw = await fs.readFile(outputPath, 'utf-8').catch(() => null);
   if (!priorRaw) return;
   let prior: { provenance?: { contentHash?: string; compiledAt?: string } };

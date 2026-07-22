@@ -34,6 +34,7 @@ import type {
 } from '../interface';
 import type { SvelteKitProjectionOptions } from './types';
 import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
+import { resolveRuntimeFactoryFanIn } from '../../runtime-config.js';
 import { SVELTEKIT_DESCRIPTOR_META } from './descriptor-meta.js';
 
 // ============================================================================
@@ -83,6 +84,8 @@ interface NormalizedOptions {
   emitFormActions: boolean;
   emitTypeImports: boolean;
   emitCompanions: boolean;
+  /** Config G7 — from top-level `runtime` via `__manifestRuntime`. */
+  runtimeFanIn: ReturnType<typeof resolveRuntimeFactoryFanIn>;
 }
 
 /**
@@ -113,6 +116,7 @@ export const SVELTEKIT_DEFAULTS = {
  * Explicit options always win.
  */
 function normalizeOptions(opts: SvelteKitProjectionOptions = {}, ir?: IR): NormalizedOptions {
+  const fanIn = resolveRuntimeFactoryFanIn(opts as Record<string, unknown>);
   return {
     authProvider: opts.authProvider ?? SVELTEKIT_DEFAULTS.authProvider,
     authImportPath: opts.authImportPath ?? SVELTEKIT_DEFAULTS.authImportPath,
@@ -136,6 +140,7 @@ function normalizeOptions(opts: SvelteKitProjectionOptions = {}, ir?: IR): Norma
     emitFormActions: opts.emitFormActions ?? SVELTEKIT_DEFAULTS.emitFormActions,
     emitTypeImports: opts.emitTypeImports ?? SVELTEKIT_DEFAULTS.emitTypeImports,
     emitCompanions: opts.emitCompanions ?? SVELTEKIT_DEFAULTS.emitCompanions,
+    runtimeFanIn: fanIn,
   };
 }
 
@@ -1176,7 +1181,12 @@ function generateCompanions(ir: IR, options: NormalizedOptions): ProjectionResul
   emit(
     'sveltekit.companions.runtime',
     options.runtimeImportPath,
-    () => generateRuntimeFactoryModule({ ir, exportName: options.runtimeFactoryName }),
+    () =>
+      generateRuntimeFactoryModule({
+        ir,
+        exportName: options.runtimeFactoryName,
+        ...options.runtimeFanIn,
+      }),
     'runtime factory',
   );
 
