@@ -48,7 +48,9 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
   - **Correction (2026-07-22):** generics **are implemented**. Parse `entity Name<T>` /
     `entity Alias = Template<Args>` (`parser.ts:269-297`); expand + arity check
     (`entity-generics.ts`); fixture `84` IR success, fixture `85` arity diagnostic.
-    Matrix FULLY_IMPLEMENTED (working tree; SHA after commit).
+    Matrix FULLY_IMPLEMENTED @ `6658d3eccbe885b899a1e4417aad21c5ca9e004d`.
+    ~~A later docs commit (`0e39512`) falsely reopened this as NOT_IMPLEMENTED /
+    “phantom”; that claim is struck — the implementation was already on `main`.~~
 - Value objects / embedded types (fixture 60 — matrix FULLY_IMPLEMENTED @
   `ad02a4dc` / OpenAPI `9f93a40e`)
 - Enum types (fixture 57 — matrix FULLY_IMPLEMENTED @ `68dc9c26` / Zod `3052dc56`); decimal/money type (fixture 56 — matrix FULLY_IMPLEMENTED @ `9e34bc43` / Next `cc71f1fe`; runtime = JS number); map/record type (fixture 73 — matrix FULLY_IMPLEMENTED @
