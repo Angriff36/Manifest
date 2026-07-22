@@ -86,7 +86,9 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 - Inbound webhooks with HMAC signature verification (fixture 90; runtime
   `webhooks/handler.ts` + Next/Express/Hono emits — matrix FULLY_IMPLEMENTED
   @ `853aac2`)
-- Schedules: cron / interval / every (fixture 76)
+- Schedules: cron / interval / every (fixture 76; matrix FULLY_IMPLEMENTED —
+  `runtime-schedule.test.ts` + `schedule-worker.test.ts` @ `abe9595`; fires via
+  worker/host, not a built-in RuntimeEngine timer)
 - Stores (persistence targets), modules (namespacing), cross-file `use`/imports
 
 ## 2. Expression Language — 47 built-ins
@@ -125,7 +127,8 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
 
 - Entity stores: memory, localStorage (browser-safe), postgres, supabase (`stores.node.ts`), Turso/libSQL, DynamoDB, Prisma-generic (`stores/prisma-generic/store.ts`) — each test-backed
 - Transactional outbox with memory/postgres/redis/mongodb/dynamodb adapters (`src/manifest/outbox/stores/*`)
-- Approval store: memory/postgres (`src/manifest/approval/stores/*`)
+- Approval store: memory/postgres (`src/manifest/approval/stores/*` — matrix
+  FULLY_IMPLEMENTED @ `179e135`; Postgres unit tests mocked Pool)
 - Idempotency store: memory/postgres (`src/manifest/idempotency/stores/*`)
 - Custom store adapters registrable via plugin API
 
