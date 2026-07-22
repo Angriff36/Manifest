@@ -59,7 +59,8 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 - Async/background commands with completion/failure events (fixture 69; matrix
   FULLY_IMPLEMENTED — `runtime-async.test.ts` + `jobs/worker.test.ts` @ `83e6c4f`;
   reference-runtime MemoryJobQueue; Convex async is unsupported-warning)
-- Command `retry` policy (fixture 72); `rateLimit` on commands and policies
+- Command `retry` policy (fixture 72 — matrix FULLY_IMPLEMENTED @ `9f93a40`;
+  Convex retry REJECTED_LOUD); `rateLimit` on commands and policies
   (fixtures 74, 75, 100 — rateLimit matrix FULLY_IMPLEMENTED @ `fd4bb50`;
   Convex policy/read rateLimit still diagnostic-only)
 - Computed properties incl. caching/memoization strategies (fixtures 03, 65)
@@ -84,7 +85,8 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 - Multi-stage approval workflows with timeouts (fixture 68; matrix FULLY_IMPLEMENTED —
   `runtime-approval.test.ts` @ `83e6c4f`; `onTimeout: cancel` + escalate sibling @ `a16d2bf` /
   fixture `111`. Reference-runtime; Convex approvals rejected loud)
-- Roles/RBAC with hierarchy, inheritance, and deny rules (fixture 71)
+- Roles/RBAC with hierarchy, inheritance, and deny rules (fixture 71 —
+  matrix FULLY_IMPLEMENTED @ `83e6c4f`)
 - Inbound webhooks with HMAC signature verification (fixture 90; runtime
   `webhooks/handler.ts` + Next/Express/Hono emits — matrix FULLY_IMPLEMENTED
   @ `853aac2`)

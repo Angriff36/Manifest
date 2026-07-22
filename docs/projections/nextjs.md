@@ -13,7 +13,7 @@ The projection registers under the name `nextjs` and exposes ~~nine~~ **twelve**
 > `nextjs.route`, `nextjs.detail`, `nextjs.command`, `nextjs.dispatcher`,
 > `nextjs.subscribe`, `nextjs.subscriptionHook`, `nextjs.sharedRuntime`,
 > `nextjs.schedule`, `nextjs.webhook`, `nextjs.companions`, `ts.types`,
-> `ts.client`. Package pin SoT: `package.json` = **3.6.4**.
+> `ts.client`. Package pin SoT: `package.json` = **3.6.41**.
 
 `nextjs.route` and `nextjs.detail` emit GET handlers for an entity — a list route and a single-record detail route. By design these reads issue direct Prisma queries against the client at `databaseImportPath` and bypass the runtime engine, because Manifest does not enforce `read` policies during command execution and direct queries avoid runtime overhead for simple fetches.
 

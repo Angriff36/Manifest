@@ -2,7 +2,7 @@
 
 > **Audited (2026-07-15) @RYANSIGNED:** Spot-check OK — compile-time literal
 > `RegExp` check + runtime `matches` fail-closed on bad patterns; fixture
-> `63-regex-constraints.manifest`. Package **3.6.4**.
+> `63-regex-constraints.manifest`. Package **3.6.41**.
 
 The `matches(value, pattern)` built-in tests a string value against a regular expression, enabling declarative format validation — emails, phone numbers, postal codes — inside constraint expressions. Invalid patterns are caught at compile time; the match itself is enforced at runtime.
 

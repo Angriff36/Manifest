@@ -103,7 +103,7 @@ gh workflow run cut-release.yml -f version=patch   # publish-first: tag is pushe
 ```
 
 Then in the downstream: ~~`pnpm update @angriff36/manifest@^0.5.0`~~
-`pnpm add @angriff36/manifest@3.6.4 --save-exact` (or whatever version `integration-check`
+`pnpm add @angriff36/manifest@3.6.41 --save-exact` (or whatever version `integration-check`
 just validated).
 
 > **Correction (2026-07-15) @RYANSIGNED:** `@angriff36/manifest` is on **3.6.x**, not `0.5.0`.

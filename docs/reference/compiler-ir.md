@@ -9,7 +9,7 @@ description: 'Understand how Manifest source becomes a canonical IR and why that
 > `docs/reference/compiler-ir.md` (not `docs/codedocs/`). Advisory compiler/IR
 > tour; normative contract is [`docs/spec/ir/ir-v1.schema.json`](../spec/ir/ir-v1.schema.json)
 > plus [`docs/spec/semantics.md`](../spec/semantics.md). Package pin SoT:
-> `package.json` = **3.6.4**.
+> `package.json` = **3.6.41**.
 
 Compilation is the boundary between Manifest's language syntax and everything that runs after it. The compiler does not just validate source text; it turns the text into a stable intermediate representation that runtime execution, projections, and governance tooling can all consume consistently.
 

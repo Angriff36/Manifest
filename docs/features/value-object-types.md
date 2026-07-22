@@ -2,7 +2,7 @@
 
 > **Audited (2026-07-15) @RYANSIGNED:** Spot-check OK — Prisma/Drizzle JSON,
 > Zod inline `z.object`, OpenAPI `$ref`, Convex hard-error path still match
-> generators on package **3.6.4**. Immutability remains design intent, not
+> generators on package **3.6.41**. Immutability remains design intent, not
 > runtime enforcement.
 
 A `value` declaration defines a reusable composite type that embeds inline in entity properties rather than living in its own table. Value objects group related fields — money, addresses — into a single named shape that several entities can share.

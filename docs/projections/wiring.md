@@ -3,7 +3,7 @@
 > **Audited (2026-07-15) @RYANSIGNED:** Spot-check OK — surfaces
 > `wiring.contract` / `wiring.bindings` / `wiring.all` +
 > `wiring-inspect` / remediate flow documented below match CLI on package
-> **3.6.4**.
+> **3.6.41**.
 
 **Name:** `wiring`  
 **Surfaces:** `wiring.contract`, `wiring.bindings`, `wiring.all`

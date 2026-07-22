@@ -114,7 +114,7 @@ interface CommandResult {
 ```
 
 > **Correction (2026-07-15) @RYANSIGNED:** The snippet above is incomplete.
-> Live `CommandResult` in `src/manifest/runtime-engine.ts` (package **3.6.4**)
+> Live `CommandResult` in `src/manifest/runtime-engine.ts` (package **3.6.41**)
 > also includes `instance?`, `deniedBy?`, `parameterFailure?`,
 > `overrideRequests?`, `concurrencyConflict?`, `approvalRequired?`,
 > `correlationId?`, `causationId?`, `retry?`, and `rateLimitDenial?`. Prefer

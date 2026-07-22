@@ -7,9 +7,9 @@ description: "Reference for enforce-surface, integration-check, audit-governance
 The governance commands are the static enforcement layer that sits beside the runtime. They check that an application codebase only writes through registered Manifest commands, that emitted routes match the canonical dispatcher, that bypasses are registered, and that the package integrates correctly end-to-end. None of these commands execute a Manifest program — they read the registries, the IR, and your source tree.
 
 <Note>
-  These commands were introduced and stabilized across **v0.6.0** and **v0.6.1**. `enforce-surface`
-  is the strictest registry-vs-app check; `integration-check` is the recommended pre-deploy umbrella
-  for downstream consumers.
+  These commands are available in current releases. `enforce-surface` is the strictest
+  registry-vs-app check; `integration-check` is the recommended pre-deploy umbrella for
+  downstream consumers.
 </Note>
 
 ---
@@ -47,7 +47,7 @@ manifest enforce-surface --root <path> --commands-registry <path> [options]
 </ParamField>
 
 <ParamField path="--include" type="glob...">
-  Additional include globs (repeatable). Honored as of v0.6.1.
+  Additional include globs (repeatable).
 </ParamField>
 
 <ParamField path="--exclude" type="glob...">
@@ -74,7 +74,7 @@ manifest enforce-surface \
 ```
 
 <Tip>
-  As of v0.6.1, `enforce-surface` honors `--include`/`--exclude` correctly and scans `.js` and
+  `enforce-surface` honors `--include`/`--exclude` correctly and scans `.js` and
   `.jsx` in addition to TypeScript.
 </Tip>
 

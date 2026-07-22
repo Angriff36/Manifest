@@ -10,7 +10,7 @@ Normative behavior is defined in:
 
 > **Correction (2026-07-15) @RYANSIGNED:** Use repo-relative paths:
 > `docs/spec/semantics.md`, `docs/spec/adapters.md`, `docs/spec/conformance.md`.
-> Package pin SoT: **3.6.4**.
+> Package pin SoT: **3.6.41**.
 
 ## Two Integration Patterns
 

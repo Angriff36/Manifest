@@ -2,7 +2,7 @@
 
 > **Audited (2026-07-15) @RYANSIGNED:** Deep pass — Zod `z.enum` emit
 > corrected below; no enum transition constraints / undeclared-name rejection
-> in compiler. Package **3.6.4**.
+> in compiler. Package **3.6.41**.
 
 First-class `enum` declarations define a closed, named set of values that properties can reference. Each member may carry an optional display label and an optional ordinal, giving entities a typed vocabulary for status fields, priorities, and other fixed value sets.
 

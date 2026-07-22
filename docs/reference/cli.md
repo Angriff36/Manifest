@@ -49,7 +49,7 @@ manifest init --dry-run
 ```
 
 > **Correction (2026-07-15) @RYANSIGNED:** Root `package.json` `engines.node` is
-> **`>=20`** (SoT version **3.6.4**). Prefer a CI matrix of `20,22` (or newer)
+> **`>=20`** (SoT version **3.6.41**). Prefer a CI matrix of `20,22` (or newer)
 > even though `packages/cli` still documents the historical default
 > `18,20,22`. Node 18 is below the package engine floor.
 

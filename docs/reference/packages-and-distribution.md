@@ -92,11 +92,11 @@ Example:
 
 ```bash
 ~~pnpm add -w @angriff36/manifest@2.18.0 --save-exact~~
-pnpm add -w @angriff36/manifest@3.6.4 --save-exact
+pnpm add -w @angriff36/manifest@3.6.41 --save-exact
 ```
 
 > **Correction (2026-07-15) @RYANSIGNED:** Pin the current published version from `package.json`
-> / npm (**3.6.4** as of this edit). Do not copy stale `2.x` examples.
+> / npm (**3.6.41** as of this edit). Do not copy stale `2.x` examples.
 
 ## Anti-Pattern to Avoid
 

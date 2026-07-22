@@ -7,7 +7,7 @@ Last updated: 2026-02-12
 > **Correction (2026-07-15) @RYANSIGNED:** This page is about the **JavaScript
 > package module system** (ESM), not Manifest language `module` / `use`
 > declarations (see `docs/features/modules-and-imports.md` /
-> `mintlify/language/modules.mdx`). Package pin SoT: `package.json` = **3.6.4**,
+> `mintlify/language/modules.mdx`). Package pin SoT: `package.json` = **3.6.41**,
 > `"type": "module"`, `engines.node` = `>=20`.
 
 Manifest uses ES Modules (ESM). This document explains module system requirements and usage.

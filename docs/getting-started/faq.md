@@ -262,7 +262,7 @@ pnpm run conformance:regen
 ~~v2.3.0 (see root `package.json`)~~
 
 > **Correction (2026-07-15) @RYANSIGNED:** Root `package.json` / published npm
-> SoT is **`@angriff36/manifest` v3.6.4**. `engines.node` is `>=20`. Pin exact
+> SoT is **`@angriff36/manifest` v3.6.41**. `engines.node` is `>=20`. Pin exact
 > versions (see `docs/spec/sdk-stability.md`).
 
 ### What are vNext features?

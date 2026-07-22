@@ -16,7 +16,7 @@ The runtime middleware pipeline allows registering hooks at specific points in t
 > **Correction (2026-07-15) @RYANSIGNED:** `before-action` runs **once per
 > action** inside the action loop (`runtime-engine.ts`), not once per command.
 > Constructor remains `(ir, context?, options?)` with
-> `options.middleware` — verified against `package.json` **3.6.4**.
+> `options.middleware` — verified against `package.json` **3.6.41**.
 
 ## Usage
 

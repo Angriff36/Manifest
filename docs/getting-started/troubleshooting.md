@@ -24,12 +24,12 @@ If you don't have the current version installed yet:
 
 ```bash
 ~~pnpm add @angriff36/manifest@2.3.0~~
-pnpm add @angriff36/manifest@3.6.4
+pnpm add @angriff36/manifest@3.6.41
 pnpm exec manifest validate path/to/output.ir.json
 ```
 
 > **Correction (2026-07-15) @RYANSIGNED:** Pin to the published SoT in root
-> `package.json` (**3.6.4** as of this edit). Do not install the stale `2.3.0`
+> `package.json` (**3.6.41** as of this edit). Do not install the stale `2.3.0`
 > example. Node.js **`>=20`** (`engines.node`).
 
 Do not copy schema files, modify provenance, or create symlinks as workarounds. The IR is valid.

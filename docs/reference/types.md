@@ -8,7 +8,7 @@ description: "A grouped inventory of Manifest's exported TypeScript types and th
 > **Correction (2026-07-15) @RYANSIGNED:** This page lives at
 > `docs/reference/types.md` (not `docs/codedocs/`). Advisory TypeScript surface
 > inventory; prefer live exports from `@angriff36/manifest` at the version in
-> `package.json` (**3.6.4**) over stale snippets here.
+> `package.json` (**3.6.41**) over stale snippets here.
 
 Manifest exports a large TypeScript surface across the root runtime, compiler, IR, adapters, and route projection modules. This page groups the most important definitions and shows the actual shapes that package consumers build against.
 

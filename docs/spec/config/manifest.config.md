@@ -449,7 +449,7 @@ projections:
 ### `concreteCommandRoutes`
 
 Per-command "concrete" routes (the `nextjs.command` surface) were the
-original write path before the dispatcher existed. As of v0.7.x they are
+original write path before the dispatcher existed. As of recent versions they are
 **opt-in** — the canonical dispatcher is the only write surface emitted
 by default. `manifest generate --surface all` skips them unless
 `concreteCommandRoutes.enabled: true` is set.

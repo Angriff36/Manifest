@@ -5,7 +5,7 @@ This guide explains how to plug application storage into Manifest via `storeProv
 ~~Authoritative adapter behavior is in `C:/Projects/Manifest/docs/spec/adapters.md`.~~
 
 > **Correction (2026-07-15) @RYANSIGNED:** Authoritative adapter behavior is in
-> `docs/spec/adapters.md` (repo-relative). Package pin SoT: `package.json` = **3.6.4**.
+> `docs/spec/adapters.md` (repo-relative). Package pin SoT: `package.json` = **3.6.41**.
 
 ## Store Contract
 

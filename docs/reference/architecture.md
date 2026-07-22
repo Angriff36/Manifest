@@ -11,7 +11,7 @@ description: "A source-driven tour of Manifest's compiler, IR, runtime, adapters
 > [`docs/spec/`](../spec/) — especially
 > [`docs/spec/manifest-vnext.md`](../spec/manifest-vnext.md) and
 > [`docs/spec/semantics.md`](../spec/semantics.md). Package pin SoT:
-> `package.json` = **3.6.4**.
+> `package.json` = **3.6.41**.
 
 Manifest is organized around one central contract: the IR defined in `src/manifest/ir.ts`. Everything else either produces that contract, consumes it, or validates drift around it.
 

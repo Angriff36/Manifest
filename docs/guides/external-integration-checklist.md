@@ -12,7 +12,7 @@ Use this as a process template. Do not treat it as normative language spec.
 - Confirm mutation paths can execute through runtime command execution (`runCommand`).
 
 > **Correction (2026-07-15) @RYANSIGNED:** Absolute `C:/Projects/Manifest/...`
-> paths are not portable. Package pin SoT: `package.json` = **3.6.4**;
+> paths are not portable. Package pin SoT: `package.json` = **3.6.41**;
 > `engines.node` = `>=20`.
 
 ## Integration Steps

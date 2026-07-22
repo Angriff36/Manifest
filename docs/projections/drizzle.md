@@ -2,7 +2,7 @@
 
 > **Audited (2026-07-15) @RYANSIGNED:** Spot-check OK — precision precedence
 > `(options → IRType.params → 12,2)`, bare-`number` diagnostic, durable-store
-> skip rules match generator on package **3.6.4**.
+> skip rules match generator on package **3.6.41**.
 
 The Drizzle projection emits a TypeScript-first Drizzle ORM schema from compiled Manifest IR, compatible with Drizzle Kit. Use it when your persistence layer is Drizzle rather than Prisma; it mirrors the Prisma projection's compile-time, app-agnostic contract but targets Drizzle's `pgTable` / `mysqlTable` / `sqliteTable` column builders.
 

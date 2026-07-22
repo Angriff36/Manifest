@@ -4,7 +4,7 @@ created: 2026-07-16
 updated: 2026-07-16
 status: Active
 authority: Advisory
-applies_to: '@angriff36/manifest@3.6.13+'
+applies_to: '@angriff36/manifest@3.6.20+'
 ---
 
 # DX Proof Kit
@@ -12,7 +12,7 @@ applies_to: '@angriff36/manifest@3.6.13+'
 Prove that generated Manifest applications stay complete — without scraping
 TypeScript or maintaining parallel entity/command inventories by hand.
 
-**Package pin SoT:** `package.json` = **3.6.13**. Exact pin required (no `^`);
+**Package pin SoT:** `package.json` = **3.6.20**. Exact pin required (no `^`);
 see [`docs/spec/sdk-stability.md`](../spec/sdk-stability.md).
 
 Ownership boundary (Manifest vs application):  
@@ -42,7 +42,7 @@ const ir = /* compiled IR */ {} as IR;
 const catalog = emitCapabilityCatalog(ir, {
   entityFilter: ['IngredientDemand', 'PurchaseNeed'],
   versions: {
-    manifestVersion: '3.6.13',
+    manifestVersion: '3.6.20',
     projection: 'convex',
     preset: { id: 'convex-application', version: '1.3.4' },
   },
@@ -63,7 +63,7 @@ const registry = emitProofRegistry(ir, {
 const issues = validateProofRegistry(registry, {
   rootDir: process.cwd(),
   catalog,
-  installedManifestVersion: '3.6.13',
+  installedManifestVersion: '3.6.20',
   installedPreset: { id: 'convex-application', version: '1.3.4' },
 });
 if (issues.length) throw new Error(issues.map((i) => i.message).join('\n'));

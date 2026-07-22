@@ -20,7 +20,7 @@ The suite enumerates projections via `listBuiltinProjections()` and asserts ther
 > ~~`expect(projections.length).toBe(29)`~~ **Correction (2026-07-22):**
 > `expect(projections.length).toBe(30)` (mongoose registered). Updating the set
 > still requires a conscious snapshot refresh. Package pin SoT:
-> `package.json` = **3.6.4**.
+> `package.json` = **3.6.41**.
 
 For each projection it generates every surface with `generateAllSurfaces`, which runs the projection once per surface and then again per entity, de-duplicating artifacts by `id` and diagnostics by message/entity.
 

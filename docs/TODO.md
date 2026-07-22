@@ -234,7 +234,7 @@ non-binding navigation mirror only.
 - [x] **Mintlify accuracy pass (Get Started / Language / Projections /
       Adapters / CLI / extensibility + `llms-full.txt`)** — audited 2026-07-15
       with `@RYANSIGNED` strikethrough corrections (runCommand signatures,
-      Node `>=20`, package pin **3.6.4**, execution order, phantom APIs). Ledger:
+      Node `>=20`, package pin **3.6.41**, execution order, phantom APIs). Ledger:
       `docs/internal/plans/2026-07-15-docs-accuracy-loop.md`.
 - [x] **`docs/getting-started/**` + root docs honesty** — audited 2026-07-15
       (FAQ version/projections/read-policies/execution order; troubleshooting pin;
@@ -315,6 +315,6 @@ the checklist for critical-path awareness only — it does **not** block Manifes
 
 - [ ] **Adopt the v3.5.0+ auth seam** — Capsule-V2 still pins an older manifest
       (was `3.4.25` on 2026-07-14), still ships `scripts/patch-generated-auth.mjs`,
-      zero `authContextImport` usage. Bump pin to current (`3.6.4`+), set the
+      zero `authContextImport` usage. Bump pin to current (`3.6.41`+), set the
       option, delete the patch script. Then work roadmap items A2–A9.
       **Not fixable in this repo.**

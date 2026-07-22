@@ -1,7 +1,7 @@
 # Date and Time Types
 
 > **Audited (2026-07-15) @RYANSIGNED:** Spot-check OK against builtins /
-> `autoNow` / fixture `92-date-time-types.manifest` on package **3.6.4**.
+> `autoNow` / fixture `92-date-time-types.manifest` on package **3.6.41**.
 >
 > ~~No phantom `timestamp` language type (Zod may alias `timestamp` → datetime).~~
 > **Correction (2026-07-15):** `timestamp` is a first-class language/runtime alias

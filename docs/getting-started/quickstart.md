@@ -15,10 +15,10 @@ pnpm add @angriff36/manifest
 ```~~
 
 > **Correction (2026-07-15) @RYANSIGNED:** Requires **Node.js `>=20`**
-> (`package.json` `engines.node`). Current published SoT: **`@angriff36/manifest@3.6.4`**.
+> (`package.json` `engines.node`). Current published SoT: **`@angriff36/manifest@3.6.41`**.
 
 ```bash
-pnpm add @angriff36/manifest@3.6.4
+pnpm add @angriff36/manifest@3.6.41
 ```
 
 `@angriff36/manifest` resolves from the public npm registry — no `.npmrc` configuration needed. See `docs/reference/packages-and-distribution.md`.

@@ -7,7 +7,7 @@ A **projection** consumes compiled Manifest IR and emits a platform- or tooling-
 ~~The table below listed only a subset of shipped generators.~~
 
 > **Correction (2026-07-15) @RYANSIGNED:** Registry names from
-> `src/manifest/projections/builtins.ts` / `getProjection()` (package **3.6.4**). Pages linked
+> `src/manifest/projections/builtins.ts` / `getProjection()` (package **3.6.41**). Pages linked
 > below exist under `docs/projections/`; names without a page are still registered — see mintlify
 > `projections/additional-projections.mdx` / `listProjections()`.
 

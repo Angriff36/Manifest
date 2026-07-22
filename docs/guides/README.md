@@ -5,7 +5,7 @@ How to integrate Manifest into an application. These are advisory — they descr
 > **Audited (2026-07-15) @RYANSIGNED:** Index links verified. Package pin SoT:
 > ~~`package.json` = **3.6.4**.~~
 >
-> **Correction (2026-07-16):** `package.json` = **3.6.13**. Prefer repo-relative
+> **Correction (2026-07-22):** `package.json` = **3.6.41**. Prefer repo-relative
 > `docs/spec/*` paths over any machine-absolute paths still lingering inside
 > individual guides.
 

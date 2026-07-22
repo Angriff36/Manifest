@@ -6,7 +6,7 @@ Authority: Advisory
 Enforced by: None
 
 > **Audited (2026-07-15) @RYANSIGNED:** `runCommand` / `RuntimeOptions` shapes
-> match package **3.6.4**. Entity-scoped `store Entity in memory` inside an
+> match package **3.6.41**. Entity-scoped `store Entity in memory` inside an
 > entity body is valid parser syntax. Imports from `@capsule/manifest-adapters`
 > are Capsule Pro host examples, not `@angriff36/manifest` exports. Normative
 > workflow metadata: `docs/spec/manifest-vnext.md`.

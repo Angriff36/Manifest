@@ -2,7 +2,7 @@
 
 > **Audited (2026-07-15) @RYANSIGNED:** Spot-check OK — surfaces
 > `mermaid.er` / `state` / `sequence` / `all` + CLI `manifest diagram` on
-> package **3.6.4**.
+> package **3.6.41**.
 
 The Mermaid projection generates [Mermaid](https://mermaid.js.org) diagrams from compiled Manifest IR. Use it to visualize a domain model — entity relationships, state machines, and command execution flows — for documentation, design review, or onboarding. Diagrams are deterministic: identical IR always yields identical output.
 

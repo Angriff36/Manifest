@@ -2,7 +2,7 @@
 
 > **Audited (2026-07-15) @RYANSIGNED:** Spot-check OK — `string[]` /
 > `array<T>` normalize to IR `array` + `generic`; fixture
-> `40-array-properties.manifest`. Package **3.6.4**.
+> `40-array-properties.manifest`. Package **3.6.41**.
 
 Array properties hold multiple scalar values in a single field, distinct from relationships (which model collections of entities). They are declared with either postfix `[]` sugar or explicit `array<T>` generic syntax.
 

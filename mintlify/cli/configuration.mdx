@@ -441,7 +441,7 @@ The dispatcher is the canonical Manifest write surface at `POST /api/manifest/[e
 
 ### `projections.nextjs.options.concreteCommandRoutes`
 
-Policy for the deprecated per-command "concrete" routes (the `nextjs.command` surface). As of v0.7.x these are **opt-in** — the canonical dispatcher is the only write surface by default.
+Policy for the deprecated per-command "concrete" routes (the `nextjs.command` surface). These are **opt-in** in current releases — the canonical dispatcher is the only write surface by default.
 
 <ParamField
   path="projections.nextjs.options.concreteCommandRoutes.enabled"
@@ -481,7 +481,7 @@ Policy for direct database read routes (`nextjs.route` for list, `nextjs.detail`
 </ParamField>
 
 <Note>
-**Prisma 7 note.** When `includeTenantFilter` and/or `includeSoftDeleteFilter` are true, the detail route emits `findFirst` (not `findUnique`). The previous template emitted `findUnique({ where: { id, tenantId, deletedAt: null } })`, which fails type-check on Prisma 7+. Fixed in v0.7.x.
+**Prisma 7 note.** When `includeTenantFilter` and/or `includeSoftDeleteFilter` are true, the detail route emits `findFirst` (not `findUnique`). The previous template emitted `findUnique({ where: { id, tenantId, deletedAt: null } })`, which fails type-check on Prisma 7+. This is fixed in current releases.
 </Note>
 
 ### `projections.prisma`

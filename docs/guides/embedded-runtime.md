@@ -5,7 +5,7 @@ Use this pattern when your application owns request handling and orchestrates Ma
 ~~Normative semantics are defined in `C:/Projects/Manifest/docs/spec/semantics.md`.~~
 
 > **Correction (2026-07-15) @RYANSIGNED:** Normative semantics are in
-> `docs/spec/semantics.md` (repo-relative). Package pin SoT: **3.6.4**.
+> `docs/spec/semantics.md` (repo-relative). Package pin SoT: **3.6.41**.
 
 ## Minimal Flow
 

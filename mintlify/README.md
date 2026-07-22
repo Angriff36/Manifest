@@ -37,7 +37,7 @@ README / AGENTS / CONTRIBUTING).~~
 > ~~**Correction (2026-07-20):** Version SoT is the repo root `package.json`
 > (**3.6.32**).~~
 >
-> **Correction (2026-07-21):** Version SoT is the repo root `package.json`
+> **Correction (2026-07-22):** Version SoT is the repo root `package.json`
 > (**3.6.41**). Node **`>=20`**. Do not invent features; prefer
 > `docs/CONFIRMED-FEATURES.md` + the spec chain.
 

@@ -59,4 +59,4 @@ options, prerequisites, and companion facts.
 - ~~`C:/Projects/Manifest/src/manifest/projections/nextjs/README.md`~~ → `src/manifest/projections/nextjs/README.md`
 
 > **Correction (2026-07-15) @RYANSIGNED:** Absolute machine paths replaced with
-> repo-relative paths. Package pin SoT: **3.6.4**.
+> repo-relative paths. Package pin SoT: **3.6.41**.

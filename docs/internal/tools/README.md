@@ -6,7 +6,7 @@ Authority: Advisory
 ~~Applies to: `@angriff36/manifest@0.5.0+`~~
 
 > **Correction (2026-07-15) @RYANSIGNED:** Package pin SoT is root
-> `package.json` = **3.6.4** (not `@0.5.0+`). These guides live under
+> `package.json` = **3.6.41** (not `@0.5.0+`). These guides live under
 > `docs/internal/tools/` — not `docs/tools/`.
 
 This section documents the CLI and development tools that ship with the
