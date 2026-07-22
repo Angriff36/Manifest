@@ -236,6 +236,12 @@ is the same "formally closed as OUT_OF_SCOPE" pattern the sibling
 deliberate, spec'd non-feature, not an oversight. If escalation semantics are
 ever wanted, spec-first as originally proposed; otherwise no action needed.
 
+> **Correction (2026-07-22):** Escalate was implemented 2026-07-15 with open
+> author-defined routing (`escalate { to, status, timeout }`). The real code for
+> bare `escalate` is `APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE` (fixture 103);
+> full escalate succeeds (fixture `111-approval-escalate`). The above
+> `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` was a phantom code.
+
 - `parser.ts` accepts `onTimeout: 'escalate'` on approvals; `ir-compiler.ts:884–889` emits a hard "not supported in this version" diagnostic. Either implement escalation semantics (spec first: docs/spec/, then conformance fixtures, then runtime) or remove it from the grammar — a keyword that always errors is grammar debt.
 
 ### M9. `through` (M2M) relationships — complete the chain or fail loud (VERIFY depth)

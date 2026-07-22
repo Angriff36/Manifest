@@ -235,16 +235,12 @@ When an approval declaration includes a `timeout` (specified in hours), the `on_
 | `escalate { … }`   | Open author-defined routing: required `to` (any expression), `status`, and `timeout` (`hours` / `none` / `reset`). Runtime stores the evaluated `to` as opaque `escalatedTo` metadata — Manifest does not interpret person vs team vs queue. |
 | (omitted)          | The approval remains pending indefinitely until explicitly granted, denied, or expired.  |
 
-~~`on_timeout: escalate` (if shown elsewhere as supported)~~
-
-> **Correction (2026-07-15):** Only `on_timeout: "cancel"` is supported. `escalate` is a hard
-> compile error (`APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED`, fixture
-> `103-approval-escalate-unsupported.manifest`). IR narrows `onTimeout` to `"cancel"` only.
-
-> **Update (2026-07-15):** Escalate is supported as an open block:
-> `on_timeout: escalate { to: <expr>, status: pending|granted|denied|expired, timeout: <hours|none|reset> }`.
-> Bare `on_timeout: escalate` still fails (`APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE`, fixture 103).
-> Success: fixture `111-approval-escalate`.
+> **Escalate timeout behavior (2026-07-15):** `on_timeout: escalate` is supported as an open block
+> that routes to an author-defined target: `escalate { to: <expr>, status: pending|granted|denied|expired, timeout: <hours|none|reset> }`.
+> The runtime stores the evaluated `to` as opaque `escalatedTo` metadata — Manifest does not interpret person
+> vs team vs queue. A bare `on_timeout: escalate` (without the block) fails with
+> `APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE` — see fixture `103-approval-escalate-unsupported`. Full
+> example: fixture `111-approval-escalate`.
 
 Denied and expired approvals are reset on the next command attempt — the runtime creates a new pending request rather than reusing the terminal state. This means a denied approval does not permanently block the command; it only blocks the current attempt.
 

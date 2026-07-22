@@ -229,12 +229,10 @@ blocks are hard compile errors (~~message-only diagnostic, fixture 110 —
 
 > **Correction (2026-07-15) @RYANSIGNED:** Optional `IRDiagnostic.code` exists;
 > fixture 110 seeds `ENTITY_BEHAVIOR_UNSUPPORTED` (also ~~`RELATION_THROUGH_UNSUPPORTED`,~~
-> `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` on 103).
+> `APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE` on 103).
 > ~~also RELATION_THROUGH_UNSUPPORTED on 102~~
 > **Update (2026-07-15):** `through` is implemented; fixture `102-through-join` is the
-> happy path. Exclusivity remains `RELATION_FK_THROUGH_EXCLUSIVE` (101). Canonical IR and `docs/spec`
-> define no behavior semantics; use top-level reactions or command actions
-> instead.
+> happy path. Escalate is implemented with author-defined routing; fixture `111-approval-escalate`.
 
 **Distribution gap:** MCP server, LSP server, stdlib, and the VS Code
 extension are built and tested but published nowhere.

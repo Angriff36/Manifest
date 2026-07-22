@@ -39,14 +39,9 @@ entity PurchaseOrder {
 }
 ```
 
-> **Correction (2026-07-15) @RYANSIGNED:** Only `on_timeout: "cancel"` is supported.
-> `on_timeout: "escalate"` is **rejected at compile time** with
-> `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` (fixture `103-approval-escalate-unsupported.manifest`).
-> IR schema `IRApproval.onTimeout` enum is `["cancel"]` only.
-
-> **Update (2026-07-15):** Open escalate shipped — `escalate { to: <expr>, status, timeout }`.
-> Target is an author expression (opaque routing). Bare `escalate` still errors
-> (`APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE`, fixture 103). Success: fixture `111`.
+> **Escalate timeout behavior (2026-07-15):** Open `escalate` shipped — `escalate { to: <expr>, status, timeout }`.
+> Target is an author expression (opaque routing; Manifest does not interpret person vs team vs queue).
+> Bare `escalate` still fails with `APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE` (fixture 103). Success: fixture `111-approval-escalate`.
 > Spec: `docs/spec/semantics.md` § Approval timeout actions.
 
 ## IR Schema Changes

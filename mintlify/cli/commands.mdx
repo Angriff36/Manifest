@@ -108,6 +108,12 @@ manifest compile [source] [options]
   their `use` declarations. Auto-detected when omitted. Only meaningful together with `--merge`.
 </ParamField>
 
+<ParamField path="--all" type="boolean" default="false">
+  Read all settings from `manifest.config.yaml` and use the config-driven flow instead of individual flags.
+  When set, the command uses config values for `output`, `glob`, `diagnostics`, and other options.
+  This is the preferred workflow for projects with a config file.
+</ParamField>
+
 <Note>
   **Idempotent output.** When an output `.ir.json` already exists and was produced from
   byte-identical source (matching `provenance.contentHash`), the compiler reuses the prior
@@ -204,6 +210,12 @@ For other projections the CLI default `all` resolves to the projection's declare
   anything**. Exits non-zero and lists the drifted files (a missing file or any byte difference
   counts as drift). Use it in CI to assert that committed code equals freshly generated code — the
   codegen analogue of `prettier --check`. See [CI/CD](/cli/ci-cd).
+</ParamField>
+
+<ParamField path="--all" type="boolean" default="false">
+  Read all settings from `manifest.config.yaml` and use the config-driven flow instead of individual flags.
+  When set, the command uses config values for `output`, `projection`, `surface`, and other options.
+  This is the preferred workflow for projects with a config file.
 </ParamField>
 
 #### Examples
@@ -306,6 +318,12 @@ manifest build [source] [options]
 
 <ParamField path="--response" type="string">
   Response helpers import path, passed through to the generate stage.
+</ParamField>
+
+<ParamField path="--all" type="boolean" default="false">
+  Read all settings from `manifest.config.yaml` and use the config-driven flow instead of individual flags.
+  When set, the command uses config values for compile and generate stages (output, projection, surface, etc.).
+  This is the preferred workflow for projects with a config file.
 </ParamField>
 
 ### Examples
@@ -568,6 +586,12 @@ manifest watch [source] [options]
 
 <ParamField path="--clear" type="boolean" default="false">
   Clear the terminal on each rebuild.
+</ParamField>
+
+<ParamField path="--all" type="boolean" default="false">
+  Read all settings from `manifest.config.yaml` and use the config-driven flow instead of individual flags.
+  When set, the command uses config values for compile and generate stages (output, projection, surface, etc.).
+  This is the preferred workflow for projects with a config file.
 </ParamField>
 
 ### Examples
