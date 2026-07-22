@@ -248,9 +248,9 @@ Mirror of `docs/internal/COMPLIANCE_MATRIX.md` §3 (2026-07-22). Granular Core/S
 | [x]    | LocalStorageStore                              | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `runtime-engine.ts:797-856` + `localStorage` target wire @ `2af8191b…` / `9c94b2db…` |
 | [x]    | PostgresStore                                  | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `stores.node.ts` + `stores.postgres.test.ts` (SHA after commit) |
 | [x]    | SupabaseStore                                  | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `stores.node.ts` + `stores.supabase.test.ts` (SHA after commit) |
-| [~]    | Turso / libSQL store                           | CLAIMED_NEEDS_PROOF   |                                        |
-| [~]    | DynamoDB store                                 | CLAIMED_NEEDS_PROOF   |                                        |
-| [~]    | GenericPrismaStore                             | CLAIMED_NEEDS_PROOF   | `stores/prisma-generic/`               |
+| [x]    | Turso / libSQL store                           | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `TursoStore` + `stores.turso.test.ts` @ `9f3a9bfa…` |
+| [x]    | DynamoDB store                                 | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `DynamoDBStore` + `stores.dynamodb.test.ts` @ `9f3a9bfa…` |
+| [x]    | GenericPrismaStore                             | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `stores/prisma-generic/` @ `d6d42fc8…` |
 | [x]    | EventSourcedStore                              | FULLY_IMPLEMENTED     | §1 — in-process event log + projection |
 | [~]    | Outbox: memory/postgres/redis/mongodb/dynamodb | CLAIMED_NEEDS_PROOF   | `outbox/stores/*`                      |
 | [x]    | Approval store memory/postgres                                                                                       | FULLY_IMPLEMENTED           | mirror of COMPLIANCE_MATRIX — contract `approval/approval-store.ts:27-61`; Memory `approval/stores/memory.ts:28-67`; Postgres `approval/stores/postgres.ts:80-159`; runtime wire `runtime-engi… |

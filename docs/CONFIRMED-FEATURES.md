@@ -167,8 +167,10 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
   > `storeProvider` — engine `postgres` target is Node-only instruct path).
   > **Update (2026-07-22):** `SupabaseStore` also FULLY_IMPLEMENTED
   > (`stores.supabase.test.ts` injected client; optional `@supabase/supabase-js`
-  > peer). Turso/libSQL / DynamoDB / Prisma-generic
-  > (`stores/prisma-generic/store.ts`) still have their own open matrix rows.
+  > peer). **Update (2026-07-22):** Turso/libSQL (`TursoStore` +
+  > `stores.turso.test.ts`), DynamoDB entity store (`DynamoDBStore` +
+  > `stores.dynamodb.test.ts`), and `GenericPrismaStore`
+  > (`stores/prisma-generic/`) are matrix FULLY_IMPLEMENTED.
 - Outbox adapters (`src/manifest/outbox/stores/*`) — memory (in-process only, `tx` ignored) +
   postgres FULLY_IMPLEMENTED @ `b296e1a` (durable, honors supplied transaction handle); redis/mongodb/dynamodb still
   CLAIMED_NEEDS_PROOF; ≠ outbound partner HTTP POST
