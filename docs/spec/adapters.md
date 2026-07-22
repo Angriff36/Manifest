@@ -1,6 +1,6 @@
 # Adapters
 
-Last updated: 2026-05-20
+Last updated: 2026-07-22
 Status: Active
 Authority: Binding
 Enforced by: src/manifest/conformance/**, npm test

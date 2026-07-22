@@ -1,6 +1,6 @@
 # Conformance
 
-Last updated: 2026-02-12
+Last updated: 2026-07-22
 Status: Active
 Authority: Binding
 Enforced by: src/manifest/conformance/**, npm test

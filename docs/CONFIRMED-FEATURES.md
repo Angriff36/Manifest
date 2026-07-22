@@ -136,7 +136,9 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
 ## 4. Stores & Persistence Subsystems
 
 - Entity stores: memory, localStorage (browser-safe), postgres, supabase (`stores.node.ts`), Turso/libSQL, DynamoDB, Prisma-generic (`stores/prisma-generic/store.ts`) — each test-backed
-- Transactional outbox with memory/postgres/redis/mongodb/dynamodb adapters (`src/manifest/outbox/stores/*`)
+- Transactional outbox adapters (`src/manifest/outbox/stores/*`) — memory +
+  postgres matrix FULLY_IMPLEMENTED @ `b296e1a`; redis/mongodb/dynamodb still
+  CLAIMED_NEEDS_PROOF; ≠ outbound partner HTTP POST
 - Approval store: memory/postgres (`src/manifest/approval/stores/*` — matrix
   FULLY_IMPLEMENTED @ `179e135`; Postgres unit tests mocked Pool)
 - Idempotency store: memory/postgres (`src/manifest/idempotency/stores/*`)

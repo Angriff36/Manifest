@@ -323,7 +323,9 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | DynamoDB store                                 | CLAIMED_NEEDS_PROOF   |                                        |
 | [~]    | GenericPrismaStore                             | CLAIMED_NEEDS_PROOF   | `stores/prisma-generic/`               |
 | [x]    | EventSourcedStore                              | FULLY_IMPLEMENTED     | §1 — in-process event log + projection |
-| [~]    | Outbox: memory/postgres/redis/mongodb/dynamodb | CLAIMED_NEEDS_PROOF   | `outbox/stores/*`                      |
+| [x]    | Outbox memory (`MemoryOutboxStore`)            | FULLY_IMPLEMENTED     | `outbox/stores/memory.ts:44-156`; proof `outbox/stores/memory.test.ts` + worker uses memory @ `b296e1a57f191866624391906e2f1188760dbd21`. In-process only; `tx` ignored; ≠ outbound partner HTTP. |
+| [x]    | Outbox postgres                                | FULLY_IMPLEMENTED     | `outbox/stores/postgres.ts` + `postgres.test.ts` (mocked Pool) @ `b296e1a57f191866624391906e2f1188760dbd21`. Live soak optional (`postgres.live.test.ts`); ≠ outbound partner HTTP. |
+| [~]    | Outbox redis / mongodb / dynamodb              | CLAIMED_NEEDS_PROOF   | adapters under `outbox/stores/*` — no dedicated unit suites yet                                                                 |
 | [x]    | Approval store memory/postgres                 | FULLY_IMPLEMENTED     | contract `approval/approval-store.ts:27-61`; Memory `approval/stores/memory.ts:28-67`; Postgres `approval/stores/postgres.ts:80-159`; runtime wire `runtime-engine.ts` `approvalStore`; proofs `approval/stores/memory.test.ts` + `postgres.test.ts` + durable cross-engine in `runtime-approval.test.ts` @ `179e1355186dc9796d4c5567eaecc6da671e0aed`. Postgres unit suite uses mocked Pool (not live DB soak). |
 | [x]    | Idempotency store memory/postgres              | FULLY_IMPLEMENTED     | §1 — `idempotency/stores/*`            |
 | [x]    | RateLimit store memory/postgres                | FULLY_IMPLEMENTED     | §1                                     |
