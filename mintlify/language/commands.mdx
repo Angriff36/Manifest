@@ -307,11 +307,12 @@ entity Notification {
 | `jitter`      | Add random jitter to prevent thundering herd (default: `false`)               |
 | `retryOn`     | One or more error codes that trigger retry (repeat the field per code)        |
 
-~~| `initialDelay` | First retry delay in milliseconds |~~
-~~| `maxDelay` | Cap on retry delay |~~
+| `maxDelay` | Upper bound on each computed delay (ms) |
 
-> **Correction (2026-07-15):** Source field is `delay:` (see fixture `72-command-retry-policy.manifest`).
-> IR stores `delayMs`. There is no `initialDelay` / `maxDelay` field on the retry block in IR v1.
+> **Note:** Delays are clamped with `min(delay, maxDelay)`. Source field `maxDelay` compiles to IR `maxDelayMs`.
+> See `runtime-retry.ts` `computeRetryDelays` and fixture `72-command-retry-policy.manifest`.
+
+~~| `initialDelay` | First retry delay in milliseconds |~~ (use `delay` instead)
 
 ### Backoff strategies
 
