@@ -82,7 +82,7 @@ Guards support the full expression language:
 | Membership  | `in`, `contains`                 |
 | Conditional | `? :` (ternary)                  |
 
-`==` uses loose equality (`undefined == null` is `true`). Use `is not` or `!=` for strict inequality.
+`==` uses loose equality (`undefined == null` is `true`). Use `!=` for strict inequality. Note: `is not` parses as `x is (not y)` (a type check combined with a logical negation), not as a single inequality operator.
 
 ## Policies
 
