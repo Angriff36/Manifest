@@ -315,7 +315,9 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | Capability descriptors API                     | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | Projection descriptor API                      | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | `ir.tenant` in all web projections             | FULLY_IMPLEMENTED     | Next/Express/Hono/SvelteKit/Remix — `web-ir-tenant.test.ts` (2026-07-22)          |
-| [x]    | Module → Prisma `@@schema` / OpenAPI title     | FULLY_IMPLEMENTED     | per-module file split remains NOT_IMPLEMENTED                                     |
+| [x]    | Module → Prisma `@@schema` / OpenAPI title     | FULLY_IMPLEMENTED     | Prisma multiSchema + OpenAPI title; see splitFiles row                            |
+| [x]    | Prisma `multiSchema.splitFiles`                | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `split-files.ts` + `split-files.test.ts` (4)     |
+| [~]    | Per-module output file splitting (all targets) | PARTIAL               | mirror of COMPLIANCE_MATRIX §6 — Prisma shipped; Convex/web monolith still parked |
 | [x]    | Convex command `rateLimit`                     | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `rate-limit-emit.ts` |
 | [x]    | Convex policy `rateLimit` (write/execute/delete) | FULLY_IMPLEMENTED   | mirror of COMPLIANCE_MATRIX §6 — mutation emit |
 | [x]    | Convex read/`all` policy `rateLimit`           | REJECTED_LOUD         | mirror of COMPLIANCE_MATRIX §6 — queries cannot mutate buckets (error) |

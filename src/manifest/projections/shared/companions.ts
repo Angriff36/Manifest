@@ -192,14 +192,27 @@ function emitDeterminismHelpers(
   if (injectNow) {
     lines.push(`const now = () => ${JSON.stringify(seed)};`);
   }
-  if (injectGenerateId) {
-    lines.push(`let __manifestIdSeq = 0;`);
-    lines.push(
-      `const generateId = () => ${JSON.stringify(`id-${seed}-`)} + String(++__manifestIdSeq);`,
-    );
-  }
+  // Note: generateId is now emitted inside the factory function (not module-level)
+  // to ensure each factory invocation has its own sequence counter.
+  // This prevents concurrent requests from influencing each other's IDs.
   if (injectNow || injectGenerateId) lines.push('');
   return { injectNow, injectGenerateId };
+}
+
+/**
+ * Emit the generateId closure inside the factory function.
+ * This creates a fresh sequence counter for each factory invocation.
+ */
+function emitGenerateIdInFactory(
+  lines: string[],
+  seed: number,
+): void {
+  lines.push('  // Per-invocation sequence counter — each factory call gets its own closure');
+  lines.push(`  let __manifestIdSeq = 0;`);
+  lines.push(
+    `  const generateId = () => ${JSON.stringify(`id-${seed}-`)} + String(++__manifestIdSeq);`,
+  );
+  lines.push('');
 }
 
 function emitContextMerge(
@@ -362,6 +375,9 @@ export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): 
     lines.push('      } as ManifestContext;');
     lines.push('    }');
     lines.push('  }');
+    if (injectGenerateId && typeof seed === 'number') {
+      emitGenerateIdInFactory(lines, seed);
+    }
     lines.push(
       `  return new RuntimeEngine(ir, resolvedContext${formatRuntimeEngineOptions({
         withStoreProvider: true,
@@ -382,6 +398,9 @@ export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): 
       );
     } else {
       const ctxExpr = emitContextMerge(lines, defaultContext, 'context');
+      if (injectGenerateId && typeof seed === 'number') {
+        emitGenerateIdInFactory(lines, seed);
+      }
       const opts = formatRuntimeEngineOptions({
         withStoreProvider: false,
         deterministicMode,

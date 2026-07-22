@@ -83,6 +83,8 @@ export default defineConfig({
               Client: 'tenant_crm',
               Event: 'tenant_events',
             },
+            // Root datasource at output; one .prisma per schema under dir.
+            splitFiles: { enabled: true, dir: 'prisma/schemas' },
           },
 
           // Per-entity physical table name → @@map("..."). Overrides naming.

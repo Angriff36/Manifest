@@ -151,6 +151,23 @@
           "description": "Schema for entities with neither an entitySchema override nor an IR module. Default 'public'.",
           "type": "string",
           "default": "public"
+        },
+        "splitFiles": {
+          "description": "Config G6 — emit root datasource/generator at output plus one .prisma file per database schema under dir. Requires multiSchema.enabled. Prisma merges sibling files.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Master switch. Default false (single combined schema file).",
+              "type": "boolean",
+              "default": false
+            },
+            "dir": {
+              "description": "Directory path hint for per-schema .prisma partitions. Default 'prisma/schemas'.",
+              "type": "string",
+              "default": "prisma/schemas"
+            }
+          }
         }
       }
     },

@@ -145,6 +145,30 @@ provider is a hard diagnostic and falls back to the flat layout. With no
 existing datasource. Multi-schema is GA in current Prisma — no `previewFeatures`
 flag is emitted.
 
+### Split files (one `.prisma` per schema)
+
+```yaml
+projections:
+  prisma:
+    options:
+      provider: postgresql
+      output: prisma/schema.prisma
+      multiSchema:
+        enabled: true
+        splitFiles:
+          enabled: true
+          dir: prisma/schemas # default
+```
+
+When `splitFiles.enabled` is true (requires `multiSchema.enabled`), the
+projection emits:
+
+- `output` — datasource + generator only (plus a comment listing partitions)
+- `dir/<schema>.prisma` — models/enums for that schema (still with `@@schema`)
+
+Prisma merges every `.prisma` file in the schema folder. `splitFiles` without
+`multiSchema.enabled` is a hard diagnostic (`PRISMA_SPLITFILES_REQUIRES_MULTISCHEMA`).
+
 ## Extraction Bootstrap Workflow
 
 For existing Prisma projects adopting Manifest, the projection-config is bootstrapped

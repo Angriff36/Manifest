@@ -74,6 +74,20 @@ export type IndexEntry = string[] | { fields: string[]; name?: string };
  * it with any other provider produces a hard diagnostic and the projection
  * falls back to the flat layout.
  */
+/**
+ * Emit one `.prisma` file per database schema (plus a root datasource file).
+ * Requires `multiSchema.enabled`. Prisma merges sibling files in the folder.
+ */
+export interface MultiSchemaSplitFilesConfig {
+  /** Master switch. Default false — single combined schema.prisma. */
+  enabled?: boolean;
+  /**
+   * Directory for per-schema `.prisma` partitions (posix-style path hint).
+   * Default `"prisma/schemas"`. Root datasource/generator stays at `output`.
+   */
+  dir?: string;
+}
+
 export interface MultiSchemaConfig {
   /** Master switch. Default false — flat layout, fully back-compatible. */
   enabled?: boolean;
@@ -87,6 +101,11 @@ export interface MultiSchemaConfig {
   entitySchema?: Record<EntityName, string>;
   /** Schema for entities with neither an override nor a module. Default `"public"`. */
   defaultSchema?: string;
+  /**
+   * Config G6 — one `.prisma` file per schema under `dir`, root file keeps
+   * datasource/generator. Requires `enabled: true`.
+   */
+  splitFiles?: MultiSchemaSplitFilesConfig;
 }
 
 export interface PrismaProjectionOptions {

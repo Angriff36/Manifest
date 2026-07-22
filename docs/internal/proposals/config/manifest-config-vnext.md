@@ -380,10 +380,9 @@ export default defineConfig({
     },
     routes: { output: 'generated/', options: { basePath: '/api' } },
 
-    // ── Prisma multi-schema output ──────────────────────────────────── 🟩/🟥
-    // CORE SHIPPED (G6): `schemas = [...]` on the datasource + `@@schema(...)`
-    // per model, derived from the entity's IR `module` (overridable). Still
-    // 🟥: `splitFiles` (one .prisma file per schema) is deferred.
+    // ── Prisma multi-schema output ──────────────────────────────────── 🟩
+    // G6 SHIPPED: `schemas = [...]` + `@@schema(...)` per model from module,
+    // plus `splitFiles` (root datasource + one .prisma file per schema).
     prisma: {
       output: 'prisma/schema.prisma',
       options: {
@@ -401,7 +400,7 @@ export default defineConfig({
           },
           // defaultSchema: "public",                // 🟩 module-less fallback (default "public")
           splitFiles: {
-            // 🟥 DEFERRED — not implemented
+            // 🟩 shipped 2026-07-22
             enabled: true,
             dir: 'prisma/schemas',
           },
@@ -512,7 +511,7 @@ conformance / IR-shape changes that require schema + fixture + runtime updates.
 | ~~**G3**~~ ✅ DONE  | `mergeIntegrity`                     | Per-file IR; no central collision policy                    | ~~Multi-module merge pass with deterministic ordering + collision policy~~ **DONE 2026-07-22 (error\|lastWins):** `merge-integrity.ts` + uniqueness checks; wired in `multi-compiler` / CLI compile. `namespace` deferred. | `merge-integrity.ts`, `merge-integrity-checks.ts`, `multi-compiler.ts`, schema                                         | Shipped (namespace deferred)                |
 | ~~**G4**~~ ✅ DONE  | `provenance`                         | None                                                        | ~~Source-hash + version stamping; deterministic; lockfile + staleness~~ **DONE 2026-07-22:** `deterministic` fixed `compiledAt`, lockfile write, `failIfStale` under deterministic. `gitSha` field deferred (no IR field). | `provenance-config.ts`, `ir-compiler.ts`, `multi-compiler.ts`, CLI `provenance-lockfile.ts`, schema                     | Shipped (`gitSha` deferred)                 |
 | **G5**             | `projections.enabled`/`defaults`     | Per-projection blocks; `--surface all`                      | ~~Merge `defaults` into each projection; honor `enabled` list in CLI generate~~ **DONE 2026-07-15:** schema meta keys + `resolveProjectionOptions` / `listConfiguredProjectionNames` / `generateAllFromConfig` | `packages/cli/src/commands/generate*`, schema, `src/manifest/config.ts`                                                | Shipped                                     |
-| **G6** ✅ CORE DONE | `prisma.multiSchema`                 | Was: single-schema (flat) output                            | **Shipped:** `schemas = [...]` + `@@schema` per model from `IREntity.module` (+ `entitySchema`/`defaultSchema` overrides, provider guard). **Deferred:** `splitFiles` (one .prisma file per schema).           | `src/manifest/projections/prisma/{options,generator}.ts`, `prisma-projection.schema.json`, `generator.test.ts`, README | Med                                         |
+| ~~**G6**~~ ✅ DONE | `prisma.multiSchema`                 | Was: single-schema (flat) output                            | **Shipped:** `schemas = [...]` + `@@schema` per model from `IREntity.module` (+ `entitySchema`/`defaultSchema` overrides, provider guard). **Shipped 2026-07-22:** `splitFiles` (root + one `.prisma` per schema via `split-files.ts`).           | `src/manifest/projections/prisma/{options,generator,split-files}.ts`, `prisma-projection.schema.json`, `split-files.test.ts`, README | Shipped                                         |
 | ~~**G7**~~ ✅ DONE | `runtime` block               | Runtime opts in code; dispatcher mode under nextjs          | ~~Central runtime config~~ **DONE 2026-07-22:** `executionMode`, `deterministicMode`, `stores`, `forbidWallClock`/`seed`→`now`/`generateId`, `defaultContext` merge, `concurrency.maxParallelCommands`→`RuntimeOptions.maxParallelCommands` on web factories. | `runtime-config.ts`, `runtime-engine.ts`, companions, web generators, schema `RuntimeConfig`                                                | Shipped            |
 | ~~**G8**~~ ✅ DONE  | `hooks.lifecycle`                    | git pre-commit only                                         | ~~Lifecycle hook runner around compile/generate~~ **DONE 2026-07-22:** `beforeCompile` / `afterGenerate` via `lifecycle-hooks.ts`; wired in `compile.ts` / `generate.ts` (batch once); schema `LifecycleHooksConfig` | `packages/cli/src/utils/lifecycle-hooks.ts`, `compile.ts`, `generate.ts`, schema                                       | Shipped                                     |
 | ~~**G9**~~ ✅ DONE  | `plugins.order`/capabilities         | `module/options/enabled` read-only listing                  | ~~Deterministic ordering + capability registration~~ **DONE 2026-07-22:** `order` + `capabilities` on declarations; `sortPluginDeclarations` / `loadOrder` / `declaredCapabilities` in `plugin-loader`         | `plugin-order.ts`, `plugin-loader.ts`, schema, `config.ts`                                                             | Shipped                                     |
@@ -522,8 +521,8 @@ conformance / IR-shape changes that require schema + fixture + runtime updates.
 
 1. ~~**G0 + G1**~~ ✅ **DONE** — schema gap fixed (`hooks`/`plugins`) and typed
    `defineConfig` shipped at `@angriff36/manifest/config`.
-2. **G5 + G6** ✅ **G6 core DONE** (Prisma multi-schema layout shipped;
-   `splitFiles` deferred) — ✅ **G5 DONE 2026-07-15** (`projections.enabled` /
+2. **G5 + G6** ✅ **G6 DONE** (Prisma multi-schema + `splitFiles` shipped
+   2026-07-22) — ✅ **G5 DONE 2026-07-15** (`projections.enabled` /
    `defaults`). Original framing: contained to the
    projection layer, no IR/semantics risk.
 3. **G2 + G10** ✅ **G2 failOn DONE** + ✅ **G10 DONE 2026-07-15** (`manifest ci-gate`).

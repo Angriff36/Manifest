@@ -351,6 +351,7 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 6. Projections — every registered target | Convex approvals | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_APPROVAL` error |
 | 6. Projections — every registered target | Convex command `retry` | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_RETRY` error |
 | 6. Projections — every registered target | Convex read/`all` policy `rateLimit` | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — queries cannot mutate buckets (error) |
+| 6. Projections — every registered target | Per-module output file splitting (all targets) | `PARTIAL` | mirror of COMPLIANCE_MATRIX §6 — Prisma shipped; Convex/web monolith still parked |
 | 8. Open gaps / phantoms (checklist mirror) | ~~`manifest generate-fixtures`~~ | `REMOVED (docs struck)` | use `manifest seed` / `load-test` |
 | 8. Open gaps / phantoms (checklist mirror) | ~~`manifest test constraints` / ConstraintTestHarness~~ | `REMOVED (docs struck)` | use `manifest harness` / `repl` |
 | 8. Open gaps / phantoms (checklist mirror) | ~~`projection.generateRoute` / `generateTypes` / `generateClient`~~ | `REMOVED (docs struck)` | use `generate(ir, request)` / CLI `--all` |

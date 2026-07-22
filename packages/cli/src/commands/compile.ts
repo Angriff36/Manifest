@@ -92,10 +92,10 @@ async function collectValidationRuleDiagnostics(
   ir: IR | null | undefined,
 ): Promise<CompileDiagnostic[]> {
   if (!ir) return [];
-  const { loadConfig } = await import('../utils/config.js');
+  const { loadAllConfigs } = await import('../utils/config.js');
   const { runValidationRules } = await import('@angriff36/manifest/config');
-  const cfg = await loadConfig(process.cwd());
-  return runValidationRules(ir, cfg?.validation?.rules).map((d) => ({
+  const { build } = await loadAllConfigs(process.cwd());
+  return runValidationRules(ir, build?.validation?.rules).map((d) => ({
     severity: d.severity,
     message: d.code ? `${d.code}: ${d.message}` : d.message,
     code: d.code,

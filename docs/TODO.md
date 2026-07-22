@@ -182,6 +182,9 @@ non-binding navigation mirror only.
 - [x] **Module-based output splitting honesty** — 2026-07-22: shipped scope is
       Prisma `@@schema` + OpenAPI title from modules; per-module file trees for
       all projections remain NOT_IMPLEMENTED (parked). Matrix split into two rows.
+- [x] **Prisma `multiSchema.splitFiles`** — fixed 2026-07-22: root datasource at
+      `output` + `dir/<schema>.prisma` partitions (`split-files.ts`). All-target
+      file trees remain PARTIAL (Convex/web parked). Proof: `split-files.test.ts`.
 - [x] **Phantom config/CLI/API docs struck** — 2026-07-22: Mintlify
       `cli/configuration.mdx` no longer claims `env(VAR)` inlining,
       `MANIFEST_ENV` overlays, or YAML connection `stores:`; `API_REFERENCE.md`

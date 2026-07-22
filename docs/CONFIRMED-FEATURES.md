@@ -289,7 +289,10 @@ constraint overrides, durable rate-limit (in-memory only)~~
 `alternateKeys` uniqueness, entity-level constraint overrides; durable
 `PostgresRateLimitStore` ships. `optional` is a projection hint (not a
 runtime gap). `command.returns` remains projection metadata by design.
-Still open: per-module **file** output splitting (parked).
+~~Still open: per-module **file** output splitting (parked).~~
+> **Correction (2026-07-22):** Prisma `multiSchema.splitFiles` shipped (root +
+> one `.prisma` per schema). Cross-target file trees for Convex/web remain
+> parked (`PARTIAL` in matrix §6).
 ~~Convex read-policy `rateLimit` remains diagnostic-only; health projection stays PARTIAL~~
 > **Correction (2026-07-22):** Convex read/`all` policy `rateLimit` is
 > **rejected loud** (`CONVEX_UNSUPPORTED_RATE_LIMIT` error). Health projection
