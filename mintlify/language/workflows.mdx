@@ -173,11 +173,9 @@ Schedules are resolved at compile time and emitted to the IR as `IRSchedule` obj
 Scheduled commands can pass static parameters to the target command:
 
 ```manifest
-entity Cache {
-  schedule warmCache
-    cron "0 */6 * * *"
-    run refresh(keys: "all")
+schedule warmCache cron "0 */6 * * *" run Cache.refresh(keys: "all")
 
+entity Cache {
   command refresh(keys: string) {
     // ...
   }
