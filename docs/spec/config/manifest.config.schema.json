@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://manifest.lang/spec/config/manifest.config.schema.json",
+  "$id": "urn:manifest:config:manifest-config",
   "title": "Manifest Build Configuration",
   "$comment": "SOURCE OF TRUTH (Binding): machine contract for manifest.config YAML/keys. Prose: docs/spec/config/manifest.config.md. Index: docs/SOURCE_OF_TRUTH_INDEX.md.",
   "description": "Schema for manifest.config.yaml / manifest.config.yml / .manifestrc.yaml. The runtime-level TypeScript config (manifest.config.ts) is validated structurally by the loader, not by this schema — it contains JavaScript functions and class references that cannot be expressed in JSON.",

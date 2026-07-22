@@ -1,5 +1,5 @@
 {
-  "$id": "https://manifest.lang/spec/config/prisma-projection-v1.schema.json",
+  "$id": "urn:manifest:config:prisma-projection-v1",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Prisma projection options (v1)",
   "description": "Consumer-facing config surface for @manifest/projection-prisma. Supplied to the projection at compile time via `projections.prisma.options` in manifest.config.yaml. NONE of these keys exist in Manifest core grammar or IR; they all live here on the projection side.",

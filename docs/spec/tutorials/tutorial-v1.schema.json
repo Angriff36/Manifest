@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://manifest-lang.org/schemas/tutorial-v1.schema.json",
+  "$id": "urn:manifest:tutorials:tutorial-v1",
   "title": "Manifest Tutorial",
   "description": "A structured tutorial for learning Manifest. Tutorials are defined as JSON and can be contributed by the community. They are consumed by the diagnostic UI's tutorial mode to walk new users through writing their first .manifest programs.",
   "type": "object",

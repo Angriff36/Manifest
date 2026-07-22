@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://manifest.dev/plugins/plugin.schema.json",
+  "$id": "urn:manifest:plugins:plugin",
   "title": "ManifestPlugin",
   "description": "Schema for validating a Manifest plugin module export.",
   "type": "object",

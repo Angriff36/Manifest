@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://manifest.dev/spec/registry/commands.schema.json",
+  "$id": "urn:manifest:registry:commands",
   "title": "Manifest Command Registry",
   "description": "Machine-readable inventory of every entity+command pair derivable from a compiled IR. Emitted by `manifest emit registries`. See docs/spec/registry/README.md.",
   "type": "object",

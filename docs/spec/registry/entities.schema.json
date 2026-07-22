@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://manifest.dev/spec/registry/entities.schema.json",
+  "$id": "urn:manifest:registry:entities",
   "title": "Manifest Governed Entity Registry",
   "description": "Machine-readable inventory of every entity in a compiled IR, classified by governance status (governed / read_only_projection / infrastructure / bypass_allowed / unknown_nonconforming). Emitted by `manifest emit registries`.",
   "type": "object",

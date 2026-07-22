@@ -1,5 +1,5 @@
 {
-  "$id": "https://manifest.lang/spec/ir-v1.schema.json",
+  "$id": "urn:manifest:spec:ir-v1",
   "title": "Manifest IR v1",
   "$comment": "SOURCE OF TRUTH (Binding): machine contract for IR JSON shape. See docs/SOURCE_OF_TRUTH_INDEX.md. Semantics prose: docs/spec/semantics.md.",
   "type": "object",
