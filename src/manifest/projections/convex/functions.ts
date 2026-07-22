@@ -90,6 +90,11 @@ import {
   renderCommandIdempotencyPrologue,
   renderCommandIdempotencyWrappedRunnerHandler,
 } from './command-idempotency.js';
+import {
+  commandRateLimitNeedsAuth,
+  renderCommandRateLimitCheckLines,
+  renderCommandRateLimitHelpers,
+} from './rate-limit-emit.js';
 import { buildRelationDependencyPlan, type RelationDependency } from '../../relation-plan.js';
 
 type Normalized = NormalizedOptions;
@@ -1940,8 +1945,16 @@ function generateMutation(
     const payloadBinding = /\bpayload\b/.test(tail)
       ? `    const payload: Record<string, any> = { ${payloadParts} };\n`
       : '';
-    const bodyText = [...relationHydration.lines, ...checks.lines, tail].join('\n');
-    const authLines = authBindings(bodyText, options, tenantScoped);
+    const rateLimitLines = renderCommandRateLimitCheckLines(cmd, {
+      keyPrefix: name,
+      tenantProp: writeTenantProp,
+    });
+    const forceAuth =
+      tenantScoped || (!!cmd.rateLimit && commandRateLimitNeedsAuth(cmd.rateLimit));
+    const bodyText = [...relationHydration.lines, ...rateLimitLines, ...checks.lines, tail].join(
+      '\n',
+    );
+    const authLines = authBindings(bodyText, options, forceAuth);
 
     const createReturn = stripPrivateFromReturn('{ _id, ...doc }', mutationPrivates);
     const body =
@@ -1949,6 +1962,7 @@ function generateMutation(
       (authLines.length ? authLines.join('\n') + '\n' : '') +
       (relationHydration.lines.length ? relationHydration.lines.join('\n') + '\n' : '') +
       `    const doc: Record<string, any> = {\n${docLines.join(',\n')}\n    };\n` +
+      (rateLimitLines.length ? rateLimitLines.join('\n') + '\n' : '') +
       (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
       (encryptionActive
         ? `    const __storedDoc = await __encryptDoc(ctx, ${JSON.stringify(entity.name)}, ${JSON.stringify(mutationEncrypted)}, doc);\n`
@@ -2153,8 +2167,15 @@ function generateMutation(
     argDestructureParts.push(versionOcc.expectedArgName);
   }
   const argDestructure = argDestructureParts.length ? `, ${argDestructureParts.join(', ')}` : '';
+  const rateLimitLines = renderCommandRateLimitCheckLines(cmd, {
+    keyPrefix: name,
+    tenantProp: writeTenantProp,
+  });
+  const forceAuth =
+    tenantScoped || (!!cmd.rateLimit && commandRateLimitNeedsAuth(cmd.rateLimit));
   const bodyText = [
     ...relationHydration.lines,
+    ...rateLimitLines,
     ...checks.lines,
     ...transitions.lines,
     ...versionOcc.checkLines,
@@ -2162,7 +2183,7 @@ function generateMutation(
     ...versionOcc.updateFields,
     tail,
   ].join('\n');
-  const authLines = authBindings(bodyText, options, tenantScoped);
+  const authLines = authBindings(bodyText, options, forceAuth);
   // Document-tenancy check: an instance command may only touch documents in
   // the caller's tenant. Same message as the missing-doc throw so a cross-
   // tenant probe cannot distinguish "exists elsewhere" from "does not exist".
@@ -2184,6 +2205,7 @@ function generateMutation(
         ownershipLine) +
     (relationHydration.lines.length ? relationHydration.lines.join('\n') + '\n' : '') +
     (hasManyPreloads.length ? hasManyPreloads.join('\n') + '\n' : '') +
+    (rateLimitLines.length ? rateLimitLines.join('\n') + '\n' : '') +
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
     (compute.bindings.length ? computeBindingLines(compute.bindings).join('\n') + '\n' : '') +
     (transitions.lines.length ? transitions.lines.join('\n') + '\n' : '') +
@@ -2247,6 +2269,9 @@ export function generateMutations(
   if (/\b__resolveRelation\(/.test(body)) helpers.push(RELATION_HELPER);
   if (commandIdempotencyEnabled(options) || /\b__getCommandIdempotency\b/.test(body)) {
     helpers.push(renderCommandIdempotencyHelpers(options.commandIdempotencyTable));
+  }
+  if (/\b__consumeCommandRateLimit\b/.test(body)) {
+    helpers.push(renderCommandRateLimitHelpers(options.commandRateLimitTable));
   }
   if (/\bcheckRole\(/.test(body)) {
     helpers.push(

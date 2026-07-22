@@ -102,9 +102,14 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   },
   { feature: 'Command/policy retry', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_RETRY' },
   {
-    feature: 'Command/policy rateLimit',
+    feature: 'Command rateLimit',
+    status: 'supported',
+    note: 'Sliding-window buckets in commandRateLimitBuckets; user/tenant scopes need authContextImport. Policy/read rateLimit still unsupported.',
+  },
+  {
+    feature: 'Policy/read rateLimit',
     status: 'unsupported',
-    note: 'CONVEX_UNSUPPORTED_RATE_LIMIT',
+    note: 'CONVEX_UNSUPPORTED_RATE_LIMIT / CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT',
   },
   {
     feature: 'async commands / job queue',
@@ -212,14 +217,6 @@ export function collectUnsupportedDiagnostics(
         code: 'CONVEX_UNSUPPORTED_RETRY',
         entity: cmd.entity,
         message: `Command '${cmd.entity ?? '?'}.${cmd.name}' declares retry; the Convex projection does not emit retry/backoff wrappers.`,
-      });
-    }
-    if (cmd.rateLimit) {
-      out.push({
-        severity: 'warning',
-        code: 'CONVEX_UNSUPPORTED_RATE_LIMIT',
-        entity: cmd.entity,
-        message: `Command '${cmd.entity ?? '?'}.${cmd.name}' declares rateLimit; the Convex projection does not emit rate-limit checks.`,
       });
     }
     if (cmd.async) {

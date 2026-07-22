@@ -24,13 +24,14 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Relationships belongsTo/ref FK + indexes         | schema + queries             | `referenceMode` convexId \| stringId                                                         |
 | `indexed`, tenant index, option indexes          | schema + queries             | Index/query parity                                                                           |
 | `searchable` (string/text/uuid)                  | schema                       | Emits `.searchIndex("search_<field>", { searchField })`; tenant → `filterFields` when set    |
-| Commands → mutations                             | mutations                    | Order: policies → guards → constraints → mutate → emit → react                               |
+| Commands → mutations                             | mutations                    | Order: rateLimit → policies → guards → constraints → mutate → emit → react                   |
 | Command policies / guards / constraints          | mutations                    | Fail-closed; `CONVEX_UNRESOLVED_*` + denying throw; constraint `failWhen` polarity honored   |
 | Roles + `roleAllows`                             | queries + mutations          | Target-aware `ROLE_PERMISSIONS` + `checkRole`                                                |
 | Events + G7 emit payloads                        | mutations                    | `manifestEvents` table                                                                       |
 | Reactions (resolve, fanOut, count aggregates)    | mutations                    |                                                                                              |
 | Transitions                                      | mutations                    | Pre-patch legality; same-state (`from === to`) allowed; always on                            |
 | Command idempotency (`idempotencyKey`)           | schema + mutations           | `commandIdempotencyKeys` table; optional arg; cached result before re-execution (default on) |
+| Command `rateLimit`                              | schema + mutations           | Sliding-window `commandRateLimitBuckets`; before policies/guards; user/tenant need auth seam |
 | `versionProperty` / `versionAtProperty` OCC      | schema + mutations           | Schema field synthesis; create seeds `1`; updates optional expected version + increment      |
 | Private properties (read strip)                  | queries                      | Always on; mutation path still sees stored values                                            |
 | `masked` / `unmask when`                         | queries                      | Read-time strategies on list/get; unmaskWhen when Convex-renderable; mutations stay unmasked |
@@ -65,7 +66,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Approvals                                     | `CONVEX_UNSUPPORTED_APPROVAL`      |
 | `searchable` (non-string types)               | `CONVEX_UNSUPPORTED_SEARCHABLE`    |
 | Command/policy `retry`                        | `CONVEX_UNSUPPORTED_RETRY`         |
-| Command/policy `rateLimit`                    | `CONVEX_UNSUPPORTED_RATE_LIMIT`    |
+| Policy/read `rateLimit`                       | `CONVEX_UNSUPPORTED_RATE_LIMIT` / `CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT` |
 | `async` commands / job queue                  | `CONVEX_UNSUPPORTED_ASYNC_COMMAND` |
 | Action kinds `effect` / `publish` / `persist` | `CONVEX_UNSUPPORTED_ACTION_KIND`   |
 

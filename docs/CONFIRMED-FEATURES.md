@@ -224,9 +224,11 @@ searchable, versionProperty/optimistic concurrency, retry, rateLimit~~
 > `versionProperty` OCC shipped (2026-07-15; see `docs/TODO.md`).
 > **Correction (2026-07-22):** `masked` / `unmask when` read-time masking on
 > Convex list/get (`masking-emit.ts`; no `CONVEX_UNSUPPORTED_MASKED`).
-> Remaining diagnostics-only: **approvals, retry, rateLimit**
-> (`CONVEX_UNSUPPORTED_*`). Realtime / computed-cache are PARTIAL info
-> diagnostics, not unsupported.
+> **Correction (2026-07-22):** Command `rateLimit` now emits Convex
+> sliding-window enforcement (`rate-limit-emit.ts` /
+> `commandRateLimitBuckets`). Policy/read `rateLimit` still diagnostic-only.
+> Remaining diagnostics-only: **approvals, retry** (`CONVEX_UNSUPPORTED_*`).
+> Realtime / computed-cache are PARTIAL info diagnostics, not unsupported.
 
 **Not implemented at all (doc-only phantoms if claimed elsewhere):**
 time-travel debugger; full WASM runtime (only the scoped expression-compat

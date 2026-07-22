@@ -124,9 +124,15 @@ non-binding navigation mirror only.
       `masking-emit.ts` + query list/get wiring; strategies + renderable
       `unmaskWhen`; private+masked still stripped; mutations stay unmasked;
       `CONVEX_UNSUPPORTED_MASKED` removed. Proof: `masking-emit.test.ts`.
+- [x] **Convex command `rateLimit` enforcement** — fixed 2026-07-22:
+      `rate-limit-emit.ts` emits `commandRateLimitBuckets` +
+      `__consumeCommandRateLimit` sliding window; wired in mutations before
+      policies/guards; user/tenant scopes require `authContextImport`.
+      Policy/read rateLimit stay diagnostic-only. Proof: `rate-limit-emit.test.ts`.
 - [ ] **Convex projection remaining diagnostics-only surfaces** — approvals,
-      retry, rateLimit emit `CONVEX_UNSUPPORTED_*` (good) but generate
-      no Convex enforcement.
+      retry emit `CONVEX_UNSUPPORTED_*` (good) but generate no Convex
+      enforcement.
+      ~~command rateLimit~~
       ~~masking~~
       ~~approvals, masking, computed-cache, realtime, retry, rateLimit~~
       ~~searchable / versionProperty still diagnostic-only~~

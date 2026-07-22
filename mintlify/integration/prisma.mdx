@@ -115,18 +115,20 @@ Entities are iterated in IR source order; the projection does not re-sort.
 
 The IR carries `type.name` as an arbitrary string (Manifest's type vocabulary is open). The projection holds the mapping table:
 
-| IR `type.name`           | Prisma scalar                                 |
-| ------------------------ | --------------------------------------------- |
-| `string`, `text`, `uuid` | `String`                                      |
-| `boolean`, `bool`        | `Boolean`                                     |
-| `int`                    | `Int`                                         |
-| `bigint`                 | `BigInt`                                      |
-| `float`                  | `Float`                                       |
-| `decimal`, `money`       | `Decimal` (with default `@db.Decimal(12, 2)`) |
-| `date`, `datetime`       | `DateTime`                                    |
-| `json`                   | `Json`                                        |
-| `bytes`                  | `Bytes`                                       |
-| anything else            | **diagnostic** (`PRISMA_UNKNOWN_TYPE`)        |
+| IR `type.name`                | Prisma scalar                                 |
+| ----------------------------- | --------------------------------------------- |
+| `string`, `text`, `uuid`      | `String`                                      |
+| `boolean`, `bool`             | `Boolean`                                     |
+| `int`                         | `Int`                                         |
+| `bigint`                      | `BigInt`                                      |
+| `float`                       | `Float`                                       |
+| `decimal`, `money`            | `Decimal` (with default `@db.Decimal(12, 2)`) |
+| `date`, `datetime`, `timestamp` | `DateTime`                                    |
+| `time`                        | `DateTime`                                    |
+| `duration`                    | `Float`                                       |
+| `json`                        | `Json`                                        |
+| `bytes`                       | `Bytes`                                       |
+| anything else                 | **diagnostic** (`PRISMA_UNKNOWN_TYPE`)        |
 
 The default mapping does **not** include `number`. That is deliberate.
 

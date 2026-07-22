@@ -166,6 +166,13 @@ export interface ConvexProjectionOptions {
   commandIdempotencyTable?: string;
 
   /**
+   * Sliding-window rate-limit buckets for commands that declare `rateLimit`.
+   * Default `"commandRateLimitBuckets"`. Emitted automatically when any
+   * command has a rateLimit clause (not for policy/read rateLimit).
+   */
+  commandRateLimitTable?: string;
+
+  /**
    * Authorization-policy enforcement in generated mutations. Default
    * `'enforce'`. Requires {@link authContextImport} whenever the IR has
    * authorization policies — Manifest identity is not available on bare
@@ -252,6 +259,7 @@ export const CONVEX_PROJECTION_DEFAULTS = {
   idempotencyTable: 'webhookIdempotencyKeys',
   enableCommandIdempotency: true,
   commandIdempotencyTable: 'commandIdempotencyKeys',
+  commandRateLimitTable: 'commandRateLimitBuckets',
   policyMode: 'enforce' as 'enforce' | 'skip',
   includeTenantFilter: true,
   includeSoftDeleteFilter: true,
@@ -283,6 +291,7 @@ export type NormalizedConvexOptions = Required<
     | 'idempotencyTable'
     | 'enableCommandIdempotency'
     | 'commandIdempotencyTable'
+    | 'commandRateLimitTable'
     | 'policyMode'
     | 'includeTenantFilter'
     | 'includeSoftDeleteFilter'
@@ -346,6 +355,8 @@ export function normalizeOptions(
       input.enableCommandIdempotency ?? CONVEX_PROJECTION_DEFAULTS.enableCommandIdempotency,
     commandIdempotencyTable:
       input.commandIdempotencyTable ?? CONVEX_PROJECTION_DEFAULTS.commandIdempotencyTable,
+    commandRateLimitTable:
+      input.commandRateLimitTable ?? CONVEX_PROJECTION_DEFAULTS.commandRateLimitTable,
     policyMode: input.policyMode ?? CONVEX_PROJECTION_DEFAULTS.policyMode,
     includeTenantFilter:
       input.includeTenantFilter ?? CONVEX_PROJECTION_DEFAULTS.includeTenantFilter,

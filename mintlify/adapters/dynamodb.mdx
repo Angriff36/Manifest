@@ -51,7 +51,7 @@ When `entityPrefix` is set, the store uses `ConditionExpression` for atomic crea
 
 ## Composite key handling
 
-The store maps Manifest entity IDs to DynamoDB composite primary keys. Partition and sort key names are configurable via `partitionKeyName` (default `pk`) and `sortKeyName` (default `sk`). Entity instances are serialized as JSON strings and stored as DynamoDB attribute values.
+The store maps Manifest entity IDs to DynamoDB composite primary keys. Partition and sort key names are configurable via `partitionKey` (default `pk`) and `sortKey` (default `sk`) in the store config. Entity instances are serialized as JSON strings and stored as DynamoDB attribute values.
 
 ## Optimistic locking
 
