@@ -134,10 +134,10 @@ prismaSchema: prisma/schema.prisma
 </ParamField>
 
 <ParamField path="hooks" type="object">
-  Git pre-commit hook settings consumed by `manifest install-hooks`. When present, `install-hooks` wires a pre-commit hook (via the chosen provider) that can run `manifest fmt` and `manifest validate`.
+  Hook settings: Git pre-commit settings consumed by `manifest install-hooks`, plus optional build lifecycle scripts.
 
 <ParamField path="hooks.skipInCi" type="boolean" default="true">
-  Skip running the generated hook in CI environments.
+  Skip running the generated pre-commit hook in CI environments.
 </ParamField>
 <ParamField path="hooks.provider" type="string" default="husky">
   Git hook manager the pre-commit hook is installed into. Accepted values: `husky`,
@@ -150,18 +150,38 @@ prismaSchema: prisma/schema.prisma
   Run `manifest validate` from the generated pre-commit hook.
 </ParamField>
 
+<ParamField path="hooks.lifecycle" type="object">
+  Build lifecycle scripts (not git hooks). These are shell scripts or Node scripts run at specific points in the build process. Paths are relative to the project root.
+</ParamField>
+
+<ParamField path="hooks.lifecycle.beforeCompile" type="array">
+  Scripts (paths) run before `manifest compile`. Executes in the order listed. Fails the build if any script exits non-zero.
+</ParamField>
+
+<ParamField path="hooks.lifecycle.afterGenerate" type="array">
+  Scripts (paths) run after a successful `manifest generate` or `manifest generate --all`. Executes in the order listed. Fails the build if any script exits non-zero.
+</ParamField>
+
 ```yaml
 hooks:
+  # Git pre-commit hooks
   provider: husky
   skipInCi: true
   runFmt: true
   runValidate: true
+  # Build lifecycle scripts
+  lifecycle:
+    beforeCompile:
+      - scripts/pre-compile.sh
+    afterGenerate:
+      - scripts/post-generate.js
 ```
 
 </ParamField>
 
 <ParamField path="plugins" type="array">
-  Third-party plugin declarations. At CLI startup any declared plugins are loaded and the CLI commands they contribute are registered, so they appear in `manifest --help` and are dispatchable; `manifest plugins list` reports their real load status and diagnostics. Loading is conditional — a project with no `plugins` declared loads nothing. A plugin that fails to load surfaces a diagnostic and is skipped; it never bricks the CLI. For runtime use (custom store adapters, expression builtins, audit sinks), compose the loaded registries into your runtime options with `pluginRegistriesToRuntimeOptions` from `@angriff36/manifest/plugin-loader` — see [Plugin API](/extensibility/plugin-api). Each entry requires a `module`; `options` and `enabled` are optional.
+  Third-party plugin declarations. At CLI startup any declared plugins are loaded and the CLI commands they contribute are registered, so they appear in `manifest --help` and are dispatchable; `manifest plugins list` reports their real load status and diagnostics. Loading is conditional — a project with no `plugins` declared loads nothing. A plugin that fails to load surfaces a diagnostic and is skipped; it never bricks the CLI. For runtime use (custom store adapters, expression builtins, audit sinks), compose the loaded registries into your runtime options with `pluginRegistriesToRuntimeOptions` from `@angriff36/manifest/plugin-loader` — see [Plugin API](/extensibility/plugin-api). Each entry requires a `module`; `enabled`, `options`, `order`, and `capabilities` are optional.
+</ParamField>
 
 <ParamField path="plugins[].module" type="string" required>
   npm package name or relative file path to the plugin module.
@@ -173,14 +193,26 @@ hooks:
 <ParamField path="plugins[].enabled" type="boolean" default="true">
   Whether the plugin is active.
 </ParamField>
+<ParamField path="plugins[].order" type="integer">
+  Load order for this plugin. Lower numbers load first. Ties break by `module` string (localeCompare). Missing `order` sorts after any explicit order (stable relative to other unordered entries by module). Use this when plugin A depends on plugin B being loaded first.
+</ParamField>
+<ParamField path="plugins[].capabilities" type="array">
+  Well-known capability tags the plugin advertises. Accepted values: `storeAdapter`, `auditSink`, `builtin`, `cliCommand`, `projection`. Unknown tags are kept (host extension) but surface an info diagnostic. Used for plugin discovery and dependency checking.
+</ParamField>
 
 ```yaml
 plugins:
   - module: '@my-org/manifest-plugin-audit'
     enabled: true
+    order: 10
+    capabilities:
+      - auditSink
     options:
       level: strict
   - module: './local-plugins/naming-lint.js'
+    order: 20
+    capabilities:
+      - cliCommand
 ```
 
 </ParamField>
@@ -218,6 +250,160 @@ env:
       default: us-east-1
 ```
 
+</ParamField>
+
+## `mergeIntegrity`
+
+<ParamField path="mergeIntegrity" type="object">
+  Controls multi-file compilation behavior when duplicate names or cross-module references appear. Only applies when compiling multiple `.manifest` files (e.g. `manifest compile --all` or multi-module repos).
+</ParamField>
+
+<ParamField path="mergeIntegrity.onDuplicateEntity" type="string" default="error">
+  Policy when multiple files declare an entity with the same name.
+
+  - `error` (default): emit a diagnostic and fail compilation.
+  - `lastWins`: silently use the last declaration (file load order wins).
+
+  ```yaml
+  mergeIntegrity:
+    onDuplicateEntity: lastWins  # Allow duplicate entity names; last file wins
+  ```
+</ParamField>
+
+<ParamField path="mergeIntegrity.onDuplicateCommand" type="string" default="error">
+  Policy when multiple files declare a command with the same name (on the same entity or across entities). Accepted values: `error`, `lastWins`. Defaults to `error`.
+</ParamField>
+
+<ParamField path="mergeIntegrity.allowCrossModuleRefs" type="boolean" default="true">
+  Whether relationships (`hasMany`, `hasOne`, `belongsTo`, `ref`) may target entities defined in other modules (other `.manifest` files). When `false`, cross-module relationships emit a diagnostic and fail compilation. Defaults to `true`.
+
+  ```yaml
+  mergeIntegrity:
+    allowCrossModuleRefs: false  # Block relationships across modules
+  ```
+</ParamField>
+
+<ParamField path="mergeIntegrity.forbidCycles" type="boolean" default="true">
+  Whether circular relationship chains are rejected. When `true`, the compiler emits a diagnostic if a cycle is detected (e.g. `A hasMany B`, `B hasMany A`). This is a **required invariant** — setting it to `false` is rejected at config resolution time. Defaults to `true`.
+</ParamField>
+
+<ParamField path="mergeIntegrity" type="object">
+  **Why this exists.** In multi-file projects, duplicate names and cross-file references can introduce silent bugs or ambiguous semantics. `mergeIntegrity` makes these conditions explicit and configurable. Use `lastWins` during rapid prototyping with split files; use `error` in production to enforce uniqueness. Use `allowCrossModuleRefs: false` to enforce module boundaries.
+</ParamField>
+
+## `validation`
+
+<ParamField path="validation" type="object">
+  Preflight validation rules that emit diagnostics when certain structural conditions are detected. These are **compile-time checks only** — they do not affect runtime behavior. Rules are disabled by default; enable the ones you want.
+</ParamField>
+
+<ParamField path="validation.rules" type="array">
+  List of validation rule names to enable. Accepted values: `missing-policy`, `unused-entity`, `orphan-relationship`.
+
+  <ParamField path="validation.rules" type="array">
+  **`missing-policy`** — Emit a diagnostic when an entity has commands but no policies target it **and** `defaultPolicies` is empty. Helps catch missing authorization for command-bearing entities.
+
+  **`unused-entity`** — Emit a diagnostic for "bare declaration" entities: not external, have no store, no entity-scoped commands, and are not referenced by any other entity's relationships. Helps identify dead code.
+
+  **`orphan-relationship`** — Emit a diagnostic for one-sided relationships where an entity has `belongsTo` or `ref` pointing to a parent, but the parent lacks a corresponding `hasMany` or `hasOne` inverse. Helps catch typos and missing inverse declarations.
+  </ParamField>
+
+  ```yaml
+  validation:
+    rules:
+      - missing-policy    # Flag entities with commands but no policies
+      - unused-entity     # Flag entities that are never referenced
+      - orphan-relationship  # Flag one-sided relationships
+  ```
+</ParamField>
+
+<ParamField path="validation.failOn" type="array">
+  Severity levels that should fail compilation. Accepted values: `ok`, `warn`, `block`. When omitted, all severities pass (diagnostics are emitted but compilation continues). Set to `['block']` or `['warn', 'block']` to halt on specific severities.
+</ParamField>
+
+## `provenance`
+
+<ParamField path="provenance" type="object">
+  Controls IR provenance stamps and lockfile behavior. IR always carries required provenance fields (schema version, compiler version, content hash). This config determines whether timestamps are deterministic and whether a lockfile is written.
+</ParamField>
+
+<ParamField path="provenance.stamp" type="boolean" default="true">
+  When `false`, skip writing the provenance lockfile. IR is still stamped with required fields (this flag only controls the lockfile write). Defaults to `true`.
+</ParamField>
+
+<ParamField path="provenance.fields" type="array" default="['sourceHash', 'generatorVersion', 'irSchemaVersion', 'gitSha']">
+  Requested stamp fields. Required IR fields are always stamped regardless of this list. `gitSha` is accepted but not yet written (deferred). Defaults to all four fields.
+</ParamField>
+
+<ParamField path="provenance.deterministic" type="boolean" default="false">
+  When `true`, use a fixed `compiledAt` timestamp (`1970-01-01T00:00:00.000Z`) instead of wall-clock time. Required for reproducible builds. Defaults to `false`.
+</ParamField>
+
+<ParamField path="provenance.lockfile" type="string">
+  Path for the provenance lockfile (relative to the project root). When omitted, the default is `.manifest/versions.json`.
+</ParamField>
+
+<ParamField path="provenance.failIfStale" type="boolean" default="false">
+  When `true` and a lockfile exists: if source content (`contentHash`) matches the lock but the IR hash (`irHash`) differs under deterministic mode, compilation fails. This catches hand-edited IR or non-deterministic compiler behavior. Defaults to `false`.
+</ParamField>
+
+```yaml
+provenance:
+  deterministic: true  # Use fixed timestamp for reproducible builds
+  lockfile: .manifest/versions.json
+  failIfStale: true    # Fail if IR drifts despite unchanged sources
+```
+
+## `runtime`
+
+<ParamField path="runtime" type="object">
+  Central runtime build knobs that affect generated companion factories and execution mode. These settings are consumed by projections (Next.js, Express, Hono, Remix, SvelteKit) and by the generated runtime helpers.
+</ParamField>
+
+<ParamField path="runtime.executionMode" type="string" default="inline">
+  Dispatcher execution mode for the Next.js projection. Accepted values: `inline`, `externalExecutor`.
+
+  - `inline` (default): Generated handlers call `createManifestRuntime(...)` then `runtime.runCommand(...)` per request.
+  - `externalExecutor`: Handlers import a configured executor and delegate — no `createManifestRuntime` or `runtime.runCommand` appears in emitted code.
+
+  See [`projections.nextjs.options.dispatcher`](#projectionsnextjsoptionsdispatcher) for the executor migration guide.
+</ParamField>
+
+<ParamField path="runtime.determinism" type="object">
+  Determinism settings for the generated runtime factory.
+
+  <ParamField path="runtime.determinism.deterministicMode" type="boolean" default="false">
+    When `true`, the factory injects `RuntimeOptions.deterministicMode` (fixed clock, seeded `generateId`). Useful for reproducible tests.
+  </ParamField>
+
+  <ParamField path="runtime.determinism.forbidWallClock" type="boolean" default="false">
+    When `true`, the factory requires `RuntimeOptions.now` to be provided (no `Date.now` fallback). Enforces explicit time control.
+  </ParamField>
+
+  <ParamField path="runtime.determinism.seed" type="number">
+    Fixed clock milliseconds when `forbidWallClock` is `true`. Also seeds the `generateId` sequence. Ignored unless `forbidWallClock` is set.
+  </ParamField>
+</ParamField>
+
+<ParamField path="runtime.stores" type="string">
+  Import path for store bindings (`ManifestRuntimeConfig` module). Fans into projection `runtimeConfigImport` when that projection-specific key is unset. Used by Next.js, Express, Hono, Remix, and SvelteKit projections.
+
+  ```yaml
+  runtime:
+    stores: './manifest.config'  # Points to the TS config with store bindings
+  ```
+</ParamField>
+
+<ParamField path="runtime.defaultContext" type="object">
+  Default runtime context merged into `createManifestRuntime` calls (caller-provided context wins on conflict). Useful for global constants like `appVersion` or `region`.
+</ParamField>
+
+<ParamField path="runtime.concurrency" type="object">
+  Parallel execution settings.
+
+  <ParamField path="runtime.concurrency.maxParallelCommands" type="integer">
+    Maps to `RuntimeOptions.maxParallelCommands` on the generated factory. Positive integer only; invalid values are ignored (unlimited parallelism).
+  </ParamField>
 </ParamField>
 
 ## `projections`
