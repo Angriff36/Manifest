@@ -106,6 +106,66 @@ describe('Multi-Compiler', () => {
     ).toBe(true);
   });
 
+  it('Config G3 lastWins keeps the last duplicate entity', async () => {
+    const host = createMemoryHost({
+      '/project/a.manifest': `
+        entity User {
+          property name: string
+        }
+      `,
+      '/project/b.manifest': `
+        entity User {
+          property email: string
+        }
+      `,
+    });
+
+    const result = await compileProjectToIR({
+      entries: ['/project/a.manifest', '/project/b.manifest'],
+      host,
+      basePath: '/project',
+      mergeIntegrity: { onDuplicateEntity: 'lastWins' },
+    });
+
+    expect(result.ir).not.toBeNull();
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
+    expect(result.ir!.entities).toHaveLength(1);
+    expect(result.ir!.entities[0].name).toBe('User');
+    expect(result.ir!.entities[0].properties.some((p) => p.name === 'email')).toBe(true);
+    expect(result.ir!.entities[0].properties.some((p) => p.name === 'name')).toBe(false);
+  });
+
+  it('Config G3 allowCrossModuleRefs=false blocks cross-file relationships', async () => {
+    const host = createMemoryHost({
+      '/project/users.manifest': `
+        entity User {
+          property name: string
+        }
+      `,
+      '/project/orders.manifest': `
+        use "./users.manifest"
+        entity Order {
+          property total: number
+          belongsTo customer: User
+        }
+      `,
+    });
+
+    const result = await compileProjectToIR({
+      entries: ['/project/orders.manifest'],
+      host,
+      basePath: '/project',
+      mergeIntegrity: { allowCrossModuleRefs: false },
+    });
+
+    expect(result.ir).toBeNull();
+    expect(
+      result.diagnostics.some(
+        (d) => d.severity === 'error' && d.message.includes('Cross-module relationship'),
+      ),
+    ).toBe(true);
+  });
+
   it('validates relationship targets across files', async () => {
     const host = createMemoryHost({
       '/project/users.manifest': `

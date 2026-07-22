@@ -21,12 +21,11 @@
  *
  * Scope note: these types describe the config surface that ACTUALLY ships today
  * (see docs/spec/config/manifest.config.md). Config G5 (`projections.enabled` /
- * `projections.defaults`) and Config G2 (`validation.failOn`) are modelled.
- * Richer vNext sections still proposed only
- * (docs/internal/proposals/config/manifest-config-vnext.md: mergeIntegrity,
- * provenance, runtime, and G2 rule registries beyond failOn) are
- * NOT fully modelled here. Config G10 (`driftGates`) is modelled and honored
- * by `manifest ci-gate`. The JSON schema at
+ * `projections.defaults`), Config G2 (`validation.failOn`), Config G3
+ * (`mergeIntegrity`), Config G8 (`hooks.lifecycle`), Config G9
+ * (`plugins.order`/`capabilities`), and Config G10 (`driftGates`) are modelled.
+ * Still proposed only: G2 rule registries / requireDescriptions, G4 provenance
+ * config, G7 runtime config (see manifest-config-vnext.md). The JSON schema at
  * docs/spec/config/manifest.config.schema.json remains the executable contract
  * that `manifest config validate` enforces for the YAML/build config.
  */
@@ -38,8 +37,15 @@ import {
   type ManifestNamingInput,
   type ResolvedNamingConfig,
 } from './naming-config.js';
+import type { ManifestMergeIntegrityConfig } from './merge-integrity.js';
 
 export type { NamingConventionInput };
+export type {
+  ManifestMergeIntegrityConfig,
+  MergeDuplicatePolicy,
+  ResolvedMergeIntegrity,
+} from './merge-integrity.js';
+export { resolveMergeIntegrity, dedupeLastByKey } from './merge-integrity.js';
 export {
   resolveNamingConfig,
   extractNamingConvention,
@@ -311,6 +317,11 @@ export interface ManifestBuildConfig {
    * Does not change language diagnostic severities.
    */
   validation?: ManifestValidationConfig;
+  /**
+   * Config G3 — cross-file name collision policy for multi-module compile.
+   * Default: `error` (unchanged from historical strict merge).
+   */
+  mergeIntegrity?: ManifestMergeIntegrityConfig;
   /** Config G10 — declarative drift gates for `manifest ci-gate`. */
   driftGates?: ManifestDriftGatesConfig;
   /**

@@ -5,6 +5,16 @@ import {
   type ManifestNamingInput,
   type ResolvedNamingConfig,
 } from './naming-config.js';
+import {
+  dedupeLastByKey,
+  resolveMergeIntegrity,
+  type ManifestMergeIntegrityConfig,
+  type ResolvedMergeIntegrity,
+} from './merge-integrity.js';
+import {
+  collectCrossFileNameUniqueness,
+  validateCrossFileReferences,
+} from './merge-integrity-checks.js';
 import type { EntityIndex } from './entity-composition.js';
 import {
   IR,
@@ -44,100 +54,14 @@ export interface CompileProjectOptions {
   basePath?: string;
   /** Naming policy (raw or resolved). Default: normalization off. */
   naming?: ManifestNamingInput | ResolvedNamingConfig;
+  /** Config G3 — cross-file name collision / merge policy. Default: error. */
+  mergeIntegrity?: ManifestMergeIntegrityConfig | ResolvedMergeIntegrity;
 }
 
 export interface MultiCompileResult {
   ir: IR | null;
   diagnostics: IRDiagnostic[];
   sources: Array<{ absPath: string; contentHash: string }>;
-}
-
-function claimUniqueName(
-  map: Map<string, string>,
-  name: string,
-  absPath: string,
-  kind: string,
-  diagnostics: IRDiagnostic[],
-): void {
-  const existing = map.get(name);
-  if (existing) {
-    diagnostics.push({
-      severity: 'error',
-      message: `Duplicate ${kind} '${name}' declared in '${absPath}' and '${existing}'`,
-    });
-    return;
-  }
-  map.set(name, absPath);
-}
-
-function collectCrossFileNameUniqueness(compiledIRs: Array<{ ir: IR; absPath: string }>): {
-  entityNames: Map<string, string>;
-  diagnostics: IRDiagnostic[];
-} {
-  const diagnostics: IRDiagnostic[] = [];
-  const entityNames = new Map<string, string>();
-  const enumNames = new Map<string, string>();
-  const commandKeys = new Map<string, string>();
-  let tenantFile: string | undefined;
-
-  for (const { ir, absPath } of compiledIRs) {
-    for (const entity of ir.entities) {
-      claimUniqueName(entityNames, entity.name, absPath, 'entity', diagnostics);
-    }
-    for (const en of ir.enums) {
-      claimUniqueName(enumNames, en.name, absPath, 'enum', diagnostics);
-    }
-    for (const cmd of ir.commands) {
-      const key = cmd.entity ? `${cmd.entity}.${cmd.name}` : cmd.name;
-      claimUniqueName(commandKeys, key, absPath, 'command', diagnostics);
-    }
-    if (ir.tenant) {
-      if (tenantFile) {
-        diagnostics.push({
-          severity: 'error',
-          message: `Duplicate tenant declaration in '${absPath}' and '${tenantFile}'`,
-        });
-      } else {
-        tenantFile = absPath;
-      }
-    }
-  }
-
-  return { entityNames, diagnostics };
-}
-
-function validateCrossFileReferences(
-  compiledIRs: Array<{ ir: IR; absPath: string }>,
-  entityNames: Map<string, string>,
-): IRDiagnostic[] {
-  const diagnostics: IRDiagnostic[] = [];
-  for (const { ir, absPath } of compiledIRs) {
-    for (const entity of ir.entities) {
-      for (const rel of entity.relationships) {
-        if (!entityNames.has(rel.target)) {
-          diagnostics.push({
-            severity: 'error',
-            message: `[${absPath}] Entity '${entity.name}' has relationship '${rel.name}' targeting unknown entity '${rel.target}'`,
-          });
-        }
-        if (rel.through && !entityNames.has(rel.through)) {
-          diagnostics.push({
-            severity: 'error',
-            message: `[${absPath}] Entity '${entity.name}' has relationship '${rel.name}' with unknown through entity '${rel.through}'`,
-          });
-        }
-      }
-    }
-    for (const store of ir.stores) {
-      if (!entityNames.has(store.entity)) {
-        diagnostics.push({
-          severity: 'error',
-          message: `[${absPath}] Store references unknown entity '${store.entity}'`,
-        });
-      }
-    }
-  }
-  return diagnostics;
 }
 
 /**
@@ -155,6 +79,19 @@ export async function compileProjectToIR(
   const { entries, host, useCache = true, basePath = '' } = options;
   const diagnostics: IRDiagnostic[] = [];
   const sources: Array<{ absPath: string; contentHash: string }> = [];
+
+  let integrity: ResolvedMergeIntegrity;
+  try {
+    integrity = resolveMergeIntegrity(
+      options.mergeIntegrity as ManifestMergeIntegrityConfig | undefined,
+    );
+  } catch (error: unknown) {
+    diagnostics.push({
+      severity: 'error',
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return { ir: null, diagnostics, sources };
+  }
 
   // Phase 1: Resolve module graph
   const parser = new Parser();
@@ -203,11 +140,15 @@ export async function compileProjectToIR(
       canonicalizeProgramNames(program, nameRegistry, namingPolicy);
     }
     for (const entity of program.entities) {
-      if (!compositionContext[entity.name]) compositionContext[entity.name] = entity;
+      if (integrity.onDuplicateEntity === 'lastWins' || !compositionContext[entity.name]) {
+        compositionContext[entity.name] = entity;
+      }
     }
     for (const mod of program.modules) {
       for (const entity of mod.entities) {
-        if (!compositionContext[entity.name]) compositionContext[entity.name] = entity;
+        if (integrity.onDuplicateEntity === 'lastWins' || !compositionContext[entity.name]) {
+          compositionContext[entity.name] = entity;
+        }
       }
     }
   }
@@ -264,15 +205,17 @@ export async function compileProjectToIR(
   }
 
   // Phase 3: Cross-file validation
-  const { entityNames, diagnostics: uniquenessDiagnostics } =
-    collectCrossFileNameUniqueness(compiledIRs);
+  const { entityNames, diagnostics: uniquenessDiagnostics } = collectCrossFileNameUniqueness(
+    compiledIRs,
+    integrity,
+  );
   diagnostics.push(...uniquenessDiagnostics);
 
   if (diagnostics.some((d) => d.severity === 'error')) {
     return { ir: null, diagnostics, sources };
   }
 
-  diagnostics.push(...validateCrossFileReferences(compiledIRs, entityNames));
+  diagnostics.push(...validateCrossFileReferences(compiledIRs, entityNames, integrity));
 
   if (diagnostics.some((d) => d.severity === 'error')) {
     return { ir: null, diagnostics, sources };
@@ -283,6 +226,7 @@ export async function compileProjectToIR(
     compiledIRs.map((c) => c.ir),
     sources,
     basePath,
+    integrity,
   );
 
   // Phase 4.25: Re-derive initialization plans against the merged program.
@@ -333,7 +277,7 @@ export function mergeIR(irs: IR[]): IR {
       ? ir.provenance.sources.map((s) => ({ absPath: s.path, contentHash: s.contentHash }))
       : [{ absPath: ir.provenance.contentHash, contentHash: ir.provenance.contentHash }],
   );
-  const merged = mergeIRs(irs, sources, '');
+  const merged = mergeIRs(irs, sources, '', resolveMergeIntegrity(undefined));
   attachInitializationPlans(merged.entities, merged.commands, merged.tenant);
   return merged;
 }
@@ -342,17 +286,19 @@ export function mergeIR(irs: IR[]): IR {
  * Merge multiple IR outputs into a single deterministic IR.
  * Arrays are concatenated and sorted by name for determinism.
  * Modules with the same name are merged (union of members).
+ * Config G3 `lastWins` dedupes entities/commands before sort.
  */
 function mergeIRs(
   irs: IR[],
   sources: Array<{ absPath: string; contentHash: string }>,
   basePath: string,
+  integrity: ResolvedMergeIntegrity,
 ): IR {
-  const entities: IREntity[] = [];
+  let entities: IREntity[] = [];
   const enums: IREnum[] = [];
   const stores: IRStore[] = [];
   const events: IREvent[] = [];
-  const commands: IRCommand[] = [];
+  let commands: IRCommand[] = [];
   const policies: IRPolicy[] = [];
   const values: IRValueObject[] = [];
   const reactions: IRReactionRule[] = [];
@@ -432,6 +378,13 @@ function mergeIRs(
         moduleMap.set(mod.name, { ...mod });
       }
     }
+  }
+
+  if (integrity.onDuplicateEntity === 'lastWins') {
+    entities = dedupeLastByKey(entities, (e) => e.name);
+  }
+  if (integrity.onDuplicateCommand === 'lastWins') {
+    commands = dedupeLastByKey(commands, (c) => (c.entity ? `${c.entity}.${c.name}` : c.name));
   }
 
   // Sort all arrays by name for determinism

@@ -313,6 +313,7 @@ async function compileMerged(source: string | undefined, options: CompileOptions
       useCache: true,
       basePath,
       naming: cfg?.naming,
+      mergeIntegrity: cfg?.mergeIntegrity,
     });
 
     // Print diagnostics

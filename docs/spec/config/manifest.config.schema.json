@@ -38,6 +38,10 @@
         }
       }
     },
+    "mergeIntegrity": {
+      "$ref": "#/definitions/MergeIntegrityConfig",
+      "description": "Config G3 — multi-module merge collision policy for compile --merge / --all."
+    },
     "driftGates": {
       "type": "object",
       "additionalProperties": false,
@@ -570,6 +574,42 @@
           "type": "array",
           "description": "Scripts run after a successful `manifest generate` / `generate --all`.",
           "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "MergeIntegrityConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Config G3 — collision policy when compiling multiple .manifest files into one IR. Default remains strict error (no silent overwrite).",
+      "properties": {
+        "onDuplicateEntity": {
+          "type": "string",
+          "enum": ["error", "lastWins"],
+          "default": "error",
+          "description": "When two files declare the same entity name: fail (default) or keep the last file in topological order."
+        },
+        "onDuplicateCommand": {
+          "type": "string",
+          "enum": ["error", "lastWins"],
+          "default": "error",
+          "description": "When two files declare the same command (entity-qualified): fail (default) or keep the last declaration."
+        },
+        "moduleOrder": {
+          "type": "string",
+          "enum": ["lexicographic"],
+          "default": "lexicographic",
+          "description": "Deterministic module order. Only lexicographic topo order is supported."
+        },
+        "allowCrossModuleRefs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow relationships/stores to target entities declared in another file."
+        },
+        "forbidCycles": {
+          "type": "boolean",
+          "const": true,
+          "default": true,
+          "description": "Cycle detection in `use` graphs. Must be true; false is rejected."
         }
       }
     },

@@ -42,6 +42,18 @@ export interface ManifestConfig {
     failOn?: 'block' | 'warn' | 'never';
   };
 
+  /**
+   * Config G3 — multi-module merge collision policy for `compile --merge` /
+   * `compile --all`. Default is strict `error` on duplicate names.
+   */
+  mergeIntegrity?: {
+    onDuplicateEntity?: 'error' | 'lastWins';
+    onDuplicateCommand?: 'error' | 'lastWins';
+    moduleOrder?: 'lexicographic';
+    allowCrossModuleRefs?: boolean;
+    forbidCycles?: boolean;
+  };
+
   /** Config G10 — declarative CI drift gates for `manifest ci-gate`. */
   driftGates?: {
     effectiveConfigSnapshot?: string;

@@ -154,9 +154,10 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 `durable`, or a custom target fails clearly instead of falling back to memory.
 
 > The types cover the config surface that ships **today**, including Config G5
-> (`projections.enabled` / `projections.defaults`) and Config G2
-> (`validation.failOn`). Richer vNext sections (merge integrity, provenance,
-> runtime, drift gates, and G2 rule registries beyond `failOn`) remain a
+> (`projections.enabled` / `projections.defaults`), Config G2
+> (`validation.failOn`), Config G3 (`mergeIntegrity`), Config G8–G10, and
+> related keys. Still proposed only: G2 rule registries / requireDescriptions,
+> G4 provenance config, G7 runtime — see
 > [design proposal](../../internal/proposals/config/manifest-config-vnext.md).
 >
 > ~~The richer vNext sections (validation, merge integrity, provenance, runtime,
@@ -166,6 +167,8 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 >
 > ~~Correction (2026-07-15): G5 shipped; G2/G10 remain~~ — **Update
 > (2026-07-15):** G2 `validation.failOn` also shipped.
+>
+> **Correction (2026-07-22):** G3 `mergeIntegrity` shipped (`error` \| `lastWins`).
 
 ---
 
@@ -177,6 +180,7 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 | `output`       | `ir/`             | string | Directory for compiled IR JSON.                                                                                                                           |
 | `prismaSchema` | (auto-discovered) | string | Optional path to a Prisma schema for property alignment scans. When omitted, Manifest checks `prisma/schema.prisma`, `schema.prisma`, `db/schema.prisma`. |
 | `validation`   | (see G2)          | object | Config G2 CI exit policy (`failOn`). Does not change language severities.                                                                                 |
+| `mergeIntegrity` | (see G3)        | object | Config G3 multi-module merge collision policy (`onDuplicateEntity` / `onDuplicateCommand`). Default remains strict `error`.                              |
 | `driftGates`   | (see G10)         | object | Config G10 declarative CI gates for `manifest ci-gate`.                                                                                                   |
 | `projections`  | `{}`              | object | Per-projection config blocks, plus optional G5 `enabled` / `defaults` (see below).                                                                         |
 | `env`          | `{}`              | object | Environment-variable declarations for `manifest preflight`. Grouped under `stores`, `auth`, `adapters`, `custom`.                                         |
@@ -202,6 +206,28 @@ validation:
 | `block` | Error-severity diagnostics only (default)  |
 | `warn`  | Errors **or** warnings                     |
 | `never` | Never (report-only; still prints findings) |
+
+## `mergeIntegrity` (Config G3)
+
+Added 2026-07-22. Controls how `manifest compile --merge` / `compile --all`
+handles the same entity or command name declared in more than one `.manifest`
+file. **Default is unchanged:** duplicates are errors.
+
+```yaml
+mergeIntegrity:
+  onDuplicateEntity: error      # error | lastWins  (default: error)
+  onDuplicateCommand: error     # error | lastWins  (default: error)
+  moduleOrder: lexicographic    # only supported value
+  allowCrossModuleRefs: true    # set false to forbid cross-file relationships/stores
+  forbidCycles: true            # required; false is rejected
+```
+
+| Policy     | Behavior                                                                 |
+| ---------- | ------------------------------------------------------------------------ |
+| `error`    | Duplicate names across files fail the compile (historical default)       |
+| `lastWins` | Keep the declaration from the last file in topological compile order     |
+
+`namespace` is **not** implemented. Enum and tenant duplicates stay hard errors.
 
 CLI overrides: `--fail-on <policy>` on `compile` / `validate`. `validate --strict`
 is an alias for `--fail-on warn`.
