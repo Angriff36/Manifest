@@ -3,7 +3,8 @@
   "diagnostics": [
     {
       "severity": "error",
-      "message": "Entity 'Product' declares behavior 'stockReduced', which is not supported in this version. Use a top-level reaction ('on Event run Entity.command') or command actions instead."
+      "message": "Entity 'Product' declares behavior 'stockReduced', which is not supported in this version. Use a top-level reaction ('on Event run Entity.command') or command actions instead.",
+      "code": "ENTITY_BEHAVIOR_UNSUPPORTED"
     },
     {
       "severity": "warning",

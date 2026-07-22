@@ -222,7 +222,7 @@ Mirror of `docs/internal/COMPLIANCE_MATRIX.md` §3 (2026-07-22). Granular Core/S
 | [x]    | Command order (rateLimit → policies → constraints → guards → actions → emits) | FULLY_IMPLEMENTED        | mirror of COMPLIANCE_MATRIX §4 — `runCommand` order @ `f96618e9…`                         |
 | [x]    | `RuntimeContext` fields                                                       | FULLY_IMPLEMENTED        | mirror of COMPLIANCE_MATRIX §4 — typed fields `runtime-engine.ts:93-110` @ `2af8191b…`    |
 | [x]    | Middleware (4 hooks)                                                          | FULLY_IMPLEMENTED        | mirror of COMPLIANCE_MATRIX §4 — `runtime-middleware.test.ts` @ `9f3a9bfa…`               |
-| [~]    | `IRDiagnostic.code` optional                                                  | CLAIMED_NEEDS_PROOF      | seeded codes 2026-07-15                                                                   |
+| [x]    | `IRDiagnostic.code` optional                                                  | FULLY_IMPLEMENTED        | mirror of COMPLIANCE_MATRIX §4 — `IRDiagnostic.code` + fixtures 110/103 @ `2af8191b…`/`67f5c13d…` |
 | [x]    | Batched persistence                                                           | FULLY_IMPLEMENTED        | mirror of COMPLIANCE_MATRIX §4 — `runtime-command-batched-persistence.test.ts` @ `9b7695c8…` |
 | [x]    | `EncryptionProvider`                                                          | FULLY_IMPLEMENTED        | mirror of COMPLIANCE_MATRIX §4 — injectable seam @ `9f3a9bfa…`; no default provider       |
 | [x]    | Deterministic mode / effect boundary                                          | FULLY_IMPLEMENTED        | mirror of COMPLIANCE_MATRIX §4 / §1                                                       |

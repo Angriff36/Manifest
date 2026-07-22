@@ -5,7 +5,8 @@
       "severity": "error",
       "message": "Approval 'escalateApproval' declares bare on_timeout: escalate without a block. Provide escalate { to: <expr>, status: <pending|granted|denied|expired>, timeout: <hours|none|reset> }.",
       "line": 15,
-      "column": 11
+      "column": 11,
+      "code": "APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE"
     }
   ]
 }
