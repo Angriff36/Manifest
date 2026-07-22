@@ -36,6 +36,17 @@ import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../sha
 import { resolveRuntimeFactoryFanIn } from '../../runtime-config.js';
 import { resolveRouteContract, zodParamsSchemaName } from '../shared/route-contract.js';
 import { HONO_DESCRIPTOR_META } from './descriptor-meta.js';
+import {
+  honoEntityRoutePathHint,
+  honoEntityTypesPathHint,
+  honoManifestRouterPathHint,
+  honoManifestTypesPathHint,
+} from './path-hints.js';
+
+function resolveEntityModule(ir: IR, entityName: string | undefined): string | undefined {
+  if (!entityName) return undefined;
+  return ir.entities.find((e) => e.name === entityName)?.module;
+}
 
 // ============================================================================
 // Constants
@@ -177,10 +188,6 @@ function toKebabCase(value: string): string {
     .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
     .replace(/\s+/g, '-')
     .toLowerCase();
-}
-
-function toEntitySegment(name: string): string {
-  return name.toLowerCase();
 }
 
 // ============================================================================
@@ -1060,8 +1067,11 @@ export class HonoProjection implements ProjectionTarget {
             {
               id: request.entity ? `hono.router.${request.entity}` : 'hono.router',
               pathHint: request.entity
-                ? `routes/${toEntitySegment(request.entity)}.ts`
-                : 'src/routes.ts',
+                ? honoEntityRoutePathHint({
+                    entityName: request.entity,
+                    module: resolveEntityModule(ir, request.entity),
+                  })
+                : honoManifestRouterPathHint(),
               contentType: 'typescript',
               code,
             },
@@ -1081,7 +1091,10 @@ export class HonoProjection implements ProjectionTarget {
             const { code, diagnostics } = generateHonoRouter(ir, options, entity.name);
             allArtifacts.push({
               id: `hono.entity.${entity.name}`,
-              pathHint: `routes/${toEntitySegment(entity.name)}.ts`,
+              pathHint: honoEntityRoutePathHint({
+                entityName: entity.name,
+                module: entity.module,
+              }),
               contentType: 'typescript',
               code,
             });
@@ -1095,7 +1108,10 @@ export class HonoProjection implements ProjectionTarget {
           artifacts: [
             {
               id: `hono.entity.${request.entity}`,
-              pathHint: `routes/${toEntitySegment(request.entity)}.ts`,
+              pathHint: honoEntityRoutePathHint({
+                entityName: request.entity,
+                module: resolveEntityModule(ir, request.entity),
+              }),
               contentType: 'typescript',
               code,
             },
@@ -1111,8 +1127,11 @@ export class HonoProjection implements ProjectionTarget {
             {
               id: request.entity ? `hono.types.${request.entity}` : 'hono.types',
               pathHint: request.entity
-                ? `types/${toEntitySegment(request.entity)}.ts`
-                : 'types/manifest-types.ts',
+                ? honoEntityTypesPathHint({
+                    entityName: request.entity,
+                    module: resolveEntityModule(ir, request.entity),
+                  })
+                : honoManifestTypesPathHint(),
               contentType: 'typescript',
               code,
             },
@@ -1138,8 +1157,11 @@ export class HonoProjection implements ProjectionTarget {
         allArtifacts.push({
           id: request.entity ? `hono.router.${request.entity}` : 'hono.router',
           pathHint: request.entity
-            ? `routes/${toEntitySegment(request.entity)}.ts`
-            : 'src/routes.ts',
+            ? honoEntityRoutePathHint({
+                entityName: request.entity,
+                module: resolveEntityModule(ir, request.entity),
+              })
+            : honoManifestRouterPathHint(),
           contentType: 'typescript',
           code: router.code,
         });
@@ -1150,8 +1172,11 @@ export class HonoProjection implements ProjectionTarget {
         allArtifacts.push({
           id: request.entity ? `hono.types.${request.entity}` : 'hono.types',
           pathHint: request.entity
-            ? `types/${toEntitySegment(request.entity)}.ts`
-            : 'types/manifest-types.ts',
+            ? honoEntityTypesPathHint({
+                entityName: request.entity,
+                module: resolveEntityModule(ir, request.entity),
+              })
+            : honoManifestTypesPathHint(),
           contentType: 'typescript',
           code: types.code,
         });

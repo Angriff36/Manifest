@@ -192,10 +192,6 @@ function toKebabCase(value: string): string {
     .toLowerCase();
 }
 
-function toEntitySegment(name: string): string {
-  return name.toLowerCase();
-}
-
 // ============================================================================
 // Expression helpers (for comments)
 // ============================================================================
