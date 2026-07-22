@@ -2669,6 +2669,255 @@ describe('convex.mutations — trustedSource', () => {
   });
 });
 
+describe('convex.mutations — referential composite FK', () => {
+  it('emits composite index query for multi-column onDelete cascade', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      {
+        ...entity('Order', [
+          prop('orderId', 'string', ['required']),
+          prop('tenantId', 'string', ['required']),
+        ]),
+        key: ['tenantId', 'orderId'],
+      },
+      entity(
+        'Line',
+        [
+          prop('lineNo', 'string', ['required']),
+          prop('orderId', 'string', ['required']),
+          prop('tenantId', 'string', ['required']),
+        ],
+        [
+          {
+            name: 'order',
+            kind: 'belongsTo',
+            target: 'Order',
+            foreignKey: {
+              fields: ['orderId', 'tenantId'],
+              references: ['orderId', 'tenantId'],
+            },
+            onDelete: 'cascade',
+          },
+        ],
+      ),
+    ];
+    ir.commands = [
+      {
+        name: 'delete',
+        entity: 'Order',
+        parameters: [],
+        policies: [],
+        guards: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    ir.stores = [durable('Order'), durable('Line')];
+    const schema = new ConvexProjection().generate(ir, { surface: 'convex.schema' }).artifacts[0]!
+      .code;
+    expect(schema).toContain('.index("by_orderId_tenantId", ["orderId", "tenantId"])');
+    const code = mutations(ir).artifacts[0]!.code;
+    expect(code).toContain('.withIndex("by_orderId_tenantId"');
+    expect(code).toContain('.eq("orderId", parent["orderId"])');
+    expect(code).toContain('.eq("tenantId", parent["tenantId"])');
+    expect(code).toContain('await ctx.db.delete(__kid._id)');
+  });
+});
+
+describe('convex.mutations — referential setNull / setDefault', () => {
+  it('hard-delete setNull clears child FK with undefined', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Parent', [prop('name', 'string', ['required'])]),
+      entity(
+        'Child',
+        [prop('label', 'string', ['required'])],
+        [
+          {
+            name: 'parent',
+            kind: 'belongsTo',
+            target: 'Parent',
+            foreignKey: { fields: ['parentId'] },
+            onDelete: 'setNull',
+          },
+        ],
+      ),
+    ];
+    ir.commands = [
+      {
+        name: 'delete',
+        entity: 'Parent',
+        parameters: [],
+        policies: [],
+        guards: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    ir.stores = [durable('Parent'), durable('Child')];
+    const code = mutations(ir).artifacts[0]!.code;
+    expect(code).toContain('await __applyReferentialOnDelete(ctx, "Parent", docId)');
+    expect(code).toContain('await ctx.db.patch(__kid._id, { parentId: undefined } as any)');
+  });
+
+  it('errors when setNull targets a non-nullable FK property', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Parent', [prop('name', 'string', ['required'])]),
+      entity(
+        'Child',
+        [prop('label', 'string', ['required']), prop('parentId', 'string', ['required'])],
+        [
+          {
+            name: 'parent',
+            kind: 'belongsTo',
+            target: 'Parent',
+            foreignKey: { fields: ['parentId'] },
+            onDelete: 'setNull',
+          },
+        ],
+      ),
+    ];
+    ir.commands = [
+      {
+        name: 'delete',
+        entity: 'Parent',
+        parameters: [],
+        policies: [],
+        guards: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    ir.stores = [durable('Parent'), durable('Child')];
+    const res = mutations(ir);
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_REFERENTIAL_SET')).toBe(
+      true,
+    );
+    expect(res.artifacts[0]!.code).not.toContain('parentId: undefined');
+  });
+
+  it('patch setDefault writes the child FK default before parent update', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Parent', [prop('code', 'string', ['required'])]),
+      {
+        ...entity(
+          'Child',
+          [
+            prop('label', 'string', ['required']),
+            {
+              name: 'parentCode',
+              type: { name: 'string', nullable: false },
+              modifiers: [],
+              defaultValue: { kind: 'string', value: 'NONE' },
+            },
+          ],
+          [
+            {
+              name: 'parent',
+              kind: 'belongsTo',
+              target: 'Parent',
+              foreignKey: { fields: ['parentCode'], references: ['code'] },
+              onUpdate: 'setDefault',
+            },
+          ],
+        ),
+      },
+    ];
+    ir.commands = [
+      {
+        name: 'rename',
+        entity: 'Parent',
+        parameters: [
+          {
+            name: 'code',
+            type: { name: 'string', nullable: false },
+            required: true,
+          },
+        ],
+        policies: [],
+        guards: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'code',
+            expression: { kind: 'identifier', name: 'code' },
+          },
+        ],
+        emits: [],
+      },
+    ];
+    ir.stores = [durable('Parent'), durable('Child')];
+    const code = mutations(ir).artifacts[0]!.code;
+    expect(code).toContain('__applyReferentialOnUpdate');
+    expect(code).toContain('await ctx.db.patch(__kid._id, { parentCode: "NONE" } as any)');
+  });
+});
+
+describe('convex.mutations — referential onUpdate', () => {
+  function parentChildOnUpdateIR(onUpdate: 'cascade' | 'restrict'): IR {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Parent', [prop('code', 'string', ['required'])]),
+      entity(
+        'Child',
+        [prop('label', 'string', ['required'])],
+        [
+          {
+            name: 'parent',
+            kind: 'belongsTo',
+            target: 'Parent',
+            foreignKey: { fields: ['parentCode'], references: ['code'] },
+            onUpdate,
+          },
+        ],
+      ),
+    ];
+    ir.commands = [
+      {
+        name: 'rename',
+        entity: 'Parent',
+        parameters: [
+          {
+            name: 'code',
+            type: { name: 'string', nullable: false },
+            required: true,
+          },
+        ],
+        policies: [],
+        guards: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'code',
+            expression: { kind: 'identifier', name: 'code' },
+          },
+        ],
+        emits: [],
+      },
+    ];
+    ir.stores = [durable('Parent'), durable('Child')];
+    return ir;
+  }
+
+  it('patch mutations emit onUpdate cascade helper before parent patch', () => {
+    const code = mutations(parentChildOnUpdateIR('cascade')).artifacts[0]!.code;
+    expect(code).toContain('async function __applyReferentialOnUpdate');
+    expect(code).toContain(
+      'await __applyReferentialOnUpdate(ctx, "Parent", docId, doc, updates)',
+    );
+    expect(code).toContain('await ctx.db.patch(__kid._id, { parentCode: __new0 } as any)');
+    expect(code).toContain('await ctx.db.patch(docId');
+  });
+
+  it('patch mutations emit onUpdate restrict throw when dependents exist', () => {
+    const code = mutations(parentChildOnUpdateIR('restrict')).artifacts[0]!.code;
+    expect(code).toContain('REFERENTIAL_RESTRICT: cannot update');
+    expect(code).toContain('declares onUpdate: restrict and dependent rows exist');
+  });
+});
+
 describe('convex.mutations — referential onDelete', () => {
   function parentChildIR(onDelete: 'cascade' | 'restrict'): IR {
     const ir = emptyIR();

@@ -26,6 +26,9 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | `searchable` (string/text/uuid)                  | schema                       | Emits `.searchIndex("search_<field>", { searchField })`; tenant → `filterFields` when set    |
 | Commands → mutations                             | mutations                    | Order: rateLimit → policies → guards → constraints → mutate → emit → react                   |
 | Referential onDelete cascade/restrict            | mutations                    | Hard-delete (`delete`/`remove`, no mutate patches): restrict then cascade via FK indexes     |
+| Referential onUpdate cascade/restrict            | mutations                    | Before parent patch: restrict or rewrite child FK when referenced parent column changes      |
+| Referential setNull / setDefault                 | mutations                    | Clear optional FK (`undefined`) or write IR/type default (single + composite)                |
+| Referential composite FK                         | schema + mutations           | Multi-column FK fields + `by_a_b` index; helpers match every paired column                   |
 | Command policies / guards / constraints          | mutations                    | Fail-closed; `CONVEX_UNRESOLVED_*` + denying throw; constraint `failWhen` polarity honored   |
 | Roles + `roleAllows`                             | queries + mutations          | Target-aware `ROLE_PERMISSIONS` + `checkRole`                                                |
 | Events + G7 emit payloads                        | mutations                    | `manifestEvents` table                                                                       |
@@ -53,7 +56,6 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 
 | IR construct                  | Limitation                                                                                                                   | Diagnostic / note                      |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| Referential onUpdate / setNull / setDefault / composite FK | No schema FK engine; onUpdate not lowered; setNull/setDefault rejected; composite onDelete deferred | `CONVEX_REFERENTIAL_ACTION_DEFERRED` / `CONVEX_UNSUPPORTED_REFERENTIAL_SET` |
 | Computed relation aggregates  | Self-only helpers; `count_of`/`sum`/`avg`/`min_of`/`max_of`/`filter`/`map`/`flat_map` on hydrated hasMany in mutations      | Unresolved → `CONVEX_UNRESOLVED_COMPUTED` |
 | Read/`all` policies           | Public with `authContextImport` (+ `flagProviderImport` when policies call `flag()`); relationship hydration for belongsTo/ref/hasMany/through (single-column FKs). Unhydratable edges stay internal. Read `rateLimit` is Unsupported (error). | `CONVEX_UNSUPPORTED_READ_POLICY_*`     |
 | `policyMode: 'skip'`          | Omits authorization only                                                                                                     | Documented escape hatch                |

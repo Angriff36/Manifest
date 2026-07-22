@@ -1,138 +1,77 @@
 /**
- * Convex mutation emission for IR referential `onDelete` actions.
+ * Convex mutation emission for IR referential `onDelete` / `onUpdate` actions.
  *
- * Schema has no FK engine. Hard-delete commands (`delete` / `remove` with no
- * mutate patches) call a generated helper that mirrors reference-runtime
- * restrict-then-cascade for single-column belongsTo/ref edges.
- *
- * Deferred / unsupported here: onUpdate, setNull, setDefault, composite FKs.
+ * Single-column and composite belongsTo/ref edges. setNull clears via
+ * `undefined` (Convex `v.optional` rejects JSON `null`).
  */
 
-import type { IR, IRCommand, IREntity, IRRelationship, RefAction } from '../../ir';
+import type { IR, IRCommand } from '../../ir';
 import type { ProjectionDiagnostic } from '../interface';
+import type { NormalizedOptions } from './generator.js';
 import {
-  isPersistentEntity,
-  resolveConvexTableName,
-  type NormalizedOptions,
-} from './generator.js';
+  collectInboundOnDeleteEdges,
+  collectInboundOnUpdateEdges,
+  type InboundReferentialEdge,
+} from './referential-edges.js';
 
-export interface InboundOnDeleteEdge {
-  parentEntity: string;
-  childEntity: string;
-  childTable: string;
-  relationshipName: string;
-  fkField: string;
-  /** Parent column the FK matches (`id` → Convex `_id` / docId). */
-  remoteField: string;
-  action: RefAction;
-}
+export type {
+  InboundOnDeleteEdge,
+  InboundReferentialEdge,
+} from './referential-edges.js';
+export {
+  collectInboundOnDeleteEdges,
+  collectInboundOnUpdateEdges,
+} from './referential-edges.js';
 
 export function isHardDeleteCommand(cmd: IRCommand): boolean {
   if (cmd.name !== 'delete' && cmd.name !== 'remove') return false;
   return !(cmd.actions ?? []).some((action) => action.kind === 'mutate' && !!action.target);
 }
 
-function resolveFkField(
-  child: IREntity,
-  rel: IRRelationship,
-  tenantProp: string | undefined,
-  options: NormalizedOptions,
-): string {
-  const override = options.references[child.name]?.[rel.name];
-  if (override) return override;
-  const fields = rel.foreignKey?.fields ?? [];
-  const nonTenant = fields.find((field) => field !== tenantProp);
-  return nonTenant ?? `${rel.name}Id`;
+function parentMatchExpr(remote: string): string {
+  return remote === 'id' ? 'parentId' : `parent[${JSON.stringify(remote)}]`;
 }
 
-function resolveRemoteField(rel: IRRelationship, parent: IREntity | undefined): string | null {
-  const fk = rel.foreignKey;
-  if (fk?.fields && fk.fields.length > 1) return null;
-  if (fk?.references && fk.references.length > 1) return null;
-  if (fk?.references && fk.references.length === 1) return fk.references[0]!;
-  if (parent?.key && parent.key.length === 1) return parent.key[0]!;
-  return 'id';
+function beforeMatchExpr(remote: string): string {
+  return remote === 'id' ? 'parentId' : `before[${JSON.stringify(remote)}]`;
 }
 
-/** Collect enforceable single-column inbound onDelete edges (and deferred diags). */
-export function collectInboundOnDeleteEdges(
-  ir: IR,
-  options: NormalizedOptions,
-): { edges: InboundOnDeleteEdge[]; diagnostics: ProjectionDiagnostic[] } {
-  const diagnostics: ProjectionDiagnostic[] = [];
-  const edges: InboundOnDeleteEdge[] = [];
-  const tenantProp = options.tenantIdProperty ?? ir.tenant?.property;
-
-  for (const child of ir.entities) {
-    if (!isPersistentEntity(child, ir)) continue;
-    for (const rel of child.relationships) {
-      if (rel.kind !== 'belongsTo' && rel.kind !== 'ref') continue;
-      const action = rel.onDelete;
-      if (!action || action === 'noAction') continue;
-
-      const parent = ir.entities.find((entity) => entity.name === rel.target);
-      if (!parent || !isPersistentEntity(parent, ir)) continue;
-
-      const remoteField = resolveRemoteField(rel, parent);
-      const fkFields = rel.foreignKey?.fields ?? [];
-      if (remoteField === null || fkFields.length > 1) {
-        diagnostics.push({
-          severity: 'warning',
-          code: 'CONVEX_REFERENTIAL_ACTION_DEFERRED',
-          entity: child.name,
-          message:
-            `Relationship '${child.name}.${rel.name}' onDelete:${action} uses a composite ` +
-            `FK; Convex mutation cascade supports single-column belongsTo/ref only.`,
-        });
-        continue;
-      }
-
-      if (action === 'setNull' || action === 'setDefault') {
-        diagnostics.push({
-          severity: 'error',
-          code: 'CONVEX_UNSUPPORTED_REFERENTIAL_SET',
-          entity: child.name,
-          message:
-            `Relationship '${child.name}.${rel.name}' declares onDelete:${action}. ` +
-            `Convex hard-delete mutations only lower cascade/restrict for single-column FKs.`,
-        });
-        continue;
-      }
-
-      if (action !== 'cascade' && action !== 'restrict') continue;
-
-      edges.push({
-        parentEntity: parent.name,
-        childEntity: child.name,
-        childTable: resolveConvexTableName(child.name, options),
-        relationshipName: rel.name,
-        fkField: resolveFkField(child, rel, tenantProp, options),
-        remoteField,
-        action,
-      });
-    }
-  }
-
-  return { edges, diagnostics };
+function updateNewExpr(remote: string): string {
+  if (remote === 'id') return 'updates._id !== undefined ? updates._id : updates.id';
+  return `updates[${JSON.stringify(remote)}]`;
 }
 
-function matchValueExpr(remoteField: string): string {
-  return remoteField === 'id' ? 'parentId' : `parent[${JSON.stringify(remoteField)}]`;
+function renderIndexQuery(
+  edge: InboundReferentialEdge,
+  matchExprs: string[],
+  indent: string,
+  bindName: string,
+): string[] {
+  const eqChain = edge.pairs
+    .map((pair, index) => `.eq(${JSON.stringify(pair.local)}, ${matchExprs[index]})`)
+    .join('');
+  return [
+    `${indent}const ${bindName} = await ctx.db`,
+    `${indent}  .query(${JSON.stringify(edge.childTable)})`,
+    `${indent}  .withIndex(${JSON.stringify(edge.indexName)}, (q: any) => q${eqChain})`,
+  ];
 }
 
-function renderParentCase(parentEntity: string, edges: InboundOnDeleteEdge[]): string {
+function patchObjectLiteral(edge: InboundReferentialEdge, valueExprs: string[]): string {
+  return edge.pairs
+    .map((pair, index) => `${pair.local}: ${valueExprs[index]}`)
+    .join(', ');
+}
+
+function renderOnDeleteParentCase(parentEntity: string, edges: InboundReferentialEdge[]): string {
   const inbound = edges.filter((edge) => edge.parentEntity === parentEntity);
-  const restrict = inbound.filter((edge) => edge.action === 'restrict');
-  const cascade = inbound.filter((edge) => edge.action === 'cascade');
   const lines: string[] = [`    case ${JSON.stringify(parentEntity)}: {`];
 
-  for (const edge of restrict) {
-    const match = matchValueExpr(edge.remoteField);
+  for (const edge of inbound.filter((item) => item.action === 'restrict')) {
+    const matches = edge.pairs.map((pair) => parentMatchExpr(pair.remote));
     lines.push(
       `      {`,
-      `        const __dep = await ctx.db`,
-      `          .query(${JSON.stringify(edge.childTable)})`,
-      `          .withIndex(${JSON.stringify(`by_${edge.fkField}`)}, (q: any) => q.eq(${JSON.stringify(edge.fkField)}, ${match}))`,
+      ...renderIndexQuery(edge, matches, '        ', '__dep'),
       `          .first();`,
       `        if (__dep) {`,
       `          throw new Error(`,
@@ -145,13 +84,11 @@ function renderParentCase(parentEntity: string, edges: InboundOnDeleteEdge[]): s
     );
   }
 
-  for (const edge of cascade) {
-    const match = matchValueExpr(edge.remoteField);
+  for (const edge of inbound.filter((item) => item.action === 'cascade')) {
+    const matches = edge.pairs.map((pair) => parentMatchExpr(pair.remote));
     lines.push(
       `      {`,
-      `        const __kids = await ctx.db`,
-      `          .query(${JSON.stringify(edge.childTable)})`,
-      `          .withIndex(${JSON.stringify(`by_${edge.fkField}`)}, (q: any) => q.eq(${JSON.stringify(edge.fkField)}, ${match}))`,
+      ...renderIndexQuery(edge, matches, '        ', '__kids'),
       `          .collect();`,
       `        for (const __kid of __kids) {`,
       `          await __applyReferentialOnDelete(ctx, ${JSON.stringify(edge.childEntity)}, __kid._id, visiting);`,
@@ -161,13 +98,105 @@ function renderParentCase(parentEntity: string, edges: InboundOnDeleteEdge[]): s
     );
   }
 
+  for (const edge of inbound.filter(
+    (item) => item.action === 'setNull' || item.action === 'setDefault',
+  )) {
+    const matches = edge.pairs.map((pair) => parentMatchExpr(pair.remote));
+    const values = edge.patchValues ?? edge.pairs.map(() => 'undefined');
+    lines.push(
+      `      {`,
+      ...renderIndexQuery(edge, matches, '        ', '__kids'),
+      `          .collect();`,
+      `        for (const __kid of __kids) {`,
+      `          await ctx.db.patch(__kid._id, { ${patchObjectLiteral(edge, values)} } as any);`,
+      `        }`,
+      `      }`,
+    );
+  }
+
   lines.push(`      break;`, `    }`);
   return lines.join('\n');
 }
 
-/**
- * File-level helper used by hard-delete mutations. Empty when no enforceable edges.
- */
+function renderOnUpdateParentCase(parentEntity: string, edges: InboundReferentialEdge[]): string {
+  const inbound = edges.filter((edge) => edge.parentEntity === parentEntity);
+  const lines: string[] = [`    case ${JSON.stringify(parentEntity)}: {`];
+
+  for (const edge of inbound) {
+    const oldExprs = edge.pairs.map((pair) => beforeMatchExpr(pair.remote));
+    const newExprs = edge.pairs.map((pair) => updateNewExpr(pair.remote));
+    const changedCheck = edge.pairs
+      .map((_, index) => `__new${index} !== undefined && __new${index} !== __old${index}`)
+      .join(' || ');
+
+    lines.push(`      {`);
+    for (let index = 0; index < edge.pairs.length; index += 1) {
+      lines.push(
+        `        const __old${index} = ${oldExprs[index]};`,
+        `        const __new${index} = ${newExprs[index]};`,
+      );
+    }
+    lines.push(`        if (${changedCheck}) {`);
+
+    const oldBinds = edge.pairs.map((_, index) => `__old${index}`);
+    if (edge.action === 'restrict') {
+      lines.push(
+        ...renderIndexQuery(edge, oldBinds, '          ', '__dep'),
+        `            .first();`,
+        `          if (__dep) {`,
+        `            throw new Error(`,
+        `              "REFERENTIAL_RESTRICT: cannot update " + ${JSON.stringify(edge.parentEntity)} +`,
+        `              "('" + String(parentId) + "') — " + ${JSON.stringify(`${edge.childEntity}.${edge.relationshipName}`)} +`,
+        `              " declares onUpdate: restrict and dependent rows exist"`,
+        `            );`,
+        `          }`,
+      );
+    } else if (edge.action === 'cascade') {
+      const cascadeValues = edge.pairs.map((_, index) => `__new${index}`);
+      lines.push(
+        ...renderIndexQuery(edge, oldBinds, '          ', '__kids'),
+        `            .collect();`,
+        `          for (const __kid of __kids) {`,
+        `            await ctx.db.patch(__kid._id, { ${patchObjectLiteral(edge, cascadeValues)} } as any);`,
+        `          }`,
+      );
+    } else {
+      const values = edge.patchValues ?? edge.pairs.map(() => 'undefined');
+      lines.push(
+        ...renderIndexQuery(edge, oldBinds, '          ', '__kids'),
+        `            .collect();`,
+        `          for (const __kid of __kids) {`,
+        `            await ctx.db.patch(__kid._id, { ${patchObjectLiteral(edge, values)} } as any);`,
+        `          }`,
+      );
+    }
+    lines.push(`        }`, `      }`);
+  }
+
+  lines.push(`      break;`, `    }`);
+  return lines.join('\n');
+}
+
+function renderSwitchHelper(
+  name: string,
+  args: string[],
+  bodyPreamble: string[],
+  cases: string,
+): string {
+  return [
+    `async function ${name}(`,
+    ...args.map((arg, index) => `  ${arg}${index < args.length - 1 ? ',' : ''}`),
+    `): Promise<void> {`,
+    ...bodyPreamble,
+    `  switch (entityName) {`,
+    cases,
+    `    default:`,
+    `      break;`,
+    `  }`,
+    `}`,
+  ].join('\n');
+}
+
 export function renderReferentialOnDeleteHelper(
   ir: IR,
   options: NormalizedOptions,
@@ -180,33 +209,65 @@ export function renderReferentialOnDeleteHelper(
 
   const cases = [...parentEntities]
     .sort((a, b) => a.localeCompare(b))
-    .map((name) => renderParentCase(name, edges))
+    .map((name) => renderOnDeleteParentCase(name, edges))
     .join('\n');
 
-  const code = [
-    `async function __applyReferentialOnDelete(`,
-    `  ctx: MutationCtx,`,
-    `  entityName: string,`,
-    `  parentId: any,`,
-    `  visiting: Set<string> = new Set(),`,
-    `): Promise<void> {`,
-    `  const visitKey = entityName + ":" + String(parentId);`,
-    `  if (visiting.has(visitKey)) return;`,
-    `  visiting.add(visitKey);`,
-    `  const parent = await ctx.db.get(parentId) as Record<string, any> | null;`,
-    `  if (!parent) return;`,
-    `  switch (entityName) {`,
+  const code = renderSwitchHelper(
+    '__applyReferentialOnDelete',
+    [
+      'ctx: MutationCtx',
+      'entityName: string',
+      'parentId: any',
+      'visiting: Set<string> = new Set()',
+    ],
+    [
+      `  const visitKey = entityName + ":" + String(parentId);`,
+      `  if (visiting.has(visitKey)) return;`,
+      `  visiting.add(visitKey);`,
+      `  const parent = await ctx.db.get(parentId) as Record<string, any> | null;`,
+      `  if (!parent) return;`,
+    ],
     cases,
-    `    default:`,
-    `      break;`,
-    `  }`,
-    `}`,
-  ].join('\n');
+  );
 
   return { code, diagnostics, parentEntities };
 }
 
-/** Call site before `ctx.db.delete` in a hard-delete mutation body. */
+export function renderReferentialOnUpdateHelper(
+  ir: IR,
+  options: NormalizedOptions,
+): { code: string | null; diagnostics: ProjectionDiagnostic[]; parentEntities: Set<string> } {
+  const { edges, diagnostics } = collectInboundOnUpdateEdges(ir, options);
+  const parentEntities = new Set(edges.map((edge) => edge.parentEntity));
+  if (parentEntities.size === 0) {
+    return { code: null, diagnostics, parentEntities };
+  }
+
+  const cases = [...parentEntities]
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => renderOnUpdateParentCase(name, edges))
+    .join('\n');
+
+  const code = renderSwitchHelper(
+    '__applyReferentialOnUpdate',
+    [
+      'ctx: MutationCtx',
+      'entityName: string',
+      'parentId: any',
+      'before: Record<string, any>',
+      'updates: Record<string, any>',
+    ],
+    [],
+    cases,
+  );
+
+  return { code, diagnostics, parentEntities };
+}
+
 export function renderReferentialOnDeleteCall(entityName: string): string {
   return `    await __applyReferentialOnDelete(ctx, ${JSON.stringify(entityName)}, docId);\n`;
+}
+
+export function renderReferentialOnUpdateCall(entityName: string): string {
+  return `    await __applyReferentialOnUpdate(ctx, ${JSON.stringify(entityName)}, docId, doc, updates);\n`;
 }

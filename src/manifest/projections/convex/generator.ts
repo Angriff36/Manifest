@@ -405,49 +405,60 @@ function emitTable(entity: IREntity, ir: IR, options: NormalizedOptions): TableE
   // References from belongsTo/ref relationships.
   for (const rel of entity.relationships) {
     if (rel.kind !== 'belongsTo' && rel.kind !== 'ref') continue;
-    const fkField = resolveReferenceField(entity, rel, tenantProp, options);
-    if (!emittedFieldNames.has(fkField)) {
-      const targetTable = resolveConvexTableName(rel.target, options);
-      const ref =
-        options.referenceMode === 'stringId'
-          ? 'v.string()'
-          : `v.id(${JSON.stringify(targetTable)})`;
-      fieldLines.push(`${fkField}: v.optional(${ref})`);
-      emittedFieldNames.add(fkField);
+    const fkFields = rel.foreignKey?.fields ?? [];
+    const refs = rel.foreignKey?.references ?? [];
+    // Capsule-style tenant-scoped id FKs (`fields: [tenantId, parentId]` →
+    // `references: [tenantId, id]`) stay on the single Convex id column path.
+    // True business-key composites (e.g. orderId+tenantId → orderId+tenantId)
+    // emit every column + a multi-field index.
+    const identityRemote =
+      refs.length === 0 ||
+      refs.some((reference, index) => reference === 'id' && fkFields[index] !== tenantProp);
+    const businessComposite = fkFields.length > 1 && !identityRemote;
+    const targetTable = resolveConvexTableName(rel.target, options);
+
+    if (businessComposite) {
+      for (const fkField of fkFields) {
+        if (emittedFieldNames.has(fkField)) continue;
+        fieldLines.push(`${fkField}: v.optional(v.string())`);
+        emittedFieldNames.add(fkField);
+      }
+      addIndex({ name: `by_${fkFields.join('_')}`, fields: [...fkFields] });
+    } else {
+      const fkField = resolveReferenceField(entity, rel, tenantProp, options);
+      if (!emittedFieldNames.has(fkField)) {
+        const ref =
+          options.referenceMode === 'stringId'
+            ? 'v.string()'
+            : `v.id(${JSON.stringify(targetTable)})`;
+        fieldLines.push(`${fkField}: v.optional(${ref})`);
+        emittedFieldNames.add(fkField);
+      }
+      addIndex({ name: `by_${fkField}`, fields: [fkField] });
     }
-    addIndex({ name: `by_${fkField}`, fields: [fkField] });
-    if (rel.onUpdate) {
+
+    for (const which of ['onDelete', 'onUpdate'] as const) {
+      const action = which === 'onDelete' ? rel.onDelete : rel.onUpdate;
+      if (
+        action !== 'cascade' &&
+        action !== 'restrict' &&
+        action !== 'setNull' &&
+        action !== 'setDefault'
+      ) {
+        continue;
+      }
+      const surface =
+        which === 'onDelete'
+          ? 'hard-delete mutations (delete/remove with no mutate patches)'
+          : 'patch mutations before the parent write';
       diagnostics.push({
         severity: 'info',
-        code: 'CONVEX_REFERENTIAL_ACTION_DEFERRED',
+        code: 'CONVEX_REFERENTIAL_ACTION_MUTATION',
         entity: entity.name,
         message:
-          `Relationship '${entity.name}.${rel.name}' declares onUpdate. Convex has no ` +
-          `schema-level FK engine; onUpdate is not lowered into mutations yet.`,
-      });
-    }
-    if (rel.onDelete === 'setNull' || rel.onDelete === 'setDefault') {
-      diagnostics.push({
-        severity: 'error',
-        code: 'CONVEX_UNSUPPORTED_REFERENTIAL_SET',
-        entity: entity.name,
-        message:
-          `Relationship '${entity.name}.${rel.name}' declares onDelete:${rel.onDelete}. ` +
-          `Convex hard-delete mutations only lower cascade/restrict for single-column FKs.`,
-      });
-    } else if (rel.onDelete === 'cascade' || rel.onDelete === 'restrict') {
-      const composite = (rel.foreignKey?.fields?.length ?? 0) > 1;
-      diagnostics.push({
-        severity: composite ? 'warning' : 'info',
-        code: composite
-          ? 'CONVEX_REFERENTIAL_ACTION_DEFERRED'
-          : 'CONVEX_REFERENTIAL_ACTION_MUTATION',
-        entity: entity.name,
-        message: composite
-          ? `Relationship '${entity.name}.${rel.name}' onDelete:${rel.onDelete} uses a ` +
-            `composite FK; Convex mutation cascade supports single-column belongsTo/ref only.`
-          : `Relationship '${entity.name}.${rel.name}' onDelete:${rel.onDelete} is enforced ` +
-            `in hard-delete mutations (delete/remove with no mutate patches), not at schema level.`,
+          `Relationship '${entity.name}.${rel.name}' ${which}:${action} is enforced ` +
+          `in ${surface}, not at schema level` +
+          (businessComposite ? ' (composite FK index + mutation helper).' : '.'),
       });
     }
   }

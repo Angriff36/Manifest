@@ -178,11 +178,12 @@ Override per property: `typeMappings: { Entity: { prop: "v.number()" } }`.
 - **Indexes**: `indexed` properties, the tenant column, and every reference
   field get a `by_<col>` index; supply composite/named indexes via
   `indexes: { Entity: [["a","b"], { fields: ["sku"], name: "by_sku" }] }`.
-- **Referential actions**: no schema-level FK engine. Single-column
-  `onDelete: cascade|restrict` is enforced in hard-delete mutations
-  (`delete`/`remove` with no mutate patches) via `__applyReferentialOnDelete`.
-  `onUpdate` and composite FKs stay deferred; `setNull`/`setDefault` emit
-  `CONVEX_UNSUPPORTED_REFERENTIAL_SET`.
+- **Referential actions**: no schema-level FK engine. Single-column and
+  composite `onDelete` / `onUpdate` `cascade|restrict|setNull|setDefault` are
+  enforced in mutations (`__applyReferentialOnDelete` /
+  `__applyReferentialOnUpdate`). Composite FKs emit a multi-field index and
+  match every paired column. `setNull` clears optional FKs with `undefined`
+  (Convex `v.optional` rejects JSON `null`).
 - **Tables**: Convex-idiomatic camelCase + pluralized by default
   (`CateringEvent` → `cateringEvents`); override via `tableMappings`.
 - **Persistence filtering**: only entities with a `durable`/`postgres`/`supabase`

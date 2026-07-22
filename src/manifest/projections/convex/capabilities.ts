@@ -70,12 +70,22 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   {
     feature: 'Referential onDelete cascade/restrict',
     status: 'supported',
-    note: 'Hard-delete mutations (delete/remove, no mutate patches) run restrict-then-cascade for single-column belongsTo/ref.',
+    note: 'Hard-delete mutations (delete/remove, no mutate patches) run restrict-then-cascade for single-column and composite belongsTo/ref.',
   },
   {
-    feature: 'Referential onUpdate / setNull / setDefault / composite FK',
-    status: 'partial',
-    note: 'onUpdate deferred; setNull/setDefault error (CONVEX_UNSUPPORTED_REFERENTIAL_SET); composite FK deferred.',
+    feature: 'Referential onUpdate cascade/restrict',
+    status: 'supported',
+    note: 'Patch mutations rewrite (cascade) or block (restrict) child FKs (single + composite) when referenced parent columns change.',
+  },
+  {
+    feature: 'Referential setNull / setDefault',
+    status: 'supported',
+    note: 'setNull clears optional FK (undefined); setDefault uses IR/type default. Single + composite. Non-nullable setNull errors.',
+  },
+  {
+    feature: 'Referential composite FK',
+    status: 'supported',
+    note: 'Multi-column belongsTo/ref: schema composite index + mutation helpers match all paired columns.',
   },
   {
     feature: 'Computed relation aggregates',

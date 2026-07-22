@@ -40,7 +40,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | --- | --- | --- | --- |
 | `analytics` | `analytics.tracking-plan`, `analytics.events`, `analytics.handlers` | no | undeclared |
 | `contract-tests` | `contract-tests.convex` | yes | undeclared |
-| `convex` | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react` | yes | 30 supported / 6 partial / 5 unsupported |
+| `convex` | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react` | yes | 33 supported / 5 partial / 5 unsupported |
 | `dart` | `dart.entity`, `dart.command`, `dart.models`, `dart.client`, `dart.providers`, `dart.package` | no | undeclared |
 | `drizzle` | `drizzle.schema` | yes | undeclared |
 | `dynamodb` | `dynamodb.cloudformation`, `dynamodb.cdk`, `dynamodb.terraform` | yes | undeclared |
@@ -345,7 +345,7 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Appendix E: command-body policy clause | `REJECTED_LOUD → by design` | Top-level policies only; command-body `policy` will not ship |
 | 2. Language (DSL) — full inventory | Entity `behavior` blocks | `REJECTED_LOUD → proven reject` | see §1 / fixture `110` |
 | 4. Runtime engine & adapters | ~~WASM expression compatibility layer~~ | `REMOVED 2026-07-15` | Quarantined prototype deleted — no `.wasm` artifact, never on default RuntimeEngine path |
-| 6. Projections — every registered target | convex | `PARTIAL` | mirror of COMPLIANCE_MATRIX §6 — relationship read hydration + saga shared-input + hard-delete onDelete cascade/restrict + trustedSource strip/inject Supported; onUpdate/setNull/setDefault/composite still Partial; read rateLimit/async/action-kind/retry/approvals REJECTED_LOUD; other Partial rows (realtime/computed-cache/…) remain |
+| 6. Projections — every registered target | convex | `PARTIAL` | mirror of COMPLIANCE_MATRIX §6 — relationship read hydration + saga shared-input + single + composite referential onDelete/onUpdate (cascade/restrict/setNull/setDefault) + trustedSource strip/inject Supported; composite FK Supported (`referential-edges`/`referential-emit` + schema composite indexes); read rateLimit/async/action-kind/retry/approvals REJECTED_LOUD; remaining Partial: realtime/computed-cache |
 | 6. Projections — every registered target | Convex `async` commands / job queue | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_ASYNC_COMMAND` error |
 | 6. Projections — every registered target | Convex action kinds `effect`/`publish`/`persist` | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_ACTION_KIND` error |
 | 6. Projections — every registered target | Convex approvals | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_APPROVAL` error |

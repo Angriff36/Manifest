@@ -100,9 +100,12 @@ import {
 } from './rate-limit-emit.js';
 import {
   collectInboundOnDeleteEdges,
+  collectInboundOnUpdateEdges,
   isHardDeleteCommand,
   renderReferentialOnDeleteCall,
   renderReferentialOnDeleteHelper,
+  renderReferentialOnUpdateCall,
+  renderReferentialOnUpdateHelper,
 } from './referential-emit.js';
 import {
   clientOwnedParameters,
@@ -2311,14 +2314,21 @@ function generateMutation(
 
   const updateFieldLines = [...updateLines, ...versionOcc.updateFields];
   const hardDelete = isHardDeleteCommand(cmd);
-  const inboundEdges = hardDelete ? collectInboundOnDeleteEdges(ir, options).edges : [];
-  const needsReferentialOnDelete = inboundEdges.some(
+  const inboundDeleteEdges = hardDelete ? collectInboundOnDeleteEdges(ir, options).edges : [];
+  const needsReferentialOnDelete = inboundDeleteEdges.some(
+    (edge) => edge.parentEntity === entity.name,
+  );
+  const inboundUpdateEdges = !hardDelete
+    ? collectInboundOnUpdateEdges(ir, options).edges
+    : [];
+  const needsReferentialOnUpdate = inboundUpdateEdges.some(
     (edge) => edge.parentEntity === entity.name,
   );
   const persistLines = hardDelete
     ? (needsReferentialOnDelete ? renderReferentialOnDeleteCall(entity.name) : '') +
       `    await ctx.db.delete(docId);\n`
     : `    const updates = {\n${updateFieldLines.join(',\n')}${updateFieldLines.length ? '\n' : ''}    };\n` +
+      (needsReferentialOnUpdate ? renderReferentialOnUpdateCall(entity.name) : '') +
       (encryptionActive
         ? `    const __storedUpdates = await __encryptDoc(ctx, ${JSON.stringify(entity.name)}, ${JSON.stringify(mutationEncrypted)}, updates);\n`
         : '') +
@@ -2413,10 +2423,17 @@ export function generateMutations(
   if (/\b__consumeCommandRateLimit\b/.test(body)) {
     helpers.push(renderCommandRateLimitHelpers(options.commandRateLimitTable));
   }
-  if (/\b__applyReferentialOnDelete\b/.test(body)) {
-    const referential = renderReferentialOnDeleteHelper(ir, options);
-    diagnostics.push(...referential.diagnostics);
-    if (referential.code) helpers.push(referential.code);
+  // Always collect referential diagnostics (e.g. non-nullable setNull) even when
+  // no mutation in this file calls the helpers.
+  const onDeleteReferential = renderReferentialOnDeleteHelper(ir, options);
+  diagnostics.push(...onDeleteReferential.diagnostics);
+  if (/\b__applyReferentialOnDelete\b/.test(body) && onDeleteReferential.code) {
+    helpers.push(onDeleteReferential.code);
+  }
+  const onUpdateReferential = renderReferentialOnUpdateHelper(ir, options);
+  diagnostics.push(...onUpdateReferential.diagnostics);
+  if (/\b__applyReferentialOnUpdate\b/.test(body) && onUpdateReferential.code) {
+    helpers.push(onUpdateReferential.code);
   }
   if (/\bcheckRole\(/.test(body)) {
     helpers.push(

@@ -318,10 +318,17 @@ searchable, versionProperty/optimistic concurrency, retry, rateLimit~~
 > (`CONVEX_UNSUPPORTED_RETRY` error — cannot honor rollback+backoff in mutations).
 > **Correction (2026-07-22):** Entity approvals on Convex are **rejected loud**
 > (`CONVEX_UNSUPPORTED_APPROVAL` error — no stage state / pre-command gate).
-> **Correction (2026-07-22):** Convex hard-delete mutations enforce single-column
-> `onDelete: cascade|restrict` via `__applyReferentialOnDelete`
-> (`referential-emit.ts`). `onUpdate` / composite FK remain deferred;
-> `setNull`/`setDefault` emit `CONVEX_UNSUPPORTED_REFERENTIAL_SET`.
+> ~~Convex mutations enforce single-column `onDelete` / `onUpdate` … composite
+> FKs remain deferred/error.~~
+> **Correction (2026-07-22):** Convex mutations enforce single-column and
+> composite `onDelete` / `onUpdate` `cascade|restrict|setNull|setDefault` via
+> `__applyReferentialOnDelete` / `__applyReferentialOnUpdate`
+> (`referential-edges.ts` + `referential-emit.ts`). Business-key composites
+> emit multi-field schema indexes (`by_a_b`) and match every paired column;
+> tenant-scoped identity FKs (`tenantId` + parent id → `id`) stay on the
+> single `v.id` + `by_parentId` path. `setNull` clears optional FKs with
+> `undefined` (Convex `v.optional` rejects JSON `null`). Non-nullable
+> `setNull` errors (`CONVEX_UNSUPPORTED_REFERENTIAL_SET`).
 > **Correction (2026-07-22):** Convex `trustedSource` (`from context.*`) params
 > are omitted from client args and injected from `getAuthContext`
 > (`trusted-source-emit.ts`); missing required values throw
