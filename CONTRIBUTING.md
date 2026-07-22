@@ -1,3 +1,9 @@
+---
+title: Contributing to Manifest
+created: 2026-07-22
+updated: 2026-07-22
+---
+
 # Contributing to Manifest
 
 ## Prerequisites

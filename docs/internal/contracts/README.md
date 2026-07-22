@@ -1,7 +1,10 @@
-Last updated: 2026-05-24
-Status: Active
-Authority: Advisory
-Enforced by: None
+---
+title: Contracts Signpost
+created: 2026-05-24
+updated: 2026-07-22
+authority: Advisory
+status: Active
+---
 
 # Contracts Signpost
 

@@ -1,9 +1,15 @@
+---
+title: Deployment Boundaries and FAQ
+created: 2026-02-12
+updated: 2026-07-22
+authority: Advisory
+status: Active
+---
+
 # Deployment Boundaries and FAQ
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-12
-Status: Active
 
 This document exists to prevent category errors: Manifest is a deterministic domain DSL, not an infrastructure/deployment manifest format.
 

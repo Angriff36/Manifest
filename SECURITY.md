@@ -1,3 +1,9 @@
+---
+title: Security Policy
+created: 2026-07-22
+updated: 2026-07-22
+---
+
 # Security Policy
 
 ## Supported versions

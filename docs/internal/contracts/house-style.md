@@ -1,8 +1,15 @@
+---
+title: Manifest House Style
+created: 2026-02-11
+updated: 2026-07-22
+authority: Binding
+enforced_by: docs/spec/* + src/manifest/conformance/*
+---
+
 # Manifest House Style
 
 Authority: Binding
 Enforced by: docs/spec/* + src/manifest/conformance/*
-Last updated: 2026-02-11
 
 Manifest Language – House Style (Normative)
 

@@ -1,3 +1,11 @@
+---
+title: Manifest ↔ Builder Boundary
+created: 2026-07-14
+updated: 2026-07-22
+authority: Binding
+companion: deployment-boundaries.md
+---
+
 # Manifest ↔ Builder Boundary (Canonical)
 
 **Status:** Binding direction, agreed 2026-07-14. Companion of
