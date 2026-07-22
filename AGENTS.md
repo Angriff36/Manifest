@@ -67,14 +67,14 @@ If any implementation behavior differs, it must be called out as
 Run these after implementing to get immediate feedback:
 
 ```bash
-pnpm test                    # Conformance + runtime tests (must pass)
-pnpm run typecheck          # TypeScript check (no emit)
-pnpm run lint               # ESLint
-pnpm run dev                # Kitchen/Runtime manual smoke test (localhost:5173)
-pnpm run conformance:regen  # Regenerate expected outputs after fixture changes
+npm test                    # Conformance + runtime tests (must pass)
+npm run typecheck          # TypeScript check (no emit)
+npm run lint               # ESLint
+npm run dev                # Kitchen/Runtime manual smoke test (localhost:5173)
+npm run conformance:regen  # Regenerate expected outputs after fixture changes
 ```
 
-**Critical**: `pnpm test` must remain green. No exceptions.
+**Critical**: `npm test` must remain green. No exceptions.
 
 ---
 
@@ -122,7 +122,7 @@ That’s the contract. If Codex violates it, Codex is wrong. Not “needs a twea
 
 Confidence: 98% — Directly derived from the language goals you’ve articulated and the failure modes you’re actively eliminating.
 
-Reference: `docs/internal/contracts/house-style.md`.
+Reference: `house-style.md`.
 
 This repo is a language implementation. Agents must treat **meaning as law** and
 code as an instrument.
@@ -267,7 +267,7 @@ Not allowed:
 - When touching spec or conformance, changes must include:
   - exact spec sections updated
   - which fixtures changed and why
-  - proof: `pnpm test` output
+  - proof: `npm test` output
 
 ## If Something Is Ambiguous
 
@@ -311,7 +311,7 @@ Same routing as capsule-pro-loops — see [`LOOP.md`](./LOOP.md):
 
 A change is only done when:
 
-- `pnpm test` is green
+- `npm test` is green
 - spec/test/impl are aligned (no undocumented nonconformance)
 - any UI change has a minimal manual verification path described
 - **UI demos are actually functional** (buttons clickable, flows completable)
