@@ -12,7 +12,9 @@ Primary references:
 > **Correction (2026-07-15) @RYANSIGNED:** Use repo-relative paths (machine-local
 > absolute paths are not portable): `docs/spec/manifest-vnext.md`,
 > `docs/spec/semantics.md`, `docs/spec/ir/ir-v1.schema.json`,
-> `src/manifest/conformance/fixtures/`. Package pin SoT: `package.json` = **3.6.7**.
+> `src/manifest/conformance/fixtures/`.
+>
+> **Update (2026-07-22):** Package pin SoT: `package.json` = **3.6.41**.
 >
 > **Completion (2026-07-15):** Language/runtime vNext normative features are
 > implemented — see `docs/internal/COMPLIANCE_MATRIX.md` §1.
