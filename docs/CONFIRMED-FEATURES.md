@@ -44,7 +44,8 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 - Value objects / embedded types (fixture 60)
 - Enum types (fixture 57); decimal/money type (fixture 56); map/record type (fixture 73)
 - Date/time primitive types (fixture 92)
-- Composite primary keys (`key`), `alternateKeys`
+- Composite primary keys (`key` — matrix FULLY_IMPLEMENTED @ `96b8e80e` /
+  `a49807e9`), `alternateKeys`
 - Relationships: `hasMany` / `hasOne` / `belongsTo` / `ref` (fixtures `02`, `98`, `99`), composite FKs, referential actions (`onDelete`/`onUpdate` **enforced by the reference runtime** as of 2026-07-15 — see `runtime-referential-actions.test.ts`), **many-to-many via `hasMany … through Join`** (fixture 102; Join must belongsTo both ends; runtime two-hop). Completion SoT: `docs/internal/COMPLIANCE_MATRIX.md` §1.
 - Automatic timestamps / `autoNow` defaults — `= now()` / `= today()` (fixture 62)
 - Property privacy & protection modifiers: `private`, `encrypted`, `masked` (fixtures 91, 93)
@@ -94,6 +95,8 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
   `runtime-schedule.test.ts` + `schedule-worker.test.ts` @ `abe9595`; fires via
   worker/host, not a built-in RuntimeEngine timer)
 - Stores (persistence targets), modules (namespacing), cross-file `use`/imports
+  (modules/`use` matrix FULLY_IMPLEMENTED — `module-resolver.test.ts` +
+  `multi-compiler.test.ts`; named `import {…}` still not implemented)
 
 ## 2. Expression Language — 47 built-ins
 
