@@ -27,6 +27,7 @@ import type {
 } from '../interface';
 import type { DartProjectionOptions, DartStateManagement } from './types';
 import { DART_DESCRIPTOR_META } from './descriptor-meta.js';
+import { dartCommandPathHint, dartEntityPathHint } from './path-hints.js';
 import {
   analyzeConstraints,
   numericRangeToZodChain,
@@ -1028,7 +1029,7 @@ export class DartProjection implements ProjectionTarget {
       const code = lines.join('\n');
       artifacts.push({
         id: `dart.entity.${entity.name}`,
-        pathHint: `lib/models/${snakeCase(entity.name)}.dart`,
+        pathHint: dartEntityPathHint(entity),
         contentType: 'dart',
         code,
       });
@@ -1068,7 +1069,7 @@ export class DartProjection implements ProjectionTarget {
       const code = allLines.join('\n');
       artifacts.push({
         id: `dart.command.${command.name}`,
-        pathHint: `lib/commands/${snakeCase(command.name)}_params.dart`,
+        pathHint: dartCommandPathHint(command),
         contentType: 'dart',
         code,
       });

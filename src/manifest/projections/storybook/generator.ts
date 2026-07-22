@@ -17,6 +17,10 @@ import type {
   ProjectionArtifact,
   ProjectionDiagnostic,
 } from '../interface';
+import {
+  storybookCommandPathHint,
+  storybookEntityPathHint,
+} from './path-hints.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -573,7 +577,7 @@ export class StorybookProjection implements ProjectionTarget {
   private _entityArtifact(entity: IREntity, ir: IR, opts: NormalizedOptions): ProjectionArtifact {
     return {
       id: `storybook.entity.${entity.name}`,
-      pathHint: `stories/${entity.name}.stories.tsx`,
+      pathHint: storybookEntityPathHint(entity),
       contentType: 'typescript',
       code: generateEntityStory(entity, ir, opts),
     };
@@ -585,9 +589,16 @@ export class StorybookProjection implements ProjectionTarget {
     opts: NormalizedOptions,
   ): ProjectionArtifact {
     const entityName = command.entity ?? 'Global';
+    const entityModule = command.entity
+      ? ir.entities.find((e) => e.name === command.entity)?.module
+      : undefined;
     return {
       id: `storybook.command.${command.name}`,
-      pathHint: `stories/${entityName}/${pascalCase(command.name)}.stories.tsx`,
+      pathHint: storybookCommandPathHint({
+        commandName: command.name,
+        entityName,
+        module: command.module ?? entityModule,
+      }),
       contentType: 'typescript',
       code: generateCommandStory(command, ir, opts),
     };

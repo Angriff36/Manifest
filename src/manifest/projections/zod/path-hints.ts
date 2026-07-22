@@ -5,21 +5,16 @@
  * Module-less names keep the historical flat `schemas/…` layout.
  */
 
-/** Sanitize an IR module name into a single path segment. */
-export function zodModuleDirSegment(moduleName: string | undefined): string | undefined {
-  if (typeof moduleName !== 'string') return undefined;
-  const cleaned = moduleName
-    .trim()
-    .replace(/[^A-Za-z0-9_-]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  return cleaned.length > 0 ? cleaned : undefined;
-}
+import { moduleDirSegment } from '../shared/module-path.js';
+
+/** @deprecated Prefer {@link moduleDirSegment} from shared/module-path. */
+export const zodModuleDirSegment = moduleDirSegment;
 
 export function zodEntitySchemaPathHint(entity: {
   name: string;
   module?: string;
 }): string {
-  const mod = zodModuleDirSegment(entity.module);
+  const mod = moduleDirSegment(entity.module);
   return mod ? `schemas/${mod}/${entity.name}.schema.ts` : `schemas/${entity.name}.schema.ts`;
 }
 
@@ -30,6 +25,6 @@ export function zodCommandSchemaPathHint(args: {
 }): string {
   const entityPart = args.entityName ? `${args.entityName}_` : '';
   const file = `${entityPart}${args.commandName}.schema.ts`;
-  const mod = zodModuleDirSegment(args.moduleName);
+  const mod = moduleDirSegment(args.moduleName);
   return mod ? `schemas/${mod}/${file}` : `schemas/${file}`;
 }

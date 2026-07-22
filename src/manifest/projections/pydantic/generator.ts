@@ -33,6 +33,7 @@ import type {
 } from '../interface';
 import type { PydanticProjectionOptions } from './types';
 import { PYDANTIC_DESCRIPTOR_META } from './descriptor-meta.js';
+import { pydanticCommandPathHint, pydanticEntityPathHint } from './path-hints.js';
 import {
   analyzeConstraints,
   type NumericRange,
@@ -756,7 +757,7 @@ export class PydanticProjection implements ProjectionTarget {
 
       artifacts.push({
         id: `pydantic.entity.${entity.name}`,
-        pathHint: `models/${entity.name}.py`,
+        pathHint: pydanticEntityPathHint(entity),
         contentType: 'python',
         code,
       });
@@ -807,7 +808,7 @@ export class PydanticProjection implements ProjectionTarget {
 
       artifacts.push({
         id: `pydantic.command.${command.name}`,
-        pathHint: `models/commands/${command.name}.py`,
+        pathHint: pydanticCommandPathHint(command),
         contentType: 'python',
         code,
       });

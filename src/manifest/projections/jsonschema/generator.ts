@@ -24,6 +24,7 @@ import type {
 import { analyzeConstraints } from '../../constraint-analysis.js';
 import type { JsonSchemaProjectionOptions } from './types';
 import { JSONSCHEMA_DESCRIPTOR_META } from './descriptor-meta.js';
+import { jsonSchemaEntityPathHint } from './path-hints.js';
 
 // ============================================================================
 // Constants
@@ -444,7 +445,7 @@ export class JsonSchemaProjection implements ProjectionTarget {
     const schema = buildEntitySchema(entity, enumsByName, opts, diagnostics);
     const artifact: ProjectionArtifact = {
       id: `jsonschema.entity.${entity.name}`,
-      pathHint: `schemas/${entity.name}.schema.json`,
+      pathHint: jsonSchemaEntityPathHint(entity),
       contentType: 'json',
       code: JSON.stringify(schema, null, 2),
     };
@@ -467,7 +468,7 @@ export class JsonSchemaProjection implements ProjectionTarget {
       const schema = buildEntitySchema(entity, enumsByName, opts, diagnostics);
       artifacts.push({
         id: `jsonschema.entity.${entity.name}`,
-        pathHint: `schemas/${entity.name}.schema.json`,
+        pathHint: jsonSchemaEntityPathHint(entity),
         contentType: 'json',
         code: JSON.stringify(schema, null, 2),
       });

@@ -185,6 +185,24 @@ non-binding navigation mirror only.
 - [x] **Prisma `multiSchema.splitFiles`** — fixed 2026-07-22: root datasource at
       `output` + `dir/<schema>.prisma` partitions (`split-files.ts`). All-target
       file trees remain PARTIAL (Convex/web parked). Proof: `split-files.test.ts`.
+- [x] **Config G2/G7 matrix proof tuples** — fixed 2026-07-22: CLAIMED_NEEDS_PROOF
+      → FULLY_IMPLEMENTED with filename+lines+SHA (review-gate proof protocol).
+- [x] **Zod per-module schema pathHints** — fixed 2026-07-22: `schemas/<module>/…`
+      when entity has IR module; flat paths unchanged without module. Proof:
+      `zod/path-hints.test.ts`.
+- [x] **JSON Schema per-module pathHints** — fixed 2026-07-22: `schemas/<module>/….schema.json`
+      via `jsonschema/path-hints.ts` + shared `module-path.ts`. Proof:
+      `jsonschema/path-hints.test.ts`.
+- [x] **Pydantic per-module model pathHints** — fixed 2026-07-22: `models/<module>/…`
+      and `models/<module>/commands/…` via `pydantic/path-hints.ts`. Proof:
+      `pydantic/path-hints.test.ts`. All-target file trees remain PARTIAL
+      (Convex/web parked).
+- [x] **Dart per-module model/command pathHints** — fixed 2026-07-22:
+      `lib/models|<commands>/<module>/…` via `dart/path-hints.ts`. Proof:
+      `dart/path-hints.test.ts`.
+- [x] **Storybook per-module story pathHints** — fixed 2026-07-22:
+      `stories/<module>/…` via `storybook/path-hints.ts` (command inherits
+      entity module). Proof: `storybook/path-hints.test.ts`.
 - [x] **Phantom config/CLI/API docs struck** — 2026-07-22: Mintlify
       `cli/configuration.mdx` no longer claims `env(VAR)` inlining,
       `MANIFEST_ENV` overlays, or YAML connection `stores:`; `API_REFERENCE.md`
