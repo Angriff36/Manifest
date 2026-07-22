@@ -41,8 +41,9 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
     _negative_ tests (`shouldFail: true`, message `Expected {, got <`) — they pin the parse
     rejection, they do not prove `entity X<T>` works. Appendix D still correctly lists
     `generic-entity-types` as phantom.
-- Value objects / embedded types (fixture 60)
-- Enum types (fixture 57 — matrix FULLY_IMPLEMENTED @ `68dc9c26` / Zod `3052dc56`); decimal/money type (fixture 56); map/record type (fixture 73)
+- Value objects / embedded types (fixture 60 — matrix FULLY_IMPLEMENTED @
+  `ad02a4dc` / OpenAPI `9f93a40e`)
+- Enum types (fixture 57 — matrix FULLY_IMPLEMENTED @ `68dc9c26` / Zod `3052dc56`); decimal/money type (fixture 56 — matrix FULLY_IMPLEMENTED @ `9e34bc43` / Next `cc71f1fe`; runtime = JS number); map/record type (fixture 73)
 - Date/time primitive types (fixture 92)
 - Composite primary keys (`key` — matrix FULLY_IMPLEMENTED @ `96b8e80e` /
   `a49807e9`), `alternateKeys`

@@ -369,9 +369,7 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[proactive bridge @ 87% context — saved before compacting]
-Files (2):
-  docs/internal/COMPLIANCE_MATRIX.md (edit)
-  C:/Projects/capsule/tests/governed-creation-mappings.test.ts (edit)
+[Emergency bridge — running bridge was not updated]
+Files: mintlify/language/computed-caching.mdx (edit), IMPLEMENTATION_PLAN.md (edit)
 
 # === END COGNILAYER ===

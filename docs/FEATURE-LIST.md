@@ -342,7 +342,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | Matrix section | Gap | Status | Evidence / disposition |
 | --- | --- | --- | --- |
 | 2. Language (DSL) — full inventory | `date` / `time` / `datetime` / `duration` | `CLAIMED_NEEDS_PROOF` | fixture `92` |
-| 2. Language (DSL) — full inventory | `decimal` / `money` types | `CLAIMED_NEEDS_PROOF` | fixture `56`; runtime = number |
 | 2. Language (DSL) — full inventory | `extends` inheritance + cycle detection | `CLAIMED_NEEDS_PROOF` | fixtures `77`–`79`, `81` |
 | 2. Language (DSL) — full inventory | `map` / record type | `CLAIMED_NEEDS_PROOF` | fixture `73` |
 | 2. Language (DSL) — full inventory | `mixin` composition | `CLAIMED_NEEDS_PROOF` | fixture `78` |
@@ -382,7 +381,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Security features surface (doc) | `CLAIMED_NEEDS_PROOF / PARTIAL` | `docs/internal/features/security-features.md` — verify vs privacy/encryption |
 | 2. Language (DSL) — full inventory | State transitions | `CLAIMED_NEEDS_PROOF` | fixture `38` |
 | 2. Language (DSL) — full inventory | Store declarations | `CLAIMED_NEEDS_PROOF` | multiple fixtures |
-| 2. Language (DSL) — full inventory | Value objects / embedded types | `CLAIMED_NEEDS_PROOF` | fixture `60` |
 | 2. Language (DSL) — full inventory | Webhooks + HMAC | `CLAIMED_NEEDS_PROOF` | fixture `90` |
 | 3. Expression builtins (47) | `flag(name)` + provider and/or static map | `CLAIMED_NEEDS_PROOF + §1 for flags map` | See feature matrix |
 | 3. Expression builtins (47) | `hasPermission` / `roleAllows` | `CLAIMED_NEEDS_PROOF` | See feature matrix |
