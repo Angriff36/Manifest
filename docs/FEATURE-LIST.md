@@ -344,7 +344,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Appendix E: `map<K,V>` arbitrary non-string keys | `REJECTED_LOUD → by design` | String keys only; `record` alias ships (§1) |
 | 2. Language (DSL) — full inventory | Appendix E: command-body policy clause | `REJECTED_LOUD → by design` | Top-level policies only; command-body `policy` will not ship |
 | 2. Language (DSL) — full inventory | Entity `behavior` blocks | `REJECTED_LOUD → proven reject` | see §1 / fixture `110` |
-| 2. Language (DSL) — full inventory | Generic / parameterized entities `Entity<T>` | `NOT_IMPLEMENTED` | Fixtures `84-85` negative only; `entity-generics.ts` untracked in working tree (phantom). Mirror of COMPLIANCE_MATRIX §2. |
 | 4. Runtime engine & adapters | ~~WASM expression compatibility layer~~ | `REMOVED 2026-07-15` | Quarantined prototype deleted — no `.wasm` artifact, never on default RuntimeEngine path |
 | 6. Projections — every registered target | convex | `PARTIAL` | mirror of COMPLIANCE_MATRIX §6 — HMAC/flag + belongsTo/ref read hydration Supported; remaining hasMany/through read-policy / read rateLimit / saga-args / async |
 | 6. Projections — every registered target | Convex approvals | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_APPROVAL` error |

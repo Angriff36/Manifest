@@ -18,9 +18,10 @@ describe('registry-generated feature inventory', () => {
     expect(inventory.cliCommands).toContain('versions verify');
     expect(inventory.conformance.some((entry) => entry.id === '01-entity-properties')).toBe(true);
     expect(inventory.packageExports).toContain('./runtime-engine');
+    // Entity generics FULLY_IMPLEMENTED @ 6658d3e — no longer an open gap
     expect(
       inventory.openGaps.some((entry) => entry.feature.includes('Generic / parameterized')),
-    ).toBe(true);
+    ).toBe(false);
     // Health projection is FULLY_IMPLEMENTED as of 2026-07-22 — no longer an open gap
     expect(inventory.openGaps.some((entry) => entry.feature === 'health')).toBe(false);
   });
