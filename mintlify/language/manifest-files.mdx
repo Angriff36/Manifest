@@ -89,7 +89,7 @@ Every construct the parser accepts at the top level:
 | `role`                                   | A role in the authorization hierarchy              | [Roles](/language/roles)                                           |
 | `webhook`                                | An inbound webhook bound to a command              | [Events](/language/events)                                         |
 | `schedule`                               | A cron/interval-triggered command                  | [Workflows](/language/workflows)                                   |
-| `flow` / `effect` / `expose` / `compose` | Advanced composition and effect boundaries         | [Advanced entities](/language/advanced-entities)                   |
+| `flow` / `effect` / `expose` / `compose` | **EXPERIMENTAL — NOT IMPLEMENTED** (parser accepts, emits warning, not lowered to IR; compile succeeds but has no runtime effect; see fixture 94-unlowered-constructs.manifest) | — |
 
 A `module` block accepts a subset of these: entities, enums, commands, policies, stores, events, reactions, sagas, roles, webhooks, and schedules.
 

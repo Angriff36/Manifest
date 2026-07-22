@@ -46,7 +46,8 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 - Enum types (fixture 57 — matrix FULLY_IMPLEMENTED @ `68dc9c26` / Zod `3052dc56`); decimal/money type (fixture 56 — matrix FULLY_IMPLEMENTED @ `9e34bc43` / Next `cc71f1fe`; runtime = JS number); map/record type (fixture 73 — matrix FULLY_IMPLEMENTED @
   `dc52bb5d` / alias `08e1c54d`; string keys only); array types `T[]` /
   `array<T>` (fixture 40 — matrix FULLY_IMPLEMENTED @ `75d3331d` / Zod `cbaff934`)
-- Date/time primitive types (fixture 92)
+- Date/time primitive types (fixture 92 — matrix FULLY_IMPLEMENTED @ `893e2889` /
+  alias `22c7792`; write-time `E_TYPE_*` blocking)
 - Composite primary keys (`key` — matrix FULLY_IMPLEMENTED @ `96b8e80e` /
   `a49807e9`), `alternateKeys`
 - Relationships: `hasMany` / `hasOne` / `belongsTo` / `ref` (fixtures `02`, `98`, `99`), composite FKs, referential actions (`onDelete`/`onUpdate` **enforced by the reference runtime** as of 2026-07-15 — see `runtime-referential-actions.test.ts`), **many-to-many via `hasMany … through Join`** (fixture 102; Join must belongsTo both ends; runtime two-hop). Completion SoT: `docs/internal/COMPLIANCE_MATRIX.md` §1.
@@ -56,7 +57,9 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 - Property privacy & protection modifiers: `private`, `encrypted`, `masked`
   (fixtures 91, 93 — matrix FULLY_IMPLEMENTED @ `b8b29a34` / `9f3a9bf`; masking
   read-projection only; encrypt no-op without provider)
-- Full-text `searchable` declarations (fixture 89)
+- Full-text `searchable` declarations (fixture 89 — matrix FULLY_IMPLEMENTED @
+  `9f3a9bfa` / Convex `f8221d44`; runtime uses `search()` substring helper, indexes
+  are projection-owned)
 - Multi-tenancy isolation (fixture 61; matrix FULLY_IMPLEMENTED —
   `tenant-isolation.test.ts` @ `5e751072`; reference-runtime filter/inject/fail-closed,
   not DB RLS); optimistic concurrency via `versionProperty` (fixture 24)
@@ -117,7 +120,7 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
 - String: `trim`, `split`, `count`, `startsWith`, `endsWith`, `replace`, `toUpperCase`, `toLowerCase`, `length`, `substring`, `indexOf`, `matches`, `search`
 - Math: `abs`, `round`, `floor`, `ceil`, `min`, `max`, `between`
 - Array/aggregate: `sum`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map`
-- Date (UTC, epoch-ms, null-safe where noted): `year`, `month`, `day`, `hours`, `minutes`, `seconds`, `dateOf`, `timeOf`, `datetimeOf`, `addDuration`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`
+- Date (UTC, epoch-ms, null-safe where noted): `year`, `month`, `day`, `hours`, `minutes`, `seconds`, `dateOf`, `timeOf`, `datetimeOf`, `addDuration`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds` — matrix FULLY_IMPLEMENTED under §3 Expression builtins @ `893e2889` (`runtime-datetime-builtins.test.ts`)
 - Feature flags: `flag(name)` via `RuntimeOptions.flagProvider` **or** static
   `RuntimeOptions.flags` map (2026-07-15); provider wins when both are set.
   Missing flags → `false`.

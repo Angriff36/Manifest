@@ -341,11 +341,9 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 
 | Matrix section | Gap | Status | Evidence / disposition |
 | --- | --- | --- | --- |
-| 2. Language (DSL) — full inventory | `date` / `time` / `datetime` / `duration` | `CLAIMED_NEEDS_PROOF` | fixture `92` |
 | 2. Language (DSL) — full inventory | `extends` inheritance + cycle detection | `CLAIMED_NEEDS_PROOF` | fixtures `77`–`79`, `81` |
 | 2. Language (DSL) — full inventory | `mixin` composition | `CLAIMED_NEEDS_PROOF` | fixture `78` |
 | 2. Language (DSL) — full inventory | `private` / `encrypted` / `masked` privacy | `CLAIMED_NEEDS_PROOF` | fixtures `91`, `93` |
-| 2. Language (DSL) — full inventory | `searchable` declarations | `CLAIMED_NEEDS_PROOF` | fixture `89` |
 | 2. Language (DSL) — full inventory | Aggregate `count()` in reactions | `CLAIMED_NEEDS_PROOF` | fixture `97` |
 | 2. Language (DSL) — full inventory | Appendix E: `map<K,V>` arbitrary non-string keys | `REJECTED_LOUD → by design` | String keys only; `record` alias ships (§1) |
 | 2. Language (DSL) — full inventory | Appendix E: command-body policy clause | `REJECTED_LOUD → by design` | Top-level policies only; command-body `policy` will not ship |
@@ -380,27 +378,12 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | State transitions | `CLAIMED_NEEDS_PROOF` | fixture `38` |
 | 2. Language (DSL) — full inventory | Store declarations | `CLAIMED_NEEDS_PROOF` | multiple fixtures |
 | 2. Language (DSL) — full inventory | Webhooks + HMAC | `CLAIMED_NEEDS_PROOF` | fixture `90` |
-| 3. Expression builtins (47) | `flag(name)` + provider and/or static map | `CLAIMED_NEEDS_PROOF + §1 for flags map` | See feature matrix |
-| 3. Expression builtins (47) | `hasPermission` / `roleAllows` | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 3. Expression builtins (47) | `today()` compile-time only → `autoNow` | `CLAIMED_NEEDS_PROOF` | not runtime callable |
-| 3. Expression builtins (47) | Array/aggregate builtins | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 3. Expression builtins (47) | Core `now`, `uuid` | `CLAIMED_NEEDS_PROOF` | `RuntimeEngine.getBuiltins()`; fixture `16` |
-| 3. Expression builtins (47) | Custom builtins via plugin API | `CLAIMED_NEEDS_PROOF` | plugin-api |
-| 3. Expression builtins (47) | Date component builtins | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 3. Expression builtins (47) | Date/time helpers (`dateOf`…`durationSeconds`) | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 3. Expression builtins (47) | Math builtins | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 3. Expression builtins (47) | String builtins (trim…search) | `CLAIMED_NEEDS_PROOF` | builtins.md |
-| 4. Runtime engine & adapters | `EncryptionProvider` | `CLAIMED_NEEDS_PROOF` | See feature matrix |
+| 3. Expression builtins (49) | Custom builtins via plugin API | `CLAIMED_NEEDS_PROOF` | plugin-api |
 | 4. Runtime engine & adapters | `IRDiagnostic.code` optional | `CLAIMED_NEEDS_PROOF` | seeded codes 2026-07-15 |
 | 4. Runtime engine & adapters | `RuntimeContext` fields | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 4. Runtime engine & adapters | ~~WASM expression compatibility layer~~ | `REMOVED 2026-07-15` | Quarantined prototype deleted — no `.wasm` artifact, never on default RuntimeEngine path |
 | 4. Runtime engine & adapters | Batched persistence | `CLAIMED_NEEDS_PROOF` | `runtime-command-batched-persistence.test.ts` |
 | 4. Runtime engine & adapters | Command order (rateLimit → policies → constraints → guards → actions → emits) | `CLAIMED_NEEDS_PROOF` | semantics.md § Commands |
-| 4. Runtime engine & adapters | Deterministic mode / effect boundary | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 4. Runtime engine & adapters | EventBus (in-process) | `CLAIMED_NEEDS_PROOF` | `runtime-eventbus.test.ts` |
-| 4. Runtime engine & adapters | IdempotencyStore | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 4. Runtime engine & adapters | JobQueue / async worker path | `CLAIMED_NEEDS_PROOF` | fixture `69` |
-| 4. Runtime engine & adapters | Middleware (4 hooks) | `CLAIMED_NEEDS_PROOF` | runtime-middleware feature doc |
 | 5. Stores & persistence subsystems | Approval store memory/postgres | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | Custom store via plugin API | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | DynamoDB store | `CLAIMED_NEEDS_PROOF` | See feature matrix |

@@ -148,7 +148,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [x]    | `decimal` / `money` types                                                                                            | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — parse `parser.ts:1302-1321` @ `9e34bc43…`; IR params `ir-compiler.ts:1885-1893`; fixture `56`; Next.js number map @ `cc71f1fe…`; runtime = JS number |
 | [x]    | `map` / record type                                                                                                  | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — parse `parser.ts:1322-1349` @ `dc52bb5…`; IR `record`→`map`; fixture `73`; `map-record-alias.test.ts` @ `08e1c54…` |
 | [x]    | Array types `T[]` / `array<T>`                                                                                       | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — postfix sugar `parser.ts:1351-1365`; fixture `40` @ `75d3331d…`; Zod array map @ `cbaff934…` |
-| [~]    | `date` / `time` / `datetime` / `duration`                                                                            | CLAIMED_NEEDS_PROOF           | fixture `92`                                                                 |
+| [x]    | `date` / `time` / `datetime` / `duration`                                                                            | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — `date-time.ts` + write-time validate @ `893e2889…`; fixture `92`; `timestamp` alias §1 @ `22c7792…` |
 | [~]    | Composite primary keys (`key`)                                                                                       | CLAIMED_NEEDS_PROOF           | fixture `109`                                                                |
 | [~]    | `alternateKeys` (compile into IR)                                                                                    | FULLY_IMPLEMENTED             | §1 uniqueness; compile still CLAIMED_NEEDS_PROOF for parser path             |
 | [~]    | Relationships `hasMany` / `hasOne` / `belongsTo` / `ref`                                                             | CLAIMED_NEEDS_PROOF           | fixtures `02`, `98`, `99`                                                    |
@@ -156,7 +156,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [x]    | Many-to-many `through`                                                                                               | FULLY_IMPLEMENTED             | see §1                                                                       |
 | [x]    | Auto timestamps / `autoNow` (`now()`/`today()`)                                                                      | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — parse `parser.ts:411-413,459` @ `4cfff8ec…`; IR inject + `autoNow` lower `ir-compiler.ts:841-858,876,1051-1067` @ `68afb8ab…`; runtime `runtime-engine.ts:2674-2705,3185-3186`; fixture `62`; `create-field-and-autonow.test.ts` @ `849e368…` |
 | [~]    | `private` / `encrypted` / `masked` privacy                                                                           | CLAIMED_NEEDS_PROOF           | fixtures `91`, `93`                                                          |
-| [~]    | `searchable` declarations                                                                                            | CLAIMED_NEEDS_PROOF           | fixture `89`                                                                 |
+| [x]    | `searchable` declarations                                                                                            | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — modifier + IR string-gate + fixture `89` @ `9f3a9bfa…`; Convex `.searchIndex` §1 @ `f8221d44…` |
 | [~]    | Multi-tenancy (`tenant`)                                                                                             | CLAIMED_NEEDS_PROOF           | fixture `61`                                                                 |
 | [~]    | Optimistic concurrency `versionProperty`                                                                             | CLAIMED_NEEDS_PROOF           | fixture `24`                                                                 |
 | [~]    | Commands (params, guards, mutate, emit, emitPayloads)                                                                | CLAIMED_NEEDS_PROOF           | fixture `04`                                                                 |
@@ -201,20 +201,16 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 
 ---
 
-## 3. Expression builtins (47)
+## 3. Expression builtins (49)
+
+Mirror of `docs/internal/COMPLIANCE_MATRIX.md` §3 (2026-07-22). Granular Core/String/Math/Array/Date/`dateOf`…`durationSeconds`/`flag` rows are covered by the rolled-up builtins proof — not separate open gaps.
 
 | Status | Feature                                        | Implementation Status                  | Evidence pointer                            |
 | ------ | ---------------------------------------------- | -------------------------------------- | ------------------------------------------- |
-| [~]    | Core `now`, `uuid`                             | CLAIMED_NEEDS_PROOF                    | `RuntimeEngine.getBuiltins()`; fixture `16` |
-| [~]    | String builtins (trim…search)                  | CLAIMED_NEEDS_PROOF                    | builtins.md                                 |
-| [~]    | Math builtins                                  | CLAIMED_NEEDS_PROOF                    |                                             |
-| [~]    | Array/aggregate builtins                       | CLAIMED_NEEDS_PROOF                    |                                             |
-| [~]    | Date component builtins                        | CLAIMED_NEEDS_PROOF                    |                                             |
-| [~]    | Date/time helpers (`dateOf`…`durationSeconds`) | CLAIMED_NEEDS_PROOF                    |                                             |
-| [~]    | `flag(name)` + provider and/or static map      | CLAIMED_NEEDS_PROOF + §1 for flags map |                                             |
-| [~]    | `hasPermission` / `roleAllows`                 | CLAIMED_NEEDS_PROOF                    |                                             |
+| [x]    | Expression builtins (all 49 categories)         | FULLY_IMPLEMENTED                      | mirror of COMPLIANCE_MATRIX §3 — `getBuiltins()` `runtime-engine.ts:1732-2024` (Date/time helpers `dateOf`…`durationSeconds` at `1972-1990`); fixture `16`; proofs include `runtime-datetime-builtins.test.ts` @ `893e2889…` |
+| [x]    | `hasPermission` / `roleAllows`                 | FULLY_IMPLEMENTED                      | mirror of COMPLIANCE_MATRIX §3 — fixture `71` @ `83e6c4f…` |
 | [~]    | Custom builtins via plugin API                 | CLAIMED_NEEDS_PROOF                    | plugin-api                                  |
-| [~]    | `today()` compile-time only → `autoNow`        | CLAIMED_NEEDS_PROOF                    | not runtime callable                        |
+| [x]    | `today()` compile-time only → `autoNow`        | FULLY_IMPLEMENTED                      | mirror of COMPLIANCE_MATRIX §3 / §2 Auto timestamps @ `68afb8ab…` |
 
 ---
 
@@ -224,18 +220,18 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | ------ | ----------------------------------------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------- |
 | [~]    | Command order (rateLimit → policies → constraints → guards → actions → emits) | CLAIMED_NEEDS_PROOF      | semantics.md § Commands                                                                   |
 | [~]    | `RuntimeContext` fields                                                       | CLAIMED_NEEDS_PROOF      |                                                                                           |
-| [~]    | Middleware (4 hooks)                                                          | CLAIMED_NEEDS_PROOF      | runtime-middleware feature doc                                                            |
+| [x]    | Middleware (4 hooks)                                                          | FULLY_IMPLEMENTED        | mirror of COMPLIANCE_MATRIX §4 — `runtime-middleware.test.ts` @ `9f3a9bfa…`               |
 | [~]    | `IRDiagnostic.code` optional                                                  | CLAIMED_NEEDS_PROOF      | seeded codes 2026-07-15                                                                   |
 | [~]    | Batched persistence                                                           | CLAIMED_NEEDS_PROOF      | `runtime-command-batched-persistence.test.ts`                                             |
-| [~]    | `EncryptionProvider`                                                          | CLAIMED_NEEDS_PROOF      |                                                                                           |
-| [~]    | Deterministic mode / effect boundary                                          | CLAIMED_NEEDS_PROOF      |                                                                                           |
-| [~]    | EventBus (in-process)                                                         | CLAIMED_NEEDS_PROOF      | `runtime-eventbus.test.ts`                                                                |
+| [x]    | `EncryptionProvider`                                                          | FULLY_IMPLEMENTED        | mirror of COMPLIANCE_MATRIX §4 — injectable seam @ `9f3a9bfa…`; no default provider       |
+| [x]    | Deterministic mode / effect boundary                                          | FULLY_IMPLEMENTED        | mirror of COMPLIANCE_MATRIX §4 / §1                                                       |
+| [x]    | EventBus (in-process)                                                         | FULLY_IMPLEMENTED        | mirror of COMPLIANCE_MATRIX §4 — `MemoryEventBus` + engine wire + proofs @ `61d5ab6f…`     |
 | [x]    | RedisEventBus injectable                                                      | FULLY_IMPLEMENTED        | §1                                                                                        |
 | [x]    | ~~WASM expression compatibility layer~~                                       | REMOVED 2026-07-15       | Quarantined prototype deleted — no `.wasm` artifact, never on default RuntimeEngine path  |
 | [x]    | ~~Full WASM runtime~~                                                         | REMOVED / OUT_OF_SCOPE   | Same — do not reintroduce without a measured perf mandate + shipped artifact + real tests |
 | [ ]    | Time-travel debugger (product UI)                                             | OUT_OF_SCOPE             | Builder owns verification/debugging UI — see boundary; not a Manifest language gap        |
-| [~]    | IdempotencyStore                                                              | CLAIMED_NEEDS_PROOF      |                                                                                           |
-| [~]    | JobQueue / async worker path                                                  | CLAIMED_NEEDS_PROOF      | fixture `69`                                                                              |
+| [x]    | IdempotencyStore                                                              | FULLY_IMPLEMENTED        | mirror of COMPLIANCE_MATRIX §4 / §1                                                       |
+| [x]    | JobQueue / async worker path                                                  | FULLY_IMPLEMENTED        | mirror of COMPLIANCE_MATRIX §4 — same proof as Async commands @ `83e6c4f…` / `abe9595c…`   |
 | [x]    | `optional` modifier (projection hint; no runtime gate)                        | OUT_OF_SCOPE / by design | semantics.md § Properties — enforced via `required` only                                  |
 | [x]    | Runtime uses `alternateKeys`                                                  | FULLY_IMPLEMENTED        | §1                                                                                        |
 | [x]    | `command.returns` (projection metadata; no runtime coerce)                    | OUT_OF_SCOPE / by design | semantics.md § Commands; schema `returns` description                                     |
