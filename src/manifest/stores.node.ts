@@ -202,6 +202,13 @@ export interface SupabaseConfig {
   url: string;
   key: string;
   tableName?: string;
+  /**
+   * Optional pre-built Supabase client. When set, url/key and the dynamic
+   * `@supabase/supabase-js` import are skipped. Used by unit tests and
+   * advanced host wiring.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client?: any;
 }
 
 /**
@@ -223,10 +230,18 @@ export class SupabaseStore<T extends EntityInstance> implements Store<T> {
     this.generateId = generateId || (() => crypto.randomUUID());
     this.tableName = config.tableName || 'entities';
     this.initConfig = config;
-    // Defer async supabase load until first use (Sonar S7059).
+    if (config.client) {
+      this.client = config.client;
+      this.ready = Promise.resolve();
+    }
+    // Otherwise defer async supabase load until first use (Sonar S7059).
   }
 
   private async init(config: SupabaseConfig): Promise<void> {
+    if (config.client) {
+      this.client = config.client;
+      return;
+    }
     let createClient: (url: string, key: string) => unknown;
     try {
       const mod = await import('@supabase/supabase-js');

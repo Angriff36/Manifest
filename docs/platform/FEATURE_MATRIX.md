@@ -247,7 +247,7 @@ Mirror of `docs/internal/COMPLIANCE_MATRIX.md` §3 (2026-07-22). Granular Core/S
 | [x]    | MemoryStore                                    | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `runtime-engine.ts:757-795` + default memory target @ `2af8191b…` / `9c94b2db…` |
 | [x]    | LocalStorageStore                              | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `runtime-engine.ts:797-856` + `localStorage` target wire @ `2af8191b…` / `9c94b2db…` |
 | [x]    | PostgresStore                                  | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `stores.node.ts` + `stores.postgres.test.ts` (SHA after commit) |
-| [~]    | SupabaseStore                                  | CLAIMED_NEEDS_PROOF   |                                        |
+| [x]    | SupabaseStore                                  | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `stores.node.ts` + `stores.supabase.test.ts` (SHA after commit) |
 | [~]    | Turso / libSQL store                           | CLAIMED_NEEDS_PROOF   |                                        |
 | [~]    | DynamoDB store                                 | CLAIMED_NEEDS_PROOF   |                                        |
 | [~]    | GenericPrismaStore                             | CLAIMED_NEEDS_PROOF   | `stores/prisma-generic/`               |

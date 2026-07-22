@@ -165,7 +165,9 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
   > **Correction (2026-07-22):** `PostgresStore` in `stores.node.ts` is matrix
   > FULLY_IMPLEMENTED (mock-pool `stores.postgres.test.ts`; wire via
   > `storeProvider` — engine `postgres` target is Node-only instruct path).
-  > SupabaseStore / Turso/libSQL / DynamoDB / Prisma-generic
+  > **Update (2026-07-22):** `SupabaseStore` also FULLY_IMPLEMENTED
+  > (`stores.supabase.test.ts` injected client; optional `@supabase/supabase-js`
+  > peer). Turso/libSQL / DynamoDB / Prisma-generic
   > (`stores/prisma-generic/store.ts`) still have their own open matrix rows.
 - Outbox adapters (`src/manifest/outbox/stores/*`) — memory (in-process only, `tx` ignored) +
   postgres FULLY_IMPLEMENTED @ `b296e1a` (durable, honors supplied transaction handle); redis/mongodb/dynamodb still

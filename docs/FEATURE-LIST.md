@@ -351,7 +351,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 5. Stores & persistence subsystems | DynamoDB store | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | GenericPrismaStore | `CLAIMED_NEEDS_PROOF` | `stores/prisma-generic/` |
 | 5. Stores & persistence subsystems | Outbox: memory/postgres/redis/mongodb/dynamodb | `CLAIMED_NEEDS_PROOF` | `outbox/stores/*` |
-| 5. Stores & persistence subsystems | SupabaseStore | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | Turso / libSQL store | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | analytics | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | contract-tests | `CLAIMED_NEEDS_PROOF` | See `docs/internal/COMPLIANCE_MATRIX.md` (list/get + mutations; auth visibility) |
