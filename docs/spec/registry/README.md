@@ -23,8 +23,11 @@ Manifest emits from compiled IR:
 ## Stability
 
 The schemas are versioned via the `compilerVersion` and `irHash` fields on
-the emitted JSON. Breaking changes to the schemas MUST bump the manifest
-compiler's major version (per `docs/spec/semantics.md` change protocol).
+the emitted JSON. Breaking changes to the schemas require a **breaking-tier
+version bump** — this project uses a custom version scheme where breaking
+changes increment the **MINOR digit** (`x.Y.z` → `x.(Y+1).0`), not the
+major digit. See `docs/spec/sdk-stability.md` for the full stability policy
+(@RYANSIGNED 2026-07-22).
 
 ## Authority
 
