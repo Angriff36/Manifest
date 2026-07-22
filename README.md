@@ -94,35 +94,7 @@ The projection system generates platform-specific code from Manifest IR. Project
 
 ### Next.js Projection
 
-The Next.js projection includes 4 surfaces:
-
-**1. `nextjs.route` - Entity-scoped GET Operations**
-
-- Generates Next.js App Router API routes for entity reads
-- Uses direct Prisma/database queries (bypasses runtime for performance)
-- Configurable auth providers (Clerk, NextAuth, custom, none)
-- Tenant isolation and soft-delete filtering
-- Returns entity lists and single entity retrieval
-
-**2. `nextjs.command` - Command-scoped POST/PUT/DELETE Operations**
-
-- Generates Next.js API routes for command execution
-- **MUST use `RuntimeEngine.runCommand()`** to enforce guards, policies, and events
-- Supports all HTTP methods (POST, PUT, DELETE, PATCH)
-- Validates command parameters and runtime context
-- Returns command results with event emissions
-
-**3. `ts.types` - TypeScript Type Definitions**
-
-- Generates TypeScript interfaces from IR entity definitions
-- Includes property types, required/optional modifiers
-- Type-safe client/server code
-
-**4. `ts.client` - Client SDK**
-
-- Generates type-safe client functions for API calls
-- Includes fetch wrappers with error handling
-- TypeScript-first with full IntelliSense support
+The Next.js projection includes 12 surfaces: `route`, `detail`, `command`, `dispatcher`, `subscribe`, `subscriptionHook`, `sharedRuntime`, `schedule`, `webhook`, `companions`, `ts.types`, `ts.client`, and `all` (aggregate).
 
 ### Projection Design Principles
 
@@ -170,11 +142,7 @@ See `src/manifest/projections/nextjs/README.md` for detailed usage examples.
 - **`src/manifest/ir-compiler.ts`**: Transforms AST to IR v1
 - **`src/manifest/runtime-engine.ts`**: Executes IR commands with full semantics
 - **`src/manifest/projections/`**: Platform-specific code generators
-  - **`nextjs/`**: Next.js App Router projection with 4 surfaces
-    - `nextjs.route`: Entity-scoped GET operations (list, retrieve)
-    - `nextjs.command`: Command-scoped POST/PUT/DELETE operations
-    - `ts.types`: TypeScript type definitions from IR
-    - `ts.client`: Client SDK generation
+  - **`nextjs/`**: Next.js App Router projection with 12 surfaces (route, detail, command, dispatcher, subscribe, subscriptionHook, sharedRuntime, schedule, webhook, companions, ts.types, ts.client, all)
   - **`interface.ts`**: Projection contracts and options
   - **`registry.ts`**: Projection registration and lookup
 - **`src/manifest/conformance/`**: Executable test fixtures (101 .manifest source files; run `pnpm test` for current expected outputs count)

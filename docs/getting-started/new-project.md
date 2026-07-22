@@ -13,12 +13,12 @@ Complete guide to using Manifest in a new project (outside the Manifest monorepo
 ~~**Manifest is published to the public npm registry** as `@angriff36/manifest` — `npm install` / `pnpm add` works with no special `.npmrc` configuration. For monorepo development, you can also link the local package.~~
 
 > **Correction (2026-07-15) @RYANSIGNED:** Prefer the **published** package
-> (`@angriff36/manifest@3.6.4` SoT in root `package.json`). Requires **Node.js
+> (`@angriff36/manifest@3.6.41` SoT in root `package.json`). Requires **Node.js
 > `>=20`**. Local `pnpm link` / `npm link` is only for contributing to Manifest
-> itself. This repo uses **pnpm** (`packageManager: pnpm@10.31.0`).
+> itself. This repo uses **pnpm** (`packageManager: pnpm@10.34.5`).
 
 ```bash
-pnpm add @angriff36/manifest@3.6.4
+pnpm add @angriff36/manifest@3.6.41
 ```
 
 ---
