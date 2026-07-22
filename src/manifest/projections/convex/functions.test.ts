@@ -2593,6 +2593,158 @@ describe('convex.mutations — emit payload relation hydration', () => {
   });
 });
 
+describe('convex.mutations — trustedSource', () => {
+  it('omits trusted params from args and injects from getAuthContext', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Task', [prop('title', 'string', ['required'])])];
+    ir.commands = [
+      {
+        name: 'complete',
+        entity: 'Task',
+        parameters: [
+          {
+            name: 'actorId',
+            type: { name: 'string', nullable: false },
+            required: true,
+            trustedSource: 'context.actorId',
+          },
+          {
+            name: 'note',
+            type: { name: 'string', nullable: false },
+            required: false,
+          },
+        ],
+        policies: [],
+        guards: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'title',
+            expression: { kind: 'identifier', name: 'note' },
+          },
+        ],
+        emits: [],
+      },
+    ];
+    ir.stores = [durable('Task')];
+    const res = new ConvexProjection().generate(ir, {
+      surface: 'convex.mutations',
+      options: { authContextImport: './lib/authContext' },
+    });
+    const code = res.artifacts[0]!.code;
+    expect(code).toContain('note: v.optional(');
+    expect(code).not.toMatch(/args:\s*\{[^}]*actorId:/);
+    expect(code).toContain('const __trusted_actorId = (__auth.context ?? __auth)["actorId"]');
+    expect(code).toContain('MISSING_TRUSTED_CONTEXT: actorId from context.actorId');
+    expect(code).toContain('const actorId = __trusted_actorId');
+    expect(code).toContain('getAuthContext');
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_PARTIAL_TRUSTED_SOURCE')).toBe(false);
+  });
+
+  it('errors when trustedSource is declared without authContextImport', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Task', [prop('title', 'string', ['required'])])];
+    ir.commands = [
+      {
+        name: 'complete',
+        entity: 'Task',
+        parameters: [
+          {
+            name: 'actorId',
+            type: { name: 'string', nullable: false },
+            required: true,
+            trustedSource: 'context.actorId',
+          },
+        ],
+        policies: [],
+        guards: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    ir.stores = [durable('Task')];
+    const res = mutations(ir);
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_AUTH_CONTEXT_REQUIRED')).toBe(true);
+    expect(res.artifacts[0]!.code).toContain('CONVEX_AUTH_CONTEXT_REQUIRED');
+  });
+});
+
+describe('convex.mutations — referential onDelete', () => {
+  function parentChildIR(onDelete: 'cascade' | 'restrict'): IR {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Parent', [prop('name', 'string', ['required'])]),
+      entity(
+        'Child',
+        [prop('label', 'string', ['required'])],
+        [
+          {
+            name: 'parent',
+            kind: 'belongsTo',
+            target: 'Parent',
+            foreignKey: { fields: ['parentId'] },
+            onDelete,
+          },
+        ],
+      ),
+    ];
+    ir.commands = [
+      {
+        name: 'delete',
+        entity: 'Parent',
+        parameters: [],
+        policies: [],
+        guards: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    ir.stores = [durable('Parent'), durable('Child')];
+    return ir;
+  }
+
+  it('hard-delete emits ctx.db.delete plus cascade helper for onDelete:cascade', () => {
+    const code = mutations(parentChildIR('cascade')).artifacts[0]!.code;
+    expect(code).toContain('async function __applyReferentialOnDelete');
+    expect(code).toContain('await __applyReferentialOnDelete(ctx, "Parent", docId)');
+    expect(code).toContain('await ctx.db.delete(docId)');
+    expect(code).toContain('await ctx.db.delete(__kid._id)');
+    expect(code).toContain('.withIndex("by_parentId"');
+    expect(code).not.toContain('await ctx.db.patch(docId');
+  });
+
+  it('hard-delete emits restrict throw before parent delete', () => {
+    const code = mutations(parentChildIR('restrict')).artifacts[0]!.code;
+    expect(code).toContain('REFERENTIAL_RESTRICT: cannot delete');
+    expect(code).toContain('declares onDelete: restrict and dependent rows exist');
+    expect(code).toContain('await ctx.db.delete(docId)');
+  });
+
+  it('soft-delete (mutate patches) still patches and does not call referential helper', () => {
+    const ir = parentChildIR('cascade');
+    ir.commands = [
+      {
+        name: 'delete',
+        entity: 'Parent',
+        parameters: [],
+        policies: [],
+        guards: [],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'name',
+            expression: { kind: 'literal', value: { kind: 'string', value: 'gone' } },
+          },
+        ],
+        emits: [],
+      },
+    ];
+    const code = mutations(ir).artifacts[0]!.code;
+    expect(code).toContain('await ctx.db.patch(docId');
+    expect(code).not.toContain('__applyReferentialOnDelete');
+  });
+});
+
 describe('ConvexProjection — match else create allocate', () => {
   it('allocates a draft row before calling the command runner', async () => {
     const { compileToIR } = await import('../../ir-compiler.js');

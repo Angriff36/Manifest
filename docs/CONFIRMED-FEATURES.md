@@ -279,9 +279,11 @@ constraint overrides, durable rate-limit (in-memory only)~~
 `alternateKeys` uniqueness, entity-level constraint overrides; durable
 `PostgresRateLimitStore` ships. `optional` is a projection hint (not a
 runtime gap). `command.returns` remains projection metadata by design.
-Still open: per-module **file** output splitting (parked); Convex read-policy
-`rateLimit` remains diagnostic-only; health projection stays PARTIAL
-(scaffolding probes with `details.stub: true` — not live connectivity).
+Still open: per-module **file** output splitting (parked).
+~~Convex read-policy `rateLimit` remains diagnostic-only; health projection stays PARTIAL~~
+> **Correction (2026-07-22):** Convex read/`all` policy `rateLimit` is
+> **rejected loud** (`CONVEX_UNSUPPORTED_RATE_LIMIT` error). Health projection
+> is FULLY_IMPLEMENTED (see COMPLIANCE_MATRIX §6).
 > **Correction (2026-07-22):** `ir.tenant` is consumed by Next.js, Express, Hono,
 > SvelteKit, and Remix (`normalizeOptions(..., ir)`); proofs in
 > `web-ir-tenant.test.ts` + Next.js generator test.
@@ -307,11 +309,23 @@ searchable, versionProperty/optimistic concurrency, retry, rateLimit~~
 > Convex list/get (`masking-emit.ts`; no `CONVEX_UNSUPPORTED_MASKED`).
 > **Correction (2026-07-22):** Command `rateLimit` now emits Convex
 > sliding-window enforcement (`rate-limit-emit.ts` /
-> `commandRateLimitBuckets`). Policy/read `rateLimit` still diagnostic-only.
+> `commandRateLimitBuckets`).
+> ~~Policy/read `rateLimit` still diagnostic-only.~~
+> **Correction (2026-07-22):** Read/`all` policy `rateLimit` is **rejected loud**
+> (`CONVEX_UNSUPPORTED_RATE_LIMIT` error — queries cannot mutate buckets).
+> Write/execute/delete policy `rateLimit` is enforced on mutations.
 > **Correction (2026-07-22):** Command `retry` on Convex is **rejected loud**
 > (`CONVEX_UNSUPPORTED_RETRY` error — cannot honor rollback+backoff in mutations).
 > **Correction (2026-07-22):** Entity approvals on Convex are **rejected loud**
 > (`CONVEX_UNSUPPORTED_APPROVAL` error — no stage state / pre-command gate).
+> **Correction (2026-07-22):** Convex hard-delete mutations enforce single-column
+> `onDelete: cascade|restrict` via `__applyReferentialOnDelete`
+> (`referential-emit.ts`). `onUpdate` / composite FK remain deferred;
+> `setNull`/`setDefault` emit `CONVEX_UNSUPPORTED_REFERENTIAL_SET`.
+> **Correction (2026-07-22):** Convex `trustedSource` (`from context.*`) params
+> are omitted from client args and injected from `getAuthContext`
+> (`trusted-source-emit.ts`); missing required values throw
+> `MISSING_TRUSTED_CONTEXT` (no more `CONVEX_PARTIAL_TRUSTED_SOURCE`).
 > Realtime / computed-cache are PARTIAL info diagnostics, not unsupported.
 > **Correction (2026-07-22):** All five web projections read `ir.tenant`
 > (Next.js/Express/Hono/SvelteKit/Remix) — property from IR; explicit options win.

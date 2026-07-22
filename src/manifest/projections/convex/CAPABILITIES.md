@@ -25,6 +25,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | `indexed`, tenant index, option indexes          | schema + queries             | Index/query parity                                                                           |
 | `searchable` (string/text/uuid)                  | schema                       | Emits `.searchIndex("search_<field>", { searchField })`; tenant → `filterFields` when set    |
 | Commands → mutations                             | mutations                    | Order: rateLimit → policies → guards → constraints → mutate → emit → react                   |
+| Referential onDelete cascade/restrict            | mutations                    | Hard-delete (`delete`/`remove`, no mutate patches): restrict then cascade via FK indexes     |
 | Command policies / guards / constraints          | mutations                    | Fail-closed; `CONVEX_UNRESOLVED_*` + denying throw; constraint `failWhen` polarity honored   |
 | Roles + `roleAllows`                             | queries + mutations          | Target-aware `ROLE_PERMISSIONS` + `checkRole`                                                |
 | Events + G7 emit payloads                        | mutations                    | `manifestEvents` table                                                                       |
@@ -45,14 +46,14 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | `authContextImport`                              | queries + mutations          | Author-owned identity seam (also used after HTTP auth propagates into `runMutation`)         |
 | `flagProviderImport` / `flag()`                  | queries + mutations          | Author-owned `flag(name)` module; required for public read policies that call `flag()`       |
 | `encryptionImport` / encrypted properties        | queries + mutations          | Versioned envelope; decrypt before policy/read projection, encrypt before store writes       |
+| `trustedSource` (`from context.*`)               | mutations + http dispatcher  | Omitted from client args; injected from `getAuthContext` (`__auth.context ?? __auth`)          |
 | React client hooks (`useQuery` / `useMutation`)  | react                        | Skips only read-gated entities whose public policy queries cannot be rendered                |
 
 ## Partial (limitation stated)
 
 | IR construct                  | Limitation                                                                                                                   | Diagnostic / note                      |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| `trustedSource` params        | Exposed as normal args unless auth/create seam injects                                                                       | `CONVEX_PARTIAL_TRUSTED_SOURCE` (info) |
-| Referential onDelete/onUpdate | No schema cascade                                                                                                            | `CONVEX_REFERENTIAL_ACTION_DEFERRED`   |
+| Referential onUpdate / setNull / setDefault / composite FK | No schema FK engine; onUpdate not lowered; setNull/setDefault rejected; composite onDelete deferred | `CONVEX_REFERENTIAL_ACTION_DEFERRED` / `CONVEX_UNSUPPORTED_REFERENTIAL_SET` |
 | Computed relation aggregates  | Self-only helpers; `count_of`/`sum`/`avg`/`min_of`/`max_of`/`filter`/`map`/`flat_map` on hydrated hasMany in mutations      | Unresolved → `CONVEX_UNRESOLVED_COMPUTED` |
 | Read/`all` policies           | Public with `authContextImport` (+ `flagProviderImport` when policies call `flag()`); relationship hydration for belongsTo/ref/hasMany/through (single-column FKs). Unhydratable edges stay internal. Read `rateLimit` is Unsupported (error). | `CONVEX_UNSUPPORTED_READ_POLICY_*`     |
 | `policyMode: 'skip'`          | Omits authorization only                                                                                                     | Documented escape hatch                |

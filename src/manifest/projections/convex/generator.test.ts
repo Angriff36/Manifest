@@ -445,7 +445,9 @@ describe('ConvexProjection — references and indexes', () => {
     ir.stores = [durableStore('Child'), durableStore('Parent')];
     const res = generate(ir, { indexes: { Child: [['a', 'parentId']] } });
     expect(res.artifacts[0].code).toContain('.index("by_a_parentId", ["a", "parentId"])');
-    expect(res.diagnostics.some((d) => d.code === 'CONVEX_REFERENTIAL_ACTION_DEFERRED')).toBe(true);
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_REFERENTIAL_ACTION_MUTATION')).toBe(
+      true,
+    );
   });
 });
 

@@ -64,10 +64,19 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   },
   {
     feature: 'trustedSource params',
-    status: 'partial',
-    note: 'Exposed as normal args unless the auth/create seam injects them.',
+    status: 'supported',
+    note: 'Omitted from client args; injected from getAuthContext (__auth.context ?? __auth) at context.* path; MISSING_TRUSTED_CONTEXT when required and absent.',
   },
-  { feature: 'Referential onDelete/onUpdate', status: 'partial', note: 'No schema cascade.' },
+  {
+    feature: 'Referential onDelete cascade/restrict',
+    status: 'supported',
+    note: 'Hard-delete mutations (delete/remove, no mutate patches) run restrict-then-cascade for single-column belongsTo/ref.',
+  },
+  {
+    feature: 'Referential onUpdate / setNull / setDefault / composite FK',
+    status: 'partial',
+    note: 'onUpdate deferred; setNull/setDefault error (CONVEX_UNSUPPORTED_REFERENTIAL_SET); composite FK deferred.',
+  },
   {
     feature: 'Computed relation aggregates',
     status: 'partial',
@@ -270,18 +279,8 @@ export function collectUnsupportedDiagnostics(
         });
       }
     }
-    for (const p of cmd.parameters ?? []) {
-      if (p.trustedSource) {
-        // Auth seam covers some cases; still warn that trustedSource paths are
-        // not auto-injected unless they map to the auth context contract.
-        out.push({
-          severity: 'info',
-          code: 'CONVEX_PARTIAL_TRUSTED_SOURCE',
-          entity: cmd.entity,
-          message: `Parameter '${cmd.entity ?? '?'}.${cmd.name}.${p.name}' has trustedSource '${p.trustedSource}'; Convex mutations expose it as a normal arg unless your auth/create seam injects it.`,
-        });
-      }
-    }
+    // trustedSource params: strip/inject is emitted in functions.ts
+    // (trusted-source-emit.ts). Missing authContextImport is diagnosed there.
   }
 
   for (const pol of ir.policies) {

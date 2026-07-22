@@ -98,6 +98,17 @@ import {
   renderCommandRateLimitHelpers,
   renderPolicyRateLimitCheckLines,
 } from './rate-limit-emit.js';
+import {
+  collectInboundOnDeleteEdges,
+  isHardDeleteCommand,
+  renderReferentialOnDeleteCall,
+  renderReferentialOnDeleteHelper,
+} from './referential-emit.js';
+import {
+  clientOwnedParameters,
+  renderTrustedSourceInjection,
+  trustedParameters,
+} from './trusted-source-emit.js';
 import { buildRelationDependencyPlan, type RelationDependency } from '../../relation-plan.js';
 
 type Normalized = NormalizedOptions;
@@ -1758,7 +1769,8 @@ function renderGovernedCreationEntry(
     ? `    const payload: Record<string, any> = { ${payloadParts} };\n`
     : '';
 
-  const argLines = params.map(
+  const clientParams = clientOwnedParameters(cmd);
+  const argLines = clientParams.map(
     (param) =>
       `    ${param.name}: ${param.required ? paramValidator(param.type) : `v.optional(${paramValidator(param.type)})`}`,
   );
@@ -1767,11 +1779,14 @@ function renderGovernedCreationEntry(
   // Same binding model as instance commands: params are locals. createVia keeps
   // the `args` bag for draft seeding (`args.<input>`) and destructures into
   // locals so constraint/guard/mutate expressions that reference parameters
-  // resolve (locals render verbatim via RenderScope).
+  // resolve (locals render verbatim via RenderScope). Trusted params are
+  // injected from getAuthContext — never destructured from client args.
   const paramBindLine =
-    params.length > 0
-      ? `    const { ${params.map((parameter) => parameter.name).join(', ')} } = args;\n`
+    clientParams.length > 0
+      ? `    const { ${clientParams.map((parameter) => parameter.name).join(', ')} } = args;\n`
       : '';
+  const trustedInject = renderTrustedSourceInjection(cmd, options, 'locals');
+  diagnostics.push(...trustedInject.diagnostics);
   const bodyText = [
     ...draftLines,
     ...relationHydration.lines,
@@ -1780,9 +1795,11 @@ function renderGovernedCreationEntry(
     ...mutateLines,
     tail,
     paramBindLine,
+    ...trustedInject.lines,
   ].join('\n');
   const createViaForceAuth =
     tenantScoped ||
+    trustedParameters(cmd).length > 0 ||
     (!!cmd.rateLimit && commandRateLimitNeedsAuth(cmd.rateLimit)) ||
     commandPoliciesNeedRateLimitAuth(ir, cmd);
   const authLines = authBindings(bodyText, options, createViaForceAuth);
@@ -1797,6 +1814,7 @@ function renderGovernedCreationEntry(
       : '') +
     (authLines.length ? authLines.join('\n') + '\n' : '') +
     paramBindLine +
+    (trustedInject.lines.length ? trustedInject.lines.join('\n') + '\n' : '') +
     `    const __draft: Record<string, any> = {\n${draftLines.join(',\n')}${draftLines.length ? '\n' : ''}    };\n` +
     (relationHydration.lines.length ? relationHydration.lines.join('\n') + '\n' : '') +
     (createViaRateLimitLines.length ? createViaRateLimitLines.join('\n') + '\n' : '') +
@@ -1856,7 +1874,6 @@ function generateMutation(
     // from its default, or (c) exposed as a mutation argument the caller provides.
     // Command parameters that feed actions (and are not themselves fields) are
     // also exposed as args. All expressions resolve against `args`.
-    const params = cmd.parameters ?? [];
     const relationHydration = renderRelationHydration(
       ir,
       options,
@@ -1900,6 +1917,7 @@ function generateMutation(
     );
     const targetSet = new Set(mutates.map((a) => a.target as string));
 
+    const trustedParamNames = new Set(trustedParameters(cmd).map((parameter) => parameter.name));
     // Entity properties → args (unless action-set) + doc lines (with defaults).
     for (const p of entity.properties) {
       if (tenantScoped && p.name === writeTenantProp) {
@@ -1923,10 +1941,14 @@ function generateMutation(
       diagnostics.push(...vd);
       if (!validator) continue;
       // Required AND no default → required arg; otherwise optional (caller may
-      // omit; default fills in).
+      // omit; default fills in). trustedSource params are injected onto args —
+      // never exposed on the client validator surface.
       const required = p.modifiers.includes('required') && !p.defaultValue;
-      if (!argNames.has(p.name)) {
+      const trustedField = trustedParamNames.has(p.name);
+      if (!argNames.has(p.name) && !trustedField) {
         argLines.push(`    ${p.name}: ${required ? validator : `v.optional(${validator})`}`);
+        argNames.add(p.name);
+      } else if (trustedField) {
         argNames.add(p.name);
       }
       docLines.push(
@@ -1935,7 +1957,9 @@ function generateMutation(
     }
 
     // Command params that are not entity fields (they feed actions) → args.
-    for (const p of params) {
+    // trustedSource params are server-injected onto `args` after auth — never
+    // accepted from the client validator surface.
+    for (const p of clientOwnedParameters(cmd)) {
       if (argNames.has(p.name)) continue;
       const validator = paramValidator(p.type);
       argLines.push(`    ${p.name}: ${p.required ? validator : `v.optional(${validator})`}`);
@@ -2021,19 +2045,27 @@ function generateMutation(
       keyPrefix: name,
       tenantProp: writeTenantProp,
     });
+    const trustedInject = renderTrustedSourceInjection(cmd, options, 'args');
+    diagnostics.push(...trustedInject.diagnostics);
     const forceAuth =
       tenantScoped ||
+      trustedParameters(cmd).length > 0 ||
       (!!cmd.rateLimit && commandRateLimitNeedsAuth(cmd.rateLimit)) ||
       commandPoliciesNeedRateLimitAuth(ir, cmd);
-    const bodyText = [...relationHydration.lines, ...rateLimitLines, ...checks.lines, tail].join(
-      '\n',
-    );
+    const bodyText = [
+      ...relationHydration.lines,
+      ...rateLimitLines,
+      ...checks.lines,
+      tail,
+      ...trustedInject.lines,
+    ].join('\n');
     const authLines = authBindings(bodyText, options, forceAuth);
 
     const createReturn = stripPrivateFromReturn('{ _id, ...doc }', mutationPrivates);
     const body =
       `async function ${runnerName}(ctx: MutationCtx, args: any) {\n` +
       (authLines.length ? authLines.join('\n') + '\n' : '') +
+      (trustedInject.lines.length ? trustedInject.lines.join('\n') + '\n' : '') +
       (relationHydration.lines.length ? relationHydration.lines.join('\n') + '\n' : '') +
       `    const doc: Record<string, any> = {\n${docLines.join(',\n')}\n    };\n` +
       (rateLimitLines.length ? rateLimitLines.join('\n') + '\n' : '') +
@@ -2059,7 +2091,7 @@ function generateMutation(
   // Non-create mutation
   const versionOcc = renderConvexUpdateVersionOcc(entity);
   const argLines = [`    docId: v.id("${table}")`];
-  for (const p of cmd.parameters ?? []) {
+  for (const p of clientOwnedParameters(cmd)) {
     argLines.push(
       `    ${p.name}: ${p.required ? paramValidator(p.type) : `v.optional(${paramValidator(p.type)})`}`,
     );
@@ -2068,8 +2100,11 @@ function generateMutation(
     argLines.push(versionOcc.argLine);
   }
   appendCommandIdempotencyArg(argLines, options);
+  const trustedInject = renderTrustedSourceInjection(cmd, options, 'locals');
+  diagnostics.push(...trustedInject.diagnostics);
 
   // Non-create: command params are destructured locals; self.x → doc.x.
+  // Trusted params are injected as locals (not taken from client args).
   const checkSpecs = commandChecks(ir, cmd, options.policyMode);
   const aggregateExprs = checkSpecs.map((c) => c.expr);
   const aggregateHydration = planAndRenderAggregateHydration(
@@ -2241,7 +2276,7 @@ function generateMutation(
   const payloadBinding = /\bpayload\b/.test(tail)
     ? `    const payload: Record<string, any> = { ${payloadParts} };\n`
     : '';
-  const argDestructureParts = [...paramNames];
+  const argDestructureParts = clientOwnedParameters(cmd).map((parameter) => parameter.name);
   if (versionOcc.expectedArgName) {
     argDestructureParts.push(versionOcc.expectedArgName);
   }
@@ -2252,6 +2287,7 @@ function generateMutation(
   });
   const forceAuth =
     tenantScoped ||
+    trustedParameters(cmd).length > 0 ||
     (!!cmd.rateLimit && commandRateLimitNeedsAuth(cmd.rateLimit)) ||
     commandPoliciesNeedRateLimitAuth(ir, cmd);
   const bodyText = [
@@ -2263,6 +2299,7 @@ function generateMutation(
     ...updateLines,
     ...versionOcc.updateFields,
     tail,
+    ...trustedInject.lines,
   ].join('\n');
   const authLines = authBindings(bodyText, options, forceAuth);
   // Document-tenancy check: an instance command may only touch documents in
@@ -2273,9 +2310,31 @@ function generateMutation(
     : '';
 
   const updateFieldLines = [...updateLines, ...versionOcc.updateFields];
+  const hardDelete = isHardDeleteCommand(cmd);
+  const inboundEdges = hardDelete ? collectInboundOnDeleteEdges(ir, options).edges : [];
+  const needsReferentialOnDelete = inboundEdges.some(
+    (edge) => edge.parentEntity === entity.name,
+  );
+  const persistLines = hardDelete
+    ? (needsReferentialOnDelete ? renderReferentialOnDeleteCall(entity.name) : '') +
+      `    await ctx.db.delete(docId);\n`
+    : `    const updates = {\n${updateFieldLines.join(',\n')}${updateFieldLines.length ? '\n' : ''}    };\n` +
+      (encryptionActive
+        ? `    const __storedUpdates = await __encryptDoc(ctx, ${JSON.stringify(entity.name)}, ${JSON.stringify(mutationEncrypted)}, updates);\n`
+        : '') +
+      `    await ctx.db.patch(docId, ${encryptionActive ? '__storedUpdates' : 'updates'} as any);\n`;
+  // Hard delete has no patch map; keep an empty `updates` so emit/return templates stay shared.
+  const updatesDecl = hardDelete ? `    const updates = {};\n` : '';
+  const hardDeleteAfter = hardDelete
+    ? useAfter
+      ? `    const __after: Record<string, any> = { ...doc };\n` +
+        (postHydration?.lines.length ? postHydration.lines.join('\n') + '\n' : '')
+      : ''
+    : afterLine;
   let body =
     `async function ${runnerName}(ctx: MutationCtx, { docId${argDestructure} }: any, __creation = false) {\n` +
     (authLines.length ? authLines.join('\n') + '\n' : '') +
+    (trustedInject.lines.length ? trustedInject.lines.join('\n') + '\n' : '') +
     (encryptionActive
       ? `    const __storedDoc = await ctx.db.get(docId) as Record<string, any> | null;\n` +
         `    if (!__storedDoc) throw new Error(${JSON.stringify(`${entity.name} not found`)});\n` +
@@ -2291,15 +2350,15 @@ function generateMutation(
     (compute.bindings.length ? computeBindingLines(compute.bindings).join('\n') + '\n' : '') +
     (transitions.lines.length ? transitions.lines.join('\n') + '\n' : '') +
     (versionOcc.checkLines.length ? versionOcc.checkLines.join('\n') + '\n' : '') +
-    `    const updates = {\n${updateFieldLines.join(',\n')}${updateFieldLines.length ? '\n' : ''}    };\n` +
-    (encryptionActive
-      ? `    const __storedUpdates = await __encryptDoc(ctx, ${JSON.stringify(entity.name)}, ${JSON.stringify(mutationEncrypted)}, updates);\n`
-      : '') +
-    `    await ctx.db.patch(docId, ${encryptionActive ? '__storedUpdates' : 'updates'} as any);\n` +
-    afterLine +
+    updatesDecl +
+    persistLines +
+    hardDeleteAfter +
     payloadBinding +
     (tail ? tail + '\n' : '') +
-    stripPrivateFromReturn('{ ...doc, ...updates }', mutationPrivates) +
+    stripPrivateFromReturn(
+      hardDelete ? '{ ...doc }' : '{ ...doc, ...updates }',
+      mutationPrivates,
+    ) +
     `}\n\n` +
     `export const ${name} = mutation({\n` +
     `  args: {\n${argLines.join(',\n')}\n  },\n` +
@@ -2353,6 +2412,11 @@ export function generateMutations(
   }
   if (/\b__consumeCommandRateLimit\b/.test(body)) {
     helpers.push(renderCommandRateLimitHelpers(options.commandRateLimitTable));
+  }
+  if (/\b__applyReferentialOnDelete\b/.test(body)) {
+    const referential = renderReferentialOnDeleteHelper(ir, options);
+    diagnostics.push(...referential.diagnostics);
+    if (referential.code) helpers.push(referential.code);
   }
   if (/\bcheckRole\(/.test(body)) {
     helpers.push(

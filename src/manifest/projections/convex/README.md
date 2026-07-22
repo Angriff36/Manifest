@@ -110,6 +110,11 @@ local backends with no auth context configured. Default is `'enforce'`; keep it
 for production. When skipped, the role map / `checkRole` helpers are not emitted
 (no dead code).
 
+**Trusted params (`from context.*`):** omitted from mutation args and HTTP
+dispatcher client params; injected from `getAuthContext` as
+`(__auth.context ?? __auth).<path>`. Required missing values throw
+`MISSING_TRUSTED_CONTEXT`. Requires `authContextImport`.
+
 **Auth context seam (`authContextImport`):** required whenever tenant filtering
 or policy enforcement is active (the defaults). Generation emits
 `CONVEX_AUTH_CONTEXT_REQUIRED` instead of the old ineffective
@@ -173,9 +178,11 @@ Override per property: `typeMappings: { Entity: { prop: "v.number()" } }`.
 - **Indexes**: `indexed` properties, the tenant column, and every reference
   field get a `by_<col>` index; supply composite/named indexes via
   `indexes: { Entity: [["a","b"], { fields: ["sku"], name: "by_sku" }] }`.
-- **Referential actions** (`onDelete`/`onUpdate`) have no schema-level Convex
-  equivalent; they emit a `CONVEX_REFERENTIAL_ACTION_DEFERRED` info diagnostic
-  (cascade logic belongs to the Phase 2 functions surface).
+- **Referential actions**: no schema-level FK engine. Single-column
+  `onDelete: cascade|restrict` is enforced in hard-delete mutations
+  (`delete`/`remove` with no mutate patches) via `__applyReferentialOnDelete`.
+  `onUpdate` and composite FKs stay deferred; `setNull`/`setDefault` emit
+  `CONVEX_UNSUPPORTED_REFERENTIAL_SET`.
 - **Tables**: Convex-idiomatic camelCase + pluralized by default
   (`CateringEvent` → `cateringEvents`); override via `tableMappings`.
 - **Persistence filtering**: only entities with a `durable`/`postgres`/`supabase`

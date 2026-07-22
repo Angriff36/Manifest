@@ -416,15 +416,38 @@ function emitTable(entity: IREntity, ir: IR, options: NormalizedOptions): TableE
       emittedFieldNames.add(fkField);
     }
     addIndex({ name: `by_${fkField}`, fields: [fkField] });
-    if (rel.onDelete || rel.onUpdate) {
+    if (rel.onUpdate) {
       diagnostics.push({
         severity: 'info',
         code: 'CONVEX_REFERENTIAL_ACTION_DEFERRED',
         entity: entity.name,
         message:
-          `Relationship '${entity.name}.${rel.name}' declares a referential action ` +
-          `(onDelete/onUpdate). Convex has no schema-level cascade; this becomes cascade ` +
-          `logic in the delete command (functions surface, Phase 2).`,
+          `Relationship '${entity.name}.${rel.name}' declares onUpdate. Convex has no ` +
+          `schema-level FK engine; onUpdate is not lowered into mutations yet.`,
+      });
+    }
+    if (rel.onDelete === 'setNull' || rel.onDelete === 'setDefault') {
+      diagnostics.push({
+        severity: 'error',
+        code: 'CONVEX_UNSUPPORTED_REFERENTIAL_SET',
+        entity: entity.name,
+        message:
+          `Relationship '${entity.name}.${rel.name}' declares onDelete:${rel.onDelete}. ` +
+          `Convex hard-delete mutations only lower cascade/restrict for single-column FKs.`,
+      });
+    } else if (rel.onDelete === 'cascade' || rel.onDelete === 'restrict') {
+      const composite = (rel.foreignKey?.fields?.length ?? 0) > 1;
+      diagnostics.push({
+        severity: composite ? 'warning' : 'info',
+        code: composite
+          ? 'CONVEX_REFERENTIAL_ACTION_DEFERRED'
+          : 'CONVEX_REFERENTIAL_ACTION_MUTATION',
+        entity: entity.name,
+        message: composite
+          ? `Relationship '${entity.name}.${rel.name}' onDelete:${rel.onDelete} uses a ` +
+            `composite FK; Convex mutation cascade supports single-column belongsTo/ref only.`
+          : `Relationship '${entity.name}.${rel.name}' onDelete:${rel.onDelete} is enforced ` +
+            `in hard-delete mutations (delete/remove with no mutate patches), not at schema level.`,
       });
     }
   }
