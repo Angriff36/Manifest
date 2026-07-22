@@ -502,7 +502,7 @@ runtime.createInstance('Shipping', { id: 'shipping-auto' });
 // Emitting OrderSubmitted triggers the reaction chain
 const result = await runtime.runCommand(
   'submit',
-  { amount: 250 },
+  { orderId: 'order-001', amount: 250, customerId: 'customer-123' },
   { entityName: 'Order', instanceId: 'order-001' },
 );
 

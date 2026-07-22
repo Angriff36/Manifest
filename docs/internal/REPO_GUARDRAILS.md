@@ -588,7 +588,7 @@ When modifying `docs/spec/` files, the following tests are REQUIRED:
 
 ### Test Count Validation
 
-**Current Baseline**: 448 tests (as of version 0.3.8)
+**Current Baseline**: 4355 tests (as of version 3.6.41)
 
 **Test Count Must Never Decrease**:
 

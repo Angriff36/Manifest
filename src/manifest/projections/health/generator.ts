@@ -4,9 +4,10 @@
  * Generates runtime health-check handlers that return structured JSON for
  * Kubernetes liveness/readiness probes and load balancers.
  *
- * Scaffolding (2026-07-22): IR/store/outbox probes bake provenance and
- * report `details.stub: true` for non-memory checks. They do not perform
- * live hash recompute, store I/O, or outbox queries yet.
+ * Live probes (2026-07-22): generated handlers accept optional `HealthProbes`
+ * (`runHealthCheck(probes)` or `configureHealthProbes`) for IR hash compare,
+ * store connectivity, and outbox depth. Without probes, non-memory checks
+ * remain honest scaffolding (`details.stub: true`).
  *
  * Surfaces:
  *   - health.handler  → Framework-agnostic TypeScript handler (core logic)
@@ -26,6 +27,12 @@ import type {
 import type { HealthCheckProjectionOptions } from './types';
 import { normalizeHealthOptions } from './types.js';
 import { HEALTH_DESCRIPTOR_META } from './descriptor-meta.js';
+import {
+  emitCheckIR,
+  emitHealthProbesTypes,
+  emitOutboxCheck,
+  emitStoreCheck,
+} from './probe-emit.js';
 
 // ============================================================================
 // Surface identifiers
@@ -35,13 +42,6 @@ const SURFACE_HANDLER = 'health.handler' as const;
 const SURFACE_NEXTJS = 'health.nextjs' as const;
 const SURFACE_EXPRESS = 'health.express' as const;
 const SURFACES = [SURFACE_HANDLER, SURFACE_NEXTJS, SURFACE_EXPRESS] as const;
-
-// ============================================================================
-// Store target classification
-// ============================================================================
-
-/** Store targets that represent in-process memory (always healthy). */
-const MEMORY_TARGETS = new Set(['memory', 'localStorage']);
 
 /** Store targets that support outbox queues. */
 const OUTBOX_TARGETS = new Set(['postgres', 'supabase']);
@@ -126,6 +126,8 @@ function buildHandlerCode(ir: IR, opts: Required<HealthCheckProjectionOptions>):
   lines.push('}');
   lines.push('');
 
+  lines.push(...emitHealthProbesTypes());
+
   // Baked provenance metadata
   lines.push('/** Baked IR provenance from compilation. */');
   lines.push('const MANIFEST_IR_META = {');
@@ -139,91 +141,41 @@ function buildHandlerCode(ir: IR, opts: Required<HealthCheckProjectionOptions>):
   lines.push('} as const;');
   lines.push('');
 
-  // IR integrity check (scaffolding: baked provenance only — not a live hash)
   if (opts.includeIRCheck) {
-    lines.push('/**');
-    lines.push(' * Report baked IR provenance from compilation.');
-    lines.push(' * Scaffolding only: does not recompute or compare a live IR hash.');
-    lines.push(' */');
-    lines.push('function checkIR(): ComponentHealth {');
-    lines.push('  return {');
-    lines.push("    status: 'healthy',");
-    lines.push("    message: 'IR provenance baked (not live-checked)',");
-    lines.push('    details: { ...MANIFEST_IR_META, stub: true },');
-    lines.push('  };');
-    lines.push('}');
-    lines.push('');
+    lines.push(...emitCheckIR());
   }
 
-  // Store connectivity checks
   if (opts.includeStoreChecks && targets.length > 0) {
     for (const target of targets) {
-      const suffix = targetToFunctionSuffix(target);
-      const isMemory = MEMORY_TARGETS.has(target);
-
-      lines.push(`/**`);
-      lines.push(` * Check connectivity for ${target} stores.`);
-      if (!isMemory) {
-        lines.push(
-          ` * Scaffolding only: no live ${target} probe until a store client is injected.`,
-        );
-      }
-      lines.push(` */`);
-      lines.push(`async function check${suffix}Store(): Promise<ComponentHealth> {`);
-
-      if (isMemory) {
-        lines.push(
-          `  return { status: 'healthy', message: '${target} store is always available', details: { stub: false } };`,
-        );
-      } else {
-        lines.push('  // Scaffolding: always reports healthy until a real probe is wired.');
-        lines.push('  return {');
-        lines.push("    status: 'healthy',");
-        lines.push(
-          `    message: '${target} store check not implemented (scaffolding)',`,
-        );
-        lines.push("    details: { stub: true, target: '" + target + "' },");
-        lines.push('  };');
-      }
-
-      lines.push('}');
-      lines.push('');
+      lines.push(...emitStoreCheck(target, targetToFunctionSuffix(target)));
     }
   }
 
-  // Outbox queue depth check (scaffolding: no table query yet)
   if (opts.includeOutboxCheck && hasOutbox) {
-    lines.push('/**');
-    lines.push(' * Report outbox queue depth for event delivery.');
-    lines.push(' * Scaffolding only: does not query manifest_outbox_entries.');
-    lines.push(' */');
-    lines.push('async function checkOutbox(): Promise<ComponentHealth> {');
-    lines.push('  return {');
-    lines.push("    status: 'healthy',");
-    lines.push("    message: 'Outbox depth not queried (scaffolding)',");
-    lines.push("    details: { stub: true, depth: null },");
-    lines.push('  };');
-    lines.push('}');
-    lines.push('');
+    lines.push(...emitOutboxCheck());
   }
 
   // Main orchestrator
   lines.push('/**');
   lines.push(' * Run all health checks and return an aggregated report.');
+  lines.push(' * Pass probes (or call configureHealthProbes) for live IR/store/outbox checks.');
   lines.push(' *');
   lines.push(' * Status logic:');
   lines.push(" *   - 'healthy'   — all checks pass");
   lines.push(" *   - 'degraded'  — some non-critical checks fail (stores)");
   lines.push(" *   - 'unhealthy' — IR check fails or all stores unreachable");
   lines.push(' */');
-  lines.push('export async function runHealthCheck(): Promise<HealthReport> {');
+  lines.push(
+    'export async function runHealthCheck(probes?: HealthProbes): Promise<HealthReport> {',
+  );
+  lines.push('  const active = probes ?? configuredProbes;');
   lines.push("  const checks: HealthReport['checks'] = {} as HealthReport['checks'];");
   lines.push("  let overallStatus: HealthStatus = 'healthy';");
   lines.push('');
 
   if (opts.includeIRCheck) {
     lines.push('  // IR integrity');
-    lines.push('  const irHealth = checkIR();');
+    lines.push('  const irHealth = await checkIR(active);');
     lines.push('  (checks as Record<string, unknown>).ir = irHealth;');
     lines.push("  if (irHealth.status === 'unhealthy') {");
     lines.push("    overallStatus = 'unhealthy';");
@@ -236,7 +188,7 @@ function buildHandlerCode(ir: IR, opts: Required<HealthCheckProjectionOptions>):
     lines.push('  const storeResults: Record<string, ComponentHealth> = {};');
     for (const target of targets) {
       const suffix = targetToFunctionSuffix(target);
-      lines.push(`  storeResults['${target}'] = await check${suffix}Store();`);
+      lines.push(`  storeResults['${target}'] = await check${suffix}Store(active);`);
     }
     lines.push('  (checks as Record<string, unknown>).stores = storeResults;');
     lines.push('');
@@ -253,7 +205,7 @@ function buildHandlerCode(ir: IR, opts: Required<HealthCheckProjectionOptions>):
 
   if (opts.includeOutboxCheck && hasOutbox) {
     lines.push('  // Outbox queue depth');
-    lines.push('  const outboxHealth = await checkOutbox();');
+    lines.push('  const outboxHealth = await checkOutbox(active);');
     lines.push('  (checks as Record<string, unknown>).outbox = outboxHealth;');
     lines.push("  if (outboxHealth.status === 'unhealthy' && overallStatus === 'healthy') {");
     lines.push("    overallStatus = 'degraded';");

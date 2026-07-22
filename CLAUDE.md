@@ -369,14 +369,7 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[pre-compact bridge — saved before context compaction]
-Files (2):
-  docs/internal/COMPLIANCE_MATRIX.md (edit)
-  C:/Projects/capsule/src/features/views/SavedViewsBar.tsx (edit)
-Manual bridge:
-[proactive bridge @ 99% context — saved before compacting]
-Files (2):
-  docs/internal/COMPLIANCE_MATRIX.md (edit)
-  C:/Projects/capsule/src/features/views/SavedViewsBar.tsx (edit)
+[Emergency bridge — running bridge was not updated]
+No changes or facts in this session.
 
 # === END COGNILAYER ===

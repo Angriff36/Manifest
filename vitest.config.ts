@@ -123,6 +123,10 @@ export default defineConfig({
         replacement: path.resolve(__dirname, './src/manifest/ir-diff.ts'),
       },
       {
+        find: '@angriff36/manifest/projections/wiring',
+        replacement: path.resolve(__dirname, './src/manifest/projections/wiring/index.ts'),
+      },
+      {
         find: '@angriff36/manifest/breaking-change',
         replacement: path.resolve(__dirname, './src/manifest/breaking-change.ts'),
       },

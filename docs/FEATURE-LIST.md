@@ -351,18 +351,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 6. Projections — every registered target | convex | `PARTIAL` | core generate + auth seam; many `CONVEX_UNSUPPORTED_*` (§7) |
 | 6. Projections — every registered target | Convex approvals/retry/rateLimit | `DIAGNOSTIC_ONLY` | `CONVEX_UNSUPPORTED_*` (masking closed §1) |
 | 6. Projections — every registered target | health | `PARTIAL` | generator registered; live IR/store/outbox checks still TODO stubs; docs §7 |
-| 7. CLI, SDK, config, packaging, docs tooling | `@angriff36/manifest/agent-sdk` | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 7. CLI, SDK, config, packaging, docs tooling | `@angriff36/manifest/seed-pack` | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 7. CLI, SDK, config, packaging, docs tooling | AI: generate-from-prompt, gen-tests, validate-ai | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 7. CLI, SDK, config, packaging, docs tooling | CLI compile/generate/build/watch/validate/fmt/init | `CLAIMED_NEEDS_PROOF` | `packages/cli` |
-| 7. CLI, SDK, config, packaging, docs tooling | Config schema + `manifest config *` | `CLAIMED_NEEDS_PROOF` | G0/G1 |
-| 7. CLI, SDK, config, packaging, docs tooling | Dev: repl, mock, harness, load-test, profile, seed… | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 7. CLI, SDK, config, packaging, docs tooling | diff / versions / migrate / changelog | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 7. CLI, SDK, config, packaging, docs tooling | enforce-surface / audit-* / lint-routes | `CLAIMED_NEEDS_PROOF / PARTIAL` | ORM shapes incomplete |
-| 7. CLI, SDK, config, packaging, docs tooling | IR version control / versions CLI | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/ir-version-control.md` |
-| 7. CLI, SDK, config, packaging, docs tooling | Published `@angriff36/manifest` npm | `CLAIMED_NEEDS_PROOF` | pin `package.json` each release |
-| 7. CLI, SDK, config, packaging, docs tooling | Snapshot testing tooling | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/snapshot-testing.md` |
-| 7. CLI, SDK, config, packaging, docs tooling | wiring-coverage/inspect/remediate | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 8. Open gaps / phantoms (checklist mirror) | ~~`manifest generate-fixtures`~~ | `REMOVED (docs struck)` | use `manifest seed` / `load-test` |
 | 8. Open gaps / phantoms (checklist mirror) | ~~`manifest test constraints` / ConstraintTestHarness~~ | `REMOVED (docs struck)` | use `manifest harness` / `repl` |
 | 8. Open gaps / phantoms (checklist mirror) | ~~`projection.generateRoute` / `generateTypes` / `generateClient`~~ | `REMOVED (docs struck)` | use `generate(ir, request)` / CLI `--all` |
