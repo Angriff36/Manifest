@@ -143,7 +143,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [x]    | Property modifiers (`required`/`unique`/`indexed`/`private`/`readonly`/`optional`/`searchable`/`encrypted`/`masked`) | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — `property-modifiers.ts` SoT @ `11988d60…`; `optional` runtime gate OUT_OF_SCOPE by design |
 | [x]    | `extends` inheritance + cycle detection                                                                              | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — parse + `entity-composition` cycle DFS + fixtures `77`/`81` @ `e2a791c9…` / `9f3a9bfa…` |
 | [x]    | `mixin` composition                                                                                                  | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — parse + composition merge + fixtures `78`/`79` @ `e2a791c9…` / `9f3a9bfa…` |
-| [ ]    | Generic / parameterized entities `Entity<T>`                                                                         | NOT_IMPLEMENTED               | fixtures `84`–`85` negative only                                             |
+| [ ]    | Generic / parameterized entities `Entity<T>`                                                                         | NOT_IMPLEMENTED               | Fixtures `84-85` negative only; `entity-generics.ts` untracked in working tree (phantom). Mirror of COMPLIANCE_MATRIX §2. |
 | [x]    | Value objects / embedded types                                                                                       | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — parse `parser.ts:510-544` @ `ad02a4dc…`; IR `ir-compiler.ts:499,791-795`; fixture `60`; OpenAPI VO schemas @ `9f93a40e…` |
 | [x]    | Enum types                                                                                                           | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — parse `parser.ts:465-508` @ `68dc9c26…`; IR `ir-compiler.ts:506-508,1019-1028`; fixture `57`; Zod `z.enum` @ `3052dc56…` |
 | [x]    | `decimal` / `money` types                                                                                            | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — parse `parser.ts:1302-1321` @ `9e34bc43…`; IR params `ir-compiler.ts:1885-1893`; fixture `56`; Next.js number map @ `cc71f1fe…`; runtime = JS number |
@@ -187,9 +187,9 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [x]    | Range constraints                                                                                                    | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — `between`/`min`/`max`/`length` + `constraint-analysis.ts` @ `1afc216b…` / `c0debb37…`; fixture `57`; doc `docs/features/range-constraints.md` (min/max runtime caveat) |
 | [x]    | Security features surface (doc)                                                                                      | FULLY_IMPLEMENTED           | mirror of COMPLIANCE_MATRIX — `docs/features/security-features.md` matches runtime encryption no-op + masking + rateLimit/retry; Convex fail-closed note added 2026-07-22. Default encryption … |
 | [x]    | Federation SDK (`@angriff36/manifest/federation`)                                                                    | FULLY_IMPLEMENTED             | COMPLIANCE_MATRIX §1; docs path is `docs/features/federation.md` (not `internal/`) |
-| [ ]    | Realtime subscriptions (language/runtime)                                                                            | PARTIAL / DIAGNOSTIC_ONLY     | Convex diagnostic; Next.js may differ — prove per target                     |
+| [x]    | Realtime subscriptions (language/runtime)                                                                            | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §2 — entity `realtime` + `RuntimeEngine.subscribe` + Next.js SSE (14 tests); Convex projection remains PARTIAL diagnostic |
 | [x]    | Entity `behavior` blocks                                                                                             | REJECTED_LOUD → proven reject | see §1 / fixture `110`                                                       |
-| [ ]    | Language keyword `softDelete`                                                                                        | NOT_IMPLEMENTED               | projection config only                                                       |
+| [x]    | Language keyword `softDelete`                                                                                        | OUT_OF_SCOPE                  | mirror of COMPLIANCE_MATRIX §2 — parked 2026-07-15; projection-config softDelete is intentional SoT |
 | [x]    | Appendix E: `map<K,V>` arbitrary non-string keys                                                                     | REJECTED_LOUD → by design     | String keys only; `record` alias ships (§1)                                  |
 | [x]    | `record` type alias (= `map`)                                                                                        | FULLY_IMPLEMENTED             | §1                                                                           |
 | [x]    | Appendix E: retry/rateLimit field-name ergonomics                                                                    | FULLY_IMPLEMENTED             | §1 — aliases                                                                |
@@ -273,7 +273,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | routes                | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — routes/generator.test.ts + routes.conformance.test.ts @ `5290df259a44` |
 | [x]    | prisma                | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — prisma/generator.test.ts @ `cf5be82e0fea` |
 | [x]    | prisma-store          | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — prisma-store/generator.test.ts (6) @ `d6d42fc865e4`; softDelete = projection config only |
-| [~]    | convex                | PARTIAL                        | core generate + auth seam; many `CONVEX_UNSUPPORTED_*` (§7)                      |
+| [~]    | convex                | PARTIAL                        | mirror of COMPLIANCE_MATRIX §6 — webhook HMAC Supported; remaining read-policy / saga-args / async diagnostics |
 | [x]    | openapi               | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — openapi/generator.test.ts (43) @ `0a2ee5d39ed38c` |
 | [x]    | react-query           | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — react-query/generator.test.ts (34) @ `f5b2f4cd11a3` |
 | [x]    | zod                   | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — zod/generator.test.ts (50) @ `31c780fecdb6` |
@@ -285,7 +285,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | mermaid               | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — mermaid/mermaid.test.ts (21) @ `fb6e9252be79` |
 | [x]    | jsonschema            | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — jsonschema/generator.test.ts (1) @ `52fbcda4397f` |
 | [x]    | storybook             | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — storybook/generator.test.ts (24) @ `83e6c4f66ed1` |
-| [~]    | health                | PARTIAL                        | generator registered; live IR/store/outbox checks still TODO stubs; docs §7      |
+| [x]    | health                | FULLY_IMPLEMENTED              | mirror of COMPLIANCE_MATRIX §6 — HealthProbes live IR/store/outbox + stub fallback; 44 tests |
 | [x]    | materialized-views    | FULLY_IMPLEMENTED              | §1 — computed via `translateExpression`; raw `columns` escape hatch              |
 | [x]    | elasticsearch         | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — elasticsearch/generator.test.ts (24) @ `9f3a9bfaed21` |
 | [x]    | terraform             | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — terraform/generator.test.ts (25) @ `9f3a9bfaed21` |
@@ -308,7 +308,11 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | Projection descriptor API                      | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | `ir.tenant` in all web projections             | FULLY_IMPLEMENTED     | Next/Express/Hono/SvelteKit/Remix — `web-ir-tenant.test.ts` (2026-07-22)          |
 | [x]    | Module → Prisma `@@schema` / OpenAPI title     | FULLY_IMPLEMENTED     | per-module file split remains NOT_IMPLEMENTED                                     |
-| [ ]    | Convex approvals/retry/rateLimit               | DIAGNOSTIC_ONLY       | `CONVEX_UNSUPPORTED_*` (masking closed §1)                                        |
+| [x]    | Convex command `rateLimit`                     | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `rate-limit-emit.ts` |
+| [x]    | Convex policy `rateLimit` (write/execute/delete) | FULLY_IMPLEMENTED   | mirror of COMPLIANCE_MATRIX §6 — mutation emit; read rateLimit still diagnostic |
+| [x]    | Convex webhook HMAC signature                  | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `orchestration.ts` `_verifyHmac`; no false unsupported diagnostic |
+| [x]    | Convex command `retry`                         | REJECTED_LOUD         | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_RETRY` error                 |
+| [x]    | Convex approvals                               | REJECTED_LOUD         | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_APPROVAL` error              |
 | [x]    | Convex `masked` / `unmask when`                | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | Convex `searchable` → `.searchIndex`           | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | Convex `versionProperty` OCC                   | FULLY_IMPLEMENTED     | §1                                                                                |
@@ -327,7 +331,8 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | CLI `db init`                                       | FULLY_IMPLEMENTED             | §1                                                                    |
 | [x]    | enforce-surface / audit-* / lint-routes             | FULLY_IMPLEMENTED                        | mirror of COMPLIANCE_MATRIX §7 — `enforce-surface(.cli).test.ts` + `lint-routes.test.ts` + `audit-routes.test.ts` — **92 passed**; ORM shapes + routes conformance already §1 FULL. |
 | [x]    | wiring-coverage/inspect/remediate                   | FULLY_IMPLEMENTED                        | mirror of COMPLIANCE_MATRIX §7 — CLI entry `cli-claimed-gaps.test.ts` wiring-coverage; engines `projections/wiring` generator+remediate suites (projection row FULL). vitest alias `projections/wiring` → src. SHA after commit for CLI smoke. |
-| [x]    | diff / versions / migrate / changelog               | FULLY_IMPLEMENTED                        | mirror of COMPLIANCE_MATRIX §7 — Engine `ir-diff.test.ts` (35); CLI `versions|changelog.test.ts` + `cli-claimed-gaps.test.ts` ir-diff/migrate json no-op. ≠ live Prisma/Drizzle apply (separate PARTIAL row). @ `f96618e90e54`. |
+| [x]    | diff / versions / migrate / changelog               | FULLY_IMPLEMENTED                        | mirror of COMPLIANCE_MATRIX §7 — Engine `ir-diff.test.ts` (35); CLI `versions|changelog.test.ts` + `cli-claimed-gaps.test.ts` ir-diff/migrate json no-op. Apply path: migrate execution row. @ `f96618e90e54`. |
+| [x]    | `manifest migrate` Prisma/Drizzle execution         | FULLY_IMPLEMENTED                        | mirror of COMPLIANCE_MATRIX §7 — `MigrationToolRunner` prisma migrate deploy + drizzle/SQL via DATABASE_URL; `migrate-tool-runner.test.ts` (6) |
 | [x]    | AI: generate-from-prompt, gen-tests, validate-ai    | FULLY_IMPLEMENTED                        | mirror of COMPLIANCE_MATRIX §7 — `generate-from-prompt|gen-tests|validate-ai.test.ts` green in §7 batch (183 w/ peers). gen-tests fail-closed without ANTHROPIC_API_KEY. @ `f96618e90e54`. |
 | [x]    | Dev: repl, mock, harness, load-test, profile, seed… | FULLY_IMPLEMENTED                        | mirror of COMPLIANCE_MATRIX §7 — `mock|harness|load-test|profile|seed.test.ts` green. **repl** is interactive TTY entry (`repl.ts`) — no non-TTY automated suite yet (manual smoke only). |
 | [x]    | `@angriff36/manifest/language-metadata`             | FULLY_IMPLEMENTED             | §1                                                                    |
@@ -366,9 +371,10 @@ Keep in sync with `docs/TODO.md`. The canonical `docs/internal/COMPLIANCE_MATRIX
 | [x]    | Entity-level constraint overrides                                      | FULLY_IMPLEMENTED     | §1                                                                       |
 | [x]    | `command.returns` runtime validation                                   | OUT_OF_SCOPE          | by design — projection metadata only; semantics § Commands               |
 | [x]    | EventSourcedStore                                                      | FULLY_IMPLEMENTED     | §1                                                                       |
-| [ ]    | softDelete language keyword                                            | NOT_IMPLEMENTED       | Manifest language gap (projection config exists)                         |
+| [x]    | softDelete language keyword                                            | OUT_OF_SCOPE          | mirror of COMPLIANCE_MATRIX §8 — parked 2026-07-15; projection-config SoT |
 | [x]    | Materialized-views SQL expression lowering                             | FULLY_IMPLEMENTED     | §1                                                                       |
-| [ ]    | Convex unsupported surfaces (approvals/retry/rateLimit)                | DIAGNOSTIC_ONLY       |
+| [x]    | Convex command `retry` / approvals (loud reject)                       | REJECTED_LOUD         | mirror §6 — `CONVEX_UNSUPPORTED_RETRY` / `_APPROVAL` errors                       |
+| [x]    | Convex webhook HMAC signature                                          | FULLY_IMPLEMENTED     | mirror §6                                                                         |
 | [x]    | Convex `masked` / `unmask when`                                        | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | Config G5 `projections.enabled`/`defaults`                             | FULLY_IMPLEMENTED     | §1                                                                       |
 | [x]    | Config G2 `validation.failOn`                                          | FULLY_IMPLEMENTED     | §1                                                                       |
@@ -384,7 +390,7 @@ Keep in sync with `docs/TODO.md`. The canonical `docs/internal/COMPLIANCE_MATRIX
 | [x]    | ~~`projection.generateRoute` / `generateTypes` / `generateClient`~~    | REMOVED (docs struck) | use `generate(ir, request)` / CLI `--all`                                |
 | [x]    | Kysely `columnMappings` actually applied                               | FULLY_IMPLEMENTED     | COMPLIANCE_MATRIX §8 — generator applies mappings to property + FK keys  |
 | [ ]    | Kitchen tutorial / product editor UI                                   | OUT_OF_SCOPE          | Builder owns visual editing; Kitchen is Manifest diagnostic surface only |
-| [ ]    | Default encryption provider (common no-vendor case)                    | NOT_IMPLEMENTED       | fail-closed by design until provider set                                 |
+| [x]    | Default encryption provider (common no-vendor case)                    | OUT_OF_SCOPE          | mirror of COMPLIANCE_MATRIX §8 — intentional non-goal; apps supply encryptionProvider |
 | [ ]    | Projection orchestration / presets / app assembly UX                   | OUT_OF_SCOPE          | Builder — see Builder consumption matrix                                 |
 
 ---
