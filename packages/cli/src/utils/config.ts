@@ -54,6 +54,17 @@ export interface ManifestConfig {
     forbidCycles?: boolean;
   };
 
+  /**
+   * Config G4 — IR provenance policy (deterministic stamps + optional lockfile).
+   */
+  provenance?: {
+    stamp?: boolean;
+    fields?: Array<'sourceHash' | 'generatorVersion' | 'irSchemaVersion' | 'gitSha'>;
+    deterministic?: boolean;
+    lockfile?: string;
+    failIfStale?: boolean;
+  };
+
   /** Config G10 — declarative CI drift gates for `manifest ci-gate`. */
   driftGates?: {
     effectiveConfigSnapshot?: string;

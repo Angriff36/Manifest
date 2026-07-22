@@ -169,6 +169,9 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 > (2026-07-15):** G2 `validation.failOn` also shipped.
 >
 > **Correction (2026-07-22):** G3 `mergeIntegrity` shipped (`error` \| `lastWins`).
+>
+> **Correction (2026-07-22):** G4 `provenance` shipped (`deterministic`,
+> `lockfile`, `failIfStale`). `gitSha` field token accepted but not written yet.
 
 ---
 
@@ -181,6 +184,7 @@ configuration. A zero-config generated factory for `postgres`, `supabase`,
 | `prismaSchema` | (auto-discovered) | string | Optional path to a Prisma schema for property alignment scans. When omitted, Manifest checks `prisma/schema.prisma`, `schema.prisma`, `db/schema.prisma`. |
 | `validation`   | (see G2)          | object | Config G2 CI exit policy (`failOn`). Does not change language severities.                                                                                 |
 | `mergeIntegrity` | (see G3)        | object | Config G3 multi-module merge collision policy (`onDuplicateEntity` / `onDuplicateCommand`). Default remains strict `error`.                              |
+| `provenance`   | (see G4)          | object | Config G4 IR provenance (`deterministic`, `lockfile`, `failIfStale`).                                                                                     |
 | `driftGates`   | (see G10)         | object | Config G10 declarative CI gates for `manifest ci-gate`.                                                                                                   |
 | `projections`  | `{}`              | object | Per-projection config blocks, plus optional G5 `enabled` / `defaults` (see below).                                                                         |
 | `env`          | `{}`              | object | Environment-variable declarations for `manifest preflight`. Grouped under `stores`, `auth`, `adapters`, `custom`.                                         |
@@ -228,6 +232,30 @@ mergeIntegrity:
 | `lastWins` | Keep the declaration from the last file in topological compile order     |
 
 `namespace` is **not** implemented. Enum and tenant duplicates stay hard errors.
+
+## `provenance` (Config G4)
+
+Added 2026-07-22. Controls IR provenance timestamps and an optional lockfile.
+IR **always** includes required provenance fields (`contentHash`,
+`compilerVersion`, `schemaVersion`, `compiledAt`).
+
+```yaml
+provenance:
+  stamp: true                                    # false skips lockfile write only
+  deterministic: true                            # fixed compiledAt → stable irHash
+  lockfile: .manifest/provenance.lock.json
+  failIfStale: true                              # fail if lock contentHash matches but irHash drifted
+  fields: [sourceHash, generatorVersion, irSchemaVersion]  # gitSha accepted, not written yet
+```
+
+| Key             | Default | Behavior                                                                 |
+| --------------- | ------- | ------------------------------------------------------------------------ |
+| `deterministic` | `false` | `true` → `compiledAt` is `1970-01-01T00:00:00.000Z`                       |
+| `lockfile`      | unset   | When set, write lock after successful compile (merge or single-file)     |
+| `failIfStale`   | `false` | With `deterministic` + lockfile: fail on same sources / drifted `irHash` |
+
+CLI already reuses prior `compiledAt` when source `contentHash` is unchanged
+(`stabilizeProvenance`) so default compiles stay git-stable without this block.
 
 CLI overrides: `--fail-on <policy>` on `compile` / `validate`. `validate --strict`
 is an alias for `--fail-on warn`.

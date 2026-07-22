@@ -15,6 +15,12 @@ import {
   collectCrossFileNameUniqueness,
   validateCrossFileReferences,
 } from './merge-integrity-checks.js';
+import {
+  resolveCompiledAt,
+  resolveProvenanceConfig,
+  type ManifestProvenanceConfig,
+  type ResolvedProvenanceConfig,
+} from './provenance-config.js';
 import type { EntityIndex } from './entity-composition.js';
 import {
   IR,
@@ -56,6 +62,8 @@ export interface CompileProjectOptions {
   naming?: ManifestNamingInput | ResolvedNamingConfig;
   /** Config G3 — cross-file name collision / merge policy. Default: error. */
   mergeIntegrity?: ManifestMergeIntegrityConfig | ResolvedMergeIntegrity;
+  /** Config G4 — provenance stamp policy (deterministic compiledAt, etc.). */
+  provenance?: ManifestProvenanceConfig | ResolvedProvenanceConfig;
 }
 
 export interface MultiCompileResult {
@@ -92,6 +100,10 @@ export async function compileProjectToIR(
     });
     return { ir: null, diagnostics, sources };
   }
+
+  const provenancePolicy = resolveProvenanceConfig(
+    options.provenance as ManifestProvenanceConfig | undefined,
+  );
 
   // Phase 1: Resolve module graph
   const parser = new Parser();
@@ -173,6 +185,7 @@ export async function compileProjectToIR(
       compositionContext,
       nameRegistry,
       naming: namingPolicy,
+      deterministicProvenance: provenancePolicy.deterministic,
       // Reaction completeness is whole-program (a reaction can listen for an
       // event emitted by a command in another file). Defer it to the merged-IR
       // pass below so cross-file reactions aren't falsely flagged.
@@ -227,6 +240,7 @@ export async function compileProjectToIR(
     sources,
     basePath,
     integrity,
+    provenancePolicy.deterministic,
   );
 
   // Phase 4.25: Re-derive initialization plans against the merged program.
@@ -277,7 +291,13 @@ export function mergeIR(irs: IR[]): IR {
       ? ir.provenance.sources.map((s) => ({ absPath: s.path, contentHash: s.contentHash }))
       : [{ absPath: ir.provenance.contentHash, contentHash: ir.provenance.contentHash }],
   );
-  const merged = mergeIRs(irs, sources, '', resolveMergeIntegrity(undefined));
+  const merged = mergeIRs(
+    irs,
+    sources,
+    '',
+    resolveMergeIntegrity(undefined),
+    false,
+  );
   attachInitializationPlans(merged.entities, merged.commands, merged.tenant);
   return merged;
 }
@@ -293,6 +313,7 @@ function mergeIRs(
   sources: Array<{ absPath: string; contentHash: string }>,
   basePath: string,
   integrity: ResolvedMergeIntegrity,
+  deterministicProvenance = false,
 ): IR {
   let entities: IREntity[] = [];
   const enums: IREnum[] = [];
@@ -424,7 +445,7 @@ function mergeIRs(
     contentHash: mergedContentHash,
     compilerVersion: COMPILER_VERSION,
     schemaVersion: SCHEMA_VERSION,
-    compiledAt: new Date().toISOString(),
+    compiledAt: resolveCompiledAt(deterministicProvenance),
     sources: provenanceSources,
   };
 

@@ -370,6 +370,6 @@ Last: [first session]
 
 ## Last Session Bridge
 [Emergency bridge — running bridge was not updated]
-No changes or facts in this session.
+Files: docs/internal/COMPLIANCE_MATRIX.md (edit)
 
 # === END COGNILAYER ===

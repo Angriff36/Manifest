@@ -134,6 +134,7 @@ Pin / consumption evidence: Builder `package.json` currently pins `@angriff36/ma
 | [x]    | Config G9 `plugins.order` / capabilities              | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §1 — `plugin-order.ts:1-67` + `loadPlugins` `loadOrder`/`declaredCapabilities`; proofs `plugin-order.test.ts`                                                                                                      |
 | [x]    | Config G8 `hooks.lifecycle`                           | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §1 — `lifecycle-hooks.ts:1-119` + compile/generate wire; proofs `lifecycle-hooks.test.ts` (4)                                                                                                                      |
 | [x]    | Config G3 `mergeIntegrity`                            | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §1 — `merge-integrity.ts` + multi-compiler wire; proofs `merge-integrity.test.ts` + multi-compiler G3 cases                                                                                                         |
+| [x]    | Config G4 `provenance`                                | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §1 — `provenance-config.ts` + compile lockfile wire; proofs `provenance-config.test.ts` (8)                                                                                                                          |
 
 ---
 
@@ -361,6 +362,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | Config G9 `plugins.order` / capabilities            | FULLY_IMPLEMENTED             | §1                                                                    |
 | [x]    | Config G8 `hooks.lifecycle`                         | FULLY_IMPLEMENTED             | §1                                                                    |
 | [x]    | Config G3 `mergeIntegrity`                          | FULLY_IMPLEMENTED             | §1                                                                    |
+| [x]    | Config G4 `provenance`                              | FULLY_IMPLEMENTED             | §1                                                                    |
 | [x]    | Published `@angriff36/manifest` npm                 | FULLY_IMPLEMENTED                        | mirror of COMPLIANCE_MATRIX §7 — `package.json` version **3.6.41** matches `npm view @angriff36/manifest version` (2026-07-22). Pin consumers to exact version per sdk-stability. |
 | [x]    | Park `@manifest/mcp-server` (unpublished)           | FULLY_IMPLEMENTED             | §1 — `"private": true`; in-repo only                                  |
 | [x]    | Park `@manifest/lsp-server` (unpublished)           | FULLY_IMPLEMENTED             | §1                                                                    |
@@ -399,6 +401,7 @@ Keep in sync with `docs/TODO.md`. The canonical `docs/internal/COMPLIANCE_MATRIX
 | [x]    | Config G9 `plugins.order` / capabilities                               | FULLY_IMPLEMENTED     | §1                                                                       |
 | [x]    | Config G8 `hooks.lifecycle`                                            | FULLY_IMPLEMENTED     | §1                                                                       |
 | [x]    | Config G3 `mergeIntegrity`                                             | FULLY_IMPLEMENTED     | §1                                                                       |
+| [x]    | Config G4 `provenance`                                                 | FULLY_IMPLEMENTED     | §1                                                                       |
 | [x]    | `createUserResolver` wired into runtime factory                        | FULLY_IMPLEMENTED     | §1                                                                       |
 | [x]    | Sub-package publish/park                                               | FULLY_IMPLEMENTED     | §1 — parked unpublished (`private: true`)                                |
 | [x]    | ~~Full WASM runtime~~                                                  | REMOVED 2026-07-15    | Prototype deleted; TypeScript evaluator is the only path                 |

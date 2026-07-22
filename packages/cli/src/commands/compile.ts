@@ -1,7 +1,5 @@
 /**
- * manifest compile command
- *
- * Compiles .manifest source files to IR (Intermediate Representation).
+ * manifest compile command — compiles .manifest sources to IR.
  */
 
 import fs from 'fs/promises';
@@ -12,7 +10,6 @@ import ora, { Ora } from 'ora';
 import type { IR } from '@angriff36/manifest/ir';
 import { writeTextFile } from '../utils/dry-run-fs.js';
 
-// Import from the main Manifest package
 async function loadCompiler() {
   const module = await import('@angriff36/manifest/ir-compiler');
   return {
@@ -132,7 +129,15 @@ async function compileFileToIR(
   spinner.text = `Compiling ${path.relative(process.cwd(), filePath)}`;
 
   const source = await fs.readFile(filePath, 'utf-8');
-  const result = await compileToIR(source, { sourcePath: filePath });
+  const { loadConfig } = await import('../utils/config.js');
+  const { resolveProvenanceConfig } = await import('@angriff36/manifest/config');
+  const cfg = await loadConfig(process.cwd());
+  const provenance = resolveProvenanceConfig(cfg?.provenance);
+  const result = await compileToIR(source, {
+    sourcePath: filePath,
+    naming: cfg?.naming,
+    deterministicProvenance: provenance.deterministic,
+  });
   const outputPath = await resolveOutputPath(filePath, options);
 
   return {
@@ -143,40 +148,14 @@ async function compileFileToIR(
   };
 }
 
-/**
- * Idempotent provenance: if an existing output IR was produced from the SAME
- * source (identical contentHash), reuse its compiledAt and recompute irHash so
- * that re-running `manifest compile` on unchanged source is byte-identical
- * (zero git drift). A fresh timestamp only lands when the source actually
- * changed. compiledAt is part of the irHash input, so irHash is recomputed
- * against the reused timestamp to stay consistent.
- */
-async function stabilizeProvenance(ir: IR, outputPath: string): Promise<void> {
-  const priorRaw = await fs.readFile(outputPath, 'utf-8').catch(() => null);
-  if (!priorRaw) return;
-  let prior: { provenance?: { contentHash?: string; compiledAt?: string } };
-  try {
-    prior = JSON.parse(priorRaw);
-  } catch {
-    return;
-  }
-  if (
-    ir.provenance?.contentHash &&
-    prior.provenance?.contentHash === ir.provenance.contentHash &&
-    prior.provenance?.compiledAt
-  ) {
-    ir.provenance.compiledAt = prior.provenance.compiledAt;
-    const { computeIRHash } = await loadCompiler();
-    ir.provenance.irHash = await computeIRHash(ir);
-  }
-}
-
 async function writeCompiledFile(
   compiled: CompiledFile,
   options: CompileOptions,
   spinner: Ora,
 ): Promise<void> {
-  await stabilizeProvenance(compiled.ir as IR, compiled.outputPath);
+  const { stabilizeProvenance } = await import('../utils/provenance-lockfile.js');
+  const { computeIRHash } = await loadCompiler();
+  await stabilizeProvenance(compiled.ir as IR, compiled.outputPath, computeIRHash);
 
   const jsonContent = options.pretty
     ? JSON.stringify(compiled.ir, null, 2)
@@ -314,6 +293,7 @@ async function compileMerged(source: string | undefined, options: CompileOptions
       basePath,
       naming: cfg?.naming,
       mergeIntegrity: cfg?.mergeIntegrity,
+      provenance: cfg?.provenance,
     });
 
     // Print diagnostics
@@ -345,7 +325,10 @@ async function compileMerged(source: string | undefined, options: CompileOptions
         )
       : path.resolve(process.cwd(), 'merged.ir.json');
 
-    await stabilizeProvenance(result.ir as IR, outputPath);
+    const { stabilizeProvenance, finalizeProvenanceLock } =
+      await import('../utils/provenance-lockfile.js');
+    const { computeIRHash } = await loadCompiler();
+    await stabilizeProvenance(result.ir as IR, outputPath, computeIRHash);
     const jsonContent = options.pretty
       ? JSON.stringify(result.ir, null, 2)
       : JSON.stringify(result.ir);
@@ -355,6 +338,8 @@ async function compileMerged(source: string | undefined, options: CompileOptions
     mergeSpinner.succeed(
       `Merged ${result.sources.length} file(s) ${arrow} ${path.relative(process.cwd(), outputPath)}`,
     );
+
+    await finalizeProvenanceLock(result.ir as IR, options);
 
     if (warnings.length > 0) {
       console.log(chalk.yellow(`  ${warnings.length} warning(s)`));
@@ -495,6 +480,12 @@ export async function compileCommand(
       const fileSpinner = ora().start();
       await writeCompiledFile(compiled, options, fileSpinner);
       successCount++;
+    }
+
+    // Config G4 — lockfile for single-output compiles only (merge path has its own).
+    if (successCount === 1) {
+      const { finalizeProvenanceLock } = await import('../utils/provenance-lockfile.js');
+      await finalizeProvenanceLock(compiledFiles[0]?.ir as IR | null, options);
     }
 
     // Summary

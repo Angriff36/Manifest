@@ -12,6 +12,7 @@ import {
   type ManifestNamingInput,
   type ResolvedNamingConfig,
 } from './naming-config.js';
+import { resolveCompiledAt } from './provenance-config.js';
 import {
   ManifestProgram,
   EntityNode,
@@ -102,15 +103,20 @@ async function computeContentHash(source: string): Promise<string> {
 }
 
 /**
- * Create provenance metadata for the IR
+ * Create provenance metadata for the IR.
+ * Config G4: pass `deterministic: true` for a fixed compiledAt (stable irHash).
  */
-async function createProvenance(source: string, irHash?: string): Promise<IRProvenance> {
+async function createProvenance(
+  source: string,
+  irHash?: string,
+  opts?: { deterministic?: boolean },
+): Promise<IRProvenance> {
   return {
     contentHash: await computeContentHash(source),
     irHash,
     compilerVersion: COMPILER_VERSION,
     schemaVersion: SCHEMA_VERSION,
-    compiledAt: new Date().toISOString(),
+    compiledAt: resolveCompiledAt(opts?.deterministic === true),
   };
 }
 
@@ -354,6 +360,8 @@ export class IRCompiler {
       nameRegistry?: CanonicalNameRegistry;
       /** Resolved or raw naming config. Default: normalization off. */
       naming?: ManifestNamingInput | ResolvedNamingConfig;
+      /** Config G4 — fixed compiledAt when true. */
+      deterministicProvenance?: boolean;
     },
   ): Promise<CompileToIRResult> {
     this.diagnostics = [];
@@ -402,6 +410,7 @@ export class IRCompiler {
       options?.skipReactionCompleteness,
       options?.nameRegistry,
       namingPolicy,
+      options?.deterministicProvenance === true,
     );
 
     // Check for semantic errors emitted during transformation (e.g., duplicate constraint codes)
@@ -426,6 +435,7 @@ export class IRCompiler {
     skipReactionCompleteness?: boolean,
     nameRegistry?: CanonicalNameRegistry,
     namingPolicy: ResolvedNamingConfig = resolveNamingConfig(undefined),
+    deterministicProvenance = false,
   ): Promise<IR> {
     // Optional identifier normalization (off by default for back-compat).
     if (namingPolicy.normalization) {
@@ -727,7 +737,9 @@ export class IRCompiler {
       );
     }
 
-    const provenance = await createProvenance(source);
+    const provenance = await createProvenance(source, undefined, {
+      deterministic: deterministicProvenance,
+    });
     const irWithoutHash: IR = {
       version: '1.0',
       provenance,
@@ -2235,6 +2247,8 @@ export async function compileToIR(
     useCache?: boolean;
     sourcePath?: string;
     naming?: ManifestNamingInput | ResolvedNamingConfig;
+    /** Config G4 — fixed compiledAt when true. */
+    deterministicProvenance?: boolean;
   },
 ): Promise<CompileToIRResult> {
   const compiler = new IRCompiler();

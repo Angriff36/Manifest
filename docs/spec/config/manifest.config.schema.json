@@ -42,6 +42,10 @@
       "$ref": "#/definitions/MergeIntegrityConfig",
       "description": "Config G3 — multi-module merge collision policy for compile --merge / --all."
     },
+    "provenance": {
+      "$ref": "#/definitions/ProvenanceConfig",
+      "description": "Config G4 — IR provenance stamps (deterministic compiledAt, lockfile, failIfStale)."
+    },
     "driftGates": {
       "type": "object",
       "additionalProperties": false,
@@ -610,6 +614,41 @@
           "const": true,
           "default": true,
           "description": "Cycle detection in `use` graphs. Must be true; false is rejected."
+        }
+      }
+    },
+    "ProvenanceConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Config G4 — IR provenance policy. IR always includes required provenance fields; this controls timestamps, lockfile, and staleness.",
+      "properties": {
+        "stamp": {
+          "type": "boolean",
+          "default": true,
+          "description": "When false, skip lockfile write. IR still receives required provenance (schema)."
+        },
+        "fields": {
+          "type": "array",
+          "description": "Requested stamp fields. Required IR fields always stamp. gitSha is accepted but not written yet (no IR field).",
+          "items": {
+            "type": "string",
+            "enum": ["sourceHash", "generatorVersion", "irSchemaVersion", "gitSha"]
+          }
+        },
+        "deterministic": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use a fixed compiledAt (1970-01-01T00:00:00.000Z) so irHash is stable across identical compiles."
+        },
+        "lockfile": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Path for provenance.lock.json (relative to project cwd)."
+        },
+        "failIfStale": {
+          "type": "boolean",
+          "default": false,
+          "description": "With deterministic + lockfile: fail when contentHash matches lock but irHash drifted."
         }
       }
     },

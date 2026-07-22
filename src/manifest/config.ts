@@ -22,10 +22,10 @@
  * Scope note: these types describe the config surface that ACTUALLY ships today
  * (see docs/spec/config/manifest.config.md). Config G5 (`projections.enabled` /
  * `projections.defaults`), Config G2 (`validation.failOn`), Config G3
- * (`mergeIntegrity`), Config G8 (`hooks.lifecycle`), Config G9
- * (`plugins.order`/`capabilities`), and Config G10 (`driftGates`) are modelled.
- * Still proposed only: G2 rule registries / requireDescriptions, G4 provenance
- * config, G7 runtime config (see manifest-config-vnext.md). The JSON schema at
+ * (`mergeIntegrity`), Config G4 (`provenance`), Config G8 (`hooks.lifecycle`),
+ * Config G9 (`plugins.order`/`capabilities`), and Config G10 (`driftGates`)
+ * are modelled. Still proposed only: G2 rule registries / requireDescriptions,
+ * G7 runtime config (see manifest-config-vnext.md). The JSON schema at
  * docs/spec/config/manifest.config.schema.json remains the executable contract
  * that `manifest config validate` enforces for the YAML/build config.
  */
@@ -38,6 +38,7 @@ import {
   type ResolvedNamingConfig,
 } from './naming-config.js';
 import type { ManifestMergeIntegrityConfig } from './merge-integrity.js';
+import type { ManifestProvenanceConfig } from './provenance-config.js';
 
 export type { NamingConventionInput };
 export type {
@@ -46,6 +47,19 @@ export type {
   ResolvedMergeIntegrity,
 } from './merge-integrity.js';
 export { resolveMergeIntegrity, dedupeLastByKey } from './merge-integrity.js';
+export type {
+  ManifestProvenanceConfig,
+  ProvenanceFieldToken,
+  ProvenanceLockfile,
+  ResolvedProvenanceConfig,
+} from './provenance-config.js';
+export {
+  DETERMINISTIC_COMPILED_AT,
+  buildProvenanceLockfile,
+  checkProvenanceLockfileStale,
+  resolveCompiledAt,
+  resolveProvenanceConfig,
+} from './provenance-config.js';
 export {
   resolveNamingConfig,
   extractNamingConvention,
@@ -322,6 +336,11 @@ export interface ManifestBuildConfig {
    * Default: `error` (unchanged from historical strict merge).
    */
   mergeIntegrity?: ManifestMergeIntegrityConfig;
+  /**
+   * Config G4 — IR provenance stamps (deterministic compiledAt, lockfile,
+   * failIfStale). IR always includes required provenance fields.
+   */
+  provenance?: ManifestProvenanceConfig;
   /** Config G10 — declarative drift gates for `manifest ci-gate`. */
   driftGates?: ManifestDriftGatesConfig;
   /**
