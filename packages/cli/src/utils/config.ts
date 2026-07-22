@@ -82,12 +82,19 @@ export interface ManifestConfig {
   /** Environment variable mapping for store/auth/adapter configuration */
   env?: EnvMapping;
 
-  /** Pre-commit hook settings for manifest install-hooks */
+  /**
+   * Git pre-commit (`manifest install-hooks`) plus Config G8 build lifecycle
+   * (`hooks.lifecycle.beforeCompile` / `afterGenerate`).
+   */
   hooks?: {
     skipInCi?: boolean;
     provider?: 'husky' | 'simple-git-hooks';
     runFmt?: boolean;
     runValidate?: boolean;
+    lifecycle?: {
+      beforeCompile?: string[];
+      afterGenerate?: string[];
+    };
   };
 
   /** Optional: Plugin declarations for third-party extensions */
@@ -98,6 +105,10 @@ export interface ManifestConfig {
     options?: Record<string, unknown>;
     /** Whether the plugin is active (default: true). */
     enabled?: boolean;
+    /** Config G9 — load priority (lower first). */
+    order?: number;
+    /** Config G9 — capability tags. */
+    capabilities?: string[];
   }>;
 }
 

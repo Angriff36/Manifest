@@ -33,6 +33,11 @@ interface CompileOptions {
   failOn?: string;
   /** Preview IR writes without touching the filesystem. */
   dryRun?: boolean;
+  /**
+   * Config G8 — skip `hooks.lifecycle.beforeCompile` (used when compileCommand
+   * already ran hooks then auto-dispatches into compileMerged).
+   */
+  skipLifecycleHooks?: boolean;
 }
 
 async function resolveCompileGate(options: CompileOptions) {
@@ -264,6 +269,14 @@ async function compileMerged(source: string | undefined, options: CompileOptions
   const spinner = ora('Preparing merged compilation').start();
 
   try {
+    if (!options.dryRun && !options.skipLifecycleHooks) {
+      const { runLifecycleHooksFromCwd } = await import('../utils/lifecycle-hooks.js');
+      const hooksRan = await runLifecycleHooksFromCwd('beforeCompile', process.cwd());
+      if (hooksRan.length > 0) {
+        spinner.info(`Ran ${hooksRan.length} beforeCompile lifecycle hook(s)`);
+      }
+    }
+
     const files = await getManifestFiles(source || '', options);
 
     if (files.length === 0) {
@@ -396,6 +409,14 @@ export async function compileCommand(
   const spinner = ora('Preparing to compile').start();
 
   try {
+    if (!options.dryRun && !options.skipLifecycleHooks) {
+      const { runLifecycleHooksFromCwd } = await import('../utils/lifecycle-hooks.js');
+      const hooksRan = await runLifecycleHooksFromCwd('beforeCompile', process.cwd());
+      if (hooksRan.length > 0) {
+        spinner.info(`Ran ${hooksRan.length} beforeCompile lifecycle hook(s)`);
+      }
+    }
+
     // Get manifest files
     const files = await getManifestFiles(source || '', options);
 
@@ -405,7 +426,7 @@ export async function compileCommand(
       spinner.info(
         `Multiple sources with single JSON output — using merged compilation → ${options.output}`,
       );
-      return compileMerged(source, { ...options, merge: true });
+      return compileMerged(source, { ...options, merge: true, skipLifecycleHooks: true });
     }
 
     if (files.length === 0) {

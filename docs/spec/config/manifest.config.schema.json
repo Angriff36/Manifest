@@ -527,7 +527,7 @@
     "HooksConfig": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Settings for `manifest install-hooks` (git pre-commit integration).",
+      "description": "Git pre-commit (`manifest install-hooks`) plus Config G8 build lifecycle hooks.",
       "properties": {
         "skipInCi": {
           "type": "boolean",
@@ -549,6 +549,27 @@
           "type": "boolean",
           "description": "Run `manifest validate` from the generated pre-commit hook.",
           "default": true
+        },
+        "lifecycle": {
+          "$ref": "#/definitions/LifecycleHooksConfig",
+          "description": "Config G8 — scripts around compile/generate (not git hooks)."
+        }
+      }
+    },
+    "LifecycleHooksConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Config G8 — build lifecycle script paths (relative to project cwd).",
+      "properties": {
+        "beforeCompile": {
+          "type": "array",
+          "description": "Scripts run before `manifest compile` (fail-closed on non-zero exit).",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "afterGenerate": {
+          "type": "array",
+          "description": "Scripts run after a successful `manifest generate` / `generate --all`.",
+          "items": { "type": "string", "minLength": 1 }
         }
       }
     },

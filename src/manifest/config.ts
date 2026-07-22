@@ -81,7 +81,18 @@ export interface ManifestEnvMapping {
   custom?: Record<string, ManifestEnvVarDefinition>;
 }
 
-/** Git pre-commit hook settings consumed by `manifest install-hooks`. */
+/** Config G8 — build lifecycle scripts around compile / generate. */
+export interface ManifestLifecycleHooksConfig {
+  /** Scripts (paths relative to cwd) run before `manifest compile`. */
+  beforeCompile?: string[];
+  /** Scripts run after a successful `manifest generate` / `generate --all`. */
+  afterGenerate?: string[];
+}
+
+/**
+ * Hook settings: git pre-commit (`manifest install-hooks`) plus optional
+ * Config G8 build lifecycle scripts.
+ */
 export interface ManifestHooksConfig {
   /** Skip running the generated hook in CI environments. Default: true. */
   skipInCi?: boolean;
@@ -91,6 +102,8 @@ export interface ManifestHooksConfig {
   runFmt?: boolean;
   /** Run `manifest validate` from the generated pre-commit hook. Default: true. */
   runValidate?: boolean;
+  /** Config G8 — build lifecycle hooks (not git hooks). */
+  lifecycle?: ManifestLifecycleHooksConfig;
 }
 
 /** Declares a Manifest plugin for the CLI to load. */

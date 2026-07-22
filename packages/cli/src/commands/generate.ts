@@ -68,6 +68,11 @@ interface GenerateOptions {
    * abort the whole run — the batch aggregates and exits once.
    */
   throwOnError?: boolean;
+  /**
+   * Config G8 — when true, skip `hooks.lifecycle.afterGenerate` (batch driver
+   * runs it once after all projections succeed).
+   */
+  skipLifecycleHooks?: boolean;
 }
 
 /** Thrown by generateCommand under --check when files drift (throwOnError mode). */
@@ -810,6 +815,16 @@ export async function generateCommand(ir: string, options: GenerateOptions): Pro
     }
 
     await writeGenerationManifest(options.output);
+
+    // Config G8 — afterGenerate (skip on dry-run / batch inner calls).
+    if (!dryRunMode && !options.skipLifecycleHooks) {
+      const { runLifecycleHooksFromCwd } = await import('../utils/lifecycle-hooks.js');
+      const hooksRan = await runLifecycleHooksFromCwd('afterGenerate', process.cwd());
+      if (hooksRan.length > 0) {
+        spinner.info(`Ran ${hooksRan.length} afterGenerate lifecycle hook(s)`);
+      }
+    }
+
     spinner.succeed(
       dryRunMode
         ? `Dry-run: would generate code from ${successCount} IR file(s)`
@@ -881,6 +896,7 @@ export async function generateAllFromConfig(
         check: options.check,
         dryRun: options.dryRun,
         throwOnError: true,
+        skipLifecycleHooks: true,
       });
     } catch (error: unknown) {
       if (error instanceof DriftError) {
@@ -908,4 +924,13 @@ export async function generateAllFromConfig(
     process.exit(1);
   }
   console.log(chalk.green(`✔ All ${names.length} projection(s) generated from ${irSource}.`));
+
+  // Config G8 — one afterGenerate pass for the whole --all batch.
+  if (!options.check && !options.dryRun) {
+    const { runLifecycleHooksFromCwd } = await import('../utils/lifecycle-hooks.js');
+    const hooksRan = await runLifecycleHooksFromCwd('afterGenerate', process.cwd());
+    if (hooksRan.length > 0) {
+      console.log(chalk.gray(`  Ran ${hooksRan.length} afterGenerate lifecycle hook(s)`));
+    }
+  }
 }

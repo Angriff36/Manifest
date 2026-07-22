@@ -52,6 +52,11 @@
 > (matrix §1). Still open: G2 rule registry beyond `failOn`, G3 mergeIntegrity,
 > G4 provenance config block, G7 runtime config, G8 hooks.lifecycle,
 > G9 plugins.order/capabilities.
+>
+> **Correction (2026-07-22):** G9 shipped. **Correction (2026-07-22):** G8
+> `hooks.lifecycle` shipped (`lifecycle-hooks.ts` + compile/generate wire).
+> Still open: G2 rule registry beyond `failOn`, G3 mergeIntegrity, G4
+> provenance, G7 runtime.
 
 Manifest's real config surface is **small**. There are two files, with different
 validation paths:
@@ -500,7 +505,7 @@ conformance / IR-shape changes that require schema + fixture + runtime updates.
 | **G5**             | `projections.enabled`/`defaults`     | Per-projection blocks; `--surface all`                      | ~~Merge `defaults` into each projection; honor `enabled` list in CLI generate~~ **DONE 2026-07-15:** schema meta keys + `resolveProjectionOptions` / `listConfiguredProjectionNames` / `generateAllFromConfig` | `packages/cli/src/commands/generate*`, schema, `src/manifest/config.ts`                                                | Shipped                                     |
 | **G6** ✅ CORE DONE | `prisma.multiSchema`                 | Was: single-schema (flat) output                            | **Shipped:** `schemas = [...]` + `@@schema` per model from `IREntity.module` (+ `entitySchema`/`defaultSchema` overrides, provider guard). **Deferred:** `splitFiles` (one .prisma file per schema).           | `src/manifest/projections/prisma/{options,generator}.ts`, `prisma-projection.schema.json`, `generator.test.ts`, README | Med                                         |
 | **G7**             | `runtime` block                      | Runtime opts in code; dispatcher mode under nextjs          | Central runtime config consumed by runtime factory + dispatcher; determinism guards                                                                                                                            | `runtime-engine.ts`, CLI runtime wiring, schema                                                                        | Med–High. **Danger Zone (runtime).**        |
-| **G8**             | `hooks.lifecycle`                    | git pre-commit only                                         | Lifecycle hook runner around compile/generate                                                                                                                                                                  | `packages/cli/src/commands/{build,generate}.ts`, `install-hooks.ts`                                                    | Med                                         |
+| ~~**G8**~~ ✅ DONE  | `hooks.lifecycle`                    | git pre-commit only                                         | ~~Lifecycle hook runner around compile/generate~~ **DONE 2026-07-22:** `beforeCompile` / `afterGenerate` via `lifecycle-hooks.ts`; wired in `compile.ts` / `generate.ts` (batch once); schema `LifecycleHooksConfig` | `packages/cli/src/utils/lifecycle-hooks.ts`, `compile.ts`, `generate.ts`, schema                                       | Shipped                                     |
 | ~~**G9**~~ ✅ DONE  | `plugins.order`/capabilities         | `module/options/enabled` read-only listing                  | ~~Deterministic ordering + capability registration~~ **DONE 2026-07-22:** `order` + `capabilities` on declarations; `sortPluginDeclarations` / `loadOrder` / `declaredCapabilities` in `plugin-loader`         | `plugin-order.ts`, `plugin-loader.ts`, schema, `config.ts`                                                             | Shipped                                     |
 | **G10**            | `driftGates`                         | Prose CI recipe                                             | ~~`manifest ci-gate` reading declarative gates~~ **DONE 2026-07-15:** `driftGates` schema + `manifest ci-gate` (config snapshot, generated `--check`, IR version pin)                                          | `packages/cli/src/commands/ci-gate.ts`, schema                                                                         | Shipped                                     |
 
