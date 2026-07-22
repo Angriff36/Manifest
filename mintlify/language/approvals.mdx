@@ -124,8 +124,7 @@ When a command is blocked by the approval gate, the `CommandResult` includes an 
 interface ApprovalRequiredInfo {
   approvalName: string;
   pendingStages: string[];
-  grantedStages: string[];
-  skippedStages: string[];
+  requestKey: string;
 }
 ```
 
@@ -150,8 +149,7 @@ const result = await runtime.runCommand(
 // result.approvalRequired === {
 //   approvalName: "submitApproval",
 //   pendingStages: ["manager", "director"],
-//   grantedStages: [],
-//   skippedStages: []
+//   requestKey: "po-001-manager-director"
 // }
 ```
 

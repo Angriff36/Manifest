@@ -180,7 +180,7 @@ Statuses: `CLAIMED_NEEDS_PROOF` until §1-style proof is attached. Fixture IDs a
 | [~]    | Regex constraints                                                                                                    | CLAIMED_NEEDS_PROOF           | `docs/internal/features/regex-constraints.md`                                |
 | [~]    | Range constraints                                                                                                    | CLAIMED_NEEDS_PROOF           | `docs/internal/features/range-constraints.md`                                |
 | [~]    | Security features surface (doc)                                                                                      | CLAIMED_NEEDS_PROOF / PARTIAL | `docs/internal/features/security-features.md` — verify vs privacy/encryption |
-| [ ]    | Federation                                                                                                           | NOT_IMPLEMENTED or PARTIAL    | `docs/internal/features/federation.md` — prove or strike                     |
+| [x]    | Federation SDK (`@angriff36/manifest/federation`)                                                                    | FULLY_IMPLEMENTED             | COMPLIANCE_MATRIX §1; docs path is `docs/features/federation.md` (not `internal/`) |
 | [ ]    | Realtime subscriptions (language/runtime)                                                                            | PARTIAL / DIAGNOSTIC_ONLY     | Convex diagnostic; Next.js may differ — prove per target                     |
 | [x]    | Entity `behavior` blocks                                                                                             | REJECTED_LOUD → proven reject | see §1 / fixture `110`                                                       |
 | [ ]    | Language keyword `softDelete`                                                                                        | NOT_IMPLEMENTED               | projection config only                                                       |
@@ -338,8 +338,8 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | SDK stability policy                                | FULLY_IMPLEMENTED             | §1                                                                    |
 | [~]    | Conformance suite (~99 fixtures)                    | CLAIMED_NEEDS_PROOF           | `src/manifest/conformance/`                                           |
 | [x]    | Doc snippet TS check mode                           | FULLY_IMPLEMENTED             | §1                                                                    |
-| [x]    | enforce-surface Drizzle/Kysely/raw-SQL              | FULLY_IMPLEMENTED             | §1 / COMPLIANCE_MATRIX                                                    |
-| [x]    | Restore `newguard.json`                             | FULLY_IMPLEMENTED             | `docs/internal/contracts/enforce-surface.newguard.json`                   |
+| [x]    | enforce-surface Drizzle/Kysely/raw-SQL              | FULLY_IMPLEMENTED             | §1 / COMPLIANCE_MATRIX                                                |
+| [x]    | Restore `newguard.json`                             | FULLY_IMPLEMENTED             | `docs/internal/contracts/enforce-surface.newguard.json`               |
 | [x]    | Health projection docs                              | FULLY_IMPLEMENTED             | §1                                                                    |
 | [x]    | FEATURE-LIST → registry inventory (M12)             | FULLY_IMPLEMENTED             | §1                                                                    |
 | [ ]    | Capsule-V2 / consumer app auth-seam adoption        | OUT_OF_SCOPE                  | Generated-app lifecycle — Builder + consumer apps; not a Manifest gap |
@@ -350,32 +350,32 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 
 Keep in sync with `docs/TODO.md`. The canonical `docs/internal/COMPLIANCE_MATRIX.md` wins disputes.
 
-| Status | Gap                                                                    | Implementation Status     |
-| ------ | ---------------------------------------------------------------------- | ------------------------- |
-| [x]    | Approval escalate timeout (open `to` expression)                       | FULLY_IMPLEMENTED         | §1; author-defined routing — not person/department platform choice       |
-| [ ]    | `optional` runtime gate (beyond `required`)                            | OUT_OF_SCOPE              | by design — see §4; not a missing Manifest feature                       |
-| [x]    | Entity-level constraint overrides                                      | FULLY_IMPLEMENTED         | §1                                                                       |
-| [x]    | `command.returns` runtime validation                                   | OUT_OF_SCOPE              | by design — projection metadata only; semantics § Commands               |
-| [x]    | EventSourcedStore                                                      | FULLY_IMPLEMENTED         | §1                                                                       |
-| [ ]    | softDelete language keyword                                            | NOT_IMPLEMENTED           | Manifest language gap (projection config exists)                         |
-| [x]    | Materialized-views SQL expression lowering                             | FULLY_IMPLEMENTED         | §1                                                                       |
-| [ ]    | Convex unsupported surfaces (approvals/masking/retry/rateLimit)        | DIAGNOSTIC_ONLY           |
-| [x]    | Config G5 `projections.enabled`/`defaults`                             | FULLY_IMPLEMENTED         | §1                                                                       |
-| [x]    | Config G2 `validation.failOn`                                          | FULLY_IMPLEMENTED         | §1                                                                       |
-| [x]    | Config G10 `driftGates` / `manifest ci-gate`                           | FULLY_IMPLEMENTED         | §1                                                                       |
-| [x]    | `createUserResolver` wired into runtime factory                        | FULLY_IMPLEMENTED         | §1                                                                       |
-| [x]    | Sub-package publish/park                                               | FULLY_IMPLEMENTED         | §1 — parked unpublished (`private: true`)                                |
-| [x]    | ~~Full WASM runtime~~                                                  | REMOVED 2026-07-15        | Prototype deleted; TypeScript evaluator is the only path                 |
-| [ ]    | Time-travel / product debugger UI                                      | OUT_OF_SCOPE              | Builder-owned                                                            |
-| [x]    | Durable `RateLimitStore` / Postgres adapter                            | FULLY_IMPLEMENTED         | §1                                                                       |
-| [ ]    | `manifest test constraints` / ConstraintTestHarness                    | NOT_IMPLEMENTED           | phantom CLI                                                              |
-| [ ]    | `manifest generate-fixtures`                                           | NOT_IMPLEMENTED           | phantom CLI                                                              |
-| [ ]    | Config `env(VAR)` / `MANIFEST_ENV` overlays / top-level `stores:` YAML | NOT_IMPLEMENTED           | phantom config                                                           |
-| [ ]    | `projection.generateRoute` / `generateTypes` / `generateClient` API    | NOT_IMPLEMENTED           | phantom projection API                                                   |
-| [x]    | Kysely `columnMappings` actually applied                               | FULLY_IMPLEMENTED         | COMPLIANCE_MATRIX §8 — generator applies mappings to property + FK keys  |
-| [ ]    | Kitchen tutorial / product editor UI                                   | OUT_OF_SCOPE              | Builder owns visual editing; Kitchen is Manifest diagnostic surface only |
-| [ ]    | Default encryption provider (common no-vendor case)                    | NOT_IMPLEMENTED           | fail-closed by design until provider set                                 |
-| [ ]    | Projection orchestration / presets / app assembly UX                   | OUT_OF_SCOPE              | Builder — see Builder consumption matrix                                 |
+| Status | Gap                                                                    | Implementation Status |
+| ------ | ---------------------------------------------------------------------- | --------------------- |
+| [x]    | Approval escalate timeout (open `to` expression)                       | FULLY_IMPLEMENTED     | §1; author-defined routing — not person/department platform choice       |
+| [ ]    | `optional` runtime gate (beyond `required`)                            | OUT_OF_SCOPE          | by design — see §4; not a missing Manifest feature                       |
+| [x]    | Entity-level constraint overrides                                      | FULLY_IMPLEMENTED     | §1                                                                       |
+| [x]    | `command.returns` runtime validation                                   | OUT_OF_SCOPE          | by design — projection metadata only; semantics § Commands               |
+| [x]    | EventSourcedStore                                                      | FULLY_IMPLEMENTED     | §1                                                                       |
+| [ ]    | softDelete language keyword                                            | NOT_IMPLEMENTED       | Manifest language gap (projection config exists)                         |
+| [x]    | Materialized-views SQL expression lowering                             | FULLY_IMPLEMENTED     | §1                                                                       |
+| [ ]    | Convex unsupported surfaces (approvals/masking/retry/rateLimit)        | DIAGNOSTIC_ONLY       |
+| [x]    | Config G5 `projections.enabled`/`defaults`                             | FULLY_IMPLEMENTED     | §1                                                                       |
+| [x]    | Config G2 `validation.failOn`                                          | FULLY_IMPLEMENTED     | §1                                                                       |
+| [x]    | Config G10 `driftGates` / `manifest ci-gate`                           | FULLY_IMPLEMENTED     | §1                                                                       |
+| [x]    | `createUserResolver` wired into runtime factory                        | FULLY_IMPLEMENTED     | §1                                                                       |
+| [x]    | Sub-package publish/park                                               | FULLY_IMPLEMENTED     | §1 — parked unpublished (`private: true`)                                |
+| [x]    | ~~Full WASM runtime~~                                                  | REMOVED 2026-07-15    | Prototype deleted; TypeScript evaluator is the only path                 |
+| [ ]    | Time-travel / product debugger UI                                      | OUT_OF_SCOPE          | Builder-owned                                                            |
+| [x]    | Durable `RateLimitStore` / Postgres adapter                            | FULLY_IMPLEMENTED     | §1                                                                       |
+| [ ]    | `manifest test constraints` / ConstraintTestHarness                    | NOT_IMPLEMENTED       | phantom CLI                                                              |
+| [ ]    | `manifest generate-fixtures`                                           | NOT_IMPLEMENTED       | phantom CLI                                                              |
+| [ ]    | Config `env(VAR)` / `MANIFEST_ENV` overlays / top-level `stores:` YAML | NOT_IMPLEMENTED       | phantom config                                                           |
+| [ ]    | `projection.generateRoute` / `generateTypes` / `generateClient` API    | NOT_IMPLEMENTED       | phantom projection API                                                   |
+| [x]    | Kysely `columnMappings` actually applied                               | FULLY_IMPLEMENTED     | COMPLIANCE_MATRIX §8 — generator applies mappings to property + FK keys  |
+| [ ]    | Kitchen tutorial / product editor UI                                   | OUT_OF_SCOPE          | Builder owns visual editing; Kitchen is Manifest diagnostic surface only |
+| [ ]    | Default encryption provider (common no-vendor case)                    | NOT_IMPLEMENTED       | fail-closed by design until provider set                                 |
+| [ ]    | Projection orchestration / presets / app assembly UX                   | OUT_OF_SCOPE          | Builder — see Builder consumption matrix                                 |
 
 ---
 

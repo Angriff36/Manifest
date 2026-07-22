@@ -89,7 +89,7 @@ const result = await runtime.runCommand(
 
 if (result.success) {
   // Command executed; access emitted events
-  console.log('Emitted events:', result.events);
+  console.log('Emitted events:', result.emittedEvents);
 } else {
   // Surface diagnostics — do not alter or suppress them.
   if (result.guardFailure) {
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     return Response.json({ error: result.error }, { status: 422 });
   }
 
-  return Response.json({ success: true, events: result.events });
+  return Response.json({ success: true, events: result.emittedEvents });
 }
 ```
 

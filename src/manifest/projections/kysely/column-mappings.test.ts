@@ -3,50 +3,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { IR, IREntity, IRStore } from '../../ir';
 import { KyselyProjection } from './generator.js';
-
-function emptyIR(): IR {
-  return {
-    version: '1.0',
-    provenance: {
-      contentHash: 'test-fixture-hash',
-      compilerVersion: 'test',
-      schemaVersion: '1.0',
-      compiledAt: '2025-01-01T00:00:00.000Z',
-    },
-    modules: [],
-    values: [],
-    entities: [],
-    enums: [],
-    stores: [],
-    events: [],
-    commands: [],
-    policies: [],
-  };
-}
-
-function durableStore(entityName: string): IRStore {
-  return { entity: entityName, target: 'durable', config: {} };
-}
-
-function bareEntity(
-  name: string,
-  extras: { properties?: IREntity['properties']; relationships?: IREntity['relationships'] } = {},
-): IREntity {
-  return {
-    name,
-    properties: [
-      { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
-      ...(extras.properties ?? []),
-    ],
-    computedProperties: [],
-    relationships: extras.relationships ?? [],
-    commands: [],
-    constraints: [],
-    policies: [],
-  };
-}
+import { bareEntity, durableStore, emptyIR } from './test-fixtures.js';
 
 describe('KyselyProjection — columnMappings', () => {
   it('renames a property key to the mapped SQL column name', () => {

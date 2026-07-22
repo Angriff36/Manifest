@@ -1,5 +1,8 @@
 # Federation (Multi-Service Runtime)
 
+Created: 2026-06-02  
+Updated: 2026-07-22 — completion proved (COMPLIANCE_MATRIX §1); not a doc phantom.
+
 ## Summary
 
 The federated runtime enables multiple Manifest services to communicate with each other while preserving policy enforcement and workflow metadata across service boundaries.

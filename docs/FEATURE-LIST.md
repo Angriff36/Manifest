@@ -368,7 +368,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Entity `behavior` blocks | `REJECTED_LOUD → proven reject` | see §1 / fixture `110` |
 | 2. Language (DSL) — full inventory | Enum types | `CLAIMED_NEEDS_PROOF` | fixture `57` |
 | 2. Language (DSL) — full inventory | Events + reactions (`on Event run`) | `CLAIMED_NEEDS_PROOF` | fixtures `67`, `96` |
-| 2. Language (DSL) — full inventory | Federation | `NOT_IMPLEMENTED or PARTIAL` | `docs/internal/features/federation.md` — prove or strike |
 | 2. Language (DSL) — full inventory | Generic / parameterized entities `Entity<T>` | `NOT_IMPLEMENTED` | fixtures `84`–`85` negative only |
 | 2. Language (DSL) — full inventory | Language keyword `softDelete` | `NOT_IMPLEMENTED` | projection config only |
 | 2. Language (DSL) — full inventory | Modules + `use` imports | `CLAIMED_NEEDS_PROOF` | module-resolver tests |

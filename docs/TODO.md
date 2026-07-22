@@ -231,6 +231,15 @@ non-binding navigation mirror only.
       `column-mappings.test.ts`. Matrix §8.
       ~~option declared, unused~~
 
+## SDK / platform
+
+- [x] **Federation prove-or-strike** — proved 2026-07-22: shipped SDK at
+      `@angriff36/manifest/federation` (registry, client, policy bridge,
+      descriptor, HTTP adapter); fixture `87-federation`; 34 unit tests green.
+      Matrix §1/§2. Doc path is `docs/features/federation.md` (FEATURE_MATRIX
+      wrongly pointed at `docs/internal/features/federation.md`).
+      ~~NOT_IMPLEMENTED or PARTIAL — prove or strike~~
+
 ## Distribution
 
 - [x] **`getLanguageMetadata()` platform export** — shipped.

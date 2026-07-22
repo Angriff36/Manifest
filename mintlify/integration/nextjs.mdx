@@ -356,7 +356,7 @@ try {
     return manifestErrorResponse(result.error ?? 'Command failed', 422);
   }
 
-  return manifestSuccessResponse({ events: result.events });
+  return manifestSuccessResponse({ events: result.emittedEvents });
 } finally {
   unsubscribe();
 }

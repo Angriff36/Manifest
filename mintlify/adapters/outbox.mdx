@@ -100,7 +100,7 @@ import { PostgresOutboxStore } from '@angriff36/manifest/outbox/postgres';
 import { Pool } from 'pg';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const outboxStore = new PostgresOutboxStore(pool);
+const outboxStore = new PostgresOutboxStore({ pool });
 ```
 
 ```typescript RedisOutboxStore (Redis Streams)
@@ -140,7 +140,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const runtime = new RuntimeEngine(ir, {
   userId: session.userId,
   tenantId: session.tenantId,
-  outboxStore: new PostgresOutboxStore(pool),
+  outboxStore: new PostgresOutboxStore({ pool }),
 });
 
 // After a successful command, entries are automatically enqueued.

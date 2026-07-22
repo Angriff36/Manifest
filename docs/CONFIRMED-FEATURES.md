@@ -157,6 +157,11 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 - **Projection descriptor API (2026-07-14, shipped in v3.6.1):** `@angriff36/manifest/projections` → `describeProjection` / `listProjectionDescriptors` / `validateProjectionInvocation` + `ProjectionDescriptor`. Scope, options, prerequisites, artifacts, deps, companions; `safelyInvokable` distinguishes registered vs safely invokable. Meta lives beside each projection (`descriptorMeta`); parity-tested against the registry. Spec: `docs/spec/projection-descriptors.md`.
 - **Convex application assembly proofs (2026-07-14, shipping in v3.6.2):** `convex.react`; zod↔convex companions; `@angriff36/manifest/seed-pack` Convex binding; `contract-tests` projection; `verifyConvexApplicationAssembly`.
 - **DX Proof Kit (2026-07-16, shipped in v3.6.13):** `@angriff36/manifest/proof-kit` → `emitCapabilityCatalog` / `emitProofRegistry` / `validateProofRegistry` / `runManifestIntegrationGuard`; `@angriff36/manifest/proof-kit/convex-test` optional harness (`createManifestTestContext`, `ManifestConvexProofHarness`). Evidence: `src/manifest/proof-kit/**`, `proof-kit.test.ts`. Guide: `docs/guides/dx-proof-kit.md`. Completion SoT: `docs/internal/COMPLIANCE_MATRIX.md`.
+- **Federation SDK (proved 2026-07-22):** `@angriff36/manifest/federation` →
+  `FederationRegistry` / `FederationClient` / `HttpFederationTransport` /
+  `buildDescriptor` / policy-bridge helpers / `generateHttpAdapter`. Evidence:
+  `src/manifest/federation/**`, fixture `87-federation`, 34 unit tests.
+  Docs: `docs/features/federation.md`. Completion SoT: COMPLIANCE_MATRIX §1.
 - **In-repo, tested, NOT published** (see Gaps): `@manifest/mcp-server` 0.1.0 (tools: compile/execute/explain/validate), `@manifest/lsp-server` 0.1.0 (completion/definition/diagnostics/document-symbols/hover), `@manifest/stdlib` 0.1.0, `manifest-lang` VS Code extension 0.3.0 (marketplace status unverified)
 
 ## 8. Config System
