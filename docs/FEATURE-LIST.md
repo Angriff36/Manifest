@@ -40,7 +40,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | --- | --- | --- | --- |
 | `analytics` | `analytics.tracking-plan`, `analytics.events`, `analytics.handlers` | no | undeclared |
 | `contract-tests` | `contract-tests.convex` | yes | undeclared |
-| `convex` | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react` | yes | 23 supported / 9 partial / 5 unsupported |
+| `convex` | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react` | yes | 24 supported / 9 partial / 5 unsupported |
 | `dart` | `dart.entity`, `dart.command`, `dart.models`, `dart.client`, `dart.providers`, `dart.package` | no | undeclared |
 | `drizzle` | `drizzle.schema` | yes | undeclared |
 | `dynamodb` | `dynamodb.cloudformation`, `dynamodb.cdk`, `dynamodb.terraform` | yes | undeclared |
@@ -464,11 +464,11 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 7. CLI, SDK, config, packaging, docs tooling | Published `@angriff36/manifest` npm | `CLAIMED_NEEDS_PROOF` | pin `package.json` each release |
 | 7. CLI, SDK, config, packaging, docs tooling | Snapshot testing tooling | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/snapshot-testing.md` |
 | 7. CLI, SDK, config, packaging, docs tooling | wiring-coverage/inspect/remediate | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 8. Open gaps / phantoms (checklist mirror) | `manifest generate-fixtures` | `NOT_IMPLEMENTED` | phantom CLI |
-| 8. Open gaps / phantoms (checklist mirror) | `manifest test constraints` / ConstraintTestHarness | `NOT_IMPLEMENTED` | phantom CLI |
-| 8. Open gaps / phantoms (checklist mirror) | `projection.generateRoute` / `generateTypes` / `generateClient` API | `NOT_IMPLEMENTED` | phantom projection API |
+| 8. Open gaps / phantoms (checklist mirror) | ~~`manifest generate-fixtures`~~ | `REMOVED (docs struck)` | use `manifest seed` / `load-test` |
+| 8. Open gaps / phantoms (checklist mirror) | ~~`manifest test constraints` / ConstraintTestHarness~~ | `REMOVED (docs struck)` | use `manifest harness` / `repl` |
+| 8. Open gaps / phantoms (checklist mirror) | ~~`projection.generateRoute` / `generateTypes` / `generateClient`~~ | `REMOVED (docs struck)` | use `generate(ir, request)` / CLI `--all` |
+| 8. Open gaps / phantoms (checklist mirror) | ~~Config `env(VAR)` / `MANIFEST_ENV` overlays / YAML `stores:` urls~~ | `REMOVED (docs struck)` | use `env:` preflight + `process.env` in `manifest.config.ts` |
 | 8. Open gaps / phantoms (checklist mirror) | ~~Full WASM runtime~~ | `REMOVED 2026-07-15` | Prototype deleted; TypeScript evaluator is the only path |
-| 8. Open gaps / phantoms (checklist mirror) | Config `env(VAR)` / `MANIFEST_ENV` overlays / top-level `stores:` YAML | `NOT_IMPLEMENTED` | phantom config |
 | 8. Open gaps / phantoms (checklist mirror) | Convex unsupported surfaces (approvals/retry/rateLimit) | `DIAGNOSTIC_ONLY` | See feature matrix |
 | 8. Open gaps / phantoms (checklist mirror) | Default encryption provider (common no-vendor case) | `NOT_IMPLEMENTED` | fail-closed by design until provider set |
 | 8. Open gaps / phantoms (checklist mirror) | softDelete language keyword | `NOT_IMPLEMENTED` | Manifest language gap (projection config exists) |
