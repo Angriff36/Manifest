@@ -81,7 +81,7 @@ not authoritative for Manifest semantics.
 
 - Each property has a type, optional defaultValue, and modifiers.
 - Modifiers are declarative. The runtime enforces the subset listed under "Modifier enforcement" below; the remaining modifiers (`indexed`, `optional`, `searchable`) are projection hints with no independent runtime behavior.
-- Map types: `map<V>` is a string-keyed dictionary of values of type `V`. The two-parameter form `map<string, V>` is sugar for `map<V>` and MUST lower to the same IR (`type.name: "map"`, single `generic` = value type). A two-parameter form whose first type argument is not plain `string` is a compile error. Non-string key types are not supported.
+- Map types: `map<V>` is a string-keyed dictionary of values of type `V`. The two-parameter form `map<string, V>` is sugar for `map<V>` and MUST lower to the same IR (`type.name: "map"`, single `generic` = value type). `record<V>` / `record<string, V>` is an equivalent surface alias and MUST lower to the same IR `map`. A two-parameter form whose first type argument is not plain `string` is a compile error. Non-string key types are intentionally unsupported (not a missing feature).
 - When creating an instance, if a property is omitted from the provided data, the runtime MUST apply the property's defaultValue if present, or the type's default value if no defaultValue is specified.
 - If a property is explicitly provided (even with an empty string `""`), that value is used and defaults do not apply.
 
@@ -498,6 +498,17 @@ projection sees one spelling. Source files are never rewritten.
 Applies across all loaded `.manifest` source files in a compile unit when
 normalization is enabled.
 
+### Reserved vs contextual identifiers (2026-07-22)
+
+Lexer `KEYWORDS` remain illegal as declaration names (`consumeIdentifier`).
+Domain words that are only meaningful at specific parse sites are **contextual
+identifiers**, not reserved: `publish`, `persist`, `read`, `write`, `delete`,
+`execute`, and `tenant` (plus existing contextual words such as `schedule`,
+`retry`, `masked`, …). Authors MAY name commands/properties `publish` /
+`delete` / `tenant` / `read`. Structural expression words (`self`, `user`,
+`context`, `in`, `void`, `to`, …) stay reserved. Evidence:
+`src/manifest/reserved-word-ergonomics.test.ts`.
+
 ---
 
 ## Commands
@@ -585,6 +596,8 @@ normalization is enabled.
 - Generated public APIs MUST NOT accept values the generated entity schema rejects
   (same field contract for Zod and platform validators).
 - Commands may declare a `retry` policy. When present, the runtime wraps execution and retries a failed attempt whose error code appears in the command's `retryOn` list. The runtime derives that code from the failed `CommandResult`: a concurrency conflict yields `CONCURRENCY_CONFLICT`; a structured (`CODE: message`) error surfaces its leading `CODE` verbatim (so a command that fails with `SUPPLIER_UNAVAILABLE: …` is retryable when `retryOn` lists `SUPPLIER_UNAVAILABLE`); an unstructured error mentioning `TIMEOUT` falls back to `TIMEOUT`. Policy denials, guard failures, and blocking constraint outcomes MUST NOT be retried.
+- Retry field-name ergonomics (parser aliases → canonical IR): `attempts` → `maxAttempts`; `initialDelay` / `initialDelayMs` → `delay` / `delayMs`; `maxDelay` / `maxDelayMs` → IR `maxDelayMs`. Canonical fields: `maxAttempts`, `backoff`, `delay`/`delayMs`, `maxDelay`, `jitter`, `retryOn`.
+- When `maxDelay` is set, each computed backoff delay MUST be clamped with `min(delay, maxDelay)` before sleep/jitter (see `computeRetryDelays`).
 - `schedule` declarations compile to IR `schedules`. Runtimes expose `getSchedules()` and `runSchedule(name)`. The `RuntimeEngine` itself has no timer, so adapters decide when to invoke schedules; the reference package ships an optional worker (`startScheduleWorker` / `runSchedulesOnce` from `@angriff36/manifest/schedule-worker`) that evaluates cron and interval/every triggers on a tick loop and, when the IR declares approvals, sweeps approval expiry. Cron is matched in UTC to the minute (day-of-month and day-of-week follow the standard OR rule when both are restricted).
 - Entity `extends` and `mixin` composition is resolved at compile time. Precedence on name collision: own > later mixin > earlier mixin > parent. Cycles and unknown parents are compile errors.
 
@@ -592,6 +605,11 @@ normalization is enabled.
 
 - Command- and policy-level `rateLimit` use a sliding window: effective limit =
   `maxRequests + (burstAllowance ?? 0)` within `windowMs`.
+- RateLimit field-name ergonomics (parser aliases → canonical IR): `perMinute: N`
+  → `maxRequests: N` with `windowMs: 60000` when those fields are unset;
+  `strategy: …` is accepted and ignored (runtime is always sliding-window);
+  `scope: user.id` (or any `scope: <root>.…` path) lowers to bare scope `<root>`
+  when `<root>` is `user` / `tenant` / `global`.
 - Scope keys:
   - `user` — derived from the acting user in evaluation context;
   - `tenant` — from the IR tenant resolver / runtime tenant id;

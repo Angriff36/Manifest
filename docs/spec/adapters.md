@@ -221,7 +221,7 @@ The runtime exposes a durable audit hook as the `AuditSink` adapter (`src/manife
 - MUST be idempotent against `recordId` so retries do not double-write;
 - are wired in via `RuntimeOptions.auditSink`.
 
-Outcome values: `success | guard_denied | policy_denied | constraint_failed | concurrency_conflict | missing_tenant_context | error`.
+Outcome values: `success | guard_denied | policy_denied | constraint_failed | concurrency_conflict | missing_tenant_context | rate_limit_denied | error`.
 
 ### Runtime Behavior (Implemented)
 

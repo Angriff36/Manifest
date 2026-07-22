@@ -514,6 +514,8 @@ export interface RetryPolicyNode extends ASTNode {
   delay?: number;
   /** Alternative field name for delay */
   delayMs?: number;
+  /** Cap on each computed backoff delay (ms); author field `maxDelay` / `maxDelayMs` */
+  maxDelay?: number;
   /** Whether to apply jitter to backoff delays */
   jitter?: boolean | number;
   /** Error conditions to retry on (repeated field, e.g. ["CONCURRENCY_CONFLICT", "TIMEOUT"]) */

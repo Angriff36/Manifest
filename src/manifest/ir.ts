@@ -273,6 +273,11 @@ export interface IRRetry {
   backoff: 'fixed' | 'linear' | 'exponential';
   /** Base delay in milliseconds */
   delayMs: number;
+  /**
+   * Optional upper bound on each backoff delay (ms). When set, computed delays
+   * are clamped with `min(delay, maxDelayMs)`. Author field: `maxDelay`.
+   */
+  maxDelayMs?: number;
   /** Whether to apply jitter to retry delays */
   jitter?: boolean;
   /** Error codes that trigger a retry (deduped, >= 1 when present) */

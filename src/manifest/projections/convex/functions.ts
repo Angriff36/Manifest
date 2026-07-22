@@ -65,9 +65,7 @@ import { renderReadPolicies, resolveConvexReadVisibility } from './read-policies
 import {
   encryptedFieldNames,
   privateFieldNames,
-  stripPrivateFromDoc,
   stripPrivateFromReturn,
-  stripPrivateFromRows,
 } from './privacy.js';
 import {
   MASK_HELPER,

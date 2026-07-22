@@ -12,6 +12,8 @@ export interface RetryConfig {
   maxAttempts: number;
   backoff: 'fixed' | 'linear' | 'exponential';
   delay: number; // base delay in ms
+  /** Optional cap applied to each computed backoff delay (ms). */
+  maxDelay?: number;
   jitter?: boolean;
   retryOn: string[]; // error codes to retry on (e.g., ["CONCURRENCY_CONFLICT", "TIMEOUT"])
 }
@@ -69,6 +71,10 @@ export function computeRetryDelays(config: RetryConfig, maxAttempts?: number): R
 
       default:
         delay = config.delay;
+    }
+
+    if (config.maxDelay !== undefined) {
+      delay = Math.min(delay, config.maxDelay);
     }
 
     delaysMs.push(delay);

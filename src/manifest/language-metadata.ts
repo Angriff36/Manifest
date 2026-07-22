@@ -23,8 +23,7 @@ const COMMAND_ACTION_CONSTRUCTS = [
   'when',
   'mutate',
   'emit',
-  'publish',
-  'persist',
+  // publish / persist are contextual identifiers (Appendix E)
   'compute',
   'effect',
   'returns',
@@ -57,7 +56,7 @@ const TOP_LEVEL_CONSTRUCTS = [
   'store',
   'event',
   'saga',
-  'tenant',
+  // tenant is contextual (Appendix E)
   'webhook',
   'use',
   'flow',
@@ -69,10 +68,11 @@ const TOP_LEVEL_CONSTRUCTS = [
 
 /**
  * Top-level constructs parsed as CONTEXTUAL identifiers, not reserved words
- * (so `property schedule: string` stays legal). Cannot be asserted against
- * lexer KEYWORDS; verified against the parser's top-level dispatch instead.
+ * (so `property schedule: string` / `command publish()` stay legal). Cannot be
+ * asserted against lexer KEYWORDS; verified against the parser's top-level
+ * dispatch instead.
  */
-const CONTEXTUAL_TOP_LEVEL_CONSTRUCTS = ['value', 'role', 'schedule'] as const;
+const CONTEXTUAL_TOP_LEVEL_CONSTRUCTS = ['value', 'role', 'schedule', 'tenant'] as const;
 
 /**
  * ALL identifiers with contextual syntactic meaning at specific declaration
@@ -89,7 +89,9 @@ const CONTEXTUAL_KEYWORDS = [
   'compensate',
   'count',
   'cron',
+  'delete',
   'every',
+  'execute',
   'external',
   'interval',
   'masked',
@@ -98,8 +100,11 @@ const CONTEXTUAL_KEYWORDS = [
   'of',
   'on_failure',
   'on_timeout',
+  'persist',
   'policies',
+  'publish',
   'rateLimit',
+  'read',
   'realtime',
   'retry',
   'role',
@@ -107,8 +112,10 @@ const CONTEXTUAL_KEYWORDS = [
   'stage',
   'step',
   'sum',
+  'tenant',
   'unmask',
   'value',
+  'write',
 ] as const;
 
 export interface BuiltinMetadata {

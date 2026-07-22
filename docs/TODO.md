@@ -145,6 +145,10 @@ non-binding navigation mirror only.
       the committed effective-config snapshot.
       ~~Config vNext G10 — drift gates: confirmed unbuilt.~~
       ~~Config vNext G2/G10~~
+- [x] **CLI writer `--dry-run`** — proved 2026-07-22: shared `dry-run-fs.ts`
+      + focused writer tests (compile/generate/diagram/install-hooks); wired on
+      CLI writers in `packages/cli/src/index.ts` @ `510ef3b28ecb04bde1447b5fece1674cd42687c8`.
+      Matrix §7 FULLY_IMPLEMENTED.
       ~~Config vNext G5/G2/G10~~
 - [x] **Language vNext remainder (2026-07-15 audit)** — closed 2026-07-15: - Canonical routes conformance — `routes.conformance.test.ts`
       (determinism / manual merge / lint-routes) - Diagnostics completeness — `runtime-diagnostics-completeness.test.ts` - Evaluation step-count counters — `EvaluationStats` +
@@ -157,6 +161,9 @@ non-binding navigation mirror only.
       approval/audit/outbox/jobs/idempotency/rate-limit `.sql` schemas
       (`manifest db init`, `--apply` + `DATABASE_URL` / `--out` / `--only` /
       `--list`).
+- [x] **CLI writer `--dry-run`** — proved 2026-07-22: `dry-run-fs.ts` + focused
+      writer tests (compile/generate/diagram/install-hooks); wired on CLI writers
+      @ `510ef3b28ecb04bde1447b5fece1674cd42687c8`. Matrix §7 FULLY_IMPLEMENTED.
 - [x] **Hono & Express `authProvider` option** — fixed 2026-07-15:
       `authProvider?: 'clerk' | 'custom' | 'none'` on both projections; companion
       middleware templates switch (fail-closed custom stub / Clerk getAuth /
@@ -214,17 +221,18 @@ non-binding navigation mirror only.
       open gaps from `docs/internal/COMPLIANCE_MATRIX.md`. Matrix remains completion SoT.
       ~~currently a 2026-06-02 snapshot with a caveat header pointing at
       `docs/CONFIRMED-FEATURES.md`~~
-- [ ] **Appendix E language-design backlog** (recorded, never scheduled):
+- [x] **Appendix E language-design backlog** — closed 2026-07-22 (remaining
+      items disposed):
       ~~`map<K,V>` two-param form~~ **Done (2026-07-15):** `map<string, V>` sugar
-      for `map<V>` (non-string keys still unsupported),
-      retry/rateLimit field-name ergonomics,
-      reserved-word ergonomics, command-body policy clause,
-      ~~`.length` vs `length()`~~ **Done (2026-07-22):** `s.length` / `arr.length`
-      ≡ `length(v)` in reference runtime (`runtime-member-length.test.ts`).
-      ~~no `timestamp` type (note: zod now accepts `timestamp` as a
-      datetime alias; language/spec still use `datetime`).~~
-      **Done (2026-07-15):** `timestamp` is a language/runtime alias of
-      `datetime` (IR preserves spelling; `E_TYPE_DATETIME`).
+      for `map<V>`. **`record` alias (2026-07-22):** `record`/`record<string,V>`
+      → IR `map` (`map-record-alias.test.ts`). Non-string keys **rejected by
+      design** (string-keyed maps only).
+      ~~retry/rateLimit field-name ergonomics~~ **Done (2026-07-22)**
+      ~~`maxDelay` delay-cap~~ **Done (2026-07-22)**
+      ~~reserved-word ergonomics~~ **Done (2026-07-22)**
+      ~~command-body policy clause~~ **Rejected by design (2026-07-22)**
+      ~~`.length` vs `length()`~~ **Done (2026-07-22)**
+      ~~no `timestamp` type~~ **Done (2026-07-15)**
 
 ## Projections
 

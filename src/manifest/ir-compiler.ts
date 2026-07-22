@@ -1883,8 +1883,10 @@ export class IRCompiler {
   }
 
   private transformType(t: TypeNode): IRType {
+    // `record` is surface sugar for `map` (string-keyed dictionary).
+    const name = t.name === 'record' ? 'map' : t.name;
     return {
-      name: t.name,
+      name,
       generic: t.generic ? this.transformType(t.generic) : undefined,
       nullable: t.nullable,
       ...(t.params ? { params: t.params } : {}),
@@ -2085,6 +2087,7 @@ export class IRCompiler {
     const maxAttempts = r.maxAttempts ?? 1;
     const backoff = r.backoff ?? 'fixed';
     const delayMs = r.delayMs ?? r.delay ?? 0;
+    const maxDelayMs = r.maxDelay;
     const jitter =
       typeof r.jitter === 'boolean' ? r.jitter : r.jitter !== undefined ? true : undefined;
     const retryOn = r.retryOn ? [...new Set(r.retryOn)] : undefined;
@@ -2095,6 +2098,9 @@ export class IRCompiler {
     if (delayMs < 0) {
       this.emitDiagnostic('error', `Retry delay must be >= 0, got ${delayMs}`);
     }
+    if (maxDelayMs !== undefined && maxDelayMs < 0) {
+      this.emitDiagnostic('error', `Retry maxDelay must be >= 0, got ${maxDelayMs}`);
+    }
     if (retryOn && retryOn.length < 1) {
       this.emitDiagnostic('error', 'Retry retryOn must list at least one error code');
     }
@@ -2103,6 +2109,7 @@ export class IRCompiler {
       maxAttempts,
       backoff,
       delayMs,
+      ...(maxDelayMs !== undefined ? { maxDelayMs } : {}),
       ...(jitter !== undefined ? { jitter } : {}),
       ...(retryOn && retryOn.length > 0 ? { retryOn } : {}),
     };

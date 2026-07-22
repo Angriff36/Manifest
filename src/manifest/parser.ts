@@ -1,6 +1,12 @@
 import { Lexer } from './lexer.js';
 import { PROPERTY_MODIFIERS, type PropertyModifier } from './property-modifiers.js';
 import {
+  canonicalizeRateLimitField,
+  canonicalizeRetryField,
+  rateLimitFromPerMinute,
+  rateLimitScopeFromRoot,
+} from './retry-ratelimit-aliases.js';
+import {
   Token,
   ManifestProgram,
   EntityNode,
@@ -115,7 +121,7 @@ export class Parser {
         else if (this.check('KEYWORD', 'enum')) program.enums.push(this.parseEnum());
         else if (this.check('IDENTIFIER', 'value') || this.check('KEYWORD', 'value')) {
           program.values.push(this.parseValueObject());
-        } else if (this.check('KEYWORD', 'tenant')) {
+        } else if (this.check('IDENTIFIER', 'tenant')) {
           if (program.tenant) {
             this.errors.push({
               message:
@@ -540,7 +546,7 @@ export class Parser {
 
   private parseTenant(): TenantNode {
     const pos = this.current()?.position;
-    this.consume('KEYWORD', 'tenant');
+    this.consume('IDENTIFIER', 'tenant');
     const property = this.consumeIdentifierOrKeyword().value;
     this.consume('OPERATOR', ':');
     const dataType = this.parseType();
@@ -1177,10 +1183,10 @@ export class Parser {
     const name = this.consumeIdentifier().value;
     let action: PolicyNode['action'] = 'all';
     if (
-      this.check('KEYWORD', 'read') ||
-      this.check('KEYWORD', 'write') ||
-      this.check('KEYWORD', 'delete') ||
-      this.check('KEYWORD', 'execute') ||
+      this.check('IDENTIFIER', 'read') ||
+      this.check('IDENTIFIER', 'write') ||
+      this.check('IDENTIFIER', 'delete') ||
+      this.check('IDENTIFIER', 'execute') ||
       this.check('KEYWORD', 'all') ||
       this.check('KEYWORD', 'override')
     ) {
@@ -1313,11 +1319,13 @@ export class Parser {
       this.consume('PUNCTUATION', ')');
       params = { precision, scale };
     }
+    // `record` is an alias of `map` (Appendix E); both are string-keyed.
+    const isMapLike = name === 'map' || name === 'record';
     if (this.check('OPERATOR', '<')) {
       this.advance();
       const firstGeneric = this.parseType();
-      // `map<string, V>` is sugar for `map<V>` (keys are always strings).
-      if (name === 'map' && this.check('PUNCTUATION', ',')) {
+      // `map<string, V>` / `record<string, V>` is sugar for `map<V>` (keys are strings).
+      if (isMapLike && this.check('PUNCTUATION', ',')) {
         this.advance(); // consume ,
         this.skipNL();
         const valueGeneric = this.parseType();
@@ -1328,7 +1336,7 @@ export class Parser {
           !firstGeneric.params;
         if (!keyOk) {
           this.errors.push({
-            message: `map key type must be string (got ${firstGeneric.name}); use map<V> or map<string, V>`,
+            message: `${name} key type must be string (got ${firstGeneric.name}); use ${name}<V> or ${name}<string, V>`,
             position: this.current()?.position,
             severity: 'error',
           });
@@ -1910,7 +1918,7 @@ export class Parser {
       kind = 'mutate';
       target = this.consumeIdentifier().value;
       this.consume('OPERATOR', '=');
-    } else if (this.check('KEYWORD', 'emit') || this.check('KEYWORD', 'publish')) {
+    } else if (this.check('KEYWORD', 'emit') || this.check('IDENTIFIER', 'publish')) {
       kind = this.advance().value as 'emit' | 'publish';
       // Named target event: `emit EventName` / `publish EventName [payloadExpr]`.
       // The event name is required (compiler enforces EMIT_ACTION_UNKNOWN_EVENT);
@@ -1936,7 +1944,7 @@ export class Parser {
         target = this.consumeIdentifier().value;
         this.consume('OPERATOR', '=');
       }
-    } else if (this.check('KEYWORD', 'persist')) {
+    } else if (this.check('IDENTIFIER', 'persist')) {
       this.advance();
       kind = 'persist';
     } else if (this.check('KEYWORD', 'compute')) {
@@ -2677,6 +2685,7 @@ export class Parser {
     let backoff: 'fixed' | 'exponential' | 'linear' | undefined;
     let delay: number | undefined;
     let delayMs: number | undefined;
+    let maxDelay: number | undefined;
     let jitter: boolean | number | undefined;
     const retryOn: string[] = [];
 
@@ -2686,25 +2695,31 @@ export class Parser {
 
       const field = this.consumeIdentifier().value;
       this.consume('OPERATOR', ':');
+      const canonical = canonicalizeRetryField(field);
 
-      if (field === 'maxAttempts') {
+      if (canonical === 'maxAttempts') {
         maxAttempts = Number(this.advance().value);
-      } else if (field === 'backoff') {
+      } else if (canonical === 'backoff') {
         backoff = this.consumeIdentifierOrKeyword().value as 'fixed' | 'exponential' | 'linear';
-      } else if (field === 'delay') {
+      } else if (canonical === 'delay') {
         delay = Number(this.advance().value);
-      } else if (field === 'delayMs') {
+      } else if (canonical === 'delayMs') {
         delayMs = Number(this.advance().value);
-      } else if (field === 'jitter') {
+      } else if (canonical === 'maxDelay') {
+        maxDelay = Number(this.advance().value);
+      } else if (canonical === 'jitter') {
         if (this.check('KEYWORD', 'true') || this.check('KEYWORD', 'false')) {
           jitter = this.advance().value === 'true';
         } else {
           jitter = Number(this.advance().value);
         }
-      } else if (field === 'retryOn') {
+      } else if (canonical === 'retryOn') {
         retryOn.push(
           this.check('STRING') ? this.advance().value : this.consumeIdentifierOrKeyword().value,
         );
+      } else {
+        // Unknown field — consume value token so the block stays parseable.
+        this.advance();
       }
 
       if (this.check('PUNCTUATION', ',')) {
@@ -2722,6 +2737,7 @@ export class Parser {
       ...(backoff ? { backoff } : {}),
       ...(delay !== undefined ? { delay } : {}),
       ...(delayMs !== undefined ? { delayMs } : {}),
+      ...(maxDelay !== undefined ? { maxDelay } : {}),
       ...(jitter !== undefined ? { jitter } : {}),
       ...(retryOn.length > 0 ? { retryOn } : {}),
     };
@@ -2831,15 +2847,32 @@ export class Parser {
 
       const field = this.consumeIdentifier().value;
       this.consume('OPERATOR', ':');
+      const canonical = canonicalizeRateLimitField(field);
 
-      if (field === 'maxRequests') {
+      if (canonical === 'maxRequests') {
         maxRequests = Number(this.advance().value);
-      } else if (field === 'windowMs') {
+      } else if (canonical === 'windowMs') {
         windowMs = Number(this.advance().value);
-      } else if (field === 'scope') {
-        scope = this.consumeIdentifierOrKeyword().value as 'user' | 'tenant' | 'global';
-      } else if (field === 'burstAllowance') {
+      } else if (canonical === 'scope') {
+        const root = this.consumeIdentifierOrKeyword().value;
+        // Ergonomics: `scope: user.id` (and longer paths) → bare scope root.
+        while (this.check('OPERATOR', '.')) {
+          this.advance();
+          this.consumeIdentifierOrKeyword();
+        }
+        scope = rateLimitScopeFromRoot(root) ?? (root as 'user' | 'tenant' | 'global');
+      } else if (canonical === 'burstAllowance') {
         burstAllowance = Number(this.advance().value);
+      } else if (canonical === 'perMinute') {
+        const perMinute = Number(this.advance().value);
+        const expanded = rateLimitFromPerMinute(perMinute);
+        if (maxRequests === undefined) maxRequests = expanded.maxRequests;
+        if (windowMs === undefined) windowMs = expanded.windowMs;
+      } else if (canonical === 'strategy') {
+        // Accepted for ergonomics; runtime is always sliding-window.
+        this.consumeIdentifierOrKeyword();
+      } else {
+        this.advance();
       }
 
       if (this.check('PUNCTUATION', ',')) {

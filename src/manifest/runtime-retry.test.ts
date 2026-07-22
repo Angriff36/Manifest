@@ -76,6 +76,21 @@ describe('computeRetryDelays', () => {
     expect(result.delaysMs).toEqual([]); // no retries
     expect(result.maxDelayMs).toBe(0);
   });
+
+  it('clamps exponential backoff with maxDelay', () => {
+    const config: RetryConfig = {
+      maxAttempts: 5,
+      backoff: 'exponential',
+      delay: 1000,
+      maxDelay: 2500,
+      retryOn: ['TIMEOUT'],
+    };
+
+    const result = computeRetryDelays(config);
+    // uncapped: 1000, 2000, 4000, 8000 → capped: 1000, 2000, 2500, 2500
+    expect(result.delaysMs).toEqual([1000, 2000, 2500, 2500]);
+    expect(result.maxDelayMs).toBe(2500);
+  });
 });
 
 describe('isRetryableError', () => {

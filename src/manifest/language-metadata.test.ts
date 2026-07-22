@@ -83,7 +83,6 @@ describe('getLanguageMetadata', () => {
       'module',
       'entity',
       'enum',
-      'tenant',
       'command',
       'flow',
       'effect',
@@ -96,7 +95,7 @@ describe('getLanguageMetadata', () => {
       'saga',
       'webhook',
     ];
-    const PARSER_TOP_LEVEL_CONTEXTUAL = ['value', 'role', 'schedule'];
+    const PARSER_TOP_LEVEL_CONTEXTUAL = ['value', 'role', 'schedule', 'tenant'];
 
     const metadata = getLanguageMetadata();
     expect([...metadata.topLevelConstructs].sort()).toEqual(PARSER_TOP_LEVEL_KEYWORDS.sort());

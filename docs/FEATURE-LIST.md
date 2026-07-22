@@ -23,12 +23,12 @@ The public language-metadata registry currently reports 19 top-level constructs,
 
 | Registry | Values |
 | --- | --- |
-| Top-level constructs | `entity`, `enum`, `command`, `module`, `policy`, `store`, `event`, `saga`, `tenant`, `webhook`, `use`, `flow`, `effect`, `expose`, `compose`, `on`, `value`, `role`, `schedule` |
+| Top-level constructs | `entity`, `enum`, `command`, `module`, `policy`, `store`, `event`, `saga`, `webhook`, `use`, `flow`, `effect`, `expose`, `compose`, `on`, `value`, `role`, `schedule`, `tenant` |
 | Relationship kinds | `hasMany`, `hasOne`, `belongsTo`, `ref` |
-| Command/action constructs | `guard`, `when`, `mutate`, `emit`, `publish`, `persist`, `compute`, `effect`, `returns`, `async` |
+| Command/action constructs | `guard`, `when`, `mutate`, `emit`, `compute`, `effect`, `returns`, `async` |
 | Primitive types | `any`, `boolean`, `date`, `datetime`, `decimal`, `duration`, `list`, `map`, `money`, `number`, `string`, `time`, `timestamp`, `void` |
 | Property modifiers | `required`, `unique`, `indexed`, `private`, `readonly`, `optional`, `searchable`, `encrypted`, `masked` |
-| Contextual keywords | `compensate`, `count`, `cron`, `every`, `external`, `interval`, `masked`, `method`, `mixin`, `of`, `on_failure`, `on_timeout`, `policies`, `rateLimit`, `realtime`, `retry`, `role`, `schedule`, `stage`, `step`, `sum`, `unmask`, `value` |
+| Contextual keywords | `compensate`, `count`, `cron`, `delete`, `every`, `execute`, `external`, `interval`, `masked`, `method`, `mixin`, `of`, `on_failure`, `on_timeout`, `persist`, `policies`, `publish`, `rateLimit`, `read`, `realtime`, `retry`, `role`, `schedule`, `stage`, `step`, `sum`, `tenant`, `unmask`, `value`, `write` |
 | Operators | `-`, `->`, `:`, `!`, `!=`, `?`, `?.`, `.`, `..`, `*`, `/`, `&`, `&&`, `%`, `+`, `<`, `<=`, `=`, `==`, `=>`, `>`, `>=`, `|`, `||` |
 | Runtime built-ins | `abs`, `addDuration`, `avg`, `between`, `ceil`, `count`, `count_of`, `dateOf`, `datetimeOf`, `day`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`, `endsWith`, `filter`, `flag`, `flat_map`, `floor`, `hasPermission`, `hours`, `indexOf`, `length`, `map`, `matches`, `max`, `max_of`, `min`, `min_of`, `minutes`, `month`, `now`, `replace`, `roleAllows`, `round`, `search`, `seconds`, `split`, `startsWith`, `substring`, `sum`, `timeOf`, `toLowerCase`, `toUpperCase`, `trim`, `unique_of`, `uuid`, `year` |
 
@@ -349,9 +349,8 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | `private` / `encrypted` / `masked` privacy | `CLAIMED_NEEDS_PROOF` | fixtures `91`, `93` |
 | 2. Language (DSL) — full inventory | `searchable` declarations | `CLAIMED_NEEDS_PROOF` | fixture `89` |
 | 2. Language (DSL) — full inventory | Aggregate `count()` in reactions | `CLAIMED_NEEDS_PROOF` | fixture `97` |
-| 2. Language (DSL) — full inventory | Appendix E: `map<K,V>` two-param form | `NOT_IMPLEMENTED` | backlog — arbitrary keys; `map<string,V>` sugar is §1 |
-| 2. Language (DSL) — full inventory | Appendix E: command-body policy clause | `NOT_IMPLEMENTED` | backlog |
-| 2. Language (DSL) — full inventory | Appendix E: retry/rateLimit field-name ergonomics | `NOT_IMPLEMENTED` | backlog |
+| 2. Language (DSL) — full inventory | Appendix E: `map<K,V>` arbitrary non-string keys | `REJECTED_LOUD → by design` | String keys only; `record` alias ships (§1) |
+| 2. Language (DSL) — full inventory | Appendix E: command-body policy clause | `REJECTED_LOUD → by design` | Top-level policies only; command-body `policy` will not ship |
 | 2. Language (DSL) — full inventory | Approvals (multi-stage, `onTimeout: cancel`) | `CLAIMED_NEEDS_PROOF` | fixture `68` |
 | 2. Language (DSL) — full inventory | Array types `T[]` / `array<T>` | `CLAIMED_NEEDS_PROOF` | fixture `40` |
 | 2. Language (DSL) — full inventory | Async / background commands | `CLAIMED_NEEDS_PROOF` | fixture `69` |

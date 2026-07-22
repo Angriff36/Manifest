@@ -33,7 +33,7 @@ function patientEntity(): IREntity {
             kind: 'binary',
             operator: '==',
             left: { kind: 'member', object: { kind: 'identifier', name: 'user' }, property: 'role' },
-            right: { kind: 'literal', value: 'admin' },
+            right: { kind: 'literal', value: { kind: 'string', value: 'admin' } },
           },
         },
       },

@@ -29,10 +29,15 @@ describe('Lexer', () => {
     });
 
     it('should tokenize all command-related keywords', () => {
-      const source = 'command on when then emit mutate compute guard publish persist';
+      const source = 'command on when then emit mutate compute guard';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(10);
+      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(8);
+    });
+
+    it('tokenizes publish/persist as identifiers (Appendix E contextual)', () => {
+      const tokens = new Lexer('publish persist').tokenize().filter((t) => t.type !== 'EOF');
+      expect(tokens.every((t) => t.type === 'IDENTIFIER')).toBe(true);
     });
 
     it('should tokenize all type keywords', () => {
@@ -67,10 +72,17 @@ describe('Lexer', () => {
     });
 
     it('should tokenize policy and security keywords', () => {
-      const source = 'policy read write delete execute all override allow deny';
+      const source = 'policy all override allow deny';
       const tokens = new Lexer(source).tokenize();
 
-      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(9);
+      expect(tokens.filter((t) => t.type === 'KEYWORD')).toHaveLength(5);
+    });
+
+    it('tokenizes read/write/delete/execute as identifiers (Appendix E)', () => {
+      const tokens = new Lexer('read write delete execute')
+        .tokenize()
+        .filter((t) => t.type !== 'EOF');
+      expect(tokens.every((t) => t.type === 'IDENTIFIER')).toBe(true);
     });
 
     it('should tokenize logical operator keywords', () => {

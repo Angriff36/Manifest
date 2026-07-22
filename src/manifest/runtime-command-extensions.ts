@@ -85,6 +85,7 @@ export function toRetryConfig(retry: IRRetry): RetryConfig {
     maxAttempts: retry.maxAttempts,
     backoff: retry.backoff,
     delay: retry.delayMs,
+    ...(retry.maxDelayMs !== undefined ? { maxDelay: retry.maxDelayMs } : {}),
     jitter: retry.jitter,
     retryOn: retry.retryOn ?? [],
   };

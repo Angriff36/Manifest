@@ -7,10 +7,13 @@ import type { IR } from './ir';
 import { COMPILER_VERSION } from './version';
 
 describe('Tenant isolation — lexer', () => {
-  it('tokenizes "tenant" as a keyword', () => {
+  it('tokenizes "tenant" as IDENTIFIER (contextual keyword, not reserved)', () => {
+    // As of reserved-word ergonomics (Appendix E), `tenant` is a contextual keyword:
+    // it parses as a tenant declaration at the top level but is not reserved elsewhere.
+    // This allows `tenant` to be used as an entity/property/command name.
     const lexer = new Lexer('tenant');
     const tokens = lexer.tokenize();
-    expect(tokens[0].type).toBe('KEYWORD');
+    expect(tokens[0].type).toBe('IDENTIFIER');
     expect(tokens[0].value).toBe('tenant');
   });
 });

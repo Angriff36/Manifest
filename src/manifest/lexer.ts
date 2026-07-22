@@ -41,8 +41,7 @@ export const KEYWORDS = new Set([
   'mutate',
   'compute',
   'guard',
-  'publish',
-  'persist',
+  // `publish` / `persist` are contextual action kinds (Appendix E) — not reserved.
   'as',
   'from',
   'to',
@@ -81,10 +80,7 @@ export const KEYWORDS = new Set([
   'postgres',
   'supabase',
   'localStorage',
-  'read',
-  'write',
-  'delete',
-  'execute',
+  // Policy actions `read`/`write`/`delete`/`execute` are contextual (Appendix E).
   'all',
   'override',
   'allow',
@@ -127,8 +123,7 @@ export const KEYWORDS = new Set([
   // v1.0 exact-decimal type keywords
   'decimal',
   'money',
-  // multi-tenancy
-  'tenant',
+  // `tenant` is a contextual top-level declaration (Appendix E) — not reserved.
   // entity modifier keywords
   'timestamps',
   // computed property caching keywords
@@ -160,9 +155,8 @@ export const KEYWORDS = new Set([
   'signature',
   'idempotencyHeader',
   'transform',
-  // v2.4 composition + command extensions are contextual identifiers parsed
-  // at declaration sites (mixin, schedule, retry, rateLimit, cron, etc.) — not
-  // global reserved words, so property names like `property schedule: string` work.
+  // Contextual identifiers (not reserved): mixin, schedule, retry, rateLimit,
+  // cron, publish, persist, read/write/delete/execute, tenant, etc.
 ]);
 
 const OPERATORS = new Set([
