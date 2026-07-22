@@ -58,8 +58,8 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
   (fixtures 91, 93 — matrix FULLY_IMPLEMENTED @ `b8b29a34` / `9f3a9bf`; masking
   read-projection only; encrypt no-op without provider)
 - Full-text `searchable` declarations (fixture 89 — matrix FULLY_IMPLEMENTED @
-  `9f3a9bfa` / Convex `f8221d44`; runtime uses `search()` substring helper, indexes
-  are projection-owned)
+  `9f3a9bfa` / Convex `f8221d44`; runtime uses `search()` whole-word token matching,
+  indexes are projection-owned; Drizzle GIN index has columnMappings gap)
 - Multi-tenancy isolation (fixture 61; matrix FULLY_IMPLEMENTED —
   `tenant-isolation.test.ts` @ `5e751072`; reference-runtime filter/inject/fail-closed,
   not DB RLS); optimistic concurrency via `versionProperty` (fixture 24)
@@ -75,7 +75,7 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
   (fixtures 74, 75, 100 — rateLimit matrix FULLY_IMPLEMENTED @ `fd4bb50`;
   Convex policy/read rateLimit still diagnostic-only)
 - Computed properties incl. caching/memoization strategies (fixtures 03, 65 —
-  cache strategies matrix FULLY_IMPLEMENTED; hit/miss/TTL in
+  matrix FULLY_IMPLEMENTED @ `f39b2f87` / cache proof `7a1ef496`
   `runtime-computed-cache.test.ts`)
 - Constraints with severity `ok`/`warn`/`block`, explicit `failWhen` polarity (fixtures 105–106), override authorization (fixture 22);
   regex `matches()` constraints (fixture 63 — matrix FULLY_IMPLEMENTED @ `0a2a0f9`)

@@ -369,7 +369,7 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[auto-bridge snapshot @ 10 changes]
-Files: docs/spec/plugins/plugin.schema.json (edit), docs/spec/registry/bypasses.schema.json (edit), docs/spec/registry/entities.schema.json (edit), docs/spec/registry/commands.schema.json (edit), docs/spec/config/prisma-projection.schema.json (edit), docs/spec/config/manifest.config.schema.json (edit), docs/spec/ir/ir-v1.schema.json (edit), IMPLEMENTATION_PLAN.md (edit), mintlify/cli/commands.mdx (edit), mintlify/cli/overview.mdx (edit)
+[auto-bridge snapshot @ 0 changes]
+No prior session bridge data for current commit
 
 # === END COGNILAYER ===

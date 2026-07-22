@@ -353,8 +353,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Command/policy `rateLimit` | `CLAIMED_NEEDS_PROOF` | fixtures `74`, `75`, `100` |
 | 2. Language (DSL) — full inventory | Commands (params, guards, mutate, emit, emitPayloads) | `CLAIMED_NEEDS_PROOF` | fixture `04` |
 | 2. Language (DSL) — full inventory | Composite primary keys (`key`) | `CLAIMED_NEEDS_PROOF` | fixture `109` |
-| 2. Language (DSL) — full inventory | Computed caching (`request`/`session`/`ttl`) | `CLAIMED_NEEDS_PROOF` | fixture `65` |
-| 2. Language (DSL) — full inventory | Computed properties | `CLAIMED_NEEDS_PROOF` | fixture `03` |
 | 2. Language (DSL) — full inventory | Constraint override authorization | `CLAIMED_NEEDS_PROOF` | fixture `22` |
 | 2. Language (DSL) — full inventory | Constraints severity `ok`/`warn`/`block` | `CLAIMED_NEEDS_PROOF` | fixtures `21`, `36` |
 | 2. Language (DSL) — full inventory | Entities + typed properties + defaults | `CLAIMED_NEEDS_PROOF` | fixture `01` |
