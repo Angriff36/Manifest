@@ -119,7 +119,7 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
   (modules/`use` matrix FULLY_IMPLEMENTED — `module-resolver.test.ts` +
   `multi-compiler.test.ts`; named `import {…}` still not implemented)
 
-## 2. Expression Language — 47 built-ins
+## 2. Expression Language — 49 built-ins
 
 Single registry: `RuntimeEngine.getBuiltins()` (`src/manifest/runtime-engine.ts`);
 spec: `docs/spec/builtins.md` (corrected 2026-07-14).
@@ -160,10 +160,13 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
 
 - Entity stores: memory (MemoryStore matrix FULLY_IMPLEMENTED @ `2af8191b` /
   `9c94b2db` — in-process Map), localStorage (LocalStorageStore matrix
-  FULLY_IMPLEMENTED @ `2af8191b` / `9c94b2db` — browser DOM only), postgres,
-  supabase (`stores.node.ts`), Turso/libSQL, DynamoDB, Prisma-generic
-  (`stores/prisma-generic/store.ts`) — other backends still have their own
-  matrix rows
+  FULLY_IMPLEMENTED @ `2af8191b` / `9c94b2db` — browser DOM only),
+  ~~postgres, supabase (`stores.node.ts`)~~
+  > **Correction (2026-07-22):** `PostgresStore` in `stores.node.ts` is matrix
+  > FULLY_IMPLEMENTED (mock-pool `stores.postgres.test.ts`; wire via
+  > `storeProvider` — engine `postgres` target is Node-only instruct path).
+  > SupabaseStore / Turso/libSQL / DynamoDB / Prisma-generic
+  > (`stores/prisma-generic/store.ts`) still have their own open matrix rows.
 - Outbox adapters (`src/manifest/outbox/stores/*`) — memory (in-process only, `tx` ignored) +
   postgres FULLY_IMPLEMENTED @ `b296e1a` (durable, honors supplied transaction handle); redis/mongodb/dynamodb still
   CLAIMED_NEEDS_PROOF; ≠ outbound partner HTTP POST

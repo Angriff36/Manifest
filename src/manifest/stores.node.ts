@@ -34,6 +34,11 @@ export interface PostgresConfig {
   password?: string;
   connectionString?: string;
   tableName?: string;
+  /**
+   * Optional pre-built `pg` Pool. When set, host/port/database/user/password/
+   * connectionString are ignored. Used by unit tests and advanced host wiring.
+   */
+  pool?: Pool;
 }
 
 export class PostgresStore<T extends EntityInstance> implements Store<T> {
@@ -54,6 +59,11 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
   constructor(config: PostgresConfig, generateId?: () => string) {
     this.generateId = generateId || (() => crypto.randomUUID());
     this.tableName = config.tableName || 'entities';
+
+    if (config.pool) {
+      this.pool = config.pool;
+      return;
+    }
 
     const poolConfig: PoolConfig = config.connectionString
       ? { connectionString: config.connectionString }

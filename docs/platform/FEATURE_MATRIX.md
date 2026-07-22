@@ -210,7 +210,7 @@ Mirror of `docs/internal/COMPLIANCE_MATRIX.md` §3 (2026-07-22). Granular Core/S
 | ------ | ---------------------------------------------- | -------------------------------------- | ------------------------------------------- |
 | [x]    | Expression builtins (all 49 categories)         | FULLY_IMPLEMENTED                      | mirror of COMPLIANCE_MATRIX §3 — `getBuiltins()` `runtime-engine.ts:1732-2024` (Date/time helpers `dateOf`…`durationSeconds` at `1972-1990`); fixture `16`; proofs include `runtime-datetime-builtins.test.ts` @ `893e2889…` |
 | [x]    | `hasPermission` / `roleAllows`                 | FULLY_IMPLEMENTED                      | mirror of COMPLIANCE_MATRIX §3 — fixture `71` @ `83e6c4f…` |
-| [~]    | Custom builtins via plugin API                 | CLAIMED_NEEDS_PROOF                    | plugin-api                                  |
+| [x]    | Custom builtins via plugin API                 | FULLY_IMPLEMENTED                      | mirror of COMPLIANCE_MATRIX §3 — plugin-api + loader + `customBuiltins` @ `ac727f90…` |
 | [x]    | `today()` compile-time only → `autoNow`        | FULLY_IMPLEMENTED                      | mirror of COMPLIANCE_MATRIX §3 / §2 Auto timestamps @ `68afb8ab…` |
 
 ---
@@ -246,7 +246,7 @@ Mirror of `docs/internal/COMPLIANCE_MATRIX.md` §3 (2026-07-22). Granular Core/S
 | ------ | ---------------------------------------------- | --------------------- | -------------------------------------- |
 | [x]    | MemoryStore                                    | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `runtime-engine.ts:757-795` + default memory target @ `2af8191b…` / `9c94b2db…` |
 | [x]    | LocalStorageStore                              | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `runtime-engine.ts:797-856` + `localStorage` target wire @ `2af8191b…` / `9c94b2db…` |
-| [~]    | PostgresStore                                  | CLAIMED_NEEDS_PROOF   | `stores.node.ts`                       |
+| [x]    | PostgresStore                                  | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `stores.node.ts` + `stores.postgres.test.ts` (SHA after commit) |
 | [~]    | SupabaseStore                                  | CLAIMED_NEEDS_PROOF   |                                        |
 | [~]    | Turso / libSQL store                           | CLAIMED_NEEDS_PROOF   |                                        |
 | [~]    | DynamoDB store                                 | CLAIMED_NEEDS_PROOF   |                                        |
@@ -256,7 +256,7 @@ Mirror of `docs/internal/COMPLIANCE_MATRIX.md` §3 (2026-07-22). Granular Core/S
 | [x]    | Approval store memory/postgres                                                                                       | FULLY_IMPLEMENTED           | mirror of COMPLIANCE_MATRIX — contract `approval/approval-store.ts:27-61`; Memory `approval/stores/memory.ts:28-67`; Postgres `approval/stores/postgres.ts:80-159`; runtime wire `runtime-engi… |
 | [x]    | Idempotency store memory/postgres                                                                                    | FULLY_IMPLEMENTED           | mirror of COMPLIANCE_MATRIX — §1 — `idempotency/stores/*` |
 | [x]    | RateLimit store memory/postgres                | FULLY_IMPLEMENTED     | §1                                     |
-| [~]    | Custom store via plugin API                    | CLAIMED_NEEDS_PROOF   |                                        |
+| [x]    | Custom store via plugin API                    | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `StoreAdapterPlugin` + composition E2E @ `ac727f90…` |
 | [x]    | `manifest db init` SQL apply/print             | FULLY_IMPLEMENTED     | §1                                     |
 
 ---

@@ -348,11 +348,9 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Language keyword `softDelete` | `NOT_IMPLEMENTED` | projection config only |
 | 2. Language (DSL) — full inventory | Realtime subscriptions (language/runtime) | `PARTIAL / DIAGNOSTIC_ONLY` | Convex diagnostic; Next.js may differ — prove per target |
 | 4. Runtime engine & adapters | ~~WASM expression compatibility layer~~ | `REMOVED 2026-07-15` | Quarantined prototype deleted — no `.wasm` artifact, never on default RuntimeEngine path |
-| 5. Stores & persistence subsystems | Custom store via plugin API | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | DynamoDB store | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | GenericPrismaStore | `CLAIMED_NEEDS_PROOF` | `stores/prisma-generic/` |
 | 5. Stores & persistence subsystems | Outbox: memory/postgres/redis/mongodb/dynamodb | `CLAIMED_NEEDS_PROOF` | `outbox/stores/*` |
-| 5. Stores & persistence subsystems | PostgresStore | `CLAIMED_NEEDS_PROOF` | `stores.node.ts` |
 | 5. Stores & persistence subsystems | SupabaseStore | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | Turso / libSQL store | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | analytics | `CLAIMED_NEEDS_PROOF` | See feature matrix |
