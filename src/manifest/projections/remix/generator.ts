@@ -99,8 +99,11 @@ export const REMIX_DEFAULTS = {
 
 /**
  * Normalize user options with defaults.
+ * When `ir.tenant` is declared and options omit tenant fields, filtering stays
+ * on (historical Remix default) and the property name follows the IR.
+ * Explicit options always win.
  */
-function normalizeOptions(options?: RemixProjectionOptions): NormalizedRemixOptions {
+function normalizeOptions(options?: RemixProjectionOptions, ir?: IR): NormalizedRemixOptions {
   return {
     authProvider: options?.authProvider ?? REMIX_DEFAULTS.authProvider,
     authImportPath: options?.authImportPath ?? REMIX_DEFAULTS.authImportPath,
@@ -108,10 +111,12 @@ function normalizeOptions(options?: RemixProjectionOptions): NormalizedRemixOpti
     responseImportPath: options?.responseImportPath ?? REMIX_DEFAULTS.responseImportPath,
     runtimeImportPath: options?.runtimeImportPath ?? REMIX_DEFAULTS.runtimeImportPath,
     sessionStoragePath: options?.sessionStoragePath ?? REMIX_DEFAULTS.sessionStoragePath,
-    includeTenantFilter: options?.includeTenantFilter ?? REMIX_DEFAULTS.includeTenantFilter,
+    includeTenantFilter:
+      options?.includeTenantFilter ?? (ir?.tenant ? true : REMIX_DEFAULTS.includeTenantFilter),
     includeSoftDeleteFilter:
       options?.includeSoftDeleteFilter ?? REMIX_DEFAULTS.includeSoftDeleteFilter,
-    tenantIdProperty: options?.tenantIdProperty ?? REMIX_DEFAULTS.tenantIdProperty,
+    tenantIdProperty:
+      options?.tenantIdProperty ?? ir?.tenant?.property ?? REMIX_DEFAULTS.tenantIdProperty,
     deletedAtProperty: options?.deletedAtProperty ?? REMIX_DEFAULTS.deletedAtProperty,
     routesDir: options?.routesDir ?? REMIX_DEFAULTS.routesDir,
     strictMode: options?.strictMode ?? REMIX_DEFAULTS.strictMode,
@@ -1032,7 +1037,7 @@ export class RemixProjection implements ProjectionTarget {
             ],
           };
         }
-        const opts = normalizeOptions(options);
+        const opts = normalizeOptions(options, ir);
         const entity = ir.entities.find((e) => e.name === request.entity);
         if (!entity) {
           return {
@@ -1074,7 +1079,7 @@ export class RemixProjection implements ProjectionTarget {
             ],
           };
         }
-        const opts = normalizeOptions(options);
+        const opts = normalizeOptions(options, ir);
         const entity = ir.entities.find((e) => e.name === request.entity);
         if (!entity) {
           return {
@@ -1128,7 +1133,7 @@ export class RemixProjection implements ProjectionTarget {
             ],
           };
         }
-        const opts = normalizeOptions(options);
+        const opts = normalizeOptions(options, ir);
         const entity = ir.entities.find((e) => e.name === request.entity);
         if (!entity) {
           return {
@@ -1203,7 +1208,7 @@ export class RemixProjection implements ProjectionTarget {
       }
 
       case 'remix.companions': {
-        return generateCompanions(ir, normalizeOptions(options));
+        return generateCompanions(ir, normalizeOptions(options, ir));
       }
 
       default:

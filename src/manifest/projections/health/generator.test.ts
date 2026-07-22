@@ -138,7 +138,8 @@ describe('HealthCheckProjection', () => {
       const code = firstCode(result);
 
       expect(code).toContain('function checkIR()');
-      expect(code).toContain('IR provenance verified');
+      expect(code).toContain('IR provenance baked (not live-checked)');
+      expect(code).toContain('stub: true');
     });
 
     it('generates store check functions for each unique target', () => {
@@ -158,8 +159,9 @@ describe('HealthCheckProjection', () => {
       expect(code).toContain('function checkPostgresStore()');
       // Memory stores return healthy immediately
       expect(code).toContain('memory store is always available');
-      // Postgres stores have try/catch with TODO
-      expect(code).toContain('postgres store connected');
+      // Non-memory stores are scaffolding (honest stub, not "connected")
+      expect(code).toContain('postgres store check not implemented (scaffolding)');
+      expect(code).toContain("target: 'postgres'");
     });
 
     it('generates outbox check only when postgres/supabase stores exist', () => {
@@ -169,7 +171,7 @@ describe('HealthCheckProjection', () => {
 
       const resultWith = projection.generate(irWithPostgres, { surface: 'health.handler' });
       expect(firstCode(resultWith)).toContain('function checkOutbox()');
-      expect(firstCode(resultWith)).toContain('Outbox queue nominal');
+      expect(firstCode(resultWith)).toContain('Outbox depth not queried (scaffolding)');
 
       const irMemoryOnly = makeMinimalIR({
         stores: [{ entity: 'Widget', target: 'memory', config: {} }],
@@ -515,7 +517,7 @@ describe('HealthCheckProjection', () => {
 
       expect(code).toContain('function checkDurableStore()');
       // durable is not a memory target, should have try/catch
-      expect(code).toContain('durable store connected');
+      expect(code).toContain('durable store check not implemented (scaffolding)');
       // durable is not an outbox target, no outbox check
       expect(code).not.toContain('function checkOutbox()');
     });

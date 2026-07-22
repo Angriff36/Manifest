@@ -175,6 +175,36 @@ describe('NextJsProjection', () => {
       expect(withFilterCode).toContain('getTenantIdForOrg');
     });
 
+    it('turns on tenant filtering from ir.tenant without options', async () => {
+      const source = `
+        tenant orgId: string from context.orgId
+        entity Recipe {
+          property id: string
+          property name: string
+          property orgId: string
+        }
+      `;
+
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+      expect(result.ir!.tenant?.property).toBe('orgId');
+
+      const autoResult = projection.generate(result.ir!, {
+        surface: 'nextjs.route',
+        entity: 'Recipe',
+      });
+      const autoCode = firstCode(autoResult);
+      expect(autoCode).toContain('orgId');
+      expect(autoCode).toContain('getTenantIdForOrg');
+
+      const optOut = projection.generate(result.ir!, {
+        surface: 'nextjs.route',
+        entity: 'Recipe',
+        options: { includeTenantFilter: false },
+      });
+      expect(firstCode(optOut)).not.toContain('getTenantIdForOrg');
+    });
+
     it('respects includeSoftDeleteFilter option', async () => {
       const source = `
         entity Recipe {

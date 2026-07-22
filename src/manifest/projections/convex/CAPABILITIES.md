@@ -53,7 +53,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Saga step arguments           | Single `input` forwarded to every step                                                                                       | Documented in README                   |
 | `trustedSource` params        | Exposed as normal args unless auth/create seam injects                                                                       | `CONVEX_PARTIAL_TRUSTED_SOURCE` (info) |
 | Referential onDelete/onUpdate | No schema cascade                                                                                                            | `CONVEX_REFERENTIAL_ACTION_DEFERRED`   |
-| Computed relation aggregates  | Unresolved unless self-only / count via reactions                                                                            | `CONVEX_UNRESOLVED_COMPUTED`           |
+| Computed relation aggregates  | Self-only helpers; `count_of`/`sum`/`avg`/`min_of`/`max_of`/`filter`/`map`/`flat_map` on hydrated hasMany in mutations      | Unresolved → `CONVEX_UNRESOLVED_COMPUTED` |
 | Read/`all` policies           | Renderable predicates are public with `authContextImport`; `flag()`, relationship traversal, and `rateLimit` remain internal | `CONVEX_UNSUPPORTED_READ_POLICY_*`     |
 | `policyMode: 'skip'`          | Omits authorization only                                                                                                     | Documented escape hatch                |
 | `realtime` hint               | Convex queries already reactive; no SSE artifact                                                                             | `CONVEX_PARTIAL_REALTIME` (info)       |
@@ -63,9 +63,9 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 
 | IR construct                                  | Diagnostic code                    |
 | --------------------------------------------- | ---------------------------------- |
-| Approvals                                     | `CONVEX_UNSUPPORTED_APPROVAL`      |
+| Approvals (rejected)                          | `CONVEX_UNSUPPORTED_APPROVAL` (error) — no stage state / pre-command gate |
 | `searchable` (non-string types)               | `CONVEX_UNSUPPORTED_SEARCHABLE`    |
-| Command/policy `retry`                        | `CONVEX_UNSUPPORTED_RETRY`         |
+| Command `retry` (rejected)                    | `CONVEX_UNSUPPORTED_RETRY` (error) — no per-attempt rollback/sleep in mutations |
 | Policy/read `rateLimit`                       | `CONVEX_UNSUPPORTED_RATE_LIMIT` / `CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT` |
 | `async` commands / job queue                  | `CONVEX_UNSUPPORTED_ASYNC_COMMAND` |
 | Action kinds `effect` / `publish` / `persist` | `CONVEX_UNSUPPORTED_ACTION_KIND`   |

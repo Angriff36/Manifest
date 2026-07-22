@@ -1,10 +1,12 @@
 /**
  * Health check endpoint projection for Manifest IR.
  *
- * Generates runtime health check handlers that validate IR integrity
- * (provenance hash), store connectivity, and outbox queue depth.
- * Returns structured JSON compatible with Kubernetes liveness/readiness
- * probes and load balancer health checks.
+ * Generates runtime health-check handlers that return structured JSON for
+ * Kubernetes liveness/readiness probes and load balancers.
+ *
+ * Scaffolding (2026-07-22): IR/store/outbox probes bake provenance and
+ * report `details.stub: true` for non-memory checks. They do not perform
+ * live hash recompute, store I/O, or outbox queries yet.
  *
  * Surfaces:
  *   - health.handler  → Framework-agnostic TypeScript handler (core logic)
@@ -137,20 +139,18 @@ function buildHandlerCode(ir: IR, opts: Required<HealthCheckProjectionOptions>):
   lines.push('} as const;');
   lines.push('');
 
-  // IR integrity check
+  // IR integrity check (scaffolding: baked provenance only — not a live hash)
   if (opts.includeIRCheck) {
     lines.push('/**');
-    lines.push(' * Check IR integrity by validating provenance hash.');
-    lines.push(' * TODO: Implement live hash computation against loaded IR.');
+    lines.push(' * Report baked IR provenance from compilation.');
+    lines.push(' * Scaffolding only: does not recompute or compare a live IR hash.');
     lines.push(' */');
     lines.push('function checkIR(): ComponentHealth {');
-    if (ir.provenance.irHash) {
-      lines.push('  // When live hash computation is implemented, compare against:');
-      lines.push(`  // expected irHash: '${ir.provenance.irHash}'`);
-    }
-    lines.push(
-      "  return { status: 'healthy', message: 'IR provenance verified', details: MANIFEST_IR_META };",
-    );
+    lines.push('  return {');
+    lines.push("    status: 'healthy',");
+    lines.push("    message: 'IR provenance baked (not live-checked)',");
+    lines.push('    details: { ...MANIFEST_IR_META, stub: true },');
+    lines.push('  };');
     lines.push('}');
     lines.push('');
   }
@@ -164,25 +164,26 @@ function buildHandlerCode(ir: IR, opts: Required<HealthCheckProjectionOptions>):
       lines.push(`/**`);
       lines.push(` * Check connectivity for ${target} stores.`);
       if (!isMemory) {
-        lines.push(` * TODO: Implement actual ${target} connectivity check.`);
+        lines.push(
+          ` * Scaffolding only: no live ${target} probe until a store client is injected.`,
+        );
       }
       lines.push(` */`);
       lines.push(`async function check${suffix}Store(): Promise<ComponentHealth> {`);
 
       if (isMemory) {
         lines.push(
-          `  return { status: 'healthy', message: '${target} store is always available' };`,
+          `  return { status: 'healthy', message: '${target} store is always available', details: { stub: false } };`,
         );
       } else {
-        lines.push('  try {');
-        lines.push(`    // TODO: Add ${target} connection health check`);
-        lines.push(`    // Example: await pool.query('SELECT 1') or equivalent`);
-        lines.push(`    return { status: 'healthy', message: '${target} store connected' };`);
-        lines.push('  } catch (error) {');
+        lines.push('  // Scaffolding: always reports healthy until a real probe is wired.');
+        lines.push('  return {');
+        lines.push("    status: 'healthy',");
         lines.push(
-          `    return { status: 'unhealthy', message: '${target} store unreachable', details: { error: String(error) } };`,
+          `    message: '${target} store check not implemented (scaffolding)',`,
         );
-        lines.push('  }');
+        lines.push("    details: { stub: true, target: '" + target + "' },");
+        lines.push('  };');
       }
 
       lines.push('}');
@@ -190,25 +191,18 @@ function buildHandlerCode(ir: IR, opts: Required<HealthCheckProjectionOptions>):
     }
   }
 
-  // Outbox queue depth check
+  // Outbox queue depth check (scaffolding: no table query yet)
   if (opts.includeOutboxCheck && hasOutbox) {
     lines.push('/**');
-    lines.push(' * Check outbox queue depth for event delivery.');
-    lines.push(' * TODO: Implement actual outbox table query.');
+    lines.push(' * Report outbox queue depth for event delivery.');
+    lines.push(' * Scaffolding only: does not query manifest_outbox_entries.');
     lines.push(' */');
     lines.push('async function checkOutbox(): Promise<ComponentHealth> {');
-    lines.push('  try {');
-    lines.push('    // TODO: Query outbox table for pending event count');
-    lines.push('    // Example: SELECT COUNT(*) FROM manifest_outbox WHERE delivered_at IS NULL');
-    lines.push('    const depth = 0; // placeholder');
-    lines.push(
-      "    return { status: 'healthy', message: 'Outbox queue nominal', details: { depth } };",
-    );
-    lines.push('  } catch (error) {');
-    lines.push(
-      "    return { status: 'unhealthy', message: 'Outbox check failed', details: { error: String(error) } };",
-    );
-    lines.push('  }');
+    lines.push('  return {');
+    lines.push("    status: 'healthy',");
+    lines.push("    message: 'Outbox depth not queried (scaffolding)',");
+    lines.push("    details: { stub: true, depth: null },");
+    lines.push('  };');
     lines.push('}');
     lines.push('');
   }

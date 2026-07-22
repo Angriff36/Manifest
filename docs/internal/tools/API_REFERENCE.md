@@ -413,15 +413,21 @@ const store = new SupabaseStore<Todo>({
 
 Projection target for platform-specific code generation.
 
+~~`generateRoute` / `generateTypes` / `generateClient` methods on `ProjectionTarget`~~
+
+> **Correction (2026-07-22):** Those methods do **not** exist. The live contract is
+> `generate(ir, request: ProjectionRequest)` with a `surface` id (see
+> `src/manifest/projections/interface.ts`). Prefer `manifest generate --all` /
+> surface-specific CLI flags.
+
 ```typescript
 interface ProjectionTarget {
-  readonly name: string; // Target identifier (e.g., "nextjs")
-  readonly description: string; // Human-readable description
-
-  generateRoute(ir: IR, entityName: string, options?: Record<string, unknown>): string;
-
-  generateTypes?(ir: IR): string;
-  generateClient?(ir: IR): string;
+  readonly name: string;
+  readonly description: string;
+  readonly surfaces: readonly string[];
+  readonly capabilities?: readonly ProjectionCapability[];
+  readonly descriptorMeta: ProjectionDescriptorMeta;
+  generate(ir: IR, request: ProjectionRequest): ProjectionResult;
 }
 ```
 

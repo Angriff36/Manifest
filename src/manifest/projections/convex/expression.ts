@@ -242,13 +242,20 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
         if (
           callee === 'count_of' ||
           callee === 'sum' ||
+          callee === 'avg' ||
+          callee === 'min_of' ||
+          callee === 'max_of' ||
           callee === 'map' ||
           callee === 'filter' ||
           callee === 'flat_map'
         ) {
           if (e.args.length === 0) {
             unresolved.push(`builtin '${callee}()' missing collection`);
-            return callee === 'count_of' || callee === 'sum'
+            return callee === 'count_of' ||
+              callee === 'sum' ||
+              callee === 'avg' ||
+              callee === 'min_of' ||
+              callee === 'max_of'
               ? `/* unresolved ${callee}() */ 0`
               : `/* unresolved ${callee}() */ []`;
           }
@@ -275,6 +282,33 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
             const mapCode = go(mapper);
             lambdaParamTypeStack.pop();
             return `((${collCode}) ?? []).map(${mapCode}).reduce((acc: number, v: unknown) => acc + (typeof v === "number" ? v : 0), 0)`;
+          }
+          if (callee === 'avg' || callee === 'min_of' || callee === 'max_of') {
+            let valuesExpr: string;
+            if (e.args.length === 1) {
+              valuesExpr = `((${collCode}) ?? []).filter((v: unknown): v is number => typeof v === "number")`;
+            } else {
+              const mapper = e.args[1]!;
+              const elementType =
+                scope.resolveCollectionElementType?.(collection) ?? fallbackLambdaType;
+              lambdaParamTypeStack.push(elementType);
+              const mapCode = go(mapper);
+              lambdaParamTypeStack.pop();
+              valuesExpr = `((${collCode}) ?? []).map(${mapCode}).filter((v: unknown): v is number => typeof v === "number")`;
+            }
+            if (callee === 'avg') {
+              return (
+                `(() => { const __vals = ${valuesExpr}; ` +
+                `return __vals.length === 0 ? 0 : __vals.reduce((a: number, v: number) => a + v, 0) / __vals.length; })()`
+              );
+            }
+            const empty = 'undefined';
+            const reduce =
+              callee === 'min_of' ? 'Math.min(...__vals)' : 'Math.max(...__vals)';
+            return (
+              `(() => { const __vals = ${valuesExpr}; ` +
+              `return __vals.length === 0 ? ${empty} : ${reduce}; })()`
+            );
           }
           if (callee === 'filter') {
             if (e.args.length < 2) {

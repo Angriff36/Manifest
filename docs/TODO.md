@@ -129,14 +129,41 @@ non-binding navigation mirror only.
       `__consumeCommandRateLimit` sliding window; wired in mutations before
       policies/guards; user/tenant scopes require `authContextImport`.
       Policy/read rateLimit stay diagnostic-only. Proof: `rate-limit-emit.test.ts`.
-- [ ] **Convex projection remaining diagnostics-only surfaces** — approvals,
-      retry emit `CONVEX_UNSUPPORTED_*` (good) but generate no Convex
-      enforcement.
+- [x] **Convex command `retry` disposition** — rejected loud 2026-07-22:
+      `CONVEX_UNSUPPORTED_RETRY` is an **error** (mutations cannot honor
+      Manifest per-attempt rollback + backoff sleep). Remove `retry` from
+      Convex-targeted commands or retry at the caller. Proof: `semantics.test.ts`.
+- [x] **Convex entity approvals disposition** — rejected loud 2026-07-22:
+      `CONVEX_UNSUPPORTED_APPROVAL` is an **error** (no stage state / pre-command
+      gate in Convex mutations). Proof: `semantics.test.ts`.
+- [x] **Convex projection remaining diagnostics-only surfaces** — closed
+      2026-07-22: approvals + retry REJECTED_LOUD; rateLimit + masking enforced;
+      realtime/computed-cache PARTIAL info. Policy/read rateLimit still
+      diagnostic-only (separate from command rateLimit).
+      ~~approvals (REJECTED_LOUD)~~
+      ~~command retry (REJECTED_LOUD)~~
       ~~command rateLimit~~
       ~~masking~~
-      ~~approvals, masking, computed-cache, realtime, retry, rateLimit~~
-      ~~searchable / versionProperty still diagnostic-only~~
-      ~~realtime / computed-cache still unsupported~~
+- [x] **Next.js reads `ir.tenant`** — fixed 2026-07-22: `normalizeOptions(options, ir)`
+      turns on tenant filtering and uses `ir.tenant.property` when declared;
+      explicit options still win. Proof: `nextjs/generator.test.ts`.
+- [x] **`ir.tenant` in all web projections** — fixed 2026-07-22: Express, Hono,
+      SvelteKit, Remix also pass IR into `normalizeOptions` and use
+      `ir.tenant.property` (explicit options win). Proof: `web-ir-tenant.test.ts`.
+      Matrix row FULLY_IMPLEMENTED.
+- [x] **Convex collection lambda lowering** — fixed 2026-07-22: emit
+      `avg`/`min_of`/`max_of` (sum/filter/map/flat_map/count_of already emitted);
+      mutation proofs `sum-avg-lambda.test.ts` + PB023 `count-of-preload.test.ts`.
+      Matrix umbrella FULLY_IMPLEMENTED.
+- [x] **Module-based output splitting honesty** — 2026-07-22: shipped scope is
+      Prisma `@@schema` + OpenAPI title from modules; per-module file trees for
+      all projections remain NOT_IMPLEMENTED (parked). Matrix split into two rows.
+- [x] **Phantom config/CLI/API docs struck** — 2026-07-22: Mintlify
+      `cli/configuration.mdx` no longer claims `env(VAR)` inlining,
+      `MANIFEST_ENV` overlays, or YAML connection `stores:`; `API_REFERENCE.md`
+      + `integration/projections.mdx` document `generate(ir, request)` only.
+      Testing phantoms already struck 2026-07-15 (`harness` / `seed`). Matrix §8
+      REMOVED (docs struck).
 - [x] **Config vNext G5** — fixed 2026-07-15: `projections.enabled` (opt-in
       list for `manifest generate --all`) + `projections.defaults` (shared
       options merged under each target via `resolveProjectionOptions`); schema
@@ -220,6 +247,8 @@ non-binding navigation mirror only.
       guide pages still listed under that ledger for later deep audit.
 - [x] **Health projection docs** — `docs/projections/health.md` +
       `mintlify/projections/health.mdx` (2026-07-15; stubs/limitations documented).
+      Edit 2026-07-22: generator emits honest scaffolding (`stub: true`; no
+      “verified”/“connected” copy). Live IR/store/outbox probes remain open.
 - [x] **Replace `docs/FEATURE-LIST.md` with a registry-generated inventory** (M12) —
       fixed 2026-07-15: `scripts/generate-feature-list.ts` + `pnpm docs:feature-list` /
       `docs:check:feature-list`; inventory from language metadata, projection

@@ -22,7 +22,9 @@ entity Patient {
 
 ### Runtime Behavior
 
-With `RuntimeOptions.encryptionProvider`, the reference runtime encrypts `encrypted` properties on persist and decrypts on read. Without a provider, values are stored as supplied.
+With `RuntimeOptions.encryptionProvider`, the reference runtime encrypts `encrypted` properties on persist and decrypts on read. Without a provider, values are stored as supplied (reference-runtime no-op — there is no bundled default AES provider).
+
+> **Correction (2026-07-22):** Convex projection does **not** follow the runtime no-op: encrypted fields fail closed until `encryptionImport` is wired. Do not assume “plaintext if unset” for Convex-generated apps.
 
 ## Dynamic Data Masking
 

@@ -1,6 +1,6 @@
 # Built-ins
 
-Last updated: 2026-07-14 (reserved-names count corrected; Roles builtins documented)
+Last updated: 2026-07-22 (reserved-names count corrected from 47 to 49; Roles builtins documented)
 Status: Active
 Authority: Binding
 Enforced by: src/manifest/conformance/**, npm test
@@ -216,9 +216,9 @@ precedence on name collision — reserved names cannot be overridden.
 `year`, `month`, `day`, `hours`, `minutes`, `seconds`,
 `flag`.~~
 
-> **Correction (2026-07-14):** the list above undercounted. Every core builtin in
+> **Correction (2026-07-22):** the list above undercounted. Every core builtin in
 > `RuntimeEngine.getBuiltins()` (runtime-engine.ts) wins name collisions against
-> plugin builtins, so all **47** implemented names are reserved:
+> plugin builtins, so all **49** implemented names are reserved:
 > `now`, `uuid`, `trim`, `split`, `count`, `startsWith`, `endsWith`, `replace`,
 > `toUpperCase`, `toLowerCase`, `length`, `substring`, `indexOf`, `matches`, `search`,
 > `abs`, `round`, `floor`, `ceil`, `min`, `max`, `between`,

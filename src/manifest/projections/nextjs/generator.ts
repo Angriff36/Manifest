@@ -167,8 +167,12 @@ interface NormalizedNextJsOptions {
  *
  * Defaults are imported (not redeclared) so the projection, the CLI's
  * `manifest config print-defaults`, and the JSON schema all agree.
+ *
+ * When `ir.tenant` is declared and the caller does not set tenant options,
+ * tenant filtering turns on and the property name follows the IR (same
+ * pattern as Convex/Prisma). Explicit options always win.
  */
-function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOptions {
+function normalizeOptions(options?: NextJsProjectionOptions, ir?: IR): NormalizedNextJsOptions {
   const dispatcher: NormalizedDispatcherOptions = {
     enabled: options?.dispatcher?.enabled ?? DISPATCHER_DEFAULTS.enabled,
     executionMode: options?.dispatcher?.executionMode ?? DISPATCHER_DEFAULTS.executionMode,
@@ -214,10 +218,13 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     databaseImportPath: options?.databaseImportPath ?? NEXTJS_DEFAULTS.databaseImportPath,
     responseImportPath: options?.responseImportPath ?? NEXTJS_DEFAULTS.responseImportPath,
     runtimeImportPath: options?.runtimeImportPath ?? NEXTJS_DEFAULTS.runtimeImportPath,
-    includeTenantFilter: options?.includeTenantFilter ?? NEXTJS_DEFAULTS.includeTenantFilter,
+    includeTenantFilter:
+      options?.includeTenantFilter ??
+      (ir?.tenant ? true : NEXTJS_DEFAULTS.includeTenantFilter),
     includeSoftDeleteFilter:
       options?.includeSoftDeleteFilter ?? NEXTJS_DEFAULTS.includeSoftDeleteFilter,
-    tenantIdProperty: options?.tenantIdProperty ?? NEXTJS_DEFAULTS.tenantIdProperty,
+    tenantIdProperty:
+      options?.tenantIdProperty ?? ir?.tenant?.property ?? NEXTJS_DEFAULTS.tenantIdProperty,
     deletedAtProperty: options?.deletedAtProperty ?? NEXTJS_DEFAULTS.deletedAtProperty,
     appDir: options?.appDir ?? NEXTJS_DEFAULTS.appDir,
     strictMode: options?.strictMode ?? NEXTJS_DEFAULTS.strictMode,
@@ -617,7 +624,7 @@ export class NextJsProjection implements ProjectionTarget {
             ],
           };
         }
-        const opts = normalizeOptions(options);
+        const opts = normalizeOptions(options, ir);
         if (!opts.readRoutes.enabled) {
           return {
             artifacts: [],
@@ -661,7 +668,7 @@ export class NextJsProjection implements ProjectionTarget {
             ],
           };
         }
-        const detailOpts = normalizeOptions(options);
+        const detailOpts = normalizeOptions(options, ir);
         if (!detailOpts.readRoutes.enabled) {
           return {
             artifacts: [],
@@ -717,7 +724,7 @@ export class NextJsProjection implements ProjectionTarget {
             ],
           };
         }
-        const commandOpts = normalizeOptions(options);
+        const commandOpts = normalizeOptions(options, ir);
         if (!commandOpts.concreteCommandRoutes.enabled) {
           return {
             artifacts: [],
@@ -750,7 +757,7 @@ export class NextJsProjection implements ProjectionTarget {
       }
 
       case 'nextjs.dispatcher': {
-        const dispatcherOpts = normalizeOptions(options);
+        const dispatcherOpts = normalizeOptions(options, ir);
         if (!dispatcherOpts.dispatcher.enabled) {
           return {
             artifacts: [],
@@ -796,7 +803,7 @@ export class NextJsProjection implements ProjectionTarget {
             ],
           };
         }
-        const subscribeOpts = normalizeOptions(options);
+        const subscribeOpts = normalizeOptions(options, ir);
         const subscribeResult = this._subscribe(ir, request.entity, options);
         if (
           subscribeResult.diagnostics.some((d) => d.severity === 'error') ||
@@ -830,7 +837,7 @@ export class NextJsProjection implements ProjectionTarget {
             ],
           };
         }
-        const opts = normalizeOptions(options);
+        const opts = normalizeOptions(options, ir);
         const hookResult = this._subscriptionHook(ir, request.entity, opts);
         if (hookResult.diagnostics.some((d) => d.severity === 'error') || !hookResult.code) {
           return { artifacts: [], diagnostics: hookResult.diagnostics };
@@ -849,7 +856,7 @@ export class NextJsProjection implements ProjectionTarget {
       }
 
       case 'nextjs.sharedRuntime': {
-        const opts = normalizeOptions(options);
+        const opts = normalizeOptions(options, ir);
         const sharedResult = this._sharedRuntime(ir, options);
         if (!sharedResult.code) {
           return { artifacts: [], diagnostics: sharedResult.diagnostics };
@@ -868,7 +875,7 @@ export class NextJsProjection implements ProjectionTarget {
       }
 
       case 'nextjs.schedule': {
-        const scheduleOpts = normalizeOptions(options);
+        const scheduleOpts = normalizeOptions(options, ir);
         return generateScheduleCronRoutes(ir, {
           runtimeImportPath: scheduleOpts.runtimeImportPath,
           appDir: scheduleOpts.appDir,
@@ -876,7 +883,7 @@ export class NextJsProjection implements ProjectionTarget {
       }
 
       case 'nextjs.webhook': {
-        const webhookOpts = normalizeOptions(options);
+        const webhookOpts = normalizeOptions(options, ir);
         return generateWebhookRoutes(ir, {
           runtimeImportPath: webhookOpts.runtimeImportPath,
           appDir: webhookOpts.appDir,
@@ -884,12 +891,12 @@ export class NextJsProjection implements ProjectionTarget {
       }
 
       case 'nextjs.companions': {
-        const companionOpts = normalizeOptions(options);
+        const companionOpts = normalizeOptions(options, ir);
         return this._companions(ir, companionOpts);
       }
 
       case 'ts.types': {
-        const opts = normalizeOptions(options);
+        const opts = normalizeOptions(options, ir);
         const result = this._types(ir, opts.dateSerialization === 'iso-string');
         return {
           artifacts: [
@@ -905,7 +912,7 @@ export class NextJsProjection implements ProjectionTarget {
       }
 
       case 'ts.client': {
-        const opts = normalizeOptions(options);
+        const opts = normalizeOptions(options, ir);
         const result = this._client(ir, opts);
         return {
           artifacts: [
@@ -936,7 +943,7 @@ export class NextJsProjection implements ProjectionTarget {
 
   private _route(ir: IR, entityName: string, options?: NextJsProjectionOptions): CodeResult {
     const diagnostics: ProjectionDiagnostic[] = [];
-    const opts = normalizeOptions(options);
+    const opts = normalizeOptions(options, ir);
 
     // Find the entity in IR
     const entity = ir.entities.find((e) => e.name === entityName);
@@ -1110,7 +1117,7 @@ export class NextJsProjection implements ProjectionTarget {
     options?: NextJsProjectionOptions,
   ): CodeResult {
     const diagnostics: ProjectionDiagnostic[] = [];
-    const opts = normalizeOptions(options);
+    const opts = normalizeOptions(options, ir);
 
     const entity = ir.entities.find((e) => e.name === entityName);
     if (!entity) {
@@ -1305,7 +1312,7 @@ export class NextJsProjection implements ProjectionTarget {
    * mutations; downstream integrations may add aliases or CI gates.
    */
   private _dispatcher(ir: IR, options?: NextJsProjectionOptions): CodeResult {
-    const opts = normalizeOptions(options);
+    const opts = normalizeOptions(options, ir);
     const code = this._generateDispatcherHandler(opts, hasRealtimeEntities(ir));
     return { code, diagnostics: [] };
   }
@@ -1491,7 +1498,7 @@ export class NextJsProjection implements ProjectionTarget {
    */
   private _subscribe(ir: IR, entityName: string, options?: NextJsProjectionOptions): CodeResult {
     const diagnostics: ProjectionDiagnostic[] = [];
-    const opts = normalizeOptions(options);
+    const opts = normalizeOptions(options, ir);
 
     const entity = ir.entities.find((e) => e.name === entityName);
     if (!entity) {
@@ -1703,7 +1710,7 @@ export function use${name}Subscription(options: Use${name}SubscriptionOptions = 
       return { code: '', diagnostics };
     }
 
-    const opts = normalizeOptions(options);
+    const opts = normalizeOptions(options, ir);
     // When no eventBus is configured on the runtime, the singleton either fails
     // loud (requireEventBus) or warns once and continues single-instance. The
     // positive path (bus present → connectEventBus) is identical either way.
@@ -2113,7 +2120,7 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
    */
   private _detail(ir: IR, entityName: string, options?: NextJsProjectionOptions): CodeResult {
     const diagnostics: ProjectionDiagnostic[] = [];
-    const opts = normalizeOptions(options);
+    const opts = normalizeOptions(options, ir);
 
     const entity = ir.entities.find((e) => e.name === entityName);
     if (!entity) {

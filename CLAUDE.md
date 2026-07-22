@@ -369,7 +369,7 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[Emergency bridge — running bridge was not updated]
-Files: src/manifest/tenant-isolation.test.ts (edit), src/manifest/projections/convex/masking-emit.test.ts (edit), src/manifest/projections/convex/functions.ts (edit), docs/features/security-features.md (edit), mintlify/extensibility/plugin-api.mdx (edit)
+[pre-compact bridge — saved before context compaction]
+(no changes or facts recorded in this session segment)
 
 # === END COGNILAYER ===

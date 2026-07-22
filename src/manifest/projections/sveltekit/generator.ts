@@ -107,7 +107,12 @@ export const SVELTEKIT_DEFAULTS = {
   emitCompanions: true,
 };
 
-function normalizeOptions(opts: SvelteKitProjectionOptions = {}): NormalizedOptions {
+/**
+ * When `ir.tenant` is declared and options omit tenant fields, filtering stays
+ * on (historical SvelteKit default) and the property name follows the IR.
+ * Explicit options always win.
+ */
+function normalizeOptions(opts: SvelteKitProjectionOptions = {}, ir?: IR): NormalizedOptions {
   return {
     authProvider: opts.authProvider ?? SVELTEKIT_DEFAULTS.authProvider,
     authImportPath: opts.authImportPath ?? SVELTEKIT_DEFAULTS.authImportPath,
@@ -116,10 +121,13 @@ function normalizeOptions(opts: SvelteKitProjectionOptions = {}): NormalizedOpti
     databaseImportPath: opts.databaseImportPath ?? SVELTEKIT_DEFAULTS.databaseImportPath,
     validationImportPath: opts.validationImportPath,
     routesDir: opts.routesDir ?? SVELTEKIT_DEFAULTS.routesDir,
-    includeTenantFilter: opts.includeTenantFilter ?? SVELTEKIT_DEFAULTS.includeTenantFilter,
+    includeTenantFilter:
+      opts.includeTenantFilter ??
+      (ir?.tenant ? true : SVELTEKIT_DEFAULTS.includeTenantFilter),
     includeSoftDeleteFilter:
       opts.includeSoftDeleteFilter ?? SVELTEKIT_DEFAULTS.includeSoftDeleteFilter,
-    tenantIdProperty: opts.tenantIdProperty ?? SVELTEKIT_DEFAULTS.tenantIdProperty,
+    tenantIdProperty:
+      opts.tenantIdProperty ?? ir?.tenant?.property ?? SVELTEKIT_DEFAULTS.tenantIdProperty,
     deletedAtProperty: opts.deletedAtProperty ?? SVELTEKIT_DEFAULTS.deletedAtProperty,
     strictMode: opts.strictMode ?? SVELTEKIT_DEFAULTS.strictMode,
     includeComments: opts.includeComments ?? SVELTEKIT_DEFAULTS.includeComments,
@@ -1258,7 +1266,7 @@ export class SvelteKitProjection implements ProjectionTarget {
   readonly descriptorMeta = SVELTEKIT_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
-    const options = normalizeOptions((request.options ?? {}) as SvelteKitProjectionOptions);
+    const options = normalizeOptions((request.options ?? {}) as SvelteKitProjectionOptions, ir);
 
     switch (request.surface) {
       case SURFACE_SERVER: {

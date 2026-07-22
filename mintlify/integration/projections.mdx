@@ -107,12 +107,8 @@ manifest generate ir/recipe.ir.json --surface route --output app/api/
 > `generateRoute` / `generateTypes` / `generateClient` methods. Prefer the CLI `--all` path;
 > if you must call the API, use `generate` with a `surface` id.
 
-~~```typescript
-const projection = new NextJsProjection();
-const routeResult = projection.generateRoute(ir, 'Recipe');
-const typesResult = projection.generateTypes(ir);
-const clientResult = projection.generateClient(ir);
-```~~
+Struck phantom API (do not use): `generateRoute` / `generateTypes` / `generateClient` —
+those methods are not on `ProjectionTarget`.
 
 ```typescript
 import { compileToIR } from '@angriff36/manifest/ir-compiler';

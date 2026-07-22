@@ -61,14 +61,21 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 - Policies: read/write/delete/execute/all/override
 - State machines: `transitions` with runtime enforcement (fixture 38)
 - Aggregate `count()` expressions, usable in reactions (fixture 97)
+- Aggregate `sum(Entity where … of field)` in reactions — matrix FULLY_IMPLEMENTED
+  (`runtime-aggregate-sum.test.ts` @ `04fe949`)
 
 **Orchestration & integration**
 
 - Events + declarative reactions (`on Event run Command`), incl. 1:N fan-out (fixture 96)
+- Reaction `match … else create` natural-key upsert — matrix FULLY_IMPLEMENTED @ `04fe949`
+- Fan-out foreach-create (`run Target.create` + `matchEntity`, fixture 112) — matrix
+  FULLY_IMPLEMENTED @ `b7c7e5c`
 - Sagas with compensation/abort (fixture 88)
 - Multi-stage approval workflows with timeouts (fixture 68) — `onTimeout: cancel` only (see Gaps)
 - Roles/RBAC with hierarchy, inheritance, and deny rules (fixture 71)
-- Inbound webhooks with HMAC signature verification (fixture 90)
+- Inbound webhooks with HMAC signature verification (fixture 90; runtime
+  `webhooks/handler.ts` + Next/Express/Hono emits — matrix FULLY_IMPLEMENTED
+  @ `853aac2`)
 - Schedules: cron / interval / every (fixture 76)
 - Stores (persistence targets), modules (namespacing), cross-file `use`/imports
 
@@ -206,8 +213,16 @@ constraint overrides, durable rate-limit (in-memory only)~~
 `alternateKeys` uniqueness, entity-level constraint overrides; durable
 `PostgresRateLimitStore` ships. `optional` is a projection hint (not a
 runtime gap). `command.returns` remains projection metadata by design.
-Still open: Convex lambda lowering beyond `count_of`, `ir.tenant` in most
-web projections, module-based output splitting.
+Still open: per-module **file** output splitting (parked); Convex read-policy
+`rateLimit` remains diagnostic-only; health projection stays PARTIAL
+(scaffolding probes with `details.stub: true` — not live connectivity).
+> **Correction (2026-07-22):** `ir.tenant` is consumed by Next.js, Express, Hono,
+> SvelteKit, and Remix (`normalizeOptions(..., ir)`); proofs in
+> `web-ir-tenant.test.ts` + Next.js generator test.
+> **Correction (2026-07-22):** Convex collection λ lowering includes
+> `count_of`/`sum`/`avg`/`min_of`/`max_of`/`filter`/`map`/`flat_map`
+> (`sum-avg-lambda.test.ts`). Module grouping ships as Prisma `@@schema` +
+> OpenAPI title — not per-module generated file trees.
 
 > **Durable rate-limit (2026-07-15):** `PostgresRateLimitStore` ships
 > (`src/manifest/rate-limit/stores/postgres.ts`) and is wired via
@@ -227,8 +242,13 @@ searchable, versionProperty/optimistic concurrency, retry, rateLimit~~
 > **Correction (2026-07-22):** Command `rateLimit` now emits Convex
 > sliding-window enforcement (`rate-limit-emit.ts` /
 > `commandRateLimitBuckets`). Policy/read `rateLimit` still diagnostic-only.
-> Remaining diagnostics-only: **approvals, retry** (`CONVEX_UNSUPPORTED_*`).
+> **Correction (2026-07-22):** Command `retry` on Convex is **rejected loud**
+> (`CONVEX_UNSUPPORTED_RETRY` error — cannot honor rollback+backoff in mutations).
+> **Correction (2026-07-22):** Entity approvals on Convex are **rejected loud**
+> (`CONVEX_UNSUPPORTED_APPROVAL` error — no stage state / pre-command gate).
 > Realtime / computed-cache are PARTIAL info diagnostics, not unsupported.
+> **Correction (2026-07-22):** All five web projections read `ir.tenant`
+> (Next.js/Express/Hono/SvelteKit/Remix) — property from IR; explicit options win.
 
 **Not implemented at all (doc-only phantoms if claimed elsewhere):**
 time-travel debugger; full WASM runtime (only the scoped expression-compat

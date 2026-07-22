@@ -4,14 +4,19 @@ sidebarTitle: "What's new (3.0)"
 description: 'Manifest 3.0 makes generated backends runnable with zero hand-written glue: emitted companions, shipped outbox/job/schedule workers, an atomic transaction boundary, coherent routes and clients, webhooks, and a runtime event bus. Includes breaking changes.'
 ---
 
-> **Note (2026-07-15, updated 2026-07-21):** This page is a **3.0 release note**, not the
-> current package pin. Repo / npm `@angriff36/manifest` is **v3.6.40** at verification
+> **Note (2026-07-15, updated 2026-07-22):** This page is a **3.0 release note**, not the
+> current package pin. Repo / npm `@angriff36/manifest` is **v3.6.41** at verification
 > time. Prefer `manifest compile --all` / `generate --all` / `build --all` /
 > `watch --all` for config-driven projects (those flags remain valid).
 >
 > **3.6.36+ language:** cross-entity fan-out foreach-create —
 > `on Event fanOut Source where … run Target.create` — is documented under
 > [Reactions → Foreach-create](/language/reactions#foreach-create-cross-entity-fan-out).
+>
+> **3.6.38–3.6.41 language:** natural-key upsert (`match … else create`) —
+> single-target lookup-or-allocate and fan-out per-row lookup-or-allocate reactions —
+> is documented under [Reactions → Natural-key upsert](/language/reactions#natural-key-upsert-match-else-create).
+> Also includes Convex identity-filter fix for `db.get`, else-create allocate, and soft-delete exclusion.
 
 Manifest 3.0 closes the gap between "code was generated" and "the backend actually
 runs." Where earlier releases emitted types and route bodies but left you to

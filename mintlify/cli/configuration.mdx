@@ -1,7 +1,7 @@
 ---
 title: 'Configure Manifest with manifest.config.yaml'
 sidebarTitle: 'Configuration'
-description: 'Full reference for manifest.config.yaml: source globs, IR output, projection options (nextjs, routes, prisma, prisma-store), env mapping, hooks, plugins, naming convention, auth providers, and monorepo import paths.'
+description: 'Full reference for manifest.config.yaml: source globs, IR output, projection options (nextjs, routes, prisma, prisma-store), preflight env declarations, hooks, plugins, naming convention, auth providers, and monorepo import paths.'
 ---
 
 `manifest.config.yaml` is the project-level config file that the CLI loads from your project root before executing any command. You create it by running `manifest init` or by writing it by hand. Every field is optional — the CLI falls back to built-in defaults for any field you omit.
@@ -188,7 +188,10 @@ plugins:
 <ParamField path="env" type="object">
   Structured environment-variable mapping for **preflight validation** — grouped definitions of the variables your stores, auth, adapters, and custom settings require. Consumed by `manifest preflight` to check the environment and to generate `.env.example`.
 
-This is distinct from the `env(VAR)` **expression syntax** described under [Environment variable mapping](#environment-variable-mapping) below: `env()` inlines a value at config-load time, whereas this `env` block _declares_ variables and their metadata so preflight can validate them.
+~~This is distinct from the `env(VAR)` expression syntax…~~
+> **Correction (2026-07-22):** There is **no** `env(VAR)` config-load inliner. This `env` block
+> only _declares_ variable metadata for `manifest preflight` / `.env.example`. Inject secrets with
+> `process.env` in `manifest.config.ts` (see [Durable storage](#durable-storage-for-generated-runtime-companions)).
 
 The block has four optional groups — `stores`, `auth`, `adapters`, `custom` — each a map of an arbitrary key to an `EnvVarDefinition`. Each definition requires `name` and may set `description`, `required` (default `true`), `default`, and `example`.
 
@@ -733,72 +736,26 @@ projections:
   `code-output` paths.
 </Tip>
 
-## Environment variable mapping
+## Environment variables (what actually ships)
 
-Store connection strings and sensitive configuration can be injected via environment variables instead of hardcoding them in the config file. The CLI supports `env()` expressions in string-valued fields:
+~~`env(VAR)` / `env(VAR, "default")` expressions in `manifest.config.yaml`, top-level YAML
+`stores: { postgres: { url: env(...) } }`, and `MANIFEST_ENV` overlay files
+(`manifest.config.staging.yaml`)~~
 
-```yaml
-projections:
-  nextjs:
-    options:
-      databaseImportPath: '@/lib/database'
-      runtimeImportPath: '@/lib/manifest-runtime'
+> **Correction (2026-07-22):** Those three mechanisms are **not implemented**. YAML load does not
+> expand `env(…)` strings, there is no connection-string `stores:` block in build YAML, and the CLI
+> does not merge `manifest.config.<env>.yaml` from `MANIFEST_ENV`.
 
-stores:
-  postgres:
-    url: env(DATABASE_URL)
-    schema: env(DATABASE_SCHEMA, "public")
-  redis:
-    url: env(REDIS_URL)
-  dynamodb:
-    region: env(AWS_REGION, "us-east-1")
-    table: env(DYNAMO_TABLE)
-```
+**Use instead:**
 
-### `env()` syntax
+1. **Preflight declarations** — the `env:` block above (metadata only) with `manifest preflight`
+2. **Runtime bindings** — `process.env.DATABASE_URL` (etc.) inside `manifest.config.ts` store
+   implementations ([Durable storage](#durable-storage-for-generated-runtime-companions))
+3. **Multi-environment** — supply different env vars / deploy secrets per environment, or keep
+   separate config files and point the process at the right one yourself (no built-in overlay
+   selector)
 
-| Expression                 | Behavior                                                                  |
-| -------------------------- | ------------------------------------------------------------------------- |
-| `env(VAR_NAME)`            | Read `VAR_NAME` from the environment. Throws if unset.                    |
-| `env(VAR_NAME, "default")` | Read `VAR_NAME` from the environment. Falls back to `"default"` if unset. |
+Struck example that must not be copied (was never wired):
 
-Environment variable resolution happens at config load time, before any command executes. This means:
-
-- Missing required variables cause the CLI to exit with a clear error message naming the missing variable.
-- Defaults are string values — no type coercion is performed.
-- `env()` can only appear in string-valued config fields.
-
-## Multi-environment configuration
-
-For projects that deploy to multiple environments (development, staging, production), use config overlays:
-
-```yaml
-# manifest.config.yaml
-src: modules/**/*.manifest
-output: ir/
-
-stores:
-  postgres:
-    url: env(DATABASE_URL)
-
----
-# manifest.config.staging.yaml (overlay)
-stores:
-  postgres:
-    url: env(STAGING_DATABASE_URL)
-```
-
-The CLI selects the overlay based on the `MANIFEST_ENV` environment variable:
-
-```bash
-# Use base config
-manifest build
-
-# Use staging overlay
-MANIFEST_ENV=staging manifest build
-```
-
-<Note>
-  Overlays are merged shallowly — an overlay's `stores.postgres` replaces the base `stores.postgres`
-  entirely. For deep merging, provide the full structure in the overlay.
-</Note>
+`stores.postgres.url: env(DATABASE_URL)` · `MANIFEST_ENV=staging manifest build` ·
+`manifest.config.staging.yaml` overlay merge

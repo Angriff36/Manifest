@@ -419,12 +419,10 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 5. Stores & persistence subsystems | PostgresStore | `CLAIMED_NEEDS_PROOF` | `stores.node.ts` |
 | 5. Stores & persistence subsystems | SupabaseStore | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | Turso / libSQL store | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | `ir.tenant` in all web projections | `PARTIAL` | wiring matrix |
 | 6. Projections — every registered target | analytics | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | contract-tests | `CLAIMED_NEEDS_PROOF` | See `docs/internal/COMPLIANCE_MATRIX.md` (list/get + mutations; auth visibility) |
 | 6. Projections — every registered target | convex | `PARTIAL` | core generate + auth seam; many `CONVEX_UNSUPPORTED_*` (§7) |
 | 6. Projections — every registered target | Convex approvals/retry/rateLimit | `DIAGNOSTIC_ONLY` | `CONVEX_UNSUPPORTED_*` (masking closed §1) |
-| 6. Projections — every registered target | Convex complete lambda lowering | `PARTIAL` | See feature matrix |
 | 6. Projections — every registered target | dart | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | drizzle | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | dynamodb (projection) | `CLAIMED_NEEDS_PROOF` | distinct from DynamoDB store |
@@ -437,7 +435,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 6. Projections — every registered target | kysely | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | llm-context | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | mermaid | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | Module-based output splitting | `PARTIAL` | See feature matrix |
 | 6. Projections — every registered target | nextjs | `CLAIMED_NEEDS_PROOF` | createManifestRuntime, executionMode |
 | 6. Projections — every registered target | openapi | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | prisma | `CLAIMED_NEEDS_PROOF` | multi-schema, naming options |

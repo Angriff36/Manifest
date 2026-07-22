@@ -74,7 +74,11 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
     note: 'Runtime-compatible envelope via encryptionImport; missing seam is a hard diagnostic.',
   },
   { feature: "policyMode: 'skip'", status: 'partial', note: 'Omits authorization only.' },
-  { feature: 'Approvals', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_APPROVAL' },
+  {
+    feature: 'Approvals',
+    status: 'unsupported',
+    note: 'CONVEX_UNSUPPORTED_APPROVAL (error) — no stage state or pre-command gate in Convex mutations',
+  },
   {
     feature: 'realtime hint',
     status: 'partial',
@@ -100,7 +104,11 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
     status: 'partial',
     note: 'CONVEX_PARTIAL_COMPUTED_CACHE — helpers stay pure; Manifest cache strategies are not lowered (platform query caching applies).',
   },
-  { feature: 'Command/policy retry', status: 'unsupported', note: 'CONVEX_UNSUPPORTED_RETRY' },
+  {
+    feature: 'Command retry',
+    status: 'unsupported',
+    note: 'CONVEX_UNSUPPORTED_RETRY (error) — Convex mutations cannot honor per-attempt rollback + backoff sleep; use platform OCC / caller-side retry',
+  },
   {
     feature: 'Command rateLimit',
     status: 'supported',
@@ -143,10 +151,13 @@ export function collectUnsupportedDiagnostics(
     if (entity.approvals && entity.approvals.length > 0) {
       for (const a of entity.approvals) {
         out.push({
-          severity: 'warning',
+          severity: 'error',
           code: 'CONVEX_UNSUPPORTED_APPROVAL',
           entity: entity.name,
-          message: `Approval '${entity.name}.${a.name}' is not enforced by the Convex projection; stages are ignored at generation time.`,
+          message:
+            `Approval '${entity.name}.${a.name}' is rejected for Convex. ` +
+            'The Convex projection does not emit approval stages, durable approval state, or a pre-command gate. ' +
+            'Remove entity approvals for Convex-targeted programs, or run approvals in the reference runtime / another projection.',
         });
       }
     }
@@ -213,10 +224,13 @@ export function collectUnsupportedDiagnostics(
   for (const cmd of ir.commands) {
     if (cmd.retry) {
       out.push({
-        severity: 'warning',
+        severity: 'error',
         code: 'CONVEX_UNSUPPORTED_RETRY',
         entity: cmd.entity,
-        message: `Command '${cmd.entity ?? '?'}.${cmd.name}' declares retry; the Convex projection does not emit retry/backoff wrappers.`,
+        message:
+          `Command '${cmd.entity ?? '?'}.${cmd.name}' declares retry; rejected for Convex. ` +
+          'Mutations cannot honor Manifest retry (fresh attempt after rollback + backoff sleep). ' +
+          'Remove `retry` from the command, or rely on Convex OCC / caller-side retry outside the projection.',
       });
     }
     if (cmd.async) {

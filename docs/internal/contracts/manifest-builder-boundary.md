@@ -2,7 +2,7 @@
 
 **Status:** Binding direction, agreed 2026-07-14. Companion of
 `deployment-boundaries.md`. Current-state facts below verified against
-Manifest v3.5.0 and the Builder repo (`C:\projects\builder`) on 2026-07-14.
+Manifest v3.6.41 and the Builder repo (`C:\projects\builder`) on 2026-07-22.
 
 ## Definitions
 

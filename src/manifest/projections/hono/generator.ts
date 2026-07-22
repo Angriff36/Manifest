@@ -93,7 +93,12 @@ interface NormalizedOptions {
   emitCompanions: boolean;
 }
 
-function normalizeOptions(opts: HonoProjectionOptions): NormalizedOptions {
+/**
+ * When `ir.tenant` is declared and options omit tenant fields, the property
+ * name follows the IR (same pattern as Next.js / Convex / Prisma). Explicit
+ * options always win. Tenant context stays on by default (historical Hono).
+ */
+function normalizeOptions(opts: HonoProjectionOptions, ir?: IR): NormalizedOptions {
   return {
     authImportPath: opts.authImportPath ?? './middleware/auth',
     authProvider: opts.authProvider ?? 'custom',
@@ -105,7 +110,7 @@ function normalizeOptions(opts: HonoProjectionOptions): NormalizedOptions {
     routeCasing: opts.routeCasing,
     routeSegments: opts.routeSegments,
     includeTenantContext: opts.includeTenantContext ?? true,
-    tenantIdProperty: opts.tenantIdProperty ?? 'tenantId',
+    tenantIdProperty: opts.tenantIdProperty ?? ir?.tenant?.property ?? 'tenantId',
     emitTypes: opts.emitTypes ?? true,
     emitHeader: opts.emitHeader ?? true,
     publicReads: opts.publicReads ?? false,
@@ -1034,7 +1039,7 @@ export class HonoProjection implements ProjectionTarget {
   readonly descriptorMeta = HONO_DESCRIPTOR_META;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
-    const options = normalizeOptions((request.options ?? {}) as HonoProjectionOptions);
+    const options = normalizeOptions((request.options ?? {}) as HonoProjectionOptions, ir);
 
     switch (request.surface) {
       case SURFACE_ROUTER: {

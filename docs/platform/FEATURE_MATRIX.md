@@ -307,14 +307,14 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | ------ | ---------------------------------------------- | --------------------- | --------------------------------------------------------------------------------- |
 | [x]    | Capability descriptors API                     | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | Projection descriptor API                      | FULLY_IMPLEMENTED     | §1                                                                                |
-| [ ]    | `ir.tenant` in all web projections             | PARTIAL               | wiring matrix                                                                     |
-| [ ]    | Module-based output splitting                  | PARTIAL               |                                                                                   |
+| [x]    | `ir.tenant` in all web projections             | FULLY_IMPLEMENTED     | Next/Express/Hono/SvelteKit/Remix — `web-ir-tenant.test.ts` (2026-07-22)          |
+| [x]    | Module → Prisma `@@schema` / OpenAPI title     | FULLY_IMPLEMENTED     | per-module file split remains NOT_IMPLEMENTED                                     |
 | [ ]    | Convex approvals/retry/rateLimit               | DIAGNOSTIC_ONLY       | `CONVEX_UNSUPPORTED_*` (masking closed §1)                                        |
 | [x]    | Convex `masked` / `unmask when`                | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | Convex `searchable` → `.searchIndex`           | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | Convex `versionProperty` OCC                   | FULLY_IMPLEMENTED     | §1                                                                                |
 | [x]    | Convex realtime / computed-cache PARTIAL       | FULLY_IMPLEMENTED     | §1                                                                                |
-| [ ]    | Convex complete lambda lowering                | PARTIAL               |                                                                                   |
+| [x]    | Convex collection lambda lowering              | FULLY_IMPLEMENTED     | count_of/sum/avg/min_of/max_of/filter/map/flat_map — sum-avg-lambda.test.ts       |
 | [ ]    | Hono/Express historically missing authProvider | FULLY_IMPLEMENTED     | fixed §1                                                                          |
 
 ---
@@ -379,10 +379,10 @@ Keep in sync with `docs/TODO.md`. The canonical `docs/internal/COMPLIANCE_MATRIX
 | [x]    | ~~Full WASM runtime~~                                                  | REMOVED 2026-07-15    | Prototype deleted; TypeScript evaluator is the only path                 |
 | [ ]    | Time-travel / product debugger UI                                      | OUT_OF_SCOPE          | Builder-owned                                                            |
 | [x]    | Durable `RateLimitStore` / Postgres adapter                            | FULLY_IMPLEMENTED     | §1                                                                       |
-| [ ]    | `manifest test constraints` / ConstraintTestHarness                    | NOT_IMPLEMENTED       | phantom CLI                                                              |
-| [ ]    | `manifest generate-fixtures`                                           | NOT_IMPLEMENTED       | phantom CLI                                                              |
-| [ ]    | Config `env(VAR)` / `MANIFEST_ENV` overlays / top-level `stores:` YAML | NOT_IMPLEMENTED       | phantom config                                                           |
-| [ ]    | `projection.generateRoute` / `generateTypes` / `generateClient` API    | NOT_IMPLEMENTED       | phantom projection API                                                   |
+| [x]    | ~~`manifest test constraints` / ConstraintTestHarness~~                | REMOVED (docs struck) | use `manifest harness` / `repl`                                          |
+| [x]    | ~~`manifest generate-fixtures`~~                                       | REMOVED (docs struck) | use `manifest seed` / `load-test`                                        |
+| [x]    | ~~Config `env(VAR)` / `MANIFEST_ENV` overlays / YAML `stores:` urls~~  | REMOVED (docs struck) | use `env:` preflight + `process.env` in `manifest.config.ts`             |
+| [x]    | ~~`projection.generateRoute` / `generateTypes` / `generateClient`~~    | REMOVED (docs struck) | use `generate(ir, request)` / CLI `--all`                                |
 | [x]    | Kysely `columnMappings` actually applied                               | FULLY_IMPLEMENTED     | COMPLIANCE_MATRIX §8 — generator applies mappings to property + FK keys  |
 | [ ]    | Kitchen tutorial / product editor UI                                   | OUT_OF_SCOPE          | Builder owns visual editing; Kitchen is Manifest diagnostic surface only |
 | [ ]    | Default encryption provider (common no-vendor case)                    | NOT_IMPLEMENTED       | fail-closed by design until provider set                                 |

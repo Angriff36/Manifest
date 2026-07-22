@@ -1,6 +1,6 @@
 # Health Projection
 
-Created: 2026-07-15. Verified against `src/manifest/projections/health/` this turn.
+Created: 2026-07-15. Edit 2026-07-22: honest scaffolding messages (`stub: true`; no “verified”/“connected” lies).
 
 The health projection generates runtime health-check handlers from compiled Manifest IR. Use it for Kubernetes liveness/readiness probes or load-balancer checks that return structured JSON (`status`, `timestamp`, `checks`).
 
@@ -20,9 +20,9 @@ An unknown surface returns diagnostic `UNKNOWN_SURFACE` (error).
 
 `health.handler` bakes IR provenance (`contentHash`, optional `irHash`, `compilerVersion`, `schemaVersion`, `compiledAt`) into `MANIFEST_IR_META`. When enabled, it emits:
 
-- **IR check** — returns healthy with provenance details (placeholder; no live hash recompute yet).
-- **Store checks** — one async function per unique `ir.stores[].target`. `memory` / `localStorage` always healthy; other targets emit a try/catch stub that currently always returns healthy until a real connectivity check is filled in.
-- **Outbox check** — only when a store target is `postgres` or `supabase`; depth is a placeholder `0`.
+- **IR check** — returns healthy with baked provenance; message says “not live-checked”; `details.stub: true`.
+- **Store checks** — one async function per unique `ir.stores[].target`. `memory` / `localStorage` always healthy (`stub: false`); other targets return healthy scaffolding with `details.stub: true` (no live I/O).
+- **Outbox check** — only when a store target is `postgres` or `supabase`; scaffolding with `depth: null` and `stub: true` (does not query `manifest_outbox_entries`).
 
 Aggregation in `runHealthCheck()`: IR failure → overall `unhealthy`; all stores unhealthy → `unhealthy`; some stores unhealthy → `degraded`; outbox unhealthy while otherwise healthy → `degraded`.
 
@@ -63,6 +63,6 @@ CLI: `manifest generate <ir> -p health` resolves via the projection registry (sa
 
 ## Notes & limitations
 
-- Generated IR / non-memory store / outbox checks contain explicit `TODO` stubs and currently report healthy. Treat emitted checks as scaffolding until live probes are implemented in the generated (or post-edited) handler.
+- Generated IR / non-memory store / outbox checks are scaffolding: they report healthy and set `details.stub: true` so ops can see they are not live probes. Do not treat HTTP 200 as proof of store/outbox connectivity until real probes are wired.
 - Next.js and Express wrappers do not generate the core handler — emit `health.handler` (or provide an equivalent module) at the configured import path.
 - Projections are tooling, not runtime semantics; this does not change command execution order or IR meaning.
