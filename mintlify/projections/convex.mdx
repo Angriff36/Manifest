@@ -153,3 +153,58 @@ Mutation governance is rendered **fail-closed**: each policy, guard, and constra
 A command may declare explicit event-payload fields (G7). The projection evaluates each declared field against the **post-action instance** and populates both the emitted event row's `payload` and the shared reaction `payload` with them — mirroring the reference runtime (`runtime-engine.ts` emit-time payload construction). This matters for reactions on **mutate** commands: the runtime's base event payload is `{ ...input, result }`, where `input` is only the command's parameters, so an entity-owned field the reaction needs (`payload.invoiceId`, `payload.amount`) or a computed field (`payload.total = self.qty * self.price`) is `undefined` unless declared. Declaring it via G7 makes the reaction resolve instead of silently no-op'ing — which is what lets a cross-entity cascade (e.g. "when a payment is processed, apply it to its invoice") be authored as a reaction rather than hand-written as after-emit middleware. Create commands evaluate against the built `doc`; non-create commands introduce a post-patch `{ ...doc, ...updates }` instance. It is strictly opt-in: commands with no `emitPayloads` generate byte-identical output. Unresolved field expressions emit a `CONVEX_UNRESOLVED_EMIT_PAYLOAD` warning and are omitted (non-governance, so no denying throw).
 
 This projection's behavior is taken directly from `src/manifest/projections/convex/generator.ts`, `options.ts`, `type-mapping.ts`, `functions.ts`, and `orchestration.ts`. The schema surface shipped in 2.9.0; the five functions/orchestration surfaces, `listRecentEvents`, the create-mutation completeness fix, and `policyMode` landed across the 2.10.x releases. Schema↔query index parity (every schema index — single-field, reference FK in both reference modes, and composite — has a matching read), the events-table indexed reads, and default tenant + soft-delete read filtering landed in a later 2.10.x release.
+
+## Rate limiting
+
+Command- and policy-level `rateLimit` is implemented via a sliding-window bucket table. When any command or write/execute/delete policy declares `rateLimit`, the projection emits:
+
+**Schema table** (`commandRateLimitBuckets` by default):
+
+```ts
+commandRateLimitBuckets: defineTable({
+  scopeKey: v.string(),      // "user:user-123", "tenant:org-abc", or "global"
+  timestamps: v.array(v.number()),  // Window timestamps
+  windowStart: v.number(),    // When the current window began
+})
+  .index("by_scopeKey", ["scopeKey"])
+```
+
+**Helper function** (`__consumeCommandRateLimit`):
+
+- Checks existing bucket for the scope key
+- Filters timestamps outside the rolling window
+- Throws if `timestamps.length >= maxRequests + burstAllowance`
+- Appends current timestamp and updates/inserts bucket
+- Returns `retryAfterMs` on denial
+
+The check runs **before policies/guards** inside each mutation (commands) or **before each policy expression** (policies), so idempotent replays that skip the runner do not consume additional tokens.
+
+**Scope key prefixes**:
+- Command rateLimit: `cmd:<entity>:<command>:<scope>`
+- Policy rateLimit: `policy:<policyName>:<scope>`
+
+User/tenant-scoped rate limits require `authContextImport` — the scope key derives from the authenticated identity (`getAuthContext(ctx)`). Without auth, these scopes fail closed.
+
+<Note>
+  Read/`all` policy `rateLimit` is **not supported** — Convex queries cannot mutate durable buckets. Declaring rateLimit on a read policy emits `CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT` (error diagnostic).
+</Note>
+
+## Unsupported features (REJECTED_LOUD)
+
+The following Manifest language features are **not supported** in the Convex projection and emit compile-time error diagnostics (`CONVEX_UNSUPPORTED_*`):
+
+| Feature | Diagnostic | Why it's unsupported |
+|---------|-----------|---------------------|
+| **Command retry** | `CONVEX_UNSUPPORTED_RETRY` | Convex mutations cannot honor per-attempt rollback + backoff sleep. Use platform optimistic concurrency (`versionProperty`) or caller-side retry instead. |
+| **Entity approvals** | `CONVEX_UNSUPPORTED_APPROVAL` | No stage-state tracking or pre-command gate in Convex mutations. Approval workflows must be implemented at the application level. |
+| **Read/`all` policy rateLimit** | `CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT` | Convex queries (`ctx.db.query`) cannot mutate durable buckets. Rate limiting is only supported on commands and write/execute/delete policies. |
+| **Action kinds: `effect` / `publish` / `persist`** | `CONVEX_UNSUPPORTED_ACTION_KIND` | No mutation lowering for adapter actions. These require runtime adapters (`outboxStore`, `effectHandler`) not available in Convex. |
+| **`async` commands** | `CONVEX_UNSUPPORTED_ASYNC_COMMAND` | No job queue or worker drain mechanism in Convex projection. |
+
+These are **loud rejections** — the projection emits a hard diagnostic and skips the feature rather than silently ignoring it. This prevents "parsed but ignored" surprises and forces you to either remove the unsupported feature or restructure your model.
+
+<Note>
+  Partial capabilities exist for some features:
+  - **Realtime**: Convex queries are already reactive via `useQuery` — no SSE artifact needed (unlike Next.js). This is `CONVEX_PARTIAL_REALTIME` (info diagnostic).
+  - **Computed cache**: Computed helpers stay pure; Manifest's `request`/`session`/`ttl` cache strategies are not lowered. This is `CONVEX_PARTIAL_COMPUTED_CACHE` (info diagnostic).
+</Note>

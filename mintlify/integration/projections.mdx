@@ -256,6 +256,53 @@ const result3 = projection.generate(ir, {
 });
 ```
 
+## Per-module output file splitting
+
+When your Manifest source uses the `module` keyword to organize entities into modules (e.g., `module Recipe { … }`), several projections support **per-module path hints** that organize generated files by module instead of flattening all output into a single directory.
+
+**Supported projections:**
+
+| Projection | Module path pattern | Notes |
+|-----------|-------------------|-------|
+| Zod | `schemas/<module>/schema.ts` | Entity/command file organization when `IREntity.module` is set |
+| JSON Schema | `schemas/<module>/<entity>.schema.json` | Shared module-path sanitizer with Zod |
+| Pydantic | `models/<module>/models.py` + `models/<module>/commands/` | Entity and command file splitting by module |
+| Dart | `lib/models/<module>/` + `lib/commands/<module>/` | Type definitions organized by module |
+| Storybook | `stories/<module>/` | Command stories inherit entity module |
+| Mermaid | `diagrams/<module>/` | State/sequence diagrams per module; ER diagram stays flat at `diagrams/er-diagram.mmd` |
+| Analytics | `analytics/handlers/<module>/` | Per-entity tracking handlers; monolith tracking-plan/events stay flat |
+| Express | `routes/<module>/` + `types/<module>/` | Router and type definitions; monolith `manifest-router.ts` / `manifest-types.ts` stay flat |
+| Hono | `routes/<module>/` + `types/<module>/` | Same pattern as Express; `src/routes.ts` / `manifest-types.ts` stay flat |
+
+**How it works:**
+
+When an entity has `module: "<ModuleName>"` in the IR, the projection generates files into module-prefixed directories. Entities without a module emit to flat paths (preserving existing behavior).
+
+```manifest
+module Inventory {
+  entity Product { … }
+  entity Category { … }
+}
+
+module Orders {
+  entity Order { … }
+  entity LineItem { … }
+}
+```
+
+Generated output (Zod example):
+```
+schemas/
+  inventory/
+    schema.ts       # Product, Category
+  orders/
+    schema.ts       # Order, LineItem
+```
+
+<Note>
+  Per-module file trees are **optional** — projections emit flat paths when no module is set. Convex and Next.js per-module splitting remains unimplemented (see COMPLIANCE_MATRIX §6).
+</Note>
+
 ## The projection boundary
 
 Projections handle transport concerns: authentication, HTTP conventions, response shaping, and read-path strategy. They do not own runtime responsibilities.
