@@ -165,7 +165,7 @@ Same-entity `fanOut … run unassign` updates each matched row in place. **Forea
 
 Shipped in Manifest **3.6.36+** (conformance fixture `112-fanout-foreach-create`).
 
-```manifest
+```manifest fragment
 on OrderPlaced fanOut LineItem where orderId = payload.orderId
   run Shipment.create
   params {

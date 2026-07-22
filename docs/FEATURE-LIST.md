@@ -6,7 +6,7 @@
 > This document proves that a capability is registered or has executable evidence; it does **not** independently prove completion.
 > Completion status is governed by [`docs/platform/FEATURE_MATRIX.md`](platform/FEATURE_MATRIX.md). Language meaning is governed by `docs/spec/**`.
 
-Package version: `3.6.21`
+Package version: `3.6.41`
 
 Generated sources:
 
@@ -19,7 +19,7 @@ Generated sources:
 
 ## Language discovery surface
 
-The public language-metadata registry currently reports 19 top-level constructs, 14 primitive types, 9 property modifiers, and 47 runtime built-ins.
+The public language-metadata registry currently reports 19 top-level constructs, 14 primitive types, 9 property modifiers, and 49 runtime built-ins.
 
 | Registry | Values |
 | --- | --- |
@@ -28,9 +28,9 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | Command/action constructs | `guard`, `when`, `mutate`, `emit`, `publish`, `persist`, `compute`, `effect`, `returns`, `async` |
 | Primitive types | `any`, `boolean`, `date`, `datetime`, `decimal`, `duration`, `list`, `map`, `money`, `number`, `string`, `time`, `timestamp`, `void` |
 | Property modifiers | `required`, `unique`, `indexed`, `private`, `readonly`, `optional`, `searchable`, `encrypted`, `masked` |
-| Contextual keywords | `compensate`, `count`, `cron`, `every`, `external`, `interval`, `masked`, `method`, `mixin`, `on_failure`, `on_timeout`, `policies`, `rateLimit`, `realtime`, `retry`, `role`, `schedule`, `stage`, `step`, `unmask`, `value` |
+| Contextual keywords | `compensate`, `count`, `cron`, `every`, `external`, `interval`, `masked`, `method`, `mixin`, `of`, `on_failure`, `on_timeout`, `policies`, `rateLimit`, `realtime`, `retry`, `role`, `schedule`, `stage`, `step`, `sum`, `unmask`, `value` |
 | Operators | `-`, `->`, `:`, `!`, `!=`, `?`, `?.`, `.`, `..`, `*`, `/`, `&`, `&&`, `%`, `+`, `<`, `<=`, `=`, `==`, `=>`, `>`, `>=`, `|`, `||` |
-| Runtime built-ins | `abs`, `addDuration`, `avg`, `between`, `ceil`, `count`, `count_of`, `dateOf`, `datetimeOf`, `day`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`, `endsWith`, `filter`, `flag`, `floor`, `hasPermission`, `hours`, `indexOf`, `length`, `map`, `matches`, `max`, `max_of`, `min`, `min_of`, `minutes`, `month`, `now`, `replace`, `roleAllows`, `round`, `search`, `seconds`, `split`, `startsWith`, `substring`, `sum`, `timeOf`, `toLowerCase`, `toUpperCase`, `trim`, `uuid`, `year` |
+| Runtime built-ins | `abs`, `addDuration`, `avg`, `between`, `ceil`, `count`, `count_of`, `dateOf`, `datetimeOf`, `day`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`, `endsWith`, `filter`, `flag`, `flat_map`, `floor`, `hasPermission`, `hours`, `indexOf`, `length`, `map`, `matches`, `max`, `max_of`, `min`, `min_of`, `minutes`, `month`, `now`, `replace`, `roleAllows`, `round`, `search`, `seconds`, `split`, `startsWith`, `substring`, `sum`, `timeOf`, `toLowerCase`, `toUpperCase`, `trim`, `unique_of`, `uuid`, `year` |
 
 ## Registered projections
 
@@ -40,7 +40,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | --- | --- | --- | --- |
 | `analytics` | `analytics.tracking-plan`, `analytics.events`, `analytics.handlers` | no | undeclared |
 | `contract-tests` | `contract-tests.convex` | yes | undeclared |
-| `convex` | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react` | yes | 21 supported / 9 partial / 6 unsupported |
+| `convex` | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react` | yes | 22 supported / 9 partial / 6 unsupported |
 | `dart` | `dart.entity`, `dart.command`, `dart.models`, `dart.client`, `dart.providers`, `dart.package` | no | undeclared |
 | `drizzle` | `drizzle.schema` | yes | undeclared |
 | `dynamodb` | `dynamodb.cloudformation`, `dynamodb.cdk`, `dynamodb.terraform` | yes | undeclared |
@@ -148,7 +148,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 
 ## Conformance evidence
 
-100 source fixtures are present. Expected IR, diagnostics, and results files are compiler-derived executable evidence; their presence is not a substitute for the matrix proof protocol.
+101 source fixtures are present. Expected IR, diagnostics, and results files are compiler-derived executable evidence; their presence is not a substitute for the matrix proof protocol.
 
 | Fixture | Expected evidence |
 | --- | --- |
@@ -252,6 +252,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | `109-composite-key-runtime.manifest` | `109-composite-key-runtime.ir.json`, `109-composite-key-runtime.results.json` |
 | `110-behavior-unsupported.manifest` | `110-behavior-unsupported.diagnostics.json` |
 | `111-approval-escalate.manifest` | `111-approval-escalate.ir.json` |
+| `112-fanout-foreach-create.manifest` | `112-fanout-foreach-create.ir.json` |
 
 ## Published package export map
 

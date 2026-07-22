@@ -369,6 +369,6 @@ Last: [first session]
 
 ## Last Session Bridge
 [Emergency bridge — running bridge was not updated]
-Files: STATE.md (edit), loop-run-log.md (edit)
+No changes or facts in this session.
 
 # === END COGNILAYER ===
