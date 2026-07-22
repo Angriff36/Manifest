@@ -34,8 +34,11 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 
 **Entities & data model**
 
-- Entities with typed properties; defaults; `optional`/`unique` and other modifiers
-- `extends` / `mixin` inheritance & composition, with cycle detection (fixtures 77–79, 81)
+- Entities with typed properties; defaults (fixture 01 — matrix FULLY_IMPLEMENTED @
+  `cdb0a2e5` / `f39b2f87`); `optional`/`unique` and other modifiers (modifiers row still PARTIAL)
+- `extends` / `mixin` inheritance & composition, with cycle detection (fixtures 77–79,
+  81 — matrix FULLY_IMPLEMENTED @ `e2a791c9` / `9f3a9bfa`; entity graph via
+  `entity-composition.ts`, not module import cycles)
 - ~~Generic / parameterized entities, with arity-mismatch diagnostics (fixtures 84–85)~~
   - **Correction (2026-07-15):** generics are still **not implemented**. Fixtures 84–85 are
     _negative_ tests (`shouldFail: true`, message `Expected {, got <`) — they pin the parse
@@ -79,7 +82,8 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
   `runtime-computed-cache.test.ts`)
 - Constraints with severity `ok`/`warn`/`block`, explicit `failWhen` polarity (fixtures 105–106), override authorization (fixture 22);
   regex `matches()` constraints (fixture 63 — matrix FULLY_IMPLEMENTED @ `0a2a0f9`)
-- Policies: read/write/delete/execute/all/override
+- Policies: read/write/delete/execute/all/override (fixture 06 — matrix
+  FULLY_IMPLEMENTED @ `46a8535e` / `5ec24009`; top-level only)
 - State machines: `transitions` with runtime enforcement (fixture 38)
 - Aggregate `count()` expressions, usable in reactions (fixture 97 —
   matrix FULLY_IMPLEMENTED @ `054028e`)

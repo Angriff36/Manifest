@@ -369,7 +369,7 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[auto-bridge snapshot @ 0 changes]
-No prior session bridge data for current commit
+[Emergency bridge — running bridge was not updated]
+Files: scripts/regenerate-llms-full.mjs (create), scripts/regenerate-llms-full.mjs (edit), IMPLEMENTATION_PLAN.md (edit)
 
 # === END COGNILAYER ===

@@ -341,52 +341,24 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 
 | Matrix section | Gap | Status | Evidence / disposition |
 | --- | --- | --- | --- |
-| 2. Language (DSL) — full inventory | `extends` inheritance + cycle detection | `CLAIMED_NEEDS_PROOF` | fixtures `77`–`79`, `81` |
-| 2. Language (DSL) — full inventory | `mixin` composition | `CLAIMED_NEEDS_PROOF` | fixture `78` |
-| 2. Language (DSL) — full inventory | `private` / `encrypted` / `masked` privacy | `CLAIMED_NEEDS_PROOF` | fixtures `91`, `93` |
-| 2. Language (DSL) — full inventory | Aggregate `count()` in reactions | `CLAIMED_NEEDS_PROOF` | fixture `97` |
 | 2. Language (DSL) — full inventory | Appendix E: `map<K,V>` arbitrary non-string keys | `REJECTED_LOUD → by design` | String keys only; `record` alias ships (§1) |
 | 2. Language (DSL) — full inventory | Appendix E: command-body policy clause | `REJECTED_LOUD → by design` | Top-level policies only; command-body `policy` will not ship |
-| 2. Language (DSL) — full inventory | Approvals (multi-stage, `onTimeout: cancel`) | `CLAIMED_NEEDS_PROOF` | fixture `68` |
-| 2. Language (DSL) — full inventory | Async / background commands | `CLAIMED_NEEDS_PROOF` | fixture `69` |
-| 2. Language (DSL) — full inventory | Command `retry` policy | `CLAIMED_NEEDS_PROOF` | fixture `72` |
-| 2. Language (DSL) — full inventory | Command/policy `rateLimit` | `CLAIMED_NEEDS_PROOF` | fixtures `74`, `75`, `100` |
-| 2. Language (DSL) — full inventory | Commands (params, guards, mutate, emit, emitPayloads) | `CLAIMED_NEEDS_PROOF` | fixture `04` |
-| 2. Language (DSL) — full inventory | Composite primary keys (`key`) | `CLAIMED_NEEDS_PROOF` | fixture `109` |
-| 2. Language (DSL) — full inventory | Constraint override authorization | `CLAIMED_NEEDS_PROOF` | fixture `22` |
-| 2. Language (DSL) — full inventory | Constraints severity `ok`/`warn`/`block` | `CLAIMED_NEEDS_PROOF` | fixtures `21`, `36` |
-| 2. Language (DSL) — full inventory | Entities + typed properties + defaults | `CLAIMED_NEEDS_PROOF` | fixture `01` |
 | 2. Language (DSL) — full inventory | Entity `behavior` blocks | `REJECTED_LOUD → proven reject` | see §1 / fixture `110` |
 | 2. Language (DSL) — full inventory | Generic / parameterized entities `Entity<T>` | `NOT_IMPLEMENTED` | fixtures `84`–`85` negative only |
 | 2. Language (DSL) — full inventory | Language keyword `softDelete` | `NOT_IMPLEMENTED` | projection config only |
-| 2. Language (DSL) — full inventory | Modules + `use` imports | `CLAIMED_NEEDS_PROOF` | module-resolver tests |
-| 2. Language (DSL) — full inventory | Multi-tenancy (`tenant`) | `CLAIMED_NEEDS_PROOF` | fixture `61` |
-| 2. Language (DSL) — full inventory | Optimistic concurrency `versionProperty` | `CLAIMED_NEEDS_PROOF` | fixture `24` |
-| 2. Language (DSL) — full inventory | Policies read/write/delete/execute/all/override | `CLAIMED_NEEDS_PROOF` | fixture `06` |
 | 2. Language (DSL) — full inventory | Property modifiers (`required`/`unique`/`indexed`/`private`/`readonly`/`optional`/`searchable`/`encrypted`/`masked`) | `CLAIMED_NEEDS_PROOF / PARTIAL` | compile+IR; runtime `optional` unused (§6) |
 | 2. Language (DSL) — full inventory | Range constraints | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/range-constraints.md` |
-| 2. Language (DSL) — full inventory | Reaction fan-out | `CLAIMED_NEEDS_PROOF` | fixture `96` |
 | 2. Language (DSL) — full inventory | Realtime subscriptions (language/runtime) | `PARTIAL / DIAGNOSTIC_ONLY` | Convex diagnostic; Next.js may differ — prove per target |
-| 2. Language (DSL) — full inventory | Regex constraints | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/regex-constraints.md` |
-| 2. Language (DSL) — full inventory | Relationships `hasMany` / `hasOne` / `belongsTo` / `ref` | `CLAIMED_NEEDS_PROOF` | fixtures `02`, `98`, `99` |
-| 2. Language (DSL) — full inventory | Roles / RBAC hierarchy + deny | `CLAIMED_NEEDS_PROOF` | fixture `71` |
-| 2. Language (DSL) — full inventory | Sagas + compensation | `CLAIMED_NEEDS_PROOF` | fixture `88` |
-| 2. Language (DSL) — full inventory | Schedules cron/interval/every | `CLAIMED_NEEDS_PROOF` | fixture `76` |
-| 2. Language (DSL) — full inventory | Security features surface (doc) | `CLAIMED_NEEDS_PROOF / PARTIAL` | `docs/internal/features/security-features.md` — verify vs privacy/encryption |
-| 2. Language (DSL) — full inventory | State transitions | `CLAIMED_NEEDS_PROOF` | fixture `38` |
 | 2. Language (DSL) — full inventory | Store declarations | `CLAIMED_NEEDS_PROOF` | multiple fixtures |
-| 2. Language (DSL) — full inventory | Webhooks + HMAC | `CLAIMED_NEEDS_PROOF` | fixture `90` |
 | 3. Expression builtins (49) | Custom builtins via plugin API | `CLAIMED_NEEDS_PROOF` | plugin-api |
 | 4. Runtime engine & adapters | `IRDiagnostic.code` optional | `CLAIMED_NEEDS_PROOF` | seeded codes 2026-07-15 |
 | 4. Runtime engine & adapters | `RuntimeContext` fields | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 4. Runtime engine & adapters | ~~WASM expression compatibility layer~~ | `REMOVED 2026-07-15` | Quarantined prototype deleted — no `.wasm` artifact, never on default RuntimeEngine path |
 | 4. Runtime engine & adapters | Batched persistence | `CLAIMED_NEEDS_PROOF` | `runtime-command-batched-persistence.test.ts` |
 | 4. Runtime engine & adapters | Command order (rateLimit → policies → constraints → guards → actions → emits) | `CLAIMED_NEEDS_PROOF` | semantics.md § Commands |
-| 5. Stores & persistence subsystems | Approval store memory/postgres | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | Custom store via plugin API | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | DynamoDB store | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | GenericPrismaStore | `CLAIMED_NEEDS_PROOF` | `stores/prisma-generic/` |
-| 5. Stores & persistence subsystems | Idempotency store memory/postgres | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | LocalStorageStore | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | MemoryStore | `CLAIMED_NEEDS_PROOF` | runtime-engine |
 | 5. Stores & persistence subsystems | Outbox: memory/postgres/redis/mongodb/dynamodb | `CLAIMED_NEEDS_PROOF` | `outbox/stores/*` |
