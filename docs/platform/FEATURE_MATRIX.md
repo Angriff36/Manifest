@@ -273,7 +273,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | routes                | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — routes/generator.test.ts + routes.conformance.test.ts @ `5290df259a44` |
 | [x]    | prisma                | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — prisma/generator.test.ts @ `cf5be82e0fea` |
 | [x]    | prisma-store          | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — prisma-store/generator.test.ts (6) @ `d6d42fc865e4`; softDelete = projection config only |
-| [~]    | convex                | PARTIAL                        | mirror of COMPLIANCE_MATRIX §6 — relationship read hydration + saga shared-input Supported; remaining read rateLimit / composite join edges; async/action-kind REJECTED_LOUD |
+| [~]    | convex                | PARTIAL                        | mirror of COMPLIANCE_MATRIX §6 — relationship read hydration + saga shared-input Supported; read rateLimit/async/action-kind/retry/approvals REJECTED_LOUD; other Partial rows (trustedSource/realtime/…) remain |
 | [x]    | openapi               | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — openapi/generator.test.ts (43) @ `0a2ee5d39ed38c` |
 | [x]    | react-query           | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — react-query/generator.test.ts (34) @ `f5b2f4cd11a3` |
 | [x]    | zod                   | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — zod/generator.test.ts (50) @ `31c780fecdb6` |
@@ -309,12 +309,13 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | `ir.tenant` in all web projections             | FULLY_IMPLEMENTED     | Next/Express/Hono/SvelteKit/Remix — `web-ir-tenant.test.ts` (2026-07-22)          |
 | [x]    | Module → Prisma `@@schema` / OpenAPI title     | FULLY_IMPLEMENTED     | per-module file split remains NOT_IMPLEMENTED                                     |
 | [x]    | Convex command `rateLimit`                     | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `rate-limit-emit.ts` |
-| [x]    | Convex policy `rateLimit` (write/execute/delete) | FULLY_IMPLEMENTED   | mirror of COMPLIANCE_MATRIX §6 — mutation emit; read rateLimit still diagnostic |
+| [x]    | Convex policy `rateLimit` (write/execute/delete) | FULLY_IMPLEMENTED   | mirror of COMPLIANCE_MATRIX §6 — mutation emit |
+| [x]    | Convex read/`all` policy `rateLimit`           | REJECTED_LOUD         | mirror of COMPLIANCE_MATRIX §6 — queries cannot mutate buckets (error) |
 | [x]    | Convex `flagProviderImport` / read `flag()`    | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — public queries when seam + authContextImport set |
 | [x]    | Convex read-policy `belongsTo`/`ref` hydration | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `__resolveRelation` on queries |
 | [x]    | Convex read-policy one-hop `hasMany` hydration | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — inverse FK index load |
 | [x]    | Convex read-policy `hasMany through` hydration  | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — join index + target resolve; missing edges internal |
-| [~]    | Convex read/`all` policy query enforcement     | PARTIAL               | mirror of COMPLIANCE_MATRIX §6 — remaining composite/missing join edges + read rateLimit |
+| [x]    | Convex read/`all` policy query enforcement     | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — renderable + flag + relationship hydration; read rateLimit REJECTED_LOUD |
 | [x]    | Convex webhook HMAC signature                  | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `orchestration.ts` `_verifyHmac`; no false unsupported diagnostic |
 | [x]    | Convex command `retry`                         | REJECTED_LOUD         | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_RETRY` error                 |
 | [x]    | Convex approvals                               | REJECTED_LOUD         | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_APPROVAL` error              |

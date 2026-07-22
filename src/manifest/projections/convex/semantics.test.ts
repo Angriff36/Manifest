@@ -426,6 +426,29 @@ describe('M7 — capability diagnostics', () => {
     expect(diags.some((d) => d.code === 'CONVEX_UNSUPPORTED_RETRY')).toBe(true);
   });
 
+  it('rejects read policy rateLimit loudly for Convex', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Doc', [prop('title', 'string')])];
+    ir.stores = [durable('Doc')];
+    ir.policies = [
+      {
+        name: 'ThrottleRead',
+        entity: 'Doc',
+        action: 'read',
+        expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+        rateLimit: { maxRequests: 10, windowMs: 1000, scope: 'global' },
+      },
+    ];
+    const catalog = gen(ir, 'convex.mutations').diagnostics.find(
+      (d) => d.code === 'CONVEX_UNSUPPORTED_RATE_LIMIT',
+    );
+    expect(catalog?.severity).toBe('error');
+    const queryHit = gen(ir, 'convex.queries').diagnostics.find(
+      (d) => d.code === 'CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT',
+    );
+    expect(queryHit?.severity).toBe('error');
+  });
+
   it('rejects async commands loudly for Convex', () => {
     const ir = emptyIR();
     ir.entities = [entity('Job', [prop('name', 'string', ['required'])])];

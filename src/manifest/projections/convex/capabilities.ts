@@ -28,7 +28,7 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   {
     feature: 'Read/all policies on generated queries',
     status: 'partial',
-    note: 'Renderable predicates with authContextImport; flag() public when flagProviderImport set; belongsTo/ref + hasMany + hasMany-through (single-column join FKs) read-policy hydration; composite/missing join edges + read rateLimit stay internal (fail closed). Write/execute policy rateLimit emits on mutations.',
+    note: 'Renderable predicates with authContextImport; flag() public when flagProviderImport set; belongsTo/ref + hasMany + hasMany-through (single-column join FKs) hydration. Read/all policy rateLimit REJECTED_LOUD (queries cannot mutate buckets). Unhydratable relation edges stay internal (fail closed). Write/execute/delete policy rateLimit emits on mutations.',
   },
   { feature: 'Roles + roleAllows', status: 'supported' },
   { feature: 'Events + emit payloads', status: 'supported' },
@@ -127,7 +127,7 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   {
     feature: 'Policy/read rateLimit',
     status: 'unsupported',
-    note: 'CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT — Convex queries cannot mutate durable buckets',
+    note: 'CONVEX_UNSUPPORTED_RATE_LIMIT / CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT (error) — Convex queries cannot mutate durable buckets; remove rateLimit from read/all policies',
   },
   {
     feature: 'async commands / job queue',
@@ -290,13 +290,16 @@ export function collectUnsupportedDiagnostics(
     // still cannot consume buckets inside Convex queries (fail-closed internal).
     if (pol.action === 'read' || pol.action === 'all') {
       out.push({
-        severity: 'warning',
+        severity: 'error',
         code: 'CONVEX_UNSUPPORTED_RATE_LIMIT',
         entity: pol.entity,
         message:
           pol.action === 'read'
-            ? `Policy '${pol.name}' declares rateLimit on read; Convex queries cannot mutate durable rate-limit buckets (queries stay internal).`
-            : `Policy '${pol.name}' declares rateLimit with action 'all'; mutations enforce it, but read queries with this policy remain internal (queries cannot mutate buckets).`,
+            ? `Policy '${pol.name}' declares rateLimit on read; rejected for Convex. ` +
+              'Queries cannot mutate durable rate-limit buckets. Remove `rateLimit` from the read policy.'
+            : `Policy '${pol.name}' declares rateLimit with action 'all'; rejected for Convex reads. ` +
+              'Mutations can enforce the bucket, but read queries cannot mutate buckets. ' +
+              'Split into write/execute rateLimit policies, or remove rateLimit from this `all` policy.',
       });
     }
   }

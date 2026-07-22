@@ -148,7 +148,7 @@ describe('convex command rateLimit emit', () => {
     expect(diags.some((d) => d.code === 'CONVEX_UNSUPPORTED_RATE_LIMIT')).toBe(false);
   });
 
-  it('still warns for read policy rateLimit', () => {
+  it('rejects read policy rateLimit loudly', () => {
     const ir = emptyIR();
     ir.policies = [
       {
@@ -159,8 +159,10 @@ describe('convex command rateLimit emit', () => {
         rateLimit: { maxRequests: 10, windowMs: 1000, scope: 'global' },
       },
     ];
-    const diags = collectUnsupportedDiagnostics(ir);
-    expect(diags.some((d) => d.code === 'CONVEX_UNSUPPORTED_RATE_LIMIT')).toBe(true);
+    const hit = collectUnsupportedDiagnostics(ir).find(
+      (d) => d.code === 'CONVEX_UNSUPPORTED_RATE_LIMIT',
+    );
+    expect(hit?.severity).toBe('error');
   });
 
   it('emits policy rateLimit consume before policy expression on mutations', () => {

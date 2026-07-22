@@ -54,7 +54,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | `trustedSource` params        | Exposed as normal args unless auth/create seam injects                                                                       | `CONVEX_PARTIAL_TRUSTED_SOURCE` (info) |
 | Referential onDelete/onUpdate | No schema cascade                                                                                                            | `CONVEX_REFERENTIAL_ACTION_DEFERRED`   |
 | Computed relation aggregates  | Self-only helpers; `count_of`/`sum`/`avg`/`min_of`/`max_of`/`filter`/`map`/`flat_map` on hydrated hasMany in mutations      | Unresolved → `CONVEX_UNRESOLVED_COMPUTED` |
-| Read/`all` policies           | Public with `authContextImport` (+ `flagProviderImport` when policies call `flag()`); `belongsTo`/`ref` + one-hop `hasMany` + `hasMany through` (single-column join FKs) hydration; composite/missing join edges and read `rateLimit` remain internal | `CONVEX_UNSUPPORTED_READ_POLICY_*`     |
+| Read/`all` policies           | Public with `authContextImport` (+ `flagProviderImport` when policies call `flag()`); relationship hydration for belongsTo/ref/hasMany/through (single-column FKs). Unhydratable edges stay internal. Read `rateLimit` is Unsupported (error). | `CONVEX_UNSUPPORTED_READ_POLICY_*`     |
 | `policyMode: 'skip'`          | Omits authorization only                                                                                                     | Documented escape hatch                |
 | `realtime` hint               | Convex queries already reactive; no SSE artifact                                                                             | `CONVEX_PARTIAL_REALTIME` (info)       |
 | Computed `cache` directives   | Helpers stay pure; Manifest cache strategies not lowered                                                                     | `CONVEX_PARTIAL_COMPUTED_CACHE` (info) |
@@ -66,7 +66,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Approvals (rejected)                          | `CONVEX_UNSUPPORTED_APPROVAL` (error) — no stage state / pre-command gate |
 | `searchable` (non-string types)               | `CONVEX_UNSUPPORTED_SEARCHABLE`    |
 | Command `retry` (rejected)                    | `CONVEX_UNSUPPORTED_RETRY` (error) — no per-attempt rollback/sleep in mutations |
-| Read / `all` policy `rateLimit`               | `CONVEX_UNSUPPORTED_RATE_LIMIT` / `CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT` (queries cannot mutate buckets) |
+| Read / `all` policy `rateLimit` (rejected)    | `CONVEX_UNSUPPORTED_RATE_LIMIT` / `CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT` (error) — queries cannot mutate buckets |
 | `async` commands / job queue (rejected)       | `CONVEX_UNSUPPORTED_ASYNC_COMMAND` (error) — no job queue/drain emit |
 | Action kinds `effect` / `publish` / `persist` | `CONVEX_UNSUPPORTED_ACTION_KIND` (error) — no mutation lowering |
 

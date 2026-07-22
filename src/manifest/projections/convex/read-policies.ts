@@ -198,7 +198,7 @@ export function renderReadPolicies(
         severity: 'error',
         code: 'CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT',
         entity: entityName,
-        message: `Read policy '${policy.name}' declares rateLimit; generated Convex queries remain internal until a durable read-rate-limit seam is configured.`,
+        message: `Read policy '${policy.name}' declares rateLimit; rejected for Convex — queries cannot mutate durable rate-limit buckets (queries stay internal). Remove rateLimit from the read policy.`,
       });
       continue;
     }

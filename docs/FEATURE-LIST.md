@@ -345,12 +345,12 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Appendix E: command-body policy clause | `REJECTED_LOUD → by design` | Top-level policies only; command-body `policy` will not ship |
 | 2. Language (DSL) — full inventory | Entity `behavior` blocks | `REJECTED_LOUD → proven reject` | see §1 / fixture `110` |
 | 4. Runtime engine & adapters | ~~WASM expression compatibility layer~~ | `REMOVED 2026-07-15` | Quarantined prototype deleted — no `.wasm` artifact, never on default RuntimeEngine path |
-| 6. Projections — every registered target | convex | `PARTIAL` | mirror of COMPLIANCE_MATRIX §6 — relationship read hydration + saga shared-input Supported; remaining read rateLimit / composite join edges; async/action-kind REJECTED_LOUD |
+| 6. Projections — every registered target | convex | `PARTIAL` | mirror of COMPLIANCE_MATRIX §6 — relationship read hydration + saga shared-input Supported; read rateLimit/async/action-kind/retry/approvals REJECTED_LOUD; other Partial rows (trustedSource/realtime/…) remain |
 | 6. Projections — every registered target | Convex `async` commands / job queue | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_ASYNC_COMMAND` error |
 | 6. Projections — every registered target | Convex action kinds `effect`/`publish`/`persist` | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_ACTION_KIND` error |
 | 6. Projections — every registered target | Convex approvals | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_APPROVAL` error |
 | 6. Projections — every registered target | Convex command `retry` | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_RETRY` error |
-| 6. Projections — every registered target | Convex read/`all` policy query enforcement | `PARTIAL` | mirror of COMPLIANCE_MATRIX §6 — remaining composite/missing join edges + read rateLimit |
+| 6. Projections — every registered target | Convex read/`all` policy `rateLimit` | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — queries cannot mutate buckets (error) |
 | 8. Open gaps / phantoms (checklist mirror) | ~~`manifest generate-fixtures`~~ | `REMOVED (docs struck)` | use `manifest seed` / `load-test` |
 | 8. Open gaps / phantoms (checklist mirror) | ~~`manifest test constraints` / ConstraintTestHarness~~ | `REMOVED (docs struck)` | use `manifest harness` / `repl` |
 | 8. Open gaps / phantoms (checklist mirror) | ~~`projection.generateRoute` / `generateTypes` / `generateClient`~~ | `REMOVED (docs struck)` | use `generate(ir, request)` / CLI `--all` |

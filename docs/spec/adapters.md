@@ -124,8 +124,14 @@ depend on application identity or key management:
   projection diagnoses each of these instead of approximating authorization.~~
   > **Correction (2026-07-22):** Write/execute/delete policy `rateLimit` is
   > emitted on Convex mutations (same sliding-window table as command
-  > `rateLimit`). Read-policy `rateLimit` still cannot run inside Convex queries
-  > (queries cannot mutate buckets) and remains diagnosed / fail-closed internal.
+  > `rateLimit`). ~~Read-policy `rateLimit` still cannot run inside Convex queries
+  > (queries cannot mutate buckets) and remains diagnosed / fail-closed internal.~~
+  >
+  > **Correction (2026-07-22):** Read/`all` policy `rateLimit` is
+  > **REJECTED_LOUD** (`CONVEX_UNSUPPORTED_RATE_LIMIT` /
+  > `CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT` severity **error**). Convex
+  > queries cannot mutate durable buckets; remove `rateLimit` from read/`all`
+  > policies (or split write-side rateLimit onto write/execute policies).
   > ~~`flag()` and relationship traversal on read policies likewise stay internal.~~
   >
   > **Correction (2026-07-22):** `flagProviderImport` MUST name a module
