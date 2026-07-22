@@ -347,8 +347,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Generic / parameterized entities `Entity<T>` | `NOT_IMPLEMENTED` | fixtures `84`–`85` negative only |
 | 2. Language (DSL) — full inventory | Language keyword `softDelete` | `NOT_IMPLEMENTED` | projection config only |
 | 2. Language (DSL) — full inventory | Realtime subscriptions (language/runtime) | `PARTIAL / DIAGNOSTIC_ONLY` | Convex diagnostic; Next.js may differ — prove per target |
-| 3. Expression builtins (49) | Custom builtins via plugin API | `CLAIMED_NEEDS_PROOF` | plugin-api |
-| 4. Runtime engine & adapters | `IRDiagnostic.code` optional | `CLAIMED_NEEDS_PROOF` | seeded codes 2026-07-15 |
 | 4. Runtime engine & adapters | ~~WASM expression compatibility layer~~ | `REMOVED 2026-07-15` | Quarantined prototype deleted — no `.wasm` artifact, never on default RuntimeEngine path |
 | 5. Stores & persistence subsystems | Custom store via plugin API | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | DynamoDB store | `CLAIMED_NEEDS_PROOF` | See feature matrix |
