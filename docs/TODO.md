@@ -214,6 +214,10 @@ non-binding navigation mirror only.
       entity routes/types under `routes|types/<module>/…` via
       `express/path-hints.ts`; monolith router/types stay flat. Proof:
       `express/path-hints.test.ts`.
+- [x] **Hono per-module route/types pathHints** — fixed 2026-07-22:
+      entity routes/types under `routes|types/<module>/…` via
+      `hono/path-hints.ts`; monolith `src/routes.ts` / types stay flat. Proof:
+      `hono/path-hints.test.ts`.
 - [x] **Phantom config/CLI/API docs struck** — 2026-07-22: Mintlify
       `cli/configuration.mdx` no longer claims `env(VAR)` inlining,
       `MANIFEST_ENV` overlays, or YAML connection `stores:`; `API_REFERENCE.md`

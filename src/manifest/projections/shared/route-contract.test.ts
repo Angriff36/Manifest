@@ -39,6 +39,29 @@ describe('resolveEntitySegment', () => {
       'events/event',
     );
   });
+
+  it('entityModules nests under the sanitized module when no routeSegments override', () => {
+    expect(
+      resolveEntitySegment('Order', {
+        entityModules: { Order: 'billing' },
+      }),
+    ).toBe('billing/order');
+    expect(
+      resolveEntitySegment('Order', {
+        entityModules: { Order: 'Billing / Ops!' },
+        routeCasing: 'kebab-case',
+      }),
+    ).toBe('Billing_Ops/order');
+  });
+
+  it('routeSegments override wins over entityModules', () => {
+    expect(
+      resolveEntitySegment('Order', {
+        routeSegments: { Order: 'custom/orders' },
+        entityModules: { Order: 'billing' },
+      }),
+    ).toBe('custom/orders');
+  });
 });
 
 describe('deriveApiBasePath', () => {

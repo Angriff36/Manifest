@@ -16,6 +16,7 @@
  */
 
 import { applyRouteCasing, type RouteCasing } from './naming.js';
+import { moduleDirSegment } from './module-path.js';
 
 // ---------------------------------------------------------------------------
 // Param placeholder styles
@@ -69,22 +70,30 @@ export interface EntitySegmentOptions {
   routeSegments?: Record<string, string>;
   /** Casing applied to the entity name when no override is present. Default `'lowercase'`. */
   routeCasing?: RouteCasing;
+  /**
+   * Optional IR module name per entity. When set (and no `routeSegments` override),
+   * the sanitized module is prepended: `billing/order`. Explicit overrides win
+   * unchanged so multi-segment `routeSegments` stay authoritative.
+   */
+  entityModules?: Record<string, string>;
 }
 
 /**
  * URL/route path segment for an entity: explicit `routeSegments` override →
- * else the entity name normalized per `routeCasing` (default `'lowercase'`,
- * the legacy flattened form `PrepTask` → `preptask`).
+ * else optional `entityModules` prefix + name normalized per `routeCasing`
+ * (default `'lowercase'`, the legacy flattened form `PrepTask` → `preptask`).
  *
  * This is the ONE segment derivation. The nextjs generator's `resolveRouteSegment`
  * and the client both call it, so route pathHints and client fetch URLs cannot
- * disagree on casing.
+ * disagree on casing or module nesting.
  */
 export function resolveEntitySegment(entityName: string, opts: EntitySegmentOptions = {}): string {
-  return (
-    opts.routeSegments?.[entityName] ??
-    applyRouteCasing(entityName, opts.routeCasing ?? 'lowercase')
-  );
+  const override = opts.routeSegments?.[entityName];
+  if (override !== undefined) return override;
+
+  const base = applyRouteCasing(entityName, opts.routeCasing ?? 'lowercase');
+  const mod = moduleDirSegment(opts.entityModules?.[entityName]);
+  return mod ? `${mod}/${base}` : base;
 }
 
 /**
@@ -252,6 +261,7 @@ export function resolveRouteContract(options: RouteContractOptions = {}): RouteC
   const segOpts: EntitySegmentOptions = {
     routeSegments: options.routeSegments,
     routeCasing: options.routeCasing,
+    entityModules: options.entityModules,
   };
 
   const entitySegment = (entityName: string): string => resolveEntitySegment(entityName, segOpts);

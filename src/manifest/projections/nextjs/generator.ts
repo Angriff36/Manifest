@@ -150,6 +150,8 @@ interface NormalizedNextJsOptions {
   responseImportPath: string;
   routeCasing: RouteCasing;
   routeSegments: Record<string, string>;
+  /** IR module name per entity — feeds route-contract module nesting. */
+  entityModules: Record<string, string>;
   runtimeConfigImport?: string;
   /** Config G7 — from top-level `runtime` via `__manifestRuntime`. */
   runtimeFanIn: ReturnType<typeof resolveRuntimeFactoryFanIn>;
@@ -244,6 +246,11 @@ function normalizeOptions(options?: NextJsProjectionOptions, ir?: IR): Normalize
     naming: options?.naming,
     accessorNames: options?.accessorNames ?? {},
     routeSegments: options?.routeSegments ?? {},
+    entityModules: Object.fromEntries(
+      (ir?.entities ?? [])
+        .filter((e) => typeof e.module === 'string' && e.module.trim().length > 0)
+        .map((e) => [e.name, e.module as string]),
+    ),
     routeCasing: options?.routeCasing ?? NEXTJS_DEFAULTS.routeCasing,
     dateSerialization: options?.dateSerialization ?? NEXTJS_DEFAULTS.dateSerialization,
     emitCompanions: options?.emitCompanions ?? NEXTJS_DEFAULTS.emitCompanions,

@@ -13,6 +13,7 @@ companion_inventory: docs/CONFIRMED-FEATURES.md (existence claims; must reconcil
 companion_checklist: docs/TODO.md
 ---
 
+<!-- Edit 2026-07-22: Hono per-module pathHints (routes|types/<module>/…); monolith src/routes + types stay flat; continue per-module split slice -->
 <!-- Edit 2026-07-22: Express per-module pathHints (routes|types/<module>/…); monolith router/types stay flat; continue per-module split slice -->
 <!-- Edit 2026-07-22: Analytics per-module pathHints (analytics/handlers/<module>/…); monoliths stay flat; continue per-module split slice -->
 <!-- Edit 2026-07-22: Mermaid per-module pathHints (diagrams/<module>/…); ER stays flat; continue per-module split slice -->
@@ -405,7 +406,8 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | Mermaid per-module diagram pathHints               | FULLY_IMPLEMENTED     | `projections/mermaid/path-hints.ts` + state/sequence wire in `generator.ts`; `diagrams/<module>/…` when module set; ER stays `diagrams/er-diagram.mmd`. Proofs `mermaid/path-hints.test.ts` (5). SHA after commit. |
 | [x]    | Analytics per-module handler pathHints             | FULLY_IMPLEMENTED     | `projections/analytics/path-hints.ts` + per-entity handler wire in `generator.ts`; `analytics/handlers/<module>/…` when module set; monolith tracking-plan/events/handlers stay flat. Proofs `analytics/path-hints.test.ts` (5). SHA after commit. |
 | [x]    | Express per-module route/types pathHints           | FULLY_IMPLEMENTED     | `projections/express/path-hints.ts` + router/entity/types/`all` wire in `generator.ts`; `routes|types/<module>/…` when entity module set; monolith `manifest-router` / `manifest-types` stay flat. Proofs `express/path-hints.test.ts` (5). SHA after commit. |
-| [~]    | Per-module output file splitting (all targets) | PARTIAL               | Prisma `splitFiles` + Zod + JSON Schema + Pydantic + Dart + Storybook + Mermaid + Analytics + Express module pathHints shipped. Convex + remaining web (Hono/Next/Remix/SvelteKit) still parked. |
+| [x]    | Hono per-module route/types pathHints              | FULLY_IMPLEMENTED     | `projections/hono/path-hints.ts` + router/entity/types/`all` wire in `generator.ts`; `routes|types/<module>/…` when entity module set; monolith `src/routes.ts` / `manifest-types` stay flat. Proofs `hono/path-hints.test.ts` (5). SHA after commit. |
+| [~]    | Per-module output file splitting (all targets) | PARTIAL               | Prisma `splitFiles` + Zod + JSON Schema + Pydantic + Dart + Storybook + Mermaid + Analytics + Express + Hono module pathHints shipped. Convex + Next/Remix/SvelteKit still parked. |
 | [x]    | Convex command `rateLimit`                     | FULLY_IMPLEMENTED     | `rate-limit-emit.ts` + schema/mutation wire; proofs `rate-limit-emit.test.ts` — **SHA after commit** |
 | [x]    | Convex policy `rateLimit` (write/execute/delete) | FULLY_IMPLEMENTED   | Same bucket table; `policy:<name>` key before each policy expression in `functions.ts` `renderChecks`; schema via `irNeedsRateLimitTable`. Proofs `rate-limit-emit.test.ts` policy suite. SHA after commit. |
 | [x]    | Convex read/`all` policy `rateLimit`           | REJECTED_LOUD         | `CONVEX_UNSUPPORTED_RATE_LIMIT` + `CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT` severity **error** — queries cannot mutate buckets (`capabilities.ts`, `read-policies.ts`); proofs `rate-limit-emit.test.ts` + `semantics.test.ts` — **SHA after commit** |
