@@ -80,8 +80,8 @@ manifest compile src/app.manifest -o ir/ --dry-run
 Generate code from IR using a projection.
 
 - `<ir>` — IR file or directory (required).
-- `-p, --projection <name>` — projection (`nextjs`, `ts.types`, `ts.client`; default `nextjs`).
-- `-s, --surface <name>` — surface (`route`, `command`, `types`, `client`, `all`; default `all`).
+- `-p, --projection <name>` — projection name. Registered projections include: `nextjs`, `routes`, `prisma`, `prisma-store`, `convex`, `openapi`, `react-query`, `zod`, `drizzle`, `graphql`, `llm-context`, `express`, `hono`, `mermaid`, `jsonschema`, `storybook`, `health`, `materialized-views`, `elasticsearch`, `terraform`, `analytics`, `remix`, `sveltekit`, `kysely`, `mongoose`, `dynamodb`, `pydantic`, `dart`, `wiring`, `contract-tests`. Default: `nextjs`.
+- `-s, --surface <name>` — projection-specific surface. Surfaces vary by projection. For `nextjs`: `route`, `detail`, `command`, `dispatcher`, `subscribe`, `subscriptionHook`, `sharedRuntime`, `schedule`, `webhook`, `companions`, `ts.types`, `ts.client`, `all`. Default: `all`.
 - `-o, --output <path>` — output directory.
 - `--auth <provider>`, `--database <path>`, `--runtime <path>`, `--response <path>` — import paths layered over config.
 - `--check` — drift mode: regenerate code in memory and compare to the committed files **without writing**. Exits non-zero and lists the drifted files (a missing file or any byte difference counts as drift) so CI can assert that committed code equals freshly generated code (`prettier --check` semantics).

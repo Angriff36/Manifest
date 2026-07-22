@@ -257,7 +257,7 @@ Authorization policy.
 ```typescript
 interface IRPolicy {
   name: string;
-  action: 'read' | 'execute' | 'all';
+  action: 'read' | 'write' | 'delete' | 'execute' | 'all' | 'override';
   expression: IRExpression;
   entity?: string;
   module?: string;
@@ -297,7 +297,7 @@ Side effect action.
 
 ```typescript
 interface Action {
-  kind: 'persist' | 'publish' | 'effect'; // Action kind
+  kind: 'mutate' | 'emit' | 'compute' | 'effect' | 'publish' | 'persist'; // Action kind
   expression: string; // Action expression
   options?: Record<string, unknown>;
 }

@@ -31,9 +31,11 @@ The first argument is the string to test (typically a property via `self.`), the
 
 Regex constraints are validated in two places.
 
-At compile time, the IR compiler (`src/manifest/ir-compiler.ts`, around line 751) inspects every transformed call expression. When the callee is the identifier `matches`, there are at least two arguments, and the second argument is a string literal, it attempts `new RegExp(patternArg.value.value)`. If construction throws, the compiler emits an error diagnostic (`Invalid regex pattern in matches(): "..."`) at the call's source position. Patterns that are not literal strings (for example a pattern passed through a variable) are not validated at compile time because there is nothing constant to test.
+At compile time, the IR compiler (`src/manifest/ir-compiler.ts:1944-1964`) inspects every transformed call expression. When the callee is the identifier `matches`, there are at least two arguments, and the second argument is a string literal, it attempts `new RegExp(patternArg.value.value)`. If construction throws, the compiler emits an error diagnostic (`Invalid regex pattern in matches(): "..."`) at the call's source position. Patterns that are not literal strings (for example a pattern passed through a variable) are not validated at compile time because there is nothing constant to test.
 
-At runtime, the `matches` built-in in the engine's `getBuiltins()` (`src/manifest/runtime-engine.ts`, around line 807) returns `false` unless both arguments are strings, then evaluates `new RegExp(pattern).test(s)`. If the pattern fails to compile at runtime, the `try/catch` returns `false` rather than throwing. Because `matches` returns a boolean, it composes with the constraint machinery the same way any other boolean constraint expression does: a `false` result triggers the constraint's configured outcome.
+At runtime, the `matches` built-in in the engine's `getBuiltins()` (`src/manifest/runtime-engine.ts:1772-1779`) returns `false` unless both arguments are strings, then evaluates `new RegExp(pattern).test(s)`. If the pattern fails to compile at runtime, the `try/catch` returns `false` rather than throwing. Because `matches` returns a boolean, it composes with the constraint machinery the same way any other boolean constraint expression does: a `false` result triggers the constraint's configured outcome.
+
+> **Correction (2026-07-22):** Line refs above updated from stale ~751 / ~807. Matrix row FULLY_IMPLEMENTED @ fixture `63` / `0a2a0f9`.
 
 ## How it maps to projections
 

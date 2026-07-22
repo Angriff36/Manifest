@@ -4601,7 +4601,7 @@ export class RuntimeEngine {
         baseSubject.id = options.instanceId;
       }
 
-      // Middleware: before-action hook (before each action in the loop)
+      // Middleware: before-action hook (once before the action loop)
       const beforeActionResult = await this.runMiddleware(
         'before-action',
         command,

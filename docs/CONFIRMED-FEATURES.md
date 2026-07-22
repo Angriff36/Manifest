@@ -65,7 +65,8 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
   (fixtures 74, 75, 100 — rateLimit matrix FULLY_IMPLEMENTED @ `fd4bb50`;
   Convex policy/read rateLimit still diagnostic-only)
 - Computed properties incl. caching/memoization strategies (fixtures 03, 65)
-- Constraints with severity `ok`/`warn`/`block`, explicit `failWhen` polarity (fixtures 105–106), override authorization (fixture 22)
+- Constraints with severity `ok`/`warn`/`block`, explicit `failWhen` polarity (fixtures 105–106), override authorization (fixture 22);
+  regex `matches()` constraints (fixture 63 — matrix FULLY_IMPLEMENTED @ `0a2a0f9`)
 - Policies: read/write/delete/execute/all/override
 - State machines: `transitions` with runtime enforcement (fixture 38)
 - Aggregate `count()` expressions, usable in reactions (fixture 97 —
@@ -122,7 +123,9 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
   - ~~**Correction (2026-07-15):** policies → **command constraints** → guards → actions → emits → return (see `docs/spec/semantics.md`)~~
   - **Correction (2026-07-15) @RYANSIGNED:** Full order in `docs/spec/semantics.md` § Commands: build context → **command `rateLimit`** → policies (policy-level rateLimit) → **command constraints** → guards → actions → emits → return. Policies are not command-body clauses.
 - `RuntimeContext`: `tenantId` / `orgId` / `actorId` / `requestId` / `source` / `deterministic`
-- Middleware pipeline with 4 hooks: before-policy, before-guard, before-action, after-emit
+- Middleware pipeline with 4 hooks: before-policy, before-guard, before-action,
+  after-emit (matrix FULLY_IMPLEMENTED @ `9f3a9bf`; `before-action` once before
+  action loop, not per action)
 - Compile diagnostics may carry optional machine-readable `IRDiagnostic.code`
   (2026-07-15; seeded on behavior / `through` / approval-escalate unsupported)
 - Batched persistence: per-command working-copy buffer, one flush, atomic-on-failure (`runtime-command-batched-persistence.test.ts`)
