@@ -49,7 +49,7 @@ function rateLimitedIR(scope: 'user' | 'tenant' | 'global' = 'global'): IR {
   ir.entities = [entity('Order', [prop('status', 'string', ['required']), prop('orgId', 'string')])];
   ir.stores = [durable('Order')];
   if (scope === 'tenant') {
-    ir.tenant = { property: 'orgId' };
+    ir.tenant = { property: 'orgId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
   }
   ir.commands = [
     {
