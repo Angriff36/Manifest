@@ -45,7 +45,7 @@ import { buildDynamoDBKey } from '@angriff36/manifest/stores';
 const key = buildDynamoDBKey('Order', 'order-123', { prefix: 'ORDER' });
 ```
 
-When `entityPrefix` is set, the store uses `ConditionExpression` for atomic create (`attribute_not_exists`) and update (`attribute_exists` with version check) operations. Single-table design is auto-detected when `config.singleTable === true` in any store declaration.
+When `entityPrefix` is set, the store uses `ConditionExpression` for atomic create (`attribute_not_exists`) and delete (`attribute_exists`) operations. Single-table design is auto-detected when `config.singleTable === true` in any store declaration.
 
 ## Composite key handling
 
@@ -53,7 +53,9 @@ The store maps Manifest entity IDs to DynamoDB composite primary keys. Partition
 
 ## Optimistic locking
 
-DynamoDBStore implements optimistic locking via a `version` field. On `update`, the store includes a `ConditionExpression` that checks the current version matches the expected value. If another writer has modified the instance between the read and write, the condition fails and the store returns `undefined`, which the runtime engine interprets as a concurrency conflict.
+~~DynamoDBStore implements optimistic locking via a `version` field. On `update`, the store includes a `ConditionExpression` that checks the current version matches the expected value.~~
+
+> **Correction (2026-07-22 @RYANSIGNED):** DynamoDBStore does NOT implement optimistic locking — the `update` method is a plain `PutCommand` with no version check. For optimistic locking with version field enforcement, use **MongoDBStore** (`@angriff36/manifest/stores`), which includes a version check in its update filter. DynamoDB atomic create uses `attribute_not_exists` and delete uses `attribute_exists` for existence checks, but there is no version-based concurrency control.
 
 ## DynamoDBOutboxStore
 

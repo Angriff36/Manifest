@@ -38,7 +38,7 @@ Every property has a type.
 
 ~~Supported types are `string`, `number`, `boolean`, and `timestamp`. A property without a default is `undefined` unless the caller supplies a value at creation time.~~
 
-> **Correction (2026-07-15) @RYANSIGNED:** There is **no** `timestamp` property type (language-design backlog; see `docs/TODO.md`). Common scalar types include `string`, `number`, `boolean`, plus date/time primitives `datetime` / `date` / `time` / `duration` (`docs/spec/semantics.md` § Date/Time Types), `decimal` / `money`, collections, enums, and value-object names. When a property is omitted at create time, the runtime applies the property's `defaultValue` if present, otherwise the **type default** (for example `""`, `0`, `false`) — not `undefined`. An explicit `required` modifier is not satisfied by a zero-filled type default alone (`E_REQUIRED`). See [Types](/language/types).
+> **Correction (2026-07-22 @RYANSIGNED):** `timestamp` **is** a valid property type — it is a normative alias for `datetime` (`docs/spec/semantics.md:281,286-289`). Runtimes MUST treat `timestamp` identically to `datetime`. Common scalar types include `string`, `number`, `boolean`, plus date/time primitives `datetime` / `timestamp` / `date` / `time` / `duration`, `decimal` / `money`, collections, enums, and value-object names. When a property is omitted at create time, the runtime applies the property's `defaultValue` if present, otherwise the **type default** (for example `""`, `0`, `false`) — not `undefined`. An explicit `required` modifier is not satisfied by a zero-filled type default alone (`E_REQUIRED`). See [Types](/language/types).
 
 ### Modifiers
 
@@ -272,7 +272,7 @@ When no action is declared, the projection emits nothing and the target platform
 
 ~~(Implied: declaring `onDelete` / `onUpdate` enforces referential integrity in the reference runtime.)~~
 
-> **Correction (2026-07-15) @RYANSIGNED:** Referential actions compile into IR and are emitted by storage projections (for example Prisma). The **reference runtime does not enforce** `onDelete` / `onUpdate` — `deleteInstance()` does not cascade or restrict (`docs/TODO.md`). Do not expect cascade/restrict behavior from `RuntimeEngine` alone.
+> **Correction (2026-07-15) @RYANSIGNED:** ~~The reference runtime does not enforce~~ Referential actions **are** enforced in the reference runtime via `ReferentialActionApplier` (`src/manifest/runtime-referential-actions.ts`, wired at `runtime-engine.ts:1245-1270`). The runtime applies cascade/restrict/setNull/setDefault semantics on `deleteInstance()` based on the IR relationship configuration. Projection adapters also emit referential-integrity constraints (for example Prisma `onDelete`/`onUpdate`).
 
 ## Concurrency controls (vNext)
 

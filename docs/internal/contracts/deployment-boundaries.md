@@ -147,16 +147,16 @@ Duplicate name validation is enforced at compile time by the multi-compiler:
 | Events   | `channel`              | Global           | `"recipe.updated"` must be unique across all manifests  |
 | Policies | `name`                 | Global           | `"CanEditRecipe"` must be unique across all manifests   |
 
-These rules are enforced by both `compile.mjs` and `check.mjs`. Common command names like `update`, `delete`, or `reset` are allowed across different entities because commands are scoped by entity.
+These rules are enforced by the multi-compiler (`src/manifest/multi-compiler.ts`) during `manifest compile --all` (the config-driven compilation flow). Common command names like `update`, `delete`, or `reset` are allowed across different entities because commands are scoped by entity.
 
 **Validation behavior:**
 
 1. All manifests are compiled to individual IRs
 2. A deterministic validation pass builds maps keyed by the appropriate identity for each element type
-3. If any key appears more than once, the script:
+3. If any key appears more than once, the compiler:
    - Prints a diagnostic listing the duplicate with fully-qualified key (e.g., `Recipe.update`) and which manifest file each instance came from
    - Exits with non-zero status
-   - Does NOT write `combined.ir.json` (compile.mjs) or fails the check (check.mjs)
+   - Does NOT write the merged IR output
 
 **Example diagnostic output:**
 
