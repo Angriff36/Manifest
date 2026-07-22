@@ -47,8 +47,12 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 - Composite primary keys (`key` — matrix FULLY_IMPLEMENTED @ `96b8e80e` /
   `a49807e9`), `alternateKeys`
 - Relationships: `hasMany` / `hasOne` / `belongsTo` / `ref` (fixtures `02`, `98`, `99`), composite FKs, referential actions (`onDelete`/`onUpdate` **enforced by the reference runtime** as of 2026-07-15 — see `runtime-referential-actions.test.ts`), **many-to-many via `hasMany … through Join`** (fixture 102; Join must belongsTo both ends; runtime two-hop). Completion SoT: `docs/internal/COMPLIANCE_MATRIX.md` §1.
-- Automatic timestamps / `autoNow` defaults — `= now()` / `= today()` (fixture 62)
-- Property privacy & protection modifiers: `private`, `encrypted`, `masked` (fixtures 91, 93)
+- Automatic timestamps / `autoNow` defaults — `= now()` / `= today()` (fixture 62 +
+  `create-field-and-autonow.test.ts` — matrix FULLY_IMPLEMENTED @ `68afb8ab` /
+  `4cfff8ec`; `today()` compile-time lowerer only)
+- Property privacy & protection modifiers: `private`, `encrypted`, `masked`
+  (fixtures 91, 93 — matrix FULLY_IMPLEMENTED @ `b8b29a34` / `9f3a9bf`; masking
+  read-projection only; encrypt no-op without provider)
 - Full-text `searchable` declarations (fixture 89)
 - Multi-tenancy isolation (fixture 61; matrix FULLY_IMPLEMENTED —
   `tenant-isolation.test.ts` @ `5e751072`; reference-runtime filter/inject/fail-closed,
@@ -130,14 +134,15 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
   (2026-07-15; seeded on behavior / `through` / approval-escalate unsupported)
 - Batched persistence: per-command working-copy buffer, one flush, atomic-on-failure (`runtime-command-batched-persistence.test.ts`)
 - Pluggable `EncryptionProvider`; feature-flag provider; deterministic mode
-- EventBus (`src/manifest/events/event-bus`, `runtime-eventbus.test.ts`)
+- EventBus in-process (`MemoryEventBus` — matrix FULLY_IMPLEMENTED @ `61d5ab6`;
+  `event-bus.test.ts` + `runtime-eventbus.test.ts`; RedisEventBus already §1)
 - Scoped WASM expression-compatibility layer (`isWasmCompatible()`) for pure computational expressions — an optimization path, **not** a WASM runtime. Constraint polarity uses shared `constraint-polarity.ts` (`failWhen` + severity), aligned with RuntimeEngine (2026-07-14, unreleased).
 
 ## 4. Stores & Persistence Subsystems
 
 - Entity stores: memory, localStorage (browser-safe), postgres, supabase (`stores.node.ts`), Turso/libSQL, DynamoDB, Prisma-generic (`stores/prisma-generic/store.ts`) — each test-backed
-- Transactional outbox adapters (`src/manifest/outbox/stores/*`) — memory +
-  postgres matrix FULLY_IMPLEMENTED @ `b296e1a`; redis/mongodb/dynamodb still
+- Outbox adapters (`src/manifest/outbox/stores/*`) — memory (in-process only, `tx` ignored) +
+  postgres FULLY_IMPLEMENTED @ `b296e1a` (durable, honors supplied transaction handle); redis/mongodb/dynamodb still
   CLAIMED_NEEDS_PROOF; ≠ outbound partner HTTP POST
 - Approval store: memory/postgres (`src/manifest/approval/stores/*` — matrix
   FULLY_IMPLEMENTED @ `179e135`; Postgres unit tests mocked Pool)
