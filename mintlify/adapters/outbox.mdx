@@ -138,7 +138,7 @@ import { Pool } from 'pg';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const runtime = new RuntimeEngine(ir, {
-  userId: session.userId,
+  actorId: session.userId,
   tenantId: session.tenantId,
   outboxStore: new PostgresOutboxStore({ pool }),
 });

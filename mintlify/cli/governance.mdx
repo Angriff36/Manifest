@@ -1,7 +1,7 @@
 ---
 title: 'Governance & audit commands'
 sidebarTitle: 'Governance & audit'
-description: "Reference for enforce-surface, integration-check, audit-governance, audit-bypasses, scan, doctor, and emit — Manifest's static enforcement layer (v0.6.0+) for downstream apps."
+description: "Reference for enforce-surface, integration-check, audit-governance, audit-bypasses, scan, doctor, and emit — Manifest's static enforcement layer for downstream apps."
 ---
 
 The governance commands are the static enforcement layer that sits beside the runtime. They check that an application codebase only writes through registered Manifest commands, that emitted routes match the canonical dispatcher, that bypasses are registered, and that the package integrates correctly end-to-end. None of these commands execute a Manifest program — they read the registries, the IR, and your source tree.
