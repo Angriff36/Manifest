@@ -1,6 +1,6 @@
 # CLI Reference
 
-The `manifest` command-line interface compiles, generates, validates, and governs Manifest programs. This catalog documents every command registered in `packages/cli/src/index.ts`; commands and flags here are taken directly from that file. The CLI reports its version from the root package's `package.json` at runtime.
+The `manifest` command-line interface compiles, generates, validates, and governs Manifest programs. This catalog documents the core Manifest CLI commands including compile, generate, build, validate, init, and key governance/audit commands. Commands and flags are taken from `packages/cli/src/index.ts`. The CLI reports its version from the root package's `package.json` at runtime.
 
 Global form:
 

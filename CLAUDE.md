@@ -369,7 +369,9 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[Emergency bridge — running bridge was not updated]
-No changes or facts in this session.
+[proactive bridge @ 87% context — saved before compacting]
+Files (2):
+  docs/internal/COMPLIANCE_MATRIX.md (edit)
+  C:/Projects/capsule/tests/governed-creation-mappings.test.ts (edit)
 
 # === END COGNILAYER ===

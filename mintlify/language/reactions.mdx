@@ -154,7 +154,7 @@ This dispatches `GigStaff.unassign` on **every** `GigStaff` row where `row.gigId
 
 - `where <field> = <sourceExpr>` selects the collection; `<field>` is a property on the matched entity (an indexed or foreign-key field is preferred — the Convex projection reads it via `withIndex`, falling back to a filter otherwise).
 - `<sourceExpr>` is evaluated against the event payload (`self.id` / `payload.*`), so it sees the source entity's id and any declared `emit Event { field }` values.
-- `params` maps the same way as a single-target reaction and is shared across all matches. Inside fan-out, `self` / `__row` refer to the current matched row.
+- `params` maps the same way as a single-target reaction and is shared across all matches. Inside fan-out, `self` refers to the matched row from the source entity; `target` refers to the target entity instance.
 - The reaction depth limit and `correlationId`/`causationId` propagation apply per dispatched command.
 
 Fan-out is the declarative replacement for the common "query children by FK, loop, dispatch" middleware pattern: cancel every line item, create a shipment per line, release every reservation, deactivate every child account, close every tip pool in a period, etc.

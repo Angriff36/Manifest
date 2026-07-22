@@ -42,7 +42,7 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
     rejection, they do not prove `entity X<T>` works. Appendix D still correctly lists
     `generic-entity-types` as phantom.
 - Value objects / embedded types (fixture 60)
-- Enum types (fixture 57); decimal/money type (fixture 56); map/record type (fixture 73)
+- Enum types (fixture 57 — matrix FULLY_IMPLEMENTED @ `68dc9c26` / Zod `3052dc56`); decimal/money type (fixture 56); map/record type (fixture 73)
 - Date/time primitive types (fixture 92)
 - Composite primary keys (`key` — matrix FULLY_IMPLEMENTED @ `96b8e80e` /
   `a49807e9`), `alternateKeys`
@@ -68,7 +68,9 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
   Convex retry REJECTED_LOUD); `rateLimit` on commands and policies
   (fixtures 74, 75, 100 — rateLimit matrix FULLY_IMPLEMENTED @ `fd4bb50`;
   Convex policy/read rateLimit still diagnostic-only)
-- Computed properties incl. caching/memoization strategies (fixtures 03, 65)
+- Computed properties incl. caching/memoization strategies (fixtures 03, 65 —
+  cache strategies matrix FULLY_IMPLEMENTED; hit/miss/TTL in
+  `runtime-computed-cache.test.ts`)
 - Constraints with severity `ok`/`warn`/`block`, explicit `failWhen` polarity (fixtures 105–106), override authorization (fixture 22);
   regex `matches()` constraints (fixture 63 — matrix FULLY_IMPLEMENTED @ `0a2a0f9`)
 - Policies: read/write/delete/execute/all/override
@@ -81,8 +83,8 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 **Orchestration & integration**
 
 - Events + declarative reactions (`on Event run Command`), incl. 1:N fan-out (fixture 96 —
-  classic fan-out matrix FULLY_IMPLEMENTED @ `4571c494`; Events+reactions row still open for
-  single-target fixture `67`)
+  classic fan-out @ `4571c494`); single-target `resolve` matrix FULLY_IMPLEMENTED @
+  `83e6c4f` (`runtime-engine.test.ts` Reactions — fixture 67 results only assert emit)
 - Reaction `match … else create` natural-key upsert — matrix FULLY_IMPLEMENTED @ `04fe949`
 - Fan-out foreach-create (`run Target.create` + `matchEntity`, fixture 112) — matrix
   FULLY_IMPLEMENTED @ `b7c7e5c`

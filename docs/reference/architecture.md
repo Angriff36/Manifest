@@ -66,7 +66,7 @@ Storage, audit, and outbox concerns are implemented as explicit interfaces inste
 
 ### Registries and route manifests are machine-readable governance surfaces
 
-`src/manifest/registry/emit.ts` emits command and entity registries from IR. `src/manifest/projections/routes/generator.ts` emits a canonical route manifest and typed path builders. The CLI in `packages/cli/src/index.ts` wires those into commands such as `manifest routes`, `manifest emit-registries`, and `manifest audit-governance`. This is a practical choice: governance rules become testable against generated inventories instead of inferred from application code.
+`src/manifest/registry/emit.ts` emits command and entity registries from IR. `src/manifest/projections/routes/generator.ts` emits a canonical route manifest and typed path builders. The CLI in `packages/cli/src/index.ts` wires those into commands such as `manifest routes`, `manifest emit registries`, and `manifest audit-governance`. This is a practical choice: governance rules become testable against generated inventories instead of inferred from application code.
 
 ## Data and Request Lifecycle
 
