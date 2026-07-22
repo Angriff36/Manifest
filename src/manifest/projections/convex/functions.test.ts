@@ -637,6 +637,38 @@ describe('convex.queries — read-policy lockdown', () => {
     );
   });
 
+  it('emits public flag-gated read queries when flagProviderImport is set', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Doc', [prop('name', 'string')])];
+    ir.stores = [durable('Doc')];
+    ir.policies = [
+      {
+        name: 'flagRead',
+        entity: 'Doc',
+        action: 'read',
+        expression: {
+          kind: 'call',
+          callee: { kind: 'identifier', name: 'flag' },
+          args: [{ kind: 'literal', value: { kind: 'string', value: 'docs' } }],
+        },
+      },
+    ] as IRPolicy[];
+    const result = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: {
+        authContextImport: './lib/authContext',
+        flagProviderImport: './lib/flags',
+      },
+    });
+    const code = result.artifacts[0].code;
+    expect(code).toContain('export const listDoc = query({');
+    expect(code).toContain('import { flag } from "./lib/flags"');
+    expect(code).toContain('flag("docs")');
+    expect(result.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_READ_POLICY_FLAG')).toBe(
+      false,
+    );
+  });
+
   it('keeps relationship-traversing read queries internal until relationships can be loaded', () => {
     const ir = emptyIR();
     const doc = entity('Doc', [prop('ownerId', 'string')]);

@@ -40,7 +40,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | --- | --- | --- | --- |
 | `analytics` | `analytics.tracking-plan`, `analytics.events`, `analytics.handlers` | no | undeclared |
 | `contract-tests` | `contract-tests.convex` | yes | undeclared |
-| `convex` | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react` | yes | 24 supported / 9 partial / 5 unsupported |
+| `convex` | `convex.schema`, `convex.queries`, `convex.mutations`, `convex.crons`, `convex.http`, `convex.sagas`, `convex.computed`, `convex.react` | yes | 27 supported / 8 partial / 5 unsupported |
 | `dart` | `dart.entity`, `dart.command`, `dart.models`, `dart.client`, `dart.providers`, `dart.package` | no | undeclared |
 | `drizzle` | `drizzle.schema` | yes | undeclared |
 | `dynamodb` | `dynamodb.cloudformation`, `dynamodb.cdk`, `dynamodb.terraform` | yes | undeclared |
@@ -225,7 +225,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | `81-entity-extends-cycle.manifest` | `81-entity-extends-cycle.diagnostics.json` |
 | `82-dynamodb-store.manifest` | `82-dynamodb-store.ir.json` |
 | `83-event-sourced.manifest` | `83-event-sourced.ir.json` |
-| `84-generic-entity.manifest` | `84-generic-entity.ir.json`, `84-generic-entity.diagnostics.json` |
+| `84-generic-entity.manifest` | `84-generic-entity.ir.json` |
 | `85-generic-arity-mismatch.manifest` | `85-generic-arity-mismatch.diagnostics.json` |
 | `86-readmodel.manifest` | `86-readmodel.ir.json`, `86-readmodel.diagnostics.json`, `86-readmodel.results.json` |
 | `87-federation.manifest` | `87-federation.ir.json` |
@@ -344,18 +344,14 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Appendix E: `map<K,V>` arbitrary non-string keys | `REJECTED_LOUD → by design` | String keys only; `record` alias ships (§1) |
 | 2. Language (DSL) — full inventory | Appendix E: command-body policy clause | `REJECTED_LOUD → by design` | Top-level policies only; command-body `policy` will not ship |
 | 2. Language (DSL) — full inventory | Entity `behavior` blocks | `REJECTED_LOUD → proven reject` | see §1 / fixture `110` |
-| 2. Language (DSL) — full inventory | Generic / parameterized entities `Entity<T>` | `NOT_IMPLEMENTED` | fixtures `84`–`85` negative only |
-| 2. Language (DSL) — full inventory | Language keyword `softDelete` | `NOT_IMPLEMENTED` | projection config only |
-| 2. Language (DSL) — full inventory | Realtime subscriptions (language/runtime) | `PARTIAL / DIAGNOSTIC_ONLY` | Convex diagnostic; Next.js may differ — prove per target |
+| 2. Language (DSL) — full inventory | Generic / parameterized entities `Entity<T>` | `NOT_IMPLEMENTED` | Fixtures `84-85` negative only; `entity-generics.ts` untracked in working tree (phantom). Mirror of COMPLIANCE_MATRIX §2. |
 | 4. Runtime engine & adapters | ~~WASM expression compatibility layer~~ | `REMOVED 2026-07-15` | Quarantined prototype deleted — no `.wasm` artifact, never on default RuntimeEngine path |
-| 6. Projections — every registered target | convex | `PARTIAL` | core generate + auth seam; many `CONVEX_UNSUPPORTED_*` (§7) |
-| 6. Projections — every registered target | Convex approvals/retry/rateLimit | `DIAGNOSTIC_ONLY` | `CONVEX_UNSUPPORTED_*` (masking closed §1) |
-| 6. Projections — every registered target | health | `PARTIAL` | generator registered; live IR/store/outbox checks still TODO stubs; docs §7 |
+| 6. Projections — every registered target | convex | `PARTIAL` | mirror of COMPLIANCE_MATRIX §6 — HMAC/flag seams Supported; remaining relationship read-policy / read rateLimit / saga-args / async |
+| 6. Projections — every registered target | Convex approvals | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_APPROVAL` error |
+| 6. Projections — every registered target | Convex command `retry` | `REJECTED_LOUD` | mirror of COMPLIANCE_MATRIX §6 — `CONVEX_UNSUPPORTED_RETRY` error |
 | 8. Open gaps / phantoms (checklist mirror) | ~~`manifest generate-fixtures`~~ | `REMOVED (docs struck)` | use `manifest seed` / `load-test` |
 | 8. Open gaps / phantoms (checklist mirror) | ~~`manifest test constraints` / ConstraintTestHarness~~ | `REMOVED (docs struck)` | use `manifest harness` / `repl` |
 | 8. Open gaps / phantoms (checklist mirror) | ~~`projection.generateRoute` / `generateTypes` / `generateClient`~~ | `REMOVED (docs struck)` | use `generate(ir, request)` / CLI `--all` |
 | 8. Open gaps / phantoms (checklist mirror) | ~~Config `env(VAR)` / `MANIFEST_ENV` overlays / YAML `stores:` urls~~ | `REMOVED (docs struck)` | use `env:` preflight + `process.env` in `manifest.config.ts` |
 | 8. Open gaps / phantoms (checklist mirror) | ~~Full WASM runtime~~ | `REMOVED 2026-07-15` | Prototype deleted; TypeScript evaluator is the only path |
-| 8. Open gaps / phantoms (checklist mirror) | Convex unsupported surfaces (approvals/retry/rateLimit) | `DIAGNOSTIC_ONLY` | See feature matrix |
-| 8. Open gaps / phantoms (checklist mirror) | Default encryption provider (common no-vendor case) | `NOT_IMPLEMENTED` | fail-closed by design until provider set |
-| 8. Open gaps / phantoms (checklist mirror) | softDelete language keyword | `NOT_IMPLEMENTED` | Manifest language gap (projection config exists) |
+| 8. Open gaps / phantoms (checklist mirror) | Convex command `retry` / approvals (loud reject) | `REJECTED_LOUD` | mirror §6 — `CONVEX_UNSUPPORTED_RETRY` / `_APPROVAL` errors |

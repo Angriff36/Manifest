@@ -1,5 +1,6 @@
 import { Parser } from './parser.js';
 import { expandEntityComposition, type EntityIndex } from './entity-composition.js';
+import { expandEntityGenerics } from './entity-generics.js';
 import { checkDomainCompleteness } from './domain-completeness.js';
 import { checkReactionCompleteness } from './reaction-completeness.js';
 import { attachInitializationPlans } from './initialization-plan.js';
@@ -436,6 +437,12 @@ export class IRCompiler {
         this.emitDiagnostic(d.severity, d.message);
       }
     }
+
+    // Expand generic entity templates/instantiations before composition so
+    // instantiated bodies participate in extends/mixin merging.
+    expandEntityGenerics(program, (severity, message) => {
+      this.emitDiagnostic(severity, message);
+    });
 
     // Expand entity composition (extends, mixin, policies). The optional
     // compositionContext lets cross-file `extends`/`mixin` bases resolve in

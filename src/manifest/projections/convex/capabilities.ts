@@ -28,7 +28,7 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   {
     feature: 'Read/all policies on generated queries',
     status: 'partial',
-    note: 'Renderable predicates are evaluated with authContextImport; flag, relationship traversal, and rateLimit stay internal (fail closed).',
+    note: 'Renderable predicates with authContextImport; flag() public when flagProviderImport set; relationship traversal and read rateLimit stay internal (fail closed). Write/execute policy rateLimit emits on mutations.',
   },
   { feature: 'Roles + roleAllows', status: 'supported' },
   { feature: 'Events + emit payloads', status: 'supported' },
@@ -46,11 +46,16 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   { feature: 'Sagas', status: 'supported' },
   { feature: 'Tenant / soft-delete filters', status: 'supported' },
   { feature: 'authContextImport', status: 'supported' },
+  {
+    feature: 'flagProviderImport / flag()',
+    status: 'supported',
+    note: 'Author module exporting flag(name); required for public read policies that call flag(); stub returns false without seam',
+  },
   { feature: 'encryptionImport', status: 'supported' },
   {
     feature: 'Webhook signature',
-    status: 'partial',
-    note: 'Generated httpAction does not verify HMAC.',
+    status: 'supported',
+    note: 'httpAction emits Web Crypto HMAC verify (hmac-sha256/sha512) + env secret; fail-closed 500/401',
   },
   {
     feature: 'Saga step arguments',
@@ -112,12 +117,17 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   {
     feature: 'Command rateLimit',
     status: 'supported',
-    note: 'Sliding-window buckets in commandRateLimitBuckets; user/tenant scopes need authContextImport. Policy/read rateLimit still unsupported.',
+    note: 'Sliding-window buckets in commandRateLimitBuckets; user/tenant scopes need authContextImport.',
+  },
+  {
+    feature: 'Policy rateLimit (write/execute/delete)',
+    status: 'supported',
+    note: 'Same bucket table; key prefix policy:<name>; before each policy expression on mutations',
   },
   {
     feature: 'Policy/read rateLimit',
     status: 'unsupported',
-    note: 'CONVEX_UNSUPPORTED_RATE_LIMIT / CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT',
+    note: 'CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT — Convex queries cannot mutate durable buckets',
   },
   {
     feature: 'async commands / job queue',
@@ -137,7 +147,7 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
  */
 export function collectUnsupportedDiagnostics(
   ir: IR,
-  options: { authContextImport?: string } = {},
+  options: { authContextImport?: string; flagProviderImport?: string } = {},
 ): ProjectionDiagnostic[] {
   const out: ProjectionDiagnostic[] = [];
 
@@ -210,7 +220,11 @@ export function collectUnsupportedDiagnostics(
       );
       const enforceable =
         !!options.authContextImport &&
-        targetEntities.every((e) => renderReadPolicies(ir, e.name, '__row').renderable);
+        targetEntities.every((e) =>
+          renderReadPolicies(ir, e.name, '__row', {
+            flagProviderImport: options.flagProviderImport,
+          }).renderable,
+        );
       if (enforceable) continue;
       out.push({
         severity: 'warning',
@@ -266,22 +280,18 @@ export function collectUnsupportedDiagnostics(
   }
 
   for (const pol of ir.policies) {
-    if (pol.rateLimit) {
+    if (!pol.rateLimit) continue;
+    // Mutation-side write/execute/delete rateLimits are emitted. Read and `all`
+    // still cannot consume buckets inside Convex queries (fail-closed internal).
+    if (pol.action === 'read' || pol.action === 'all') {
       out.push({
         severity: 'warning',
         code: 'CONVEX_UNSUPPORTED_RATE_LIMIT',
         entity: pol.entity,
-        message: `Policy '${pol.name}' declares rateLimit; the Convex projection does not emit rate-limit checks.`,
-      });
-    }
-  }
-
-  for (const wh of ir.webhooks ?? []) {
-    if (wh.signature) {
-      out.push({
-        severity: 'warning',
-        code: 'CONVEX_UNSUPPORTED_WEBHOOK_SIGNATURE',
-        message: `Webhook '${wh.name}' declares signature verification; generated httpActions do not verify HMAC (front with a verifying edge or extend the projection).`,
+        message:
+          pol.action === 'read'
+            ? `Policy '${pol.name}' declares rateLimit on read; Convex queries cannot mutate durable rate-limit buckets (queries stay internal).`
+            : `Policy '${pol.name}' declares rateLimit with action 'all'; mutations enforce it, but read queries with this policy remain internal (queries cannot mutate buckets).`,
       });
     }
   }

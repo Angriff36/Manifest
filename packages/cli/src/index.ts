@@ -1441,7 +1441,9 @@ diffProgram
  */
 program
   .command('migrate')
-  .description('Analyze IR diff for database migration (dry-run, preview, reversibility checks)')
+  .description(
+    'Analyze IR diff and apply database migration (Prisma migrate deploy or Drizzle/SQL via DATABASE_URL)',
+  )
   .requiredOption('--old-ir <path>', 'Path to old IR JSON file')
   .requiredOption('--new-ir <path>', 'Path to new IR JSON file')
   .option('--dry-run', 'Show migration plan without applying', false)
@@ -1449,6 +1451,11 @@ program
   .option('--force', 'Apply even with warnings or unacknowledged breaking changes', false)
   .option('--json', 'JSON output', false)
   .option('--tool <tool>', 'Migration tool (prisma, drizzle)', 'prisma')
+  .option(
+    '--migrations-dir <path>',
+    'Directory for written migration folders (default: prisma/migrations or drizzle/migrations)',
+  )
+  .option('--database-url <url>', 'Postgres URL for drizzle/SQL apply (default: DATABASE_URL)')
   .option('--no-check-reversibility', 'Skip reversibility validation')
   .option('-o, --output <path>', 'Write output to file')
   .action(async (options = {}) => {
@@ -1461,6 +1468,8 @@ program
       json: options.json,
       output: options.output,
       tool: options.tool,
+      migrationsDir: options.migrationsDir,
+      databaseUrl: options.databaseUrl,
       checkReversibility: options.checkReversibility,
     });
   });

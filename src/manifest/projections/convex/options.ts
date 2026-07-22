@@ -192,6 +192,14 @@ export interface ConvexProjectionOptions {
   authContextImport?: string;
 
   /**
+   * Module exporting `flag(name: string): unknown` (truthy = on). Required for
+   * public Convex queries whose read/`all` policies call `flag()`. Without it,
+   * those queries stay `internalQuery` (fail closed). Same import is used by
+   * generated mutations instead of a stub. Example: `"./lib/flags"`.
+   */
+  flagProviderImport?: string;
+
+  /**
    * Module exporting `encrypt(plaintext, metadata)` and
    * `decrypt(ciphertext, keyId, metadata)` for properties carrying the
    * `encrypted` modifier. Metadata is `{ ctx, entity, property }`. Required
@@ -301,7 +309,7 @@ export type NormalizedConvexOptions = Required<
 > &
   Pick<
     ConvexProjectionOptions,
-    'naming' | 'tenantIdProperty' | 'authContextImport' | 'encryptionImport'
+    'naming' | 'tenantIdProperty' | 'authContextImport' | 'flagProviderImport' | 'encryptionImport'
   > & {
     dispatcher: { enabled: boolean };
     /** @internal App-wide naming policy when injected by config resolution. */
@@ -366,6 +374,7 @@ export function normalizeOptions(
     computedProperties: input.computedProperties ?? CONVEX_PROJECTION_DEFAULTS.computedProperties,
     tenantIdProperty: input.tenantIdProperty,
     authContextImport: input.authContextImport,
+    flagProviderImport: input.flagProviderImport,
     encryptionImport: input.encryptionImport,
     dispatcher: {
       enabled: input.dispatcher?.enabled ?? CONVEX_PROJECTION_DEFAULTS.dispatcher.enabled,

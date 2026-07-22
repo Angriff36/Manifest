@@ -3,15 +3,15 @@
   "diagnostics": [
     {
       "severity": "error",
-      "message": "Expected {, got <",
-      "line": 7,
-      "column": 17
+      "message": "Entity 'Bad' instantiation of 'Paginated' expects 2 type argument(s), got 1"
     },
     {
-      "severity": "error",
-      "message": "Expected {, got =",
-      "line": 13,
-      "column": 12
+      "severity": "warning",
+      "message": "Entity 'Item' is declared but unused: no store, no entity-scoped commands, and not referenced by any relationship. Remove it or wire it into the domain."
+    },
+    {
+      "severity": "warning",
+      "message": "Entity 'Bad' is declared but unused: no store, no entity-scoped commands, and not referenced by any relationship. Remove it or wire it into the domain."
     }
   ]
 }

@@ -21,7 +21,8 @@ describe('registry-generated feature inventory', () => {
     expect(
       inventory.openGaps.some((entry) => entry.feature.includes('Generic / parameterized')),
     ).toBe(true);
-    expect(inventory.openGaps.some((entry) => entry.feature === 'health')).toBe(true);
+    // Health projection is FULLY_IMPLEMENTED as of 2026-07-22 — no longer an open gap
+    expect(inventory.openGaps.some((entry) => entry.feature === 'health')).toBe(false);
   });
 
   it('renders an honest deterministic inventory instead of historical release claims', async () => {

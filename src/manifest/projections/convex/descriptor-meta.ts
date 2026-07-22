@@ -46,6 +46,7 @@ export const CONVEX_DESCRIPTOR_META: ProjectionDescriptorMeta = {
       enumValues: ['enforce', 'skip'],
     }),
     optionalOption('authContextImport', 'string'),
+    optionalOption('flagProviderImport', 'string'),
     optionalOption('encryptionImport', 'string'),
     optionalOption('includeTenantFilter', 'boolean', {
       default: CONVEX_PROJECTION_DEFAULTS.includeTenantFilter,

@@ -84,11 +84,28 @@ describe('convex command rateLimit emit', () => {
     expect(code).toContain('by_scopeKey');
   });
 
-  it('does not emit rate-limit table when no command has rateLimit', () => {
+  it('does not emit rate-limit table when no command or policy has rateLimit', () => {
     const ir = rateLimitedIR();
     delete ir.commands[0]!.rateLimit;
     const result = new ConvexProjection().generate(ir, { surface: 'convex.schema' });
     expect(result.artifacts[0]?.code).not.toContain('commandRateLimitBuckets');
+  });
+
+  it('emits rate-limit table when only a write policy declares rateLimit', () => {
+    const ir = rateLimitedIR();
+    delete ir.commands[0]!.rateLimit;
+    ir.commands[0]!.policies = ['ThrottleWrite'];
+    ir.policies = [
+      {
+        name: 'ThrottleWrite',
+        action: 'write',
+        entity: 'Order',
+        expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+        rateLimit: { maxRequests: 5, windowMs: 60_000, scope: 'global' },
+      },
+    ];
+    const result = new ConvexProjection().generate(ir, { surface: 'convex.schema' });
+    expect(result.artifacts[0]?.code).toContain('commandRateLimitBuckets');
   });
 
   it('emits consume helper and check before guards for global scope', () => {
@@ -116,7 +133,7 @@ describe('convex command rateLimit emit', () => {
     expect(diags.some((d) => d.code === 'CONVEX_UNSUPPORTED_RATE_LIMIT')).toBe(false);
   });
 
-  it('still warns for policy-level rateLimit', () => {
+  it('does not warn for write policy rateLimit (emitted on mutations)', () => {
     const ir = emptyIR();
     ir.policies = [
       {
@@ -128,6 +145,42 @@ describe('convex command rateLimit emit', () => {
       },
     ];
     const diags = collectUnsupportedDiagnostics(ir);
+    expect(diags.some((d) => d.code === 'CONVEX_UNSUPPORTED_RATE_LIMIT')).toBe(false);
+  });
+
+  it('still warns for read policy rateLimit', () => {
+    const ir = emptyIR();
+    ir.policies = [
+      {
+        name: 'ThrottleRead',
+        action: 'read',
+        entity: 'Order',
+        expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+        rateLimit: { maxRequests: 10, windowMs: 1000, scope: 'global' },
+      },
+    ];
+    const diags = collectUnsupportedDiagnostics(ir);
     expect(diags.some((d) => d.code === 'CONVEX_UNSUPPORTED_RATE_LIMIT')).toBe(true);
+  });
+
+  it('emits policy rateLimit consume before policy expression on mutations', () => {
+    const ir = rateLimitedIR('global');
+    delete ir.commands[0]!.rateLimit;
+    ir.commands[0]!.policies = ['ThrottleWrite'];
+    ir.policies = [
+      {
+        name: 'ThrottleWrite',
+        action: 'write',
+        entity: 'Order',
+        expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+        rateLimit: { maxRequests: 5, windowMs: 60_000, scope: 'global' },
+      },
+    ];
+    const code = generateMutations(ir, {
+      enableCommandIdempotency: false,
+    }).code;
+    expect(code).toContain('__consumeCommandRateLimit');
+    expect(code).toContain('"policy:ThrottleWrite"');
+    expect(code).toContain('__consumeCommandRateLimit(ctx, __rlScopeKey, 5, 60000, 0)');
   });
 });

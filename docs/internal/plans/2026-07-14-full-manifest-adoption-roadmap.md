@@ -321,14 +321,21 @@ accurate, still open.
 
 **Update (2026-07-14):** Re-verified — zero `webhook` declarations in
 Capsule-V2 sources, `convex/http.ts` is 11 lines (stub/empty). Claim
-confirmed accurate, still open. The signature-verification gap this item
+confirmed accurate, still open. ~~The signature-verification gap this item
 flags is now formally documented in Manifest core's own capability map:
 `CAPABILITIES.md` lists "Webhook `signature`" as **Partial** —
 "httpAction does not verify HMAC" / `CONVEX_UNSUPPORTED_WEBHOOK_SIGNATURE` —
 so if webhooks are adopted, the caveat is no longer just this doc's
-observation, it's a shipped diagnostic.
+observation, it's a shipped diagnostic.~~
 
-- Sources declare zero webhooks; `convex/http.ts` generates empty. Candidates: sms-automation, email-workflow, payment-provider callbacks. Caveat (per Convex projection README): generated `httpAction`s do NOT verify `IRWebhook.signature` or enforce `idempotencyHeader` — either fix that in Manifest first (add to Part 1 if pursued) or front with a verifying edge.
+> **Correction (2026-07-22):** Convex webhook HMAC **is** generated
+> (`orchestration.ts` `_verifyHmac` via Web Crypto; idempotency table when
+> declared). Capability map lists Webhook signature as **Supported**; the
+> false `CONVEX_UNSUPPORTED_WEBHOOK_SIGNATURE` diagnostic was removed.
+> Capsule still has zero webhook declarations — adoption gap remains, not
+> a Manifest emit gap.
+
+- Sources declare zero webhooks; `convex/http.ts` generates empty. Candidates: sms-automation, email-workflow, payment-provider callbacks.
 
 ### A4. Grow reactions / fan-out / aggregates where V2 slices need cascades
 

@@ -101,6 +101,10 @@ export interface EntityNode extends ASTNode {
   parent?: string;
   /** Mixin entity names for composition (from `mixin A, B` keywords) */
   mixins?: string[];
+  /** Generic type parameters from `entity Name<T, U>` (compile-time templates only) */
+  typeParams?: string[];
+  /** Instantiation from `entity Alias = Template<Args>` (expanded before IR emit) */
+  genericAlias?: { template: string; typeArgs: string[] };
   /** Policy names to be merged into this entity's policies (from `policies { ... }` block) */
   policyRefs?: string[];
   /** Command names inherited from parent/mixins (set by composition expander) */

@@ -41,10 +41,14 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
   81 — matrix FULLY_IMPLEMENTED @ `e2a791c9` / `9f3a9bfa`; entity graph via
   `entity-composition.ts`, not module import cycles)
 - ~~Generic / parameterized entities, with arity-mismatch diagnostics (fixtures 84–85)~~
-  - **Correction (2026-07-15):** generics are still **not implemented**. Fixtures 84–85 are
+  - ~~**Correction (2026-07-15):** generics are still **not implemented**. Fixtures 84–85 are
     _negative_ tests (`shouldFail: true`, message `Expected {, got <`) — they pin the parse
     rejection, they do not prove `entity X<T>` works. Appendix D still correctly lists
-    `generic-entity-types` as phantom.
+    `generic-entity-types` as phantom.~~
+  - **Correction (2026-07-22):** generics **are implemented**. Parse `entity Name<T>` /
+    `entity Alias = Template<Args>` (`parser.ts:269-297`); expand + arity check
+    (`entity-generics.ts`); fixture `84` IR success, fixture `85` arity diagnostic.
+    Matrix FULLY_IMPLEMENTED (working tree; SHA after commit).
 - Value objects / embedded types (fixture 60 — matrix FULLY_IMPLEMENTED @
   `ad02a4dc` / OpenAPI `9f93a40e`)
 - Enum types (fixture 57 — matrix FULLY_IMPLEMENTED @ `68dc9c26` / Zod `3052dc56`); decimal/money type (fixture 56 — matrix FULLY_IMPLEMENTED @ `9e34bc43` / Next `cc71f1fe`; runtime = JS number); map/record type (fixture 73 — matrix FULLY_IMPLEMENTED @

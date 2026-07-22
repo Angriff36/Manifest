@@ -92,8 +92,10 @@ import {
 } from './command-idempotency.js';
 import {
   commandRateLimitNeedsAuth,
+  commandPoliciesNeedRateLimitAuth,
   renderCommandRateLimitCheckLines,
   renderCommandRateLimitHelpers,
+  renderPolicyRateLimitCheckLines,
 } from './rate-limit-emit.js';
 import { buildRelationDependencyPlan, type RelationDependency } from '../../relation-plan.js';
 
@@ -534,9 +536,12 @@ export function generateQueries(
       entity.name,
       options.authContextImport,
       '__row',
+      options.flagProviderImport,
     );
     const listPolicyPlan = visibility.policies;
-    const docPolicyPlan = renderReadPolicies(ir, entity.name, '__doc');
+    const docPolicyPlan = renderReadPolicies(ir, entity.name, '__doc', {
+      flagProviderImport: options.flagProviderImport,
+    });
     diagnostics.push(...listPolicyPlan.diagnostics);
     const policyGated = visibility.gated;
     const policyEnforceable = visibility.clientReadable;
@@ -753,6 +758,8 @@ export function generateQueries(
   const body = blocks.join('\n\n');
   const needsAuthCtx = !!options.authContextImport && /\bgetAuthContext\b/.test(body);
   const needsDecrypt = !!options.encryptionImport && /\b__decryptDoc\b/.test(body);
+  const needsFlag = /\bflag\(/.test(body);
+  const flagFromProvider = needsFlag && !!options.flagProviderImport;
   const helpers: string[] = [];
   if (/\b__allowsRead\(/.test(body)) helpers.push(READ_POLICY_HELPER);
   if (/\b__maskDoc\(/.test(body)) helpers.push(MASK_HELPER);
@@ -771,9 +778,10 @@ export function generateQueries(
         `}`,
     );
   }
-  if (/\bflag\(/.test(body)) {
+  if (needsFlag && !flagFromProvider) {
     helpers.push(
-      `// Feature toggle (configurable). Not an authorization gate.\nfunction flag(_name?: string): boolean { return true; }`,
+      `// Feature toggle stub (safe default off). Set options.flagProviderImport to wire a real provider.\n` +
+        `function flag(_name?: string): boolean { return false; }`,
     );
   }
   const serverImports = [
@@ -786,6 +794,9 @@ export function generateQueries(
     `import { v } from "convex/values";\n` +
     (needsAuthCtx
       ? `import { getAuthContext } from ${JSON.stringify(options.authContextImport)};\n`
+      : '') +
+    (flagFromProvider
+      ? `import { flag } from ${JSON.stringify(options.flagProviderImport)};\n`
       : '') +
     (needsDecrypt ? `import { decrypt } from ${JSON.stringify(options.encryptionImport)};\n` : '') +
     `\n` +
@@ -829,6 +840,8 @@ interface CheckSpec {
    * Default/absent: falsy expression is the violation.
    */
   failWhen?: boolean;
+  /** Policy-level rateLimit (run before the policy expression; mutations only). */
+  policyRateLimit?: IRPolicy;
 }
 
 /** Render governance checks fail-closed. Returns TS lines + diagnostics. */
@@ -836,10 +849,18 @@ function renderChecks(
   entityName: string,
   checks: CheckSpec[],
   scope: RenderScope,
+  rateLimitOpts?: { tenantProp: string | undefined },
 ): { lines: string[]; diagnostics: ProjectionDiagnostic[] } {
   const lines: string[] = [];
   const diagnostics: ProjectionDiagnostic[] = [];
   for (const c of checks) {
+    if (c.policyRateLimit?.rateLimit && rateLimitOpts) {
+      lines.push(
+        ...renderPolicyRateLimitCheckLines(c.policyRateLimit, {
+          tenantProp: rateLimitOpts.tenantProp,
+        }),
+      );
+    }
     const { code, unresolved } = renderExpression(c.expr, scope);
     if (unresolved.length > 0) {
       diagnostics.push({
@@ -870,6 +891,7 @@ function commandChecks(ir: IR, cmd: IRCommand, policyMode: 'enforce' | 'skip'): 
         message: policy.message ?? `Policy ${pName} denied`,
         code: 'CONVEX_UNRESOLVED_POLICY',
         label: `policy '${pName}'`,
+        ...(policy.rateLimit ? { policyRateLimit: policy } : {}),
       });
     }
   }
@@ -1602,8 +1624,17 @@ function renderGovernedCreationEntry(
     resolveCollectionElementType: (collection) =>
       resolveHasManyDocElementType(entity, collection, options),
   };
-  const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), scope);
+  const checks = renderChecks(
+    entity.name,
+    commandChecks(ir, cmd, options.policyMode),
+    scope,
+    { tenantProp: writeTenantProp },
+  );
   diagnostics.push(...checks.diagnostics);
+  const createViaRateLimitLines = renderCommandRateLimitCheckLines(cmd, {
+    keyPrefix: commandCreationExportName(entity.name, cmd.name),
+    tenantProp: writeTenantProp,
+  });
 
   const mutates = (cmd.actions ?? []).filter(
     (action) =>
@@ -1714,12 +1745,17 @@ function renderGovernedCreationEntry(
   const bodyText = [
     ...draftLines,
     ...relationHydration.lines,
+    ...createViaRateLimitLines,
     ...checks.lines,
     ...mutateLines,
     tail,
     paramBindLine,
   ].join('\n');
-  const authLines = authBindings(bodyText, options, tenantScoped);
+  const createViaForceAuth =
+    tenantScoped ||
+    (!!cmd.rateLimit && commandRateLimitNeedsAuth(cmd.rateLimit)) ||
+    commandPoliciesNeedRateLimitAuth(ir, cmd);
+  const authLines = authBindings(bodyText, options, createViaForceAuth);
   const docVar = encryptionActive ? '__storedDoc' : 'doc';
 
   const code =
@@ -1733,6 +1769,7 @@ function renderGovernedCreationEntry(
     paramBindLine +
     `    const __draft: Record<string, any> = {\n${draftLines.join(',\n')}${draftLines.length ? '\n' : ''}    };\n` +
     (relationHydration.lines.length ? relationHydration.lines.join('\n') + '\n' : '') +
+    (createViaRateLimitLines.length ? createViaRateLimitLines.join('\n') + '\n' : '') +
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
     `    const doc: Record<string, any> = {\n` +
     `      ...__draft,\n` +
@@ -1895,7 +1932,12 @@ function generateMutation(
       docLines.push(line);
     }
 
-    const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), scope);
+    const checks = renderChecks(
+      entity.name,
+      commandChecks(ir, cmd, options.policyMode),
+      scope,
+      { tenantProp: writeTenantProp },
+    );
     diagnostics.push(...checks.diagnostics);
     // G7 `emit Event { field: expr }`: populate each event-row payload (and the
     // shared reaction payload below) with declared fields evaluated against the
@@ -1950,7 +1992,9 @@ function generateMutation(
       tenantProp: writeTenantProp,
     });
     const forceAuth =
-      tenantScoped || (!!cmd.rateLimit && commandRateLimitNeedsAuth(cmd.rateLimit));
+      tenantScoped ||
+      (!!cmd.rateLimit && commandRateLimitNeedsAuth(cmd.rateLimit)) ||
+      commandPoliciesNeedRateLimitAuth(ir, cmd);
     const bodyText = [...relationHydration.lines, ...rateLimitLines, ...checks.lines, tail].join(
       '\n',
     );
@@ -2025,13 +2069,18 @@ function generateMutation(
     supportedHasMany,
   );
   diagnostics.push(...relationHydration.diagnostics);
-  const checks = renderChecks(entity.name, checkSpecs, {
-    selfVar: 'doc',
-    locals: paramNames,
-    relationVars: relationHydration.relationVars,
-    resolveCollectionElementType: (collection) =>
-      resolveHasManyDocElementType(entity, collection, options),
-  });
+  const checks = renderChecks(
+    entity.name,
+    checkSpecs,
+    {
+      selfVar: 'doc',
+      locals: paramNames,
+      relationVars: relationHydration.relationVars,
+      resolveCollectionElementType: (collection) =>
+        resolveHasManyDocElementType(entity, collection, options),
+    },
+    { tenantProp: writeTenantProp },
+  );
   diagnostics.push(...checks.diagnostics);
 
   // IR `compute` bindings: evaluate against pre-update `doc`, then expose as
@@ -2172,7 +2221,9 @@ function generateMutation(
     tenantProp: writeTenantProp,
   });
   const forceAuth =
-    tenantScoped || (!!cmd.rateLimit && commandRateLimitNeedsAuth(cmd.rateLimit));
+    tenantScoped ||
+    (!!cmd.rateLimit && commandRateLimitNeedsAuth(cmd.rateLimit)) ||
+    commandPoliciesNeedRateLimitAuth(ir, cmd);
   const bodyText = [
     ...relationHydration.lines,
     ...rateLimitLines,
@@ -2288,9 +2339,12 @@ export function generateMutations(
         `}`,
     );
   }
-  if (/\bflag\(/.test(body)) {
+  const needsFlag = /\bflag\(/.test(body);
+  const flagFromProvider = needsFlag && !!options.flagProviderImport;
+  if (needsFlag && !flagFromProvider) {
     helpers.push(
-      `// Feature toggle (configurable). Not an authorization gate.\nfunction flag(_name?: string): boolean { return true; }`,
+      `// Feature toggle stub (safe default off). Set options.flagProviderImport to wire a real provider.\n` +
+        `function flag(_name?: string): boolean { return false; }`,
     );
   }
 
@@ -2305,6 +2359,9 @@ export function generateMutations(
     (needsDoc ? `import type { Doc } from "./_generated/dataModel";\n` : '') +
     (needsAuthCtx
       ? `import { getAuthContext } from ${JSON.stringify(options.authContextImport)};\n`
+      : '') +
+    (flagFromProvider
+      ? `import { flag } from ${JSON.stringify(options.flagProviderImport)};\n`
       : '') +
     (needsEncrypt || needsDecrypt
       ? `import { ${[needsEncrypt ? 'encrypt' : '', needsDecrypt ? 'decrypt' : ''].filter(Boolean).join(', ')} } from ${JSON.stringify(options.encryptionImport)};\n`

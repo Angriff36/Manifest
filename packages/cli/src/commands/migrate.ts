@@ -25,6 +25,14 @@ export interface MigrateOptions {
   output?: string;
   tool?: 'prisma' | 'drizzle';
   checkReversibility?: boolean;
+  /** Directory under cwd for written migration folders. */
+  migrationsDir?: string;
+  /** Working directory for tool invocation (default: process.cwd()). */
+  cwd?: string;
+  /** Postgres URL for drizzle/SQL apply (falls back to DATABASE_URL). */
+  databaseUrl?: string;
+  /** Test injection for MigrationToolRunner. */
+  toolRunner?: import('./migrate-tool-runner.js').MigrationToolRunner;
 }
 
 function createSpinner(message: string, enabled: boolean) {
@@ -314,29 +322,37 @@ export async function migrateCommand(options: MigrateOptions = {}): Promise<void
       return;
     }
 
-    // Apply migration
+    // Apply migration via Prisma migrate deploy or Drizzle/SQL (DATABASE_URL).
     console.log('');
     console.log(chalk.bold('Applying migration...'));
 
-    if (options.tool === 'drizzle') {
-      console.log(chalk.yellow('Drizzle Kit integration not yet implemented.'));
-      console.log(chalk.gray('Use --tool prisma or implement drizzle support.'));
-      process.exit(1);
+    const { MigrationToolRunner } = await import('./migrate-tool-runner.js');
+    const runner = options.toolRunner ?? new MigrationToolRunner();
+    const tool = options.tool === 'drizzle' ? 'drizzle' : 'prisma';
+    const migrationsDir =
+      options.migrationsDir ??
+      (tool === 'prisma' ? 'prisma/migrations' : 'drizzle/migrations');
+
+    const result = await runner.apply(
+      {
+        sql: migration.sql,
+        prisma: migration.prisma,
+        summary: migration.summary,
+      },
+      {
+        tool,
+        cwd: options.cwd ?? process.cwd(),
+        migrationsDir,
+        databaseUrl: options.databaseUrl,
+        dryRun: false,
+      },
+    );
+
+    console.log(chalk.green(`Wrote migration artifacts to ${result.migrationDir}`));
+    console.log(chalk.green(`Applied via ${result.appliedVia} (${migration.summary.length} change(s))`));
+    if (result.command?.stdout) {
+      console.log(chalk.gray(result.command.stdout.trim()));
     }
-
-    // Prisma integration
-    // In a full implementation, this would:
-    // 1. Write the generated Prisma migration steps to a migration file
-    // 2. Run `prisma migrate dev` or `prisma migrate deploy`
-    // For now, we show what would be done
-
-    console.log(chalk.green('Migration would apply ' + migration.summary.length + ' change(s)'));
-    console.log(chalk.gray('(Prisma migrate invocation not implemented in this version)'));
-    console.log('');
-    console.log(chalk.bold('Next steps:'));
-    console.log('  1. Review the migration plan above');
-    console.log('  2. Run with --preview to see SQL');
-    console.log('  3. Run without --dry-run to apply');
   } catch (error) {
     spinner.fail('migrate failed: ' + (error instanceof Error ? error.message : String(error)));
     process.exit(1);

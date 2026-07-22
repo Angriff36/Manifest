@@ -266,6 +266,36 @@ export class Parser {
     this.consume('KEYWORD', 'entity');
     const name = this.consumeIdentifier().value;
 
+    // Optional type parameters: `entity Name<T, U>`
+    let typeParams: string[] | undefined;
+    if (this.check('OPERATOR', '<')) {
+      this.advance(); // consume '<'
+      typeParams = [];
+      typeParams.push(this.consumeIdentifier().value);
+      while (this.check('PUNCTUATION', ',')) {
+        this.advance(); // consume ','
+        typeParams.push(this.consumeIdentifier().value);
+      }
+      this.consume('OPERATOR', '>');
+      this.skipNL();
+    }
+
+    // Optional instantiation: `entity Alias = Template<Args>`
+    let genericAlias: { template: string; typeArgs: string[] } | undefined;
+    if (this.check('OPERATOR', '=')) {
+      this.advance(); // consume '='
+      const template = this.consumeIdentifier().value;
+      this.consume('OPERATOR', '<');
+      const typeArgs: string[] = [this.consumeIdentifier().value];
+      while (this.check('PUNCTUATION', ',')) {
+        this.advance(); // consume ','
+        typeArgs.push(this.consumeIdentifier().value);
+      }
+      this.consume('OPERATOR', '>');
+      genericAlias = { template, typeArgs };
+      this.skipNL();
+    }
+
     // Parse optional `extends Parent`
     let parent: string | undefined;
     if (this.check('KEYWORD', 'extends')) {
@@ -451,6 +481,8 @@ export class Parser {
       store,
       ...(parent ? { parent } : {}),
       ...(mixins ? { mixins } : {}),
+      ...(typeParams ? { typeParams } : {}),
+      ...(genericAlias ? { genericAlias } : {}),
       ...(policyRefs ? { policyRefs } : {}),
       ...(key ? { key } : {}),
       ...(alternateKeys.length > 0 ? { alternateKeys } : {}),

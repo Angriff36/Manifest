@@ -4,6 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { IR, IRSchedule, IRWebhook, IRSaga } from '../../ir';
+import { collectUnsupportedDiagnostics } from './capabilities.js';
 import { ConvexProjection } from './generator.js';
 
 function emptyIR(): IR {
@@ -182,6 +183,28 @@ describe('convex.http — HMAC signature verification', () => {
     const code = gen(ir, 'convex.http').artifacts[0].code;
     expect(code).toContain('request.text()');
     expect(code).not.toContain('request.json()');
+  });
+
+  it('does not emit CONVEX_UNSUPPORTED_WEBHOOK_SIGNATURE (HMAC is generated)', () => {
+    const ir = emptyIR();
+    ir.webhooks = [
+      {
+        name: 'stripe',
+        path: '/webhooks/stripe',
+        method: 'POST',
+        command: 'record',
+        entity: 'Payment',
+        signature: {
+          algorithm: 'hmac-sha256',
+          header: 'X-Hub-Signature-256',
+          secret: 'context.stripeWebhookSecret',
+        },
+      },
+    ] as IRWebhook[];
+    const diags = collectUnsupportedDiagnostics(ir);
+    expect(diags.some((d) => d.code === 'CONVEX_UNSUPPORTED_WEBHOOK_SIGNATURE')).toBe(false);
+    const code = gen(ir, 'convex.http').artifacts[0].code;
+    expect(code).toContain('_verifyHmac(');
   });
 });
 

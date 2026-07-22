@@ -50,6 +50,11 @@ export interface ConvexReactOptions {
    */
   authContextImport?: string;
   /**
+   * When set with {@link authContextImport}, read policies that call `flag()`
+   * stay client-readable (same seam as `convex.queries`).
+   */
+  flagProviderImport?: string;
+  /**
    * Wire mutation/create hooks to parse command params via the Zod bundle.
    * - `true` → import from {@link DEFAULT_ZOD_BUNDLE_PATH} relative to the client
    * - string → explicit module specifier
@@ -145,6 +150,7 @@ export function generateReactClient(
       entity.name,
       reactOpts.authContextImport,
       '__row',
+      reactOpts.flagProviderImport,
     );
     diagnostics.push(...visibility.policies.diagnostics);
     if (!visibility.clientReadable) {

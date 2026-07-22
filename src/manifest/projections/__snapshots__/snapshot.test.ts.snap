@@ -2795,6 +2795,23 @@ export interface HealthReport {
   };
 }
 
+/** Host-injected live probes. Omit to keep scaffolding stubs. */
+export interface HealthProbes {
+  /** Compare against baked MANIFEST_IR_META.contentHash. */
+  getLiveContentHash?: () => string | Promise<string>;
+  /** Probe a store target (postgres, supabase, …). */
+  checkStore?: (target: string) => Promise<ComponentHealth>;
+  /** Pending outbox depth (postgres/supabase outbox tables). */
+  getOutboxDepth?: () => Promise<number>;
+}
+
+let configuredProbes: HealthProbes | undefined;
+
+/** Wire live probes once at app bootstrap (used by HTTP wrappers). */
+export function configureHealthProbes(probes: HealthProbes): void {
+  configuredProbes = probes;
+}
+
 /** Baked IR provenance from compilation. */
 const MANIFEST_IR_META = {
   contentHash: 'snapshot-fixture-hash',
@@ -2804,23 +2821,57 @@ const MANIFEST_IR_META = {
 } as const;
 
 /**
- * Report baked IR provenance from compilation.
- * Scaffolding only: does not recompute or compare a live IR hash.
+ * IR integrity: live hash compare when getLiveContentHash is provided;
+ * otherwise reports baked provenance with stub: true.
  */
-function checkIR(): ComponentHealth {
-  return {
-    status: 'healthy',
-    message: 'IR provenance baked (not live-checked)',
-    details: { ...MANIFEST_IR_META, stub: true },
-  };
+async function checkIR(probes?: HealthProbes): Promise<ComponentHealth> {
+  const live = probes?.getLiveContentHash;
+  if (!live) {
+    return {
+      status: 'healthy',
+      message: 'IR provenance baked (not live-checked)',
+      details: { ...MANIFEST_IR_META, stub: true },
+    };
+  }
+  try {
+    const hash = await live();
+    if (hash === MANIFEST_IR_META.contentHash) {
+      return {
+        status: 'healthy',
+        message: 'IR contentHash matches live hash',
+        details: { ...MANIFEST_IR_META, stub: false, live: true },
+      };
+    }
+    return {
+      status: 'unhealthy',
+      message: 'IR contentHash mismatch',
+      details: { ...MANIFEST_IR_META, stub: false, live: true, liveContentHash: hash },
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      status: 'unhealthy',
+      message: 'IR live hash probe failed: ' + message,
+      details: { ...MANIFEST_IR_META, stub: false, live: true },
+    };
+  }
 }
 
-/**
- * Check connectivity for durable stores.
- * Scaffolding only: no live durable probe until a store client is injected.
- */
-async function checkDurableStore(): Promise<ComponentHealth> {
-  // Scaffolding: always reports healthy until a real probe is wired.
+/** Check connectivity for durable stores. */
+async function checkDurableStore(probes?: HealthProbes): Promise<ComponentHealth> {
+  if (probes?.checkStore) {
+    try {
+      const result = await probes.checkStore('durable');
+      return { ...result, details: { ...(result.details ?? {}), stub: false, live: true, target: 'durable' } };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        status: 'unhealthy',
+        message: 'durable store probe failed: ' + message,
+        details: { stub: false, live: true, target: 'durable' },
+      };
+    }
+  }
   return {
     status: 'healthy',
     message: 'durable store check not implemented (scaffolding)',
@@ -2830,18 +2881,20 @@ async function checkDurableStore(): Promise<ComponentHealth> {
 
 /**
  * Run all health checks and return an aggregated report.
+ * Pass probes (or call configureHealthProbes) for live IR/store/outbox checks.
  *
  * Status logic:
  *   - 'healthy'   — all checks pass
  *   - 'degraded'  — some non-critical checks fail (stores)
  *   - 'unhealthy' — IR check fails or all stores unreachable
  */
-export async function runHealthCheck(): Promise<HealthReport> {
+export async function runHealthCheck(probes?: HealthProbes): Promise<HealthReport> {
+  const active = probes ?? configuredProbes;
   const checks: HealthReport['checks'] = {} as HealthReport['checks'];
   let overallStatus: HealthStatus = 'healthy';
 
   // IR integrity
-  const irHealth = checkIR();
+  const irHealth = await checkIR(active);
   (checks as Record<string, unknown>).ir = irHealth;
   if (irHealth.status === 'unhealthy') {
     overallStatus = 'unhealthy';
@@ -2849,7 +2902,7 @@ export async function runHealthCheck(): Promise<HealthReport> {
 
   // Store connectivity
   const storeResults: Record<string, ComponentHealth> = {};
-  storeResults['durable'] = await checkDurableStore();
+  storeResults['durable'] = await checkDurableStore(active);
   (checks as Record<string, unknown>).stores = storeResults;
 
   const storeStatuses = Object.values(storeResults);

@@ -132,11 +132,17 @@ export interface RenderedReadPolicyCheck {
   code: string;
 }
 
+export interface ReadPolicyRenderOptions {
+  /** When set, `flag()` in read policies is renderable (import supplies `flag`). */
+  flagProviderImport?: string;
+}
+
 /** Render policy predicates for a generated read handler. */
 export function renderReadPolicies(
   ir: IR,
   entityName: string,
   selfVar: string,
+  options: ReadPolicyRenderOptions = {},
 ): RenderedReadPolicies {
   const contextChecks: RenderedReadPolicyCheck[] = [];
   const rowChecks: RenderedReadPolicyCheck[] = [];
@@ -147,6 +153,8 @@ export function renderReadPolicies(
       .find((entity) => entity.name === entityName)
       ?.relationships.map((rel) => rel.name) ?? [],
   );
+  const flagSeam =
+    typeof options.flagProviderImport === 'string' && options.flagProviderImport.length > 0;
 
   for (const policy of selectReadPolicies(ir, entityName)) {
     if (policy.rateLimit) {
@@ -159,13 +167,13 @@ export function renderReadPolicies(
       });
       continue;
     }
-    if (expressionCalls(policy.expression, 'flag')) {
+    if (expressionCalls(policy.expression, 'flag') && !flagSeam) {
       renderable = false;
       diagnostics.push({
         severity: 'error',
         code: 'CONVEX_UNSUPPORTED_READ_POLICY_FLAG',
         entity: entityName,
-        message: `Read policy '${policy.name}' calls flag(); generated Convex queries remain internal until a feature-flag provider seam is configured.`,
+        message: `Read policy '${policy.name}' calls flag(); set options.flagProviderImport to a module exporting flag(name), or queries remain internal.`,
       });
       continue;
     }
@@ -212,13 +220,14 @@ export function resolveConvexReadVisibility(
   entityName: string,
   authContextImport: string | undefined,
   selfVar = '__row',
+  flagProviderImport?: string,
 ): {
   gated: boolean;
   clientReadable: boolean;
   policies: RenderedReadPolicies;
 } {
   const gated = hasReadPolicies(ir, entityName);
-  const policies = renderReadPolicies(ir, entityName, selfVar);
+  const policies = renderReadPolicies(ir, entityName, selfVar, { flagProviderImport });
   const authSeam = typeof authContextImport === 'string' && authContextImport.length > 0;
   const clientReadable = !gated || (authSeam && policies.renderable);
   return { gated, clientReadable, policies };

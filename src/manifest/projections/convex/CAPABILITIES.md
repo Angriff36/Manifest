@@ -32,16 +32,18 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Transitions                                      | mutations                    | Pre-patch legality; same-state (`from === to`) allowed; always on                            |
 | Command idempotency (`idempotencyKey`)           | schema + mutations           | `commandIdempotencyKeys` table; optional arg; cached result before re-execution (default on) |
 | Command `rateLimit`                              | schema + mutations           | Sliding-window `commandRateLimitBuckets`; before policies/guards; user/tenant need auth seam |
+| Policy `rateLimit` (write/execute/delete)        | schema + mutations           | Same bucket table; `policy:<name>` key; before each policy expression                        |
 | `versionProperty` / `versionAtProperty` OCC      | schema + mutations           | Schema field synthesis; create seeds `1`; updates optional expected version + increment      |
 | Private properties (read strip)                  | queries                      | Always on; mutation path still sees stored values                                            |
 | `masked` / `unmask when`                         | queries                      | Read-time strategies on list/get; unmaskWhen when Convex-renderable; mutations stay unmasked |
 | Computed (self-only)                             | computed (+ optional inline) | `computedProperties: helpers \| inline`                                                      |
 | Schedules                                        | crons                        |                                                                                              |
-| Webhooks (route + transform + idempotency table) | http                         | Signature verification = Partial                                                             |
+| Webhooks (route + transform + idempotency table) | http                         | HMAC signature verify (Web Crypto) + idempotency table when declared                         |
 | Authenticated command dispatcher                 | http                         | `POST /api/manifest/{entity}/commands/{command}`; `ctx.auth` → existing mutation             |
 | Sagas (steps + compensate/abort)                 | sagas                        | Step arg mapping = Partial                                                                   |
 | Tenant filter / soft-delete filter               | queries                      | Field-aware defaults                                                                         |
 | `authContextImport`                              | queries + mutations          | Author-owned identity seam (also used after HTTP auth propagates into `runMutation`)         |
+| `flagProviderImport` / `flag()`                  | queries + mutations          | Author-owned `flag(name)` module; required for public read policies that call `flag()`       |
 | `encryptionImport` / encrypted properties        | queries + mutations          | Versioned envelope; decrypt before policy/read projection, encrypt before store writes       |
 | React client hooks (`useQuery` / `useMutation`)  | react                        | Skips only read-gated entities whose public policy queries cannot be rendered                |
 
@@ -49,12 +51,11 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 
 | IR construct                  | Limitation                                                                                                                   | Diagnostic / note                      |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| Webhook `signature`           | httpAction does not verify HMAC                                                                                              | `CONVEX_UNSUPPORTED_WEBHOOK_SIGNATURE` |
 | Saga step arguments           | Single `input` forwarded to every step                                                                                       | Documented in README                   |
 | `trustedSource` params        | Exposed as normal args unless auth/create seam injects                                                                       | `CONVEX_PARTIAL_TRUSTED_SOURCE` (info) |
 | Referential onDelete/onUpdate | No schema cascade                                                                                                            | `CONVEX_REFERENTIAL_ACTION_DEFERRED`   |
 | Computed relation aggregates  | Self-only helpers; `count_of`/`sum`/`avg`/`min_of`/`max_of`/`filter`/`map`/`flat_map` on hydrated hasMany in mutations      | Unresolved → `CONVEX_UNRESOLVED_COMPUTED` |
-| Read/`all` policies           | Renderable predicates are public with `authContextImport`; `flag()`, relationship traversal, and `rateLimit` remain internal | `CONVEX_UNSUPPORTED_READ_POLICY_*`     |
+| Read/`all` policies           | Public with `authContextImport` (+ `flagProviderImport` when policies call `flag()`); relationship traversal and read `rateLimit` remain internal | `CONVEX_UNSUPPORTED_READ_POLICY_*`     |
 | `policyMode: 'skip'`          | Omits authorization only                                                                                                     | Documented escape hatch                |
 | `realtime` hint               | Convex queries already reactive; no SSE artifact                                                                             | `CONVEX_PARTIAL_REALTIME` (info)       |
 | Computed `cache` directives   | Helpers stay pure; Manifest cache strategies not lowered                                                                     | `CONVEX_PARTIAL_COMPUTED_CACHE` (info) |
@@ -66,7 +67,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Approvals (rejected)                          | `CONVEX_UNSUPPORTED_APPROVAL` (error) — no stage state / pre-command gate |
 | `searchable` (non-string types)               | `CONVEX_UNSUPPORTED_SEARCHABLE`    |
 | Command `retry` (rejected)                    | `CONVEX_UNSUPPORTED_RETRY` (error) — no per-attempt rollback/sleep in mutations |
-| Policy/read `rateLimit`                       | `CONVEX_UNSUPPORTED_RATE_LIMIT` / `CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT` |
+| Read / `all` policy `rateLimit`               | `CONVEX_UNSUPPORTED_RATE_LIMIT` / `CONVEX_UNSUPPORTED_READ_POLICY_RATE_LIMIT` (queries cannot mutate buckets) |
 | `async` commands / job queue                  | `CONVEX_UNSUPPORTED_ASYNC_COMMAND` |
 | Action kinds `effect` / `publish` / `persist` | `CONVEX_UNSUPPORTED_ACTION_KIND`   |
 

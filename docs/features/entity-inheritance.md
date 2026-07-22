@@ -2,7 +2,7 @@
 
 Manifest supports three patterns for structuring entity types: single inheritance with `extends`, composition with `mixin`, and parameterized templates with generics.
 
-**Status:** `extends` and `mixin` are **implemented** — the parser, IR compiler, and runtime all handle them (conformance fixtures `77`–`81`). Generic entity syntax (`entity Name<T>` / `entity Alias = Template<T>`) is **not yet implemented** — the parser produces a parse error for those forms (conformance fixture `84` is a pinned shouldFail test: `Expected {, got <`). Do not use generic entity syntax in production programs.
+**Status:** `extends`, `mixin`, and generic entity templates are **implemented** — the parser, IR compiler, and composition/generics expanders handle them (conformance fixtures `77`–`81`, `84`–`85`). Generic templates are compile-time only; only concrete instantiations appear in the IR.
 
 `extends` and `mixin` are compile-time features — the IR and runtime see fully flattened entities.
 
@@ -92,17 +92,17 @@ The resulting `IREntity` has both `parent: "BaseEntity"` and `mixins: ["Timestam
 
 ## Generic / Parameterized Entity Types
 
-> **Status: Not yet implemented.** The generic entity syntax (`entity Name<T>` / `entity Alias = Template<T>`) produces parse errors in the current compiler (`Expected {, got <`). Conformance fixture `84-generic-entity.manifest` is a pinned shouldFail test. The description below documents the intended design only; do not use this syntax in production programs.
+> **Status: Implemented (2026-07-22).** Parse + expand via `entity-generics.ts`. Fixture `84` proves successful IR emission; fixture `85` proves arity-mismatch diagnostics.
 
-Generic entities would define type parameters that are substituted during compilation, producing concrete entity instantiations.
+Generic entities define type parameters that are substituted during compilation, producing concrete entity instantiations.
 
-**Intended behavior (design):**
+**Behavior:**
 
 - Generic templates are compile-time only. Only concrete instantiations appear in the IR. Template entities are omitted from the IR output.
-- Type parameters are substituted wherever they appear in property types, computed property types, and relationship targets within the template body.
+- Type parameters are substituted wherever they appear in property types, computed property types, relationship targets, and command parameter/return types within the template body.
 - Instantiation bodies can add extra properties, relationships, commands, constraints, and policies. Members with the same name as template members take precedence (override).
 
-**Validation (intended):**
+**Validation:**
 
 - Instantiation must reference a known generic entity. Referencing a non-generic or unknown entity produces a compile error.
 - Type argument count must match the template's type parameter count (arity validation). Mismatches produce a compile error.
@@ -134,14 +134,14 @@ The IR compiler's `resolveEntityInheritance()` method:
 4. Merges inherited members with own declarations, with own declarations taking precedence.
 5. Produces flat entity nodes with all members directly in their arrays.
 
-For generics (intended design, not yet implemented — see status note above), `resolveGenericInstantiations()` would:
+For generics, `expandEntityGenerics()` (called from the IR compiler before composition):
 
-1. Identify generic template entities (with `typeParameters`).
-2. Find instantiations referencing those templates.
-3. Validate arity (type argument count matches parameter count).
-4. Clone the template body and substitute type parameter references.
-5. Merge any extra body members from the instantiation.
-6. Emit only concrete entities in the IR.
+1. Identifies generic template entities (with `typeParams`).
+2. Finds instantiations referencing those templates (`genericAlias`).
+3. Validates arity (type argument count matches parameter count).
+4. Clones the template body and substitutes type parameter references.
+5. Merges any extra body members from the instantiation (own wins on name).
+6. Removes templates so only concrete entities are emitted in the IR.
 
 ## Conformance Fixtures
 
@@ -150,13 +150,12 @@ For generics (intended design, not yet implemented — see status note above), `
 - `79-entity-extends-and-mixin.manifest` -- Both combined
 - `80-entity-extends-unknown-parent.manifest` -- Error: unknown parent reference
 - `81-entity-extends-cycle.manifest` -- Error: circular inheritance detected
-- `84-generic-entity.manifest` -- Pinned **parse-failure** test (`shouldFail: true`); fixture exercises generic syntax that currently produces errors
-- `85-generic-arity-mismatch.manifest` -- Pinned **parse-failure** test; exercises arity mismatch (also not yet implemented)
+- `84-generic-entity.manifest` -- Happy path: `Paginated<T>` template + `ItemList = Paginated<Item>` instantiation
+- `85-generic-arity-mismatch.manifest` -- Error: wrong number of type arguments
 
 ## Notes
 
 - The `mixin` keyword is now a reserved word. It cannot be used as an entity, property, command, or parameter name.
 - Entity order in the IR output is preserved as declaration order (not sorted alphabetically).
 - Override semantics: if a child entity declares a member with the same name as one from a parent or mixin, the child's declaration wins and appears after inherited members in the merged array.
-- Module generics: `typeParameters` is stored on `IRModule` for traceability. However, the generic entity syntax is not yet implemented in the parser, so this field is not populated at present.
-- All member types are flattened: `properties`, `commands`, `policies`, `defaultPolicies`, and `constraints` arrays contain all inherited and composed members directly.
+- All member types are flattened: `properties`, `commands`, `policies`, `defaultPolicies`, and `constraints` arrays contain all inherited, composed, and instantiated members directly.

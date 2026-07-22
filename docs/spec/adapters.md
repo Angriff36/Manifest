@@ -120,8 +120,20 @@ depend on application identity or key management:
   A policy that depends on a capability the projection cannot reproduce exactly
   MUST keep that entity's queries internal. In particular, `flag()` requires a
   provider seam, relationship-valued expressions require relationship loading,
-  and policy `rateLimit` requires durable rate-limit state; the current Convex
-  projection diagnoses each of these instead of approximating authorization.
+  ~~and policy `rateLimit` requires durable rate-limit state; the current Convex
+  projection diagnoses each of these instead of approximating authorization.~~
+  > **Correction (2026-07-22):** Write/execute/delete policy `rateLimit` is
+  > emitted on Convex mutations (same sliding-window table as command
+  > `rateLimit`). Read-policy `rateLimit` still cannot run inside Convex queries
+  > (queries cannot mutate buckets) and remains diagnosed / fail-closed internal.
+  > ~~`flag()` and relationship traversal on read policies likewise stay internal.~~
+  >
+  > **Correction (2026-07-22):** `flagProviderImport` MUST name a module
+  > exporting `flag(name: string): unknown`. When set (with
+  > `authContextImport`), read/`all` policies that call `flag()` are enforced on
+  > public queries. Without it, those queries stay `internalQuery`. Relationship
+  > traversal on read policies remains internal.
+- `flagProviderImport` — see correction above (feature-flag seam).
 - `encryptionImport` MUST name a module exporting `encrypt` and `decrypt`.
   `encrypt(plaintext, metadata)` returns `{ ciphertext, keyId }`;
   `decrypt(ciphertext, keyId, metadata)` returns plaintext. `metadata` contains

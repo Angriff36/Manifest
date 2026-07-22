@@ -158,8 +158,8 @@ describe('HealthCheckProjection', () => {
       const code = firstCode(result);
 
       // Should have one check per unique target, not per store instance
-      expect(code).toContain('async function checkMemoryStore()');
-      expect(code).toContain('async function checkPostgresStore()');
+      expect(code).toContain('async function checkMemoryStore(probes?: HealthProbes)');
+      expect(code).toContain('async function checkPostgresStore(probes?: HealthProbes)');
       // Memory stores return healthy immediately
       expect(code).toContain('memory store is always available');
       // Non-memory stores: live via probes.checkStore, else honest stub
@@ -183,7 +183,7 @@ describe('HealthCheckProjection', () => {
       });
 
       const resultWithout = projection.generate(irMemoryOnly, { surface: 'health.handler' });
-      expect(firstCode(resultWithout)).not.toContain('async function checkOutbox()');
+      expect(firstCode(resultWithout)).not.toContain('async function checkOutbox(probes?: HealthProbes)');
     });
 
     it('generates runHealthCheck orchestrator', () => {
@@ -221,8 +221,8 @@ describe('HealthCheckProjection', () => {
       const result = projection.generate(ir, { surface: 'health.handler' });
       const code = firstCode(result);
 
-      expect(code).toContain('async function checkSupabaseStore()');
-      expect(code).toContain('async function checkOutbox()');
+      expect(code).toContain('async function checkSupabaseStore(probes?: HealthProbes)');
+      expect(code).toContain('async function checkOutbox(probes?: HealthProbes)');
     });
 
     it('handles localStorage stores as always healthy', () => {
@@ -233,7 +233,7 @@ describe('HealthCheckProjection', () => {
       const result = projection.generate(ir, { surface: 'health.handler' });
       const code = firstCode(result);
 
-      expect(code).toContain('async function checkLocalStorageStore()');
+      expect(code).toContain('async function checkLocalStorageStore(probes?: HealthProbes)');
       expect(code).toContain('localStorage store is always available');
     });
 
@@ -243,7 +243,7 @@ describe('HealthCheckProjection', () => {
       const code = firstCode(result);
 
       // No store check functions generated (checkIR still present)
-      expect(code).toContain('async function checkIR()');
+      expect(code).toContain('async function checkIR(probes?: HealthProbes)');
       expect(code).not.toContain('Store()');
       expect(code).not.toContain('storeResults');
     });
@@ -394,7 +394,7 @@ describe('HealthCheckProjection', () => {
       });
       const code = firstCode(result);
 
-      expect(code).not.toContain('async function checkIR()');
+      expect(code).not.toContain('async function checkIR(probes?: HealthProbes)');
       expect(code).not.toContain('ir: ComponentHealth');
     });
 
@@ -408,7 +408,7 @@ describe('HealthCheckProjection', () => {
       });
       const code = firstCode(result);
 
-      expect(code).not.toContain('async function checkPostgresStore()');
+      expect(code).not.toContain('checkPostgresStore');
       expect(code).not.toContain('stores: Record<string, ComponentHealth>');
     });
 
@@ -422,7 +422,7 @@ describe('HealthCheckProjection', () => {
       });
       const code = firstCode(result);
 
-      expect(code).not.toContain('async function checkOutbox()');
+      expect(code).not.toContain('async function checkOutbox(probes?: HealthProbes)');
       expect(code).not.toContain('outbox: ComponentHealth');
     });
 
@@ -523,11 +523,11 @@ describe('HealthCheckProjection', () => {
       const result = projection.generate(ir, { surface: 'health.handler' });
       const code = firstCode(result);
 
-      expect(code).toContain('async function checkDurableStore()');
+      expect(code).toContain('async function checkDurableStore(probes?: HealthProbes)');
       // durable is not a memory target, should have try/catch
       expect(code).toContain('durable store check not implemented (scaffolding)');
       // durable is not an outbox target, no outbox check
-      expect(code).not.toContain('async function checkOutbox()');
+      expect(code).not.toContain('async function checkOutbox(probes?: HealthProbes)');
     });
 
     it('handles mongodb store target', () => {
@@ -538,8 +538,8 @@ describe('HealthCheckProjection', () => {
       const result = projection.generate(ir, { surface: 'health.handler' });
       const code = firstCode(result);
 
-      expect(code).toContain('async function checkMongodbStore()');
-      expect(code).not.toContain('async function checkOutbox()');
+      expect(code).toContain('async function checkMongodbStore(probes?: HealthProbes)');
+      expect(code).not.toContain('async function checkOutbox(probes?: HealthProbes)');
     });
 
     it('deduplicates store targets', () => {
