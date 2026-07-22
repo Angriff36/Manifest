@@ -81,13 +81,36 @@ interface PropertyEmission {
 }
 
 /**
+ * Resolve the SQL/Kysely column name for an IR property (or FK field).
+ * Explicit `columnMappings` win; otherwise the IR field name is used.
+ */
+function resolveColumnName(
+  entityName: string,
+  propertyName: string,
+  options: KyselyProjectionOptions,
+): string {
+  return options.columnMappings?.[entityName]?.[propertyName] ?? propertyName;
+}
+
+/**
+ * Format a column name as a TypeScript interface property key.
+ * Valid identifiers stay bare; anything else is JSON-quoted.
+ */
+function formatColumnPropertyKey(columnName: string): string {
+  if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(columnName)) {
+    return columnName;
+  }
+  return JSON.stringify(columnName);
+}
+
+/**
  * Emit a single Kysely column type line for an IR property.
  *
  * Example output:
  *   id: Generated<string>;
  *   name: string;
  *   qty: number | null;
- *   createdAt: ColumnType<Date, Date | string | undefined, Date | string>;
+ *   created_at: ColumnType<Date, Date | string | undefined, Date | string>;
  */
 function emitPropertyColumn(
   entity: IREntity,
@@ -177,8 +200,9 @@ function emitPropertyColumn(
     tsExpr = `${tsExpr} | null`;
   }
 
+  const columnKey = formatColumnPropertyKey(resolveColumnName(entity.name, prop.name, options));
   return {
-    line: `  ${prop.name}: ${tsExpr};`,
+    line: `  ${columnKey}: ${tsExpr};`,
     diagnostics,
   };
 }
@@ -225,8 +249,11 @@ function emitTableInterface(
 
         const refNullable = targetIdProp?.type.nullable ?? false;
         const tsExpr = refNullable ? `${fkTsType} | null` : fkTsType;
+        const columnKey = formatColumnPropertyKey(
+          resolveColumnName(entity.name, fkField, options),
+        );
 
-        columns.push(`  ${fkField}: ${tsExpr};`);
+        columns.push(`  ${columnKey}: ${tsExpr};`);
       }
     }
   }

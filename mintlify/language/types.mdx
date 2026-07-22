@@ -6,7 +6,7 @@ description: "Reference for Manifest's richer property types — enums, decimal 
 
 ~~Beyond the four primitive types (`string`, `number`, `boolean`, `timestamp`), Manifest offers richer property types…~~
 
-> **Correction (2026-07-15) @RYANSIGNED:** There is **no** `timestamp` property type. Common scalars include `string`, `number`, `boolean`, plus date/time primitives `datetime` / `date` / `time` / `duration` (`docs/spec/semantics.md` § Date/Time Types), `decimal` / `money`, collections, enums, and value-object names. Type names are open strings, so an undeclared custom name can still compile as a type reference. This page documents what each richer type actually provides — and what it does not.
+> **Correction (2026-07-22 @RYANSIGNED):** `timestamp` **is** a valid property type — it is a normative alias for `datetime` (`docs/spec/semantics.md:281,286-289`). Runtimes MUST treat `timestamp` identically to `datetime`. Common scalars include `string`, `number`, `boolean`, plus date/time primitives `datetime` / `timestamp` / `date` / `time` / `duration`, `decimal` / `money`, collections, enums, and value-object names. Type names are open strings, so an undeclared custom name can still compile as a type reference. This page documents what each richer type actually provides — and what it does not.
 
 ## Enums
 

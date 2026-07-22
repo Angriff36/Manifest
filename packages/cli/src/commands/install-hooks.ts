@@ -22,6 +22,7 @@ export interface HooksConfig {
 export interface InstallHooksOptions {
   force?: boolean;
   provider?: HookProvider;
+  dryRun?: boolean;
 }
 
 export interface ResolvedHooksConfig {
@@ -104,6 +105,12 @@ async function installHuskyHook(script: string, options: InstallHooksOptions): P
     }
   }
 
+  if (options.dryRun) {
+    const { logWouldWrite } = await import('../utils/dry-run-fs.js');
+    logWouldWrite(hookPath, Buffer.byteLength(script, 'utf-8'));
+    return hookPath;
+  }
+
   await mkdir(huskyDir, { recursive: true });
   await writeFile(hookPath, script, { mode: 0o755 });
   return hookPath;
@@ -141,7 +148,14 @@ async function installSimpleGitHooks(
     'pre-commit': script.replace(/\n/g, ' ').trim(),
   };
 
-  await writeFile(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf-8');
+  const body = `${JSON.stringify(pkg, null, 2)}\n`;
+  if (options.dryRun) {
+    const { logWouldWrite } = await import('../utils/dry-run-fs.js');
+    logWouldWrite(packageJsonPath, Buffer.byteLength(body, 'utf-8'));
+    return packageJsonPath;
+  }
+
+  await writeFile(packageJsonPath, body, 'utf-8');
   return packageJsonPath;
 }
 
@@ -153,6 +167,11 @@ export async function installHooksCommand(options: InstallHooksOptions = {}): Pr
   if (hooksConfig.provider === 'husky') {
     const hookPath = await installHuskyHook(script, options);
     if (process.exitCode === 1) {
+      return;
+    }
+
+    if (options.dryRun) {
+      console.log(chalk.cyan('dry-run: would install Husky pre-commit hook (no files written)'));
       return;
     }
 
@@ -169,6 +188,11 @@ export async function installHooksCommand(options: InstallHooksOptions = {}): Pr
 
   const packageJsonPath = await installSimpleGitHooks(script, options);
   if (process.exitCode === 1) {
+    return;
+  }
+
+  if (options.dryRun) {
+    console.log(chalk.cyan('dry-run: would mutate package.json for simple-git-hooks (no write)'));
     return;
   }
 

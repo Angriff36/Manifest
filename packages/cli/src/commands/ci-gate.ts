@@ -15,6 +15,8 @@ export interface CiGateOptions {
   cwd?: string;
   /** Write the live effective config to the snapshot path (refresh), then exit 0. */
   writeSnapshot?: boolean;
+  /** Preview snapshot write without touching the filesystem. */
+  dryRun?: boolean;
   /** CLI overrides for driftGates fields. */
   failOnConfigDrift?: boolean;
   failOnGeneratedDrift?: boolean;
@@ -65,9 +67,11 @@ export class CiGateRunner {
         return { ok: false, failures };
       }
       const abs = path.resolve(this.cwd, snapPath);
-      await fs.mkdir(path.dirname(abs), { recursive: true });
-      await fs.writeFile(abs, liveJson, 'utf-8');
-      console.log(chalk.green(`Wrote effective config snapshot → ${snapPath}`));
+      const { writeTextFile } = await import('../utils/dry-run-fs.js');
+      await writeTextFile(abs, liveJson, { dryRun: this.options.dryRun, cwd: this.cwd });
+      if (!this.options.dryRun) {
+        console.log(chalk.green(`Wrote effective config snapshot → ${snapPath}`));
+      }
       return { ok: true, failures: [] };
     }
 

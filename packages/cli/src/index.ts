@@ -144,11 +144,13 @@ program
     '--node-versions <versions>',
     'Comma-separated Node.js versions for CI matrix (default: 18,20,22)',
   )
-  .action(async (options: { force?: boolean; ci?: string; nodeVersions?: string }) => {
+  .option('--dry-run', 'Preview config/workflow writes; write nothing', false)
+  .action(async (options: { force?: boolean; ci?: string; nodeVersions?: string; dryRun?: boolean }) => {
     if (options.ci) {
       await initCiCommand(options.ci, {
         force: options.force,
         nodeVersions: options.nodeVersions,
+        dryRun: options.dryRun,
       });
       return;
     }
@@ -176,6 +178,7 @@ dbProgram
     '--only <ids>',
     'Comma-separated schema ids (audit,outbox,approval,jobs,idempotency,rate-limit)',
   )
+  .option('--dry-run', 'Preview --out write or --apply without mutating DB/files', false)
   .action(async (options) => {
     const code = await dbInitCommand({
       apply: options.apply,
@@ -183,6 +186,7 @@ dbProgram
       out: options.out,
       list: options.list,
       only: options.only,
+      dryRun: options.dryRun,
     });
     process.exitCode = code;
   });
@@ -210,6 +214,7 @@ program
     '--fail-on <policy>',
     'CI exit policy: block (errors only) | warn (errors or warnings) | never (report-only)',
   )
+  .option('--dry-run', 'Preview IR paths/bytes that would be written; write nothing', false)
   .action(async (source, options = {}) => {
     // --all: merged, config-driven compile — the partner to `generate --all`.
     if (options.all) {
@@ -217,6 +222,7 @@ program
         diagnostics: options.diagnostics,
         pretty: options.pretty,
         failOn: options.failOn,
+        dryRun: options.dryRun,
       });
       return;
     }
@@ -258,13 +264,22 @@ program
     '--check',
     'Compare generated code to committed files and exit non-zero on drift (writes nothing)',
   )
+  .option(
+    '--dry-run',
+    'Preview artifact paths/bytes that would be written; write nothing (distinct from --check)',
+    false,
+  )
   .action(async (ir, options = {}) => {
     // --all: drive every configured projection from manifest.config.yaml.
     // An optional explicit <ir> overrides the config `output` as the IR source —
     // use it to point at a single merged IR (from `compile --all`) instead of
     // globbing an output dir that may also hold stale per-file shards.
     if (options.all) {
-      await generateAllFromConfig({ check: options.check, irOverride: ir });
+      await generateAllFromConfig({
+        check: options.check,
+        dryRun: options.dryRun,
+        irOverride: ir,
+      });
       return;
     }
 
@@ -318,6 +333,7 @@ program
   .option('--database <path>', 'Database import path')
   .option('--runtime <path>', 'Runtime import path')
   .option('--response <path>', 'Response helpers import path')
+  .option('--dry-run', 'Preview compile+generate writes; write nothing', false)
   .action(async (source, options = {}, cmd) => {
     // --all: config-driven compile-all + generate-all in one call (the native
     // equivalent of the CI-chained `compile --all && generate --all`). Every
@@ -346,7 +362,7 @@ program
         );
         process.exit(1);
       }
-      await buildAllFromConfig();
+      await buildAllFromConfig({ dryRun: options.dryRun });
       return;
     }
 
@@ -409,6 +425,7 @@ const seedCmd = program
   .option('--entity <name...>', 'Only seed the named entity (repeatable)')
   .option('--seed <n>', 'Deterministic PRNG seed for reproducible output', (v) => parseInt(v, 10))
   .option('--json', 'Emit structured JSON to stdout instead of writing files', false)
+  .option('--dry-run', 'Preview seed file writes; write nothing', false)
   .action(async (source, options = {}) => {
     await seedCommand({
       source,
@@ -419,6 +436,7 @@ const seedCmd = program
       entity: options.entity,
       seed: options.seed,
       json: options.json,
+      dryRun: options.dryRun,
     });
   });
 
@@ -433,6 +451,7 @@ seedCmd
   .option('--profile <profile>', 'dev | staging | demo', 'demo')
   .option('--count <n>', 'Rows per entity', (v) => parseInt(v, 10), 2)
   .option('--entity <name...>', 'Only include named entities')
+  .option('--dry-run', 'Preview seed pack writes; write nothing', false)
   .action(async (source, options) => {
     await seedTemplateCommand({
       source,
@@ -442,6 +461,7 @@ seedCmd
       profile: options.profile,
       count: options.count,
       entity: options.entity,
+      dryRun: options.dryRun,
     });
   });
 
@@ -453,6 +473,7 @@ seedCmd
   .option('--provider <name>', 'heuristic | ollama', 'heuristic')
   .option('--model <id>', 'Ollama model id')
   .option('--overwrite', 'Regenerate non-blank cells', false)
+  .option('--dry-run', 'Preview filled pack rewrite; write nothing', false)
   .action(async (packDir, options) => {
     await seedFillCommand({
       packDir,
@@ -460,6 +481,7 @@ seedCmd
       provider: options.provider,
       model: options.model,
       overwrite: options.overwrite,
+      dryRun: options.dryRun,
     });
   });
 
@@ -494,6 +516,7 @@ program
   .option('--input <json>', 'Input JSON for the command')
   .option('--export <path>', 'Export profiling data to a JSON file')
   .option('--detailed', 'Include detailed per-operation timing', false)
+  .option('--dry-run', 'Preview --export write; write nothing', false)
   .action(async (options = {}) => {
     await profileCommand({
       ir: options.ir,
@@ -504,6 +527,7 @@ program
       input: options.input,
       export: options.export,
       detailed: options.detailed,
+      dryRun: options.dryRun,
     });
   });
 
@@ -518,8 +542,9 @@ program
   .description('Convert a JSON IR file to the binary MessagePack .mir format')
   .argument('<input>', 'Path to a .ir.json file')
   .option('-o, --output <path>', 'Output .mir path (default: alongside input)')
+  .option('--dry-run', 'Preview pack output path; write nothing', false)
   .action(async (input, options = {}) => {
-    await packCommand(input, { output: options.output });
+    await packCommand(input, { output: options.output, dryRun: options.dryRun });
   });
 
 program
@@ -528,8 +553,9 @@ program
   .argument('<input>', 'Path to a .mir file')
   .option('-o, --output <path>', 'Output .ir.json path (default: alongside input)')
   .option('--no-pretty', 'Emit compact JSON (no indentation)')
+  .option('--dry-run', 'Preview unpack output path; write nothing', false)
   .action(async (input, options = {}) => {
-    await unpackCommand(input, { output: options.output, pretty: options.pretty });
+    await unpackCommand(input, { output: options.output, pretty: options.pretty, dryRun: options.dryRun });
   });
 
 /**
@@ -553,6 +579,7 @@ program
   .option('--api-key <key>', 'Anthropic API key (default: ANTHROPIC_API_KEY env var)')
   .option('--skip-validation', 'Skip compiling generated source (not recommended)', false)
   .option('--verbose', 'Show per-iteration validation details', false)
+  .option('--dry-run', 'Preview -o write; write nothing (stdout still prints when no -o)', false)
   .action(async (prompt, options = {}) => {
     const { generateFromPromptCommand } = await import('./commands/generate-from-prompt.js');
     await generateFromPromptCommand(prompt, {
@@ -563,6 +590,7 @@ program
       apiKey: options.apiKey,
       skipValidation: options.skipValidation,
       verbose: options.verbose,
+      dryRun: options.dryRun,
     });
   });
 
@@ -592,6 +620,11 @@ program
   .option('--debounce <ms>', 'Debounce delay in milliseconds', '300')
   .option('--events', 'Emit structured JSON change events to stdout', false)
   .option('--clear', 'Clear terminal on each rebuild', false)
+  .option(
+    '--dry-run',
+    'Preview one compile+generate cycle without writing, then exit (no watch loop)',
+    false,
+  )
   .action(async (source, options = {}) => {
     const config = (await getConfig()) ?? {};
     const projectionOptionsFromConfig = await resolveNextJsProjectionOptions();
@@ -644,6 +677,7 @@ program
   .option('--fail-on-config-drift', 'Force failOnConfigDrift=true')
   .option('--fail-on-generated-drift', 'Force failOnGeneratedDrift=true')
   .option('--pin-ir-schema-version <version>', 'Override driftGates.pinIrSchemaVersion')
+  .option('--dry-run', 'With --write-snapshot, preview the write; write nothing', false)
   .action(async (options = {}) => {
     await ciGateCommand({
       writeSnapshot: !!options.writeSnapshot,
@@ -651,6 +685,7 @@ program
       failOnConfigDrift: options.failOnConfigDrift ? true : undefined,
       failOnGeneratedDrift: options.failOnGeneratedDrift ? true : undefined,
       pinIrSchemaVersion: options.pinIrSchemaVersion,
+      dryRun: options.dryRun,
     });
   });
 
@@ -665,11 +700,17 @@ program
   .argument('[source]', 'Source .manifest file, directory, or glob pattern')
   .option('--check', 'Fail if any file would change', false)
   .option('--write', 'Write formatted output to files', false)
+  .option(
+    '--dry-run',
+    'List files that would change; write nothing (exit 0; distinct from --check)',
+    false,
+  )
   .option('-g, --glob <pattern>', 'Glob pattern when source is a directory')
   .action(async (source, options = {}) => {
     await fmtCommand(source, {
       check: options.check,
-      write: !options.check,
+      write: !options.check && !options.dryRun,
+      dryRun: options.dryRun,
       glob: options.glob,
     });
   });
@@ -684,11 +725,13 @@ program
   .description('Install pre-commit hooks (Husky or simple-git-hooks)')
   .option('-f, --force', 'Overwrite existing hook configuration')
   .option('--provider <provider>', 'Hook provider: husky | simple-git-hooks', 'husky')
-  .action(async (options: { force?: boolean; provider?: string }) => {
+  .option('--dry-run', 'Preview hook / package.json mutation; write nothing', false)
+  .action(async (options: { force?: boolean; provider?: string; dryRun?: boolean }) => {
     const provider = options.provider === 'simple-git-hooks' ? 'simple-git-hooks' : 'husky';
     await installHooksCommand({
       force: options.force,
       provider,
+      dryRun: options.dryRun,
     });
   });
 
@@ -772,11 +815,13 @@ program
   .option('-o, --output <path>', 'Output directory', 'docs-site')
   .option('-f, --format <format>', 'Output format (html, markdown)', 'html')
   .option('-t, --title <title>', 'Site title', 'Manifest API Reference')
+  .option('--dry-run', 'Preview docs artifact paths; write nothing', false)
   .action(async (source, options = {}) => {
     await docsCommand(source, {
       output: options.output,
       format: options.format,
       title: options.title,
+      dryRun: options.dryRun,
     });
   });
 
@@ -793,12 +838,14 @@ program
   .option('-t, --type <type>', 'Diagram type (er, state, sequence, all)', 'all')
   .option('-e, --entity <name>', 'Filter to a specific entity')
   .option('--markdown', 'Wrap output in markdown fenced code blocks', false)
+  .option('--dry-run', 'Preview diagram artifact paths; write nothing', false)
   .action(async (source, options = {}) => {
     await diagramCommand(source, {
       output: options.output,
       type: options.type,
       entity: options.entity,
       markdown: options.markdown,
+      dryRun: options.dryRun,
     });
   });
 
@@ -813,11 +860,13 @@ program
   .option('-f, --format <format>', 'Output format (text, json)', 'text')
   .option('--generate-example', 'Generate .env.example instead of checking')
   .option('-o, --output <path>', 'Output path for .env.example', '.env.example')
+  .option('--dry-run', 'With --generate-example, preview the write; write nothing', false)
   .action(async (options = {}) => {
     await preflightCommand({
       format: options.format,
       generateExample: options.generateExample,
       output: options.output,
+      dryRun: options.dryRun,
     });
   });
 
@@ -836,6 +885,7 @@ program
   .option('--pretty', 'Pretty-print JSON output', true)
   .option('--schema <path>', 'Schema path (default: docs/spec/ir/ir-v1.schema.json)')
   .option('--strict', 'Fail on warnings', false)
+  .option('--dry-run', 'Preview IR writes from compile; skip validate (IR not on disk)', false)
   .action(async (source, options = {}) => {
     const config = (await getConfig()) ?? {};
     if (!options.output && config?.output) {
@@ -1228,6 +1278,7 @@ program
     [] as string[],
   )
   .option('--mode <mode>', 'plan | dry-run | apply | one-defect (default: plan)', 'plan')
+  .option('--dry-run', 'Alias for --mode dry-run when mode is left at default plan', false)
   .option('--capability <id>', 'Limit to Entity.command capability id')
   .option('--finding <id>', 'Limit to a specific finding id')
   .option('--auto-fixable-only', 'Apply only auto-fixable decisions', false)
@@ -1241,7 +1292,8 @@ program
       overrides: options.overrides,
       include: options.include?.length ? options.include : undefined,
       exclude: options.exclude?.length ? options.exclude : undefined,
-      mode: options.mode,
+      mode: options.mode === 'plan' && options.dryRun ? undefined : options.mode,
+      dryRun: options.dryRun,
       capability: options.capability,
       finding: options.finding,
       autoFixableOnly: options.autoFixableOnly,
@@ -1279,6 +1331,7 @@ program
   .option('--profile', 'Emit per-request profiling timestamps for profiler correlation', false)
   .option('--timeout <ms>', 'Request timeout in milliseconds', (v) => parseInt(v, 10), 30000)
   .option('--json', 'Emit structured JSON to stdout instead of writing files', false)
+  .option('--dry-run', 'Preview load-test script paths; write nothing', false)
   .action(async (source, options = {}) => {
     await loadTestCommand({
       source,
@@ -1292,6 +1345,7 @@ program
       profile: options.profile,
       timeout: options.timeout,
       json: options.json,
+      dryRun: options.dryRun,
     });
   });
 
@@ -1303,8 +1357,9 @@ emitProgram
   .option('--out <dir>', 'Output directory', 'manifest-registry')
   .option('--no-validate', 'Skip JSON-schema validation of the emitted output')
   .option('--no-pretty', 'Emit compact JSON (no indentation)')
+    .option('--dry-run', 'Preview registry JSON writes; write nothing', false)
   .action(async (options = {}) => {
-    await emitRegistriesCommand(options);
+    await emitRegistriesCommand({ ...options, dryRun: options.dryRun });
   });
 
 /**
@@ -1357,8 +1412,9 @@ diffProgram
   .option('--sql', 'Include SQL migration in output', false)
   .option('--prisma', 'Include Prisma migration in output', false)
   .option('-o, --output <path>', 'Write output to file')
+  .option('--dry-run', 'Preview -o write; write nothing', false)
   .action(async (oldIR, newIR, options = {}) => {
-    await diffIRCommand(oldIR, newIR, options);
+    await diffIRCommand(oldIR, newIR, { ...options, dryRun: options.dryRun });
   });
 
 /**
@@ -1373,8 +1429,9 @@ diffProgram
   .option('--ack <path>', 'Path to acknowledgments JSON file')
   .option('--ci', 'Exit non-zero on unacknowledged breaking changes', false)
   .option('-o, --output <path>', 'Write output to file')
+  .option('--dry-run', 'Preview -o write; write nothing', false)
   .action(async (oldIR, newIR, options = {}) => {
-    await breakingChangeCommand(oldIR, newIR, options);
+    await breakingChangeCommand(oldIR, newIR, { ...options, dryRun: options.dryRun });
   });
 
 /**
@@ -1425,12 +1482,14 @@ program
   .option('-o, --output <path>', 'Write changelog to file')
   .option('-t, --title <title>', 'Custom heading for the changelog')
   .option('--json', 'Emit structured JSON instead of Markdown', false)
+    .option('--dry-run', 'Preview -o write; write nothing', false)
   .action(async (fromRef, toRef, options = {}) => {
     await changelogCommand(fromRef, toRef, {
       source: options.source,
       output: options.output,
       title: options.title,
       json: options.json,
+      dryRun: options.dryRun,
     });
   });
 
@@ -1627,12 +1686,14 @@ versionsProgram
   .option('--tag <tag>', 'Semantic version tag (e.g. 1.0.0)')
   .option('--auto-tag', 'Auto-increment semver from previous version', false)
   .option('--label <text>', 'Human-readable label for this version')
+  .option('--dry-run', 'Preview version store writes; write nothing', false)
   .action(async (source, options = {}) => {
     await versionsSaveCommand(source, {
       store: options.store,
       tag: options.tag,
       autoTag: options.autoTag,
       label: options.label,
+      dryRun: options.dryRun,
     });
   });
 
@@ -1661,8 +1722,15 @@ versionsProgram
   .argument('[to]', 'Target version (default: latest)')
   .option('--store <path>', 'Version store directory', '.manifest-versions')
   .option('--json', 'JSON output', false)
+  .option('-o, --output <path>', 'Write changelog to file')
+  .option('--dry-run', 'Preview -o write; write nothing', false)
   .action(async (from, to, options = {}) => {
-    await versionsChangelogCommand(from, to, { store: options.store, json: options.json });
+    await versionsChangelogCommand(from, to, {
+      store: options.store,
+      json: options.json,
+      output: options.output,
+      dryRun: options.dryRun,
+    });
   });
 
 versionsProgram
@@ -1671,8 +1739,9 @@ versionsProgram
   .argument('<version>', 'Version number or "latest"')
   .argument('<tag>', 'Semantic version tag (e.g. 1.0.0)')
   .option('--store <path>', 'Version store directory', '.manifest-versions')
+  .option('--dry-run', 'Preview tag mutation; write nothing', false)
   .action(async (version, tag, options = {}) => {
-    await versionsTagCommand(version, tag, { store: options.store });
+    await versionsTagCommand(version, tag, { store: options.store, dryRun: options.dryRun });
   });
 
 versionsProgram
@@ -1681,8 +1750,13 @@ versionsProgram
   .argument('<version>', 'Version number, tag, or "latest"')
   .option('--store <path>', 'Version store directory', '.manifest-versions')
   .option('-o, --output <path>', 'Write IR to file instead of stdout')
+  .option('--dry-run', 'Preview -o write; write nothing', false)
   .action(async (version, options = {}) => {
-    await versionsRollbackCommand(version, { store: options.store, output: options.output });
+    await versionsRollbackCommand(version, {
+      store: options.store,
+      output: options.output,
+      dryRun: options.dryRun,
+    });
   });
 
 versionsProgram

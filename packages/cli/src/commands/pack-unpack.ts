@@ -32,11 +32,13 @@ async function loadBinaryIR() {
 interface PackOptions {
   output?: string;
   pretty?: boolean;
+  dryRun?: boolean;
 }
 
 interface UnpackOptions {
   output?: string;
   pretty?: boolean;
+  dryRun?: boolean;
 }
 
 /**
@@ -70,14 +72,16 @@ export async function packCommand(input: string, options: PackOptions = {}): Pro
     : deriveMirPath(resolvedInput);
 
   const buf = packIR(ir as Parameters<typeof packIR>[0]);
-  await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, buf);
+  const { writeBinaryFile } = await import('../utils/dry-run-fs.js');
+  await writeBinaryFile(outputPath, buf, { dryRun: options.dryRun });
 
   const stats = compareSizes(ir as Parameters<typeof compareSizes>[0]);
 
   console.log(
     chalk.green(
-      `Packed ${path.relative(process.cwd(), resolvedInput)} → ${path.relative(process.cwd(), outputPath)}`,
+      options.dryRun
+        ? `Dry-run: would pack ${path.relative(process.cwd(), resolvedInput)} → ${path.relative(process.cwd(), outputPath)}`
+        : `Packed ${path.relative(process.cwd(), resolvedInput)} → ${path.relative(process.cwd(), outputPath)}`,
     ),
   );
   console.log(chalk.gray(`  JSON:  ${stats.jsonBytes} bytes`));
@@ -130,12 +134,14 @@ export async function unpackCommand(input: string, options: UnpackOptions = {}):
   const indent = options.pretty === false ? undefined : 2;
   const json = indent !== undefined ? JSON.stringify(ir, null, indent) : JSON.stringify(ir);
 
-  await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, json, 'utf-8');
+  const { writeTextFile } = await import('../utils/dry-run-fs.js');
+  await writeTextFile(outputPath, json, { dryRun: options.dryRun });
 
   console.log(
     chalk.green(
-      `Unpacked ${path.relative(process.cwd(), resolvedInput)} → ${path.relative(process.cwd(), outputPath)}`,
+      options.dryRun
+        ? `Dry-run: would unpack ${path.relative(process.cwd(), resolvedInput)} → ${path.relative(process.cwd(), outputPath)}`
+        : `Unpacked ${path.relative(process.cwd(), resolvedInput)} → ${path.relative(process.cwd(), outputPath)}`,
     ),
   );
   console.log(chalk.gray(`  Format version: ${info.formatVersion}`));

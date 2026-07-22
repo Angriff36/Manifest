@@ -15,6 +15,8 @@ interface CheckOptions {
   pretty?: boolean;
   schema?: string;
   strict?: boolean;
+  /** Preview IR writes from the compile step without touching the filesystem. */
+  dryRun?: boolean;
 }
 
 /**
@@ -34,14 +36,26 @@ export async function checkCommand(
     glob: options.glob,
     diagnostics: options.diagnostics ?? false,
     pretty: options.pretty ?? true,
+    dryRun: options.dryRun,
   });
 
-  await validateCommand(validateTarget, {
-    schema: options.schema,
-    strict: options.strict ?? false,
-  });
+  // Validate needs on-disk IR; skip when dry-run did not write.
+  if (!options.dryRun) {
+    await validateCommand(validateTarget, {
+      schema: options.schema,
+      strict: options.strict ?? false,
+    });
+  } else {
+    console.log(chalk.gray('  dry-run: skipped validate (IR was not written)'));
+  }
 
   const elapsedMs = Date.now() - startedAt;
   console.log('');
-  console.log(chalk.bold.green(`✓ Check complete in ${elapsedMs}ms`));
+  console.log(
+    chalk.bold.green(
+      options.dryRun
+        ? `✓ Check dry-run complete in ${elapsedMs}ms`
+        : `✓ Check complete in ${elapsedMs}ms`,
+    ),
+  );
 }

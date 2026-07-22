@@ -463,10 +463,8 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 7. CLI, SDK, config, packaging, docs tooling | Dev: repl, mock, harness, load-test, profile, seed… | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | diff / versions / migrate / changelog | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | enforce-surface / audit-* / lint-routes | `CLAIMED_NEEDS_PROOF / PARTIAL` | ORM shapes incomplete |
-| 7. CLI, SDK, config, packaging, docs tooling | enforce-surface Drizzle/Kysely/raw-SQL | `PARTIAL` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | IR version control / versions CLI | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/ir-version-control.md` |
 | 7. CLI, SDK, config, packaging, docs tooling | Published `@angriff36/manifest` npm | `CLAIMED_NEEDS_PROOF` | pin `package.json` each release |
-| 7. CLI, SDK, config, packaging, docs tooling | Restore `newguard.json` | `NOT_IMPLEMENTED` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | Snapshot testing tooling | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/snapshot-testing.md` |
 | 7. CLI, SDK, config, packaging, docs tooling | wiring-coverage/inspect/remediate | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 8. Open gaps / phantoms (checklist mirror) | `manifest generate-fixtures` | `NOT_IMPLEMENTED` | phantom CLI |
@@ -476,5 +474,4 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 8. Open gaps / phantoms (checklist mirror) | Config `env(VAR)` / `MANIFEST_ENV` overlays / top-level `stores:` YAML | `NOT_IMPLEMENTED` | phantom config |
 | 8. Open gaps / phantoms (checklist mirror) | Convex unsupported surfaces (approvals/masking/retry/rateLimit) | `DIAGNOSTIC_ONLY` | See feature matrix |
 | 8. Open gaps / phantoms (checklist mirror) | Default encryption provider (common no-vendor case) | `NOT_IMPLEMENTED` | fail-closed by design until provider set |
-| 8. Open gaps / phantoms (checklist mirror) | Kysely `columnMappings` actually applied | `NOT_IMPLEMENTED / PARTIAL` | option declared, unused |
 | 8. Open gaps / phantoms (checklist mirror) | softDelete language keyword | `NOT_IMPLEMENTED` | Manifest language gap (projection config exists) |

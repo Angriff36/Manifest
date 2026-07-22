@@ -58,6 +58,10 @@ export default defineConfig({
         replacement: path.resolve(__dirname, './src/manifest/projections/nextjs/generator.ts'),
       },
       {
+        find: '@angriff36/manifest/projections/mermaid',
+        replacement: path.resolve(__dirname, './src/manifest/projections/mermaid/generator.ts'),
+      },
+      {
         find: '@angriff36/manifest/projections/routes',
         replacement: path.resolve(__dirname, './src/manifest/projections/routes/generator.ts'),
       },

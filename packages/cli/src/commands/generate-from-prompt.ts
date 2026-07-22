@@ -36,6 +36,8 @@ export interface GenerateFromPromptOptions {
   apiKey?: string;
   /** Temperature for LLM generation */
   temperature?: number;
+  /** Preview -o write without touching the filesystem (stdout still works). */
+  dryRun?: boolean;
 }
 
 interface GenerationIteration {
@@ -589,9 +591,13 @@ export async function generateFromPromptCommand(
 
     if (outputPath) {
       const resolvedPath = path.resolve(process.cwd(), outputPath);
-      await fs.mkdir(path.dirname(resolvedPath), { recursive: true });
-      await fs.writeFile(resolvedPath, result.manifestSource, 'utf-8');
-      spinner.succeed(`Generated Manifest source written to ${outputPath}`);
+      const { writeTextFile } = await import('../utils/dry-run-fs.js');
+      await writeTextFile(resolvedPath, result.manifestSource, { dryRun: options.dryRun });
+      spinner.succeed(
+        options.dryRun
+          ? `Dry-run: would write generated Manifest source to ${outputPath}`
+          : `Generated Manifest source written to ${outputPath}`,
+      );
     } else {
       spinner.stop();
       console.log('');

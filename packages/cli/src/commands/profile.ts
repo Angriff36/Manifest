@@ -31,6 +31,8 @@ interface ProfileOptions {
   iterations?: number;
   /** Specific command to profile */
   command?: string;
+  /** Preview --export write without touching the filesystem. */
+  dryRun?: boolean;
   /** Entity name for the command */
   entity?: string;
   /** Input JSON for the command */
@@ -169,11 +171,18 @@ function printSummaryTable(summary: ProfileSummary): void {
 /**
  * Export profiling data as JSON
  */
-async function exportProfileData(profiles: CommandProfile[], exportPath: string): Promise<void> {
+async function exportProfileData(
+  profiles: CommandProfile[],
+  exportPath: string,
+  dryRun?: boolean,
+): Promise<void> {
   const resolved = path.resolve(process.cwd(), exportPath);
-  await fs.mkdir(path.dirname(resolved), { recursive: true });
-  await fs.writeFile(resolved, JSON.stringify(profiles, null, 2), 'utf-8');
-  console.log(chalk.green(`\nProfile data exported to: ${resolved}`));
+  const body = JSON.stringify(profiles, null, 2);
+  const { writeTextFile } = await import('../utils/dry-run-fs.js');
+  await writeTextFile(resolved, body, { dryRun });
+  if (!dryRun) {
+    console.log(chalk.green(`\nProfile data exported to: ${resolved}`));
+  }
 }
 
 /**
@@ -272,7 +281,7 @@ export async function profileCommand(options: ProfileOptions = {}): Promise<void
 
     // Export if requested
     if (options.export) {
-      await exportProfileData(profiles, options.export);
+      await exportProfileData(profiles, options.export, options.dryRun);
     }
 
     console.log('');

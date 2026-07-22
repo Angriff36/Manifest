@@ -10,6 +10,7 @@ import { glob } from 'glob';
 import chalk from 'chalk';
 import ora, { Ora } from 'ora';
 import type { IR } from '@angriff36/manifest/ir';
+import { writeTextFile } from '../utils/dry-run-fs.js';
 
 // Import from the main Manifest package
 async function loadCompiler() {
@@ -30,6 +31,8 @@ interface CompileOptions {
   entry?: string | string[];
   /** Config G2 / CLI — overrides config `validation.failOn`. */
   failOn?: string;
+  /** Preview IR writes without touching the filesystem. */
+  dryRun?: boolean;
 }
 
 async function resolveCompileGate(options: CompileOptions) {
@@ -168,18 +171,17 @@ async function writeCompiledFile(
   options: CompileOptions,
   spinner: Ora,
 ): Promise<void> {
-  await fs.mkdir(path.dirname(compiled.outputPath), { recursive: true });
-
   await stabilizeProvenance(compiled.ir as IR, compiled.outputPath);
 
   const jsonContent = options.pretty
     ? JSON.stringify(compiled.ir, null, 2)
     : JSON.stringify(compiled.ir);
 
-  await fs.writeFile(compiled.outputPath, jsonContent, 'utf-8');
+  await writeTextFile(compiled.outputPath, jsonContent, { dryRun: options.dryRun });
 
+  const arrow = options.dryRun ? 'would →' : '→';
   spinner.succeed(
-    `Compiled ${path.relative(process.cwd(), compiled.filePath)} → ${path.relative(process.cwd(), compiled.outputPath)}`,
+    `Compiled ${path.relative(process.cwd(), compiled.filePath)} ${arrow} ${path.relative(process.cwd(), compiled.outputPath)}`,
   );
 }
 
@@ -329,15 +331,15 @@ async function compileMerged(source: string | undefined, options: CompileOptions
         )
       : path.resolve(process.cwd(), 'merged.ir.json');
 
-    await fs.mkdir(path.dirname(outputPath), { recursive: true });
     await stabilizeProvenance(result.ir as IR, outputPath);
     const jsonContent = options.pretty
       ? JSON.stringify(result.ir, null, 2)
       : JSON.stringify(result.ir);
-    await fs.writeFile(outputPath, jsonContent, 'utf-8');
+    await writeTextFile(outputPath, jsonContent, { dryRun: options.dryRun });
 
+    const arrow = options.dryRun ? 'would →' : '→';
     mergeSpinner.succeed(
-      `Merged ${result.sources.length} file(s) → ${path.relative(process.cwd(), outputPath)}`,
+      `Merged ${result.sources.length} file(s) ${arrow} ${path.relative(process.cwd(), outputPath)}`,
     );
 
     if (warnings.length > 0) {
@@ -370,7 +372,7 @@ async function compileMerged(source: string | undefined, options: CompileOptions
  * directory (writes `<output>/merged.ir.json`).
  */
 export async function compileAllFromConfig(
-  options: Pick<CompileOptions, 'diagnostics' | 'pretty' | 'failOn'> = {},
+  options: Pick<CompileOptions, 'diagnostics' | 'pretty' | 'failOn' | 'dryRun'> = {},
 ): Promise<void> {
   const { getConfig } = await import('../utils/config.js');
   const config = await getConfig(process.cwd());

@@ -1,20 +1,23 @@
 ---
 title: Manifest Confirmed Features
 created: 2026-07-14
-updated: 2026-07-15
+updated: 2026-07-22
 source_of_truth: false
-source_of_truth_for: 'Inventory of which Manifest features verifiably exist (wired + tested)'
-authority: Advisory
-must_reconcile_to:
-  - docs/platform/FEATURE_MATRIX.md
-  - docs/spec/ir/ir-v1.schema.json
-  - docs/spec/semantics.md
-  - docs/SOURCE_OF_TRUTH_INDEX.md
-verified_against: 'main (package.json SoT; see §7 for published npm version). Entries marked unreleased mean built-in-repo but not published as their own package — re-check §7 / package.json before treating as installable.'
-note: 'Feature completion (done vs open) is governed by COMPLIANCE_MATRIX — that matrix wins disputes. Semantics follow the Tier A spec chain.'
+status: SUPERSEDED - Use docs/CONFIRMED-FEATURES.md instead
+superseded_by: docs/CONFIRMED-FEATURES.md
+superseded_date: 2026-07-22
+reason: The platform/ directory is being retired. This file is a stale mirror of the authoritative docs/CONFIRMED-FEATURES.md. All updates should be made to the canonical copy.
 ---
 
-# Manifest Confirmed Features (verified 2026-07-14 on `main`; package.json version drifts — see §7)
+# ~~Manifest Confirmed Features~~ (SUPERSEDED)
+
+**This file is superseded.** Use `docs/CONFIRMED-FEATURES.md` instead.
+
+The platform/ directory is being retired as a navigation-only mirror. Feature completion is governed by `docs/internal/COMPLIANCE_MATRIX.md` (the binding source of truth), and existence claims are in the canonical `docs/CONFIRMED-FEATURES.md`.
+
+---
+
+~~# Manifest Confirmed Features (verified 2026-07-14 on `main`; package.json version drifts — see §7)~~
 
 This document lists what Manifest **actually does today**, verified against source
 code, registration points, and tests on `main` — not against docs, roadmaps, or
@@ -219,13 +222,12 @@ entity-level constraint overrides, `command.returns` (projection-only),
 lambda expressions in the Convex projection, `ir.tenant` in most web
 projections, module-based output splitting, and durable rate-limit storage
 (in-memory Map only in committed tree).
-~~**Update (2026-07-15):** durable rate-limit via `RuntimeOptions.rateLimitStore`…~~
 
-> **Correction (2026-07-15):** `src/manifest/rate-limit/` (Postgres store, etc.)
-> is **uncommitted working-tree WIP** — do not treat as shipped until merged with
-> hard proof on `docs/platform/FEATURE_MATRIX.md`. Rate limiting remains
-> Map-backed in HEAD.
-> ~~RedisEventBus exists but is test-only, never wired.~~
+> **Durable rate-limit (2026-07-15):** `PostgresRateLimitStore` ships
+> (`src/manifest/rate-limit/stores/postgres.ts`) and is wired via
+> `RuntimeOptions.rateLimitStore` (`runtime-engine.ts:264`). Shared-bucket
+> semantics use `SELECT … FOR UPDATE` for coherence across concurrent instances.
+~~RedisEventBus exists but is test-only, never wired.~~
 > **Correction (2026-07-15) @RYANSIGNED:** `RuntimeOptions.eventBus` accepts any
 > `EventBus`, including `RedisEventBus`. There is no missing hook. Auto-constructing
 > Redis from env is intentionally not a core default (see `docs/TODO.md`).
@@ -237,8 +239,13 @@ Convex output.
 
 **Not implemented at all (doc-only phantoms if claimed elsewhere):**
 time-travel debugger; full WASM runtime (only the scoped expression-compat
-layer above exists); `EventSourcedStore` (IR accepts the `eventSourced` store
-kind as passthrough only).
+layer above exists).
+
+> **EventSourcedStore (2026-07-22 @RYANSIGNED):** `EventSourcedStore` **is** implemented
+> and shipped (`src/manifest/stores/event-sourced.ts:37-140`). The reference runtime
+> auto-wires it for `store Entity in eventSourced { ... }` declarations. See
+> `COMPLIANCE_MATRIX.md` for FULLY_IMPLEMENTED proof. ~~(Earlier phantom listing
+> claimed it was passthrough-only.)~~
 
 ~~**Silently dropped (violates the no-silent-failure house style):** entity
 `behaviors` blocks parse but never reach the IR (`IREntity` has no such field,

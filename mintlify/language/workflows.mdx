@@ -122,25 +122,15 @@ Scheduled commands trigger entity commands on a time-based schedule using cron e
 
 ### Declaring a scheduled command
 
-Use the `schedule` keyword inside an entity block:
+> **Correction (2026-07-22 @RYANSIGNED):** The accepted duration units for `every`/`interval` are `ms`, `s`, `m`, `h`, `d`, `week`, `weeks` only. Long forms like `minutes`/`hours`/`seconds` are NOT accepted and will throw an error. **Important:** Entity-embedded schedules (inside `entity { … }` blocks) are silently dropped from the IR and do not execute. Only top-level single-line schedules are supported — see the corrected example below.
+
+Use the `schedule` keyword at the top level of a `.manifest` file:
 
 ```manifest
 entity Report {
   property required id: string
   property lastRunAt: number = 0
   property status: string = "idle"
-
-  schedule generateDaily
-    cron "0 6 * * *"           // Every day at 6:00 AM
-    run generate
-
-  schedule healthCheck
-    interval 300000            // Every 5 minutes (in ms)
-    run checkHealth
-
-  schedule cleanup
-    every 24 hours             // Every 24 hours
-    run purgeExpired
 
   command generate() {
     mutate status = "running"
@@ -155,15 +145,20 @@ entity Report {
     mutate status = "cleaned"
   }
 }
+
+// Top-level schedules (single-line syntax required)
+schedule generateDaily cron "0 6 * * *" run Report.generate
+schedule healthCheck interval "5m" run Report.checkHealth
+schedule cleanup every 24 h run Report.purgeExpired
 ```
 
 ### Trigger types
 
-| Type       | Syntax                            | Description                                                      |
+| Type       | Syntax                             | Description                                                      |
 | ---------- | --------------------------------- | ---------------------------------------------------------------- |
 | `cron`     | `cron "0 6 * * *"`                | Standard 5-field cron expression (minute hour day month weekday) |
-| `interval` | `interval <ms>`                   | Fixed interval in milliseconds                                   |
-| `every`    | `every <n> hours/minutes/seconds` | Human-readable period                                            |
+| `interval` | `interval <ms>` \| `interval "<dur>"` | Fixed interval in milliseconds or duration string (e.g., `"5m"`, `"1h"`) |
+| `every`    | `every <n> <unit>`                | Human-readable period where `<unit>` is `s`/`m`/`h`/`d`/`week`/`weeks` |
 
 ### Schedule resolution
 

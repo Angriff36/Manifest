@@ -9,7 +9,7 @@
 
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import chalk from 'chalk';
 
 export interface DbSchemaSpec {
@@ -33,6 +33,8 @@ export interface DbInitOptions {
   apply?: boolean;
   /** Connection string; falls back to process.env.DATABASE_URL. */
   databaseUrl?: string;
+  /** Preview file/DB writes without applying them. */
+  dryRun?: boolean;
   /** Write concatenated SQL to this path instead of stdout. */
   out?: string;
   /** Only list schema ids and resolved paths. */
@@ -153,6 +155,15 @@ export async function dbInitCommand(options: DbInitOptions = {}): Promise<number
     const sql = concatenateSchemas(schemas);
 
     if (options.apply) {
+      if (options.dryRun) {
+        process.stdout.write(sql);
+        if (!sql.endsWith('\n')) process.stdout.write('\n');
+        const { logWouldApply } = await import('../utils/dry-run-fs.js');
+        logWouldApply(
+          `${schemas.length} Manifest Postgres schema(s): ${schemas.map((s) => s.id).join(', ')}`,
+        );
+        return 0;
+      }
       const databaseUrl = options.databaseUrl ?? process.env.DATABASE_URL;
       if (!databaseUrl) {
         console.error(
@@ -171,8 +182,11 @@ export async function dbInitCommand(options: DbInitOptions = {}): Promise<number
     }
 
     if (options.out) {
-      writeFileSync(options.out, sql, 'utf-8');
-      console.log(chalk.green(`Wrote combined schema SQL to ${options.out}`));
+      const { writeTextFileSync } = await import('../utils/dry-run-fs.js');
+      writeTextFileSync(options.out, sql, { dryRun: options.dryRun });
+      if (!options.dryRun) {
+        console.log(chalk.green(`Wrote combined schema SQL to ${options.out}`));
+      }
       return 0;
     }
 

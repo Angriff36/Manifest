@@ -8,12 +8,13 @@
  */
 
 import chalk from 'chalk';
-import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { loadAllConfigs, type EnvMapping, type EnvVarDefinition } from '../utils/config.js';
 import { getActiveConfigPath } from '../utils/config.js';
 
 export interface PreflightOptions {
+  /** Preview .env.example write when --generate-example is set. */
+  dryRun?: boolean;
   /**
    * Output format: 'text' (human-readable) or 'json' (machine-readable)
    */
@@ -294,15 +295,13 @@ export async function preflightCommand(options: PreflightOptions = {}): Promise<
         : path.join(cwd, options.output)
       : path.join(cwd, '.env.example');
 
-    // Ensure parent directory exists
-    const parentDir = path.dirname(outputPath);
-    try {
-      await mkdir(parentDir, { recursive: true });
-    } catch {
-      // Directory might already exist, ignore
-    }
+    const { writeTextFile } = await import('../utils/dry-run-fs.js');
+    await writeTextFile(outputPath, content, { dryRun: options.dryRun, cwd });
 
-    await writeFile(outputPath, content, 'utf-8');
+    if (options.dryRun) {
+      console.log(chalk.cyan('dry-run: would create environment example file (not written)'));
+      return;
+    }
 
     console.log(chalk.bold.green('✓ Environment example file created!'));
     console.log('');

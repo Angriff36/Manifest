@@ -122,7 +122,7 @@ That’s the contract. If Codex violates it, Codex is wrong. Not “needs a twea
 
 Confidence: 98% — Directly derived from the language goals you’ve articulated and the failure modes you’re actively eliminating.
 
-Reference: `house-style.md`.
+Reference: `docs/internal/contracts/house-style.md`.
 
 This repo is a language implementation. Agents must treat **meaning as law** and
 code as an instrument.
@@ -267,7 +267,7 @@ Not allowed:
 - When touching spec or conformance, changes must include:
   - exact spec sections updated
   - which fixtures changed and why
-  - proof: `npm test` output
+  - proof: `pnpm test` output
 
 ## If Something Is Ambiguous
 
@@ -311,7 +311,7 @@ Same routing as capsule-pro-loops — see [`LOOP.md`](./LOOP.md):
 
 A change is only done when:
 
-- `npm test` is green
+- `pnpm test` is green
 - spec/test/impl are aligned (no undocumented nonconformance)
 - any UI change has a minimal manual verification path described
 - **UI demos are actually functional** (buttons clickable, flows completable)

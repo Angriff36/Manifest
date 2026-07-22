@@ -14,8 +14,9 @@ AI-generated.
 non-binding navigation mirror only.
 
 ~~Verified against main @ v3.5.0~~
-**Update (2026-07-15):** `package.json` / npm are at **v3.6.7**. Phantom
-forensics: Appendix D in
+~~**Update (2026-07-15):** `package.json` / npm are at **v3.6.7**.~~
+**Update (2026-07-22):** `package.json` SoT in this checkout is **v3.6.41**
+(re-check before citing). Phantom forensics: Appendix D in
 `docs/internal/plans/2026-07-01-docs-feature-reconciliation-audit.md`
 (15/16 original phantoms still phantom; `transactional-outbox` shipped).
 
@@ -220,6 +221,15 @@ forensics: Appendix D in
       datetime alias; language/spec still use `datetime`).~~
       **Done (2026-07-15):** `timestamp` is a language/runtime alias of
       `datetime` (IR preserves spelling; `E_TYPE_DATETIME`).
+
+## Projections
+
+- [x] **Kysely `columnMappings` applied** — fixed 2026-07-22: property and
+      synthesized belongsTo/ref FK keys use `columnMappings` (Kysely row keys
+      are SQL column names). Evidence:
+      `src/manifest/projections/kysely/generator.ts`,
+      `column-mappings.test.ts`. Matrix §8.
+      ~~option declared, unused~~
 
 ## Distribution
 

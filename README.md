@@ -177,7 +177,7 @@ See `src/manifest/projections/nextjs/README.md` for detailed usage examples.
     - `ts.client`: Client SDK generation
   - **`interface.ts`**: Projection contracts and options
   - **`registry.ts`**: Projection registration and lookup
-- **`src/manifest/conformance/`**: Executable test fixtures (27 .manifest files, 63 expected outputs)
+- **`src/manifest/conformance/`**: Executable test fixtures (101 .manifest source files; run `pnpm test` for current expected outputs count)
 - **`src/artifacts/`**: Runtime UI components for development and testing
 - **`src/project-template/templates.ts`**: Code generators for exported projects
 - **`bin/generate-projection.ts`**: CLI tool for code generation
@@ -334,12 +334,12 @@ npx tsx bin/generate-projection.ts --help
 
 ### Testing
 
-The project includes 448 tests across 7 test suites:
+Run `pnpm test` for the current test count (this is an actively developed codebase — hard counts go stale quickly).
 
-**Conformance Suite** (`src/manifest/conformance/conformance.test.ts` - 142 tests):
+**Conformance Suite** (`src/manifest/conformance/conformance.test.ts`):
 
-- 27 fixture files (`.manifest` source files)
-- 63 expected outputs (IR, diagnostics, runtime results)
+- 101 fixture files (`.manifest` source files)
+- Expected outputs (IR, diagnostics, runtime results)
 - Validates IR compilation correctness
 - Runtime command execution semantics
 - Guard and policy evaluation
@@ -348,7 +348,7 @@ The project includes 448 tests across 7 test suites:
 - Instance creation with defaults
 - vNext features (constraints, overrides, workflows, concurrency)
 
-**Unit Tests** (285 tests):
+**Unit Tests**:
 
 - Lexer tests (58): Tokenization and edge cases
 - Parser tests (79): AST construction
@@ -404,9 +404,9 @@ All tests use deterministic time and ID generation for reproducibility.
 │   │   │       ├── generator.test.ts # 21 smoke tests
 │   │   │       └── README.md         # Usage documentation
 │   │   ├── conformance/    # Test fixtures & expectations
-│   │   │   ├── conformance.test.ts  # 142 conformance tests
-│   │   │   ├── fixtures/   # 27 .manifest test files
-│   │   │   └── expected/   # 63 expected outputs (.ir.json, .diagnostics.json, .results.json)
+│   │   │   ├── conformance.test.ts  # Conformance tests
+│   │   │   ├── fixtures/   # 101 .manifest test files
+│   │   │   └── expected/   # Expected outputs (.ir.json, .diagnostics.json, .results.json)
 │   │   ├── *.test.ts       # Unit tests (lexer, parser, ir-compiler, runtime)
 │   │   └── *.bench.ts      # Performance benchmarks
 │   ├── artifacts/          # Runtime UI components
@@ -423,7 +423,7 @@ All tests use deterministic time and ID generation for reproducibility.
 ├── tools/                 # Development tools and test harnesses
 ├── AGENTS.md             # Agent workflow rules and loop discipline
 ├── CLAUDE.md             # Project guidance for Claude Code
-└── house-style.md        # Language design principles
+└── docs/internal/contracts/house-style.md        # Language design principles
 ```
 
 ## Key Concepts for AI Agents
@@ -468,7 +468,7 @@ This enables event handlers to reconstruct the full execution context.
 
 See `AGENTS.md` for detailed workflow requirements. Key points:
 
-- All changes must pass `npm test`
+- All changes must pass `pnpm test`
 - Spec changes require updating fixtures and expected outputs
 - UI changes must not alter language semantics
 - Document any nonconformance explicitly
@@ -484,5 +484,5 @@ This is a language implementation project. The Runtime UI is a diagnostic and ob
 ---
 
 For detailed agent workflow rules, see [`AGENTS.md`](AGENTS.md).  
-For language house style and invariants, see [`house-style.md`](house-style.md).  
+For language house style and invariants, see [`docs/internal/contracts/house-style.md`](docs/internal/contracts/house-style.md).  
 For the complete specification, see [`docs/spec/README.md`](docs/spec/README.md).

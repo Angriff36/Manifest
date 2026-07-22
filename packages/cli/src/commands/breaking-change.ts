@@ -21,6 +21,7 @@ export interface BreakingChangeOptions {
   ack?: string;
   ci?: boolean;
   output?: string;
+  dryRun?: boolean;
 }
 
 function createSpinner(message: string, enabled: boolean) {
@@ -157,15 +158,22 @@ export async function breakingChangeCommand(
     if (options.json) {
       const output = JSON.stringify(report, null, 2);
       if (options.output) {
-        await fs.writeFile(options.output, output, 'utf-8');
-        console.log(chalk.green('Report written to ' + options.output));
+        const { writeTextFile } = await import('../utils/dry-run-fs.js');
+        await writeTextFile(options.output, output, { dryRun: options.dryRun });
+        if (!options.dryRun) {
+          console.log(chalk.green('Report written to ' + options.output));
+        }
       } else {
         console.log(output);
       }
     } else {
       if (options.output) {
-        await fs.writeFile(options.output, JSON.stringify(report, null, 2), 'utf-8');
-        console.log(chalk.green('Report written to ' + options.output));
+        const body = JSON.stringify(report, null, 2);
+        const { writeTextFile } = await import('../utils/dry-run-fs.js');
+        await writeTextFile(options.output, body, { dryRun: options.dryRun });
+        if (!options.dryRun) {
+          console.log(chalk.green('Report written to ' + options.output));
+        }
       }
       printHumanReadableReport(report, oldIRPath, newIRPath, options.ack);
     }

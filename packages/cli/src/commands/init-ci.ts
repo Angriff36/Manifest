@@ -6,12 +6,13 @@
  */
 
 import chalk from 'chalk';
-import { mkdir, writeFile, access } from 'node:fs/promises';
+import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export interface InitCiOptions {
   force?: boolean;
   nodeVersions?: string;
+  dryRun?: boolean;
 }
 
 const DEFAULT_NODE_VERSIONS = ['18', '20', '22'];
@@ -148,8 +149,13 @@ export async function initCiCommand(provider: string, options: InitCiOptions = {
   // Generate and write
   const workflow = generateGitHubWorkflow(nodeVersions);
 
-  await mkdir(workflowDir, { recursive: true });
-  await writeFile(workflowPath, workflow, 'utf-8');
+  const { writeTextFile } = await import('../utils/dry-run-fs.js');
+  await writeTextFile(workflowPath, workflow, { dryRun: options.dryRun });
+
+  if (options.dryRun) {
+    console.log(chalk.cyan('dry-run: would create .github/workflows/manifest-ci.yml'));
+    return;
+  }
 
   console.log(chalk.bold.green('✓ GitHub Actions workflow created!'));
   console.log('');

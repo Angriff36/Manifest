@@ -11,6 +11,7 @@ import { saveConfig, configExists, type ManifestConfig } from '../utils/config.j
 
 interface InitOptions {
   force?: boolean;
+  dryRun?: boolean;
 }
 
 interface InitAnswers {
@@ -148,10 +149,11 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
 
     // Create config
     const config = createConfigFromAnswers(answers);
-    await saveConfig(config);
+    await saveConfig(config, process.cwd(), { dryRun: options.dryRun });
 
     // Show next steps
-    showPostInit(answers, config);
+    if (!options.dryRun) showPostInit(answers, config);
+    else console.log(chalk.cyan('dry-run: skipped post-init tips (config not written)'));
   } catch (error: unknown) {
     // inquirer sets `isTtyError: true` on the thrown error when there is no
     // TTY. Narrow against that field without committing to `any`.
@@ -167,12 +169,16 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
         src: '**/*.manifest',
         output: 'ir/',
       };
-      await saveConfig(defaultConfig);
+      await saveConfig(defaultConfig, process.cwd(), { dryRun: options.dryRun });
 
-      console.log(chalk.bold.green('✓ Manifest initialized!'));
-      console.log('');
-      console.log('Edit manifest.config.yaml to customize paths and outputs.');
-      console.log('');
+      if (options.dryRun) {
+        console.log(chalk.cyan('dry-run: would initialize with defaults (no files written)'));
+      } else {
+        console.log(chalk.bold.green('✓ Manifest initialized!'));
+        console.log('');
+        console.log('Edit manifest.config.yaml to customize paths and outputs.');
+        console.log('');
+      }
     } else {
       const msg = error instanceof Error ? error.message : String(error);
       console.error(chalk.red(`Init failed: ${msg}`));

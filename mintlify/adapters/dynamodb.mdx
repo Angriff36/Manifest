@@ -8,17 +8,19 @@ The DynamoDB store adapter persists Manifest entity state in AWS DynamoDB using 
 
 ## Configuration
 
+> **Correction (2026-07-22 @RYANSIGNED):** The examples below have been corrected to show the accurate `DynamoDBStore` and `buildDynamoDBKey` signatures. The constructor takes `(entityName, config, generateId?)` where config uses `partitionKey`/`sortKey` (not `partitionKeyName`/`sortKeyName`). The `buildDynamoDBKey` helper takes `(id, config, entityName)` where config uses `entityPrefix` (not `prefix`).
+
 `DynamoDBStore` is exported from `@angriff36/manifest/stores` (Node.js only). It requires the `@aws-sdk/client-dynamodb` and `@aws-sdk/lib-dynamodb` packages as optional peer dependencies, loaded via dynamic import.
 
 ```typescript
 import { DynamoDBStore } from '@angriff36/manifest/stores';
 
-const store = new DynamoDBStore<Order>({
+const store = new DynamoDBStore('Order', {
   tableName: 'manifest-orders',
   region: 'us-east-1',
-  partitionKeyName: 'pk',
-  sortKeyName: 'sk',
-  entityPrefix: 'Order', // single-table design prefix
+  partitionKey: 'pk',
+  sortKey: 'sk',
+  entityPrefix: 'ORDER', // single-table design prefix
 });
 ```
 
@@ -42,7 +44,7 @@ DynamoDBStore supports the single-table design pattern through the `entityPrefix
 import { buildDynamoDBKey } from '@angriff36/manifest/stores';
 
 // Composite key: "ORDER#123" / "ORDER#123#DETAIL"
-const key = buildDynamoDBKey('Order', 'order-123', { prefix: 'ORDER' });
+const key = buildDynamoDBKey('order-123', { entityPrefix: 'ORDER' }, 'Order');
 ```
 
 When `entityPrefix` is set, the store uses `ConditionExpression` for atomic create (`attribute_not_exists`) and delete (`attribute_exists`) operations. Single-table design is auto-detected when `config.singleTable === true` in any store declaration.
@@ -103,7 +105,7 @@ const runtime = new RuntimeEngine(
   {
     storeProvider: (entityName) =>
       entityName === 'Order'
-        ? new DynamoDBStore({ tableName: 'manifest-data', region: 'us-east-1' })
+        ? new DynamoDBStore('Order', { tableName: 'manifest-data', region: 'us-east-1' })
         : undefined,
     // The DynamoDB outbox store is not yet an exported subpath; use an exported
     // outbox store (Postgres or Redis) for durable delivery today.

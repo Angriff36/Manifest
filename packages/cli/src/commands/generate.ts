@@ -17,6 +17,7 @@ import type {
 } from '@angriff36/manifest/projections/nextjs';
 import type { IR } from '@angriff36/manifest/ir';
 import { GenerationManifestRecorder } from '../utils/generation-manifest.js';
+import { assertDryRunCheckExclusive, writeTextFile } from '../utils/dry-run-fs.js';
 
 // Import from the main Manifest package
 async function loadDependencies() {
@@ -57,6 +58,11 @@ interface GenerateOptions {
    */
   check?: boolean;
   /**
+   * Preview intended artifact paths/bytes without writing.
+   * Distinct from `--check` (drift compare + fail).
+   */
+  dryRun?: boolean;
+  /**
    * When true, fail by throwing instead of calling process.exit(). Set by the
    * batch driver (generateAllFromConfig) so one projection's failure doesn't
    * abort the whole run — the batch aggregates and exits once.
@@ -71,11 +77,11 @@ class DriftError extends Error {
   }
 }
 
-// --check drift-mode state. Set once at the top of generateCommand and read in
-// writeProjectionResult. A CLI invocation runs a single command, so a
-// module-level flag is fine here and avoids threading the option through every
-// generation helper signature.
+// --check / --dry-run write gates. Set once at the top of generateCommand and
+// read in write helpers. A CLI invocation runs a single command, so
+// module-level flags avoid threading through every generation helper.
 let checkMode = false;
+let dryRunMode = false;
 const driftedFiles: string[] = [];
 // Per-run generation-manifest recorder (reset in generateCommand). Same
 // module-level pattern as checkMode: the write boundary records every file it
@@ -121,9 +127,11 @@ async function generateFromIR(
   // Load IR
   const ir = await loadIR(irFile);
 
-  // Determine output directory
+  // Determine output directory (skip mkdir in dry-run / check — no durable writes)
   const outputDir = path.resolve(process.cwd(), options.output);
-  await fs.mkdir(outputDir, { recursive: true });
+  if (!checkMode && !dryRunMode) {
+    await fs.mkdir(outputDir, { recursive: true });
+  }
 
   // Create projection
   spinner.text = `Creating ${options.projection} projection`;
@@ -681,10 +689,11 @@ async function writeOrCheckArtifact(
     return;
   }
 
-  await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, artifact.code, 'utf-8');
+  await writeTextFile(outputPath, artifact.code, { dryRun: dryRunMode });
   recordGeneration(artifact, outputPath, context);
-  console.log(chalk.gray(`  → ${path.relative(process.cwd(), outputPath)}`));
+  if (!dryRunMode) {
+    console.log(chalk.gray(`  → ${path.relative(process.cwd(), outputPath)}`));
+  }
 }
 
 async function writeProjectionResult(
@@ -741,21 +750,26 @@ async function finishGenerateCheckMode(spinner: Ora, options: GenerateOptions): 
 async function writeGenerationManifest(output: string): Promise<void> {
   if (generationRecorder.isEmpty) return;
   const manifestPath = path.resolve(process.cwd(), output, 'generation.manifest.json');
-  await fs.mkdir(path.dirname(manifestPath), { recursive: true });
-  await fs.writeFile(manifestPath, generationRecorder.serialize(), 'utf-8');
-  console.log(
-    chalk.gray(`  → ${path.relative(process.cwd(), manifestPath)} (generation manifest)`),
-  );
+  const body = generationRecorder.serialize();
+  await writeTextFile(manifestPath, body, { dryRun: dryRunMode });
+  if (!dryRunMode) {
+    console.log(
+      chalk.gray(`  → ${path.relative(process.cwd(), manifestPath)} (generation manifest)`),
+    );
+  }
 }
 
 /**
  * Generate command handler
  */
 export async function generateCommand(ir: string, options: GenerateOptions): Promise<void> {
+  assertDryRunCheckExclusive({ dryRun: options.dryRun, check: options.check });
   const spinner = ora('Preparing to generate').start();
 
   // --check drift mode: compare generated code to committed files, no writes.
+  // --dry-run: list intended writes, no writes (exit 0 on success).
   checkMode = options.check ?? false;
+  dryRunMode = options.dryRun ?? false;
   driftedFiles.length = 0;
   generationRecorder = new GenerationManifestRecorder();
 
@@ -796,7 +810,11 @@ export async function generateCommand(ir: string, options: GenerateOptions): Pro
     }
 
     await writeGenerationManifest(options.output);
-    spinner.succeed(`Generated code from ${successCount} IR file(s)`);
+    spinner.succeed(
+      dryRunMode
+        ? `Dry-run: would generate code from ${successCount} IR file(s)`
+        : `Generated code from ${successCount} IR file(s)`,
+    );
   } catch (error: unknown) {
     if (options.throwOnError) throw error;
     spinner.fail(`Generation failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -812,8 +830,9 @@ export async function generateCommand(ir: string, options: GenerateOptions): Pro
  * once at the end.
  */
 export async function generateAllFromConfig(
-  options: { check?: boolean; irOverride?: string } = {},
+  options: { check?: boolean; dryRun?: boolean; irOverride?: string } = {},
 ): Promise<void> {
+  assertDryRunCheckExclusive({ dryRun: options.dryRun, check: options.check });
   const { loadAllConfigs, layerProjectionOptions } = await import('../utils/config.js');
   const { listConfiguredProjectionNames, getProjectionBlock } =
     await import('@angriff36/manifest/config');
@@ -860,6 +879,7 @@ export async function generateAllFromConfig(
         response: undefined as unknown as string,
         projectionOptionsFromConfig: layerProjectionOptions(build, name),
         check: options.check,
+        dryRun: options.dryRun,
         throwOnError: true,
       });
     } catch (error: unknown) {

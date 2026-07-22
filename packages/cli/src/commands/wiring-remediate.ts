@@ -29,6 +29,8 @@ export interface WiringRemediateCommandOptions {
   overrides?: string;
   format?: 'text' | 'json';
   mode?: 'plan' | 'dry-run' | 'apply' | 'one-defect';
+  /** Alias for mode=dry-run when mode is omitted. */
+  dryRun?: boolean;
   capability?: string;
   finding?: string;
   autoFixableOnly?: boolean;
@@ -79,7 +81,7 @@ export async function wiringRemediateCommand(
     );
   }
 
-  const mode = (options.mode ?? 'plan') as RemediateMode;
+  const mode = (options.mode ?? (options.dryRun ? 'dry-run' : 'plan')) as RemediateMode;
   const shouldWrite = options.write !== false && (mode === 'apply' || mode === 'one-defect');
 
   const inspectConfig: WiringInspectConfig = {

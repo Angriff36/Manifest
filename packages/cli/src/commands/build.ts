@@ -22,6 +22,8 @@ interface BuildOptions {
   response: string;
   /** Forwarded to generate.ts so dispatcher/concreteCommandRoutes config flows through. */
   projectionOptionsFromConfig?: Record<string, unknown>;
+  /** Preview compile + generate writes without touching the filesystem. */
+  dryRun?: boolean;
 }
 
 /**
@@ -47,9 +49,10 @@ export async function buildCommand(
       glob: options.glob,
       diagnostics: false,
       pretty: true,
+      dryRun: options.dryRun,
     });
 
-    compileSpinner.succeed('Compiled to IR');
+    compileSpinner.succeed(options.dryRun ? 'Compiled to IR (dry-run)' : 'Compiled to IR');
 
     // Step 2: Generate code from IR
     spinner.text = 'Step 2/2: Generating code from IR...';
@@ -63,9 +66,14 @@ export async function buildCommand(
       runtime: options.runtime,
       response: options.response,
       projectionOptionsFromConfig: options.projectionOptionsFromConfig,
+      dryRun: options.dryRun,
     });
 
-    spinner.succeed(`Build complete: IR → ${options.irOutput}, Code → ${options.codeOutput}`);
+    spinner.succeed(
+      options.dryRun
+        ? `Dry-run build complete: would write IR → ${options.irOutput}, Code → ${options.codeOutput}`
+        : `Build complete: IR → ${options.irOutput}, Code → ${options.codeOutput}`,
+    );
 
     // Show summary
     console.log('');
@@ -74,6 +82,7 @@ export async function buildCommand(
     console.log(`  Code output: ${path.relative(process.cwd(), options.codeOutput)}`);
     console.log(`  Projection: ${options.projection}`);
     console.log(`  Surface:    ${options.surface}`);
+    if (options.dryRun) console.log(`  Mode:       dry-run (no files written)`);
     console.log('');
   } catch (error: unknown) {
     spinner.fail(`Build failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -92,8 +101,8 @@ export async function buildCommand(
  * exits non-zero on error (compileAllFromConfig / generateAllFromConfig), so a
  * failed compile never reaches generate.
  */
-export async function buildAllFromConfig(): Promise<void> {
+export async function buildAllFromConfig(options: { dryRun?: boolean } = {}): Promise<void> {
   console.log(chalk.bold('\nManifest build --all: compile + generate (config-driven)\n'));
-  await compileAllFromConfig({});
-  await generateAllFromConfig({});
+  await compileAllFromConfig({ dryRun: options.dryRun });
+  await generateAllFromConfig({ dryRun: options.dryRun });
 }

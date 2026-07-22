@@ -9,13 +9,14 @@ Beyond the primary framework and ORM projections, Manifest ships several special
 > **Verified (2026-07-15) @RYANSIGNED:** Names `kysely`, `terraform`, `materialized-views`,
 > `analytics`, `elasticsearch`, `storybook`, and `pydantic` (client via `pydantic.client`) are
 > registered in `src/manifest/projections/builtins.ts`. Invoke with
-> `manifest generate -p <name>`. Package pin **3.6.4**.
+> `manifest generate -p <name>`. Package pin: see `package.json` SoT
+> (~~**3.6.4**~~ **3.6.41** in the 2026-07-22 checkout).
 
 ### Kysely
 
-The Kysely projection generates TypeScript type definitions for the [Kysely](https://kysely.dev) type-safe SQL query builder. It produces per-table TypeScript interfaces (e.g., `TaskTable`), a `Database` interface mapping table names to those interfaces, and a `createDb()` factory function for creating configured `Kysely<Database>` instances.
+> **Correction (2026-07-22 @RYANSIGNED):** The registered surface name is `kysely.types` (not `kysely.schema`). The projection generates TypeScript type definitions for the [Kysely](https://kysely.dev) type-safe SQL query builder.
 
-The projection is registered under the name `kysely` and emits one surface: `kysely.schema` (content type `typescript`, default output `schema.ts`).
+The projection is registered under the name `kysely` and emits one surface: `kysely.types` (content type `typescript`, default output `kysely.types.ts`).
 
 **Key characteristics:**
 
@@ -23,23 +24,23 @@ The projection is registered under the name `kysely` and emits one surface: `kys
 - `belongsTo`/`ref` relationships auto-generate FK columns (skipped if an FK property already exists). `hasMany`/`hasOne` are expressed through Kysely's relation API, not as columns.
 - Bare `number` produces a `KYSELY_AMBIGUOUS_NUMBER` diagnostic and the column is skipped, requiring an explicit `int`/`bigint`/`float`/`decimal`/`money` type.
 - Skips non-SQL store targets (`memory`, `localStorage`, `mongodb`, `dynamodb`, `eventSourced`).
-- Supports `dialect` (`postgresql`, `mysql`, `sqlite`), `tableMappings`, `columnMappings`, `typeMappings`, and `emitFactory` options.
+- Supports `dialect` (`postgresql`, `mysql`, `sqlite`), `tableMappings`, `columnMappings` (applied to property and synthesized FK keys — 2026-07-22), `typeMappings`, and `emitFactory` options.
 
 ```ts
 import { getProjection } from '@angriff36/manifest/projections';
 
 const projection = getProjection('kysely');
 const result = projection.generate(ir, {
-  surface: 'kysely.schema',
+  surface: 'kysely.types',
   options: { dialect: 'postgresql' },
 });
 ```
 
 ### Terraform
 
-The Terraform projection generates HCL resource definitions from Manifest IR for database tables, storage buckets, and pub/sub topics. It supports three cloud providers: **AWS** (emits `aws_db_instance`, `aws_s3_bucket`, `aws_sns_topic`), **GCP** (emits `google_sql_database_instance`, `google_storage_bucket`, `google_pubsub_topic`), and **Supabase** (emits `supabase_project` with documented table schemas).
+> **Correction (2026-07-22 @RYANSIGNED):** The registered surface name is `terraform.hcl` (not `terraform.main`). The projection generates HCL resource definitions from Manifest IR. It supports three cloud providers: **AWS** (emits `aws_db_instance`, `aws_s3_bucket`, `aws_sns_topic`), **GCP** (emits `google_sql_database_instance`, `google_storage_bucket`, `google_pubsub_topic`), and **Supabase** (emits `supabase_project` with documented table schemas).
 
-The projection is registered under the name `terraform` and emits one surface: `terraform.main` (content type `hcl`). It supports both single-file (`main.tf`) and multi-file (`database.tf`, `storage.tf`, `messaging.tf`) output modes.
+The projection is registered under the name `terraform` and emits one surface: `terraform.hcl` (content type `hcl`). It supports both single-file (`main.tf`) and multi-file (`database.tf`, `storage.tf`, `messaging.tf`) output modes.
 
 **Key characteristics:**
 
@@ -52,7 +53,7 @@ The projection is registered under the name `terraform` and emits one surface: `
 ```ts
 const projection = getProjection('terraform');
 const result = projection.generate(ir, {
-  surface: 'terraform.main',
+  surface: 'terraform.hcl',
   options: { provider: 'aws', outputMode: 'multi-file' },
 });
 ```

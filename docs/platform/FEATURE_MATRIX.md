@@ -338,8 +338,8 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | SDK stability policy                                | FULLY_IMPLEMENTED             | §1                                                                    |
 | [~]    | Conformance suite (~99 fixtures)                    | CLAIMED_NEEDS_PROOF           | `src/manifest/conformance/`                                           |
 | [x]    | Doc snippet TS check mode                           | FULLY_IMPLEMENTED             | §1                                                                    |
-| [ ]    | enforce-surface Drizzle/Kysely/raw-SQL              | PARTIAL                       |                                                                       |
-| [ ]    | Restore `newguard.json`                             | NOT_IMPLEMENTED               |                                                                       |
+| [x]    | enforce-surface Drizzle/Kysely/raw-SQL              | FULLY_IMPLEMENTED             | §1 / COMPLIANCE_MATRIX                                                    |
+| [x]    | Restore `newguard.json`                             | FULLY_IMPLEMENTED             | `docs/internal/contracts/enforce-surface.newguard.json`                   |
 | [x]    | Health projection docs                              | FULLY_IMPLEMENTED             | §1                                                                    |
 | [x]    | FEATURE-LIST → registry inventory (M12)             | FULLY_IMPLEMENTED             | §1                                                                    |
 | [ ]    | Capsule-V2 / consumer app auth-seam adoption        | OUT_OF_SCOPE                  | Generated-app lifecycle — Builder + consumer apps; not a Manifest gap |
@@ -372,7 +372,7 @@ Keep in sync with `docs/TODO.md`. The canonical `docs/internal/COMPLIANCE_MATRIX
 | [ ]    | `manifest generate-fixtures`                                           | NOT_IMPLEMENTED           | phantom CLI                                                              |
 | [ ]    | Config `env(VAR)` / `MANIFEST_ENV` overlays / top-level `stores:` YAML | NOT_IMPLEMENTED           | phantom config                                                           |
 | [ ]    | `projection.generateRoute` / `generateTypes` / `generateClient` API    | NOT_IMPLEMENTED           | phantom projection API                                                   |
-| [ ]    | Kysely `columnMappings` actually applied                               | NOT_IMPLEMENTED / PARTIAL | option declared, unused                                                  |
+| [x]    | Kysely `columnMappings` actually applied                               | FULLY_IMPLEMENTED         | COMPLIANCE_MATRIX §8 — generator applies mappings to property + FK keys  |
 | [ ]    | Kitchen tutorial / product editor UI                                   | OUT_OF_SCOPE              | Builder owns visual editing; Kitchen is Manifest diagnostic surface only |
 | [ ]    | Default encryption provider (common no-vendor case)                    | NOT_IMPLEMENTED           | fail-closed by design until provider set                                 |
 | [ ]    | Projection orchestration / presets / app assembly UX                   | OUT_OF_SCOPE              | Builder — see Builder consumption matrix                                 |

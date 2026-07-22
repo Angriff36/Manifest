@@ -34,6 +34,8 @@ export interface SeedOptions {
   seed?: number;
   /** Emit structured JSON to stdout instead of writing files */
   json?: boolean;
+  /** Preview seed file writes without touching the filesystem. */
+  dryRun?: boolean;
 }
 
 export interface SeedResult {
@@ -650,11 +652,13 @@ export async function seedCommand(options: SeedOptions = {}): Promise<void> {
       ? path.resolve(process.cwd(), options.output)
       : path.resolve(process.cwd(), defaultName);
 
-    await fs.mkdir(path.dirname(outputPath), { recursive: true });
-    await fs.writeFile(outputPath, body, 'utf-8');
+    const { writeTextFile } = await import('../utils/dry-run-fs.js');
+    await writeTextFile(outputPath, body, { dryRun: options.dryRun });
 
     spinner.succeed(
-      `Seeded ${total} record(s) across ${entities.length} entity/entities → ${path.relative(process.cwd(), outputPath)}`,
+      options.dryRun
+        ? `Dry-run: would seed ${total} record(s) across ${entities.length} entity/entities → ${path.relative(process.cwd(), outputPath)}`
+        : `Seeded ${total} record(s) across ${entities.length} entity/entities → ${path.relative(process.cwd(), outputPath)}`,
     );
 
     // Brief human summary

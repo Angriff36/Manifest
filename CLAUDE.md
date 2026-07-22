@@ -369,7 +369,7 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[Emergency bridge — running bridge was not updated]
-Files: mintlify/language/events.mdx (edit), IMPLEMENTATION_PLAN.md (edit)
+[auto-bridge snapshot @ 10 changes]
+Files: mintlify/language/workflows.mdx (edit), mintlify/extensibility/federation.mdx (edit), mintlify/adapters/dynamodb.mdx (edit)
 
 # === END COGNILAYER ===

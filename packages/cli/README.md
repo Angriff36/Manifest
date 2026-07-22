@@ -38,7 +38,16 @@ manifest build modules/recipe.manifest --projection nextjs --output app/api/
 
 # Validate IR against schema
 manifest validate ir/
+
+# Preview writes without touching the filesystem (writers only)
+manifest compile modules/recipe.manifest -o ir/ --dry-run
+manifest generate ir/ -o app/api/ --dry-run
 ```
+
+`--dry-run` is **not** a global flag on every command. It is registered on write /
+mutate commands only (compile, generate, build, watch, fmt, diagram, install-hooks,
+seed, versions save, …). Read-only commands such as `validate` / `doctor` /
+`scan` do not accept it. See `docs/reference/cli.md`.
 
 ## Commands
 

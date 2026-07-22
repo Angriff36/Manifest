@@ -61,6 +61,7 @@ export interface SeedTemplateCliOptions {
   profile?: 'dev' | 'staging' | 'demo';
   count?: number;
   entity?: string[];
+  dryRun?: boolean;
 }
 
 export async function seedTemplateCommand(options: SeedTemplateCliOptions): Promise<void> {
@@ -75,10 +76,29 @@ export async function seedTemplateCommand(options: SeedTemplateCliOptions): Prom
       count: options.count ?? 2,
       entity: options.entity,
     });
-    await writeSeedPack(path.resolve(options.output), pack);
-    spinner.succeed(
-      chalk.green(`Wrote seed pack template (${pack.tables.length} entities) → ${options.output}`),
-    );
+    const outDir = path.resolve(options.output);
+    if (options.dryRun) {
+      const { logWouldWrite } = await import('../utils/dry-run-fs.js');
+      const metaBody = JSON.stringify(
+        { ...pack.meta, entities: pack.tables.map((t) => t.entity) },
+        null,
+        2,
+      );
+      logWouldWrite(path.join(outDir, 'manifest.seed.json'), Buffer.byteLength(metaBody + '\n'));
+      for (const table of pack.tables) {
+        logWouldWrite(path.join(outDir, 'entities', `${table.entity}.csv`), 0);
+      }
+      spinner.succeed(
+        chalk.cyan(
+          `Dry-run: would write seed pack template (${pack.tables.length} entities) → ${options.output}`,
+        ),
+      );
+    } else {
+      await writeSeedPack(outDir, pack);
+      spinner.succeed(
+        chalk.green(`Wrote seed pack template (${pack.tables.length} entities) → ${options.output}`),
+      );
+    }
   } catch (err) {
     spinner.fail(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
@@ -92,6 +112,7 @@ export interface SeedFillCliOptions {
   model?: string;
   overwrite?: boolean;
   requireFilled?: boolean;
+  dryRun?: boolean;
 }
 
 export async function seedFillCommand(options: SeedFillCliOptions): Promise<void> {
@@ -111,6 +132,16 @@ export async function seedFillCommand(options: SeedFillCliOptions): Promise<void
       provider,
       overwrite: options.overwrite === true,
     });
+    if (options.dryRun) {
+      const { logWouldWrite } = await import('../utils/dry-run-fs.js');
+      logWouldWrite(path.join(dir, 'manifest.seed.json'), 0);
+      for (const table of filled.tables) {
+        logWouldWrite(path.join(dir, 'entities', `${table.entity}.csv`), 0);
+      }
+      spinner.succeed(chalk.cyan(`Dry-run: would rewrite filled seed pack → ${dir}`));
+      return;
+    }
+
     await writeSeedPack(dir, filled);
 
     const validation = validateSeedPack(ir, filled, {

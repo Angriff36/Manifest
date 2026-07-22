@@ -188,8 +188,12 @@ export async function migrateCommand(options: MigrateOptions = {}): Promise<void
       };
 
       if (options.output) {
-        await fs.writeFile(options.output, JSON.stringify(output, null, 2), 'utf-8');
-        console.log(chalk.green('Migration plan written to ' + options.output));
+        const body = JSON.stringify(output, null, 2);
+        const { writeTextFile } = await import('../utils/dry-run-fs.js');
+        await writeTextFile(options.output, body, { dryRun: options.dryRun });
+        if (!options.dryRun) {
+          console.log(chalk.green('Migration plan written to ' + options.output));
+        }
       } else {
         console.log(JSON.stringify(output, null, 2));
       }

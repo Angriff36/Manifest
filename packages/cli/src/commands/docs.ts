@@ -22,6 +22,7 @@ interface DocsOptions {
   output?: string;
   format?: 'html' | 'markdown';
   title?: string;
+  dryRun?: boolean;
 }
 
 // Re-declare minimal IR types to avoid coupling to the main package's internal
@@ -999,10 +1000,13 @@ export async function docsCommand(
       mergedIR.policies.push(...ir.policies);
     }
 
-    // Create output directory
-    await fs.mkdir(outputDir, { recursive: true });
+    // Create output directory (skip in dry-run)
+    if (!options.dryRun) {
+      await fs.mkdir(outputDir, { recursive: true });
+    }
 
     const ext = format === 'markdown' ? 'md' : 'html';
+    const { writeTextFile } = await import('../utils/dry-run-fs.js');
 
     // Generate index page
     spinner.text = 'Generating index page...';
@@ -1010,7 +1014,9 @@ export async function docsCommand(
       format === 'markdown'
         ? generateIndexPageMarkdown(mergedIR, siteTitle)
         : generateIndexPageHtml(mergedIR, siteTitle);
-    await fs.writeFile(path.join(outputDir, `index.${ext}`), indexContent, 'utf-8');
+    await writeTextFile(path.join(outputDir, `index.${ext}`), indexContent, {
+      dryRun: options.dryRun,
+    });
 
     // Generate entity pages
     let entityCount = 0;
@@ -1033,12 +1039,16 @@ export async function docsCommand(
               mergedIR.stores,
               siteTitle,
             );
-      await fs.writeFile(path.join(outputDir, `${entity.name}.${ext}`), content, 'utf-8');
+      await writeTextFile(path.join(outputDir, `${entity.name}.${ext}`), content, {
+        dryRun: options.dryRun,
+      });
       entityCount++;
     }
 
     spinner.succeed(
-      `Generated documentation: ${entityCount} entity page(s) + index → ${chalk.cyan(path.relative(process.cwd(), outputDir))}`,
+      options.dryRun
+        ? `Dry-run: would generate documentation: ${entityCount} entity page(s) + index → ${chalk.cyan(path.relative(process.cwd(), outputDir))}`
+        : `Generated documentation: ${entityCount} entity page(s) + index → ${chalk.cyan(path.relative(process.cwd(), outputDir))}`,
     );
   } catch (error: unknown) {
     spinner.fail(

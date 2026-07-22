@@ -145,23 +145,30 @@ const reconstructed = contextFromBridgeHeaders(parseBridgeHeaders(request.header
 
 ## HTTP adapter generation
 
+> **Correction (2026-07-22 @RYANSIGNED):** The examples below have been corrected to show the accurate signatures. `generateHttpAdapter(descriptor)` returns a `TypedClientAdapter` with a `create(baseUrl, options?)` method (not a `{ className, importPath }` options object). `FederationClient` constructor accepts options `{ defaultTimeoutMs, maxRetries, retryDelayMs, resolveAuthToken, fetchImpl }` (not `{ timeout, retryOnIdempotent }`).
+
 The federation module includes a code generator that produces typed HTTP client classes for calling remote services. Each exposed command becomes a typed method on the generated client.
 
 ```typescript
 import { generateHttpAdapter } from '@angriff36/manifest/federation';
 
-const code = generateHttpAdapter(inventoryDescriptor, {
-  className: 'InventoryClient',
-  importPath: '@repo/inventory-client',
+const adapter = generateHttpAdapter(inventoryDescriptor);
+const client = adapter.create('https://inventory.example.com', {
+  authToken: process.env.INVENTORY_API_KEY,
+  timeoutMs: 5000,
 });
+
+// client now has typed methods for each exposed command
+await client.checkAvailability({ instanceId: 'sku-123', quantity: 10 });
 ```
 
 The generated adapter includes:
 
-- One async method per exposed command
+- A `create(baseUrl, options?)` method that returns a typed client
+- One async method per exposed command on the client
 - Typed request and response objects derived from the IR
 - Automatic `X-Manifest-*` header injection
-- Configurable base URL and timeout
+- Configurable base URL, auth token, and timeout
 
 ## Example: Order service calling Inventory service
 
@@ -182,8 +189,9 @@ registry.register(inventoryDescriptor);
 
 // 2. Create the federation client
 const federation = new FederationClient(registry, {
-  timeout: 3000,
-  retryOnIdempotent: true,
+  defaultTimeoutMs: 3000,
+  maxRetries: 3,
+  retryDelayMs: 1000,
 });
 
 // 3. In the order service's "place" command middleware or action,

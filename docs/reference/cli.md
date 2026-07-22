@@ -10,6 +10,29 @@ manifest --version
 manifest --help
 ```
 
+## `--dry-run` on write commands (2026-07-22)
+
+Writer commands accept `--dry-run`: the CLI still computes the full result, prints
+`dry-run: would write <path> (<n> bytes)` for each intended file, and **writes
+nothing**. Exit 0 when the dry computation succeeds.
+
+- Applies to write / mutate commands only (not read-only `validate`, `doctor`,
+  `scan`, etc.).
+- Distinct from `generate --check` / `fmt --check` (those compare and fail on
+  drift). Combining `--dry-run` with `--check` errors.
+- `watch --dry-run` runs one dry build cycle then exits (no watch loop).
+- `wiring-remediate --dry-run` is an alias for `--mode dry-run` when mode is
+  left at the default `plan`.
+- `migrate --dry-run` already meant “do not apply”; it also skips optional `-o`
+  file writes.
+
+```bash
+manifest compile src/app.manifest -o ir/ --dry-run
+manifest generate ir/ -o generated/ --dry-run
+manifest diagram -o diagrams --dry-run
+manifest install-hooks --dry-run
+```
+
 ## init
 
 Initialize Manifest configuration interactively, or generate a CI workflow when `--ci` is given.
@@ -17,10 +40,12 @@ Initialize Manifest configuration interactively, or generate a CI workflow when 
 - `-f, --force` — overwrite an existing config or workflow file.
 - `--ci <provider>` — generate a CI workflow for a provider (`github`).
 - `--node-versions <versions>` — comma-separated Node versions for the CI matrix (CLI default string is still `18,20,22`).
+- `--dry-run` — preview config / workflow paths; write nothing.
 
 ```bash
 manifest init
 manifest init --ci github --node-versions 20,22
+manifest init --dry-run
 ```
 
 > **Correction (2026-07-15) @RYANSIGNED:** Root `package.json` `engines.node` is
@@ -39,9 +64,11 @@ Compile `.manifest` source to IR.
 - `--pretty` — pretty-print JSON (default on).
 - `--merge` — merge multiple files into a single IR (resolves `use` declarations; default off).
 - `--entry <files...>` — entry file(s) for merge compilation (auto-detected if omitted).
+- `--dry-run` — preview IR paths/bytes; write nothing.
 
 ```bash
 manifest compile src/app.manifest -o ir/
+manifest compile src/app.manifest -o ir/ --dry-run
 ```
 
 **Idempotent output.** When an output `.ir.json` already exists and was produced from byte-identical source (same `provenance.contentHash`), the compiler reuses the prior `provenance.compiledAt` (and recomputes `irHash` against it), so re-compiling unchanged source is byte-identical and produces no spurious git diff. A fresh `compiledAt` only lands when the source actually changes. This applies to single-file and `--merge` compilation.
@@ -58,12 +85,16 @@ Generate code from IR using a projection.
 - `-o, --output <path>` — output directory.
 - `--auth <provider>`, `--database <path>`, `--runtime <path>`, `--response <path>` — import paths layered over config.
 - `--check` — drift mode: regenerate code in memory and compare to the committed files **without writing**. Exits non-zero and lists the drifted files (a missing file or any byte difference counts as drift) so CI can assert that committed code equals freshly generated code (`prettier --check` semantics).
+- `--dry-run` — preview artifact paths/bytes; write nothing (distinct from `--check`; cannot combine the two).
 
 ```bash
 manifest generate ir/ -p nextjs -s all -o generated/
 
 # CI drift gate: fail if committed code is stale
 manifest generate ir/ -o generated/ --check
+
+# Preview only (exit 0; no writes)
+manifest generate ir/ -o generated/ --dry-run
 ```
 
 ## build
@@ -74,9 +105,11 @@ Compile and generate in one step.
 - `-p, --projection <name>` (default `nextjs`), `-s, --surface <name>` (default `all`).
 - `--ir-output <path>` (default `ir/`), `--code-output <path>` (default `generated/`).
 - `-g, --glob <pattern>`; `--auth`, `--database`, `--runtime`, `--response` import paths.
+- `--dry-run` — preview compile + generate writes; write nothing.
 
 ```bash
 manifest build src/app.manifest --ir-output ir/ --code-output generated/
+manifest build src/app.manifest --dry-run
 ```
 
 ## watch
@@ -88,9 +121,11 @@ Watch `.manifest` files and rebuild on change.
 - `--debounce <ms>` — debounce delay (default `300`).
 - `--events` — emit structured JSON change events to stdout.
 - `--clear` — clear the terminal on each rebuild.
+- `--dry-run` — one dry compile+generate cycle, then exit (no watch loop).
 
 ```bash
 manifest watch src/ --debounce 300 --events
+manifest watch src/ --dry-run
 ```
 
 ## validate

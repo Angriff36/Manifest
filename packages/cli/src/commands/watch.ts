@@ -36,6 +36,11 @@ export interface WatchOptions {
   projectionOptionsFromConfig?: Record<string, unknown>;
   /** Regenerate every projection in manifest.config.yaml on each rebuild. */
   all?: boolean;
+  /**
+   * Preview one compile+generate cycle without writing, then exit
+   * (does not enter the watch loop).
+   */
+  dryRun?: boolean;
 }
 
 /** Structured change event emitted to stdout when --events is enabled. */
@@ -109,8 +114,10 @@ async function runBuild(source: string | undefined, options: WatchOptions): Prom
   try {
     // Ensure output directories exist so compileCommand resolves them
     // as directories (not files) when computing output paths.
-    await fs.mkdir(options.irOutput, { recursive: true });
-    await fs.mkdir(options.codeOutput, { recursive: true });
+    if (!options.dryRun) {
+      await fs.mkdir(options.irOutput, { recursive: true });
+      await fs.mkdir(options.codeOutput, { recursive: true });
+    }
 
     // Compile
     await compileCommand(source, {
@@ -118,11 +125,12 @@ async function runBuild(source: string | undefined, options: WatchOptions): Prom
       glob: options.glob,
       diagnostics: false,
       pretty: true,
+      dryRun: options.dryRun,
     });
 
     // Generate — every configured projection (--all) or the single -p one.
     if (options.all) {
-      await generateAllFromConfig({});
+      await generateAllFromConfig({ dryRun: options.dryRun });
     } else {
       await generateCommand(options.irOutput, {
         projection: options.projection,
@@ -133,6 +141,7 @@ async function runBuild(source: string | undefined, options: WatchOptions): Prom
         runtime: options.runtime,
         response: options.response,
         projectionOptionsFromConfig: options.projectionOptionsFromConfig,
+        dryRun: options.dryRun,
       });
     }
 
@@ -162,7 +171,7 @@ export async function watchCommand(
   }
 
   // Run initial build
-  spinner.start('Running initial build...');
+  spinner.start(options.dryRun ? 'Running dry-run build...' : 'Running initial build...');
 
   // Suppress process.exit from compile/generate on first build
   const origExit = process.exit;
@@ -174,6 +183,16 @@ export async function watchCommand(
   const initialSuccess = await runBuild(source, options);
 
   process.exit = origExit;
+
+  if (options.dryRun) {
+    if (initialSuccess && buildExitCode === undefined) {
+      spinner.succeed('Dry-run complete (no watch loop)');
+    } else {
+      spinner.fail('Dry-run build had errors');
+      process.exitCode = buildExitCode ?? 1;
+    }
+    return;
+  }
 
   if (initialSuccess && buildExitCode === undefined) {
     spinner.succeed('Initial build complete');

@@ -65,6 +65,8 @@ export interface LoadTestOptions {
   timeout?: number;
   /** Emit structured JSON to stdout instead of writing files */
   json?: boolean;
+  /** Preview load-test script paths without writing. */
+  dryRun?: boolean;
 }
 
 export interface LoadTestResult {
@@ -743,11 +745,11 @@ export async function loadTestCommand(options: LoadTestOptions = {}): Promise<Lo
       }
     }
 
-    // Write all files
+    // Write all files (skip for --json and --dry-run)
     if (!options.json) {
-      await fs.mkdir(outputDir, { recursive: true });
+      const { writeTextFile } = await import('../utils/dry-run-fs.js');
       for (const [filePath, content] of Object.entries(files)) {
-        await fs.writeFile(filePath, content, 'utf-8');
+        await writeTextFile(filePath, content, { dryRun: options.dryRun });
       }
     }
 

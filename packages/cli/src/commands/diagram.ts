@@ -15,6 +15,7 @@ import path from 'path';
 import { glob } from 'glob';
 import chalk from 'chalk';
 import ora from 'ora';
+import { writeTextFile } from '../utils/dry-run-fs.js';
 
 // Import from the main Manifest package
 async function loadCompiler() {
@@ -52,6 +53,7 @@ export interface DiagramOptions {
   type?: 'er' | 'state' | 'sequence' | 'all';
   entity?: string;
   markdown?: boolean;
+  dryRun?: boolean;
 }
 
 /**
@@ -178,8 +180,10 @@ export async function diagramCommand(
       (mergedIR.policies as unknown[]).push(...ir.policies);
     }
 
-    // Create output directory
-    await fs.mkdir(outputDir, { recursive: true });
+    // Create output directory (skip in dry-run)
+    if (!options.dryRun) {
+      await fs.mkdir(outputDir, { recursive: true });
+    }
 
     // Load and invoke the Mermaid projection
     spinner.text = 'Generating diagrams...';
@@ -214,8 +218,10 @@ export async function diagramCommand(
       if (!artifact.pathHint) continue;
 
       const outputPath = path.resolve(outputDir, path.basename(artifact.pathHint));
-      await fs.writeFile(outputPath, artifact.code, 'utf-8');
-      console.log(chalk.gray(`  -> ${path.relative(process.cwd(), outputPath)}`));
+      await writeTextFile(outputPath, artifact.code, { dryRun: options.dryRun });
+      if (!options.dryRun) {
+        console.log(chalk.gray(`  -> ${path.relative(process.cwd(), outputPath)}`));
+      }
       artifactCount++;
     }
 
@@ -223,7 +229,9 @@ export async function diagramCommand(
       spinner.warn('No diagrams generated (check diagnostics above)');
     } else {
       spinner.succeed(
-        `Generated ${artifactCount} diagram(s) -> ${chalk.cyan(path.relative(process.cwd(), outputDir))}`,
+        options.dryRun
+          ? `Dry-run: would generate ${artifactCount} diagram(s) -> ${chalk.cyan(path.relative(process.cwd(), outputDir))}`
+          : `Generated ${artifactCount} diagram(s) -> ${chalk.cyan(path.relative(process.cwd(), outputDir))}`,
       );
     }
   } catch (error: unknown) {

@@ -13,7 +13,6 @@
  *   manifest changelog v1.0.0 -o CHANGELOG.md
  */
 
-import fs from 'node:fs/promises';
 import { execSync } from 'node:child_process';
 import chalk from 'chalk';
 import ora from 'ora';
@@ -47,6 +46,8 @@ export interface ChangelogOptions {
   json?: boolean;
   /** Custom title for the changelog heading */
   title?: string;
+  /** Preview -o write without touching the filesystem. */
+  dryRun?: boolean;
 }
 
 interface ChangelogSection {
@@ -432,8 +433,11 @@ export async function changelogCommand(
       );
 
       if (options.output) {
-        await fs.writeFile(options.output, jsonOutput, 'utf-8');
-        console.log(chalk.green(`Changelog JSON written to ${options.output}`));
+        const { writeTextFile } = await import('../utils/dry-run-fs.js');
+        await writeTextFile(options.output, jsonOutput, { dryRun: options.dryRun });
+        if (!options.dryRun) {
+          console.log(chalk.green(`Changelog JSON written to ${options.output}`));
+        }
       } else {
         console.log(jsonOutput);
       }
@@ -444,8 +448,11 @@ export async function changelogCommand(
     const markdown = generateMarkdown(fromRef, toRef, diffReport, breakingReport, options.title);
 
     if (options.output) {
-      await fs.writeFile(options.output, markdown, 'utf-8');
-      console.log(chalk.green(`Changelog written to ${options.output}`));
+      const { writeTextFile } = await import('../utils/dry-run-fs.js');
+      await writeTextFile(options.output, markdown, { dryRun: options.dryRun });
+      if (!options.dryRun) {
+        console.log(chalk.green(`Changelog written to ${options.output}`));
+      }
     } else {
       console.log(markdown);
     }

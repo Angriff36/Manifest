@@ -427,6 +427,7 @@ export async function getRuntimeConfig(
 export async function saveConfig(
   config: ManifestConfig,
   cwd: string = process.cwd(),
+  options: { dryRun?: boolean } = {},
 ): Promise<void> {
   const configPath = path.resolve(cwd, 'manifest.config.yaml');
   const yamlContent = yaml.dump(config, {
@@ -435,7 +436,8 @@ export async function saveConfig(
     quotingType: '"',
     forceQuotes: false,
   });
-  await fs.writeFile(configPath, yamlContent, 'utf-8');
+  const { writeTextFile } = await import('./dry-run-fs.js');
+  await writeTextFile(configPath, yamlContent, { dryRun: options.dryRun, cwd });
 }
 
 /**

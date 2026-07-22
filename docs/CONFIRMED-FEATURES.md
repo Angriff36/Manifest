@@ -148,7 +148,10 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 - ~~**Published**: `@angriff36/manifest` v3.6.0 on npmjs.org~~
   - ~~**Published (corrected 2026-07-15):** `@angriff36/manifest` **v3.6.3** on npmjs.org~~
   - ~~**Published (corrected 2026-07-15):** `@angriff36/manifest` **v3.6.4** on npmjs.org~~
-  - **Published (corrected 2026-07-16):** `@angriff36/manifest` **v3.6.13** on npmjs.org (OIDC trusted publishing via the one-button `cut-release.yml` workflow); `package.json` is the version SoT
+  - ~~**Published (corrected 2026-07-16):** `@angriff36/manifest` **v3.6.13** on npmjs.org~~
+  - **Published (corrected 2026-07-22):** `@angriff36/manifest` version SoT is
+    `package.json` (currently **v3.6.41** in this checkout; re-check before citing).
+    OIDC trusted publishing via `cut-release.yml`.
 - **Platform API for Builder (2026-07-14, shipped in v3.6.0):** `@angriff36/manifest/language-metadata` → `getLanguageMetadata()` — keywords/operators from lexer, modifiers from `property-modifiers.ts` / IR schema, builtins from `RuntimeEngine.getBuiltins()`, date/time primitives from `date-time.ts`. Keyword/operator/modifier/builtin lists are derived (no second registry); the categorized construct lists are curated subsets, lexer-asserted and drift-tested against parser source.
 - **Projection capabilities API (2026-07-14, shipped in v3.6.0):** `@angriff36/manifest/projections` → `getProjectionCapabilities(name)` + optional `ProjectionTarget.capabilities` (`feature` + `supported`/`partial`/`unsupported` + `note`). Convex declares its full matrix; projections without a declared matrix return `undefined` (undeclared ≠ unsupported).
 - **Projection descriptor API (2026-07-14, shipped in v3.6.1):** `@angriff36/manifest/projections` → `describeProjection` / `listProjectionDescriptors` / `validateProjectionInvocation` + `ProjectionDescriptor`. Scope, options, prerequisites, artifacts, deps, companions; `safelyInvokable` distinguishes registered vs safely invokable. Meta lives beside each projection (`descriptorMeta`); parity-tested against the registry. Spec: `docs/spec/projection-descriptors.md`.
@@ -182,42 +185,48 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
     declares belongsTo/ref to both ends; runtime two-hop navigation; Prisma/Drizzle
     wire the join entity. Fixture `102-through-join`. ForeignKey+through still
     exclusive (101).
-- ~~Approval `onTimeout: escalate` — schema allows only `cancel`; compiler rejects with `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED` (fixture 103). Escalation semantics still need a spec-first design if shipped.~~
-  - **Correction (2026-07-15):** escalate with author-defined routing shipped
-    (`escalate { to, status, timeout }`); fixture `111-approval-escalate`. Bare
-    `on_timeout: escalate` still hard-fails as incomplete (`103`). Matrix §1.
+- ~~Approval `onTimeout: escalate` —~~
+  - **Update (2026-07-15):** Escalate with author-defined routing shipped
+    (`escalate { to, status, timeout }`); fixture `111-approval-escalate`. 
+    Bare `on_timeout: escalate` without the block fails as incomplete with
+    `APPROVAL_ONTIMEOUT_ESCALATE_INCOMPLETE` (fixture `103`). Matrix §1.
 
-**IR fields not consumed by the reference runtime** (per the reconciled
-2026-07-06 wiring matrix — ~50 rows still open; see `docs/TODO.md`):
-`optional` modifier, `alternateKeys`,
-~~referential actions (DB-only)~~ **Update (2026-07-15):** runtime now enforces
-`onDelete`/`onUpdate` on `deleteInstance`/`updateInstance`,
-entity-level constraint overrides, `command.returns` (projection-only),
-lambda expressions in the Convex projection, `ir.tenant` in most web
-projections, module-based output splitting, and durable rate-limit storage
-(in-memory Map only in committed tree).
-~~**Update (2026-07-15):** durable rate-limit via `RuntimeOptions.rateLimitStore`…~~
+**IR / projection gaps still open** (see `docs/TODO.md` + COMPLIANCE_MATRIX):
+~~`optional` modifier, `alternateKeys`, referential actions, entity-level
+constraint overrides, durable rate-limit (in-memory only)~~
+**Update (2026-07-15):** runtime enforces `onDelete`/`onUpdate`,
+`alternateKeys` uniqueness, entity-level constraint overrides; durable
+`PostgresRateLimitStore` ships. `optional` is a projection hint (not a
+runtime gap). `command.returns` remains projection metadata by design.
+Still open: Convex lambda lowering beyond `count_of`, `ir.tenant` in most
+web projections, module-based output splitting.
 
-> **Correction (2026-07-15):** `src/manifest/rate-limit/` (Postgres store, etc.)
-> is **uncommitted working-tree WIP** — do not treat as shipped until merged with
-> hard proof on `docs/internal/COMPLIANCE_MATRIX.md`. Rate limiting remains
-> Map-backed in HEAD.
-> ~~RedisEventBus exists but is test-only, never wired.~~
+> **Durable rate-limit (2026-07-15):** `PostgresRateLimitStore` ships
+> (`src/manifest/rate-limit/stores/postgres.ts`) and is wired via
+> `RuntimeOptions.rateLimitStore` (`runtime-engine.ts:264`). Shared-bucket
+> semantics use `SELECT … FOR UPDATE` for coherence across concurrent instances.
+~~RedisEventBus exists but is test-only, never wired.~~
 > **Correction (2026-07-15) @RYANSIGNED:** `RuntimeOptions.eventBus` accepts any
 > `EventBus`, including `RedisEventBus`. There is no missing hook. Auto-constructing
 > Redis from env is intentionally not a core default (see `docs/TODO.md`).
 
-**Convex projection — diagnostics-only surfaces:** approvals, masking,
-searchable, versionProperty/optimistic concurrency, retry, rateLimit are
-declared via `CONVEX_UNSUPPORTED_*` diagnostics but not generated/enforced in
-Convex output.
+~~**Convex projection — diagnostics-only surfaces:** approvals, masking,
+searchable, versionProperty/optimistic concurrency, retry, rateLimit~~
+> **Correction (2026-07-22):** `searchable` → `.searchIndex` and
+> `versionProperty` OCC shipped (2026-07-15; see `docs/TODO.md`). Remaining
+> diagnostics-only: **approvals, masking, retry, rateLimit**
+> (`CONVEX_UNSUPPORTED_*`). Realtime / computed-cache are PARTIAL info
+> diagnostics, not unsupported.
 
 **Not implemented at all (doc-only phantoms if claimed elsewhere):**
 time-travel debugger; full WASM runtime (only the scoped expression-compat
 layer above exists).
 
-~~`EventSourcedStore` (IR accepts the `eventSourced` store kind as passthrough only).~~
-~~**Correction (2026-07-22 @RYANSIGNED:** `EventSourcedStore` **is** implemented and shipped (`src/manifest/stores/event-sourced.ts:37-140`). The reference runtime auto-wires it for `store Entity in eventSourced { ... }` declarations. See `COMPLIANCE_MATRIX.md:133` for FULLY_IMPLEMENTED proof.~~
+> **EventSourcedStore (2026-07-22 @RYANSIGNED):** `EventSourcedStore` **is** implemented
+> and shipped (`src/manifest/stores/event-sourced.ts:37-140`). The reference runtime
+> auto-wires it for `store Entity in eventSourced { ... }` declarations. See
+> `COMPLIANCE_MATRIX.md:133` for FULLY_IMPLEMENTED proof. ~~(Earlier phantom listing
+> claimed it was passthrough-only.)~~
 
 ~~**Silently dropped (violates the no-silent-failure house style):** entity
 `behaviors` blocks parse but never reach the IR (`IREntity` has no such field,

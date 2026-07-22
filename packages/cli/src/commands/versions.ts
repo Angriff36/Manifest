@@ -61,7 +61,12 @@ function resolveStoreRoot(storePath?: string): string {
   return path.resolve(storePath ?? DEFAULT_STORE_DIR);
 }
 
-async function ensureDir(dir: string): Promise<void> {
+async function ensureDir(dir: string, dryRun?: boolean): Promise<void> {
+  if (dryRun) {
+    const { logWouldMkdir } = await import('../utils/dry-run-fs.js');
+    logWouldMkdir(dir);
+    return;
+  }
   await fs.mkdir(dir, { recursive: true });
 }
 
@@ -78,14 +83,15 @@ async function fileExists(filePath: string): Promise<boolean> {
 // I/O operations
 // ============================================================================
 
-async function initStore(storeRoot: string): Promise<void> {
+async function initStore(storeRoot: string, dryRun?: boolean): Promise<void> {
   const vs = await loadVersionStore();
-  await ensureDir(storeRoot);
+  await ensureDir(storeRoot, dryRun);
   const index = vs.createVersionIndex();
-  await fs.writeFile(
+  const { writeTextFile } = await import('../utils/dry-run-fs.js');
+  await writeTextFile(
     path.join(storeRoot, 'manifest.json'),
     JSON.stringify(index, null, 2),
-    'utf-8',
+    { dryRun },
   );
 }
 
@@ -94,11 +100,16 @@ async function loadIndex(storeRoot: string): Promise<IRVersionIndex> {
   return JSON.parse(raw) as IRVersionIndex;
 }
 
-async function saveIndex(storeRoot: string, index: IRVersionIndex): Promise<void> {
-  await fs.writeFile(
+async function saveIndex(
+  storeRoot: string,
+  index: IRVersionIndex,
+  dryRun?: boolean,
+): Promise<void> {
+  const { writeTextFile } = await import('../utils/dry-run-fs.js');
+  await writeTextFile(
     path.join(storeRoot, 'manifest.json'),
     JSON.stringify(index, null, 2),
-    'utf-8',
+    { dryRun },
   );
 }
 
@@ -108,11 +119,19 @@ async function loadVersionIR(storeRoot: string, versionNumber: number): Promise<
   return JSON.parse(raw) as IR;
 }
 
-async function saveVersionFiles(storeRoot: string, ir: IR, meta: IRVersionMeta): Promise<void> {
+async function saveVersionFiles(
+  storeRoot: string,
+  ir: IR,
+  meta: IRVersionMeta,
+  dryRun?: boolean,
+): Promise<void> {
   const versionDir = path.join(storeRoot, `v${meta.versionNumber}`);
-  await ensureDir(versionDir);
-  await fs.writeFile(path.join(versionDir, 'ir.json'), JSON.stringify(ir, null, 2), 'utf-8');
-  await fs.writeFile(path.join(versionDir, 'meta.json'), JSON.stringify(meta, null, 2), 'utf-8');
+  await ensureDir(versionDir, dryRun);
+  const { writeTextFile } = await import('../utils/dry-run-fs.js');
+  await writeTextFile(path.join(versionDir, 'ir.json'), JSON.stringify(ir, null, 2), { dryRun });
+  await writeTextFile(path.join(versionDir, 'meta.json'), JSON.stringify(meta, null, 2), {
+    dryRun,
+  });
 }
 
 // ============================================================================
@@ -210,6 +229,7 @@ export interface VersionsSaveOptions {
   tag?: string;
   autoTag?: boolean;
   label?: string;
+  dryRun?: boolean;
 }
 
 export async function versionsSaveCommand(
@@ -222,10 +242,12 @@ export async function versionsSaveCommand(
   const vs = await loadVersionStore();
 
   const storeRoot = resolveStoreRoot(options.store);
+  const dryRun = options.dryRun;
 
   // Init store if needed
-  if (!(await fileExists(path.join(storeRoot, 'manifest.json')))) {
-    await initStore(storeRoot);
+  const storeReady = await fileExists(path.join(storeRoot, 'manifest.json'));
+  if (!storeReady) {
+    await initStore(storeRoot, dryRun);
   }
 
   // Compile source
@@ -256,7 +278,10 @@ export async function versionsSaveCommand(
   }
   spinner.succeed('Compiled successfully');
 
-  const index = await loadIndex(storeRoot);
+  const index =
+    storeReady || !dryRun
+      ? await loadIndex(storeRoot)
+      : vs.createVersionIndex();
   const nextVersionNum = index.currentVersionNumber + 1;
 
   // Determine tag
@@ -271,12 +296,16 @@ export async function versionsSaveCommand(
   }
 
   const meta = vs.createVersionMeta(ir, nextVersionNum, { tag, label: options.label });
-  await saveVersionFiles(storeRoot, ir, meta);
+  await saveVersionFiles(storeRoot, ir, meta, dryRun);
 
   const updatedIndex = vs.addVersionToIndex(index, meta);
-  await saveIndex(storeRoot, updatedIndex);
+  await saveIndex(storeRoot, updatedIndex, dryRun);
 
-  console.log(chalk.green(`\nSaved version v${nextVersionNum}${tag ? ` [${tag}]` : ''}`));
+  console.log(
+    chalk.green(
+      `\n${dryRun ? 'Dry-run: would save' : 'Saved'} version v${nextVersionNum}${tag ? ` [${tag}]` : ''}`,
+    ),
+  );
   console.log(`  IR hash: ${meta.irHash.slice(0, 16)}...`);
   console.log(`  Store:   ${storeRoot}`);
 }
@@ -408,6 +437,7 @@ export interface VersionsChangelogOptions {
   store?: string;
   json?: boolean;
   output?: string;
+  dryRun?: boolean;
 }
 
 export async function versionsChangelogCommand(
@@ -443,8 +473,11 @@ export async function versionsChangelogCommand(
   if (options.json) {
     const output = JSON.stringify(entry, null, 2);
     if (options.output) {
-      await fs.writeFile(options.output, output, 'utf-8');
-      console.log(chalk.green(`Changelog written to ${options.output}`));
+      const { writeTextFile } = await import('../utils/dry-run-fs.js');
+      await writeTextFile(options.output, output, { dryRun: options.dryRun });
+      if (!options.dryRun) {
+        console.log(chalk.green(`Changelog written to ${options.output}`));
+      }
     } else {
       console.log(output);
     }
@@ -477,8 +510,13 @@ export async function versionsChangelogCommand(
   }
 
   if (options.output) {
-    await fs.writeFile(options.output, JSON.stringify(entry, null, 2), 'utf-8');
-    console.log(chalk.gray(`\nFull changelog written to ${options.output}`));
+    const { writeTextFile } = await import('../utils/dry-run-fs.js');
+    await writeTextFile(options.output, JSON.stringify(entry, null, 2), {
+      dryRun: options.dryRun,
+    });
+    if (!options.dryRun) {
+      console.log(chalk.gray(`\nFull changelog written to ${options.output}`));
+    }
   }
 }
 
@@ -488,6 +526,7 @@ export async function versionsChangelogCommand(
 
 export interface VersionsTagOptions {
   store?: string;
+  dryRun?: boolean;
 }
 
 export async function versionsTagCommand(
@@ -507,15 +546,22 @@ export async function versionsTagCommand(
   }
 
   const updated = vs.tagVersionInIndex(index, versionNum, tag);
-  await saveIndex(storeRoot, updated);
+  await saveIndex(storeRoot, updated, options.dryRun);
 
   // Also update the meta.json file
   const metaPath = path.join(storeRoot, `v${versionNum}`, 'meta.json');
   const meta = JSON.parse(await fs.readFile(metaPath, 'utf-8')) as IRVersionMeta;
   meta.tag = tag;
-  await fs.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
+  const { writeTextFile } = await import('../utils/dry-run-fs.js');
+  await writeTextFile(metaPath, JSON.stringify(meta, null, 2), { dryRun: options.dryRun });
 
-  console.log(chalk.green(`Tagged v${versionNum} as '${tag}'`));
+  console.log(
+    chalk.green(
+      options.dryRun
+        ? `Dry-run: would tag v${versionNum} as '${tag}'`
+        : `Tagged v${versionNum} as '${tag}'`,
+    ),
+  );
 }
 
 // ============================================================================
@@ -525,6 +571,7 @@ export async function versionsTagCommand(
 export interface VersionsRollbackOptions {
   store?: string;
   output?: string;
+  dryRun?: boolean;
 }
 
 export async function versionsRollbackCommand(
@@ -545,8 +592,15 @@ export async function versionsRollbackCommand(
   const ir = await loadVersionIR(storeRoot, versionNum);
 
   if (options.output) {
-    await fs.writeFile(options.output, JSON.stringify(ir, null, 2), 'utf-8');
-    console.log(chalk.green(`Rolled back to v${versionNum} — IR written to ${options.output}`));
+    const { writeTextFile } = await import('../utils/dry-run-fs.js');
+    await writeTextFile(options.output, JSON.stringify(ir, null, 2), {
+      dryRun: options.dryRun,
+    });
+    if (!options.dryRun) {
+      console.log(chalk.green(`Rolled back to v${versionNum} — IR written to ${options.output}`));
+    } else {
+      console.log(chalk.cyan(`dry-run: would write rollback IR for v${versionNum}`));
+    }
   } else {
     console.log(JSON.stringify(ir, null, 2));
   }

@@ -11,11 +11,14 @@ import { glob } from 'glob';
 import chalk from 'chalk';
 import ora from 'ora';
 import { getConfig } from '../utils/config.js';
+import { assertDryRunCheckExclusive, logWouldWrite } from '../utils/dry-run-fs.js';
 
 export interface FmtOptions {
   check?: boolean;
   write?: boolean;
   glob?: string;
+  /** List files that would change; write nothing (exit 0). Distinct from --check. */
+  dryRun?: boolean;
 }
 
 async function loadParser() {
@@ -95,8 +98,10 @@ export async function fmtCommand(
   source: string | undefined,
   options: FmtOptions = {},
 ): Promise<void> {
+  assertDryRunCheckExclusive({ dryRun: options.dryRun, check: options.check });
   const check = options.check ?? false;
-  const write = options.write ?? !check;
+  const dryRun = options.dryRun ?? false;
+  const write = dryRun ? false : (options.write ?? !check);
   const spinner = ora('Finding .manifest files').start();
 
   try {
@@ -138,6 +143,11 @@ export async function fmtCommand(
         continue;
       }
 
+      if (dryRun) {
+        logWouldWrite(filePath, Buffer.byteLength(formatted, 'utf-8'));
+        continue;
+      }
+
       if (write) {
         await fs.writeFile(filePath, formatted, 'utf-8');
         console.log(chalk.yellow(`↻ ${relativePath}`));
@@ -155,6 +165,17 @@ export async function fmtCommand(
       console.error(chalk.bold.red(`${changedCount} file(s) need formatting`));
       console.error(chalk.dim('Run: manifest fmt --write'));
       process.exitCode = 1;
+      return;
+    }
+
+    if (dryRun) {
+      console.log(
+        chalk.bold.green(
+          changedCount > 0
+            ? `Dry-run: ${changedCount} file(s) would be reformatted`
+            : 'Dry-run: all files already formatted',
+        ),
+      );
       return;
     }
 

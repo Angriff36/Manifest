@@ -22,6 +22,7 @@ interface EmitOptions {
   out?: string;
   validate?: boolean;
   pretty?: boolean;
+  dryRun?: boolean;
 }
 
 /**
@@ -114,22 +115,26 @@ export async function emitRegistriesCommand(options: EmitOptions = {}): Promise<
     }
   }
 
-  await fs.mkdir(outDir, { recursive: true });
   const commandsPath = path.join(outDir, 'commands.json');
   const entitiesPath = path.join(outDir, 'entities.json');
-  await fs.writeFile(commandsPath, JSON.stringify(commands, null, indent), 'utf-8');
-  await fs.writeFile(entitiesPath, JSON.stringify(entities, null, indent), 'utf-8');
+  const commandsBody = JSON.stringify(commands, null, indent);
+  const entitiesBody = JSON.stringify(entities, null, indent);
+  const { writeTextFile } = await import('../utils/dry-run-fs.js');
+  await writeTextFile(commandsPath, commandsBody, { dryRun: options.dryRun });
+  await writeTextFile(entitiesPath, entitiesBody, { dryRun: options.dryRun });
 
-  console.log(
-    chalk.green('Wrote'),
-    commandsPath,
-    chalk.gray(`(${commands.commands.length} commands)`),
-  );
-  console.log(
-    chalk.green('Wrote'),
-    entitiesPath,
-    chalk.gray(`(${entities.entities.length} entities)`),
-  );
+  if (!options.dryRun) {
+    console.log(
+      chalk.green('Wrote'),
+      commandsPath,
+      chalk.gray(`(${commands.commands.length} commands)`),
+    );
+    console.log(
+      chalk.green('Wrote'),
+      entitiesPath,
+      chalk.gray(`(${entities.entities.length} entities)`),
+    );
+  }
 }
 
 // Exported only for tests.

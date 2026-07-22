@@ -28,7 +28,8 @@ export interface KyselyProjectionOptions {
   /**
    * Per-entity, per-property column-name override.
    *   columnMappings: { Widget: { createdAt: "created_at" } }
-   * → emits `createdAt: Date;` in the interface with a comment noting the actual column name.
+   * → emits `created_at: …` as the Kysely row-interface key (Kysely property
+   *   names are the SQL column names used in queries).
    */
   columnMappings?: Record<EntityName, Record<PropertyName, string>>;
 
