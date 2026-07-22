@@ -10,11 +10,11 @@ The projection is registered under the name `hono` and lives at `src/manifest/pr
 
 ## What it generates
 
-The projection exposes four surfaces.
+The projection exposes six surfaces.
 
 `hono.router` emits a complete app module (path hint `src/routes.ts`, or `routes/<entity>.ts` when an `entity` is supplied). It imports `Hono`, the configured auth middleware, and the runtime factory, declares a typed `Env` (binding `Variables.user`), constructs `const app = new Hono<Env>()`, registers routes per entity, and ends with `export default app` for direct edge deployment. Each entity gets `GET /{entity}/list`, `GET /{entity}/:id`, and one `POST /{entity}/{command-kebab}` per entity-scoped command.
 
-`hono.entity` emits a single-entity router (one artifact per entity when no `entity` is set). `hono.types` emits TypeScript types — an `Env` type, an `AuthUser` interface, one `interface` per entity (computed properties as `readonly`), and a `<Entity><Command>Params` interface per parameterized command. `hono.all` emits the router and the types together. An unknown surface returns an `UNKNOWN_SURFACE` error; a missing named entity yields a `HONO_ENTITY_NOT_FOUND` warning.
+`hono.entity` emits a single-entity router (one artifact per entity when no `entity` is set). `hono.types` emits TypeScript types — an `Env` type, an `AuthUser` interface, one `interface` per entity (computed properties as `readonly`), and a `<Entity><Command>Params` interface per parameterized command. `hono.all` emits the router and the types together. `hono.companions` emits a companion facade module with `runCommand(entity, command, { params, instanceId }, context?)` that adapts to `RuntimeEngine.runCommand`. `hono.webhooks` emits webhook handlers for inbound IR webhooks (HTTP → command dispatch). An unknown surface returns an `UNKNOWN_SURFACE` error; a missing named entity yields a `HONO_ENTITY_NOT_FOUND` warning.
 
 Read handlers call `runtime.list(...)` / `runtime.get(...)` directly, reading the tenant id from `c.get('user')` when tenant context is enabled. Command handlers parse the body with `c.req.json()`, derive an `instanceId` from `body.instanceId ?? body.id`, and call ~~`runtime.runCommand(entity, command, { params, instanceId }, context)`~~.
 

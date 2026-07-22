@@ -49,7 +49,9 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 - Automatic timestamps / `autoNow` defaults — `= now()` / `= today()` (fixture 62)
 - Property privacy & protection modifiers: `private`, `encrypted`, `masked` (fixtures 91, 93)
 - Full-text `searchable` declarations (fixture 89)
-- Multi-tenancy isolation (fixture 61); optimistic concurrency via `versionProperty` (fixture 24)
+- Multi-tenancy isolation (fixture 61; matrix FULLY_IMPLEMENTED —
+  `tenant-isolation.test.ts` @ `5e751072`; reference-runtime filter/inject/fail-closed,
+  not DB RLS); optimistic concurrency via `versionProperty` (fixture 24)
 
 **Behavior**
 
@@ -60,18 +62,24 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 - Constraints with severity `ok`/`warn`/`block`, explicit `failWhen` polarity (fixtures 105–106), override authorization (fixture 22)
 - Policies: read/write/delete/execute/all/override
 - State machines: `transitions` with runtime enforcement (fixture 38)
-- Aggregate `count()` expressions, usable in reactions (fixture 97)
+- Aggregate `count()` expressions, usable in reactions (fixture 97 —
+  matrix FULLY_IMPLEMENTED @ `054028e`)
 - Aggregate `sum(Entity where … of field)` in reactions — matrix FULLY_IMPLEMENTED
   (`runtime-aggregate-sum.test.ts` @ `04fe949`)
 
 **Orchestration & integration**
 
-- Events + declarative reactions (`on Event run Command`), incl. 1:N fan-out (fixture 96)
+- Events + declarative reactions (`on Event run Command`), incl. 1:N fan-out (fixture 96 —
+  classic fan-out matrix FULLY_IMPLEMENTED @ `4571c494`; Events+reactions row still open for
+  single-target fixture `67`)
 - Reaction `match … else create` natural-key upsert — matrix FULLY_IMPLEMENTED @ `04fe949`
 - Fan-out foreach-create (`run Target.create` + `matchEntity`, fixture 112) — matrix
   FULLY_IMPLEMENTED @ `b7c7e5c`
-- Sagas with compensation/abort (fixture 88)
-- Multi-stage approval workflows with timeouts (fixture 68) — `onTimeout: cancel` only (see Gaps)
+- Sagas with compensation/abort (fixture 88; matrix FULLY_IMPLEMENTED —
+  `runtime-saga.test.ts` @ `179e135`; in-process reference runtime, not durable)
+- Multi-stage approval workflows with timeouts (fixture 68; matrix FULLY_IMPLEMENTED —
+  `runtime-approval.test.ts` @ `83e6c4f`; `onTimeout: cancel` + escalate sibling @ `a16d2bf` /
+  fixture `111`. Reference-runtime; Convex approvals rejected loud)
 - Roles/RBAC with hierarchy, inheritance, and deny rules (fixture 71)
 - Inbound webhooks with HMAC signature verification (fixture 90; runtime
   `webhooks/handler.ts` + Next/Express/Hono emits — matrix FULLY_IMPLEMENTED

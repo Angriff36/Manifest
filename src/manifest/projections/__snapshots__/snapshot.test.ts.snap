@@ -2804,25 +2804,28 @@ const MANIFEST_IR_META = {
 } as const;
 
 /**
- * Check IR integrity by validating provenance hash.
- * TODO: Implement live hash computation against loaded IR.
+ * Report baked IR provenance from compilation.
+ * Scaffolding only: does not recompute or compare a live IR hash.
  */
 function checkIR(): ComponentHealth {
-  return { status: 'healthy', message: 'IR provenance verified', details: MANIFEST_IR_META };
+  return {
+    status: 'healthy',
+    message: 'IR provenance baked (not live-checked)',
+    details: { ...MANIFEST_IR_META, stub: true },
+  };
 }
 
 /**
  * Check connectivity for durable stores.
- * TODO: Implement actual durable connectivity check.
+ * Scaffolding only: no live durable probe until a store client is injected.
  */
 async function checkDurableStore(): Promise<ComponentHealth> {
-  try {
-    // TODO: Add durable connection health check
-    // Example: await pool.query('SELECT 1') or equivalent
-    return { status: 'healthy', message: 'durable store connected' };
-  } catch (error) {
-    return { status: 'unhealthy', message: 'durable store unreachable', details: { error: String(error) } };
-  }
+  // Scaffolding: always reports healthy until a real probe is wired.
+  return {
+    status: 'healthy',
+    message: 'durable store check not implemented (scaffolding)',
+    details: { stub: true, target: 'durable' },
+  };
 }
 
 /**

@@ -139,7 +139,7 @@ The `value` token is context-sensitive — it is emitted as an identifier rather
 | `date` | string `"YYYY-MM-DD"` (valid calendar date) |
 | `time` | string `"HH:MM:SS"` (`00:00:00`–`23:59:59`) |
 
-Malformed values produce blocking outcomes `E_TYPE_DATETIME` / `E_TYPE_DURATION` / `E_TYPE_DATE` / `E_TYPE_TIME`. There is still **no** `timestamp` or `interval` type name. The most common way `datetime` properties appear is via the `timestamps` modifier, which injects `createdAt` and `updatedAt`:
+Malformed values produce blocking outcomes `E_TYPE_DATETIME` / `E_TYPE_DURATION` / `E_TYPE_DATE` / `E_TYPE_TIME`. `timestamp` is a normative alias for `datetime` (same representation and validation; prefer `datetime` in new docs). There is no `interval` type name. The most common way `datetime` properties appear is via the `timestamps` modifier, which injects `createdAt` and `updatedAt`:
 
 ```manifest
 entity Article {

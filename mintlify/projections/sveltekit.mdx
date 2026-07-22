@@ -10,7 +10,7 @@ The projection is registered under the name `sveltekit` and lives at `src/manife
 
 ## What it generates
 
-The projection exposes five surfaces.
+The projection exposes six surfaces.
 
 `sveltekit.server` emits a `+server.ts` file with `GET` and `POST` `RequestHandler` exports. The `GET` handler lists entity instances (with optional auth checks, tenant filtering, and soft-delete filtering). The `POST` handler dispatches a command through ~~the Manifest runtime via `runtime.runCommand`~~.
 
@@ -24,7 +24,7 @@ The projection exposes five surfaces.
 
 `sveltekit.types` emits entity and command type interfaces plus `ManifestActionResult` and `ManifestDiagnostic` utility interfaces. Computed properties are emitted as `readonly` fields.
 
-`sveltekit.client` emits a `$lib/manifest-client.ts` module with an `invokeManifestCommand()` helper function for client-side command invocation.
+`sveltekit.client` emits a `$lib/manifest-client.ts` module with an `invokeManifestCommand()` helper function for client-side command invocation. `sveltekit.companions` emits a companion facade module with `runCommand(entity, command, { params, instanceId }, context?)` that adapts to `RuntimeEngine.runCommand`.
 
 ## Usage
 

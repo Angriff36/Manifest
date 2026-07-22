@@ -519,7 +519,9 @@ The IR carries this as a sparse-optional field: `IREntity.external?: boolean`. W
 
 ## Properties
 
-Every property has a type. Supported types are `string`, `number`, `boolean`, and `timestamp`. A property without a default is `undefined` unless the caller supplies a value at creation time.
+Every property has a type.
+
+> **Correction (2026-07-22 @RYANSIGNED):** `timestamp` **is** a valid property type — it is a normative alias for `datetime` (`docs/spec/semantics.md:281,286-289`). Runtimes MUST treat `timestamp` identically to `datetime`. Common scalar types include `string`, `number`, `boolean`, plus date/time primitives `datetime` / `timestamp` / `date` / `time` / `duration`, `decimal` / `money`, collections, enums, and value-object names. When a property is omitted at create time, the runtime applies the property's `defaultValue` if present, otherwise the **type default** (for example `""`, `0`, `false`) — not `undefined`. An explicit `required` modifier is not satisfied by a zero-filled type default alone (`E_REQUIRED`). See [Types](/language/types).
 
 ### Modifiers
 

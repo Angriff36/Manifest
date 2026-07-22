@@ -10,7 +10,7 @@ The projection is registered under the name `express` and lives at `src/manifest
 
 ## What it generates
 
-The projection exposes four surfaces.
+The projection exposes six surfaces.
 
 `express.router` emits a complete router module (path hint `routes/manifest-router.ts`, or `routes/<entity>.ts` when an `entity` is supplied). For Express this is an exported `createManifestRouter(): Router`; for Fastify it is an exported `async manifestRoutes(fastify)` plugin. Each entity gets a `GET /{entity}/list` route, a `GET /{entity}/:id` route, and one `POST /{entity}/{command-kebab}` route per entity-scoped command. Read routes call `runtime.list(...)` / `runtime.get(...)` directly; command routes extract an `instanceId` from `body.instanceId ?? body.id` and call ~~`runtime.runCommand(entity, command, { params, instanceId }, context)`~~.
 
@@ -19,7 +19,7 @@ The projection exposes four surfaces.
 > `RuntimeEngine.runCommand(command, params ?? {}, { entityName, instanceId })`. Do not call
 > `RuntimeEngine` with the 4-arg entity-first form.
 
-`express.entity` emits a single-entity router; with no `entity` set it emits one artifact per entity. `express.types` emits TypeScript request/response interfaces (one `interface` per entity, with computed properties as `readonly`, plus a `<Entity><Command>Params` interface for each command that has parameters). `express.all` emits the router and the types together. An unknown surface returns an `UNKNOWN_SURFACE` error; a missing named entity yields an `EXPRESS_ENTITY_NOT_FOUND` warning.
+`express.entity` emits a single-entity router; with no `entity` set it emits one artifact per entity. `express.types` emits TypeScript request/response interfaces (one `interface` per entity, with computed properties as `readonly`, plus a `<Entity><Command>Params` interface for each command that has parameters). `express.all` emits the router and the types together. `express.companions` emits a companion facade module with `runCommand(entity, command, { params, instanceId }, context?)` that adapts to `RuntimeEngine.runCommand`. `express.webhooks` emits webhook handlers for inbound IR webhooks (HTTP → command dispatch). An unknown surface returns an `UNKNOWN_SURFACE` error; a missing named entity yields an `EXPRESS_ENTITY_NOT_FOUND` warning.
 
 Command handlers map runtime error codes to HTTP status: `GUARD_FAILED` to 403, `CONSTRAINT_VIOLATION` to 422, `CONCURRENCY_CONFLICT` to 409, `NOT_FOUND` to 404, and anything else to 500. When `includeComments` is on, each command handler is preceded by a JSDoc block listing its guards (with index and rendered expression), constraint and policy counts, and emitted events.
 

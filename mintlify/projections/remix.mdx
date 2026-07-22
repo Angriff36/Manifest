@@ -10,7 +10,7 @@ The projection is registered under the name `remix` and lives at `src/manifest/p
 
 ## What it generates
 
-The projection exposes five surfaces.
+The projection exposes six surfaces.
 
 `remix.list` emits a route module with a `loader` function that queries entities with optional auth checks, tenant filtering, and soft-delete filtering. The generated code uses Prisma-style queries for list reads and returns data via Remix's `json` helper.
 
@@ -20,7 +20,7 @@ The projection exposes five surfaces.
 
 `remix.types` emits TypeScript interfaces for all entities and command parameter types. Computed properties are emitted as `readonly` fields. Each entity gets one `interface`, and each parameterized command gets a `<Entity><Command>Params` interface.
 
-`remix.client` emits response helper utilities: `manifestSuccessResponse`, `manifestErrorResponse`, and `normalizeCommandResult`. These map Manifest `CommandResult` outcomes to Remix `Response` objects with proper HTTP status codes.
+`remix.client` emits response helper utilities: `manifestSuccessResponse`, `manifestErrorResponse`, and `normalizeCommandResult`. These map Manifest `CommandResult` outcomes to Remix `Response` objects with proper HTTP status codes. `remix.companions` emits a companion facade module with `runCommand(entity, command, { params, instanceId }, context?)` that adapts to `RuntimeEngine.runCommand`.
 
 Command handlers map ~~runtime error codes to HTTP status: `GUARD_FAILED` to 403, `CONSTRAINT_VIOLATION` to 422, `CONCURRENCY_CONFLICT` to 409, `NOT_FOUND` to 404, and anything else to 500. Optional error boundary exports are available when the `errorBoundaries` option is enabled.~~
 
