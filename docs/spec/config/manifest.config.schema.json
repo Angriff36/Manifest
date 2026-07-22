@@ -336,6 +336,22 @@
             }
           }
         },
+        "mongoose": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'mongoose' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
         "nextjs": { "$ref": "#/definitions/NextJsProjectionConfig" },
         "openapi": {
           "type": "object",

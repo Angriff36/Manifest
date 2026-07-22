@@ -370,6 +370,6 @@ Last: [first session]
 
 ## Last Session Bridge
 [auto-bridge snapshot @ 10 changes]
-Files: mintlify/language/workflows.mdx (edit), mintlify/extensibility/federation.mdx (edit), mintlify/adapters/dynamodb.mdx (edit)
+Files: mintlify/adapters/outbox.mdx (edit), mintlify/adapters/audit-sink.mdx (edit), C:/Users/Ryan/.claude/projects/C--projects-aboardai/memory/mcp-server-leak-2026-07-04.md (edit), IMPLEMENTATION_PLAN.md (edit), C:/projects/aboardai/apps/server/tests/unit/providers/codex-config-manager.test.ts (create), packages/cli/src/commands/changelog.ts (edit), C:/projects/aboardai/apps/server/src/providers/codex-config-manager.ts (edit)
 
 # === END COGNILAYER ===

@@ -112,16 +112,19 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
 - Idempotency store: memory/postgres (`src/manifest/idempotency/stores/*`)
 - Custom store adapters registrable via plugin API
 
-## 5. Projections — 29 registered
+## 5. Projections — 30 registered
+
+~~## 5. Projections — 29 registered~~
+> **Correction (2026-07-22):** 30 registered builtins (mongoose added).
 
 Single registration point `registerBuiltinProjections()` in
-`src/manifest/projections/builtins.ts`; every projection folder is registered
-(zero dead folders, zero unregistered projections):
+`src/manifest/projections/builtins.ts`; every projection folder with a
+generator is registered (mongoose was the last unregistered stub; now wired):
 
 nextjs, routes, prisma, prisma-store, convex, openapi, react-query, zod,
 drizzle, graphql, llm-context, express, hono, mermaid, jsonschema, storybook,
 health, materialized-views, elasticsearch, terraform, analytics, remix,
-sveltekit, kysely, dynamodb, pydantic, dart, wiring, contract-tests.
+sveltekit, kysely, mongoose, dynamodb, pydantic, dart, wiring, contract-tests.
 
 Highlights:
 

@@ -17,7 +17,8 @@ The test file builds a fixed IR fixture in `snapshotIR()` — a small but repres
 The suite enumerates projections via `listBuiltinProjections()` and asserts there are exactly ~~20~~ **29** built-in projections.
 
 > **Correction (2026-07-15) @RYANSIGNED:** `snapshot.test.ts` uses
-> `expect(projections.length).toBe(29)` (was 20 in this page). Updating the set
+> ~~`expect(projections.length).toBe(29)`~~ **Correction (2026-07-22):**
+> `expect(projections.length).toBe(30)` (mongoose registered). Updating the set
 > still requires a conscious snapshot refresh. Package pin SoT:
 > `package.json` = **3.6.4**.
 
@@ -34,7 +35,7 @@ Snapshots are stored in `src/manifest/projections/__snapshots__/snapshot.test.ts
 - Test file: `src/manifest/projections/snapshot.test.ts`.
 - Snapshot file: `src/manifest/projections/__snapshots__/snapshot.test.ts.snap`.
 - Update command: `npx vitest -u src/manifest/projections/snapshot.test.ts`.
-- Coverage guard: `expect(projections.length).toBe(29)` — adding or removing a built-in projection requires updating this count.
+- Coverage guard: `expect(projections.length).toBe(30)` — adding or removing a built-in projection requires updating this count.
 - Stabilization: ISO timestamps normalized to `2025-01-01T00:00:00.000Z`.
 
 ## Notes & limitations

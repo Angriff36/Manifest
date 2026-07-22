@@ -204,6 +204,8 @@ Projections MUST remain aligned with IR/runtime semantics and MUST NOT redefine 
 > `nextjs`, `prisma`, `convex`, `express`, `hono`, `drizzle`, `openapi`, `zod`,
 > `graphql`, `react-query`, `jsonschema`, `remix`, `sveltekit`, and others.
 > See `docs/CONFIRMED-FEATURES.md` §5 and `docs/projections/README.md`.
+>
+> **Correction (2026-07-22):** count is now **30** (`mongoose` registered).
 
 ### Do projections bypass the runtime?
 

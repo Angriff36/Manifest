@@ -34,6 +34,7 @@ import { AnalyticsProjection } from './analytics/generator.js';
 import { RemixProjection } from './remix/generator.js';
 import { SvelteKitProjection } from './sveltekit/generator.js';
 import { KyselyProjection } from './kysely/generator.js';
+import { MongooseProjection } from './mongoose/generator.js';
 import { DynamoDBProjection } from './dynamodb/generator.js';
 import { PydanticProjection } from './pydantic/generator.js';
 import { DartProjection } from './dart/generator.js';
@@ -120,6 +121,9 @@ export function registerBuiltinProjections(): void {
   // Kysely type-safe query builder projection (Database interface + row types)
   registerProjection(new KyselyProjection());
 
+  // Mongoose schema/model projection (MongoDB-backed entities)
+  registerProjection(new MongooseProjection());
+
   // DynamoDB single-table projection (CloudFormation, CDK, Terraform)
   registerProjection(new DynamoDBProjection());
 
@@ -173,6 +177,7 @@ export function listBuiltinProjections(): ProjectionTarget[] {
     new RemixProjection(),
     new SvelteKitProjection(),
     new KyselyProjection(),
+    new MongooseProjection(),
     new DynamoDBProjection(),
     new PydanticProjection(),
     new DartProjection(),

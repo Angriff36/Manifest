@@ -230,6 +230,12 @@ non-binding navigation mirror only.
       `src/manifest/projections/kysely/generator.ts`,
       `column-mappings.test.ts`. Matrix §8.
       ~~option declared, unused~~
+- [x] **Mongoose projection registered** — fixed 2026-07-22: implemented
+      `mongoose.schema` generator + builtins registration (was options/type-mapping
+      stub only). Emits Schema/model for `store … in mongodb`. Evidence:
+      `src/manifest/projections/mongoose/generator.ts`, `generator.test.ts`.
+      Builtin count 30. Matrix §1/§6.
+      ~~folder exists; not in builtins — verify before claiming~~
 
 ## SDK / platform
 

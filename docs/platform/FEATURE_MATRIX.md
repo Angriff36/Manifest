@@ -291,7 +291,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [~]    | dart                  | CLAIMED_NEEDS_PROOF            |                                                                                  |
 | [~]    | wiring                | CLAIMED_NEEDS_PROOF            |                                                                                  |
 | [~]    | contract-tests        | CLAIMED_NEEDS_PROOF            | See `docs/internal/COMPLIANCE_MATRIX.md` (list/get + mutations; auth visibility) |
-| [ ]    | mongoose folder       | NOT_IMPLEMENTED / unregistered | folder exists; **not** in `builtins.ts` register list — verify before claiming   |
+| [x]    | mongoose              | FULLY_IMPLEMENTED              | COMPLIANCE_MATRIX §1 — registered `mongoose.schema` projection                     |
 
 **Cross-cutting projection gaps**
 

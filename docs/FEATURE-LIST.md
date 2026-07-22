@@ -34,7 +34,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 
 ## Registered projections
 
-29 projections are registered. 1 declare a structured capability matrix; an undeclared matrix means “not yet declared,” not “unsupported.”
+30 projections are registered. 1 declare a structured capability matrix; an undeclared matrix means “not yet declared,” not “unsupported.”
 
 | Projection | Surfaces | Safe to invoke | Capabilities |
 | --- | --- | --- | --- |
@@ -54,6 +54,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | `llm-context` | `llm-context.full`, `llm-context.summary`, `llm-context.ir` | yes | undeclared |
 | `materialized-views` | `materialized-views.ddl` | yes | undeclared |
 | `mermaid` | `mermaid.er`, `mermaid.state`, `mermaid.sequence`, `mermaid.all` | yes | undeclared |
+| `mongoose` | `mongoose.schema` | yes | undeclared |
 | `nextjs` | `nextjs.route`, `nextjs.detail`, `nextjs.command`, `nextjs.dispatcher`, `nextjs.subscribe`, `nextjs.subscriptionHook`, `nextjs.sharedRuntime`, `nextjs.schedule`, `nextjs.webhook`, `nextjs.companions`, `ts.types`, `ts.client` | yes | undeclared |
 | `openapi` | `openapi.spec` | yes | undeclared |
 | `prisma` | `prisma.schema` | yes | undeclared |
@@ -439,7 +440,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 6. Projections — every registered target | llm-context | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | mermaid | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | Module-based output splitting | `PARTIAL` | See feature matrix |
-| 6. Projections — every registered target | mongoose folder | `NOT_IMPLEMENTED / unregistered` | folder exists; **not** in `builtins.ts` register list — verify before claiming |
 | 6. Projections — every registered target | nextjs | `CLAIMED_NEEDS_PROOF` | createManifestRuntime, executionMode |
 | 6. Projections — every registered target | openapi | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | prisma | `CLAIMED_NEEDS_PROOF` | multi-schema, naming options |

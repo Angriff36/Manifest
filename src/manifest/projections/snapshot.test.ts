@@ -285,7 +285,7 @@ describe('projection snapshots', () => {
 
   // Sanity: ensure we're testing all built-ins
   it('covers all 29 built-in projections', () => {
-    expect(projections.length).toBe(29);
+    expect(projections.length).toBe(30);
   });
 
   for (const projection of projections) {
