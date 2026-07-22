@@ -39,8 +39,9 @@ import type {
   ProjectionTarget,
 } from '../interface';
 import { zodParamsSchemaName } from '../shared/route-contract.js';
-import type { ZodProjectionOptions } from './types';
 import { ZOD_DESCRIPTOR_META } from './descriptor-meta.js';
+import { zodCommandSchemaPathHint, zodEntitySchemaPathHint } from './path-hints.js';
+import type { ZodProjectionOptions } from './types';
 
 // ============================================================================
 // Type mapping
@@ -539,7 +540,7 @@ export class ZodProjection implements ProjectionTarget {
       const code = this.wrapWithImport(result.lines, opts);
       artifacts.push({
         id: `zod.entity.${entity.name}`,
-        pathHint: `schemas/${entity.name}.schema.ts`,
+        pathHint: zodEntitySchemaPathHint(entity),
         contentType: 'typescript',
         code,
       });
@@ -591,9 +592,16 @@ export class ZodProjection implements ProjectionTarget {
       // Entity-qualified path — bare `schemas/${command.name}.schema.ts` collides
       // when many entities share cancel/create/… Prefer zod.schemas bundle instead.
       const entityPart = command.entity ? `${command.entity}_` : '';
+      const owner = command.entity
+        ? ir.entities.find((e) => e.name === command.entity)
+        : undefined;
       artifacts.push({
         id: `zod.command.${entityPart}${command.name}`,
-        pathHint: `schemas/${entityPart}${command.name}.schema.ts`,
+        pathHint: zodCommandSchemaPathHint({
+          commandName: command.name,
+          entityName: command.entity,
+          moduleName: owner?.module,
+        }),
         contentType: 'typescript',
         code,
       });

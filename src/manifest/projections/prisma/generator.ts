@@ -1532,10 +1532,12 @@ export class PrismaProjection implements ProjectionTarget {
     diagnostics.push(...splitDiags);
 
     let artifacts: ProjectionArtifact[];
+    const outputPath = options.output ?? 'schema.prisma';
+
     if (splitPlan) {
       artifacts = buildSplitPrismaArtifacts({
         headerStr,
-        rootPathHint: options.output,
+        rootPathHint: outputPath,
         modelBlocks: taggedModels,
         enumBlocks: taggedEnums,
         splitDir: splitPlan.dir,
@@ -1552,7 +1554,7 @@ export class PrismaProjection implements ProjectionTarget {
       artifacts = [
         {
           id: 'prisma.schema',
-          pathHint: options.output,
+          pathHint: outputPath,
           contentType: 'prisma',
           code,
         },
