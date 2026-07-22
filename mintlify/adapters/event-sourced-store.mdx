@@ -1,149 +1,82 @@
 ---
-title: 'Event sourcing patterns with Manifest'
-description: 'There is no built-in event-sourced store class. This guide shows how to approximate event sourcing, read models, and CQRS using the primitives Manifest actually ships: emitted events, the in-memory event log, event subscriptions, the outbox, and the audit sink.'
-sidebarTitle: 'Event sourcing'
+title: 'Event Sourced Store'
+description: 'Append-only event log store with snapshotting for Manifest entities. Ships in the reference runtime — auto-wired for `store Entity in eventSourced { ... }` declarations.'
+sidebarTitle: 'Event Sourced Store'
 ---
 
-<Warning>
-Manifest does **not** ship a built-in event-sourced store. There is no `EventSourcedStore` class and no `runtime.queryReadModel(...)` method — earlier drafts of this page documented APIs that do not exist. The `BuiltinStoreTarget` set has no `event-sourced` target.
+The `EventSourcedStore` is an in-memory `Store<T>` implementation that persists entity state as an append-only event log. Each `create`/`update`/`delete` operation appends an event to the log, and the current state is maintained by replaying events from the last snapshot.
 
-This page is a **pattern guide**: it shows how to build event-sourcing-style behavior on top of the primitives Manifest _does_ provide. Everything below maps to real, exported APIs.
+This store **ships** in the reference runtime (`@angriff36/manifest/runtime-engine`) and is auto-wired for any entity declared with `store Entity in eventSourced { ... }`.
 
-</Warning>
+## How it works
 
-## What actually exists
+1. **Events append to a log** — Each write operation creates an event (`create`/`update`/`delete`) with a sequence number and timestamp.
+2. **State is projected** — The current entity state is maintained in memory by applying all events from the log.
+3. **Snapshots** — Periodically (default: every 100 events), the current state is snapshotted. Replay starts from the last snapshot instead of the beginning.
+4. **Optional event log access** — When `exposeEventLog: true`, `getEventLog(id)` returns the full append-only log for an entity.
 
-Manifest is event-aware at the command level. Every command can `emit` events, and the runtime gives you several ways to observe and durably deliver them:
-
-| Primitive               | API                                                                       | Purpose                                                                             |
-| ----------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Emitted events          | `CommandResult.emittedEvents`                                             | Events produced by a single `runCommand` call                                       |
-| In-memory event log     | `runtime.getEventLog()` / `runtime.clearEventLog()`                       | Append-only log of every event the engine has emitted this session                  |
-| Event firehose          | `runtime.onEvent(listener)`                                               | Subscribe to **all** emitted events; returns an unsubscribe function                |
-| Per-entity subscription | `runtime.subscribe(entityName, listener)`                                 | Receive only events whose `subject.entity` matches; returns an unsubscribe function |
-| Outbox                  | `@angriff36/manifest/outbox` (`MemoryOutboxStore`, `PostgresOutboxStore`) | Durable, at-least-once event delivery to downstream consumers                       |
-| Audit sink              | `@angriff36/manifest/audit`                                               | One `AuditRecord` per command for compliance/observability                          |
-
-The `getEventLog()` log is **in-process and ephemeral** — it lives on the engine instance and is not persisted. For durable history use the outbox or audit sink, or persist events yourself in a listener.
-
-## The `eventSourced` store target is inert metadata
-
-You can write the following in Manifest source and it will parse:
+## Declaration
 
 ```manifest
-store BankAccount in eventSourced {
-  snapshotInterval: 10
-  exposeEventLog: true
+store Order in eventSourced {
+  snapshotInterval: 100    // Take a snapshot every N events (default: 100)
+  exposeEventLog: true     // Allow getEventLog() to return the event log (default: false)
 }
 ```
 
-But this only records `target: "eventSourced"` and a `config` blob in the IR. **No runtime engine backs it** — there is no snapshotting, no replay, and no special load path. The runtime does not implement an `eventSourced` store. Treat the target string as a hint for your own infrastructure, not as a working feature. For real persistence today, use a built-in target (`memory`, `localStorage`, `postgres`, `supabase`, `durable`) or a custom `storeProvider`.
+## Usage in TypeScript
 
-<Note>
-A `readModel` block also exists in some example fixtures, but it is **not** a working language feature. The conformance fixture `86-readmodel.manifest` is a `shouldFail` fixture — the demonstrated `readModel { ... }` syntax produces parse errors. Do not rely on it. Build read models in application code as shown below.
-</Note>
-
-## Pattern: append-only event capture
-
-Persist every emitted event to your own log by subscribing to the firehose. This is the foundation of an event-sourced write side.
+The `EventSourcedStore` class is exported from `@angriff36/manifest/stores/event-sourced`. You rarely instantiate it directly — the runtime auto-wires it based on the IR store declaration. For custom instantiation:
 
 ```typescript
-import { RuntimeEngine } from '@angriff36/manifest';
+import { EventSourcedStore } from '@angriff36/manifest/stores/event-sourced';
 
-const runtime = new RuntimeEngine(ir, {
-  userId: session.userId,
-  tenantId: session.tenantId,
+const store = new EventSourcedStore<Order>({
+  snapshotInterval: 100,
+  exposeEventLog: true,
+  generateId: () => crypto.randomUUID(),
+  now: () => Date.now(),
 });
 
-// Capture every emitted event into your own append-only store.
-const stop = runtime.onEvent(async (event) => {
-  await myEventLog.append({
-    name: event.name,
-    channel: event.channel,
-    subject: event.subject, // { entity, id } when entity-scoped
-    payload: event.payload,
-    occurredAt: Date.now(),
-  });
-});
+// Standard Store interface
+await store.create({ id: 'order-1', total: 100 });
+await store.update('order-1', { total: 150 });
+await store.delete('order-1');
+const order = await store.getById('order-1');
+const all = await store.getAll();
 
-// ... run commands ...
-const result = await runtime.runCommand('deposit', { amount: 100 }, { entityName: 'BankAccount' });
-console.log(result.emittedEvents); // events from just this command
-
-// Later, tear down the subscription:
-stop();
+// Event-sourced specific methods
+const events = store.getEventLog('order-1');  // EventSourcedEvent[] | undefined
+const snapshot = store.getSnapshot('order-1'); // EventSourcedSnapshot<Order> | undefined
 ```
 
-You can also pull the full in-session log at any time:
+## Event structure
 
-```typescript
-const allEvents = runtime.getEventLog(); // EmittedEvent[]
-```
+Each event in the log has:
 
-## Pattern: read models via event subscriptions
+| Field    | Type                               | Description                                  |
+| -------- | ---------------------------------- | -------------------------------------------- |
+| sequence | number                             | Monotonically increasing event number      |
+| kind     | `'create'` `'update'` `'delete'`     | Operation type                               |
+| at       | number                             | Timestamp (milliseconds since epoch)        |
+| payload  | `Record<string, unknown>` \| undefined | For `update` events, the changed fields |
 
-A read model is a denormalized projection you maintain in application code by reacting to events. Use `subscribe(entityName, listener)` to scope to one entity, then query your own table — Manifest does not provide a read-model query API.
+## Snapshot structure
 
-```typescript
-// Maintain an "OrderSummary" read model in your own database.
-runtime.subscribe('Order', async (event) => {
-  switch (event.name) {
-    case 'OrderItemAdded':
-      await db.orderSummary.upsert({
-        id: event.payload.orderId,
-        total: event.payload.newTotal,
-      });
-      break;
-    case 'OrderCompleted':
-      await db.orderSummary.update(event.payload.orderId, { status: 'completed' });
-      break;
-  }
-});
+| Field    | Type   | Description                             |
+| -------- | ------ | --------------------------------------- |
+| sequence | number | Sequence number at snapshot time        |
+| state    | T      | Complete entity state at that sequence |
 
-// Query the read model through YOUR storage layer, not the runtime:
-const completed = await db.orderSummary.findMany({ where: { status: 'completed' } });
-```
+## Limitations
 
-<Warning>
-  Read models built this way are **eventually consistent**. Immediately after a command completes,
-  your projection may not yet reflect the change. For strongly consistent reads, query the source
-  entity through the runtime or its store.
-</Warning>
+- **In-memory only** — The event log and projected state live in process memory and are lost on restart. For durable event sourcing, use the outbox/audit sinks or build a custom adapter.
+- **No distributed replay** — Each process maintains its own log; for multi-process scenarios, use an external event store.
 
-## Pattern: durable delivery with the outbox
+## Related
 
-In-process listeners are lost on restart. For at-least-once delivery to other services, register an outbox store. The runtime enqueues emitted events in the same transaction that mutates state.
+- [Events and reactions](/language/events) — Event-driven architecture in Manifest
+- [Outbox](/adapters/outbox) — Durable, at-least-once event delivery
+- [Audit Sink](/adapters/audit-sink) — Compliance-grade command history
 
-```typescript
-import { RuntimeEngine } from '@angriff36/manifest';
-import { PostgresOutboxStore } from '@angriff36/manifest/outbox/postgres';
-import { Pool } from 'pg';
-
-const runtime = new RuntimeEngine(ir, {
-  userId: session.userId,
-  tenantId: session.tenantId,
-  outboxStore: new PostgresOutboxStore(new Pool({ connectionString: process.env.DATABASE_URL })),
-});
-```
-
-A dispatcher worker then `claim()`s pending entries, delivers them, and calls `markDelivered()` / `markFailed()`. See the [Redis adapter](/adapters/redis) and outbox interface (`@angriff36/manifest/outbox`) for the full contract.
-
-## Pattern: durable audit history
-
-If your goal is a compliance-grade, append-only record of _what commands ran_ (rather than a replayable state log), use the audit sink — it writes exactly one `AuditRecord` per `runCommand`, including denials and errors. See the [Audit Sink](/adapters/audit-sink) page.
-
-## CQRS, assembled from real primitives
-
-Putting the patterns together gives you a CQRS-shaped architecture without any fictional APIs:
-
-- **Write side** — commands `emit` events; you capture them via `onEvent` and/or durably via the outbox.
-- **Read side** — application-owned read models, updated in `subscribe` listeners, queried through your own storage.
-- **Consistency** — eventually consistent; query source entities directly when you need read-your-writes.
-
-## Related conformance fixtures
-
-- `83-event-sourced.manifest` — shows the `eventSourced` store target parsing into IR (inert config, no runtime backing).
-- `86-readmodel.manifest` — a `shouldFail` fixture demonstrating that the `readModel` block syntax is **not** an implemented language feature.
-
-Package pin: `@angriff36/manifest@3.6.4`. Known gap also tracked in `docs/TODO.md`
-(`EventSourcedStore` / `eventSourced` runtime store).
+Package pin: `@angriff36/manifest@3.6.41+` (FULLY_IMPLEMENTED per `COMPLIANCE_MATRIX.md:133`)

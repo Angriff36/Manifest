@@ -5360,13 +5360,14 @@ Manifest is an IR-first domain-specific language for encoding business rules, au
     Constraints have three severity levels that control whether a violation blocks execution:
 
     - **`block`** — The constraint must pass for the command to proceed. This is the default.
-    - **`warn`** — Execution continues even if the constraint fails. The violation is recorded in `result.nonBlockingViolations`.
+    - **`warn`** — Execution continues even if the constraint fails. The violation is recorded in `result.constraintOutcomes`.
     - **`ok`** — Informational only. Never blocks execution.
 
     ```typescript
-    // Check non-blocking violations after a successful command
-    if (result.nonBlockingViolations) {
-      console.warn('Non-blocking violations:', result.nonBlockingViolations);
+    // Check warning-severity constraint outcomes after a successful command
+    const warnings = result.constraintOutcomes?.filter(o => !o.passed && o.severity === 'warn');
+    if (warnings?.length) {
+      console.warn('Constraint warnings:', warnings);
     }
     ```
 
@@ -5383,8 +5384,6 @@ Manifest is an IR-first domain-specific language for encoding business rules, au
 
   <Accordion title="What are vNext features?">
     vNext features are implemented in the IR and runtime and are ready for adoption today. They are not behind a flag. The current vNext features are:
-
-    - **Constraint severity and outcomes** — `block`, `warn`, `ok` severity levels with `nonBlockingViolations` in `CommandResult`
     - **Command-level constraints** — Constraints attached to individual commands, not just entities
     - **Entity concurrency controls** — Optimistic concurrency on entity mutations
     - **Policy-based authorization** — `read`, `execute`, and `all` scoped policies with full enforcement semantics
@@ -5623,11 +5622,12 @@ The issues below cover the most common problems reported when working with Manif
     }
     ```
 
-    After a successful command, check `result.nonBlockingViolations` to see any `warn`-severity violations that were recorded but did not block:
+    After a successful command, check `result.constraintOutcomes` filtered by `severity: 'warn'` to see any warning-level violations that were recorded but did not block:
 
     ```typescript
-    if (result.nonBlockingViolations) {
-      console.warn('Non-blocking violations:', result.nonBlockingViolations);
+    const warnings = result.constraintOutcomes?.filter(o => !o.passed && o.severity === 'warn');
+    if (warnings?.length) {
+      console.warn('Constraint warnings:', warnings);
     }
     ```
   </Accordion>

@@ -2,7 +2,7 @@
 title: Manifest Feature Matrix
 created: 2026-02-28
 updated: 2026-07-15
-source_of_truth: false
+source_of_truth: true
 source_of_truth_for: none — canonical completion status lives in docs/internal/COMPLIANCE_MATRIX.md
 scope: Manifest-owned feature completion only — language/syntax, compiler/AST/IR, runtime semantics, projections, analysis/verification APIs, stable public SDK contracts
 authority: Non-binding mirror — docs/internal/COMPLIANCE_MATRIX.md is the sole completion source of truth

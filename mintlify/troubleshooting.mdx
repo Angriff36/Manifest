@@ -231,11 +231,12 @@ The issues below cover the most common problems reported when working with Manif
     }
     ```
 
-    After a successful command, check `result.nonBlockingViolations` to see any `warn`-severity violations that were recorded but did not block:
+    After a successful command, check `result.constraintOutcomes` filtered by `severity: 'warn'` to see any warning-level violations that were recorded but did not block:
 
     ```typescript
-    if (result.nonBlockingViolations) {
-      console.warn('Non-blocking violations:', result.nonBlockingViolations);
+    const warnings = result.constraintOutcomes?.filter(o => !o.passed && o.severity === 'warn');
+    if (warnings?.length) {
+      console.warn('Constraint warnings:', warnings);
     }
     ```
 

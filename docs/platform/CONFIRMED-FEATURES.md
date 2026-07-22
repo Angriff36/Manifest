@@ -2,7 +2,7 @@
 title: Manifest Confirmed Features
 created: 2026-07-14
 updated: 2026-07-15
-source_of_truth: true
+source_of_truth: false
 source_of_truth_for: 'Inventory of which Manifest features verifiably exist (wired + tested)'
 authority: Advisory
 must_reconcile_to:

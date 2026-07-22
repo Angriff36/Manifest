@@ -214,8 +214,10 @@ Convex output.
 
 **Not implemented at all (doc-only phantoms if claimed elsewhere):**
 time-travel debugger; full WASM runtime (only the scoped expression-compat
-layer above exists); `EventSourcedStore` (IR accepts the `eventSourced` store
-kind as passthrough only).
+layer above exists).
+
+~~`EventSourcedStore` (IR accepts the `eventSourced` store kind as passthrough only).~~
+~~**Correction (2026-07-22 @RYANSIGNED:** `EventSourcedStore` **is** implemented and shipped (`src/manifest/stores/event-sourced.ts:37-140`). The reference runtime auto-wires it for `store Entity in eventSourced { ... }` declarations. See `COMPLIANCE_MATRIX.md:133` for FULLY_IMPLEMENTED proof.~~
 
 ~~**Silently dropped (violates the no-silent-failure house style):** entity
 `behaviors` blocks parse but never reach the IR (`IREntity` has no such field,

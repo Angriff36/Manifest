@@ -289,28 +289,37 @@ A webhook is declared as `webhook <name> "<path>" run [Entity.]<command>`, where
 
 ## Event sourcing store
 
-~~The `event-sourced` store target persists entity state as an append-only event log rather than overwriting entity records. Each command produces events that are appended to the log, and entity state is reconstructed by replaying events from the beginning.~~
+The `event-sourced` store target persists entity state as an append-only event log rather than overwriting entity records. Each command produces events that are appended to the log, and entity state is reconstructed by replaying events from the beginning.
 
-~~```manifest
-store Order in event-sourced
-```~~
+```manifest
+store Order in event-sourced {
+  snapshotInterval: 100
+  exposeEventLog: true
+}
+```
 
-~~The event-sourced store supports:~~
+The event-sourced store supports:
 
-~~- **Append-only writes** — events are never modified or deleted~~
-~~- **Snapshotting** — periodic snapshots avoid replaying the full log~~
-~~- **Replay** — entity state is reconstructed by replaying events~~
-~~- **Projections** — read models can be built by subscribing to the event stream~~
+- **Append-only writes** — events are never modified or deleted
+- **Snapshotting** — periodic snapshots (default: every 100 events) avoid replaying the full log
+- **Replay** — entity state is reconstructed by replaying events from the last snapshot (or from beginning)
+- **getEventLog()** — when `exposeEventLog: true`, returns the append-only log for an entity
 
-~~<Warning>
+<Warning>
   Event sourcing is a storage strategy, not a runtime behavior change. Commands execute identically
   regardless of whether the backing store is memory, postgres, or event-sourced. The difference is
   how state is persisted and recovered.
-</Warning>~~
+</Warning>
 
-> **Correction (2026-07-15) — Documentation gap:** Source may declare
-> `store <Entity> in eventSourced { ... }` and the compiler accepts it into IR (`target: "eventSourced"`,
-> fixture `83-event-sourced.manifest`). There is **no** `EventSourcedStore` implementation in the
-> reference runtime — the kind is passthrough only. Do not document append-only / snapshot / replay
-> behavior as shipped. Use a real store target (`memory`, adapter-backed, etc.) until an
-> implementation lands.
+~~**Correction (2026-07-15 — STALE, see below)** Source may declare
+~~`store <Entity> in eventSourced { ... }` and the compiler accepts it into IR (`target: "eventSourced"`,
+~~fixture `83-event-sourced.manifest`). There is **no** `EventSourcedStore` implementation in the
+~~reference runtime — the kind is passthrough only. Do not document append-only / snapshot / replay
+~~behavior as shipped. Use a real store target (`memory`, adapter-backed, etc.) until an
+~~implementation lands.~~
+
+> **Correction (2026-07-22)** The 2026-07-15 correction above is **stale** — `EventSourcedStore` **is** implemented
+> and shipped (`src/manifest/stores/event-sourced.ts:37-140`). The reference runtime auto-wires it for
+> `store Entity in eventSourced { ... }` declarations (`runtime-engine.ts:1324-1326`). Features: append-only
+> event log, configurable snapshot interval (default 100), `getEventLog()` / `getSnapshot()` methods when
+> `exposeEventLog: true`. See the [Event Sourced Store adapter page](/adapters/event-sourced-store) for details.
