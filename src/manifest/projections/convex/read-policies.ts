@@ -180,7 +180,9 @@ export function renderReadPolicies(
     : { relations: [] as RelationDependency[] };
   const hydratableByName = new Map(
     plan.relations
-      .filter(isHydratableReadRelation)
+      .filter(
+        (dependency) => !!entity && isHydratableReadRelation(ir, entity, dependency),
+      )
       .map((dependency) => [dependency.relationName, dependency] as const),
   );
   const relationVars: Record<string, string> = {};
@@ -218,7 +220,7 @@ export function renderReadPolicies(
         severity: 'error',
         code: 'CONVEX_UNSUPPORTED_READ_POLICY_RELATIONSHIP',
         entity: entityName,
-        message: `Read policy '${policy.name}' traverses relationship(s) ${unsupported.join(', ')} that Convex queries cannot hydrate (hasMany/through/invalid mapping); queries remain internal.`,
+        message: `Read policy '${policy.name}' traverses relationship(s) ${unsupported.join(', ')} that Convex queries cannot hydrate (missing inverse/join edges or composite FK); queries remain internal.`,
       });
       continue;
     }

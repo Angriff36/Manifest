@@ -10,8 +10,8 @@
  *
  * Convex has no native saga/webhook/cron-of-commands primitive, so these are
  * faithful structural projections onto Convex's scheduler / HTTP / action APIs.
- * Step argument mapping is not expressed in the saga IR, so the orchestrator
- * forwards a single `input` payload to each step (app-supplied).
+ * Per-step arg maps are not in IRSagaStep; forwarding one shared `input` to
+ * every step/compensate is the Supported IR contract (not a Convex gap).
  */
 
 import type { IR, IRSchedule, IRWebhook, IRSaga } from '../../ir';

@@ -38,7 +38,8 @@ workflow): `docs/convex-projection-wiring.html`.
   via `ctx.runMutation`, tracks completed steps, and (when `onFailure:
 compensate`) runs each completed step's compensating command in reverse.
   `onFailure: abort` rethrows without compensation. Step argument mapping is not
-  in the saga IR, so a single `input` payload is forwarded to each step.
+  in the saga IR; the orchestrator correctly forwards one shared `input` to each
+  step (Supported — not a missing per-step mapper).
 
 All three typecheck against real `convex@1.41`.
 

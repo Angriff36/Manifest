@@ -136,8 +136,18 @@ depend on application identity or key management:
   >
   > **Correction (2026-07-22):** Read policies that traverse `belongsTo` / `ref`
   > hydrate related rows via `__resolveRelation` before policy evaluation (same
-  > helper as mutations). `hasMany` / `through` traversal still keeps queries
-  > `internalQuery` with `CONVEX_UNSUPPORTED_READ_POLICY_RELATIONSHIP`.
+  > helper as mutations). ~~`hasMany` / `through` traversal still keeps queries
+  > `internalQuery` with `CONVEX_UNSUPPORTED_READ_POLICY_RELATIONSHIP`.~~
+  >
+  > **Correction (2026-07-22):** One-hop `hasMany` read policies hydrate child
+  > rows via the inverse `belongsTo`/`ref` FK index (same pattern as mutation
+  > `count_of` preloads). ~~`through` (and hasMany without a resolvable inverse)
+  > still keep queries `internalQuery`.~~
+  >
+  > **Correction (2026-07-22):** `hasMany … through Join` read policies hydrate
+  > via join table index + target `__resolveRelation` when the join has
+  > single-column `belongsTo`/`ref` edges to source and target. Missing join
+  > edges or composite FKs still keep queries `internalQuery`.
 - `flagProviderImport` — see correction above (feature-flag seam).
 - `encryptionImport` MUST name a module exporting `encrypt` and `decrypt`.
   `encrypt(plaintext, metadata)` returns `{ ciphertext, keyId }`;

@@ -426,6 +426,52 @@ describe('M7 — capability diagnostics', () => {
     expect(diags.some((d) => d.code === 'CONVEX_UNSUPPORTED_RETRY')).toBe(true);
   });
 
+  it('rejects async commands loudly for Convex', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Job', [prop('name', 'string', ['required'])])];
+    ir.stores = [durable('Job')];
+    ir.commands = [
+      {
+        name: 'run',
+        entity: 'Job',
+        parameters: [],
+        guards: [],
+        actions: [],
+        emits: [],
+        async: true,
+      },
+    ];
+    const hit = gen(ir, 'convex.mutations').diagnostics.find(
+      (d) => d.code === 'CONVEX_UNSUPPORTED_ASYNC_COMMAND',
+    );
+    expect(hit?.severity).toBe('error');
+  });
+
+  it('rejects effect/publish/persist action kinds loudly for Convex', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Job', [prop('name', 'string', ['required'])])];
+    ir.stores = [durable('Job')];
+    ir.commands = [
+      {
+        name: 'run',
+        entity: 'Job',
+        parameters: [],
+        guards: [],
+        actions: [
+          {
+            kind: 'effect',
+            expression: { kind: 'literal', value: { kind: 'boolean', value: true } },
+          },
+        ],
+        emits: [],
+      },
+    ];
+    const hit = gen(ir, 'convex.mutations').diagnostics.find(
+      (d) => d.code === 'CONVEX_UNSUPPORTED_ACTION_KIND',
+    );
+    expect(hit?.severity).toBe('error');
+  });
+
   it('emits CONVEX_PARTIAL_REALTIME info when realtime hint is set (platform-reactive)', () => {
     const ir = emptyIR();
     ir.entities = [entity('Feed', [prop('title', 'string', ['required'])], { realtime: true })];

@@ -708,13 +708,19 @@ describe('convex.queries — read-policy lockdown', () => {
     ).toBe(false);
   });
 
-  it('keeps hasMany relationship-traversing read queries internal', () => {
+  it('hydrates hasMany relations for public read-policy queries via inverse FK', () => {
     const ir = emptyIR();
     const person = entity('Person', [prop('name', 'string')]);
-    person.relationships = [
-      { name: 'docs', kind: 'hasMany', target: 'Doc', foreignKey: { fields: ['ownerId'] } },
-    ];
+    person.relationships = [{ name: 'docs', kind: 'hasMany', target: 'Doc' }];
     const doc = entity('Doc', [prop('ownerId', 'string')]);
+    doc.relationships = [
+      {
+        name: 'owner',
+        kind: 'belongsTo',
+        target: 'Person',
+        foreignKey: { fields: ['ownerId'] },
+      },
+    ];
     ir.entities = [person, doc];
     ir.stores = [durable('Person'), durable('Doc')];
     ir.policies = [
@@ -729,6 +735,110 @@ describe('convex.queries — read-policy lockdown', () => {
             kind: 'member',
             object: { kind: 'identifier', name: 'self' },
             property: 'docs',
+          },
+          right: { kind: 'literal', value: { kind: 'null' } },
+        },
+      },
+    ] as IRPolicy[];
+    const result = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { authContextImport: './lib/authContext' },
+    });
+    const code = result.artifacts[0].code;
+    expect(code).toContain('export const listPerson = query({');
+    expect(code).toContain(
+      'const __rel_docs = await ctx.db.query("docs").withIndex("by_ownerId"',
+    );
+    expect(code).toContain('__rel_docs != null');
+    expect(
+      result.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_READ_POLICY_RELATIONSHIP'),
+    ).toBe(false);
+  });
+
+  it('hydrates hasMany-through read policies via join entity edges', () => {
+    const ir = emptyIR();
+    const person = entity('Person', [prop('name', 'string')]);
+    person.relationships = [
+      { name: 'tags', kind: 'hasMany', target: 'Tag', through: 'PersonTag' },
+    ];
+    const tag = entity('Tag', [prop('label', 'string')]);
+    const join = entity('PersonTag', [
+      prop('personId', 'string'),
+      prop('tagId', 'string'),
+    ]);
+    join.relationships = [
+      {
+        name: 'person',
+        kind: 'belongsTo',
+        target: 'Person',
+        foreignKey: { fields: ['personId'] },
+      },
+      {
+        name: 'tag',
+        kind: 'belongsTo',
+        target: 'Tag',
+        foreignKey: { fields: ['tagId'] },
+      },
+    ];
+    ir.entities = [person, tag, join];
+    ir.stores = [durable('Person'), durable('Tag'), durable('PersonTag')];
+    ir.policies = [
+      {
+        name: 'tagged',
+        entity: 'Person',
+        action: 'read',
+        expression: {
+          kind: 'binary',
+          operator: '!=',
+          left: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'self' },
+            property: 'tags',
+          },
+          right: { kind: 'literal', value: { kind: 'null' } },
+        },
+      },
+    ] as IRPolicy[];
+    const result = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { authContextImport: './lib/authContext' },
+    });
+    const code = result.artifacts[0].code;
+    expect(code).toContain('export const listPerson = query({');
+    expect(code).toContain(
+      'const __rel_tagsJoins = await ctx.db.query("personTags").withIndex("by_personId"',
+    );
+    expect(code).toContain('__resolveRelation(ctx, "tags", [__targetId], ["id"]');
+    expect(code).toContain('__rel_tags != null');
+    expect(
+      result.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_READ_POLICY_RELATIONSHIP'),
+    ).toBe(false);
+  });
+
+  it('keeps through read policies internal when join edges are missing', () => {
+    const ir = emptyIR();
+    const person = entity('Person', [prop('name', 'string')]);
+    person.relationships = [
+      { name: 'tags', kind: 'hasMany', target: 'Tag', through: 'PersonTag' },
+    ];
+    ir.entities = [
+      person,
+      entity('Tag', [prop('label', 'string')]),
+      entity('PersonTag', [prop('personId', 'string'), prop('tagId', 'string')]),
+    ];
+    ir.stores = [durable('Person'), durable('Tag'), durable('PersonTag')];
+    ir.policies = [
+      {
+        name: 'tagged',
+        entity: 'Person',
+        action: 'read',
+        expression: {
+          kind: 'binary',
+          operator: '!=',
+          left: {
+            kind: 'member',
+            object: { kind: 'identifier', name: 'self' },
+            property: 'tags',
           },
           right: { kind: 'literal', value: { kind: 'null' } },
         },

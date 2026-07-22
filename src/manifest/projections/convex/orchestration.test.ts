@@ -372,6 +372,7 @@ describe('convex.sagas', () => {
   it('emits an orchestrator action with forward steps and reverse compensation', () => {
     const code = gen(sagaIR('compensate'), 'convex.sagas').artifacts[0].code;
     expect(code).toContain('export const Provision = action({');
+    expect(code).toContain('args: { input: v.any() }');
     expect(code).toContain('await ctx.runMutation(api.mutations.Account_open, input as any);');
     expect(code).toContain('await ctx.runMutation(api.mutations.Billing_start, input as any);');
     expect(code).toContain('completed.push(0)');

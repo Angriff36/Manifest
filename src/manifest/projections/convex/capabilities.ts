@@ -28,7 +28,7 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   {
     feature: 'Read/all policies on generated queries',
     status: 'partial',
-    note: 'Renderable predicates with authContextImport; flag() public when flagProviderImport set; belongsTo/ref read-policy hydration; hasMany/through + read rateLimit stay internal (fail closed). Write/execute policy rateLimit emits on mutations.',
+    note: 'Renderable predicates with authContextImport; flag() public when flagProviderImport set; belongsTo/ref + hasMany + hasMany-through (single-column join FKs) read-policy hydration; composite/missing join edges + read rateLimit stay internal (fail closed). Write/execute policy rateLimit emits on mutations.',
   },
   { feature: 'Roles + roleAllows', status: 'supported' },
   { feature: 'Events + emit payloads', status: 'supported' },
@@ -59,8 +59,8 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   },
   {
     feature: 'Saga step arguments',
-    status: 'partial',
-    note: 'A single input is forwarded to every step.',
+    status: 'supported',
+    note: 'IR has no per-step arg map; orchestrator forwards one shared `input` to every step/compensate (matches IRSagaStep).',
   },
   {
     feature: 'trustedSource params',
@@ -132,12 +132,12 @@ export const CONVEX_PROJECTION_CAPABILITIES: ProjectionCapability[] = [
   {
     feature: 'async commands / job queue',
     status: 'unsupported',
-    note: 'CONVEX_UNSUPPORTED_ASYNC_COMMAND',
+    note: 'CONVEX_UNSUPPORTED_ASYNC_COMMAND (error) — no job queue/drain emit; use Convex actions/schedulers outside the projection',
   },
   {
     feature: 'Action kinds effect / publish / persist',
     status: 'unsupported',
-    note: 'CONVEX_UNSUPPORTED_ACTION_KIND',
+    note: 'CONVEX_UNSUPPORTED_ACTION_KIND (error) — no Convex lowering for effect/publish/persist action kinds',
   },
 ];
 
@@ -249,19 +249,24 @@ export function collectUnsupportedDiagnostics(
     }
     if (cmd.async) {
       out.push({
-        severity: 'warning',
+        severity: 'error',
         code: 'CONVEX_UNSUPPORTED_ASYNC_COMMAND',
         entity: cmd.entity,
-        message: `Command '${cmd.entity ?? '?'}.${cmd.name}' is async; the Convex projection does not emit a job queue / drain path (use Convex actions/schedulers manually).`,
+        message:
+          `Command '${cmd.entity ?? '?'}.${cmd.name}' is async; rejected for Convex. ` +
+          'The projection does not emit a job queue / drain path. ' +
+          'Remove `async` from the command, or schedule work with Convex actions/schedulers outside the projection.',
       });
     }
     for (const a of cmd.actions ?? []) {
       if (a.kind === 'effect' || a.kind === 'publish' || a.kind === 'persist') {
         out.push({
-          severity: 'warning',
+          severity: 'error',
           code: 'CONVEX_UNSUPPORTED_ACTION_KIND',
           entity: cmd.entity,
-          message: `Command '${cmd.entity ?? '?'}.${cmd.name}' action kind '${a.kind}' has no Convex lowering (no-op without an adapter).`,
+          message:
+            `Command '${cmd.entity ?? '?'}.${cmd.name}' action kind '${a.kind}' is rejected for Convex. ` +
+            'There is no mutation lowering for effect/publish/persist. Use mutate actions, or host adapters outside the projection.',
         });
       }
     }
