@@ -322,7 +322,10 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | Pydantic per-module model pathHints            | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `pydantic/path-hints.ts` + `path-hints.test.ts` (5) |
 | [x]    | Dart per-module model/command pathHints        | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `dart/path-hints.ts` + `path-hints.test.ts` (5) |
 | [x]    | Storybook per-module story pathHints           | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `storybook/path-hints.ts` + `path-hints.test.ts` (5) |
-| [~]    | Per-module output file splitting (all targets) | PARTIAL               | mirror of COMPLIANCE_MATRIX §6 — Prisma + Zod + JSON Schema + Pydantic + Dart + Storybook; Convex/web parked |
+| [x]    | Mermaid per-module diagram pathHints           | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `mermaid/path-hints.ts` + `path-hints.test.ts` (5) |
+| [x]    | Analytics per-module handler pathHints         | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `analytics/path-hints.ts` + `path-hints.test.ts` (5) |
+| [x]    | Express per-module route/types pathHints       | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `express/path-hints.ts` + `path-hints.test.ts` (5) |
+| [~]    | Per-module output file splitting (all targets) | PARTIAL               | mirror of COMPLIANCE_MATRIX §6 — + Express; Convex + Hono/Next/Remix/SvelteKit parked |
 | [x]    | Convex command `rateLimit`                     | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §6 — `rate-limit-emit.ts` |
 | [x]    | Convex policy `rateLimit` (write/execute/delete) | FULLY_IMPLEMENTED   | mirror of COMPLIANCE_MATRIX §6 — mutation emit |
 | [x]    | Convex read/`all` policy `rateLimit`           | REJECTED_LOUD         | mirror of COMPLIANCE_MATRIX §6 — queries cannot mutate buckets (error) |

@@ -38,6 +38,17 @@ import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../sha
 import { resolveRuntimeFactoryFanIn } from '../../runtime-config.js';
 import { resolveRouteContract, zodParamsSchemaName } from '../shared/route-contract.js';
 import { EXPRESS_DESCRIPTOR_META } from './descriptor-meta.js';
+import {
+  expressEntityRoutePathHint,
+  expressEntityTypesPathHint,
+  expressManifestRouterPathHint,
+  expressManifestTypesPathHint,
+} from './path-hints.js';
+
+function resolveEntityModule(ir: IR, entityName: string | undefined): string | undefined {
+  if (!entityName) return undefined;
+  return ir.entities.find((e) => e.name === entityName)?.module;
+}
 
 // ============================================================================
 // Constants
@@ -1218,8 +1229,11 @@ export class ExpressProjection implements ProjectionTarget {
             {
               id: request.entity ? `express.router.${request.entity}` : 'express.router',
               pathHint: request.entity
-                ? `routes/${toEntitySegment(request.entity)}.ts`
-                : 'routes/manifest-router.ts',
+                ? expressEntityRoutePathHint({
+                    entityName: request.entity,
+                    module: resolveEntityModule(ir, request.entity),
+                  })
+                : expressManifestRouterPathHint(),
               contentType: 'typescript',
               code,
             },
@@ -1239,7 +1253,10 @@ export class ExpressProjection implements ProjectionTarget {
             const { code, diagnostics } = generateExpressRouter(ir, options, entity.name);
             allArtifacts.push({
               id: `express.entity.${entity.name}`,
-              pathHint: `routes/${toEntitySegment(entity.name)}.ts`,
+              pathHint: expressEntityRoutePathHint({
+                entityName: entity.name,
+                module: entity.module,
+              }),
               contentType: 'typescript',
               code,
             });
@@ -1253,7 +1270,10 @@ export class ExpressProjection implements ProjectionTarget {
           artifacts: [
             {
               id: `express.entity.${request.entity}`,
-              pathHint: `routes/${toEntitySegment(request.entity)}.ts`,
+              pathHint: expressEntityRoutePathHint({
+                entityName: request.entity,
+                module: resolveEntityModule(ir, request.entity),
+              }),
               contentType: 'typescript',
               code,
             },
@@ -1269,8 +1289,11 @@ export class ExpressProjection implements ProjectionTarget {
             {
               id: request.entity ? `express.types.${request.entity}` : 'express.types',
               pathHint: request.entity
-                ? `types/${toEntitySegment(request.entity)}.ts`
-                : 'types/manifest-types.ts',
+                ? expressEntityTypesPathHint({
+                    entityName: request.entity,
+                    module: resolveEntityModule(ir, request.entity),
+                  })
+                : expressManifestTypesPathHint(),
               contentType: 'typescript',
               code,
             },
@@ -1296,8 +1319,11 @@ export class ExpressProjection implements ProjectionTarget {
         allArtifacts.push({
           id: request.entity ? `express.router.${request.entity}` : 'express.router',
           pathHint: request.entity
-            ? `routes/${toEntitySegment(request.entity)}.ts`
-            : 'routes/manifest-router.ts',
+            ? expressEntityRoutePathHint({
+                entityName: request.entity,
+                module: resolveEntityModule(ir, request.entity),
+              })
+            : expressManifestRouterPathHint(),
           contentType: 'typescript',
           code: router.code,
         });
@@ -1308,8 +1334,11 @@ export class ExpressProjection implements ProjectionTarget {
         allArtifacts.push({
           id: request.entity ? `express.types.${request.entity}` : 'express.types',
           pathHint: request.entity
-            ? `types/${toEntitySegment(request.entity)}.ts`
-            : 'types/manifest-types.ts',
+            ? expressEntityTypesPathHint({
+                entityName: request.entity,
+                module: resolveEntityModule(ir, request.entity),
+              })
+            : expressManifestTypesPathHint(),
           contentType: 'typescript',
           code: types.code,
         });

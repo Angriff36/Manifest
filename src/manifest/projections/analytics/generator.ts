@@ -23,6 +23,12 @@ import type {
 } from '../interface';
 import type { AnalyticsProjectionOptions, AnalyticsProvider } from './types';
 import { ANALYTICS_DESCRIPTOR_META } from './descriptor-meta.js';
+import {
+  analyticsEntityHandlerPathHint,
+  analyticsEventsPathHint,
+  analyticsHandlersMonolithPathHint,
+  analyticsTrackingPlanPathHint,
+} from './path-hints.js';
 
 // ============================================================================
 // Surface constants
@@ -615,7 +621,7 @@ function generateHandlers(
 
       artifacts.push({
         id: `analytics.handlers.${entity.name}`,
-        pathHint: `analytics/handlers/${entityNameLower(entity.name)}.ts`,
+        pathHint: analyticsEntityHandlerPathHint(entity),
         contentType: 'typescript',
         code,
       });
@@ -625,7 +631,7 @@ function generateHandlers(
     const code = generateAllHandlersFile(ir, commandEvents, opts);
     artifacts.push({
       id: 'analytics.handlers',
-      pathHint: 'analytics/handlers.ts',
+      pathHint: analyticsHandlersMonolithPathHint(),
       contentType: 'typescript',
       code,
     });
@@ -777,10 +783,6 @@ function generateAllHandlersFile(
   return lines.join('\n');
 }
 
-function entityNameLower(name: string): string {
-  return name.charAt(0).toLowerCase() + name.slice(1);
-}
-
 // ============================================================================
 // Main projection class
 // ============================================================================
@@ -802,7 +804,7 @@ export class AnalyticsProjection implements ProjectionTarget {
           artifacts: [
             {
               id: 'analytics.tracking-plan',
-              pathHint: 'analytics/tracking-plan.json',
+              pathHint: analyticsTrackingPlanPathHint(),
               contentType: 'json',
               code: generateTrackingPlan(ir, opts, diagnostics),
             },
@@ -815,7 +817,7 @@ export class AnalyticsProjection implements ProjectionTarget {
           artifacts: [
             {
               id: 'analytics.events',
-              pathHint: 'analytics/analytics.events.ts',
+              pathHint: analyticsEventsPathHint(),
               contentType: 'typescript',
               code: generateTypedEvents(ir, opts, diagnostics),
             },

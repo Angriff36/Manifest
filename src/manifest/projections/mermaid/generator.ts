@@ -24,6 +24,11 @@ import type {
   ProjectionDiagnostic,
   ProjectionArtifact,
 } from '../interface';
+import {
+  mermaidErPathHint,
+  mermaidSequencePathHint,
+  mermaidStatePathHint,
+} from './path-hints.js';
 
 // ============================================================================
 // Types
@@ -498,7 +503,7 @@ export class MermaidProjection implements ProjectionTarget {
       artifacts: [
         {
           id: 'mermaid.er',
-          pathHint: 'diagrams/er-diagram.mmd',
+          pathHint: mermaidErPathHint(),
           contentType: 'mermaid',
           code: wrapMarkdown(code, wrap),
         },
@@ -514,12 +519,15 @@ export class MermaidProjection implements ProjectionTarget {
   ): ProjectionResult {
     const { diagrams, diagnostics } = generateStateDiagrams(ir, options);
 
-    const artifacts: ProjectionArtifact[] = diagrams.map((d) => ({
-      id: `mermaid.state.${d.entity}`,
-      pathHint: `diagrams/state-${d.entity}.mmd`,
-      contentType: 'mermaid',
-      code: wrapMarkdown(d.code, wrap),
-    }));
+    const artifacts: ProjectionArtifact[] = diagrams.map((d) => {
+      const module = ir.entities.find((e) => e.name === d.entity)?.module;
+      return {
+        id: `mermaid.state.${d.entity}`,
+        pathHint: mermaidStatePathHint({ entityName: d.entity, module }),
+        contentType: 'mermaid',
+        code: wrapMarkdown(d.code, wrap),
+      };
+    });
 
     return { artifacts, diagnostics };
   }
@@ -531,12 +539,22 @@ export class MermaidProjection implements ProjectionTarget {
   ): ProjectionResult {
     const { diagrams, diagnostics } = generateSequenceDiagrams(ir, options);
 
-    const artifacts: ProjectionArtifact[] = diagrams.map((d) => ({
-      id: `mermaid.sequence.${d.entity}.${d.command}`,
-      pathHint: `diagrams/sequence-${d.entity}-${d.command}.mmd`,
-      contentType: 'mermaid',
-      code: wrapMarkdown(d.code, wrap),
-    }));
+    const artifacts: ProjectionArtifact[] = diagrams.map((d) => {
+      const command = ir.commands.find(
+        (c) => c.name === d.command && c.entity === d.entity,
+      );
+      const entityModule = ir.entities.find((e) => e.name === d.entity)?.module;
+      return {
+        id: `mermaid.sequence.${d.entity}.${d.command}`,
+        pathHint: mermaidSequencePathHint({
+          entityName: d.entity,
+          commandName: d.command,
+          module: command?.module ?? entityModule,
+        }),
+        contentType: 'mermaid',
+        code: wrapMarkdown(d.code, wrap),
+      };
+    });
 
     return { artifacts, diagnostics };
   }

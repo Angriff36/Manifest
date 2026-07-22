@@ -203,6 +203,17 @@ non-binding navigation mirror only.
 - [x] **Storybook per-module story pathHints** — fixed 2026-07-22:
       `stories/<module>/…` via `storybook/path-hints.ts` (command inherits
       entity module). Proof: `storybook/path-hints.test.ts`.
+- [x] **Mermaid per-module diagram pathHints** — fixed 2026-07-22:
+      state/sequence under `diagrams/<module>/…` via `mermaid/path-hints.ts`;
+      ER stays flat. Proof: `mermaid/path-hints.test.ts`.
+- [x] **Analytics per-module handler pathHints** — fixed 2026-07-22:
+      per-entity handlers under `analytics/handlers/<module>/…` via
+      `analytics/path-hints.ts`; monolith artifacts stay flat. Proof:
+      `analytics/path-hints.test.ts`.
+- [x] **Express per-module route/types pathHints** — fixed 2026-07-22:
+      entity routes/types under `routes|types/<module>/…` via
+      `express/path-hints.ts`; monolith router/types stay flat. Proof:
+      `express/path-hints.test.ts`.
 - [x] **Phantom config/CLI/API docs struck** — 2026-07-22: Mintlify
       `cli/configuration.mdx` no longer claims `env(VAR)` inlining,
       `MANIFEST_ENV` overlays, or YAML connection `stores:`; `API_REFERENCE.md`
