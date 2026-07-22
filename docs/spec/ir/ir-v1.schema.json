@@ -1574,7 +1574,8 @@
               "const": "aggregate"
             },
             "op": {
-              "const": "count"
+              "enum": ["count", "sum"],
+              "description": "Aggregate operation: count rows, or sum a numeric field."
             },
             "entity": {
               "type": "string",
@@ -1598,6 +1599,10 @@
                   }
                 }
               }
+            },
+            "field": {
+              "type": "string",
+              "description": "Required when `op` is `sum` — the numeric property to aggregate."
             }
           }
         }
@@ -1798,6 +1803,28 @@
         "targetCommand": {
           "type": "string",
           "description": "Command name to execute on the target entity"
+        },
+        "match": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "source"],
+            "properties": {
+              "field": {
+                "type": "string",
+                "description": "Field on targetEntity to match against"
+              },
+              "source": {
+                "$ref": "#/definitions/IRExpression",
+                "description": "Expression evaluated against event payload; compared to field value"
+              }
+            }
+          }
+        },
+        "elseCreate": {
+          "type": "boolean",
+          "description": "When true: zero matches in match → run command without instanceId (allocate / createVia path)"
         },
         "resolve": {
           "$ref": "#/definitions/IRExpression",

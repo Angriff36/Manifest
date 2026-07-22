@@ -176,6 +176,72 @@ on OrderPlaced fanOut LineItem where orderId = payload.orderId
 
 This is how you declare “for each matching source row, create a child” — not a separate `foreach` keyword. The keywords are still `fanOut` + `run Target.create`.
 
+## Natural-key upsert (`match … else create`)
+
+**Shipped in Manifest 3.6.38+** — natural-key lookups for single-target and fan-out reactions.
+
+Instead of resolving by `instanceId`, match the target entity by one or more field values (natural key). If a match is found, run the command on that instance; if zero rows match and `else create` is set, run the command without `instanceId` (allocate a new row / createVia path).
+
+### Single-target: lookup or allocate
+
+```manifest fragment
+event ShoppingCartSubmitted: "cart.submitted" {
+  cartId: string
+  userEmail: string
+}
+
+on ShoppingCartSubmitted run Order.create
+  match orderId = payload.cartId
+  else create
+  params {
+    orderId: payload.cartId
+    userEmail: payload.userEmail
+  }
+```
+
+- If an `Order` with `orderId == cartId` exists → run `Order.create` on that row (update path, passing `instanceId`).
+- If no match → run `Order.create` without `instanceId` (allocate / create a new row).
+- If multiple matches → pick the lexicographically smallest `id` (deterministic tiebreak).
+- Soft-deleted rows (`deletedAt != null`) are excluded from the match.
+
+### Fan-out: per-row lookup or allocate
+
+Fan-out can also use `match … else create`. When a source row matches, the runtime looks up the target entity by the match predicates:
+
+```manifest fragment
+event OrderPlaced: "order.placed" {
+  orderId: string
+  items: array
+}
+
+on OrderPlaced fanOut LineItem where orderId = payload.orderId
+  match sku = self.sku
+  else create
+  run InventoryAdjustment.allocate
+  params {
+    sku: self.sku
+    orderId: payload.orderId
+  }
+```
+
+For each `LineItem` where `orderId == payload.orderId`:
+- If an `InventoryAdjustment` with `sku == self.sku` exists → run `allocate` on that row.
+- If no match → run `allocate` without `instanceId` (allocate new row).
+
+### Syntax
+
+```
+on <Event> run <Entity>.<command>
+  match <field> = <expression>, ...
+  [else create]
+  params { ... }
+```
+
+- `match` is mutually exclusive with `resolve`. Use `match` when you have natural-key predicates; use `resolve` when you have a direct `instanceId`.
+- Predicates are **pure equality**, ANDed together. All must hold for a row to match.
+- `else create` is optional. Without it, zero matches = no-op. With it, zero matches = run command without `instanceId`.
+- For fan-out, `match` applies to `targetEntity`, not the fan-out source collection. Source rows are selected by the `fanOut … where …` clause; `match` then looks up each selected row's target.
+
 ## Aggregate count expressions
 
 A reaction often needs to **recompute a stored count on a parent** after a child event — "how many children reference this parent?" — the pattern behind hand-written "count children where the foreign key equals the parent, then patch the parent" after-emit middleware. The `count(...)` aggregate makes that declarative. It is an expression, so it can appear anywhere a reaction param value does:
@@ -227,7 +293,7 @@ params {
 }
 ```
 
-- `count` is a **contextual** operator, not a reserved word: it is recognized only in the `count(<Entity> where ...)` shape, so a property still be named `count`.
+- `count` is a **contextual** operator, not a reserved word: it is recognized only in the `count(<Entity> where ...)` shape, so a property can still be named `count`.
 - At least one predicate (the foreign-key match) is required. There is **no** group-by, join, multi-hop traversal, or arbitrary SQL — `count` only. Scope is deliberately narrow.
 
 ### Projection notes
