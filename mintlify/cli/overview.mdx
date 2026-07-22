@@ -74,7 +74,7 @@ manifest build modules/recipe.manifest --projection nextjs --code-output app/api
 | `manifest audit-governance`  | Run the five governance detectors in one pass                                                   |
 | `manifest audit-bypasses`    | Validate the bypass registry schema and that referenced paths exist                             |
 | `manifest audit-routes`      | Check that emitted routes line up with the canonical dispatcher                                 |
-| `manifest scan`              | Scan the codebase for direct writes, event fabrication, and route drift                         |
+| `manifest scan`              | Scan the codebase for policy coverage, store consistency, route context, and property alignment |
 | `manifest doctor`            | Run ranked diagnostics for source/IR/route drift                                                |
 | `manifest emit registries`   | Emit `commands.json` and `entities.json` from compiled IR                                       |
 

@@ -1,7 +1,7 @@
 ---
 title: 'Manifest CLI command reference'
 sidebarTitle: 'Commands'
-description: 'Full syntax, options, and usage examples for every Manifest CLI command: manifest init, compile, generate, build, and validate — with flags and defaults.'
+description: 'Full syntax, options, and usage examples for core Manifest CLI commands: manifest init, compile, generate, build, and validate — with flags and defaults.'
 ---
 
 Every command reads `manifest.config.yaml` from your project root when it exists. CLI flags always take precedence over config values. Run any command with `--help` to see its options inline.
@@ -112,6 +112,10 @@ manifest compile [source] [options]
   Read all settings from `manifest.config.yaml` and use the config-driven flow instead of individual flags.
   When set, the command uses config values for `output`, `glob`, `diagnostics`, and other options.
   This is the preferred workflow for projects with a config file.
+</ParamField>
+
+<ParamField path="--fail-on <policy>" type="string" default="block">
+  CI exit policy: `block` (errors only), `warn` (errors or warnings), or `never` (report-only).
 </ParamField>
 
 <Note>
@@ -448,7 +452,11 @@ manifest validate [ir] [options]
 </ParamField>
 
 <ParamField path="--strict" type="boolean" default="false">
-  Treat warnings as failures. When set, any file with warnings causes a non-zero exit code.
+  Alias for `--fail-on warn` (fail the process on warnings).
+</ParamField>
+
+<ParamField path="--fail-on <policy>" type="string" default="block">
+  CI exit policy: `block` (errors only), `warn` (errors or warnings), or `never` (report-only).
 </ParamField>
 
 ### Examples

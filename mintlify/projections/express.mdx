@@ -60,5 +60,7 @@ Entity interface fields are optional unless the property has the `required` modi
   prefix is applied where you mount the router, not inside the generated route strings.
 </Note>
 
-There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only — emit Express/Fastify output by invoking `getProjection('express')` programmatically. Per-feature notes referencing `manifest generate <ir> -p express` describe an intended CLI path that is not present in the current `generate` command.
+There is no dedicated CLI command for this projection. Emit Express/Fastify output by invoking `getProjection('express')` programmatically or by running `manifest build <ir> -p express` (any projection dispatches via `-p`). Per-feature notes referencing `manifest generate <ir> -p express` describe an intended CLI path that is not present in the current `generate` command.
+
+> **Correction (2026-07-22 @RYANSIGNED):** The original text incorrectly claimed "the bundled `manifest generate` command currently wires up the Next.js projection only." In fact, any projection dispatches via the `-p` flag in `manifest build`. The Express projection is fully functional via `manifest build <ir> -p express`.
 

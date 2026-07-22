@@ -42,6 +42,10 @@ manifest enforce-surface --root <path> --commands-registry <path> [options]
   Path to `bypasses.json` listing approved exceptions.
 </ParamField>
 
+<ParamField path="--write-receiver <name>" type="string" default="prisma">
+  ORM client identifier that direct-write detectors match on (e.g., `prisma`, `kysely`, `drizzle`). Default is `prisma`.
+</ParamField>
+
 <ParamField path="--include" type="glob...">
   Additional include globs (repeatable). Honored as of v0.6.1.
 </ParamField>
@@ -168,6 +172,10 @@ manifest audit-governance [options]
 
 <ParamField path="--bypass-registry" type="string">
   Path to `bypasses.json` (enables the `bypass-violations` detector).
+</ParamField>
+
+<ParamField path="--write-receiver <name>" type="string" default="prisma">
+  ORM client identifier that direct-write detectors match on (e.g., `prisma`, `kysely`, `drizzle`). Default is `prisma`.
 </ParamField>
 
 <ParamField path="--strict" type="boolean" default="false">

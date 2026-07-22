@@ -61,5 +61,7 @@ Entity interface fields are optional unless the property has the `required` modi
   `runtime.runCommand`.
 </Note>
 
-There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only, so emit Hono output by invoking `getProjection('hono')` programmatically. Extending the CLI's `generate` to accept `hono` would be separate work.
+There is no dedicated CLI command for this projection. Emit Hono output by invoking `getProjection('hono')` programmatically or by running `manifest build <ir> -p hono` (any projection dispatches via `-p`). Extending the CLI's `generate` to accept `hono` would be separate work.
+
+> **Correction (2026-07-22 @RYANSIGNED):** The original text incorrectly claimed "the bundled `manifest generate` command currently wires up the Next.js projection only." In fact, any projection dispatches via the `-p` flag in `manifest build`. The Hono projection is fully functional via `manifest build <ir> -p hono`.
 
