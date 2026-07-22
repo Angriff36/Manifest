@@ -17,9 +17,16 @@
 import type { OutboxEntry, OutboxStore } from '../outbox-store';
 
 export interface MongoDBOutboxStoreConfig {
-  connectionString: string;
+  /** Required unless `collection` is injected. */
+  connectionString?: string;
   databaseName?: string;
   collectionName?: string;
+  /**
+   * Pre-initialized collection handle. When set, skips `mongodb` import and
+   * connect — used by unit tests and hosts that own the client lifecycle.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  collection?: any;
 }
 
 export interface MongoDBOutboxStoreOptions {
@@ -51,6 +58,17 @@ export class MongoDBOutboxStore implements OutboxStore {
   }
 
   private async init(config: MongoDBOutboxStoreConfig): Promise<void> {
+    if (config.collection) {
+      this.collection = config.collection;
+      return;
+    }
+
+    if (!config.connectionString) {
+      throw new Error(
+        'MongoDBOutboxStore requires connectionString or an injected collection.',
+      );
+    }
+
     let MongoClient: unknown;
     try {
       // 'mongodb' is an optional peer dependency, resolved at runtime via dynamic import; its absence is handled by the catch below.

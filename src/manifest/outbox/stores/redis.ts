@@ -42,6 +42,12 @@ export interface RedisOutboxStoreConfig {
   consumerName?: string;
   /** Connection timeout in milliseconds (default: 10000) */
   connectTimeout?: number;
+  /**
+   * Pre-initialized Redis client (ioredis-shaped). When set, skips dynamic
+   * `ioredis` import — used by unit tests and host wiring that owns the client.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client?: any;
 }
 
 export interface RedisOutboxStoreOptions {
@@ -82,40 +88,43 @@ export class RedisOutboxStore implements OutboxStore {
   }
 
   private async init(config: RedisOutboxStoreConfig): Promise<void> {
-    let Redis: unknown;
-    try {
-      // 'ioredis' is an optional peer dependency, resolved at runtime via dynamic import; its absence is handled by the catch below.
-      const mod = await import('ioredis');
-      Redis = mod.Redis;
-    } catch {
-      throw new Error(
-        `RedisOutboxStore requires 'ioredis' to be installed.\n` + `Run: npm install ioredis`,
+    if (config.client) {
+      this.client = config.client;
+    } else {
+      let Redis: unknown;
+      try {
+        // 'ioredis' is an optional peer dependency, resolved at runtime via dynamic import; its absence is handled by the catch below.
+        const mod = await import('ioredis');
+        Redis = mod.Redis;
+      } catch {
+        throw new Error(
+          `RedisOutboxStore requires 'ioredis' to be installed.\n` + `Run: npm install ioredis`,
+        );
+      }
+
+      const options: Record<string, unknown> = {
+        connectTimeout: config.connectTimeout ?? 10000,
+        db: config.db ?? 0,
+      };
+
+      if (config.password) {
+        options.password = config.password;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.client = new (Redis as any)(
+        config.url ?? {
+          host: config.host ?? 'localhost',
+          port: config.port ?? 6379,
+          ...options,
+        },
       );
+
+      await new Promise<void>((resolve, reject) => {
+        this.client.once('ready', resolve);
+        this.client.once('error', reject);
+      });
     }
-
-    const options: Record<string, unknown> = {
-      connectTimeout: config.connectTimeout ?? 10000,
-      db: config.db ?? 0,
-    };
-
-    if (config.password) {
-      options.password = config.password;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.client = new (Redis as any)(
-      config.url ?? {
-        host: config.host ?? 'localhost',
-        port: config.port ?? 6379,
-        ...options,
-      },
-    );
-
-    // Wait for connection
-    await new Promise<void>((resolve, reject) => {
-      this.client.once('ready', resolve);
-      this.client.once('error', reject);
-    });
 
     // Create consumer group if it doesn't exist
     try {
@@ -154,8 +163,12 @@ export class RedisOutboxStore implements OutboxStore {
         fields.lastError = entry.lastError;
       }
 
-      // XADD returns the new entry ID (stream-specific, not our entryId)
-      await pipeline.xadd(this.streamKey, '*', fields);
+      // ioredis XADD expects flattened field/value pairs, not a JS object.
+      const flat: string[] = [];
+      for (const [key, value] of Object.entries(fields)) {
+        flat.push(key, value);
+      }
+      await pipeline.xadd(this.streamKey, '*', ...flat);
     }
 
     // If we're using a pipeline (not a transaction), flush it
@@ -188,31 +201,29 @@ export class RedisOutboxStore implements OutboxStore {
 
     if (!results || results.length === 0) return [];
 
-    // Parse results: XREADGROUP returns [[streamName, [[entryId, fields...]]]]
-
-    for (const result of results) {
-      for (const [streamId, entries] of result) {
-        if (streamId === this.streamKey) {
-          for (const [id, fields] of entries) {
-            out.push(this.streamFieldsToEntry(id, fields as Record<string, string>));
-          }
-        }
+    // XREADGROUP → [[streamName, [[streamEntryId, fields], …]], …]
+    for (const [streamName, messages] of results as [string, [string, unknown][]][]) {
+      if (streamName !== this.streamKey) continue;
+      for (const [id, fields] of messages) {
+        out.push(this.streamFieldsToEntry(id, this.normalizeStreamFields(fields)));
       }
     }
 
-    // Update claimed status atomically
+    // Stream is immutable — mutable claim state lives in a side hash, including
+    // the Redis stream id needed later for XACK.
     for (const entry of out) {
-      // Store the stream entry ID for ACK
-      (entry as OutboxEntry & { _streamId?: string })._streamId = entry.entryId;
-      // In our implementation, we update the attempts field on claim
-      // The stream is immutable, so we use a separate hash for mutable state
+      const streamId = (entry as OutboxEntry & { _streamId?: string })._streamId;
+      const nextAttempts = entry.attempts + 1;
       await this.client.hset(
         `${this.keyPrefix}state:${entry.entryId}`,
         'claimedAt',
         now.toString(),
         'attempts',
-        (entry.attempts + 1).toString(),
+        nextAttempts.toString(),
+        '_streamId',
+        streamId ?? '',
       );
+      entry.attempts = nextAttempts;
     }
 
     return out;
@@ -313,6 +324,19 @@ export class RedisOutboxStore implements OutboxStore {
     if (this.client) {
       await this.client.quit();
     }
+  }
+
+  private normalizeStreamFields(fields: unknown): Record<string, string> {
+    if (fields && typeof fields === 'object' && !Array.isArray(fields)) {
+      return fields as Record<string, string>;
+    }
+    const out: Record<string, string> = {};
+    if (Array.isArray(fields)) {
+      for (let i = 0; i + 1 < fields.length; i += 2) {
+        out[String(fields[i])] = String(fields[i + 1]);
+      }
+    }
+    return out;
   }
 
   private streamFieldsToEntry(streamId: string, fields: Record<string, string>): OutboxEntry {

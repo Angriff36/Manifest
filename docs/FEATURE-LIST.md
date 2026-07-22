@@ -348,42 +348,14 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Language keyword `softDelete` | `NOT_IMPLEMENTED` | projection config only |
 | 2. Language (DSL) — full inventory | Realtime subscriptions (language/runtime) | `PARTIAL / DIAGNOSTIC_ONLY` | Convex diagnostic; Next.js may differ — prove per target |
 | 4. Runtime engine & adapters | ~~WASM expression compatibility layer~~ | `REMOVED 2026-07-15` | Quarantined prototype deleted — no `.wasm` artifact, never on default RuntimeEngine path |
-| 5. Stores & persistence subsystems | Outbox: memory/postgres/redis/mongodb/dynamodb | `CLAIMED_NEEDS_PROOF` | `outbox/stores/*` |
-| 6. Projections — every registered target | analytics | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | contract-tests | `CLAIMED_NEEDS_PROOF` | See `docs/internal/COMPLIANCE_MATRIX.md` (list/get + mutations; auth visibility) |
 | 6. Projections — every registered target | convex | `PARTIAL` | core generate + auth seam; many `CONVEX_UNSUPPORTED_*` (§7) |
 | 6. Projections — every registered target | Convex approvals/retry/rateLimit | `DIAGNOSTIC_ONLY` | `CONVEX_UNSUPPORTED_*` (masking closed §1) |
-| 6. Projections — every registered target | dart | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | drizzle | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | dynamodb (projection) | `CLAIMED_NEEDS_PROOF` | distinct from DynamoDB store |
-| 6. Projections — every registered target | elasticsearch | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | express | `CLAIMED_NEEDS_PROOF` | `authProvider` §1 |
-| 6. Projections — every registered target | graphql | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 6. Projections — every registered target | health | `PARTIAL` | generator registered; live IR/store/outbox checks still TODO stubs; docs §7 |
-| 6. Projections — every registered target | hono | `CLAIMED_NEEDS_PROOF` | `authProvider` §1 |
-| 6. Projections — every registered target | jsonschema | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | kysely | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | llm-context | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | mermaid | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | nextjs | `CLAIMED_NEEDS_PROOF` | createManifestRuntime, executionMode |
-| 6. Projections — every registered target | openapi | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | prisma | `CLAIMED_NEEDS_PROOF` | multi-schema, naming options |
-| 6. Projections — every registered target | prisma-store | `CLAIMED_NEEDS_PROOF` | softDelete config (not language keyword) |
-| 6. Projections — every registered target | pydantic | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | react-query | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | remix | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | routes | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | storybook | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | sveltekit | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | terraform | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | wiring | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 6. Projections — every registered target | zod | `CLAIMED_NEEDS_PROOF` | enum/list/timestamp alias fixed 2026-07-15 per TODO |
 | 7. CLI, SDK, config, packaging, docs tooling | `@angriff36/manifest/agent-sdk` | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | `@angriff36/manifest/seed-pack` | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | AI: generate-from-prompt, gen-tests, validate-ai | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | CLI compile/generate/build/watch/validate/fmt/init | `CLAIMED_NEEDS_PROOF` | `packages/cli` |
 | 7. CLI, SDK, config, packaging, docs tooling | Config schema + `manifest config *` | `CLAIMED_NEEDS_PROOF` | G0/G1 |
-| 7. CLI, SDK, config, packaging, docs tooling | Conformance suite (~99 fixtures) | `CLAIMED_NEEDS_PROOF` | `src/manifest/conformance/` |
 | 7. CLI, SDK, config, packaging, docs tooling | Dev: repl, mock, harness, load-test, profile, seed… | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | diff / versions / migrate / changelog | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 7. CLI, SDK, config, packaging, docs tooling | enforce-surface / audit-* / lint-routes | `CLAIMED_NEEDS_PROOF / PARTIAL` | ORM shapes incomplete |

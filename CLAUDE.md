@@ -369,10 +369,14 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[Documentation reconciliation complete 2026-07-22]
-- All P0 (1.1-1.22), P1 (2.1-2.28), P2 (3.1-3.27) items fixed
-- All docs:check gates GREEN (metadata 88, links 428/278, spec-integrity 11, snippets 153+1, feature-list OK)
-- Main verification gates GREEN (test 4339 passed, typecheck 4 configs, lint 0 warnings)
-- P3 items remain (low-priority cosmetic issues)
+[pre-compact bridge — saved before context compaction]
+Files (2):
+  docs/internal/COMPLIANCE_MATRIX.md (edit)
+  C:/Projects/capsule/src/features/views/SavedViewsBar.tsx (edit)
+Manual bridge:
+[proactive bridge @ 99% context — saved before compacting]
+Files (2):
+  docs/internal/COMPLIANCE_MATRIX.md (edit)
+  C:/Projects/capsule/src/features/views/SavedViewsBar.tsx (edit)
 
 # === END COGNILAYER ===

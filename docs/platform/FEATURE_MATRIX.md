@@ -252,7 +252,9 @@ Mirror of `docs/internal/COMPLIANCE_MATRIX.md` §3 (2026-07-22). Granular Core/S
 | [x]    | DynamoDB store                                 | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `DynamoDBStore` + `stores.dynamodb.test.ts` @ `9f3a9bfa…` |
 | [x]    | GenericPrismaStore                             | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `stores/prisma-generic/` @ `d6d42fc8…` |
 | [x]    | EventSourcedStore                              | FULLY_IMPLEMENTED     | §1 — in-process event log + projection |
-| [~]    | Outbox: memory/postgres/redis/mongodb/dynamodb | CLAIMED_NEEDS_PROOF   | `outbox/stores/*`                      |
+| [x]    | Outbox memory (`MemoryOutboxStore`)            | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `outbox/stores/memory.ts` + `memory.test.ts` @ `b296e1a57f19…` |
+| [x]    | Outbox postgres                                | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `outbox/stores/postgres.ts` + `postgres.test.ts` @ `b296e1a57f19…` |
+| [x]    | Outbox redis / mongodb / dynamodb              | FULLY_IMPLEMENTED     | mirror of COMPLIANCE_MATRIX §5 — `redis/mongodb/dynamodb.test.ts` (13) injectable mocks; Redis XACK stream-id fix |
 | [x]    | Approval store memory/postgres                                                                                       | FULLY_IMPLEMENTED           | mirror of COMPLIANCE_MATRIX — contract `approval/approval-store.ts:27-61`; Memory `approval/stores/memory.ts:28-67`; Postgres `approval/stores/postgres.ts:80-159`; runtime wire `runtime-engi… |
 | [x]    | Idempotency store memory/postgres                                                                                    | FULLY_IMPLEMENTED           | mirror of COMPLIANCE_MATRIX — §1 — `idempotency/stores/*` |
 | [x]    | RateLimit store memory/postgres                | FULLY_IMPLEMENTED     | §1                                     |
@@ -267,35 +269,35 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 
 | Status | Projection            | Implementation Status          | Notes                                                                            |
 | ------ | --------------------- | ------------------------------ | -------------------------------------------------------------------------------- |
-| [~]    | nextjs                | CLAIMED_NEEDS_PROOF            | createManifestRuntime, executionMode                                             |
-| [~]    | routes                | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | prisma                | CLAIMED_NEEDS_PROOF            | multi-schema, naming options                                                     |
-| [~]    | prisma-store          | CLAIMED_NEEDS_PROOF            | softDelete config (not language keyword)                                         |
+| [x]    | nextjs                | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — proofs nextjs/generator + dispatcher/webhook/schedule/companions @ `3c10705ff78f`; batch 961 projection tests green 2026-07-22 |
+| [x]    | routes                | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — routes/generator.test.ts + routes.conformance.test.ts @ `5290df259a44` |
+| [x]    | prisma                | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — prisma/generator.test.ts @ `cf5be82e0fea` |
+| [x]    | prisma-store          | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — prisma-store/generator.test.ts (6) @ `d6d42fc865e4`; softDelete = projection config only |
 | [~]    | convex                | PARTIAL                        | core generate + auth seam; many `CONVEX_UNSUPPORTED_*` (§7)                      |
-| [~]    | openapi               | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | react-query           | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | zod                   | CLAIMED_NEEDS_PROOF            | enum/list/timestamp alias fixed 2026-07-15 per TODO                              |
-| [~]    | drizzle               | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | graphql               | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | llm-context           | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | express               | CLAIMED_NEEDS_PROOF            | `authProvider` §1                                                                |
-| [~]    | hono                  | CLAIMED_NEEDS_PROOF            | `authProvider` §1                                                                |
-| [~]    | mermaid               | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | jsonschema            | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | storybook             | CLAIMED_NEEDS_PROOF            |                                                                                  |
+| [x]    | openapi               | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — openapi/generator.test.ts (43) @ `0a2ee5d39ed38c` |
+| [x]    | react-query           | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — react-query/generator.test.ts (34) @ `f5b2f4cd11a3` |
+| [x]    | zod                   | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — zod/generator.test.ts (50) @ `31c780fecdb6` |
+| [x]    | drizzle               | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — drizzle/generator.test.ts (57) @ `99c2249589cd` |
+| [x]    | graphql               | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — graphql/generator.test.ts (41) @ `e3000a414b44` |
+| [x]    | llm-context           | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — llm-context/generator.test.ts (38) @ `fb6e9252be79` |
+| [x]    | express               | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — express companions+webhooks @ `5d83d8d47018`; authProvider §1 |
+| [x]    | hono                  | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — hono companions+webhooks @ `5d83d8d47018`; authProvider §1 |
+| [x]    | mermaid               | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — mermaid/mermaid.test.ts (21) @ `fb6e9252be79` |
+| [x]    | jsonschema            | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — jsonschema/generator.test.ts (1) @ `52fbcda4397f` |
+| [x]    | storybook             | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — storybook/generator.test.ts (24) @ `83e6c4f66ed1` |
 | [~]    | health                | PARTIAL                        | generator registered; live IR/store/outbox checks still TODO stubs; docs §7      |
 | [x]    | materialized-views    | FULLY_IMPLEMENTED              | §1 — computed via `translateExpression`; raw `columns` escape hatch              |
-| [~]    | elasticsearch         | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | terraform             | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | analytics             | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | remix                 | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | sveltekit             | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | kysely                | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | dynamodb (projection) | CLAIMED_NEEDS_PROOF            | distinct from DynamoDB store                                                     |
-| [~]    | pydantic              | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | dart                  | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | wiring                | CLAIMED_NEEDS_PROOF            |                                                                                  |
-| [~]    | contract-tests        | CLAIMED_NEEDS_PROOF            | See `docs/internal/COMPLIANCE_MATRIX.md` (list/get + mutations; auth visibility) |
+| [x]    | elasticsearch         | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — elasticsearch/generator.test.ts (24) @ `9f3a9bfaed21` |
+| [x]    | terraform             | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — terraform/generator.test.ts (25) @ `9f3a9bfaed21` |
+| [x]    | analytics             | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — analytics/generator.test.ts (26) @ `9f3a9bfaed21` |
+| [x]    | remix                 | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — remix/companions.test.ts @ `5d83d8d47018` |
+| [x]    | sveltekit             | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — sveltekit/generator.test.ts (40) @ `9f3a9bfaed21` |
+| [x]    | kysely                | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — kysely generator+options+column-mappings @ `59dd2eb16d30` |
+| [x]    | dynamodb (projection) | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — dynamodb/generator.test.ts (9) @ `9f3a9bfaed21`; ≠ entity DynamoDBStore |
+| [x]    | pydantic              | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — pydantic/generator.test.ts (19) @ `9f3a9bfaed21` |
+| [x]    | dart                  | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — dart/generator.test.ts (24) + verify.test.ts @ `9f3a9bfaed21` |
+| [x]    | wiring                | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — wiring/generator.test.ts + remediate suites @ `971df066351f` |
+| [x]    | contract-tests        | FULLY_IMPLEMENTED            | mirror of COMPLIANCE_MATRIX §6 — contract-tests/generator.test.ts (4) @ `0c8c54d4abc5`; export-name suites only |
 | [x]    | mongoose              | FULLY_IMPLEMENTED              | COMPLIANCE_MATRIX §1 — registered `mongoose.schema` projection                     |
 
 **Cross-cutting projection gaps**
@@ -343,7 +345,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 | [x]    | Park `@manifest/stdlib` (unpublished)               | FULLY_IMPLEMENTED             | §1                                                                    |
 | [x]    | Park VS Code `manifest-lang` (unpublished)          | FULLY_IMPLEMENTED             | §1                                                                    |
 | [x]    | SDK stability policy                                | FULLY_IMPLEMENTED             | §1                                                                    |
-| [~]    | Conformance suite (~99 fixtures)                    | CLAIMED_NEEDS_PROOF           | `src/manifest/conformance/`                                           |
+| [x]    | Conformance suite (~99 fixtures)                    | FULLY_IMPLEMENTED             | mirror of COMPLIANCE_MATRIX §7 — `conformance.test.ts` 323 passed / 101 fixtures @ `3052dc56c456…` |
 | [x]    | Doc snippet TS check mode                           | FULLY_IMPLEMENTED             | §1                                                                    |
 | [x]    | enforce-surface Drizzle/Kysely/raw-SQL              | FULLY_IMPLEMENTED             | §1 / COMPLIANCE_MATRIX                                                |
 | [x]    | Restore `newguard.json`                             | FULLY_IMPLEMENTED             | `docs/internal/contracts/enforce-surface.newguard.json`               |
