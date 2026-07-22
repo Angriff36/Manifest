@@ -133,7 +133,9 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
 - Compile diagnostics may carry optional machine-readable `IRDiagnostic.code`
   (2026-07-15; seeded on behavior / `through` / approval-escalate unsupported)
 - Batched persistence: per-command working-copy buffer, one flush, atomic-on-failure (`runtime-command-batched-persistence.test.ts`)
-- Pluggable `EncryptionProvider`; feature-flag provider; deterministic mode
+- Pluggable `EncryptionProvider` (matrix FULLY_IMPLEMENTED @ `9f3a9bf`; no
+  bundled default — plaintext no-op until provider set); feature-flag provider;
+  deterministic mode
 - EventBus in-process (`MemoryEventBus` — matrix FULLY_IMPLEMENTED @ `61d5ab6`;
   `event-bus.test.ts` + `runtime-eventbus.test.ts`; RedisEventBus already §1)
 - Scoped WASM expression-compatibility layer (`isWasmCompatible()`) for pure computational expressions — an optimization path, **not** a WASM runtime. Constraint polarity uses shared `constraint-polarity.ts` (`failWhen` + severity), aligned with RuntimeEngine (2026-07-14, unreleased).
