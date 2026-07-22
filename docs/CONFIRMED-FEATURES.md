@@ -43,7 +43,9 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
     `generic-entity-types` as phantom.
 - Value objects / embedded types (fixture 60 — matrix FULLY_IMPLEMENTED @
   `ad02a4dc` / OpenAPI `9f93a40e`)
-- Enum types (fixture 57 — matrix FULLY_IMPLEMENTED @ `68dc9c26` / Zod `3052dc56`); decimal/money type (fixture 56 — matrix FULLY_IMPLEMENTED @ `9e34bc43` / Next `cc71f1fe`; runtime = JS number); map/record type (fixture 73)
+- Enum types (fixture 57 — matrix FULLY_IMPLEMENTED @ `68dc9c26` / Zod `3052dc56`); decimal/money type (fixture 56 — matrix FULLY_IMPLEMENTED @ `9e34bc43` / Next `cc71f1fe`; runtime = JS number); map/record type (fixture 73 — matrix FULLY_IMPLEMENTED @
+  `dc52bb5d` / alias `08e1c54d`; string keys only); array types `T[]` /
+  `array<T>` (fixture 40 — matrix FULLY_IMPLEMENTED @ `75d3331d` / Zod `cbaff934`)
 - Date/time primitive types (fixture 92)
 - Composite primary keys (`key` — matrix FULLY_IMPLEMENTED @ `96b8e80e` /
   `a49807e9`), `alternateKeys`

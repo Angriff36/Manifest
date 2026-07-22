@@ -343,7 +343,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | --- | --- | --- | --- |
 | 2. Language (DSL) — full inventory | `date` / `time` / `datetime` / `duration` | `CLAIMED_NEEDS_PROOF` | fixture `92` |
 | 2. Language (DSL) — full inventory | `extends` inheritance + cycle detection | `CLAIMED_NEEDS_PROOF` | fixtures `77`–`79`, `81` |
-| 2. Language (DSL) — full inventory | `map` / record type | `CLAIMED_NEEDS_PROOF` | fixture `73` |
 | 2. Language (DSL) — full inventory | `mixin` composition | `CLAIMED_NEEDS_PROOF` | fixture `78` |
 | 2. Language (DSL) — full inventory | `private` / `encrypted` / `masked` privacy | `CLAIMED_NEEDS_PROOF` | fixtures `91`, `93` |
 | 2. Language (DSL) — full inventory | `searchable` declarations | `CLAIMED_NEEDS_PROOF` | fixture `89` |
@@ -351,7 +350,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Appendix E: `map<K,V>` arbitrary non-string keys | `REJECTED_LOUD → by design` | String keys only; `record` alias ships (§1) |
 | 2. Language (DSL) — full inventory | Appendix E: command-body policy clause | `REJECTED_LOUD → by design` | Top-level policies only; command-body `policy` will not ship |
 | 2. Language (DSL) — full inventory | Approvals (multi-stage, `onTimeout: cancel`) | `CLAIMED_NEEDS_PROOF` | fixture `68` |
-| 2. Language (DSL) — full inventory | Array types `T[]` / `array<T>` | `CLAIMED_NEEDS_PROOF` | fixture `40` |
 | 2. Language (DSL) — full inventory | Async / background commands | `CLAIMED_NEEDS_PROOF` | fixture `69` |
 | 2. Language (DSL) — full inventory | Command `retry` policy | `CLAIMED_NEEDS_PROOF` | fixture `72` |
 | 2. Language (DSL) — full inventory | Command/policy `rateLimit` | `CLAIMED_NEEDS_PROOF` | fixtures `74`, `75`, `100` |
