@@ -175,7 +175,7 @@ manifest generate <ir> [options]
 <ParamField path="-s, --surface" type="string" default="all">
   Which surface(s) to generate. Valid surface names are projection-specific; pass `all` to emit every surface the projection declares.
 
-**nextjs** (default): `route` (GET list handlers) · `detail` (GET detail handlers) · `command` (POST handlers) · `dispatcher` (canonical write surface) · `types` (TS interfaces) · `client` (typed fetch SDK) · `all` (everything except concrete per-command routes, which are opt-in)
+**nextjs** (default): `route` · `detail` · `command` · `dispatcher` · `subscribe` · `subscriptionHook` · `sharedRuntime` · `schedule` · `webhook` · `companions` · `ts.types` · `ts.client` · `all` (everything except concrete per-command routes, which are opt-in)
 
 For other projections the CLI default `all` resolves to the projection's declared surface set (e.g. the `prisma` projection emits a single `schema.prisma` artifact). An unknown surface name is reported as a diagnostic, not silently ignored.
 

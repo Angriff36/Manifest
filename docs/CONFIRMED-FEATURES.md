@@ -56,7 +56,9 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 **Behavior**
 
 - Commands with params, guards (strict in-order, halt-on-first-falsey), mutations, emits, `emitPayloads`, modifiers
-- Async/background commands with completion/failure events (fixture 69)
+- Async/background commands with completion/failure events (fixture 69; matrix
+  FULLY_IMPLEMENTED — `runtime-async.test.ts` + `jobs/worker.test.ts` @ `83e6c4f`;
+  reference-runtime MemoryJobQueue; Convex async is unsupported-warning)
 - Command `retry` policy (fixture 72); `rateLimit` on commands and policies (fixtures 74, 75, 100)
 - Computed properties incl. caching/memoization strategies (fixtures 03, 65)
 - Constraints with severity `ok`/`warn`/`block`, explicit `failWhen` polarity (fixtures 105–106), override authorization (fixture 22)

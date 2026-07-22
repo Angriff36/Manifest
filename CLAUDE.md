@@ -370,6 +370,6 @@ Last: [first session]
 
 ## Last Session Bridge
 [Emergency bridge — running bridge was not updated]
-No changes or facts in this session.
+Files: mintlify/language/types.mdx (edit), mintlify/llms-full.txt (edit), src/manifest/projections/__snapshots__/snapshot.test.ts.snap (edit), IMPLEMENTATION_PLAN.md (edit)
 
 # === END COGNILAYER ===
