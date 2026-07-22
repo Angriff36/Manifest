@@ -229,7 +229,7 @@ event taskCompleted: "kitchen.task.completed" {
 
 ## For AI Agents: Critical Constraints
 
-This repository enforces **strict semantic invariants**. Read `AGENTS.md` and `house-style.md` before making changes.
+This repository enforces **strict semantic invariants**. Read `AGENTS.md` and `docs/internal/contracts/house-style.md` before making changes.
 
 ### Core Invariants
 
@@ -261,31 +261,31 @@ For any change:
 1. **Determine purpose**: Language change (meaning) or tooling change (projection)?
 2. **Locate governing law**: Find exact spec sections and conformance fixtures
 3. **Update in order**: Spec → Tests → Implementation (if meaning changes)
-4. **Prove it**: `npm test` must pass; document any nonconformance
+4. **Prove it**: `pnpm test` must pass; document any nonconformance
 
 ## Development
 
 ### Prerequisites
 
-- Node.js 18+
-- npm
+- Node.js >=20
+- pnpm
 
 ### Setup
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### Commands
 
-- `npm test` - Run all 448 tests (must pass)
-- `npm run test:watch` - Run tests in watch mode
-- `npm run dev` - Start development server with Runtime UI
-- `npm run conformance:regen` - Regenerate expected IR outputs from fixtures
-- `npm run bench` - Run performance benchmarks
-- `npm run build` - Build for production
-- `npm run typecheck` - TypeScript type checking
-- `npm run lint` - ESLint validation
+- `pnpm test` - Run all tests (must pass)
+- `pnpm run test:watch` - Run tests in watch mode
+- `pnpm run dev` - Start development server with Runtime UI
+- `pnpm run conformance:regen` - Regenerate expected IR outputs from fixtures
+- `pnpm run bench` - Run performance benchmarks
+- `pnpm run build` - Build for production
+- `pnpm run typecheck` - TypeScript type checking
+- `pnpm run lint` - ESLint validation
 
 ### Manifest CLI
 
@@ -334,26 +334,26 @@ npx tsx bin/generate-projection.ts --help
 
 ### Testing
 
-The project includes 448 tests across 7 test suites:
+The project has comprehensive test coverage (run `pnpm test` for the current count).
 
-**Conformance Suite** (`src/manifest/conformance/conformance.test.ts` - 142 tests):
+**Conformance Suite** (`src/manifest/conformance/conformance.test.ts`):
 
-- 27 fixture files (`.manifest` source files)
-- 63 expected outputs (IR, diagnostics, runtime results)
+- 101 fixture files (`.manifest` source files)
+- Expected outputs (IR, diagnostics, runtime results)
 - Validates IR compilation correctness
 - Runtime command execution semantics
 - Guard and policy evaluation
 - Event emission
 - Computed property evaluation
 - Instance creation with defaults
-- vNext features (constraints, overrides, workflows, concurrency)
+- Constraint severity and overrides, workflows, concurrency
 
-**Unit Tests** (285 tests):
+**Unit Tests**:
 
-- Lexer tests (58): Tokenization and edge cases
-- Parser tests (79): AST construction
-- IR Compiler tests (91): IR generation and normalization
-- Runtime tests (56): Command execution, guards, policies
+- Lexer tests: Tokenization and edge cases
+- Parser tests: AST construction
+- IR Compiler tests: IR generation and normalization
+- Runtime tests: Command execution, guards, policies
 
 **Projection Tests** (21 tests):
 
@@ -423,7 +423,7 @@ All tests use deterministic time and ID generation for reproducibility.
 ├── tools/                 # Development tools and test harnesses
 ├── AGENTS.md             # Agent workflow rules and loop discipline
 ├── CLAUDE.md             # Project guidance for Claude Code
-└── house-style.md        # Language design principles
+└── docs/internal/contracts/house-style.md        # Language design principles
 ```
 
 ## Key Concepts for AI Agents
@@ -468,7 +468,7 @@ This enables event handlers to reconstruct the full execution context.
 
 See `AGENTS.md` for detailed workflow requirements. Key points:
 
-- All changes must pass `npm test`
+- All changes must pass `pnpm test`
 - Spec changes require updating fixtures and expected outputs
 - UI changes must not alter language semantics
 - Document any nonconformance explicitly
@@ -484,5 +484,5 @@ This is a language implementation project. The Runtime UI is a diagnostic and ob
 ---
 
 For detailed agent workflow rules, see [`AGENTS.md`](AGENTS.md).  
-For language house style and invariants, see [`house-style.md`](house-style.md).  
+For language house style and invariants, see [`docs/internal/contracts/house-style.md`](docs/internal/contracts/house-style.md).  
 For the complete specification, see [`docs/spec/README.md`](docs/spec/README.md).

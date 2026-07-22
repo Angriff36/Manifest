@@ -131,12 +131,12 @@ Use `setEnvironment("PROD")` for persisted data, and/or pass `context.env = "PRO
 
 ### 9) Custom business validation beyond schema (e.g., unique names across manifests)
 
-Duplicate name validation is enforced at compile time by the merge scripts:
+Duplicate name validation is enforced at compile time by the multi-compiler:
 
-**Implementation locations:**
+**Implementation location:**
 
-- `scripts/manifest/compile.mjs` - Detects duplicates BEFORE writing combined IR, exits non-zero
-- `scripts/manifest/check.mjs` - Validates existing combined IR for duplicates
+- `src/manifest/multi-compiler.ts` - Detects duplicates across all manifests during compilation, emits diagnostics
+- Test: `src/manifest/multi-compiler.test.ts` - Validates duplicate detection for entities, enums, and other named elements
 
 **Identity rules (what makes a name unique):**
 
