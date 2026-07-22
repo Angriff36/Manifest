@@ -179,7 +179,13 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
   > (`stores/prisma-generic/`) are matrix FULLY_IMPLEMENTED.
 - Outbox adapters (`src/manifest/outbox/stores/*`) — memory (in-process only, `tx` ignored) +
   postgres FULLY_IMPLEMENTED @ `b296e1a` (durable, honors supplied transaction handle); redis/mongodb/dynamodb still
-  CLAIMED_NEEDS_PROOF; ≠ outbound partner HTTP POST
+  CLAIMED_NEEDS_PROOF.
+- **Outbound HTTP partner delivery (2026-07-22):** `HttpPartnerDeliverer` /
+  `@angriff36/manifest/outbox/http-partner` POSTs outbox entries to a host
+  event→URL map (optional HMAC `X-Manifest-Signature`). Wire via
+  `runOutboxWorker` / `drainOutboxOnce`. **Not** an inbound `webhook` decl and
+  **not** declarative IR partner-URL syntax. Proofs:
+  `http-partner-deliverer.test.ts`.
 - Approval store: memory/postgres (`src/manifest/approval/stores/*` — matrix
   FULLY_IMPLEMENTED @ `179e135`; Postgres unit tests mocked Pool)
 - Idempotency store: memory/postgres (`src/manifest/idempotency/stores/*`)
@@ -204,6 +210,10 @@ Highlights:
 - **Convex** (`src/manifest/projections/convex/`): schema/queries/mutations/crons/http/sagas/`convex.computed`/`convex.react`; companions `wiring`, `llm-context`, `mermaid`, `zod`, `contract-tests`; `authContextImport` with generated read-policy enforcement; `encryptionImport` with reference-runtime envelopes; transition enforcement; private-field stripping; capability map with `CONVEX_UNSUPPORTED_*`; assembly gate `verifyConvexApplicationAssembly`
 - **contract-tests**: Vitest suites asserting Convex query/mutation export names match IR (list/get when `clientReadable` per `resolveConvexReadVisibility` + optional `authContextImport`; skips true `internalQuery` surfaces; does not assert `listBy*` or behavior)
 - **Next.js**: full command surface incl. `createManifestRuntime` emission, executionMode dispatcher (`dispatcher-modes.test.ts`), field-aware soft-delete/timestamp reads
+- **OpenAPI (2026-07-22):** command write paths align with the canonical dispatcher
+  `POST {base}/manifest/{entity}/commands/{command}`; default also emits the older
+  `{base}/{entity}/{command-kebab}` alias as `deprecated` (`commandPathStyle: 'both'`).
+  Evidence: `projections/openapi/command-paths.ts`.
 - **Prisma**: multi-schema (`@@schema` from modules), opt-in snake_case/pluralize naming, autoBackRelations, composite-unique/optional-FK/cycle correctness — natively generates capsule-pro's 199-model schema
 
 ## 6. CLI (`packages/cli`, runs from src via jiti)
@@ -245,7 +255,7 @@ Note: breaking-change detection and IR diff exist as `diff breaking` / `diff ir-
 - JSON schema: `docs/spec/config/manifest.config.schema.json` (+ Prisma projection schema)
 - `src/manifest/config.ts` wired to `manifest config validate/print-defaults/inspect`
 - `executionMode` dispatcher is a **Next.js-projection** setting, not a global runtime concept
-- config-vNext: G0+G1+G5+G2(`failOn`)+G10(`ci-gate`) shipped (see `config.ts` comments + matrix §1). ~~G5/G2/G10 still unbuilt~~ **Correction (2026-07-15):** those three shipped; remaining open: G2 rule registry beyond `failOn`, G3 mergeIntegrity, G4 provenance config, G7 runtime config, G8 hooks.lifecycle, G9 plugins.order — see `docs/internal/proposals/config/manifest-config-vnext.md`.
+- config-vNext: G0+G1+G5+G2(`failOn`)+G9(`plugins.order`/`capabilities`)+G10(`ci-gate`) shipped (see `config.ts` comments + matrix §1). ~~G5/G2/G10 still unbuilt~~ **Correction (2026-07-15):** those three shipped. **Correction (2026-07-22):** G9 shipped (`plugin-order.ts` + loader `loadOrder`/`declaredCapabilities`). Remaining open: G2 rule registry beyond `failOn`, G3 mergeIntegrity, G4 provenance config, G7 runtime config, G8 hooks.lifecycle — see `docs/internal/proposals/config/manifest-config-vnext.md`.
 
 ## 9. Testing & Release Infrastructure
 

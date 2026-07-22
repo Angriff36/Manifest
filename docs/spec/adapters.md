@@ -246,6 +246,21 @@ The dispatcher targets Next.js 15 App Router. Dynamic route segment params are a
 
 Downstream governance integrations MAY add CI gates (via `manifest audit-governance`) that flag any non-alias direct command route.
 
+### OpenAPI command paths (aligned 2026-07-22)
+
+The OpenAPI projection documents the **same** canonical write shape:
+
+```text
+POST {basePath}/manifest/{entity}/commands/{command}
+```
+
+(default `basePath` is `/api`). By default (`commandPathStyle: 'both'`) it also
+emits the older concrete alias `POST {basePath}/{entity}/{command-kebab}` as
+`deprecated: true` with a distinct `…Legacy` operationId. Set
+`commandPathStyle: 'dispatcher'` to omit aliases, or `'legacy'` for the old
+shape only. Evidence: `projections/openapi/command-paths.ts`,
+`openapi/generator.test.ts`.
+
 ## Audit Sink
 
 The runtime exposes a durable audit hook as the `AuditSink` adapter (`src/manifest/audit/audit-sink.ts`). Conforming sinks:
@@ -369,6 +384,44 @@ The outbox provides **at-least-once** delivery, not exactly-once. Every consumer
 - Network retries from the consumer side can produce repeat reads even within a single worker.
 
 Treat the outbox as a durable replay log with idempotent consumers, not as a transactional message bus.
+
+### HTTP partner delivery (outbound POST)
+
+Outbound “notify a partner URL when an event is published” is **adapter work**, not a
+`webhook` language construct (`webhook` remains **inbound** only — see
+`docs/internal/plans/2026-07-17-command-api-surface-boundary.md`).
+
+Shipped helper: `HttpPartnerDeliverer` /
+`createHttpPartnerDeliverer` (`src/manifest/outbox/http-partner-deliverer.ts`),
+package subpath `@angriff36/manifest/outbox/http-partner`.
+
+```typescript
+// host/outbox-worker.ts
+import { runOutboxWorker } from '@angriff36/manifest/outbox/worker';
+import { createHttpPartnerDeliverer } from '@angriff36/manifest/outbox/http-partner';
+
+const deliver = createHttpPartnerDeliverer({
+  routes: {
+    OrderPlaced: 'https://partner.example/hooks/orders',
+    '*': 'https://partner.example/hooks/default', // optional fallback
+  },
+  hmacSecret: process.env.PARTNER_HMAC_SECRET, // optional X-Manifest-Signature
+});
+
+runOutboxWorker(outboxStore, deliver);
+```
+
+Behavior:
+
+- `POST` JSON `{ entryId, enqueuedAt, event }` to the resolved URL.
+- Headers: `Content-Type`, `X-Manifest-Entry-Id`, `X-Manifest-Event`; optional
+  `X-Manifest-Signature: sha256=<hmac-hex>` over the raw body.
+- Unmapped event with no `*` route → deliver rejects with `NO_PARTNER_ROUTE`.
+- Non-2xx → `PARTNER_HTTP_<status>` (worker marks the entry failed).
+- At-least-once: partners MUST dedupe on `entryId`.
+
+There is still **no** declarative IR syntax for partner URLs (hosts configure the
+route map). Do not overload inbound `webhook` decls for this path.
 
 ### Crash Recovery
 

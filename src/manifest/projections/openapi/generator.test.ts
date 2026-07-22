@@ -263,8 +263,11 @@ describe('OpenApiProjection', () => {
       const specResult = projection.generate(result.ir!, { surface: 'openapi.spec' });
       const spec = parseSpec(specResult);
 
+      expect(spec.paths['/api/manifest/preptask/commands/claim']).toBeDefined();
+      expect(spec.paths['/api/manifest/preptask/commands/claim'].post).toBeDefined();
+      // Default commandPathStyle=both keeps the legacy alias (deprecated).
       expect(spec.paths['/api/preptask/claim']).toBeDefined();
-      expect(spec.paths['/api/preptask/claim'].post).toBeDefined();
+      expect(spec.paths['/api/preptask/claim'].post.deprecated).toBe(true);
     });
 
     it('generates correct operation ID for commands', async () => {
@@ -283,7 +286,10 @@ describe('OpenApiProjection', () => {
       const specResult = projection.generate(result.ir!, { surface: 'openapi.spec' });
       const spec = parseSpec(specResult);
 
-      expect(spec.paths['/api/preptask/claim'].post.operationId).toBe('prepTaskClaim');
+      expect(spec.paths['/api/manifest/preptask/commands/claim'].post.operationId).toBe(
+        'prepTaskClaim',
+      );
+      expect(spec.paths['/api/preptask/claim'].post.operationId).toBe('prepTaskClaimLegacy');
     });
 
     it('generates request body schema for command parameters', async () => {
@@ -301,7 +307,7 @@ describe('OpenApiProjection', () => {
       const specResult = projection.generate(result.ir!, { surface: 'openapi.spec' });
       const spec = parseSpec(specResult);
 
-      const postOp = spec.paths['/api/preptask/claim'].post;
+      const postOp = spec.paths['/api/manifest/preptask/commands/claim'].post;
       expect(postOp.requestBody).toBeDefined();
       expect(postOp.requestBody.required).toBe(true);
 
@@ -564,7 +570,7 @@ describe('OpenApiProjection', () => {
       const specResult = projection.generate(ir, { surface: 'openapi.spec' });
       const spec = parseSpec(specResult);
 
-      const postOp = spec.paths['/api/recipe/publish'].post;
+      const postOp = spec.paths['/api/manifest/recipe/commands/publish'].post;
       expect(postOp.responses['422']).toBeDefined();
       expect(postOp.responses['422'].content['application/json'].schema.$ref).toBe(
         '#/components/schemas/ConstraintErrorResponse',
@@ -748,7 +754,7 @@ describe('OpenApiProjection', () => {
       const specResult = projection.generate(result.ir!, { surface: 'openapi.spec' });
       const spec = parseSpec(specResult);
 
-      const postOp = spec.paths['/api/task/complete'].post;
+      const postOp = spec.paths['/api/manifest/task/commands/complete'].post;
       expect(postOp.description).toContain('Guards');
       expect(postOp.description).toContain('1 guard');
     });
@@ -885,7 +891,7 @@ describe('OpenApiProjection', () => {
       const specResult = projection.generate(result.ir!, { surface: 'openapi.spec' });
       const spec = parseSpec(specResult);
 
-      const postOp = spec.paths['/api/task/complete'].post;
+      const postOp = spec.paths['/api/manifest/task/commands/complete'].post;
       expect(postOp.requestBody).toBeDefined();
       const bodySchema = postOp.requestBody.content['application/json'].schema;
       expect(bodySchema.type).toBe('object');

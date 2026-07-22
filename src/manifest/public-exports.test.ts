@@ -38,6 +38,8 @@ import * as PostgresOutboxApi from './outbox/stores/postgres';
 import * as RedisOutboxApi from './outbox/stores/redis';
 // Subpath: '@angriff36/manifest/outbox/worker'
 import * as OutboxWorkerApi from './outbox/worker';
+// Subpath: '@angriff36/manifest/outbox/http-partner'
+import * as HttpPartnerApi from './outbox/http-partner-deliverer';
 // Subpath: '@angriff36/manifest/federation'
 import * as FederationApi from './federation';
 // Subpath: '@angriff36/manifest/idempotency/memory'
@@ -108,6 +110,11 @@ describe('Public export surface', () => {
     // Bare load is the load-bearing check — a missing/renamed export breaks
     // the import above at compile time.
     expect(OutboxWorkerApi).toBeDefined();
+  });
+
+  it('exposes HttpPartnerDeliverer via outbox/http-partner', () => {
+    expect(typeof HttpPartnerApi.HttpPartnerDeliverer).toBe('function');
+    expect(typeof HttpPartnerApi.createHttpPartnerDeliverer).toBe('function');
   });
 
   it('exposes the MemoryIdempotencyStore class via idempotency/memory', () => {

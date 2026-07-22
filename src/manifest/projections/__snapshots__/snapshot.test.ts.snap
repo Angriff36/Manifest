@@ -7160,7 +7160,7 @@ exports[`projection snapshots > openapi > generated artifacts match snapshot 1`]
         }
       }
     },
-    "/api/task/assign-task": {
+    "/api/manifest/task/commands/assign-task": {
       "post": {
         "operationId": "taskAssignTask",
         "summary": "Execute assignTask on Task",
@@ -7231,7 +7231,79 @@ exports[`projection snapshots > openapi > generated artifacts match snapshot 1`]
         }
       }
     },
-    "/api/task/update-status": {
+    "/api/task/assign-task": {
+      "post": {
+        "operationId": "taskAssignTaskLegacy",
+        "summary": "Execute assignTask on Task",
+        "description": "Guards: 1 guard(s) evaluated in order. Deprecated alias of the canonical dispatcher path POST {basePath}/manifest/{entity}/commands/{command}. Same command semantics.",
+        "tags": [
+          "Task"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "userId"
+                ]
+              }
+            }
+          },
+          "required": true,
+          "description": "Parameters for assignTask command"
+        },
+        "responses": {
+          "200": {
+            "description": "Result of assignTask command",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — authentication required"
+          },
+          "403": {
+            "description": "Forbidden — insufficient permissions"
+          },
+          "409": {
+            "description": "Conflict — concurrency conflict or guard failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuardFailureResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable entity — constraint violation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConstraintErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/api/manifest/task/commands/update-status": {
       "post": {
         "operationId": "taskUpdateStatus",
         "summary": "Execute updateStatus on Task",
@@ -7300,6 +7372,78 @@ exports[`projection snapshots > openapi > generated artifacts match snapshot 1`]
             "description": "Internal server error"
           }
         }
+      }
+    },
+    "/api/task/update-status": {
+      "post": {
+        "operationId": "taskUpdateStatusLegacy",
+        "summary": "Execute updateStatus on Task",
+        "description": "Guards: 1 guard(s) evaluated in order. Deprecated alias of the canonical dispatcher path POST {basePath}/manifest/{entity}/commands/{command}. Same command semantics.",
+        "tags": [
+          "Task"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "newStatus": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "newStatus"
+                ]
+              }
+            }
+          },
+          "required": true,
+          "description": "Parameters for updateStatus command"
+        },
+        "responses": {
+          "200": {
+            "description": "Result of updateStatus command",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized — authentication required"
+          },
+          "403": {
+            "description": "Forbidden — insufficient permissions"
+          },
+          "409": {
+            "description": "Conflict — concurrency conflict or guard failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuardFailureResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable entity — constraint violation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConstraintErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "deprecated": true
       }
     }
   },

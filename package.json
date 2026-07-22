@@ -197,6 +197,10 @@
       "types": "./dist/manifest/outbox/worker.d.ts",
       "import": "./dist/manifest/outbox/worker.js"
     },
+    "./outbox/http-partner": {
+      "types": "./dist/manifest/outbox/http-partner-deliverer.d.ts",
+      "import": "./dist/manifest/outbox/http-partner-deliverer.js"
+    },
     "./jobs/postgres": {
       "types": "./dist/manifest/jobs/stores/postgres.d.ts",
       "import": "./dist/manifest/jobs/stores/postgres.js"

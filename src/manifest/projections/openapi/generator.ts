@@ -37,6 +37,11 @@ import type {
 } from '../interface';
 import type { OpenApiProjectionOptions } from './types';
 import { OPENAPI_DESCRIPTOR_META } from './descriptor-meta.js';
+import {
+  buildCommandPathEntries,
+  commandOperationId,
+  resolveCommandPathStyle,
+} from './command-paths.js';
 
 // ============================================================================
 // OpenAPI 3.1 Types (inline to avoid external dependencies)
@@ -707,16 +712,18 @@ function buildGetOperation(
 function buildCommandOperation(
   command: IRCommand,
   entity: IREntity | undefined,
-  basePath: string,
   options: OpenApiProjectionOptions,
   allPolicies: IRPolicy[],
   valueObjectMap?: Map<string, IRValueObject>,
-): { path: string; operation: OpenApiOperation } | null {
+): {
+  entitySegment: string;
+  commandSegment: string;
+  operation: OpenApiOperation;
+} | null {
   if (!command.entity) return null;
 
-  const segment = toEntitySegment(command.entity);
+  const entitySegment = toEntitySegment(command.entity);
   const commandSegment = toKebabCase(command.name);
-  const path = `${basePath}/${segment}/${commandSegment}`;
 
   const security = entity ? deriveSecurityRequirements(entity, allPolicies, options) : undefined;
 
@@ -755,7 +762,8 @@ function buildCommandOperation(
   }
 
   return {
-    path,
+    entitySegment,
+    commandSegment,
     operation: {
       operationId: `${toCamelCase(command.entity)}${toPascalCase(command.name)}`,
       summary: `Execute ${command.name} on ${command.entity}`,
@@ -828,6 +836,7 @@ function collectCommandPaths(
   valueObjectMap: Map<string, IRValueObject>,
   diagnostics: ProjectionDiagnostic[],
 ): void {
+  const pathStyle = resolveCommandPathStyle(options.commandPathStyle);
   for (const command of commands) {
     if (!command.entity) {
       diagnostics.push({
@@ -838,17 +847,31 @@ function collectCommandPaths(
       continue;
     }
     const entity = entityByName.get(command.entity);
-    const cmdOp = buildCommandOperation(
-      command,
-      entity,
-      basePath,
-      options,
-      policies,
-      valueObjectMap,
-    );
+    const cmdOp = buildCommandOperation(command, entity, options, policies, valueObjectMap);
     if (!cmdOp) continue;
-    if (!paths[cmdOp.path]) paths[cmdOp.path] = {};
-    paths[cmdOp.path].post = cmdOp.operation;
+    const entries = buildCommandPathEntries(
+      basePath,
+      cmdOp.entitySegment,
+      cmdOp.commandSegment,
+      pathStyle,
+    );
+    for (const entry of entries) {
+      const operation: OpenApiOperation = {
+        ...cmdOp.operation,
+        operationId: commandOperationId(cmdOp.operation.operationId, entry.kind),
+      };
+      if (entry.kind === 'legacy' && pathStyle === 'both') {
+        operation.deprecated = true;
+        const legacyNote =
+          'Deprecated alias of the canonical dispatcher path ' +
+          'POST {basePath}/manifest/{entity}/commands/{command}. Same command semantics.';
+        operation.description = operation.description
+          ? `${operation.description} ${legacyNote}`
+          : legacyNote;
+      }
+      if (!paths[entry.path]) paths[entry.path] = {};
+      paths[entry.path].post = operation;
+    }
   }
 }
 

@@ -30,6 +30,7 @@ import {
 } from './plugin-api.js';
 import type { AuditSink, AuditRecord } from './audit/audit-sink.js';
 import { registerProjection } from './projections/registry.js';
+import { normalizePluginCapabilities, sortPluginDeclarations } from './plugin-order.js';
 
 // ---------------------------------------------------------------------------
 // Plugin Declaration (from config)
@@ -45,6 +46,16 @@ export interface PluginDeclaration {
   options?: Record<string, unknown>;
   /** Whether the plugin is active (default: true). */
   enabled?: boolean;
+  /**
+   * Config G9 — explicit load priority. Lower numbers load first.
+   * When omitted, the plugin sorts after any ordered entry (ties by `module`).
+   */
+  order?: number;
+  /**
+   * Config G9 — capability tags this declaration advertises
+   * (`storeAdapter`, `auditSink`, `builtin`, `cliCommand`, `projection`, or host tags).
+   */
+  capabilities?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -107,6 +118,16 @@ export interface LoadedPluginRegistries {
   loadedPlugins: ManifestPlugin[];
   /** Diagnostics from the loading process. */
   diagnostics: PluginDiagnostic[];
+  /**
+   * Config G9 — module paths in the order plugins were actually applied
+   * (after `order` sort; disabled entries omitted).
+   */
+  loadOrder: string[];
+  /**
+   * Config G9 — capability tags from each successfully loaded plugin's
+   * declaration (key = plugin manifest name).
+   */
+  declaredCapabilities: Map<string, string[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -328,8 +349,13 @@ export async function loadPlugins(
     string,
     (options?: Record<string, unknown>) => AuditSink | Promise<AuditSink>
   >();
+  const loadOrder: string[] = [];
+  const declaredCapabilities = new Map<string, string[]>();
 
-  for (const decl of declarations) {
+  // Config G9 — deterministic order before any side effects.
+  const ordered = sortPluginDeclarations(declarations);
+
+  for (const decl of ordered) {
     // Skip disabled plugins
     if (decl.enabled === false) {
       diagnostics.push({
@@ -338,6 +364,15 @@ export async function loadPlugins(
         message: `Plugin "${decl.module}" is disabled, skipping`,
       });
       continue;
+    }
+
+    const { capabilities, unknown } = normalizePluginCapabilities(decl.capabilities);
+    for (const tag of unknown) {
+      diagnostics.push({
+        severity: 'info',
+        pluginName: decl.module,
+        message: `Plugin "${decl.module}" declares non-standard capability "${tag}"`,
+      });
     }
 
     try {
@@ -448,6 +483,10 @@ export async function loadPlugins(
       }
 
       loadedPlugins.push(plugin);
+      loadOrder.push(decl.module);
+      if (capabilities.length > 0) {
+        declaredCapabilities.set(manifestMeta.name, capabilities);
+      }
       diagnostics.push({
         severity: 'info',
         pluginName: manifestMeta.name,
@@ -476,6 +515,8 @@ export async function loadPlugins(
     cliCommands,
     loadedPlugins,
     diagnostics,
+    loadOrder,
+    declaredCapabilities,
   };
 }
 

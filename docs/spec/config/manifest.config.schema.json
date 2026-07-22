@@ -556,7 +556,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["module"],
-      "description": "Declares a Manifest plugin for the CLI to load.",
+      "description": "Declares a Manifest plugin for the CLI to load. Config G9: optional order + capabilities.",
       "properties": {
         "module": {
           "type": "string",
@@ -570,6 +570,15 @@
           "type": "boolean",
           "description": "Whether the plugin is active.",
           "default": true
+        },
+        "order": {
+          "type": "integer",
+          "description": "Config G9 — load priority. Lower numbers load first. Omitted entries sort after any ordered plugin (ties break by module name)."
+        },
+        "capabilities": {
+          "type": "array",
+          "description": "Config G9 — capability tags this declaration advertises (storeAdapter, auditSink, builtin, cliCommand, projection, or host tags).",
+          "items": { "type": "string", "minLength": 1 }
         }
       }
     },

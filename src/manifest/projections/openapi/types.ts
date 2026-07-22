@@ -79,5 +79,11 @@ export interface OpenApiProjectionOptions {
   /** Whether to include policy-level security on operations (default: true) */
   includePolicySecurity?: boolean;
 
-  /** ISO timestamp override for deterministic output (testing) */
+  /**
+   * Command write-path shape in the OpenAPI spec.
+   * - `dispatcher` — canonical `POST {base}/manifest/{entity}/commands/{command}`
+   * - `legacy` — older `POST {base}/{entity}/{command-kebab}` only
+   * - `both` (default) — dispatcher + deprecated legacy alias
+   */
+  commandPathStyle?: 'legacy' | 'dispatcher' | 'both';
 }

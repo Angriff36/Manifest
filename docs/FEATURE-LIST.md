@@ -225,7 +225,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | `81-entity-extends-cycle.manifest` | `81-entity-extends-cycle.diagnostics.json` |
 | `82-dynamodb-store.manifest` | `82-dynamodb-store.ir.json` |
 | `83-event-sourced.manifest` | `83-event-sourced.ir.json` |
-| `84-generic-entity.manifest` | `84-generic-entity.ir.json` |
+| `84-generic-entity.manifest` | `84-generic-entity.ir.json`, `84-generic-entity.diagnostics.json` |
 | `85-generic-arity-mismatch.manifest` | `85-generic-arity-mismatch.diagnostics.json` |
 | `86-readmodel.manifest` | `86-readmodel.ir.json`, `86-readmodel.diagnostics.json`, `86-readmodel.results.json` |
 | `87-federation.manifest` | `87-federation.ir.json` |
@@ -257,7 +257,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 
 ## Published package export map
 
-73 package subpaths are declared in `package.json#exports`. A declared export is a distribution surface, not a completion claim.
+74 package subpaths are declared in `package.json#exports`. A declared export is a distribution surface, not a completion claim.
 
 | Export |
 | --- |
@@ -294,6 +294,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | `./module-resolver` |
 | `./multi-compiler` |
 | `./outbox` |
+| `./outbox/http-partner` |
 | `./outbox/memory` |
 | `./outbox/postgres` |
 | `./outbox/redis` |

@@ -101,6 +101,15 @@ export interface ManifestPluginDeclaration {
   options?: Record<string, unknown>;
   /** Whether the plugin is active. Default: true. */
   enabled?: boolean;
+  /**
+   * Config G9 — load priority (lower first). Omitted entries sort after ordered ones.
+   */
+  order?: number;
+  /**
+   * Config G9 — capability tags (`storeAdapter`, `auditSink`, `builtin`,
+   * `cliCommand`, `projection`, or host-defined tags).
+   */
+  capabilities?: string[];
 }
 
 /** Config G2 — CI exit policy (does not alter language severities). */

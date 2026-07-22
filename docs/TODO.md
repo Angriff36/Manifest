@@ -36,6 +36,25 @@ non-binding navigation mirror only.
 
 ## Native gaps (language / runtime)
 
+- [x] **Outbound HTTP partner delivery** — shipped 2026-07-22: adapter
+      `HttpPartnerDeliverer` / `@angriff36/manifest/outbox/http-partner` POSTs
+      outbox entries to a host event→URL map (optional HMAC). Wire via
+      `runOutboxWorker`. Not an inbound `webhook` decl; no IR partner-URL syntax.
+      Spec `adapters.md` § HTTP partner delivery. Proofs
+      `http-partner-deliverer.test.ts`.
+- [x] **OpenAPI ↔ dispatcher command path alignment** — shipped 2026-07-22:
+      OpenAPI default emits canonical
+      `POST {base}/manifest/{entity}/commands/{command}` plus deprecated legacy
+      kebab alias (`commandPathStyle: 'both'`). Proofs `command-paths.test.ts` +
+      `openapi/generator.test.ts`. Spec `adapters.md` § OpenAPI command paths.
+- [x] **Config G9 `plugins.order` / capabilities** — shipped 2026-07-22:
+      declaration `order` + `capabilities`; deterministic `sortPluginDeclarations`;
+      loader exposes `loadOrder` + `declaredCapabilities`. Proofs
+      `plugin-order.test.ts`.
+- [x] **Platform SDK ledger proof promotion** — 2026-07-22: ir-compiler,
+      multi-compiler, runtime-engine, ir-diff/breaking-change, wiring, agent-sdk,
+      seed-pack, projections APIs moved from `CLAIMED_NEEDS_PROOF` to
+      `FULLY_IMPLEMENTED` with test/file proofs in COMPLIANCE_MATRIX.
 - [x] **`through` / many-to-many** — shipped 2026-07-15: compile accepts
       `hasMany … through Join` when Join has belongsTo/ref to both ends;
       runtime two-hop resolve; Prisma emits join collection; fixture

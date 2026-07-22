@@ -97,8 +97,17 @@ ingredient graphs.
    > + `manifest:regen` before live `convex/http.ts` includes it; until then
    > Capsule app writes remain mutation/MCP-client only. Wiring route strings
    > alone are still not a public API without that regen.
-2. **OpenAPI path shape** — command ops use `/{entity}/{command-kebab}` under the OpenAPI base path, not the dispatcher template. Align or document as a deliberate alias; do not treat them as two semantics.
-3. **Outbound HTTP webhook projection** — no IR construct for “on event, POST URL.” Matrix: treat as `NOT_IMPLEMENTED` until designed spec-first.
+2. ~~**OpenAPI path shape** — command ops use `/{entity}/{command-kebab}` under the OpenAPI base path, not the dispatcher template. Align or document as a deliberate alias; do not treat them as two semantics.~~
+   > **Update (2026-07-22):** OpenAPI default emits canonical
+   > `{base}/manifest/{entity}/commands/{command}` plus deprecated legacy
+   > `{base}/{entity}/{command-kebab}` (`commandPathStyle: 'both'`). Same
+   > command semantics; not two APIs.
+3. ~~**Outbound HTTP webhook projection** — no IR construct for “on event, POST URL.” Matrix: treat as `NOT_IMPLEMENTED` until designed spec-first.~~
+   > **Update (2026-07-22):** Adapter shipped — `HttpPartnerDeliverer` /
+   > `@angriff36/manifest/outbox/http-partner` POSTs outbox entries to a host
+   > event→URL map (optional HMAC). Still **not** an IR `webhook` construct and
+   > still **no** declarative partner-URL syntax in `.manifest`. Matrix row
+   > `FULLY_IMPLEMENTED` for the adapter path.
 4. **Product MCP** — wrapping Capsule’s command surface for ChatGPT/partners is Capsule/Builder consumption of **agent-sdk / dispatcher**, not a third Manifest rule engine. Keep `@manifest/mcp-server` as authoring tools unless published and scoped.
 
 ---
