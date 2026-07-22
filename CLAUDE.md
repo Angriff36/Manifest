@@ -370,6 +370,6 @@ Last: [first session]
 
 ## Last Session Bridge
 [Emergency bridge — running bridge was not updated]
-Files: scripts/regenerate-llms-full.mjs (create), scripts/regenerate-llms-full.mjs (edit), IMPLEMENTATION_PLAN.md (edit)
+Files: IMPLEMENTATION_PLAN.md (edit)
 
 # === END COGNILAYER ===

@@ -346,10 +346,7 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 2. Language (DSL) — full inventory | Entity `behavior` blocks | `REJECTED_LOUD → proven reject` | see §1 / fixture `110` |
 | 2. Language (DSL) — full inventory | Generic / parameterized entities `Entity<T>` | `NOT_IMPLEMENTED` | fixtures `84`–`85` negative only |
 | 2. Language (DSL) — full inventory | Language keyword `softDelete` | `NOT_IMPLEMENTED` | projection config only |
-| 2. Language (DSL) — full inventory | Property modifiers (`required`/`unique`/`indexed`/`private`/`readonly`/`optional`/`searchable`/`encrypted`/`masked`) | `CLAIMED_NEEDS_PROOF / PARTIAL` | compile+IR; runtime `optional` unused (§6) |
-| 2. Language (DSL) — full inventory | Range constraints | `CLAIMED_NEEDS_PROOF` | `docs/internal/features/range-constraints.md` |
 | 2. Language (DSL) — full inventory | Realtime subscriptions (language/runtime) | `PARTIAL / DIAGNOSTIC_ONLY` | Convex diagnostic; Next.js may differ — prove per target |
-| 2. Language (DSL) — full inventory | Store declarations | `CLAIMED_NEEDS_PROOF` | multiple fixtures |
 | 3. Expression builtins (49) | Custom builtins via plugin API | `CLAIMED_NEEDS_PROOF` | plugin-api |
 | 4. Runtime engine & adapters | `IRDiagnostic.code` optional | `CLAIMED_NEEDS_PROOF` | seeded codes 2026-07-15 |
 | 4. Runtime engine & adapters | `RuntimeContext` fields | `CLAIMED_NEEDS_PROOF` | See feature matrix |
@@ -359,8 +356,6 @@ Generated from every non-complete Manifest-owned row in the binding `docs/platfo
 | 5. Stores & persistence subsystems | Custom store via plugin API | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | DynamoDB store | `CLAIMED_NEEDS_PROOF` | See feature matrix |
 | 5. Stores & persistence subsystems | GenericPrismaStore | `CLAIMED_NEEDS_PROOF` | `stores/prisma-generic/` |
-| 5. Stores & persistence subsystems | LocalStorageStore | `CLAIMED_NEEDS_PROOF` | See feature matrix |
-| 5. Stores & persistence subsystems | MemoryStore | `CLAIMED_NEEDS_PROOF` | runtime-engine |
 | 5. Stores & persistence subsystems | Outbox: memory/postgres/redis/mongodb/dynamodb | `CLAIMED_NEEDS_PROOF` | `outbox/stores/*` |
 | 5. Stores & persistence subsystems | PostgresStore | `CLAIMED_NEEDS_PROOF` | `stores.node.ts` |
 | 5. Stores & persistence subsystems | SupabaseStore | `CLAIMED_NEEDS_PROOF` | See feature matrix |

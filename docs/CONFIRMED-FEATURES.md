@@ -35,7 +35,8 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 **Entities & data model**
 
 - Entities with typed properties; defaults (fixture 01 — matrix FULLY_IMPLEMENTED @
-  `cdb0a2e5` / `f39b2f87`); `optional`/`unique` and other modifiers (modifiers row still PARTIAL)
+  `cdb0a2e5` / `f39b2f87`); property modifiers matrix FULLY_IMPLEMENTED @
+  `11988d60` (`optional` is a projection hint only — not a runtime gate)
 - `extends` / `mixin` inheritance & composition, with cycle detection (fixtures 77–79,
   81 — matrix FULLY_IMPLEMENTED @ `e2a791c9` / `9f3a9bfa`; entity graph via
   `entity-composition.ts`, not module import cycles)
@@ -81,7 +82,9 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
   matrix FULLY_IMPLEMENTED @ `f39b2f87` / cache proof `7a1ef496`
   `runtime-computed-cache.test.ts`)
 - Constraints with severity `ok`/`warn`/`block`, explicit `failWhen` polarity (fixtures 105–106), override authorization (fixture 22);
-  regex `matches()` constraints (fixture 63 — matrix FULLY_IMPLEMENTED @ `0a2a0f9`)
+  regex `matches()` constraints (fixture 63 — matrix FULLY_IMPLEMENTED @ `0a2a0f9`);
+  range helpers `between`/`min`/`max`/`length` (fixture 57 — matrix FULLY_IMPLEMENTED
+  @ `1afc216b`; runtime `min`/`max` are reducers, not bound checks — prefer `between`)
 - Policies: read/write/delete/execute/all/override (fixture 06 — matrix
   FULLY_IMPLEMENTED @ `46a8535e` / `5ec24009`; top-level only)
 - State machines: `transitions` with runtime enforcement (fixture 38)
@@ -111,7 +114,8 @@ All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts
 - Schedules: cron / interval / every (fixture 76; matrix FULLY_IMPLEMENTED —
   `runtime-schedule.test.ts` + `schedule-worker.test.ts` @ `abe9595`; fires via
   worker/host, not a built-in RuntimeEngine timer)
-- Stores (persistence targets), modules (namespacing), cross-file `use`/imports
+- Store declarations `store Entity in <target>` (matrix FULLY_IMPLEMENTED @
+  `974f2775` / `9c94b2db`); modules (namespacing), cross-file `use`/imports
   (modules/`use` matrix FULLY_IMPLEMENTED — `module-resolver.test.ts` +
   `multi-compiler.test.ts`; named `import {…}` still not implemented)
 
@@ -154,7 +158,12 @@ spec: `docs/spec/builtins.md` (corrected 2026-07-14).
 
 ## 4. Stores & Persistence Subsystems
 
-- Entity stores: memory, localStorage (browser-safe), postgres, supabase (`stores.node.ts`), Turso/libSQL, DynamoDB, Prisma-generic (`stores/prisma-generic/store.ts`) — each test-backed
+- Entity stores: memory (MemoryStore matrix FULLY_IMPLEMENTED @ `2af8191b` /
+  `9c94b2db` — in-process Map), localStorage (LocalStorageStore matrix
+  FULLY_IMPLEMENTED @ `2af8191b` / `9c94b2db` — browser DOM only), postgres,
+  supabase (`stores.node.ts`), Turso/libSQL, DynamoDB, Prisma-generic
+  (`stores/prisma-generic/store.ts`) — other backends still have their own
+  matrix rows
 - Outbox adapters (`src/manifest/outbox/stores/*`) — memory (in-process only, `tx` ignored) +
   postgres FULLY_IMPLEMENTED @ `b296e1a` (durable, honors supplied transaction handle); redis/mongodb/dynamodb still
   CLAIMED_NEEDS_PROOF; ≠ outbound partner HTTP POST
