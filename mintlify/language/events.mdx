@@ -311,12 +311,9 @@ The event-sourced store supports:
   how state is persisted and recovered.
 </Warning>
 
-~~**Correction (2026-07-15 — STALE, see below)** Source may declare
-~~`store <Entity> in eventSourced { ... }` and the compiler accepts it into IR (`target: "eventSourced"`,
-~~fixture `83-event-sourced.manifest`). There is **no** `EventSourcedStore` implementation in the
-~~reference runtime — the kind is passthrough only. Do not document append-only / snapshot / replay
-~~behavior as shipped. Use a real store target (`memory`, adapter-backed, etc.) until an
-~~implementation lands.~~
+<Callout type="info">
+**Implemented (2026-07-22)**: `EventSourcedStore` ships in the reference runtime (`stores/event-sourced.ts:37-140`, auto-wired at `runtime-engine.ts:1324-1327`). See [Event Sourced Store](/adapters/event-sourced-store) for full documentation.
+</Callout>
 
 > **Correction (2026-07-22)** The 2026-07-15 correction above is **stale** — `EventSourcedStore` **is** implemented
 > and shipped (`src/manifest/stores/event-sourced.ts:37-140`). The reference runtime auto-wires it for
