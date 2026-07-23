@@ -76,9 +76,7 @@ describe('convex tenant-singleton belongsTo hydration', () => {
 
     // Conventional identity belongsTo still uses db.get on the declared id field.
     expect(hydrate).toContain('const __fk = ((doc as any) as any).vendorId');
-    expect(hydrate).toContain(
-      '.vendor = __fk != null ? await ctx.db.get(__fk as any) : null',
-    );
+    expect(hydrate).toContain('.vendor = __fk != null ? await ctx.db.get(__fk as any) : null');
 
     const computed = new ConvexProjection().generate(ir!, { surface: 'convex.computed' });
     const code = computed.artifacts[0]!.code;
@@ -86,8 +84,8 @@ describe('convex tenant-singleton belongsTo hydration', () => {
     expect(code).toContain('needsSpendApproval');
     expect(code).toContain('withIndex("by_tenantId"');
     expect(code).not.toContain('purchasingConfigId');
-    expect(computed.diagnostics.filter((d) => d.code === 'CONVEX_BELONGS_TO_HYDRATE_NO_LOOKUP')).toEqual(
-      [],
-    );
+    expect(
+      computed.diagnostics.filter((d) => d.code === 'CONVEX_BELONGS_TO_HYDRATE_NO_LOOKUP'),
+    ).toEqual([]);
   });
 });

@@ -54,11 +54,7 @@ export type BelongsToHydrateHop =
       reason: string;
     };
 
-function targetHasLookupIndex(
-  ir: IR,
-  target: IREntity,
-  fields: readonly string[],
-): boolean {
+function targetHasLookupIndex(ir: IR, target: IREntity, fields: readonly string[]): boolean {
   if (fields.length === 0) return false;
   if (fields.length === 1) {
     const field = fields[0]!;
@@ -253,7 +249,9 @@ export function renderBelongsToHydration(
   ];
 }
 
-export function belongsToUnsupportedDiagnostic(hop: BelongsToHydrateHop): ProjectionDiagnostic | null {
+export function belongsToUnsupportedDiagnostic(
+  hop: BelongsToHydrateHop,
+): ProjectionDiagnostic | null {
   if (hop.mode !== 'unsupported') return null;
   return {
     severity: 'error',
