@@ -118,4 +118,93 @@ describe('convex nested aggregate hydration', () => {
       }),
     ).toEqual([]);
   });
+
+  it('hydrates hasMany→belongsTo under sum(filter(...)) and projects nested ceil', async () => {
+    const program = `
+entity Recipe {
+  property yieldQuantity: decimal = 1
+  property servesPerYield: int = 1
+  hasMany ingredientLines: RecipeIngredient
+  computed liveBatchCost: money = sum(filter(self.ingredientLines, (line) => line.deletedAt == null), (line) => line.quantity * line.ingredient.costPerUnit)
+}
+entity Ingredient {
+  property costPerUnit: money = 0
+}
+entity RecipeIngredient {
+  property recipeId: string
+  property ingredientId: string
+  property quantity: decimal = 0
+  property deletedAt: datetime?
+  belongsTo recipe: Recipe fields [recipeId] references [id]
+  belongsTo ingredient: Ingredient fields [ingredientId] references [id]
+}
+entity Dish {
+  hasMany recipeLines: DishRecipe
+}
+entity DishRecipe {
+  property dishId: string
+  property recipeId: string
+  property attachedAt: datetime?
+  property deletedAt: datetime?
+  belongsTo dish: Dish fields [dishId] references [id]
+  belongsTo recipe: Recipe fields [recipeId] references [id]
+}
+entity Event {
+  property expectedHeadcount: int = 0
+}
+entity EventDish {
+  property eventId: string
+  property dishId: string
+  property headcountOverride: int = 0
+  belongsTo event: Event fields [eventId] references [id]
+  belongsTo dish: Dish fields [dishId] references [id]
+  computed targetHeadcount: int = self.headcountOverride > 0 ? self.headcountOverride : self.event.expectedHeadcount
+  computed requiredBatches: int = max_of(filter(self.dish.recipeLines, (line) => line.deletedAt == null and line.attachedAt != null), (line) => line.recipe.servesPerYield > 0 ? ceil(self.targetHeadcount / line.recipe.servesPerYield) : 0)
+}
+store Recipe in durable
+store Ingredient in durable
+store RecipeIngredient in durable
+store Dish in durable
+store DishRecipe in durable
+store Event in durable
+store EventDish in durable
+`;
+    const { ir, diagnostics } = await compileToIR(program);
+    expect((diagnostics ?? []).filter((d) => d.severity === 'error')).toEqual([]);
+    expect(ir).not.toBeNull();
+
+    const recipe = ir!.entities.find((e) => e.name === 'Recipe')!;
+    const eventDish = ir!.entities.find((e) => e.name === 'EventDish')!;
+    const options = normalizeOptions({});
+
+    const recipeHydrate = planAndRenderAggregateHydration(
+      ir!,
+      recipe,
+      recipe.computedProperties.map((cp) => cp.expression),
+      options,
+      'docId',
+    ).lines.join('\n');
+    expect(recipeHydrate).toContain('ingredientLines = await ctx.db.query');
+    expect(recipeHydrate).toContain('.ingredient = __fk != null ? await ctx.db.get');
+
+    const eventDishHydrate = planAndRenderAggregateHydration(
+      ir!,
+      eventDish,
+      eventDish.computedProperties.map((cp) => cp.expression),
+      options,
+      'docId',
+    ).lines.join('\n');
+    expect(eventDishHydrate).toContain('.recipe = __fk != null ? await ctx.db.get');
+
+    const computed = new ConvexProjection().generate(ir!, { surface: 'convex.computed' });
+    const code = computed.artifacts[0]!.code;
+    expect(computed.diagnostics.filter((d) => d.code === 'CONVEX_UNRESOLVED_COMPUTED')).toEqual([]);
+    expect(code).toContain('requiredBatches');
+    expect(code).toContain('Math.ceil');
+    expect(code).toContain('liveBatchCost');
+
+    const batchesCp = eventDish.computedProperties.find((cp) => cp.name === 'requiredBatches')!;
+    const rendered = renderExpression(batchesCp.expression, { selfVar: 'doc' });
+    expect(rendered.unresolved).toEqual([]);
+  });
 });

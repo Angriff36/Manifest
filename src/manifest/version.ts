@@ -10,7 +10,7 @@
  * (runs on every `npm version` bump, incl. the cut-release workflow).
  * Guarded by src/manifest/version.test.ts. Do not edit by hand.
  */
-export const COMPILER_VERSION = '3.6.41';
+export const COMPILER_VERSION = '3.6.42';
 
 /** IR schema version */
 export const SCHEMA_VERSION = '1.0';

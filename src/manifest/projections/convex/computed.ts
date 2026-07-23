@@ -73,11 +73,18 @@ export function generateComputedHelpers(ir: IR, options: NormalizedOptions): Com
       );
     }
 
-    const assigns = fields.map((f) => `    ${f.name}: ${f.code},`).join('\n');
+    // Declaration order with assign-back so later computeds can read earlier
+    // ones via `self.<computed>` (e.g. requiredBatches → targetHeadcount).
+    const bodyLines = fields.flatMap((f) => [
+      `  const __${f.name} = ${f.code};`,
+      `  doc.${f.name} = __${f.name};`,
+    ]);
+    const returnFields = fields.map((f) => `    ${f.name}: __${f.name},`).join('\n');
     blocks.push(
-      `/** Self-only computed fields for ${entity.name}. Pass the stored document. */\n` +
+      `/** Computed fields for ${entity.name}. Pass the stored (and hydrated) document. */\n` +
         `export function compute${entity.name}(doc: Record<string, any>): Record<string, any> {\n` +
-        `  return {\n${assigns}\n  };\n` +
+        `${bodyLines.join('\n')}\n` +
+        `  return {\n${returnFields}\n  };\n` +
         `}`,
     );
   }

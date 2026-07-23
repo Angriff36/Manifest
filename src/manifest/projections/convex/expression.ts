@@ -401,6 +401,16 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
             return `Math.max(${args.join(', ')})`;
           case 'min':
             return `Math.min(${args.join(', ')})`;
+          // Numeric helpers — same Math.* mapping as the reference runtime
+          // (docs/spec/builtins.md; llms-full Numeric helpers).
+          case 'abs':
+            return `Math.abs(${args[0]})`;
+          case 'round':
+            return `Math.round(${args[0]})`;
+          case 'floor':
+            return `Math.floor(${args[0]})`;
+          case 'ceil':
+            return `Math.ceil(${args[0]})`;
           default:
             if (!callee) {
               unresolved.push('non-identifier callee');

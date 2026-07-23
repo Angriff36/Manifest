@@ -24,6 +24,35 @@ const AGGREGATE_CALLEES = new Set([
   'max_of',
 ]);
 
+/** Wrappers whose first arg is still a collection (peel to find the member chain). */
+const COLLECTION_WRAPPERS = new Set(['filter', 'map', 'flat_map']);
+
+type MemberChain = { root: string; properties: string[] };
+
+/**
+ * Peel `filter`/`map`/`flat_map` wrappers so `sum(filter(self.lines, pred), mapper)`
+ * resolves hops from `self.lines` and binds both lambdas to the element entity.
+ */
+function peelToMemberChain(collection: IRExpression): {
+  chain: MemberChain;
+  wrapperLambdas: IRExpression[];
+} | null {
+  const wrapperLambdas: IRExpression[] = [];
+  let current: IRExpression = collection;
+  while (current.kind === 'call') {
+    const callee = current.callee.kind === 'identifier' ? current.callee.name : undefined;
+    if (callee && COLLECTION_WRAPPERS.has(callee) && current.args[0]) {
+      if (current.args[1]) wrapperLambdas.push(current.args[1]!);
+      current = current.args[0]!;
+      continue;
+    }
+    break;
+  }
+  const chain = memberChain(current);
+  if (!chain) return null;
+  return { chain, wrapperLambdas };
+}
+
 export type AggregateHydrateHop =
   | {
       kind: 'hasMany';
@@ -198,42 +227,47 @@ function walkExpression(
     case 'call': {
       const callee = expr.callee.kind === 'identifier' ? expr.callee.name : undefined;
       if (callee && AGGREGATE_CALLEES.has(callee) && expr.args[0]) {
-        const chain = memberChain(expr.args[0]);
-        if (chain) {
+        const peeled = peelToMemberChain(expr.args[0]);
+        if (peeled) {
           let startEntity: string | undefined;
           let prefix: readonly AggregateHydrateHop[] = pathPrefix;
-          if (chain.root === 'self' || chain.root === 'this') {
+          if (peeled.chain.root === 'self' || peeled.chain.root === 'this') {
             startEntity = rootEntity.name;
             prefix = [];
           } else {
-            startEntity = bindings.get(chain.root);
+            startEntity = bindings.get(peeled.chain.root);
           }
           if (startEntity) {
             const { hops, elementEntity } = hopsFromChain(
               ir,
               startEntity,
-              chain.properties,
+              peeled.chain.properties,
               options,
             );
             mergeHops(tree, [...prefix, ...hops]);
-            const lambda = expr.args[1];
-            if (lambda?.kind === 'lambda' && lambda.params[0] && elementEntity) {
-              const nextBindings = new Map(bindings);
+            const hopPrefix = [...prefix, ...hops];
+            const nextBindings = new Map(bindings);
+            const walkBoundLambda = (lambda: IRExpression | undefined): void => {
+              if (lambda?.kind !== 'lambda' || !lambda.params[0] || !elementEntity) return;
               nextBindings.set(lambda.params[0], elementEntity);
               walkExpression(
                 lambda.body,
                 rootEntity,
                 nextBindings,
-                [...prefix, ...hops],
+                hopPrefix,
                 ir,
                 options,
                 tree,
               );
-              for (let i = 2; i < expr.args.length; i++) {
-                walkExpression(expr.args[i], rootEntity, bindings, pathPrefix, ir, options, tree);
-              }
-              return;
+            };
+            for (const wrapperLambda of peeled.wrapperLambdas) {
+              walkBoundLambda(wrapperLambda);
             }
+            walkBoundLambda(expr.args[1]);
+            for (let i = 2; i < expr.args.length; i++) {
+              walkExpression(expr.args[i], rootEntity, bindings, pathPrefix, ir, options, tree);
+            }
+            return;
           }
         }
       }

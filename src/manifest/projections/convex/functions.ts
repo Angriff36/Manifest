@@ -572,7 +572,8 @@ export function generateQueries(
       maskedFieldsNeedAuth(maskedFields) && !!options.authContextImport;
     const inlineComputed =
       options.computedProperties === 'inline'
-        ? renderInlineComputedFields(entity, '__row', options)
+        ? // Cast self so relation/computed reads typecheck after hydrate (docs are not on Doc<>).
+          renderInlineComputedFields(entity, '(__row as any)', options)
         : {
             fields: [] as { name: string; code: string }[],
             diagnostics: [] as ProjectionDiagnostic[],
@@ -619,12 +620,20 @@ export function generateQueries(
     };
 
     const hydrateThenProjectRows = (sourceExpr: string): string => {
-      const assigns = inlineComputed.fields.map((f) => `${f.name}: ${f.code}`).join(', ');
+      // Assign in declaration order onto the row so later computeds can read
+      // earlier ones (self.<computed>) before the return spread.
+      const seqAssigns = inlineComputed.fields
+        .map((f) => `      (__row as any).${f.name} = ${f.code};`)
+        .join('\n');
+      const assigns = inlineComputed.fields
+        .map((f) => `${f.name}: (__row as any).${f.name}`)
+        .join(', ');
       const hydrate = inlineHydrateRow.lines.map((line) => `      ${line.trimStart()}`).join('\n');
       return (
         `const __projectedRows: any[] = [];\n` +
         `    for (const __row of ${sourceExpr} as any[]) {\n` +
         (hydrate ? `${hydrate}\n` : '') +
+        (seqAssigns ? `${seqAssigns}\n` : '') +
         `      __projectedRows.push({ ...(__row as any), ${assigns} });\n` +
         `    }\n` +
         `    ${maskAndStripPrivateRows('__projectedRows', maskedFields, privates, maskAuth)}`
@@ -641,8 +650,15 @@ export function generateQueries(
           return prefix + maskAndStripPrivateRows(rowsExpr, maskedFields, privates, maskAuth);
         }
         if (inlineHydrateRow.lines.length === 0) {
-          const assigns = inlineComputed.fields.map((f) => `${f.name}: ${f.code}`).join(', ');
-          const mapped = `(${rowsExpr}).map((__row) => ({ ...(__row as any), ${assigns} }))`;
+          const seq = inlineComputed.fields
+            .map((f) => `(__row as any).${f.name} = ${f.code};`)
+            .join(' ');
+          const assigns = inlineComputed.fields
+            .map((f) => `${f.name}: (__row as any).${f.name}`)
+            .join(', ');
+          const mapped =
+            `(${rowsExpr}).map((__row) => { ${seq} ` +
+            `return { ...(__row as any), ${assigns} }; })`;
           return prefix + maskAndStripPrivateRows(mapped, maskedFields, privates, maskAuth);
         }
         return prefix + hydrateThenProjectRows(rowsExpr);
@@ -690,8 +706,15 @@ export function generateQueries(
           lines.push(`    ${hydrateThenProjectRows(visibleExpr)}`);
           return lines.join('\n');
         }
-        const assigns = inlineComputed.fields.map((f) => `${f.name}: ${f.code}`).join(', ');
-        visibleExpr = `(${visibleExpr}).map((__row) => ({ ...(__row as any), ${assigns} }))`;
+        const seq = inlineComputed.fields
+          .map((f) => `(__row as any).${f.name} = ${f.code};`)
+          .join(' ');
+        const assigns = inlineComputed.fields
+          .map((f) => `${f.name}: (__row as any).${f.name}`)
+          .join(', ');
+        visibleExpr =
+          `(${visibleExpr}).map((__row) => { ${seq} ` +
+          `return { ...(__row as any), ${assigns} }; })`;
       }
       lines.push(`    ${maskAndStripPrivateRows(visibleExpr, maskedFields, privates, maskAuth)}`);
       return lines.join('\n');
@@ -707,14 +730,21 @@ export function generateQueries(
         if (inlineComputed.fields.length === 0) {
           return prefix + maskAndStripPrivateDoc(docExpr, maskedFields, privates, maskAuth);
         }
+        const seqAssigns = inlineComputed.fields
+          .map((f) => {
+            const code = f.code.replace(/\b__row\b/g, '__doc');
+            return `    (__doc as any).${f.name} = ${code};`;
+          })
+          .join('\n');
         const assigns = inlineComputed.fields
-          .map((f) => `${f.name}: ${f.code.replace(/\b__row\b/g, '__doc')}`)
+          .map((f) => `${f.name}: (__doc as any).${f.name}`)
           .join(', ');
         return (
           prefix +
           `const __doc = ${docExpr};\n` +
           `    if (!__doc) return __doc;\n` +
           hydrateBlock +
+          `${seqAssigns}\n` +
           `    const __hydrated = { ...(__doc as any), ${assigns} };\n` +
           `    ${maskAndStripPrivateDoc('__hydrated', maskedFields, privates, maskAuth)}`
         );
@@ -752,10 +782,14 @@ export function generateQueries(
         }
       }
       if (hydrateBlock) lines.push(hydrateBlock.trimEnd());
-      const assigns = inlineComputed.fields
-        .map((f) => `${f.name}: ${f.code.replace(/\b__row\b/g, '__doc')}`)
-        .join(', ');
       if (inlineComputed.fields.length > 0) {
+        for (const f of inlineComputed.fields) {
+          const code = f.code.replace(/\b__row\b/g, '__doc');
+          lines.push(`    (__doc as any).${f.name} = ${code};`);
+        }
+        const assigns = inlineComputed.fields
+          .map((f) => `${f.name}: (__doc as any).${f.name}`)
+          .join(', ');
         lines.push(`    const __hydrated = { ...(__doc as any), ${assigns} };`);
         lines.push(
           `    ${maskAndStripPrivateDoc('__hydrated', maskedFields, privates, maskAuth)}`,
@@ -832,10 +866,12 @@ export function generateQueries(
     ...(/= query\({/.test(body) || blocks.length === 0 ? ['query'] : []),
     ...(/= internalQuery\({/.test(body) ? ['internalQuery'] : []),
   ];
+  const needsDoc = codeUsesDocType(body);
   const code =
     `${GENERATED_HEADER}\n// ${blocks.length} query function(s).\n\n` +
     `import { ${serverImports.join(', ')} } from "./_generated/server";\n` +
     `import { v } from "convex/values";\n` +
+    (needsDoc ? `import type { Doc } from "./_generated/dataModel";\n` : '') +
     (needsAuthCtx
       ? `import { getAuthContext } from ${JSON.stringify(options.authContextImport)};\n`
       : '') +

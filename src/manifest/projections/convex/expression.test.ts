@@ -149,6 +149,14 @@ describe('renderExpression — builtins', () => {
     );
   });
 
+  it('maps abs/round/floor/ceil to Math.* (runtime builtins)', () => {
+    expect(renderExpression(call('abs', self('n')), DOC).code).toBe('Math.abs(doc.n)');
+    expect(renderExpression(call('round', self('n')), DOC).code).toBe('Math.round(doc.n)');
+    expect(renderExpression(call('floor', self('n')), DOC).code).toBe('Math.floor(doc.n)');
+    expect(renderExpression(call('ceil', self('n')), DOC).code).toBe('Math.ceil(doc.n)');
+    expect(renderExpression(call('ceil', self('n')), DOC).unresolved).toEqual([]);
+  });
+
   it('roleAllows preserves its explicit role and optional target', () => {
     expect(
       renderExpression(

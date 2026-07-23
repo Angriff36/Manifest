@@ -120,12 +120,14 @@ export function maskAndStripPrivateDoc(
   authExpr: string,
 ): string {
   if (fields.length === 0 && privates.length === 0) return `return ${docExpr};`;
+  // Use __final (not __doc) so callers that already bound `const __doc` for
+  // inline computed assign-back do not hit a TDZ/redeclare error.
   if (fields.length === 0) {
     const dels = privates.map((p) => `delete (__out as any).${p};`).join(' ');
     return (
-      `const __doc = ${docExpr};\n` +
-      `    if (!__doc) return __doc;\n` +
-      `    const __out = { ...(__doc as any) };\n` +
+      `const __final = ${docExpr};\n` +
+      `    if (!__final) return __final;\n` +
+      `    const __out = { ...(__final as any) };\n` +
       `    ${dels}\n` +
       `    return __out;`
     );
@@ -133,16 +135,16 @@ export function maskAndStripPrivateDoc(
   const specs = serializeMaskedFields(fields);
   if (privates.length === 0) {
     return (
-      `const __doc = ${docExpr};\n` +
-      `    if (!__doc) return __doc;\n` +
-      `    return __maskDoc(__doc, ${specs}, ${authExpr});`
+      `const __final = ${docExpr};\n` +
+      `    if (!__final) return __final;\n` +
+      `    return __maskDoc(__final, ${specs}, ${authExpr});`
     );
   }
   const dels = privates.map((p) => `delete (__out as any).${p};`).join(' ');
   return (
-    `const __doc = ${docExpr};\n` +
-    `    if (!__doc) return __doc;\n` +
-    `    const __out = __maskDoc(__doc, ${specs}, ${authExpr});\n` +
+    `const __final = ${docExpr};\n` +
+    `    if (!__final) return __final;\n` +
+    `    const __out = __maskDoc(__final, ${specs}, ${authExpr});\n` +
     `    ${dels}\n` +
     `    return __out;`
   );
