@@ -4,6 +4,16 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.42] - 2026-07-23
+
+### Changed
+
+- test(convex): update computed helper expectations for assign-back
+- chore(release): defer 3.6.42 bump to cut-release
+- fix(convex): return nested computed fields from queries
+- [docs] Clean Mintlify public pages of strikethrough archaeology
+- [test] Enforce IR schema validation in conformance suite (§10.1)
+
 ## [Unreleased]
 
 ## [3.6.41] - 2026-07-21
