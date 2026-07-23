@@ -1,0 +1,41 @@
+// Aggregate sum reaction: recompute a parent's child total after a child event.
+// Sibling of 97-aggregate-count-reaction. `sum(E where fk == value, status == "x",
+// of quantity)` sums the `of` field across rows of E matching every ANDed equality
+// predicate; pure equality only. Exercises the IR `aggregate` node with `op: "sum"`
+// (ir.ts:624-630) so the schema gate validates that shape (was missing from
+// ir-v1.schema.json — the §10.1/1.2 surface).
+entity Bucket {
+  property required id: string
+  property totalQty: number = 0
+
+  command syncTotal(totalQty: number) {
+    mutate totalQty = totalQty
+  }
+
+  store in memory
+}
+
+entity Contribution {
+  property required id: string
+  property bucketId: string = ""
+  property quantity: number = 0
+  property status: string = "open"
+  belongsTo bucket: Bucket
+
+  command record(bucketId: string, quantity: number) {
+    mutate bucketId = bucketId
+    mutate quantity = quantity
+    mutate status = "open"
+    emit ContributionRecorded { bucketId: self.bucketId }
+  }
+
+  store in memory
+}
+
+event ContributionRecorded: "contribution.recorded" {}
+
+on ContributionRecorded run Bucket.syncTotal
+  resolve self.bucketId
+  params {
+    totalQty: sum(Contribution where bucketId == self.bucketId, status == "open", of quantity)
+  }

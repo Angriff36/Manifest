@@ -28,7 +28,12 @@ Conformance tests are the executable source of truth for Manifest semantics.
 - IR output is compared structurally after normalization.
 - Whitespace, property ordering, and JSON encoding details are not semantically
   significant.
-- IR output SHOULD validate against `docs/spec/ir/ir-v1.schema.json`.
+- IR output MUST validate against `docs/spec/ir/ir-v1.schema.json`.
+  Enforced (2026-07-22): the conformance harness compiles the schema once with
+  `ajv` and asserts every fixture's compiled IR conforms, so schema↔compiler
+  drift fails the suite. This exists because `match`/`elseCreate` (reactions)
+  and aggregate `sum` once shipped in the compiler while missing from the schema,
+  and structural-equality conformance could not detect the gap.
 - Runtime results MUST match emitted event name and channel, as well as
   success/error outcomes.
 - In conformance tests, timestamps MUST equal the injected deterministic time

@@ -1,0 +1,64 @@
+// Reaction natural-key upsert: `on Event run Entity.cmd match f = payload.x, …
+// else create params { … }`. When no target matches the `match` keys, `else create`
+// allocates a new instance via the command (an initialization command — see
+// semantics.md § Initialization Commands); otherwise it reuses the matched row.
+// Exercises the IR `IRReactionRule.match` + `IRReactionRule.elseCreate` fields
+// (ir-compiler.ts:1355-1363) so the schema gate validates those shapes (were
+// missing from ir-v1.schema.json — the §10.1/1.1 surface).
+entity Draft {
+  property required id: string
+  property required weekKey: string
+  property required vendorId: string
+  property required totalQty: number
+  property status: string = "draft"
+
+  // Initialization command: mutates required fields from params so else-create
+  // allocates (see semantics.md § Initialization Commands).
+  command ensure(weekKey: string, vendorId: string, totalQty: number) {
+    mutate weekKey = weekKey
+    mutate vendorId = vendorId
+    mutate totalQty = totalQty
+    mutate status = "draft"
+    emit DraftEnsured { draftId: self.id, weekKey: weekKey, vendorId: vendorId, totalQty: totalQty }
+  }
+
+  store in memory
+}
+
+entity Need {
+  property required id: string
+  property weekKey: string = ""
+  property vendorId: string = ""
+  property quantity: number = 0
+
+  command open(weekKey: string, vendorId: string, quantity: number) {
+    mutate weekKey = weekKey
+    mutate vendorId = vendorId
+    mutate quantity = quantity
+    emit NeedOpened { weekKey: weekKey, vendorId: vendorId, quantity: quantity }
+  }
+
+  store in memory
+}
+
+event NeedOpened: "need.opened" {
+  weekKey: string
+  vendorId: string
+  quantity: number
+}
+
+event DraftEnsured: "draft.ensured" {
+  draftId: string
+  weekKey: string
+  vendorId: string
+  totalQty: number
+}
+
+on NeedOpened run Draft.ensure
+  match weekKey = payload.weekKey, vendorId = payload.vendorId
+  else create
+  params {
+    weekKey: payload.weekKey
+    vendorId: payload.vendorId
+    totalQty: payload.quantity
+  }

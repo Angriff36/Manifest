@@ -1,0 +1,527 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "80c081d73e13d5dcfe97fe674dd1256e52749a3b2fbf9b7c394740718447493b",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Draft",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "weekKey",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "vendorId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "totalQty",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "draft"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "ensure"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Need",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "weekKey",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "vendorId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "open"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Draft",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Need",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "NeedOpened",
+      "channel": "need.opened",
+      "payload": [
+        {
+          "name": "weekKey",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "vendorId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "DraftEnsured",
+      "channel": "draft.ensured",
+      "payload": [
+        {
+          "name": "draftId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "weekKey",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "vendorId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "totalQty",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "ensure",
+      "entity": "Draft",
+      "parameters": [
+        {
+          "name": "weekKey",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "vendorId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "totalQty",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "weekKey",
+          "expression": {
+            "kind": "identifier",
+            "name": "weekKey"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "vendorId",
+          "expression": {
+            "kind": "identifier",
+            "name": "vendorId"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "totalQty",
+          "expression": {
+            "kind": "identifier",
+            "name": "totalQty"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "draft"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "DraftEnsured"
+      ],
+      "emitPayloads": [
+        {
+          "eventName": "DraftEnsured",
+          "fields": [
+            {
+              "name": "draftId",
+              "expression": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "id"
+              }
+            },
+            {
+              "name": "weekKey",
+              "expression": {
+                "kind": "identifier",
+                "name": "weekKey"
+              }
+            },
+            {
+              "name": "vendorId",
+              "expression": {
+                "kind": "identifier",
+                "name": "vendorId"
+              }
+            },
+            {
+              "name": "totalQty",
+              "expression": {
+                "kind": "identifier",
+                "name": "totalQty"
+              }
+            }
+          ]
+        }
+      ],
+      "initialization": {
+        "initializationInputs": [
+          "totalQty",
+          "vendorId",
+          "weekKey"
+        ],
+        "authenticatedOwnershipFields": [],
+        "declaredDefaults": [],
+        "initialLifecycleState": [
+          {
+            "property": "status",
+            "value": {
+              "kind": "string",
+              "value": "draft"
+            }
+          }
+        ],
+        "commandOwnedFields": [
+          "status",
+          "totalQty",
+          "vendorId",
+          "weekKey"
+        ],
+        "draftFields": [
+          "id",
+          "status",
+          "totalQty",
+          "vendorId",
+          "weekKey"
+        ],
+        "finalDocumentRequirements": [
+          "totalQty",
+          "vendorId",
+          "weekKey"
+        ],
+        "dynamicGuardIndexes": [],
+        "redundantGuardIndexes": []
+      }
+    },
+    {
+      "name": "open",
+      "entity": "Need",
+      "parameters": [
+        {
+          "name": "weekKey",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "vendorId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "weekKey",
+          "expression": {
+            "kind": "identifier",
+            "name": "weekKey"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "vendorId",
+          "expression": {
+            "kind": "identifier",
+            "name": "vendorId"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "quantity",
+          "expression": {
+            "kind": "identifier",
+            "name": "quantity"
+          }
+        }
+      ],
+      "emits": [
+        "NeedOpened"
+      ],
+      "emitPayloads": [
+        {
+          "eventName": "NeedOpened",
+          "fields": [
+            {
+              "name": "weekKey",
+              "expression": {
+                "kind": "identifier",
+                "name": "weekKey"
+              }
+            },
+            {
+              "name": "vendorId",
+              "expression": {
+                "kind": "identifier",
+                "name": "vendorId"
+              }
+            },
+            {
+              "name": "quantity",
+              "expression": {
+                "kind": "identifier",
+                "name": "quantity"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "policies": [],
+  "reactions": [
+    {
+      "event": "NeedOpened",
+      "targetEntity": "Draft",
+      "targetCommand": "ensure",
+      "match": [
+        {
+          "field": "weekKey",
+          "source": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "payload"
+            },
+            "property": "weekKey"
+          }
+        },
+        {
+          "field": "vendorId",
+          "source": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "payload"
+            },
+            "property": "vendorId"
+          }
+        }
+      ],
+      "elseCreate": true,
+      "params": [
+        {
+          "name": "weekKey",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "payload"
+            },
+            "property": "weekKey"
+          }
+        },
+        {
+          "name": "vendorId",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "payload"
+            },
+            "property": "vendorId"
+          }
+        },
+        {
+          "name": "totalQty",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "payload"
+            },
+            "property": "quantity"
+          }
+        }
+      ]
+    }
+  ]
+}

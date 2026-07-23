@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import Ajv, { type ValidateFunction, type ErrorObject } from 'ajv';
 import { compileToIR } from '../ir-compiler';
 import { RuntimeEngine, RuntimeOptions, CommandResult, EntityInstance } from '../runtime-engine';
 import type { IR } from '../ir';
@@ -11,6 +12,39 @@ const __dirname = dirname(__filename);
 
 const FIXTURES_DIR = join(__dirname, 'fixtures');
 const EXPECTED_DIR = join(__dirname, 'expected');
+
+// Tier A contract — docs/spec/conformance.md §Test Rules: "IR output SHOULD
+// validate against docs/spec/ir/ir-v1.schema.json." The validator is compiled
+// once; every fixture's compiled IR is checked against it so schema↔compiler
+// drift fails the suite (prevents the silent drift that previously left
+// `match`/`elseCreate` and aggregate `sum` out of the schema).
+const validateIRSchema: ValidateFunction = new Ajv({
+  allErrors: true,
+  strict: false,
+}).compile(
+  JSON.parse(
+    readFileSync(
+      join(__dirname, '..', '..', '..', 'docs', 'spec', 'ir', 'ir-v1.schema.json'),
+      'utf-8',
+    ),
+  ),
+);
+
+function assertIRValidates(ir: IR, fixtureName: string): void {
+  if (validateIRSchema(ir)) return;
+  const errors = ((validateIRSchema.errors as ErrorObject[] | null) ?? [])
+    .map(
+      (e) =>
+        `  ${e.instancePath || '(root)'}: ${e.message ?? ''}${
+          e.params ? ' ' + JSON.stringify(e.params) : ''
+        }`,
+    )
+    .join('\n');
+  throw new Error(
+    `${fixtureName}: compiled IR does not validate against ir-v1.schema.json ` +
+      `(docs/spec/conformance.md §Test Rules):\n${errors}`,
+  );
+}
 
 const DETERMINISTIC_TIMESTAMP = 1000000000000;
 let idCounter = 0;
@@ -243,6 +277,9 @@ describe('Manifest Conformance Tests', () => {
             // Compilation should fail
             expect(ir).toBeNull();
             expect(diagnostics.filter((d) => d.severity === 'error').length).toBeGreaterThan(0);
+          } else if (ir) {
+            // Warning-only fixtures still produce IR; it must conform to the schema.
+            assertIRValidates(ir, fixtureName);
           }
 
           // Verify each expected diagnostic is present with exact matching
@@ -271,6 +308,8 @@ describe('Manifest Conformance Tests', () => {
 
           expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
           expect(ir).not.toBeNull();
+
+          assertIRValidates(ir!, fixtureName);
 
           const expectedIR = loadExpectedIR(fixtureName);
           expect(expectedIR).not.toBeNull();

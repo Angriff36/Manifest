@@ -1,0 +1,285 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "702f7ec2ecbe6d3cea783dd2eb14f8cb9913312445933f5b9aa56c32e07f1069",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Bucket",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "totalQty",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "syncTotal"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Contribution",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "bucketId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "open"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "bucket",
+          "kind": "belongsTo",
+          "target": "Bucket"
+        }
+      ],
+      "commands": [
+        "record"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Bucket",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Contribution",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "ContributionRecorded",
+      "channel": "contribution.recorded",
+      "payload": []
+    }
+  ],
+  "commands": [
+    {
+      "name": "syncTotal",
+      "entity": "Bucket",
+      "parameters": [
+        {
+          "name": "totalQty",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "totalQty",
+          "expression": {
+            "kind": "identifier",
+            "name": "totalQty"
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "record",
+      "entity": "Contribution",
+      "parameters": [
+        {
+          "name": "bucketId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "bucketId",
+          "expression": {
+            "kind": "identifier",
+            "name": "bucketId"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "quantity",
+          "expression": {
+            "kind": "identifier",
+            "name": "quantity"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "open"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "ContributionRecorded"
+      ],
+      "emitPayloads": [
+        {
+          "eventName": "ContributionRecorded",
+          "fields": [
+            {
+              "name": "bucketId",
+              "expression": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "bucketId"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "policies": [],
+  "reactions": [
+    {
+      "event": "ContributionRecorded",
+      "targetEntity": "Bucket",
+      "targetCommand": "syncTotal",
+      "resolve": {
+        "kind": "member",
+        "object": {
+          "kind": "identifier",
+          "name": "self"
+        },
+        "property": "bucketId"
+      },
+      "params": [
+        {
+          "name": "totalQty",
+          "expression": {
+            "kind": "aggregate",
+            "op": "sum",
+            "entity": "Contribution",
+            "field": "quantity",
+            "predicates": [
+              {
+                "field": "bucketId",
+                "value": {
+                  "kind": "member",
+                  "object": {
+                    "kind": "identifier",
+                    "name": "self"
+                  },
+                  "property": "bucketId"
+                }
+              },
+              {
+                "field": "status",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "string",
+                    "value": "open"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

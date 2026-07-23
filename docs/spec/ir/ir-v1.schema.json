@@ -2147,16 +2147,16 @@
     },
     "IRScheduleParam": {
       "type": "object",
-      "required": ["name", "value"],
       "additionalProperties": false,
+      "required": ["name", "expression"],
       "properties": {
         "name": {
           "type": "string",
           "description": "Parameter name"
         },
-        "value": {
-          "$ref": "#/definitions/IRValue",
-          "description": "Parameter value"
+        "expression": {
+          "$ref": "#/definitions/IRExpression",
+          "description": "Expression evaluated at schedule fire time to produce the parameter value"
         }
       }
     },
