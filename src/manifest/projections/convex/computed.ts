@@ -63,6 +63,7 @@ export function generateComputedHelpers(ir: IR, options: NormalizedOptions): Com
       'docId',
       '  ',
     );
+    diagnostics.push(...hydrate.diagnostics);
     if (hydrate.lines.length > 0) {
       blocks.push(
         `/** Preload nested relations for ${entity.name} computeds (mutates doc in place). */\n` +
@@ -113,7 +114,7 @@ export function renderEntityComputedHydration(
   docExpr = '(doc as any)',
   docIdExpr = 'docId',
   baseIndent = '    ',
-): { lines: string[]; exprs: IRExpression[] } {
+): { lines: string[]; exprs: IRExpression[]; diagnostics: ProjectionDiagnostic[] } {
   const exprs = entity.computedProperties.map((cp) => cp.expression);
   const planned = planAndRenderAggregateHydration(
     ir,
@@ -124,7 +125,7 @@ export function renderEntityComputedHydration(
     docExpr,
     baseIndent,
   );
-  return { lines: planned.lines, exprs };
+  return { lines: planned.lines, exprs, diagnostics: planned.diagnostics };
 }
 
 /**

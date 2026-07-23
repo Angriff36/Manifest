@@ -8,7 +8,15 @@
  * treatment at every relationship depth before the lowered expression runs.
  */
 
-import type { IR, IREntity, IRExpression, IRRelationship } from '../../ir';
+import type { IR, IREntity, IRExpression } from '../../ir';
+import type { ProjectionDiagnostic } from '../interface.js';
+import {
+  belongsToUnsupportedDiagnostic,
+  inverseFkField,
+  renderBelongsToHydration,
+  resolveBelongsToHydrateHop,
+  type BelongsToHydrateHop,
+} from './belongs-to-hydrate.js';
 import type { NormalizedOptions } from './generator.js';
 import { resolveConvexTableName } from './generator.js';
 
@@ -62,14 +70,7 @@ export type AggregateHydrateHop =
       fkField: string;
       childTable: string;
     }
-  | {
-      kind: 'belongsTo';
-      relName: string;
-      fromEntity: string;
-      toEntity: string;
-      fkField: string;
-      targetTable: string;
-    };
+  | BelongsToHydrateHop;
 
 export type AggregateHydrateNode = {
   hop: AggregateHydrateHop;
@@ -91,33 +92,6 @@ function memberChain(expression: IRExpression): { root: string; properties: stri
   }
   if (current.kind !== 'identifier') return undefined;
   return { root: current.name, properties };
-}
-
-/** Non-tenant FK column for a belongsTo/ref (mirrors count-of-preload). */
-function inverseFkField(
-  childEntityName: string,
-  inverse: IRRelationship,
-  tenantProp: string | undefined,
-  options: NormalizedOptions,
-): string {
-  const override = options.references[childEntityName]?.[inverse.name];
-  if (override) return override;
-  const fields = inverse.foreignKey?.fields ?? [];
-  const nonTenant = fields.find((f) => f !== tenantProp);
-  return nonTenant ?? `${inverse.name}Id`;
-}
-
-function belongsToFkField(
-  fromEntityName: string,
-  rel: IRRelationship,
-  tenantProp: string | undefined,
-  options: NormalizedOptions,
-): string {
-  const override = options.references[fromEntityName]?.[rel.name];
-  if (override) return override;
-  const fields = rel.foreignKey?.fields ?? [];
-  const nonTenant = fields.find((f) => f !== tenantProp);
-  return nonTenant ?? `${rel.name}Id`;
 }
 
 function resolveHasManyHop(
@@ -147,29 +121,6 @@ function resolveHasManyHop(
   };
 }
 
-function resolveBelongsToHop(
-  ir: IR,
-  fromEntityName: string,
-  relName: string,
-  options: NormalizedOptions,
-): AggregateHydrateHop | null {
-  const fromEntity = ir.entities.find((e) => e.name === fromEntityName);
-  if (!fromEntity) return null;
-  const rel = fromEntity.relationships.find(
-    (r) => r.name === relName && (r.kind === 'belongsTo' || r.kind === 'ref'),
-  );
-  if (!rel?.target) return null;
-  const tenantProp = ir.tenant?.property;
-  return {
-    kind: 'belongsTo',
-    relName,
-    fromEntity: fromEntityName,
-    toEntity: rel.target,
-    fkField: belongsToFkField(fromEntityName, rel, tenantProp, options),
-    targetTable: resolveConvexTableName(rel.target, options),
-  };
-}
-
 function hopsFromChain(
   ir: IR,
   startEntity: string,
@@ -185,7 +136,7 @@ function hopsFromChain(
       currentEntity = hasMany.toEntity;
       continue;
     }
-    const belongsTo = resolveBelongsToHop(ir, currentEntity, prop, options);
+    const belongsTo = resolveBelongsToHydrateHop(ir, currentEntity, prop, options);
     if (belongsTo) {
       hops.push(belongsTo);
       currentEntity = belongsTo.toEntity;
@@ -344,6 +295,19 @@ export function rootHasManyRelNames(tree: AggregateHydrateTree): string[] {
   return names;
 }
 
+function collectBelongsToDiagnostics(
+  tree: AggregateHydrateTree,
+  diagnostics: ProjectionDiagnostic[],
+): void {
+  for (const node of tree.values()) {
+    if (node.hop.kind === 'belongsTo') {
+      const diagnostic = belongsToUnsupportedDiagnostic(node.hop);
+      if (diagnostic) diagnostics.push(diagnostic);
+    }
+    collectBelongsToDiagnostics(node.children, diagnostics);
+  }
+}
+
 /**
  * Emit statements that load each hop onto the document graph.
  * `docExpr` is typically `(doc as any)`; `docIdExpr` is the Convex id for the root.
@@ -382,13 +346,8 @@ export function renderAggregateHydration(
         continue;
       }
 
-      lines.push(
-        `${indent}{`,
-        `${indent}  const __fk = (${parentExpr} as any).${hop.fkField};`,
-        `${indent}  (${parentExpr} as any).${hop.relName} = __fk != null ? await ctx.db.get(__fk as any) : null;`,
-        `${indent}}`,
-      );
-      if (node.children.size > 0) {
+      lines.push(...renderBelongsToHydration(hop, parentExpr, indent));
+      if (node.children.size > 0 && hop.mode !== 'unsupported') {
         const relExpr = `(${parentExpr} as any).${hop.relName}`;
         lines.push(`${indent}if (${relExpr}) {`);
         renderLevel(node.children, relExpr, `${relExpr}._id`, depth + 1);
@@ -410,11 +369,19 @@ export function planAndRenderAggregateHydration(
   docIdExpr: string,
   docExpr = '(doc as any)',
   baseIndent = '    ',
-): { tree: AggregateHydrateTree; lines: string[]; rootHasMany: string[] } {
+): {
+  tree: AggregateHydrateTree;
+  lines: string[];
+  rootHasMany: string[];
+  diagnostics: ProjectionDiagnostic[];
+} {
   const tree = collectAggregateHydrationTree(ir, entity, exprs, options);
+  const diagnostics: ProjectionDiagnostic[] = [];
+  collectBelongsToDiagnostics(tree, diagnostics);
   return {
     tree,
     lines: renderAggregateHydration(tree, docExpr, docIdExpr, baseIndent),
     rootHasMany: rootHasManyRelNames(tree),
+    diagnostics,
   };
 }

@@ -2140,6 +2140,7 @@ function generateMutation(
     options,
     'docId',
   );
+  diagnostics.push(...aggregateHydration.diagnostics);
   const hasManyPreloads = aggregateHydration.lines;
   // Preserve one-hop count_of support detection for relation-plan skip logic.
   const countOfRels = new Set<string>();
