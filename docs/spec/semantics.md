@@ -270,6 +270,28 @@ database FK engine:
   - `overriddenBy`: User ID who authorized the override (if applicable)
   - `resolved`: Array of `{expression, value}` pairs for debugging
 
+#### Standalone and malformed constraints (vNext)
+
+*Update (2026-07-22) @RYANSIGNED:* previously a standalone or malformed
+constraint parsed cleanly and compiled green while doing nothing — a silent
+no-op that violated "diagnostics explain, never compensate." The compiler now
+diagnoses both cases.
+
+- A `constraint` declared at the top level or inside a module body (outside any
+  entity) has no subject instance to evaluate against, so it is **not lowered
+  into the IR** and has no effect at runtime. A conforming compiler MUST emit a
+  `warning` diagnostic naming the constraint; it MUST NOT silently drop it. This
+  is a warning, not a hard error, because the surrounding program remains valid —
+  move the constraint into the entity it should guard. *(see conformance fixture
+  113)*
+- A constraint block accepts only the canonical fields (`code`, `severity`,
+  `expression`, `message`, `messageTemplate`, `overridePolicy`, `failWhen`,
+  `details`). Any other field is unrecognized and is **ignored**. A conforming
+  compiler MUST emit a `warning` diagnostic naming the unknown field; it MUST
+  NOT silently swallow it. This prevents a typo'd field name (e.g. `rule:` where
+  `expression:` was intended) from making a constraint silently ineffective.
+  *(see conformance fixture 113)*
+
 ## Date/Time Types
 
 Four primitive type names with fixed runtime representations, plus one
@@ -599,6 +621,13 @@ identifiers**, not reserved: `publish`, `persist`, `read`, `write`, `delete`,
 - Retry field-name ergonomics (parser aliases → canonical IR): `attempts` → `maxAttempts`; `initialDelay` / `initialDelayMs` → `delay` / `delayMs`; `maxDelay` / `maxDelayMs` → IR `maxDelayMs`. Canonical fields: `maxAttempts`, `backoff`, `delay`/`delayMs`, `maxDelay`, `jitter`, `retryOn`.
 - When `maxDelay` is set, each computed backoff delay MUST be clamped with `min(delay, maxDelay)` before sleep/jitter (see `computeRetryDelays`).
 - `schedule` declarations compile to IR `schedules`. Runtimes expose `getSchedules()` and `runSchedule(name)`. The `RuntimeEngine` itself has no timer, so adapters decide when to invoke schedules; the reference package ships an optional worker (`startScheduleWorker` / `runSchedulesOnce` from `@angriff36/manifest/schedule-worker`) that evaluates cron and interval/every triggers on a tick loop and, when the IR declares approvals, sweeps approval expiry. Cron is matched in UTC to the minute (day-of-month and day-of-week follow the standard OR rule when both are restricted).
+- *Update (2026-07-22) @RYANSIGNED:* only `schedule` declarations at the top
+  level or in a module body are lowered into IR `schedules`. A `schedule`
+  declared inside an `entity { … }` block has no IR representation and does not
+  execute — a conforming compiler MUST emit a `warning` diagnostic for it and
+  MUST NOT silently drop it (house style: diagnostics explain, never compensate).
+  This is a warning, not a hard error; declare schedules at the top level.
+  *(see conformance fixture 113)*
 - Entity `extends` and `mixin` composition is resolved at compile time. Precedence on name collision: own > later mixin > earlier mixin > parent. Cycles and unknown parents are compile errors.
 
 ### Rate Limiting

@@ -44,14 +44,6 @@ entity WorkflowStep {
   store WorkflowStep in memory
 }
 
-constraint validStatusTransition {
-  self.status in ["pending", "in_progress", "completed", "failed"]
-}
-
-constraint cannotRecomplete {
-  self.status != "completed" or self.executedAt == 0
-}
-
 event StepStarted: "workflow.step.started" {
   id: string
   name: string

@@ -1,0 +1,17 @@
+{
+  "shouldFail": false,
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "Constraint 'orphanCheck' is declared outside any entity and is not lowered to IR; it has no effect at runtime. Move it inside the entity it should guard."
+    },
+    {
+      "severity": "warning",
+      "message": "Constraint 'badField' has an unknown field 'rule'; the field is ignored."
+    },
+    {
+      "severity": "warning",
+      "message": "Schedule 'cleanup' is declared inside entity 'Widget' and is not lowered to IR; it has no effect at runtime. Declare schedules at the top level."
+    }
+  ]
+}

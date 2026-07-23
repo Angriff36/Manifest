@@ -1,0 +1,29 @@
+// Constructs that parse cleanly but are silently dropped from the IR — each
+// MUST surface a warning diagnostic instead of compiling green while doing
+// nothing. House style forbids silent no-ops ("diagnostics explain, never
+// compensate"). Compilation still succeeds (warnings only). Mirrors fixture 94.
+
+// (1) Standalone top-level constraint: no subject entity, not lowered to IR.
+constraint orphanCheck {
+  expression: self.name is not empty
+}
+
+entity Widget {
+  store Widget in memory
+  property required name: string = ""
+
+  // (3) Constraint with a non-canonical field 'rule' (canonical: 'expression').
+  //     The unknown field is ignored and must be diagnosed, else the constraint
+  //     would appear valid while the typo'd field does nothing.
+  constraint badField {
+    rule: "ignored"
+    expression: self.name is not empty
+  }
+
+  // (2) Entity-embedded schedule: not lowered to IR; will not execute.
+  schedule cleanup every 5 m run Widget.refresh
+
+  command refresh() {
+    // schedule target; intentionally a no-op
+  }
+}

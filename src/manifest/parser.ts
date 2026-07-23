@@ -154,7 +154,19 @@ export class Parser {
         else if (this.check('KEYWORD', 'webhook')) program.webhooks.push(this.parseWebhook());
         else if (this.check('IDENTIFIER', 'schedule'))
           program.schedules!.push(this.parseSchedule());
-        else this.advance();
+        else if (this.check('KEYWORD', 'constraint')) {
+          // Standalone top-level constraint has no subject entity, so it is not
+          // lowered into IR. Diagnose instead of silently dropping it (house
+          // style: diagnostics explain, never compensate). Warning, not error:
+          // the surrounding program is still valid — move it into an entity.
+          const pos = this.current()?.position;
+          const orphan = this.parseConstraint();
+          this.errors.push({
+            message: `Constraint '${orphan.name}' is declared outside any entity and is not lowered to IR; it has no effect at runtime. Move it inside the entity it should guard.`,
+            position: pos,
+            severity: 'warning',
+          });
+        } else this.advance();
       } catch (e) {
         this.errors.push({
           message: e instanceof Error ? e.message : 'Parse error',
@@ -233,7 +245,17 @@ export class Parser {
       else if (this.check('IDENTIFIER', 'role')) roles.push(this.parseRole());
       else if (this.check('KEYWORD', 'webhook')) webhooks.push(this.parseWebhook());
       else if (this.check('IDENTIFIER', 'schedule')) schedules.push(this.parseSchedule());
-      else this.advance();
+      else if (this.check('KEYWORD', 'constraint')) {
+        // Standalone module-body constraint is not lowered into IR — diagnose
+        // rather than silently drop (mirrors the top-level constraint branch).
+        const pos = this.current()?.position;
+        const orphan = this.parseConstraint();
+        this.errors.push({
+          message: `Constraint '${orphan.name}' is declared outside any entity and is not lowered to IR; it has no effect at runtime. Move it inside the entity it should guard.`,
+          position: pos,
+          severity: 'warning',
+        });
+      } else this.advance();
       this.skipNL();
     }
     this.consume('PUNCTUATION', '}');
@@ -461,6 +483,17 @@ export class Parser {
         this.advance(); // consume the 'event' keyword to prevent infinite loop
         // Also skip the event name if present
         if (this.current()?.type === 'IDENTIFIER') this.advance();
+      } else if (this.check('IDENTIFIER', 'schedule')) {
+        // Entity-embedded schedules are not lowered into IR — diagnose rather
+        // than silently drop (house style: diagnostics explain, never
+        // compensate). Consume the whole schedule via parseSchedule.
+        const pos = this.current()?.position;
+        const sched = this.parseSchedule();
+        this.errors.push({
+          message: `Schedule '${sched.name}' is declared inside entity '${name}' and is not lowered to IR; it has no effect at runtime. Declare schedules at the top level.`,
+          position: pos,
+          severity: 'warning',
+        });
       } else this.advance();
       this.skipNL();
     }
@@ -2036,6 +2069,7 @@ export class Parser {
         this.skipNL();
         if (this.check('PUNCTUATION', '}')) break;
 
+        const fieldPos = this.current()?.position;
         const field = this.consumeIdentifierOrKeyword().value;
         this.consume('OPERATOR', ':');
 
@@ -2085,7 +2119,13 @@ export class Parser {
             }
             break;
           default:
-            // Unknown field, skip the expression
+            // Unknown field — diagnose instead of silently ignoring it (house
+            // style: diagnostics explain, never compensate), then skip the value.
+            this.errors.push({
+              message: `Constraint '${name}' has an unknown field '${field}'; the field is ignored.`,
+              position: fieldPos,
+              severity: 'warning',
+            });
             this.parseExpr();
         }
         this.skipNL();
@@ -2138,6 +2178,7 @@ export class Parser {
       while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
         this.skipNL();
         if (this.check('PUNCTUATION', '}')) break;
+        const fieldPos = this.current()?.position;
         const field = this.consumeIdentifierOrKeyword().value;
         this.consume('OPERATOR', ':');
         switch (field) {
@@ -2171,7 +2212,13 @@ export class Parser {
             }
             break;
           default:
-            // Unknown field, skip the expression
+            // Unknown field — diagnose instead of silently ignoring it (house
+            // style: diagnostics explain, never compensate), then skip the value.
+            this.errors.push({
+              message: `Constraint '${name}' has an unknown field '${field}'; the field is ignored.`,
+              position: fieldPos,
+              severity: 'warning',
+            });
             this.parseExpr();
         }
         this.skipNL();
