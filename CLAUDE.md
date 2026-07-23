@@ -370,6 +370,6 @@ Last: [first session]
 
 ## Last Session Bridge
 [Emergency bridge — running bridge was not updated]
-Files: mintlify/cli/configuration.mdx (edit), docs/internal/IMPLEMENTATION_PLAN.md (edit)
+Files: mintlify/projections/mongoose.mdx (create), mintlify/integration/projections.mdx (edit), mintlify/projections/openapi.mdx (edit), docs/internal/IMPLEMENTATION_PLAN.md (edit)
 
 # === END COGNILAYER ===

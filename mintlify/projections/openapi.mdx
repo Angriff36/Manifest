@@ -56,6 +56,30 @@ The options object is `OpenApiProjectionOptions` in `openapi/types.ts`. `basePat
 
 Boolean toggles default to true: `includeAuth` (auth on routes), `includeTenant` (tenant context), `includeConstraintErrors` (the error response schemas), and `includePolicySecurity` (per-operation security derived from policies).
 
+## Command path styles
+
+The `commandPathStyle` option controls how command write operations appear in the OpenAPI paths:
+
+| Style | Command write path | Description |
+| ----- | ----------------- | ----------- |
+| `dispatcher` (canonical) | `POST {basePath}/manifest/{entity}/commands/{command}` | Standard dispatcher layout used across HTTP projections |
+| `legacy` | `POST {basePath}/{entity}/{command-kebab}` | Older flattened path style |
+| `both` (default) | Both paths emitted; legacy marked `deprecated: true` | Eases migration — emit both styles during transition |
+
+The default is `both` for compatibility. Use `dispatcher` for new projects to align with the canonical command path across projections.
+
+```ts
+const result = projection.generate(ir, {
+  surface: 'openapi.spec',
+  options: {
+    commandPathStyle: 'dispatcher', // canonical only
+    basePath: '/api',
+  },
+});
+```
+
+When `commandPathStyle: 'both'`, the legacy path includes a deprecation notice in the operation description pointing to the canonical dispatcher path.
+
 ## Notes & limitations
 
 <Note>

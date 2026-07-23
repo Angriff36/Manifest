@@ -1,0 +1,108 @@
+---
+title: 'Mongoose schema projection'
+sidebarTitle: 'Mongoose'
+description: 'Generate Mongoose schema and model definitions from Manifest IR for MongoDB-backed entities.'
+---
+
+The Mongoose projection generates TypeScript Mongoose schema and model definitions from compiled Manifest IR. Only entities with `store … in mongodb` are emitted — entities with other store targets are skipped with info diagnostics.
+
+> **Verified (2026-07-22) @RYANSIGNED:** Registry name `mongoose`, surface `mongoose.schema`, CLI `manifest generate -p mongoose`. Package pin **3.6.41**.
+
+## What it generates
+
+The projection registers under the name `mongoose` and declares a single surface, `mongoose.schema`. A `generate` call returns one artifact (`id: 'mongoose.schema'`, content type `typescript`, default output `schema.ts`).
+
+Generated artifacts include:
+
+- **Schema definitions** — `new Schema({ ... })` with field types and validators
+- **Model exports** — `model('EntityName', EntitySchema, 'collection-name')` for each entity
+- **FK fields** — `Schema.Types.ObjectId` with `ref` for `belongsTo`/`ref` relationships when the FK property doesn't already exist
+- **Timestamp support** — Optional `{ timestamps: true }` schema option for `createdAt`/`updatedAt`
+
+## Type mapping
+
+IR types map to Mongoose schema types via a built-in type table. Bare `number` is **intentionally omitted** — Manifest's `number` is ambiguous between integers, reals, and currency. Use precise types:
+
+| IR Type | Mongoose SchemaType | Notes |
+| ------- | ------------------- | ----- |
+| `string`, `text`, `uuid`, `email`, `url` | `String` | String family |
+| `boolean`, `bool` | `Boolean` | Boolean values |
+| `int`, `integer` | `Number` | Integer counts and IDs |
+| `float` | `Number` | Real numbers where rounding is acceptable |
+| `decimal`, `money` | `Schema.Types.Decimal128` | Financial accuracy |
+| `bigint` | `Schema.Types.BigInt` | Large integers (MongoDB 6.0+) |
+| `date`, `datetime`, `timestamp` | `Date` | Temporal values |
+| `json`, `object`, `any` | `Schema.Types.Mixed` | Unstructured data |
+| `bytes` | `Buffer` | Binary data |
+| `array<T>` | `[...]` | Array fields (generic preserves inner type) |
+
+Using bare `number` without a `typeMappings` override produces a **MONGOOSE_AMBIGUOUS_NUMBER** error diagnostic — the field is skipped until you pick a precise type.
+
+## Usage
+
+```ts
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { getProjection } from '@angriff36/manifest/projections';
+
+const { ir } = await compileToIR(source);
+
+const projection = getProjection('mongoose');
+const result = projection?.generate(ir, {
+  surface: 'mongoose.schema',
+  options: {
+    collectionMappings: { Product: 'products' },
+    timestamps: true,
+  },
+});
+
+const schema = result?.artifacts[0]?.code; // TypeScript code
+```
+
+Invoke via CLI:
+
+```bash
+manifest generate ir/recipe.ir.json --projection mongoose --surface mongoose.schema --output schema.ts
+```
+
+## Options
+
+The options object conforms to `MongooseProjectionOptions` in `projections/mongoose/options.ts`.
+
+| Option | Type | Default | Description |
+| ------ | ---- | ------- | ----------- |
+| `output` | `string` | `'schema.ts'` | Output file path hint |
+| `collectionMappings` | `Record<string, string>` | `{}` | Map IR entity names to MongoDB collection names |
+| `fieldMappings` | `Record<string, Record<string, string>>` | `{}` | Rename fields per entity (`{ Entity: { property: 'field_name' } }`) |
+| `typeMappings` | `Record<string, Record<string, string>>` | `{}` | Override Mongoose type per property (`{ Entity: { property: 'Schema.Types.Mixed' } }`) |
+| `includeValidation` | `boolean` | `true` | Emit `required`/`unique` validators from IR modifiers |
+| `timestamps` | `boolean` | `false` | Add `{ timestamps: true }` to each schema |
+
+## Relationship handling
+
+For `belongsTo` and `ref` relationships, the projection emits an ObjectId foreign key field when the FK property doesn't already exist on the entity:
+
+```ts
+// IR: entity Book { belongsTo Author }
+// Generated:
+authorId: { type: Schema.Types.ObjectId, ref: 'Author' }
+```
+
+If you've already declared the FK property explicitly (e.g., `authorId: string`), the projection uses your field definition instead of synthesizing one.
+
+## Diagnostics
+
+The projection emits diagnostics for:
+
+| Code | Severity | Condition |
+| ---- | -------- | --------- |
+| `MONGOOSE_AMBIGUOUS_NUMBER` | `error` | Property uses bare `number` type without `typeMappings` override |
+| `MONGOOSE_UNKNOWN_TYPE` | `error` | IR type has no default Mongoose mapping and no override |
+| `MONGOOSE_SKIPPED_NO_STORE` | `info` | Entity has no `store` declaration |
+| `MONGOOSE_SKIPPED_INCOMPATIBLE` | `info` | Entity's store target isn't `mongodb` |
+| `MONGOOSE_SKIPPED_EXTERNAL` | `info` | Entity is marked `external` |
+
+Error diagnostics (ambiguous/unknown types) skip the affected field — the schema still generates for other valid properties.
+
+<Warning>
+  Computed properties are **never** emitted as persisted fields. Mongoose schemas represent persisted MongoDB state only; computed values exist at the Manifest runtime level.
+</Warning>

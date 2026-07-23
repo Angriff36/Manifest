@@ -14,14 +14,15 @@ A **projection** reads your compiled Intermediate Representation (IR) and emits 
 
 > **Correction (2026-07-15):** The table above understated the registry. Shipped projections
 > include (among others) `nextjs`, `prisma`, `prisma-store`, `convex`, `drizzle`, `kysely`,
-> `zod`, `openapi`, `graphql`, `express`, `hono`, `remix`, `sveltekit`, and more — see
+> `zod`, `openapi`, `graphql`, `express`, `hono`, `remix`, `sveltekit`, `mongoose`, and more — see
 > `manifest generate -p <name>` / the projections registry. Guides for individual targets live
 > under `/integration/*` and `/projections/*`.
 
-| Projection | CLI identifier | What it generates                                   | Guide                                     |
-| ---------- | -------------- | --------------------------------------------------- | ----------------------------------------- |
-| Next.js    | `nextjs`       | App Router routes, dispatcher, TS types, client SDK | [Next.js projection](/integration/nextjs) |
-| Prisma     | `prisma`       | A `schema.prisma` file (models, relations, indexes) | [Prisma projection](/integration/prisma)  |
+| Projection | CLI identifier | What it generates                                   | Guide                                         |
+| ---------- | -------------- | --------------------------------------------------- | --------------------------------------------- |
+| Next.js    | `nextjs`       | App Router routes, dispatcher, TS types, client SDK | [Next.js projection](/integration/nextjs)   |
+| Prisma     | `prisma`       | A `schema.prisma` file (models, relations, indexes) | [Prisma projection](/integration/prisma)    |
+| Mongoose   | `mongoose`     | Mongoose schema and model definitions for MongoDB   | [Mongoose projection](/projections/mongoose)  |
 
 Projections share a single contract — `ProjectionTarget.generate(ir, request)` returns one or more `ProjectionArtifact`s plus structured diagnostics. The CLI's `--projection` flag selects which projection runs; dispatch is generic (the registry resolves the name), so adding a new projection means registering it, not editing a hardcoded dispatch branch.
 
