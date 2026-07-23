@@ -42,6 +42,7 @@ lerna-debug.log*
 nul
 
 # Test / debug artifacts
+.artifacts/
 *.png
 !public/*.png
 !docs/**/*.png
