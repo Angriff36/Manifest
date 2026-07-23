@@ -52,7 +52,7 @@ This page explains the boundary between them, how to decide which to reach for f
 
     const runtime = new RuntimeEngine(ir, {
       user: { id: 'user-1', role: 'admin' },
-      context: { requestId: 'req-1' },
+      requestId: 'req-1',
     });
 
     const result = await runtime.runCommand(

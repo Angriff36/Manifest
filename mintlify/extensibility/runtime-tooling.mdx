@@ -89,7 +89,7 @@ const result = await debugger_.runCommand('Order', 'complete', {
 import { RuntimeEngine } from '@angriff36/manifest';
 import { CommandTraceRecorder } from '@angriff36/manifest/debug';
 
-const runtime = new RuntimeEngine(ir, {/* options */});
+const runtime = new RuntimeEngine(ir, {}, { /* runtime options */ });
 const tracer = new CommandTraceRecorder(runtime);
 
 const result = await tracer.runCommand('complete', {}, {

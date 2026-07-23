@@ -112,11 +112,11 @@ import { Pool } from 'pg';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-const runtime = new RuntimeEngine(ir, {
-  actorId: session.userId,
-  tenantId: session.tenantId,
-  auditSink: new PostgresAuditSink({ pool }),
-});
+const runtime = new RuntimeEngine(
+  ir,
+  { actorId: session.userId, tenantId: session.tenantId },
+  { auditSink: new PostgresAuditSink({ pool }) },
+);
 
 // Every runtime.runCommand(...) call now writes one AuditRecord.
 const result = await runtime.runCommand('createOrder', input, {
@@ -124,6 +124,13 @@ const result = await runtime.runCommand('createOrder', input, {
   instanceId: orderId,
 });
 ```
+
+> **Correction (2026-07-22) @RYANSIGNED:** The `RuntimeEngine` constructor is
+> `(ir, context, options)`. `auditSink` is a `RuntimeOptions` field and must go in
+> the **options** (3rd) arg, not `context`. Passing it in `context` typechecks —
+> `RuntimeContext` has an open `[key: string]` index signature — but the engine
+> only reads `this.options.auditSink`, so the sink is silently never wired and no
+> `AuditRecord` is written. Identity (`actorId`/`tenantId`) stays in `context`.
 
 ## Import paths
 

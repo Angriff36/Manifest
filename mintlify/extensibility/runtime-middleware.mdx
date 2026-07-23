@@ -123,10 +123,19 @@ const loggingMiddleware: Middleware = {
   },
 };
 
-const runtime = new RuntimeEngine(ir, {
-  middleware: [loggingMiddleware],
-});
+const runtime = new RuntimeEngine(
+  ir,
+  {},
+  { middleware: [loggingMiddleware] },
+);
 ```
+
+> **Correction (2026-07-22) @RYANSIGNED:** `middleware` is a `RuntimeOptions`
+> field — put it in the **options** (3rd) arg of `new RuntimeEngine(ir, context,
+> options)`, not in `context`. In `context` it typechecks (`RuntimeContext` has
+> an open `[key: string]` index signature, `runtime-engine.ts:109`) but the
+> engine only reads `this.options.middleware` (`runtime-engine.ts:2285`), so the
+> pipeline silently never runs.
 
 <Note>
   The ordering guarantee is strict: middleware at index 0 always runs before middleware at index 1

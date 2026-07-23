@@ -137,11 +137,11 @@ import { Pool } from 'pg';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-const runtime = new RuntimeEngine(ir, {
-  actorId: session.userId,
-  tenantId: session.tenantId,
-  outboxStore: new PostgresOutboxStore({ pool }),
-});
+const runtime = new RuntimeEngine(
+  ir,
+  { actorId: session.userId, tenantId: session.tenantId },
+  { outboxStore: new PostgresOutboxStore({ pool }) },
+);
 
 // After a successful command, entries are automatically enqueued.
 const result = await runtime.runCommand('placeOrder', input, {
@@ -149,6 +149,11 @@ const result = await runtime.runCommand('placeOrder', input, {
   instanceId: orderId,
 });
 ```
+
+> **Correction (2026-07-22) @RYANSIGNED:** `outboxStore` is a `RuntimeOptions`
+> field — put it in the **options** (3rd) arg of `new RuntimeEngine(ir, context,
+> options)`, not in `context`. In `context` it typechecks (the open index
+> signature) but is never read, so outbox entries are silently never enqueued.
 
 Then run the shipped delivery worker. `runOutboxWorker` owns the
 claim/deliver/mark loop — you supply only the `deliver` closure that publishes
