@@ -824,7 +824,10 @@ describe('NextJsProjection', () => {
           .getPreEmitDiagnostics(program)
           .map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n')),
       ).toEqual([]);
-    });
+      // ponytail: this asserts a real ts.createProgram typecheck of generated artifacts;
+      // under full-suite parallel load it exceeds the 5s default. 30s matches the repo's
+      // other compile-heavy tests (compile.test.ts, generate.test.ts).
+    }, 30000);
   });
 
   describe('nextjs.command surface', () => {
