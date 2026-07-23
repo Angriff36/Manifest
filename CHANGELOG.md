@@ -4,6 +4,17 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.43] - 2026-07-23
+
+### Fixed
+
+- **Convex belongsTo hydration uses declared foreignKey fields:** Tenant-singleton
+  relationships keyed only by `tenantId` (e.g. Capsule `VendorOrder.purchasingConfig`)
+  no longer invent `${relationshipName}Id` and call `ctx.db.get`. Non-identity
+  lookups query the target `by_<field>` index; identity-backed belongsTo still uses
+  `db.get`. Loud diagnostic `CONVEX_BELONGS_TO_HYDRATE_NO_LOOKUP` when no valid
+  lookup exists. Proof: `tenant-singleton-belongs-to-hydrate.test.ts`.
+
 ## [3.6.42] - 2026-07-23
 
 ### Changed
