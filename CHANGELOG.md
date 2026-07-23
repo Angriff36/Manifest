@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.44] - 2026-07-23
+
+### Changed
+
+- fix(convex): materialize child computeds for parent aggregates
+
 ## [3.6.43] - 2026-07-23
 
 ### Fixed
