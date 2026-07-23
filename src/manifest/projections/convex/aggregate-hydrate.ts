@@ -6,6 +6,11 @@
  * `count_of(self.<rel>)` already preloads inverse FK rows onto `doc`. Multi-hop
  * chains (e.g. self.joins → join.mid → mid.lines → line.leaf.tags) need the same
  * treatment at every relationship depth before the lowered expression runs.
+ *
+ * Parent aggregates over child *computed* fields (e.g. Event.estimatedFoodCost =
+ * sum(eventDishes, item => item.estimatedCost)) also expand those child computed
+ * expressions into the hydrate tree and materialize the computed values onto each
+ * hasMany element before the parent expression runs.
  */
 
 import type { IR, IREntity, IRExpression } from '../../ir';
@@ -17,6 +22,8 @@ import {
   resolveBelongsToHydrateHop,
   type BelongsToHydrateHop,
 } from './belongs-to-hydrate.js';
+import { resolveHasManyDocElementType } from './count-of-preload.js';
+import { renderExpression } from './expression.js';
 import type { NormalizedOptions } from './generator.js';
 import { resolveConvexTableName } from './generator.js';
 
@@ -75,6 +82,8 @@ export type AggregateHydrateHop =
 export type AggregateHydrateNode = {
   hop: AggregateHydrateHop;
   children: Map<string, AggregateHydrateNode>;
+  /** Computed property names to materialize on each hasMany element after hydrate. */
+  requiredComputeds?: Set<string>;
 };
 
 export type AggregateHydrateTree = Map<string, AggregateHydrateNode>;
@@ -126,20 +135,28 @@ function hopsFromChain(
   startEntity: string,
   properties: string[],
   options: NormalizedOptions,
-): { hops: AggregateHydrateHop[]; elementEntity: string | undefined } {
+): {
+  hops: AggregateHydrateHop[];
+  elementEntity: string | undefined;
+  entityAfterHops: string;
+  remaining: string[];
+} {
   const hops: AggregateHydrateHop[] = [];
   let currentEntity = startEntity;
+  let consumed = 0;
   for (const prop of properties) {
     const hasMany = resolveHasManyHop(ir, currentEntity, prop, options);
     if (hasMany) {
       hops.push(hasMany);
       currentEntity = hasMany.toEntity;
+      consumed += 1;
       continue;
     }
     const belongsTo = resolveBelongsToHydrateHop(ir, currentEntity, prop, options);
     if (belongsTo) {
       hops.push(belongsTo);
       currentEntity = belongsTo.toEntity;
+      consumed += 1;
       continue;
     }
     break;
@@ -147,20 +164,142 @@ function hopsFromChain(
   const last = hops[hops.length - 1];
   const elementEntity =
     last?.kind === 'hasMany' ? last.toEntity : hops.length > 0 ? currentEntity : undefined;
-  return { hops, elementEntity };
+  return {
+    hops,
+    elementEntity,
+    entityAfterHops: hops.length > 0 ? currentEntity : startEntity,
+    remaining: properties.slice(consumed),
+  };
 }
 
-function mergeHops(tree: AggregateHydrateTree, hops: AggregateHydrateHop[]): void {
+function mergeHops(
+  tree: AggregateHydrateTree,
+  hops: AggregateHydrateHop[],
+): AggregateHydrateNode | null {
+  if (hops.length === 0) return null;
   let level: AggregateHydrateTree = tree;
+  let node: AggregateHydrateNode | null = null;
   for (const hop of hops) {
     const key = hopKey(hop);
-    let node = level.get(key);
+    node = level.get(key) ?? null;
     if (!node) {
       node = { hop, children: new Map() };
       level.set(key, node);
     }
     level = node.children;
   }
+  return node;
+}
+
+function markRequiredComputeds(
+  tree: AggregateHydrateTree,
+  pathHops: readonly AggregateHydrateHop[],
+  names: Iterable<string>,
+): void {
+  if (pathHops.length === 0) return;
+  const node = mergeHops(tree, [...pathHops]);
+  if (!node || node.hop.kind !== 'hasMany') return;
+  if (!node.requiredComputeds) node.requiredComputeds = new Set();
+  for (const name of names) node.requiredComputeds.add(name);
+}
+
+function findEntity(ir: IR, name: string): IREntity | undefined {
+  return ir.entities.find((e) => e.name === name);
+}
+
+/** Declaration-order closure of computed names reachable via self.<computed> refs. */
+function collectComputedClosure(entity: IREntity, rootName: string): string[] {
+  const needed = new Set<string>();
+  const visit = (name: string): void => {
+    if (needed.has(name)) return;
+    const cp = entity.computedProperties.find((c) => c.name === name);
+    if (!cp) return;
+    needed.add(name);
+    walkComputedSelfRefs(cp.expression, (ref) => {
+      if (entity.computedProperties.some((c) => c.name === ref)) visit(ref);
+    });
+  };
+  visit(rootName);
+  return entity.computedProperties.map((c) => c.name).filter((n) => needed.has(n));
+}
+
+function walkComputedSelfRefs(expr: IRExpression | undefined, onRef: (name: string) => void): void {
+  if (!expr) return;
+  switch (expr.kind) {
+    case 'member': {
+      const chain = memberChain(expr);
+      if (
+        chain &&
+        (chain.root === 'self' || chain.root === 'this') &&
+        chain.properties.length >= 1
+      ) {
+        onRef(chain.properties[0]!);
+      }
+      return;
+    }
+    case 'call':
+      for (const arg of expr.args) walkComputedSelfRefs(arg, onRef);
+      if (expr.callee.kind !== 'identifier') walkComputedSelfRefs(expr.callee, onRef);
+      return;
+    case 'binary':
+      walkComputedSelfRefs(expr.left, onRef);
+      walkComputedSelfRefs(expr.right, onRef);
+      return;
+    case 'unary':
+      walkComputedSelfRefs(expr.operand, onRef);
+      return;
+    case 'conditional':
+      walkComputedSelfRefs(expr.condition, onRef);
+      walkComputedSelfRefs(expr.consequent, onRef);
+      walkComputedSelfRefs(expr.alternate, onRef);
+      return;
+    case 'array':
+      for (const el of expr.elements) walkComputedSelfRefs(el, onRef);
+      return;
+    case 'object':
+      for (const p of expr.properties) walkComputedSelfRefs(p.value, onRef);
+      return;
+    case 'lambda':
+      walkComputedSelfRefs(expr.body, onRef);
+      return;
+    case 'aggregate':
+      for (const predicate of expr.predicates) walkComputedSelfRefs(predicate.value, onRef);
+      return;
+    default:
+      return;
+  }
+}
+
+/**
+ * When a member chain ends on a computed property, mark it for materialization
+ * (hasMany parents) and walk that computed's expression under the same path.
+ */
+function expandTrailingComputed(
+  ir: IR,
+  options: NormalizedOptions,
+  tree: AggregateHydrateTree,
+  pathHops: readonly AggregateHydrateHop[],
+  entityName: string,
+  remaining: string[],
+  expanding: Set<string>,
+): void {
+  if (remaining.length !== 1) return;
+  const computedName = remaining[0]!;
+  const entity = findEntity(ir, entityName);
+  if (!entity?.computedProperties.some((c) => c.name === computedName)) return;
+
+  const expandKey = `${entityName}.${computedName}`;
+  if (expanding.has(expandKey)) return;
+  expanding.add(expandKey);
+
+  const needed = collectComputedClosure(entity, computedName);
+  markRequiredComputeds(tree, pathHops, needed);
+  for (const name of needed) {
+    const cp = entity.computedProperties.find((c) => c.name === name);
+    if (!cp) continue;
+    walkExpression(cp.expression, entity, new Map(), pathHops, ir, options, tree, expanding);
+  }
+  expanding.delete(expandKey);
 }
 
 function walkExpression(
@@ -171,6 +310,7 @@ function walkExpression(
   ir: IR,
   options: NormalizedOptions,
   tree: AggregateHydrateTree,
+  expanding: Set<string> = new Set(),
 ): void {
   if (!expr) return;
 
@@ -184,38 +324,66 @@ function walkExpression(
           let prefix: readonly AggregateHydrateHop[] = pathPrefix;
           if (peeled.chain.root === 'self' || peeled.chain.root === 'this') {
             startEntity = rootEntity.name;
-            prefix = [];
+            // Keep pathPrefix so child-computed expansion nests under hasMany parents.
+            prefix = pathPrefix;
           } else {
             startEntity = bindings.get(peeled.chain.root);
           }
           if (startEntity) {
-            const { hops, elementEntity } = hopsFromChain(
+            const { hops, elementEntity, entityAfterHops, remaining } = hopsFromChain(
               ir,
               startEntity,
               peeled.chain.properties,
               options,
             );
-            mergeHops(tree, [...prefix, ...hops]);
             const hopPrefix = [...prefix, ...hops];
+            mergeHops(tree, hopPrefix);
+            expandTrailingComputed(
+              ir,
+              options,
+              tree,
+              hopPrefix,
+              entityAfterHops,
+              remaining,
+              expanding,
+            );
             const nextBindings = new Map(bindings);
             const walkBoundLambda = (lambda: IRExpression | undefined): void => {
               if (lambda?.kind !== 'lambda' || !lambda.params[0] || !elementEntity) return;
               nextBindings.set(lambda.params[0], elementEntity);
-              walkExpression(lambda.body, rootEntity, nextBindings, hopPrefix, ir, options, tree);
+              walkExpression(
+                lambda.body,
+                rootEntity,
+                nextBindings,
+                hopPrefix,
+                ir,
+                options,
+                tree,
+                expanding,
+              );
             };
             for (const wrapperLambda of peeled.wrapperLambdas) {
               walkBoundLambda(wrapperLambda);
             }
             walkBoundLambda(expr.args[1]);
             for (let i = 2; i < expr.args.length; i++) {
-              walkExpression(expr.args[i], rootEntity, bindings, pathPrefix, ir, options, tree);
+              walkExpression(
+                expr.args[i],
+                rootEntity,
+                bindings,
+                pathPrefix,
+                ir,
+                options,
+                tree,
+                expanding,
+              );
             }
             return;
           }
         }
       }
       for (const arg of expr.args) {
-        walkExpression(arg, rootEntity, bindings, pathPrefix, ir, options, tree);
+        walkExpression(arg, rootEntity, bindings, pathPrefix, ir, options, tree, expanding);
       }
       return;
     }
@@ -226,45 +394,96 @@ function walkExpression(
         let prefix: readonly AggregateHydrateHop[] = pathPrefix;
         if (chain.root === 'self' || chain.root === 'this') {
           startEntity = rootEntity.name;
-          prefix = [];
+          prefix = pathPrefix;
         } else {
           startEntity = bindings.get(chain.root);
         }
         if (startEntity) {
-          const { hops } = hopsFromChain(ir, startEntity, chain.properties, options);
-          if (hops.length) mergeHops(tree, [...prefix, ...hops]);
+          const { hops, entityAfterHops, remaining } = hopsFromChain(
+            ir,
+            startEntity,
+            chain.properties,
+            options,
+          );
+          const hopPrefix = [...prefix, ...hops];
+          if (hops.length) mergeHops(tree, hopPrefix);
+          expandTrailingComputed(
+            ir,
+            options,
+            tree,
+            hopPrefix,
+            entityAfterHops,
+            remaining,
+            expanding,
+          );
         }
       }
       return;
     }
     case 'binary':
-      walkExpression(expr.left, rootEntity, bindings, pathPrefix, ir, options, tree);
-      walkExpression(expr.right, rootEntity, bindings, pathPrefix, ir, options, tree);
+      walkExpression(expr.left, rootEntity, bindings, pathPrefix, ir, options, tree, expanding);
+      walkExpression(expr.right, rootEntity, bindings, pathPrefix, ir, options, tree, expanding);
       return;
     case 'unary':
-      walkExpression(expr.operand, rootEntity, bindings, pathPrefix, ir, options, tree);
+      walkExpression(expr.operand, rootEntity, bindings, pathPrefix, ir, options, tree, expanding);
       return;
     case 'conditional':
-      walkExpression(expr.condition, rootEntity, bindings, pathPrefix, ir, options, tree);
-      walkExpression(expr.consequent, rootEntity, bindings, pathPrefix, ir, options, tree);
-      walkExpression(expr.alternate, rootEntity, bindings, pathPrefix, ir, options, tree);
+      walkExpression(
+        expr.condition,
+        rootEntity,
+        bindings,
+        pathPrefix,
+        ir,
+        options,
+        tree,
+        expanding,
+      );
+      walkExpression(
+        expr.consequent,
+        rootEntity,
+        bindings,
+        pathPrefix,
+        ir,
+        options,
+        tree,
+        expanding,
+      );
+      walkExpression(
+        expr.alternate,
+        rootEntity,
+        bindings,
+        pathPrefix,
+        ir,
+        options,
+        tree,
+        expanding,
+      );
       return;
     case 'array':
       for (const el of expr.elements) {
-        walkExpression(el, rootEntity, bindings, pathPrefix, ir, options, tree);
+        walkExpression(el, rootEntity, bindings, pathPrefix, ir, options, tree, expanding);
       }
       return;
     case 'object':
       for (const p of expr.properties) {
-        walkExpression(p.value, rootEntity, bindings, pathPrefix, ir, options, tree);
+        walkExpression(p.value, rootEntity, bindings, pathPrefix, ir, options, tree, expanding);
       }
       return;
     case 'lambda':
-      walkExpression(expr.body, rootEntity, bindings, pathPrefix, ir, options, tree);
+      walkExpression(expr.body, rootEntity, bindings, pathPrefix, ir, options, tree, expanding);
       return;
     case 'aggregate':
       for (const predicate of expr.predicates) {
-        walkExpression(predicate.value, rootEntity, bindings, pathPrefix, ir, options, tree);
+        walkExpression(
+          predicate.value,
+          rootEntity,
+          bindings,
+          pathPrefix,
+          ir,
+          options,
+          tree,
+          expanding,
+        );
       }
       return;
     default:
@@ -280,8 +499,9 @@ export function collectAggregateHydrationTree(
   options: NormalizedOptions,
 ): AggregateHydrateTree {
   const tree: AggregateHydrateTree = new Map();
+  const expanding = new Set<string>();
   for (const expr of exprs) {
-    walkExpression(expr, entity, new Map(), [], ir, options, tree);
+    walkExpression(expr, entity, new Map(), [], ir, options, tree, expanding);
   }
   return tree;
 }
@@ -308,15 +528,58 @@ function collectBelongsToDiagnostics(
   }
 }
 
+function orderedRequiredComputeds(entity: IREntity, required: Set<string>): string[] {
+  const ordered: string[] = [];
+  for (const name of required) {
+    for (const dep of collectComputedClosure(entity, name)) {
+      if (!ordered.includes(dep)) ordered.push(dep);
+    }
+  }
+  // Preserve entity declaration order for stable assign-back.
+  return entity.computedProperties.map((c) => c.name).filter((n) => ordered.includes(n));
+}
+
+function renderComputedMaterialization(
+  ir: IR,
+  options: NormalizedOptions,
+  entityName: string,
+  required: Set<string>,
+  itemVar: string,
+  indent: string,
+): string[] {
+  const entity = findEntity(ir, entityName);
+  if (!entity || required.size === 0) return [];
+  const names = orderedRequiredComputeds(entity, required);
+  if (names.length === 0) return [];
+  const scope = {
+    selfVar: itemVar,
+    resolveCollectionElementType: (collection: IRExpression) =>
+      resolveHasManyDocElementType(entity, collection, options),
+  };
+  const lines: string[] = [];
+  for (const name of names) {
+    const cp = entity.computedProperties.find((c) => c.name === name);
+    if (!cp) continue;
+    const { code, unresolved } = renderExpression(cp.expression, scope);
+    if (unresolved.length || !code) continue;
+    lines.push(`${indent}${itemVar}.${name} = ${code};`);
+  }
+  return lines;
+}
+
 /**
  * Emit statements that load each hop onto the document graph.
  * `docExpr` is typically `(doc as any)`; `docIdExpr` is the Convex id for the root.
+ * When `ir`/`options` are provided, hasMany elements also receive materialization
+ * assigns for child computed properties referenced by parent aggregates.
  */
 export function renderAggregateHydration(
   tree: AggregateHydrateTree,
   docExpr: string,
   docIdExpr: string,
   baseIndent = '    ',
+  ir?: IR,
+  options?: NormalizedOptions,
 ): string[] {
   if (tree.size === 0) return [];
   const lines: string[] = [];
@@ -335,12 +598,27 @@ export function renderAggregateHydration(
         lines.push(
           `${indent}${parentExpr}.${hop.relName} = await ctx.db.query(${JSON.stringify(hop.childTable)}).withIndex(${JSON.stringify(`by_${hop.fkField}`)}, (q: any) => q.eq(${JSON.stringify(hop.fkField)}, ${parentIdExpr})).collect();`,
         );
-        if (node.children.size > 0) {
+        const needsLoop =
+          node.children.size > 0 ||
+          (node.requiredComputeds != null && node.requiredComputeds.size > 0);
+        if (needsLoop) {
           const item = `__agg${counter++}`;
           lines.push(
             `${indent}for (const ${item} of (${parentExpr}.${hop.relName} ?? []) as any[]) {`,
           );
           renderLevel(node.children, item, `${item}._id`, depth + 1);
+          if (ir && options && node.requiredComputeds && node.requiredComputeds.size > 0) {
+            lines.push(
+              ...renderComputedMaterialization(
+                ir,
+                options,
+                hop.toEntity,
+                node.requiredComputeds,
+                item,
+                indent + '  ',
+              ),
+            );
+          }
           lines.push(`${indent}}`);
         }
         continue;
@@ -380,7 +658,7 @@ export function planAndRenderAggregateHydration(
   collectBelongsToDiagnostics(tree, diagnostics);
   return {
     tree,
-    lines: renderAggregateHydration(tree, docExpr, docIdExpr, baseIndent),
+    lines: renderAggregateHydration(tree, docExpr, docIdExpr, baseIndent, ir, options),
     rootHasMany: rootHasManyRelNames(tree),
     diagnostics,
   };
