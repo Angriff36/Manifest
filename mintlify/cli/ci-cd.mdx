@@ -36,9 +36,9 @@ This creates `.github/workflows/manifest-ci.yml` with two jobs:
 | `--node-versions <versions>` | `18,20,22` | Comma-separated Node.js versions for matrix builds        |
 | `--force`                    | `false`    | Overwrite existing workflow file                          |
 
-> **Correction (2026-07-15) @RYANSIGNED:** The CLI flag default string is still `18,20,22`, but
-> `@angriff36/manifest` declares `engines.node: ">=20"`. Prefer `--node-versions 20,22` (or newer
-> LTS) so the generated matrix matches what the package supports.
+The CLI flag default string is still `18,20,22`, but
+`@angriff36/manifest` declares `engines.node: ">=20"`. Prefer `--node-versions 20,22` (or newer
+LTS) so the generated matrix matches what the package supports.
 
 ```bash
 # Customize Node.js versions for the matrix build
@@ -163,7 +163,7 @@ The conservative default for `property-added` (no details) is `breaking` because
 By default, the detector outputs a human-readable report with color-coded severity indicators:
 
 ```
-BREAKING  entities.Order.properties.discount (property-removed)
+BREAKING entities.Order.properties.discount (property-removed)
   Impact: commands, routes, projections
 
 DEPRECATED entities.Task.computed.dueDate (computed-expression-changed)

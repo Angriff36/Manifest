@@ -6,9 +6,7 @@ description: 'Add @angriff36/manifest to any Node.js 20+ project with npm or pnp
 
 Manifest is published as `@angriff36/manifest` to the public npm registry. Before installing, make sure your project meets the minimum requirements:
 
-~~**Node.js 18 or later**~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** **Node.js 20 or later** (`package.json` `engines.node` is `>=20`) and npm or pnpm.
+**Node.js 20 or later** (`package.json` `engines.node` is `>=20`) and npm or pnpm.
 
 <Note>
   The package is fully self-contained: the compiler, runtime, CLI, MCP server, and LSP server all
@@ -98,9 +96,7 @@ Store and platform adapters that require external services are declared as **opt
 | `mongodb`               | MongoDB store adapter |
 | `@libsql/client`        | Turso store adapter   |
 
-~~`@assemblyscript/loader` — WASM compute modules~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** `@assemblyscript/loader` is **not** an optional peer of `@angriff36/manifest`. It appears only as a repo `devDependency` for WASM evaluator tests; consumers do not install it for normal runtime use. Optional peers in `package.json` are exactly: `@supabase/supabase-js`, `ioredis`, `mongodb`, `@libsql/client`.
+`@assemblyscript/loader` is **not** an optional peer of `@angriff36/manifest`. It appears only as a repo `devDependency` for WASM evaluator tests; consumers do not install it for normal runtime use. Optional peers in `package.json` are exactly: `@supabase/supabase-js`, `ioredis`, `mongodb`, `@libsql/client`.
 
 ```bash
 # Example: only if you use the Redis outbox

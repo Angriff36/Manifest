@@ -125,12 +125,12 @@ const result = await runtime.runCommand('createOrder', input, {
 });
 ```
 
-> **Correction (2026-07-22) @RYANSIGNED:** The `RuntimeEngine` constructor is
-> `(ir, context, options)`. `auditSink` is a `RuntimeOptions` field and must go in
-> the **options** (3rd) arg, not `context`. Passing it in `context` typechecks —
-> `RuntimeContext` has an open `[key: string]` index signature — but the engine
-> only reads `this.options.auditSink`, so the sink is silently never wired and no
-> `AuditRecord` is written. Identity (`actorId`/`tenantId`) stays in `context`.
+The `RuntimeEngine` constructor is
+`(ir, context, options)`. `auditSink` is a `RuntimeOptions` field and must go in
+the **options** (3rd) arg, not `context`. Passing it in `context` typechecks —
+`RuntimeContext` has an open `[key: string]` index signature — but the engine
+only reads `this.options.auditSink`, so the sink is silently never wired and no
+`AuditRecord` is written. Identity (`actorId`/`tenantId`) stays in `context`.
 
 ## Import paths
 

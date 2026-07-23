@@ -6,7 +6,7 @@ description: 'Memoize computed properties with request, session, or TTL cache st
 
 A computed property can declare a cache strategy so its value is memoized rather than recomputed on every read. Three strategies are available: per-command (`request`), per-engine-lifetime (`session`), and time-bounded (`ttl`). For how computed properties work in general, see [Computed properties](/language/computed-properties).
 
-> **Verified (2026-07-15) @RYANSIGNED:** Strategies match runtime cache keys / staleness marking / `evaluateComputedProperty` `{ value, stale, cached }` surface in `runtime-engine.ts`. Package pin **3.6.41**.
+Strategies match runtime cache keys / staleness marking / `evaluateComputedProperty` `{ value, stale, cached }` surface in `runtime-engine.ts`. Package pin **3.6.41**.
 
 ## Syntax
 

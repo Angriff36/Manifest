@@ -9,12 +9,10 @@ Manifest provides CLI testing tools beyond unit/conformance suites. Verified aga
 
 ## IR harness scripts
 
-~~`manifest test constraints`~~ / ~~`ConstraintTestHarness` from `@angriff36/manifest/testing`~~
-
-> **Correction (2026-07-15) @RYANSIGNED — Documentation gap:** There is **no** `manifest test`
-> command group, **no** interactive constraint harness CLI, and **no**
-> `@angriff36/manifest/testing` export / `ConstraintTestHarness` class. The shipped harness
-> runner is:
+There is **no** `manifest test`
+command group, **no** interactive constraint harness CLI, and **no**
+`@angriff36/manifest/testing` export / `ConstraintTestHarness` class. The shipped harness
+runner is:
 
 ```bash
 manifest harness path/to/app.manifest --script path/to/harness.json
@@ -30,11 +28,9 @@ counts. Explore constraints interactively via `manifest repl` or unit tests agai
 `manifest mock` starts a local HTTP server from `.manifest` or `.ir.json`. It uses
 **`RuntimeEngine` with in-memory stores** (real command execution), not a fake guard-only stub.
 
-~~default port `3456` / `--output` / `--format ts` / `--seed`~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Flags are `-p/--port` (default **`4000`**), `--host`
-> (default `127.0.0.1`), `--cors`, `--scenario` (`default` \| `guard-fail` \| `constraint-fail`).
-> There is no `--output` / `--format` / `--seed` on `mock`.
+Flags are `-p/--port` (default **`4000`**), `--host`
+(default `127.0.0.1`), `--cors`, `--scenario` (`default` \| `guard-fail` \| `constraint-fail`).
+There is no `--output` / `--format` / `--seed` on `mock`.
 
 ```bash
 manifest mock ir/app.ir.json --port 4000 --cors
@@ -43,10 +39,8 @@ manifest mock src/app.manifest --scenario guard-fail
 
 ## Seed / fixture data
 
-~~`manifest generate-fixtures`~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** There is **no** `generate-fixtures` command. Use
-> `manifest seed` for deterministic seed files (json / sql / supabase):
+There is **no** `generate-fixtures` command. Use
+`manifest seed` for deterministic seed files (json / sql / supabase):
 
 ```bash
 manifest seed src/app.manifest -o seeds/ --profile demo --format json
@@ -63,7 +57,7 @@ manifest seed ir/app.ir.json --count 100 --entity Order --seed 42
 
 ## Load testing scripts
 
-~~`manifest generate-fixtures` for load~~ → use **`manifest load-test`**:
+use **`manifest load-test`**:
 
 ```bash
 manifest load-test ir/app.ir.json -o load-tests/ -f k6

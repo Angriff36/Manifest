@@ -53,12 +53,10 @@ event CounterReset: "counter.reset" {
 }
 ```
 
-~~A command can emit multiple events. They are emitted in declaration order after all actions complete successfully.~~
-
-> **Correction (2026-07-15):** `emit` / `publish` **actions** run in action order during the
-> actions phase (not after). Separately, a command's declared `emits` list is processed after
-> actions succeed (`semantics.md` steps 6–7). Multiple emissions keep declaration / action order
-> within that phase.
+`emit` / `publish` **actions** run in action order during the
+actions phase (not after). Separately, a command's declared `emits` list is processed after
+actions succeed (`semantics.md` steps 6–7). Multiple emissions keep declaration / action order
+within that phase.
 
 ## EmittedEvent shape
 
@@ -84,20 +82,8 @@ The `payload` object contains the command's input parameters and the last action
 
 Pass `correlationId` and `causationId` in the command options to propagate identifiers across a multi-step workflow. The runtime attaches them to every event emitted during that invocation.
 
-~~```typescript
-const result = await runtime.runCommand(
-  'Order',
-  'complete',
-  { instanceId: 'order-123' },
-  {
-    correlationId: 'workflow-abc',
-    causationId: 'step-2',
-  },
-);
-```~~
-
-> **Correction (2026-07-15):** Signature is `runCommand(commandName, input, options?)` — three
-> arguments max. `entityName`, `instanceId`, `correlationId`, and `causationId` all go in `options`.
+Signature is `runCommand(commandName, input, options?)` — three
+arguments max. `entityName`, `instanceId`, `correlationId`, and `causationId` all go in `options`.
 
 ```typescript
 const result = await runtime.runCommand(
@@ -112,7 +98,7 @@ const result = await runtime.runCommand(
 );
 
 // result.emittedEvents[0].correlationId === "workflow-abc"
-// result.emittedEvents[0].causationId   === "step-2"
+// result.emittedEvents[0].causationId === "step-2"
 ```
 
 `emitIndex` is a per-command zero-based counter. It resets to `0` at the start of each `runCommand` call. It is not a global sequence — cross-command ordering is the caller's responsibility.
@@ -182,13 +168,7 @@ event OrderCompleted: "order.completed" {
 }
 ```
 
-~~```typescript
-const result = await runtime.runCommand('Order', 'complete', {
-  instanceId: 'order-001',
-});
-```~~
-
-> **Correction (2026-07-15):** Same `runCommand(commandName, input, options)` shape — not entity-first.
+Same `runCommand(commandName, input, options)` shape — not entity-first.
 
 ```typescript
 const runtime = new RuntimeEngine(ir);
@@ -206,13 +186,13 @@ const result = await runtime.runCommand('complete', {}, {
 
 console.log(result.emittedEvents);
 // [
-//   {
-//     name: "OrderCompleted",
-//     channel: "order.completed",
-//     payload: { /* command input + last action result */ },
-//     timestamp: 1748131200000,
-//     emitIndex: 0
-//   }
+// {
+// name: "OrderCompleted",
+// channel: "order.completed",
+// payload: { /* command input + last action result */ },
+// timestamp: 1748131200000,
+// emitIndex: 0
+// }
 // ]
 ```
 
@@ -314,9 +294,3 @@ The event-sourced store supports:
 <Callout type="info">
 **Implemented (2026-07-22)**: `EventSourcedStore` ships in the reference runtime (`stores/event-sourced.ts:37-140`, auto-wired at `runtime-engine.ts:1324-1327`). See [Event Sourced Store](/adapters/event-sourced-store) for full documentation.
 </Callout>
-
-> **Correction (2026-07-22)** The 2026-07-15 correction above is **stale** — `EventSourcedStore` **is** implemented
-> and shipped (`src/manifest/stores/event-sourced.ts:37-140`). The reference runtime auto-wires it for
-> `store Entity in eventSourced { ... }` declarations (`runtime-engine.ts:1324-1326`). Features: append-only
-> event log, configurable snapshot interval (default 100), `getEventLog()` / `getSnapshot()` methods when
-> `exposeEventLog: true`. See the [Event Sourced Store adapter page](/adapters/event-sourced-store) for details.

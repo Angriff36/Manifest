@@ -92,7 +92,6 @@ from pydantic import BaseModel, field_validator
 from decimal import Decimal
 from typing import Optional
 
-
 class Order(BaseModel):
     id: str
     total: Decimal
@@ -110,10 +109,10 @@ class Order(BaseModel):
         from_attributes = True
 ```
 
-> **Correction (2026-07-15) @RYANSIGNED:** The generator still emits the legacy nested
-> `class Config:` / `from_attributes = True` form (`src/manifest/projections/pydantic/generator.ts`).
-> That is what ships today — not Pydantic v2 `model_config = ConfigDict(...)`. Treat the sample as
-> projection output, not as a Pydantic-v2 style guide.
+The generator still emits the legacy nested
+`class Config:` / `from_attributes = True` form (`src/manifest/projections/pydantic/generator.ts`).
+That is what ships today — not Pydantic v2 `model_config = ConfigDict(...)`. Treat the sample as
+projection output, not as a Pydantic-v2 style guide.
 
 The `pydantic.client` surface generates an async client:
 

@@ -100,16 +100,10 @@ export default defineConfig({
 
 Entities are iterated in IR source order; the projection does not re-sort.
 
-~~<Warning>
-  A property literally named `id` becomes the `@id` field. Entities without an `id` property get an
-  info diagnostic (`PRISMA_NO_ID_PROPERTY`) because Prisma's schema validator will reject a model
-  with no primary key.
-</Warning>~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** A property literally named `id` becomes `@id` **unless**
-> the entity declares a composite `key [...]`, which emits `@@id([...])` and suppresses
-> `PRISMA_NO_ID_PROPERTY`. That diagnostic fires only when there is **neither** an `id` property
-> **nor** a composite key (`src/manifest/projections/prisma/generator.ts`).
+A property literally named `id` becomes `@id` **unless**
+the entity declares a composite `key [...]`, which emits `@@id([...])` and suppresses
+`PRISMA_NO_ID_PROPERTY`. That diagnostic fires only when there is **neither** an `id` property
+**nor** a composite key (`src/manifest/projections/prisma/generator.ts`).
 
 ## Type mapping
 
@@ -139,7 +133,7 @@ Manifest's `number` type does not distinguish integers from real numbers from mo
 ```manifest
 entity Order {
   property required id: string
-  property required total: number  // ← ambiguous
+  property required total: number // ← ambiguous
 }
 ```
 
@@ -160,7 +154,7 @@ The ambiguous column is **skipped** in the output. Fix the source:
 ```manifest
 entity Order {
   property required id: string
-  property required total: money  // ← exact-decimal, picks up @db.Decimal(12, 2)
+  property required total: money // ← exact-decimal, picks up @db.Decimal(12, 2)
 }
 ```
 
@@ -176,8 +170,8 @@ entity Order {
 
 ```manifest
 entity Order {
-  property required total: money       // → Decimal @db.Decimal(12, 2)
-  property required fxRate: decimal    // → Decimal @db.Decimal(12, 2)
+  property required total: money // → Decimal @db.Decimal(12, 2)
+  property required fxRate: decimal // → Decimal @db.Decimal(12, 2)
 }
 ```
 
@@ -212,12 +206,12 @@ The projection detects the cardinality from the opposite side:
 ```manifest
 entity User {
   property required id: string
-  hasOne profile: Profile        // 1:1 — declares opposite as hasOne
+  hasOne profile: Profile // 1:1 — declares opposite as hasOne
 }
 
 entity Profile {
   property required id: string
-  belongsTo user: User           // child side → FK gets @unique
+  belongsTo user: User // child side → FK gets @unique
 }
 ```
 
@@ -231,7 +225,7 @@ model User {
 
 model Profile {
   id String @id
-  userId String @unique          // ← @unique because opposite is hasOne
+  userId String @unique // ← @unique because opposite is hasOne
   user User @relation(fields: [userId], references: [id])
 }
 ```
@@ -273,8 +267,8 @@ If your `.manifest` source declares the FK property explicitly **and** declares 
 ```manifest
 entity Book {
   property required id: string
-  property required authorId: string    // ← explicit FK column
-  belongsTo author: Author              // ← relationship using that column
+  property required authorId: string // ← explicit FK column
+  belongsTo author: Author // ← relationship using that column
 }
 ```
 
@@ -283,7 +277,7 @@ Emits:
 ```prisma
 model Book {
   id String @id
-  authorId String                        // ← from the property declaration
+  authorId String // ← from the property declaration
   author Author @relation(fields: [authorId], references: [id])
 }
 ```
@@ -299,7 +293,7 @@ A one-sided self-relation triggers `PRISMA_RELATION_MISSING_BACKSIDE`:
 ```manifest
 entity Tree {
   property required id: string
-  belongsTo parent: Tree   // no `children` declared → warning
+  belongsTo parent: Tree // no `children` declared → warning
 }
 ```
 
@@ -376,9 +370,9 @@ projections:
       naming: snake_case # shorthand: snake_case columns + pluralized snake_case tables
       # Object form:
       # naming:
-      #   table: snake_case        # snake_case | camelCase | PascalCase | preserve
-      #   column: snake_case       # snake_case | camelCase | preserve
-      #   pluralizeTables: true    # Widget → widgets (default true)
+      # table: snake_case # snake_case | camelCase | PascalCase | preserve
+      # column: snake_case # snake_case | camelCase | preserve
+      # pluralizeTables: true # Widget → widgets (default true)
 
       # Per-entity, per-property decimal precision/scale.
       # Applies to any property whose resolved scalar is Decimal.
@@ -408,10 +402,10 @@ projections:
           customer: customerRef # → Order.customerRef instead of Order.customerId
           # Structured form — includes referential actions:
           # customer:
-          #   fields: [customerId]
-          #   references: [id]
-          #   onDelete: Cascade
-          #   onUpdate: NoAction
+          # fields: [customerId]
+          # references: [id]
+          # onDelete: Cascade
+          # onUpdate: NoAction
 
       # Per-entity, per-property native @db.* attribute (without the @db. prefix).
       # Applied after the Prisma scalar but before @default.
@@ -450,9 +444,9 @@ projections:
 
 ```prisma
 model UserAccount {
-  id          String   @id
-  createdAt   DateTime @map("created_at")
-  displayName String   @map("display_name")
+  id String @id
+  createdAt DateTime @map("created_at")
+  displayName String @map("display_name")
 
   @@map("user_accounts")
 }
@@ -522,10 +516,11 @@ These are not bugs — they're scope boundaries:
 - **No database connection.** The projection is pure IR → text. Running migrations is your job (or Prisma's).
 - **No `@relation("name")` auto-generation.** Multi-relation pairs require named `@relation` clauses; the projection refuses to invent names. Diagnose, don't guess.
 - **No join-entity inference for `through` relationships.** Manifest's `through` annotation declares the join model, but Prisma needs the join entity to be a fully-modeled entity with its own belongsTo declarations. The user provides those.
-- ~~**No `id` modifier.** Primary-key designation is by literal property name (`id`). A dedicated `@id` modifier in core grammar is a possible future addition; the projection will pick it up when it lands.~~
+-
 
-> **Correction (2026-07-15) @RYANSIGNED:** Primary key is still by literal `id` **or** a
-> composite `key [...]` declaration (`@@id`). There is still no grammar `@id` modifier.
+Primary key is still by literal `id` **or** a
+composite `key [...]` declaration (`@@id`). There is still no grammar `@id` modifier.
+
 - **No app coupling.** No defaults reference tenant columns, soft-delete columns, auth fields, or any other application-specific concept.
 
 ## CLI usage

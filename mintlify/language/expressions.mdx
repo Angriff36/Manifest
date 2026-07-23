@@ -33,7 +33,7 @@ Numeric helpers `abs`, `round`, `floor`, `ceil`, `min`, and `max` and the array 
 
 String helpers wrap the corresponding `String.prototype` methods (returning the input unchanged for non-strings), numeric helpers delegate to `Math`, and `min`/`max` are variadic over numeric arguments. The date components use UTC methods so results are timezone-independent — see [Types](/language/types) for the full list.
 
-> **Note (2026-07-15) @RYANSIGNED:** Date conversion / duration builtins also exist (`dateOf`, `timeOf`, `datetimeOf`, `addDuration`, `durationBetween`, `durationDays` / `Hours` / `Minutes` / `Seconds`) — see `docs/spec/builtins.md`.
+> **Note:** Date conversion / duration builtins also exist (`dateOf`, `timeOf`, `datetimeOf`, `addDuration`, `durationBetween`, `durationDays` / `Hours` / `Minutes` / `Seconds`) — see `docs/spec/builtins.md`.
 
 ## Aggregate built-ins with lambdas
 
@@ -131,9 +131,7 @@ Additional built-in functions available in the standard library:
 
 ## Custom expression functions
 
-~~You can register custom expression functions via the plugin API… `registerBuiltin`…~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** There is **no** `registerBuiltin` export. Custom functions are injected via `RuntimeOptions.customBuiltins` (a `Map<string, Function>`), typically collected by the plugin loader from `BuiltinFunctionPlugin` entries (`docs/spec/builtins.md` § Custom Expression Functions). Core builtins always win name collisions.
+There is **no** `registerBuiltin` export. Custom functions are injected via `RuntimeOptions.customBuiltins` (a `Map<string, Function>`), typically collected by the plugin loader from `BuiltinFunctionPlugin` entries (`docs/spec/builtins.md` § Custom Expression Functions). Core builtins always win name collisions.
 
 ### Registering a custom function
 

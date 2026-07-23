@@ -132,9 +132,9 @@ entity PurchaseOrder extends Auditable mixin Timestamped {
 }
 ```
 
-Sub-blocks an entity may contain: `property`, `computed`/`derived`, relationships (`hasMany`, `hasOne`, `belongsTo`, `ref`), ~~`behavior`/`on`,~~ `command`/`async command`, `constraint`, `policy` (and a `policies { … }` block / `default policy …`), `store … in …`, `versionProperty`/`versionAtProperty`, `key [...]` / `unique [...]`, `transition`, `approval`, the `timestamps` flag, and the bare `realtime` flag. See [Advanced entities](/language/advanced-entities) for `extends`, `mixin`, keys, and transitions.
+Sub-blocks an entity may contain: `property`, `computed`/`derived`, relationships (`hasMany`, `hasOne`, `belongsTo`, `ref`), `command`/`async command`, `constraint`, `policy` (and a `policies { … }` block / `default policy …`), `store … in …`, `versionProperty`/`versionAtProperty`, `key [...]` / `unique [...]`, `transition`, `approval`, the `timestamps` flag, and the bare `realtime` flag. See [Advanced entities](/language/advanced-entities) for `extends`, `mixin`, keys, and transitions.
 
-> **Correction (2026-07-15) @RYANSIGNED:** Entity `behavior` blocks and bare `on Event { … }` inside an entity are **rejected at compile time** (hard error; conformance fixture 110). They have no IR representation. Use top-level reactions (`on Event run Entity.command`) or command actions instead (`docs/spec/semantics.md` § Entities).
+Entity `behavior` blocks and bare `on Event { … }` inside an entity are **rejected at compile time** (hard error; conformance fixture 110). They have no IR representation. Use top-level reactions (`on Event run Entity.command`) or command actions instead (`docs/spec/semantics.md` § Entities).
 
 <Warning>
   Events declared *inside* an entity are dropped with a warning. Declare `event` at the top level or
@@ -186,11 +186,10 @@ Reserved modifiers: `required`, `unique`, `indexed`, `private`, `readonly`, `opt
 The contextual `masked` modifier accepts a strategy — `masked(redact)`, `masked(partial)`, `masked(email)`, `masked(phone)`, or `masked(last4)` — and an optional trailing `unmask when <expr>` clause. The `unmask when` clause is a compile error without `masked`.
 
 <Warning>
-  ~~Omitting `required` does **not** imply optional. Use `optional` or a `?` on the type to mark a
-  field nullable.~~
+
 </Warning>
 
-> **Correction (2026-07-15) @RYANSIGNED:** Omitting `required` means the property is **not** required at create time (type / property defaults may apply). The `optional` modifier is a **projection hint** with no independent runtime enforcement (`docs/spec/semantics.md` § Properties). Nullability is separate: append `?` to the type (for example `string?`). Do not conflate "not required" with "nullable."
+Omitting `required` means the property is **not** required at create time (type / property defaults may apply). The `optional` modifier is a **projection hint** with no independent runtime enforcement (`docs/spec/semantics.md` § Properties). Nullability is separate: append `?` to the type (for example `string?`). Do not conflate "not required" with "nullable."
 
 ## Expressions
 
@@ -252,19 +251,17 @@ event transferred: "account.transfer.completed" { accountId: string }
 
 At runtime, a command executes in a **fixed order** that cannot be reconfigured:
 
-~~Policies → Guards → Constraints → Actions → Emits → Return~~
+Per `docs/spec/semantics.md` § Commands:
+1. Build evaluation context (parameter defaults / required-parameter fail-closed)
+2. Rate-limit (when declared)
+3. Policies
+4. **Command-level constraints**
+5. Guards
+6. Actions
+7. Emits
+8. Return
 
-> **Correction (2026-07-15) @RYANSIGNED:** Per `docs/spec/semantics.md` § Commands:
-> 1. Build evaluation context (parameter defaults / required-parameter fail-closed)
-> 2. Rate-limit (when declared)
-> 3. Policies
-> 4. **Command-level constraints**
-> 5. Guards
-> 6. Actions
-> 7. Emits
-> 8. Return
->
-> Guards run **after** command constraints, not before.
+Guards run **after** command constraints, not before.
 
 <Steps>
   <Step title="Evaluation context">Parameter defaults apply; missing required parameters fail closed.</Step>
@@ -284,35 +281,35 @@ This ordering is part of the language contract. Diagnostics explain failures (wh
 ## Other declarations at a glance
 
 ```manifest fragment
-enum Priority { low, normal = "Normal", urgent(2) }      // optional label and ordinal
+enum Priority { low, normal = "Normal", urgent(2) } // optional label and ordinal
 
-value Money {                                            // value objects hold properties only
+value Money { // value objects hold properties only
   property amount: decimal(12, 2)
   property currency: string
 }
 
-policy adminOnly execute: user.role == "admin"           // standalone policy
+policy adminOnly execute: user.role == "admin" // standalone policy
 
-store Order in supabase { table: "orders" }              // persistence binding
+store Order in supabase { table: "orders" } // persistence binding
 
 event orderPlaced: "shop.order.placed" { orderId: string }
 
-on orderPlaced run Inventory.reserve resolve payload._subject.id  // reaction
+on orderPlaced run Inventory.reserve resolve payload._subject.id // reaction
 
-role manager extends staff { allow approve  deny delete }  // role hierarchy
+role manager extends staff { allow approve deny delete } // role hierarchy
 
-saga Checkout {                                          // workflow with compensation
-  step charge   { command: Payment.charge   compensate: Payment.refund }
-  step ship     { command: Fulfillment.ship compensate: Fulfillment.cancel }
+saga Checkout { // workflow with compensation
+  step charge { command: Payment.charge compensate: Payment.refund }
+  step ship { command: Fulfillment.ship compensate: Fulfillment.cancel }
   on_failure: "compensate"
   emit checkoutFailed
 }
 
-webhook stripe "/hooks/stripe" run Payment.record        // inbound webhook
+webhook stripe "/hooks/stripe" run Payment.record // inbound webhook
   method: "POST"
   idempotencyHeader: "Stripe-Idempotency-Key"
 
-schedule nightlyClose cron "0 0 * * *" run Ledger.close  // scheduled command
+schedule nightlyClose cron "0 0 * * *" run Ledger.close // scheduled command
 ```
 
 ## Ordering rules
@@ -320,7 +317,7 @@ schedule nightlyClose cron "0 0 * * *" run Ledger.close  // scheduled command
 - **`use` first.** All `use` declarations must precede every other top-level declaration. A `use` that appears later is an error.
 - **`use` paths** must be relative (`./` or `../`) and end in `.manifest`.
 - **One `tenant`** declaration per program.
-- **Command execution order** is fixed (~~policies → guards → constraints → actions → emits → return~~ **Correction (2026-07-15) @RYANSIGNED:** policies → **command constraints** → guards → actions → emits → return, after evaluation-context / rate-limit gates); guards halt on the first falsey result.
+- **Command execution order** is fixed (policies → **command constraints** → guards → actions → emits → return, after evaluation-context / rate-limit gates); guards halt on the first falsey result.
 - **No required ordering** among an entity's sub-blocks, or among top-level declarations other than `use`. IR preserves encounter order.
 
 ## What is not allowed

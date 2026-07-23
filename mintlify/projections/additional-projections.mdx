@@ -6,15 +6,15 @@ description: 'Kysely, Terraform, materialized views, analytics, Elasticsearch, S
 
 Beyond the primary framework and ORM projections, Manifest ships several specialized projections for infrastructure, analytics, search, and developer tooling targets. Each follows the same `ProjectionTarget` interface and deterministic output contract.
 
-> **Verified (2026-07-15) @RYANSIGNED:** Names `kysely`, `terraform`, `materialized-views`,
-> `analytics`, `elasticsearch`, `storybook`, and `pydantic` (client via `pydantic.client`) are
-> registered in `src/manifest/projections/builtins.ts`. Invoke with
-> `manifest generate -p <name>`. Package pin: see `package.json` SoT
-> (~~**3.6.4**~~ **3.6.41** in the 2026-07-22 checkout).
+Names `kysely`, `terraform`, `materialized-views`,
+`analytics`, `elasticsearch`, `storybook`, and `pydantic` (client via `pydantic.client`) are
+registered in `src/manifest/projections/builtins.ts`. Invoke with
+`manifest generate -p <name>`. Package pin: see `package.json` SoT
+( **3.6.41** in the 2026-07-22 checkout).
 
 ### Kysely
 
-> **Correction (2026-07-22 @RYANSIGNED):** The registered surface name is `kysely.types` (not `kysely.schema`). The projection generates TypeScript type definitions for the [Kysely](https://kysely.dev) type-safe SQL query builder.
+The registered surface name is `kysely.types` (not `kysely.schema`). The projection generates TypeScript type definitions for the [Kysely](https://kysely.dev) type-safe SQL query builder.
 
 The projection is registered under the name `kysely` and emits one surface: `kysely.types` (content type `typescript`, default output `kysely.types.ts`).
 
@@ -38,7 +38,7 @@ const result = projection.generate(ir, {
 
 ### Terraform
 
-> **Correction (2026-07-22 @RYANSIGNED):** The registered surface name is `terraform.hcl` (not `terraform.main`). The projection generates HCL resource definitions from Manifest IR. It supports three cloud providers: **AWS** (emits `aws_db_instance`, `aws_s3_bucket`, `aws_sns_topic`), **GCP** (emits `google_sql_database_instance`, `google_storage_bucket`, `google_pubsub_topic`), and **Supabase** (emits `supabase_project` with documented table schemas).
+The registered surface name is `terraform.hcl` (not `terraform.main`). The projection generates HCL resource definitions from Manifest IR. It supports three cloud providers: **AWS** (emits `aws_db_instance`, `aws_s3_bucket`, `aws_sns_topic`), **GCP** (emits `google_sql_database_instance`, `google_storage_bucket`, `google_pubsub_topic`), and **Supabase** (emits `supabase_project` with documented table schemas).
 
 The projection is registered under the name `terraform` and emits one surface: `terraform.hcl` (content type `hcl`). It supports both single-file (`main.tf`) and multi-file (`database.tf`, `storage.tf`, `messaging.tf`) output modes.
 

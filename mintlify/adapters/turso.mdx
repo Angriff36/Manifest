@@ -29,9 +29,7 @@ const store = new TursoStore({
 | `tableName` | No       | Single table for JSON blobs (default `entities`)                         |
 | `client`    | No       | Pre-built LibSQL client (tests / custom setups)                          |
 
-~~`schemaPrefix`~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** There is no `schemaPrefix` option. Use `tableName`.
+There is no `schemaPrefix` option. Use `tableName`.
 
 ## Wiring into the runtime
 
@@ -55,26 +53,20 @@ const runtime = new RuntimeEngine(
 
 ## Schema helper (not a CLI projection)
 
-~~```bash
-manifest generate ir/ --projection turso --output schema/
-```~~
-
-~~Per-entity columnar DDL like `CREATE TABLE manifest_Order (id, status, total)`~~
-
-> **Correction (2026-07-15) @RYANSIGNED — Documentation gap:** There is **no** `turso`
-> projection in `listBuiltinProjections()`. Schema is a JSON-blob table produced by
-> `generateTursoSchema(tableName)` (or automatically on first use via the store). Apply DDL in
-> your app — there is no `manifest generate --projection turso`.
+There is **no** `turso`
+projection in `listBuiltinProjections()`. Schema is a JSON-blob table produced by
+`generateTursoSchema(tableName)` (or automatically on first use via the store). Apply DDL in
+your app — there is no `manifest generate --projection turso`.
 
 ```typescript
 import { generateTursoSchema } from '@angriff36/manifest/stores';
 
 const ddl = generateTursoSchema('entities');
 // CREATE TABLE IF NOT EXISTS "entities" (
-//   id TEXT PRIMARY KEY,
-//   data TEXT NOT NULL,
-//   created_at TEXT DEFAULT (...),
-//   updated_at TEXT DEFAULT (...)
+// id TEXT PRIMARY KEY,
+// data TEXT NOT NULL,
+// created_at TEXT DEFAULT (...),
+// updated_at TEXT DEFAULT (...)
 // );
 ```
 

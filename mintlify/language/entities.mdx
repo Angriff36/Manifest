@@ -36,9 +36,7 @@ external entity ImportedUser {
 
 Every property has a type.
 
-~~Supported types are `string`, `number`, `boolean`, and `timestamp`. A property without a default is `undefined` unless the caller supplies a value at creation time.~~
-
-> **Correction (2026-07-22 @RYANSIGNED):** `timestamp` **is** a valid property type — it is a normative alias for `datetime` (`docs/spec/semantics.md:281,286-289`). Runtimes MUST treat `timestamp` identically to `datetime`. Common scalar types include `string`, `number`, `boolean`, plus date/time primitives `datetime` / `timestamp` / `date` / `time` / `duration`, `decimal` / `money`, collections, enums, and value-object names. When a property is omitted at create time, the runtime applies the property's `defaultValue` if present, otherwise the **type default** (for example `""`, `0`, `false`) — not `undefined`. An explicit `required` modifier is not satisfied by a zero-filled type default alone (`E_REQUIRED`). See [Types](/language/types).
+`timestamp` **is** a valid property type — it is a normative alias for `datetime` (`docs/spec/semantics.md:281,286-289`). Runtimes MUST treat `timestamp` identically to `datetime`. Common scalar types include `string`, `number`, `boolean`, plus date/time primitives `datetime` / `timestamp` / `date` / `time` / `duration`, `decimal` / `money`, collections, enums, and value-object names. When a property is omitted at create time, the runtime applies the property's `defaultValue` if present, otherwise the **type default** (for example `""`, `0`, `false`) — not `undefined`. An explicit `required` modifier is not satisfied by a zero-filled type default alone (`E_REQUIRED`). See [Types](/language/types).
 
 ### Modifiers
 
@@ -270,9 +268,7 @@ belongsTo item: LineItem fields [tenantId, itemId] references [tenantId, id] onD
 
 When no action is declared, the projection emits nothing and the target platform uses its own default.
 
-~~(Implied: declaring `onDelete` / `onUpdate` enforces referential integrity in the reference runtime.)~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** ~~The reference runtime does not enforce~~ Referential actions **are** enforced in the reference runtime via `ReferentialActionApplier` (`src/manifest/runtime-referential-actions.ts`, wired at `runtime-engine.ts:1245-1270`). The runtime applies cascade/restrict/setNull/setDefault semantics on `deleteInstance()` based on the IR relationship configuration. Projection adapters also emit referential-integrity constraints (for example Prisma `onDelete`/`onUpdate`).
+Referential actions **are** enforced in the reference runtime via `ReferentialActionApplier` (`src/manifest/runtime-referential-actions.ts`, wired at `runtime-engine.ts:1245-1270`). The runtime applies cascade/restrict/setNull/setDefault semantics on `deleteInstance()` based on the IR relationship configuration. Projection adapters also emit referential-integrity constraints (for example Prisma `onDelete`/`onUpdate`).
 
 ## Concurrency controls (vNext)
 
@@ -316,8 +312,8 @@ entity Document {
   property required id: string
   property status: string = "draft"
 
-  transition status from "draft"     to ["review", "archived"]
-  transition status from "review"    to ["published", "draft"]
+  transition status from "draft" to ["review", "archived"]
+  transition status from "review" to ["published", "draft"]
   transition status from "published" to ["archived"]
 
   command submit() {
@@ -398,6 +394,4 @@ The runtime enriches resolved relationship instances with `_entity` metadata, en
 
 ## Pagination
 
-~~Entity collections support built-in pagination for list queries (limit / offset / cursor). The Next.js projection generates list routes that accept `?limit=N&offset=M` or `?cursor=token` and return `nextCursor` or `hasMore`. Pagination operates after tenant filtering and masking.~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** **Not shipped.** `pagination-api` remains in the no-implementation / backlog inventory (`docs/FEATURE-LIST.md` Category 3). The reference runtime's `getAllInstances` has no limit/offset/cursor API, and the Next.js projection does not emit paginated list query parameters as described above. **Documentation gap — not verified against shipped Manifest.** Paginate in the host application or store query layer if needed.
+**Not shipped.** `pagination-api` remains in the no-implementation / backlog inventory (`docs/FEATURE-LIST.md` Category 3). The reference runtime's `getAllInstances` has no limit/offset/cursor API, and the Next.js projection does not emit paginated list query parameters as described above. **Documentation gap — not verified against shipped Manifest.** Paginate in the host application or store query layer if needed.

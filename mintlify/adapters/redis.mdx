@@ -67,19 +67,10 @@ When `defaultTTL` is configured, newly created entity keys receive the TTL autom
 
 ## Pub/Sub — use `RedisEventBus`, not `RedisStore`
 
-~~`RedisStore` includes pub/sub helpers for event propagation:~~
-
-~~```typescript
-await store.publishEvent('OrderCreated', { orderId: 'order-123', total: 99.99 });
-await store.subscribe('OrderCreated', (event) => { ... });
-```~~
-
-~~Treat the pub/sub helpers as a building block, not a turnkey event bus.~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** `RedisStore.publishEvent` and `RedisStore.subscribe`
-> were silent no-ops and now **throw**, pointing callers at `RedisEventBus`. Cross-process event
-> fan-out is `RuntimeOptions.eventBus` + `RedisEventBus` from `@angriff36/manifest/events/redis`
-> (see below). There is no auto-construct from env — wire the bus yourself.
+`RedisStore.publishEvent` and `RedisStore.subscribe`
+were silent no-ops and now **throw**, pointing callers at `RedisEventBus`. Cross-process event
+fan-out is `RuntimeOptions.eventBus` + `RedisEventBus` from `@angriff36/manifest/events/redis`
+(see below). There is no auto-construct from env — wire the bus yourself.
 
 ## `RedisEventBus` (cross-process fan-out)
 

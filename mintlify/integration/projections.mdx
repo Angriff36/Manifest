@@ -8,15 +8,11 @@ A **projection** reads your compiled Intermediate Representation (IR) and emits 
 
 ## Available projections
 
-~~| Projection | CLI identifier | What it generates | Guide |
-| Next.js | `nextjs` | App Router routes, dispatcher, TS types, client SDK | … |
-| Prisma | `prisma` | A `schema.prisma` file | … |~~
-
-> **Correction (2026-07-15):** The table above understated the registry. Shipped projections
-> include (among others) `nextjs`, `prisma`, `prisma-store`, `convex`, `drizzle`, `kysely`,
-> `zod`, `openapi`, `graphql`, `express`, `hono`, `remix`, `sveltekit`, `mongoose`, and more — see
-> `manifest generate -p <name>` / the projections registry. Guides for individual targets live
-> under `/integration/*` and `/projections/*`.
+The table above understated the registry. Shipped projections
+include (among others) `nextjs`, `prisma`, `prisma-store`, `convex`, `drizzle`, `kysely`,
+`zod`, `openapi`, `graphql`, `express`, `hono`, `remix`, `sveltekit`, `mongoose`, and more — see
+`manifest generate -p <name>` / the projections registry. Guides for individual targets live
+under `/integration/*` and `/projections/*`.
 
 | Projection | CLI identifier | What it generates                                   | Guide                                         |
 | ---------- | -------------- | --------------------------------------------------- | --------------------------------------------- |
@@ -48,13 +44,13 @@ The Prisma projection ships a single surface:
 This is the most important rule for projections:
 
 - **Read routes (`nextjs.route`) may bypass the runtime.** Generated GET handlers use direct database queries (Prisma by default). That is a **projection** choice for efficiency — those handlers do not call `getInstance` / `getAllInstances`.
-- ~~read policies are not enforced by default in Manifest semantics~~
+-
 - **Write routes (`nextjs.command`) MUST use `RuntimeEngine.runCommand`.** Bypassing `runCommand` for mutations bypasses guard evaluation, policy checks, constraint validation, and event emission. The spec requires these to run in a fixed order on every mutation.
 
-> **Correction (2026-07-15):** Manifest **semantics** do enforce `read` / `all` policies at the
-> runtime read gate (`getInstance` / `getAllInstances` — fail closed). Generated Next.js read
-> routes that query the DB directly skip that gate unless you wire reads through the runtime or
-> re-implement equivalent checks. Do not confuse projection bypass with language semantics.
+Manifest **semantics** do enforce `read` / `all` policies at the
+runtime read gate (`getInstance` / `getAllInstances` — fail closed). Generated Next.js read
+routes that query the DB directly skip that gate unless you wire reads through the runtime or
+re-implement equivalent checks. Do not confuse projection bypass with language semantics.
 
 <Warning>
   Never replace `RuntimeEngine.runCommand` with direct database writes in a command route. Doing so
@@ -83,30 +79,18 @@ manifest generate ir/recipe.ir.json -p nextjs -s ts.types --output .
 manifest generate ir/recipe.ir.json -p nextjs -s ts.client --output .
 ```
 
-~~```bash
-manifest generate ir/recipe.ir.json --surface route --output app/api/
-# …
-```~~
-
-~~<Note>
-  The CLI uses `tsx` and is intended for development-time scaffolding. For production build
-  pipelines, call the projection functions directly in your build scripts.
-</Note>~~
-
-> **Correction (2026-07-15):** Do **not** tell teams to hand-call projection helpers in production
-> pipelines as the default. Use `manifest compile --all` / `generate --all` / `watch --all` /
-> `build --all` driven by `manifest.config.yaml`. Surface names are registry ids such as
-> `nextjs.route`, `nextjs.command`, `ts.types`, `ts.client` (not bare `route` / `types` alone
-> unless the CLI resolves them for a selected `-p`).
+Do **not** tell teams to hand-call projection helpers in production
+pipelines as the default. Use `manifest compile --all` / `generate --all` / `watch --all` /
+`build --all` driven by `manifest.config.yaml`. Surface names are registry ids such as
+`nextjs.route`, `nextjs.command`, `ts.types`, `ts.client` (not bare `route` / `types` alone
+unless the CLI resolves them for a selected `-p`).
 
 ## Using the projection API programmatically
 
-~~Import `NextJsProjection` and call `generateRoute` / `generateTypes` / `generateClient`.~~
-
-> **Correction (2026-07-15):** `NextJsProjection` exposes the generic
-> `generate(ir, request: ProjectionRequest)` contract — there are **no** public
-> `generateRoute` / `generateTypes` / `generateClient` methods. Prefer the CLI `--all` path;
-> if you must call the API, use `generate` with a `surface` id.
+`NextJsProjection` exposes the generic
+`generate(ir, request: ProjectionRequest)` contract — there are **no** public
+`generateRoute` / `generateTypes` / `generateClient` methods. Prefer the CLI `--all` path;
+if you must call the API, use `generate` with a `surface` id.
 
 Struck phantom API (do not use): `generateRoute` / `generateTypes` / `generateClient` —
 those methods are not on `ProjectionTarget`.
@@ -137,10 +121,8 @@ for (const artifact of routeResult.artifacts) {
 
 ### Configuration options
 
-~~Pass an options object as the third argument to `generateRoute`…~~
-
-> **Correction (2026-07-15):** Pass projection options on `request.options` to `generate`, not as
-> a third argument to a phantom `generateRoute` method.
+Pass projection options on `request.options` to `generate`, not as
+a third argument to a phantom `generateRoute` method.
 
 ```typescript
 const result = projection.generate(ir, {
@@ -163,9 +145,7 @@ const result = projection.generate(ir, {
 
 ## Auth provider examples
 
-~~`projection.generateRoute(ir, 'Recipe', { authProvider: … })`~~
-
-> **Correction (2026-07-15):** Use `generate(ir, { surface, entity, options })` as below.
+Use `generate(ir, { surface, entity, options })` as below.
 
 <CodeGroup>
 
@@ -217,8 +197,6 @@ const result = projection.generate(ir, {
 </CodeGroup>
 
 ## Tenant and soft-delete filtering
-
-~~`projection.generateRoute(ir, 'Recipe', { includeTenantFilter: … })`~~
 
 ```typescript
 // Multi-tenant with soft delete (defaults)
@@ -295,9 +273,9 @@ Generated output (Zod example):
 ```
 schemas/
   inventory/
-    schema.ts       # Product, Category
+    schema.ts # Product, Category
   orders/
-    schema.ts       # Order, LineItem
+    schema.ts # Order, LineItem
 ```
 
 <Note>

@@ -57,16 +57,9 @@ Semver tags must match `major.minor.patch` exactly — prerelease and build-meta
 
 ## IR compression and binary serialization
 
-~~```bash
-manifest versions compress ir/app.ir.json --output app.ir.bin
-manifest versions decompress app.ir.bin --output ir/app.ir.json
-```~~
-
-~~`import { compressIR, decompressIR } from '@angriff36/manifest/compression'`~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** There is **no** `manifest versions compress|decompress`
-> and **no** `@angriff36/manifest/compression` export. Binary IR is MessagePack `.mir` via
-> `manifest pack` / `manifest unpack` and `@angriff36/manifest/binary-ir` (`packIR`, `unpackIR`).
+There is **no** `manifest versions compress|decompress`
+and **no** `@angriff36/manifest/compression` export. Binary IR is MessagePack `.mir` via
+`manifest pack` / `manifest unpack` and `@angriff36/manifest/binary-ir` (`packIR`, `unpackIR`).
 
 ```bash
 manifest pack ir/app.ir.json -o app.mir
@@ -87,11 +80,9 @@ const restored = unpackIR(buf);
 manifest diagram ir/app.ir.json --type er --output diagrams/
 ```
 
-~~`--format dot`~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** `manifest diagram` options are `-o/--output`,
-> `-t/--type` (`er` \| `state` \| `sequence` \| `all`), `-e/--entity`, `--markdown`. There is
-> **no** `--format dot`.
+`manifest diagram` options are `-o/--output`,
+`-t/--type` (`er` \| `state` \| `sequence` \| `all`), `-e/--entity`, `--markdown`. There is
+**no** `--format dot`.
 
 | Diagram type | Content |
 | ------------ | ------- |
@@ -109,11 +100,9 @@ manifest versions changelog 1 2
 manifest changelog v3.5.0 HEAD -o CHANGELOG.md
 ```
 
-~~`manifest changelog --old-ir … --new-ir …`~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Top-level `manifest changelog` takes
-> `<from-ref> [to-ref]` (Git refs), not `--old-ir` / `--new-ir`. IR-file diffs use
-> `manifest diff ir-vs-ir` / `manifest versions diff`.
+Top-level `manifest changelog` takes
+`<from-ref> [to-ref]` (Git refs), not `--old-ir` / `--new-ir`. IR-file diffs use
+`manifest diff ir-vs-ir` / `manifest versions diff`.
 
 The changelog path uses IR structural comparison (diff + breaking-change classification +
 migration helpers), not Git commit subjects alone.

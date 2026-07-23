@@ -8,14 +8,10 @@ Manifest ships LLM-backed CLI tools for generating fixtures and source from prom
 
 ## AI-assisted conformance test generator
 
-~~```bash
-manifest generate-tests ir/app.ir.json --per-entity 5 --include-negative --format vitest
-```~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** `manifest generate-tests` (alias `gen-tests`) is an
-> **LLM** fixture generator. Flags are `--feature`, `--category`, `--count`, `--output`,
-> `--api-key`, `--model`, `--temperature`, `--max-retries`, `--dry-run`, `--verbose` — not
-> `--per-entity` / `--include-negative` / `--format`. Requires `ANTHROPIC_API_KEY`.
+`manifest generate-tests` (alias `gen-tests`) is an
+**LLM** fixture generator. Flags are `--feature`, `--category`, `--count`, `--output`,
+`--api-key`, `--model`, `--temperature`, `--max-retries`, `--dry-run`, `--verbose` — not
+`--per-entity` / `--include-negative` / `--format`. Requires `ANTHROPIC_API_KEY`.
 
 ```bash
 manifest generate-tests src/app.manifest --count 5 --category edge-cases --dry-run
@@ -36,10 +32,8 @@ Generated fixtures are compiled/validated before write. They are starting points
 
 ## LLM-oriented IR / source validation
 
-~~`manifest validate-ir`~~ / ~~`validateIR` / `repairIR` from `@angriff36/manifest/ir-validator`~~
-
-> **Correction (2026-07-15) @RYANSIGNED — Documentation gap:** There is **no** `validate-ir`
-> command and **no** `@angriff36/manifest/ir-validator` export. Use:
+There is **no** `validate-ir`
+command and **no** `@angriff36/manifest/ir-validator` export. Use:
 
 ```bash
 # Schema validation of compiled IR
@@ -54,14 +48,10 @@ Automatic “repair IR then continue” is not a shipped public API. Prefer re-e
 
 ## Natural language to Manifest transpiler
 
-~~```bash
-manifest generate --from-prompt "…"
-```~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** The shipped command is the separate CLI entry
-> `manifest generate-from-prompt <prompt>` (not a flag on `manifest generate`). Requires
-> `ANTHROPIC_API_KEY`. Options: `--model`, `-o/--output`, `--max-retries`, `--temperature`,
-> `--api-key`, `--skip-validation`, `--verbose`. There is no `--format ir` flag.
+The shipped command is the separate CLI entry
+`manifest generate-from-prompt <prompt>` (not a flag on `manifest generate`). Requires
+`ANTHROPIC_API_KEY`. Options: `--model`, `-o/--output`, `--max-retries`, `--temperature`,
+`--api-key`, `--skip-validation`, `--verbose`. There is no `--format ir` flag.
 
 ```bash
 manifest generate-from-prompt "An order entity with status tracking and manager approval over 1000" -o generated.manifest

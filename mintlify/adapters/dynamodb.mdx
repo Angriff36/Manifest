@@ -8,8 +8,6 @@ The DynamoDB store adapter persists Manifest entity state in AWS DynamoDB using 
 
 ## Configuration
 
-> **Correction (2026-07-22 @RYANSIGNED):** The examples below have been corrected to show the accurate `DynamoDBStore` and `buildDynamoDBKey` signatures. The constructor takes `(entityName, config, generateId?)` where config uses `partitionKey`/`sortKey` (not `partitionKeyName`/`sortKeyName`). The `buildDynamoDBKey` helper takes `(id, config, entityName)` where config uses `entityPrefix` (not `prefix`).
-
 `DynamoDBStore` is exported from `@angriff36/manifest/stores` (Node.js only). It requires the `@aws-sdk/client-dynamodb` and `@aws-sdk/lib-dynamodb` packages as optional peer dependencies, loaded via dynamic import.
 
 ```typescript
@@ -55,9 +53,7 @@ The store maps Manifest entity IDs to DynamoDB composite primary keys. Partition
 
 ## Optimistic locking
 
-~~DynamoDBStore implements optimistic locking via a `version` field. On `update`, the store includes a `ConditionExpression` that checks the current version matches the expected value.~~
-
-> **Correction (2026-07-22 @RYANSIGNED):** DynamoDBStore does NOT implement optimistic locking — the `update` method is a plain `PutCommand` with no version check. For optimistic locking with version field enforcement, use **MongoDBStore** (`@angriff36/manifest/stores`), which includes a version check in its update filter. DynamoDB atomic create uses `attribute_not_exists` and delete uses `attribute_exists` for existence checks, but there is no version-based concurrency control.
+DynamoDBStore does NOT implement optimistic locking — the `update` method is a plain `PutCommand` with no version check. For optimistic locking with version field enforcement, use **MongoDBStore** (`@angriff36/manifest/stores`), which includes a version check in its update filter. DynamoDB atomic create uses `attribute_not_exists` and delete uses `attribute_exists` for existence checks, but there is no version-based concurrency control.
 
 ## DynamoDBOutboxStore
 

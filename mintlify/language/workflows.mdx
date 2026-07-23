@@ -36,7 +36,7 @@ saga ProcessOrder {
   }
 
   on_failure: "compensate"
-  ~~emit OrderProcessingFailed~~
+
   emit SagaStarted
   emit SagaCompleted
   emit SagaFailed
@@ -44,14 +44,13 @@ saga ProcessOrder {
 }
 ```
 
-> **Correction (2026-07-15) @RYANSIGNED:** List the fixed lifecycle event names you want emitted (and declare matching `event`s). A single custom `emit OrderProcessingFailed` does **not** substitute for `SagaFailed` / `SagaCompleted`. Start with `runtime.runSaga('ProcessOrder', stepInputs)`.
+List the fixed lifecycle event names you want emitted (and declare matching `event`s). A single custom `emit OrderProcessingFailed` does **not** substitute for `SagaFailed` / `SagaCompleted`. Start with `runtime.runSaga('ProcessOrder', stepInputs)`.
 
 ### Saga lifecycle
 
 <Steps>
   <Step title="Start">
-    ~~The saga begins when the first step's command is invoked.~~ **Correction (2026-07-15)
-    @RYANSIGNED:** The saga begins when the host calls `runSaga(name, stepInputs)`. Steps then run
+     The saga begins when the host calls `runSaga(name, stepInputs)`. Steps then run
     in declaration order via `runCommand`.
   </Step>
   <Step title="Execute steps">
@@ -74,12 +73,7 @@ Compensation is best-effort. If a compensate command itself fails, the saga logs
 
 ### Saga lifecycle events
 
-~~| Event | When emitted |
-| --- | --- |
-| `{SagaName}Started` | … |
-| `{SagaName}StepCompensated` | … |~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Lifecycle event names are **fixed** (`SagaStarted`, `SagaStepCompleted`, `SagaCompleted`, `SagaFailed`) — not `{SagaName}…`. The runtime emits a lifecycle event **only if** that name appears in the saga's `emit` list **and** a matching `event` is declared in the IR (`emitSagaLifecycle`). There is **no** `SagaStepCompensated` lifecycle emission. Invoke with `runtime.runSaga(name, stepInputs)`.
+Lifecycle event names are **fixed** (`SagaStarted`, `SagaStepCompleted`, `SagaCompleted`, `SagaFailed`) — not `{SagaName}…`. The runtime emits a lifecycle event **only if** that name appears in the saga's `emit` list **and** a matching `event` is declared in the IR (`emitSagaLifecycle`). There is **no** `SagaStepCompensated` lifecycle emission. Invoke with `runtime.runSaga(name, stepInputs)`.
 
 ```manifest
 event SagaStarted: "saga.started" { sagaName: string }
@@ -122,7 +116,7 @@ Scheduled commands trigger entity commands on a time-based schedule using cron e
 
 ### Declaring a scheduled command
 
-> **Correction (2026-07-22 @RYANSIGNED):** The accepted duration units for `every`/`interval` are `ms`, `s`, `m`, `h`, `d`, `week`, `weeks` only. Long forms like `minutes`/`hours`/`seconds` are NOT accepted and will throw an error. **Important:** Entity-embedded schedules (inside `entity { … }` blocks) are silently dropped from the IR and do not execute. Only top-level single-line schedules are supported — see the corrected example below.
+The accepted duration units for `every`/`interval` are `ms`, `s`, `m`, `h`, `d`, `week`, `weeks` only. Long forms like `minutes`/`hours`/`seconds` are NOT accepted and will throw an error. **Important:** Entity-embedded schedules (inside `entity { … }` blocks) are silently dropped from the IR and do not execute. Only top-level single-line schedules are supported — see the corrected example below.
 
 Use the `schedule` keyword at the top level of a `.manifest` file:
 
@@ -191,6 +185,4 @@ entity Cache {
 
 ## Combining sagas and schedules
 
-~~Sagas and schedules can work together. A scheduled command can initiate a saga…~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Schedules invoke an entity **command** (`run <command>`). They do **not** call `runSaga` automatically. To start a saga from a schedule, the scheduled command (or a reaction it triggers) must call into host code that invokes `runtime.runSaga(...)`, or model the workflow as ordinary commands/reactions. Emitting an event alone does not start a saga.
+Schedules invoke an entity **command** (`run <command>`). They do **not** call `runSaga` automatically. To start a saga from a schedule, the scheduled command (or a reaction it triggers) must call into host code that invokes `runtime.runSaga(...)`, or model the workflow as ordinary commands/reactions. Emitting an event alone does not start a saga.

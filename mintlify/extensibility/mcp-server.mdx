@@ -8,21 +8,10 @@ The Manifest MCP server exposes compilation, execution, validation, and introspe
 
 ## Configuration
 
-~~```json
-{
-  "mcpServers": {
-    "manifest": {
-      "command": "npx",
-      "args": ["@manifest/mcp-server"]
-    }
-  }
-}
-```~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** `@manifest/mcp-server` is an **in-repo** package
-> (`packages/mcp-server`, version `0.1.0`) and is **not published** to npm (404 verified; see
-> `docs/TODO.md`). The published path is the `manifest-mcp` bin on `@angriff36/manifest` (current
-> pin **3.6.41**), also re-exported as `@angriff36/manifest/mcp-server`.
+`@manifest/mcp-server` is an **in-repo** package
+(`packages/mcp-server`, version `0.1.0`) and is **not published** to npm (404 verified; see
+`docs/TODO.md`). The published path is the `manifest-mcp` bin on `@angriff36/manifest` (current
+pin **3.6.41**), also re-exported as `@angriff36/manifest/mcp-server`.
 
 ```json
 {

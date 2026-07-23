@@ -56,9 +56,7 @@ on TaskAssigned run Notification.sendAssigned
   }
 ```
 
-~~The runtime looks up the `Notification` instance whose `id` matches the resolved value. If no instance with that ID exists, the reaction is skipped silently — no error is raised.~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** The runtime always dispatches `runCommand` with the resolved `instanceId` (`docs/spec/semantics.md` § Reactions). There is **no** silent skip when the instance is missing — the target command still runs; `self`/`this` are unbound when lookup fails, so mutates that need an instance do not persist. Seed target instances (or use a `create` target command) before relying on a reaction.
+The runtime always dispatches `runCommand` with the resolved `instanceId` (`docs/spec/semantics.md` § Reactions). There is **no** silent skip when the instance is missing — the target command still runs; `self`/`this` are unbound when lookup fails, so mutates that need an instance do not persist. Seed target instances (or use a `create` target command) before relying on a reaction.
 
 Use a literal string when the target instance is fixed at design time (a singleton handler, a system processor, etc.):
 
@@ -79,9 +77,9 @@ The `params` block maps event payload fields to command parameters. Each entry i
 
 ```manifest fragment
 params {
-  orderId: payload.orderId       // Direct field reference
-  total: payload.amount * 1.1    // Expression with arithmetic
-  currency: "USD"               // Literal value
+  orderId: payload.orderId // Direct field reference
+  total: payload.amount * 1.1 // Expression with arithmetic
+  currency: "USD" // Literal value
 }
 ```
 
@@ -316,9 +314,7 @@ Reactions can be declared at three levels:
 | Module  | Inside a `module` block       | Scoped to the module                  |
 | Entity  | Inside an `entity` block (`on Event run …` / `fanOut`) | Collected into IR with an `entity` field |
 
-~~(Implied: any `on Event { … }` body inside an entity is a valid reaction.)~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Entity-scoped reactions must use the `on Event run …` / `fanOut` form. Bare `behavior` / `on Event { … }` blocks inside an entity are a hard compile error (conformance fixture 110; `docs/spec/semantics.md` § Entities).
+Entity-scoped reactions must use the `on Event run …` / `fanOut` form. Bare `behavior` / `on Event { … }` blocks inside an entity are a hard compile error (conformance fixture 110; `docs/spec/semantics.md` § Entities).
 
 ```manifest
 event OrderSubmitted: "order.submitted" {
@@ -396,9 +392,9 @@ The runtime enforces a maximum reaction depth (`MAX_REACTION_DEPTH = 10`). If a 
 Reactions propagate workflow metadata through the chain:
 
 - **`correlationId`** stays the same across the entire workflow. It is set on the initial event and carried through every subsequent reaction.
-- ~~**`causationId`** is set to the triggering event's emit ID on each reaction. This changes with each hop, creating a causal chain.~~
+-
 
-> **Correction (2026-07-15) @RYANSIGNED:** `causationId` on each reaction-triggered command is the triggering event's **name** (`emitted.name`), not an emit/instance ID (`docs/spec/semantics.md` § Reactions).
+`causationId` on each reaction-triggered command is the triggering event's **name** (`emitted.name`), not an emit/instance ID (`docs/spec/semantics.md` § Reactions).
 
 This enables cross-reaction tracing for debugging distributed workflows. See [Events](/language/events) for how `correlationId` and `causationId` are attached to emitted events.
 
@@ -480,12 +476,10 @@ on InvoiceCreated run Shipping.prepareShipment
   }
 ```
 
-~~Wrong (entity-first): `runtime.runCommand('Order', 'submit', { instanceId, amount })`.~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** `runCommand(commandName, input, options?)` — not
-> entity-first. `amount` is command input; `entityName` / `instanceId` go in options.
-> Do **not** wrap fenced code in `~~…~~` — Mintlify MDX treats the fence as broken and
-> parses `{…}` as JSX (`Could not parse expression with acorn`), which blocks deploy.
+`runCommand(commandName, input, options?)` — not
+entity-first. `amount` is command input; `entityName` / `instanceId` go in options.
+Do **not** wrap fenced code in `` — Mintlify MDX treats the fence as broken and
+parses `{…}` as JSX (`Could not parse expression with acorn`), which blocks deploy.
 
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';

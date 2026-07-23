@@ -22,11 +22,8 @@ The projection exposes six surfaces.
 
 `remix.client` emits response helper utilities: `manifestSuccessResponse`, `manifestErrorResponse`, and `normalizeCommandResult`. These map Manifest `CommandResult` outcomes to Remix `Response` objects with proper HTTP status codes. `remix.companions` emits a companion facade module with `runCommand(entity, command, { params, instanceId }, context?)` that adapts to `RuntimeEngine.runCommand`.
 
-Command handlers map ~~runtime error codes to HTTP status: `GUARD_FAILED` to 403, `CONSTRAINT_VIOLATION` to 422, `CONCURRENCY_CONFLICT` to 409, `NOT_FOUND` to 404, and anything else to 500. Optional error boundary exports are available when the `errorBoundaries` option is enabled.~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Diagnostic kinds map to HTTP status as documented under
-> Options below. Optional `ErrorBoundary` / `useRouteError` exports are gated by
-> `includeErrorBoundary` (default **`true`**), not `errorBoundaries`.
+Command handlers map diagnostic kinds to HTTP status as documented under Options below. Optional
+`ErrorBoundary` / `useRouteError` exports are gated by `includeErrorBoundary` (default **`true`**).
 
 ## Usage
 
@@ -58,17 +55,14 @@ manifest generate ir/widget.ir.json --projection remix --surface remix.types --o
 
 The projection supports four auth providers, configured via the `authProvider` option:
 
-- ~~**`clerk`** (default) — Imports from `@clerk/remix`, uses `getAuth()` to retrieve the current user session.~~
-- **`remix-auth`** ~~—~~ (**default**) — Imports from the configured `authImportPath`, uses `authenticator.isAuthenticated()` for session checks.
+- **`remix-auth`** (default) — Imports from the configured `authImportPath`, uses `authenticator.isAuthenticated()` for session checks.
 - **`clerk`** — Imports from `@clerk/remix`, uses `getAuth()` to retrieve the current user session.
 - **`custom`** — Imports a `requireUser(request)` function from the configured `authImportPath`.
 - **`none`** — No auth checks in generated code; suitable for public APIs or when auth is handled at a higher layer.
 
-~~Unauthorized users receive a redirect to the configured `unauthorizedRedirect` path (default `/login`) with the appropriate HTTP status code from the `unauthorizedStatus` option.~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Default `authProvider` is **`remix-auth`**, not `clerk`
-> (`REMIX_DEFAULTS`). There is **no** `unauthorizedRedirect` option — unauthorized responses use
-> `unauthorizedStatus` (default `401`) without a configured redirect path.
+Default `authProvider` is **`remix-auth`** (`REMIX_DEFAULTS`). There is **no** `unauthorizedRedirect`
+option — unauthorized responses use `unauthorizedStatus` (default `401`) without a configured redirect
+path.
 
 ## Generated file structure
 
@@ -94,22 +88,15 @@ The projection maps Manifest IR types to TypeScript: `string` to `string`; `numb
 
 ## Options
 
-~~`RemixProjectionOptions` accepts `authProvider` (`'clerk'` | `'remix-auth'` | `'custom'` | `'none'`, default `'clerk'`), `authImportPath` (default varies by provider), `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `basePath` (default `/api`), `remixVersion` (`'v2'` | `'v7'`, default `'v2'`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `errorBoundaries` (default `false`), `unauthorizedStatus` (default `401`), `unauthorizedRedirect` (default `/login`), `includeSoftDeleteFilter` (default `false`), `publicReads` (default `false`), and `includeComments` (default `true`).~~
+`RemixProjectionOptions` (from `REMIX_DEFAULTS` in `src/manifest/projections/remix/generator.ts`)
+defaults: `authProvider` **`'remix-auth'`**; `includeTenantFilter` **`true`**;
+`includeSoftDeleteFilter` **`true`**; `includeErrorBoundary` **`true`**; `remixVersion` `'v2'`;
+`unauthorizedStatus` `401`; `authImportPath: '~/utils/auth.server'`;
+`runtimeImportPath: '~/utils/manifest-runtime'`; `routesDir: 'app/routes'`; `emitCompanions: true`.
+There is **no** `unauthorizedRedirect`, `publicReads`, `basePath`, or `runtimeFactoryName` option.
 
-> **Correction (2026-07-15) @RYANSIGNED:** Real options from `REMIX_DEFAULTS`
-> (`src/manifest/projections/remix/generator.ts`): `authProvider` default **`'remix-auth'`** (not
-> `clerk`); `includeTenantFilter` (not `includeTenantContext`) default **`true`**;
-> `includeSoftDeleteFilter` default **`true`** (not `false`); `includeErrorBoundary` (not
-> `errorBoundaries`) default **`true`**; `remixVersion` default `'v2'`; `unauthorizedStatus`
-> default `401`. There is **no** `unauthorizedRedirect`, `publicReads`, `basePath`, or
-> `runtimeFactoryName` option. Defaults also set `authImportPath: '~/utils/auth.server'`,
-> `runtimeImportPath: '~/utils/manifest-runtime'`, `routesDir: 'app/routes'`, `emitCompanions: true`.
-
-Command handlers map ~~runtime error codes to HTTP status: `GUARD_FAILED` to 403, `CONSTRAINT_VIOLATION` to 422, `CONCURRENCY_CONFLICT` to 409, `NOT_FOUND` to 404, and anything else to 500~~.
-
-> **Correction (2026-07-15) @RYANSIGNED:** Generated Remix actions map diagnostic **kinds**:
-> `policy_denial` → 403, `guard_failure` → **422**, `constraint_block` → 422, else 400 — not the
-> legacy `GUARD_FAILED`/`CONSTRAINT_VIOLATION` string codes above.
+Generated Remix actions map diagnostic **kinds**: `policy_denial` → 403, `guard_failure` → **422**,
+`constraint_block` → 422, else 400.
 
 ## Notes & limitations
 

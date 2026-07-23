@@ -23,16 +23,7 @@ This page explains the boundary between them, how to decide which to reach for f
     manifest generate ir/recipe.ir.json --surface command --output app/api/
     ```
 
-    ~~The four generated surfaces are:~~
-
-    ~~| Surface | What it produces |
-    | --- | --- |
-    | `nextjs.route` | GET handlers with direct database queries |
-    | `nextjs.command` | POST/PUT/DELETE handlers that call `RuntimeEngine.runCommand` |
-    | `ts.types` | TypeScript interfaces derived from your entity definitions |
-    | `ts.client` | Typed fetch wrappers for calling your routes from client code |~~
-
-    > **Correction (2026-07-15) @RYANSIGNED:** The Next.js projection registers **twelve** surfaces
+    > The Next.js projection registers **twelve** surfaces
     > (`nextjs.route`, `nextjs.detail`, `nextjs.command`, `nextjs.dispatcher`,
     > `nextjs.subscribe`, `nextjs.subscriptionHook`, `nextjs.sharedRuntime`, `nextjs.schedule`,
     > `nextjs.webhook`, `nextjs.companions`, `ts.types`, `ts.client`). Default `--surface all`

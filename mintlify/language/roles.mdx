@@ -39,9 +39,7 @@ Roles inherit permissions transitively through the `extends` chain. The compiler
 | `Manager` (extends User)  | User           | read, write, execute                   |
 | `Admin` (extends Manager) | Manager, User  | read, write, execute, delete, override |
 
-~~The `effectivePermissions` map is precomputed… via O(1) lookups…~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** `resolveRoleGraph()` precomputes an `effectivePermissions: IRRolePermission[]` (allow entries remaining after transitive deny). Runtime checks scan that array (no inheritance walk at execution time).
+`resolveRoleGraph()` precomputes an `effectivePermissions: IRRolePermission[]` (allow entries remaining after transitive deny). Runtime checks scan that array (no inheritance walk at execution time).
 
 ### Compile-time validation
 
@@ -63,7 +61,7 @@ role User {
 role Support extends User {
   allow write
   allow execute
-  deny delete       // Support CANNOT delete, even if a parent allows it
+  deny delete // Support CANNOT delete, even if a parent allows it
 }
 ```
 
@@ -71,7 +69,7 @@ Deny rules are applied after the full inheritance union is computed. This means:
 
 1. Walk the inheritance chain and union all `allow` permissions.
 2. Walk the inheritance chain and collect all `deny` permissions.
-3. ~~The result is the `effectivePermissions` map.~~ **Correction (2026-07-15) @RYANSIGNED:** Filter allows against denies → `effectivePermissions: IRRolePermission[]`.
+3. Filter allows against denies → `effectivePermissions: IRRolePermission[]`.
 
 A `deny` at any level is absolute. There is no mechanism to override a deny with a subsequent allow. This is by design — it prevents privilege escalation through role chain manipulation.
 
@@ -100,7 +98,6 @@ Reference roles in policy expressions via the `user.role` binding and the built-
 entity Document {
   default policy RequireAuth execute: user.id != null "Authentication required"
 
-  ~~policy CanDelete execute: hasPermission(user, "delete")~~
   policy CanApprove execute: roleAllows(user.role, "approve") or user.role == "admin"
   policy CanDelete execute: hasPermission("delete")
 
@@ -120,12 +117,7 @@ entity Document {
 
 Two built-in functions are registered on the runtime engine when roles are present in the IR:
 
-~~| Function | Signature | Returns |
-| --- | --- | --- |
-| `hasPermission` | `hasPermission(user, permission)` | … |
-| `roleAllows` | `roleAllows(roleName, action)` | … |~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Per `docs/spec/builtins.md` and conformance fixture `71-role-hierarchy.manifest`:
+Per `docs/spec/builtins.md` and conformance fixture `71-role-hierarchy.manifest`:
 
 | Function | Signature | Returns |
 | --- | --- | --- |
@@ -157,10 +149,10 @@ The `role` keyword is context-sensitive, not a globally reserved keyword. It is 
 
 ```manifest
 entity UserProfile {
-  property role: string = "user"           // property named "role"
+  property role: string = "user" // property named "role"
 
   command setRole(newRole: string) {
-    mutate role = newRole                   // mutate "role" property
+    mutate role = newRole // mutate "role" property
   }
 }
 ```
@@ -177,16 +169,7 @@ The parser only treats `role` as a declaration keyword at the top level of a pro
 
 Roles are stored in the IR as an optional `roles` array on the root `IR` object (and on `IRModule` for module-scoped roles). Each `IRRole` contains:
 
-~~```typescript
-interface IRRole {
-  name: string;
-  extends?: string;
-  permissions: IRRolePermission[];
-  effectivePermissions: Record<string, boolean>;
-}
-```~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** IR shape (`src/manifest/ir.ts`):
+IR shape (`src/manifest/ir.ts`):
 
 ```typescript
 interface IRRolePermission {
@@ -231,9 +214,6 @@ entity Document {
 
   default policy RequireAuth execute: user.id != null "Authentication required"
 
-  ~~policy CanRead execute: hasPermission(user, "read")
-  policy CanWrite execute: hasPermission(user, "write")
-  policy CanDelete execute: hasPermission(user, "delete")~~
   policy CanRead execute: hasPermission("read")
   policy CanWrite execute: hasPermission("write")
   policy CanApprove execute: roleAllows(user.role, "execute")
@@ -261,20 +241,8 @@ entity Document {
 }
 ```
 
-~~```typescript
-const result = await adminRuntime.runCommand('Document', 'removeDocument', {
-  instanceId: 'doc-42',
-});
-const mgrResult = await mgrRuntime.runCommand('Document', 'removeDocument', {
-  instanceId: 'doc-42',
-});
-const unknownResult = await unknownRuntime.runCommand('Document', 'view', {
-  instanceId: 'doc-42',
-});
-```~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** `RuntimeEngine.runCommand(commandName, input, options?)` —
-> not entity-first. Pass `entityName` / `instanceId` in `options`.
+`RuntimeEngine.runCommand(commandName, input, options?)` —
+not entity-first. Pass `entityName` / `instanceId` in `options`.
 
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';

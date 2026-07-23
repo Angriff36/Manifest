@@ -2,7 +2,7 @@
 
 Authority: Advisory (product docs workspace under `mintlify/`)
 Enforced by: None
-Last updated: 2026-07-21
+Last updated: 2026-07-23
 
 > For Mintlify product knowledge (components, `docs.json`, writing standards),
 > install the Mintlify skill: `npx skills add https://mintlify.com/docs`
@@ -20,17 +20,16 @@ Last updated: 2026-07-21
 3. Evidence inventory: `docs/CONFIRMED-FEATURES.md` (what exists) and `docs/TODO.md` (gaps)
 4. Historical roadmap `docs/FEATURE-LIST.md` is **not** trustworthy without the caveat header
 
-If docs disagree with Tier A / shipped code: **do not silently rewrite history**. Use:
+If docs disagree with Tier A / shipped code: **rewrite the page to the current
+verified behavior** (source / package exports / Tier A). Public Mintlify pages
+must **not** retain strikethrough archaeology or `@RYANSIGNED` correction
+banners — those markers are for internal consolidation under `docs/**` and
+CLAUDE.md’s documentation law, not for the public site.
 
-```md
-~~false claim~~
-> **Correction (YYYY-MM-DD) @RYANSIGNED:** accurate claim + evidence pointer
-```
-
-Strike **prose or inline code only**. Never wrap a fenced block in `~~…~~`
-(`~~```lang … ```~~`) — Mintlify’s MDX parser then treats `{…}` inside as JSX and
-fails deploy with `Could not parse expression with acorn` (live site stuck;
-seen 2026-07-21 on `language/reactions.mdx`).
+Never wrap a fenced block in `~~…~~` (`~~```lang … ```~~`) even temporarily —
+Mintlify’s MDX parser then treats `{…}` inside as JSX and fails deploy with
+`Could not parse expression with acorn` (seen 2026-07-21 on
+`language/reactions.mdx`).
 
 ## Hard accuracy rules
 

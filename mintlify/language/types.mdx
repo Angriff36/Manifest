@@ -4,9 +4,7 @@ sidebarTitle: 'Types'
 description: "Reference for Manifest's richer property types — enums, decimal and money, value objects, datetime with UTC built-ins, and arrays — including what each one enforces at runtime."
 ---
 
-~~Beyond the four primitive types (`string`, `number`, `boolean`, `timestamp`), Manifest offers richer property types…~~
-
-> **Correction (2026-07-22 @RYANSIGNED):** `timestamp` **is** a valid property type — it is a normative alias for `datetime` (`docs/spec/semantics.md:281,286-289`). Runtimes MUST treat `timestamp` identically to `datetime`. Common scalars include `string`, `number`, `boolean`, plus date/time primitives `datetime` / `timestamp` / `date` / `time` / `duration`, `decimal` / `money`, collections, enums, and value-object names. Type names are open strings, so an undeclared custom name can still compile as a type reference. This page documents what each richer type actually provides — and what it does not.
+`timestamp` **is** a valid property type — it is a normative alias for `datetime` (`docs/spec/semantics.md:281,286-289`). Runtimes MUST treat `timestamp` identically to `datetime`. Common scalars include `string`, `number`, `boolean`, plus date/time primitives `datetime` / `timestamp` / `date` / `time` / `duration`, `decimal` / `money`, collections, enums, and value-object names. Type names are open strings, so an undeclared custom name can still compile as a type reference. This page documents what each richer type actually provides — and what it does not.
 
 ## Enums
 
@@ -126,11 +124,7 @@ The `value` token is context-sensitive — it is emitted as an identifier rather
 
 ## Datetime (and date / time / duration)
 
-~~Manifest represents points in time with the `datetime` type and offers UTC-based date-component built-ins for extracting parts of a timestamp.~~
-
-~~There is **no** dedicated `date`, `time`, `duration`, or `interval` primitive type — those keywords are not in the lexer. The date type the runtime and projections work with is `datetime`, used like any scalar property type.~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Four date/time primitive type names have fixed runtime representations and write-time validation (`docs/spec/semantics.md` § Date/Time Types):
+Four date/time primitive type names have fixed runtime representations and write-time validation (`docs/spec/semantics.md` § Date/Time Types):
 
 | Type | Representation |
 | --- | --- |
@@ -202,14 +196,7 @@ The date built-ins all operate on a number interpreted as milliseconds since the
 
 Each returns the input unchanged when it is not a number. UTC methods are used deliberately so results are timezone-independent and deterministic.
 
-~~<Warning>
-  This is the most significant area of overclaiming to avoid. There are **no** `Date`, `Time`,
-  `Duration`, or `Interval` primitive types, no date column mappings for them, and no date
-  arithmetic, comparison, or formatting built-ins beyond component extraction. What genuinely exists
-  is the `datetime` type (notably via `timestamps`) and the six UTC date-component built-ins above.
-</Warning>~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** In addition to the six component extractors, `docs/spec/builtins.md` ships conversion and duration helpers: `dateOf`, `timeOf`, `datetimeOf`, `addDuration`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`. There is still no `interval` type and no general calendar arithmetic library beyond these builtins.
+In addition to the six component extractors, `docs/spec/builtins.md` ships conversion and duration helpers: `dateOf`, `timeOf`, `datetimeOf`, `addDuration`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`. There is still no `interval` type and no general calendar arithmetic library beyond these builtins.
 
 ## Arrays
 

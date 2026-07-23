@@ -128,15 +128,8 @@ interface ApprovalRequiredInfo {
 }
 ```
 
-~~```typescript
-const result = await runtime.runCommand('PurchaseOrder', 'submit', {
-  instanceId: 'po-001',
-  amount: 15000,
-});
-```~~
-
-> **Correction (2026-07-15):** Signature is `runCommand(commandName, input, options?)`.
-> `entityName` / `instanceId` go in options; command params go in `input`.
+Signature is `runCommand(commandName, input, options?)`.
+`entityName` / `instanceId` go in options; command params go in `input`.
 
 ```typescript
 const result = await runtime.runCommand(
@@ -147,9 +140,9 @@ const result = await runtime.runCommand(
 
 // result.success === false
 // result.approvalRequired === {
-//   approvalName: "submitApproval",
-//   pendingStages: ["manager", "director"],
-//   requestKey: "po-001-manager-director"
+// approvalName: "submitApproval",
+// pendingStages: ["manager", "director"],
+// requestKey: "po-001-manager-director"
 // }
 ```
 
@@ -321,10 +314,6 @@ const runtime = new RuntimeEngine(ir, {
 });
 
 // Submit the order -- blocks at the approval gate
-~~const result = await runtime.runCommand('PurchaseOrder', 'submit', {
-  instanceId: 'po-001',
-  amount: 15000,
-});~~
 
 const result = await runtime.runCommand(
   'submit',
@@ -342,10 +331,6 @@ runtime.approveStage('PurchaseOrder', 'po-001', 'submitApproval', 'manager', 'us
 runtime.approveStage('PurchaseOrder', 'po-001', 'submitApproval', 'director', 'user-dir-1');
 
 // Re-submit -- now passes the approval gate
-~~const final = await runtime.runCommand('PurchaseOrder', 'submit', {
-  instanceId: 'po-001',
-  amount: 15000,
-});~~
 
 const final = await runtime.runCommand(
   'submit',
@@ -356,7 +341,7 @@ const final = await runtime.runCommand(
 console.log(final.success); // true
 ```
 
-> **Correction (2026-07-15):** Both `runCommand` calls above use
-> `runCommand(commandName, input, options)` — not the phantom entity-first form.
+Both `runCommand` calls above use
+`runCommand(commandName, input, options)` — not the phantom entity-first form.
 
 See [Commands](/language/commands) for the full execution pipeline, [Guards and policies](/language/guards-policies) for the gates that precede approvals, [Events](/language/events) for declaring event schemas used in approval lifecycle notifications, and [Roles](/language/roles) for role-based authorization in policy expressions.

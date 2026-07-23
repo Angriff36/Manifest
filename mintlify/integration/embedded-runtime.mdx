@@ -4,9 +4,9 @@ sidebarTitle: 'Embedded Runtime'
 description: 'Instantiate RuntimeEngine in your own handlers to control command orchestration, event routing, and response shaping with full Manifest semantics enforced.'
 ---
 
-> **Verified (2026-07-15) @RYANSIGNED:** `runCommand(commandName, input, options?)` matches
-> `RuntimeEngine` in `@angriff36/manifest` **3.6.41**. Execution order includes rate limits before
-> policies.
+`runCommand(commandName, input, options?)` matches
+`RuntimeEngine` in `@angriff36/manifest` **3.6.41**. Execution order includes rate limits before
+policies.
 
 The Embedded Runtime pattern gives you direct access to `RuntimeEngine` in your own handlers. Use it when you need custom orchestration around command execution, a bespoke event-handling pipeline, or precise control over how `CommandResult` maps to your API response format.
 

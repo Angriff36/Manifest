@@ -89,10 +89,4 @@ The semantics are:
 
 In a guard, a falsey result halts command execution in order. In a constraint, pass/fail uses truthiness of the expression result (plus `failWhen` / severity via `constraintExpressionPasses`). A static analysis module also extracts numeric range and length bounds from these expressions and exposes converters for SQL `CHECK`, Zod chains, and OpenAPI `minimum`/`maximum`/`minLength`/`maxLength`.
 
-~~<Warning>
-  Note the difference in shape: `between` returns a **boolean**, while `min` and `max` return a
-  **number**. The fixture uses `min(self.quantity, 0)` and `max(self.discount, 100)` as constraint
-  expressions whose numeric result the checker evaluates…
-</Warning>~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Do **not** write `constraint x: min(self.n, 0)` expecting a lower-bound check. `min`/`max` return numbers; constraint polarity is `!!result` (unless `failWhen`). `min(5, 0)` → `0` → **fails**; `min(-1, 0)` → `-1` → **passes**. Use comparisons (`self.quantity >= 0`) or `between(...)` for bounds.
+Do **not** write `constraint x: min(self.n, 0)` expecting a lower-bound check. `min`/`max` return numbers; constraint polarity is `!!result` (unless `failWhen`). `min(5, 0)` → `0` → **fails**; `min(-1, 0)` → `-1` → **passes**. Use comparisons (`self.quantity >= 0`) or `between(...)` for bounds.

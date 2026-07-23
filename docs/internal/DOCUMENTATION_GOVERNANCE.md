@@ -1,6 +1,6 @@
 # Manifest Documentation Governance
 
-Last updated: 2026-07-17
+Last updated: 2026-07-23
 Status: Active
 Authority: Binding
 Enforced by: pnpm run docs:check, pnpm run docs:check:spec-integrity; feature-completion claims enforced by agent rules + `docs/internal/COMPLIANCE_MATRIX.md`
@@ -406,8 +406,11 @@ When changing **feature completion** status:
 1. Update `docs/internal/COMPLIANCE_MATRIX.md` first (with hard proof for
    `FULLY_IMPLEMENTED`).
 2. Reconcile `docs/TODO.md` and `docs/CONFIRMED-FEATURES.md`.
-3. Correct any user/Mintlify pages that claimed the old status (strikethrough +
-   dated correction per CLAUDE.md documentation law).
+3. Correct any user/Mintlify pages that claimed the old status. For **public
+   Mintlify** (`mintlify/**`), rewrite to the verified current behavior only —
+   do not leave strikethrough + dated correction banners on the public site.
+   Internal `docs/**` consolidation may still use strikethrough + dated
+   correction per CLAUDE.md documentation law until a human cleanup pass.
 
 ## Rationale (2026-07-15)
 
@@ -425,6 +428,14 @@ with a mandatory hard-proof protocol (filename + line range + git commit) for
 `FULLY_IMPLEMENTED`. Recorded in this file, `AGENTS.md`, and `CLAUDE.md` under
 `@RYAN_APPROVED 2026-07-15` so agents cannot treat roadmaps or unverified
 inventory prose as “done.”
+
+**Addendum (2026-07-23) — Public Mintlify cleanup:** `mintlify/**` is the public
+site. After a claim is verified against source/exports, rewrite the page to the
+current behavior only. Do not leave `~~struck~~` + dated Correction /
+`@RYANSIGNED` banners on public pages. Internal `docs/**` may still use
+strikethrough consolidation per CLAUDE.md until a human cleanup pass.
+Maintenance helper: `scripts/cleanup-mintlify-strikethrough.mjs` (then
+`node scripts/regenerate-llms-full.mjs` and `pnpm run docs:check`).
 
 **Addendum (2026-07-17) — Binding plans opt-in:** Clarified that
 `docs/internal/plans/` defaults to Tier B, but a plan may declare

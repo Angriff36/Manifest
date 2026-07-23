@@ -22,12 +22,10 @@ manifest repl src/app.manifest
 
 ### Available commands
 
-~~`load`, `create`, `run Entity.command`, `reset`~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Verified against `packages/cli/src/commands/repl.ts`.
-> The REPL loads source at startup (`manifest repl <path>`); there is no `load` / `create` /
-> `reset`. `run` takes **two** positional args (`run <entity> <command> [json]`), not
-> `Entity.command` dotted form. `eval` is stubbed (“not yet implemented”).
+Verified against `packages/cli/src/commands/repl.ts`.
+The REPL loads source at startup (`manifest repl <path>`); there is no `load` / `create` /
+`reset`. `run` takes **two** positional args (`run <entity> <command> [json]`), not
+`Entity.command` dotted form. `eval` is stubbed (“not yet implemented”).
 
 | Command | Description |
 | ------- | ----------- |
@@ -72,18 +70,10 @@ The time-travel debugger records every state mutation during command execution a
 
 ### Enabling time-travel
 
-~~```typescript
-import { TimeTravelDebugger } from '@angriff36/manifest/debug';
-const debugger_ = new TimeTravelDebugger(runtime);
-const result = await debugger_.runCommand('Order', 'complete', {
-  instanceId: 'order-1',
-});
-```~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Shipped debug API is `CommandTraceRecorder` from
-> `@angriff36/manifest/debug`. Its `runCommand` matches
-> `RuntimeEngine.runCommand(commandName, input, options?)` — not entity-first.
-> There is no exported `TimeTravelDebugger` class.
+Shipped debug API is `CommandTraceRecorder` from
+`@angriff36/manifest/debug`. Its `runCommand` matches
+`RuntimeEngine.runCommand(commandName, input, options?)` — not entity-first.
+There is no exported `TimeTravelDebugger` class.
 
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';
@@ -103,16 +93,9 @@ const steps = tracer.getSteps();
 
 ### Stepping through execution
 
-~~```typescript
-const stateAtStep2 = debugger_.getStateAt(2);
-debugger_.stepForward();
-debugger_.stepBack();
-const diff = debugger_.diff(0, 3);
-```~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** `CommandTraceRecorder` exposes `getSteps()` and
-> `restoreToStep(stepIndex)` (via `RuntimeEngine.restore`). There is no `getStateAt` /
-> `stepForward` / `stepBack` / `diff` API.
+`CommandTraceRecorder` exposes `getSteps()` and
+`restoreToStep(stepIndex)` (via `RuntimeEngine.restore`). There is no `getStateAt` /
+`stepForward` / `stepBack` / `diff` API.
 
 ```typescript
 const steps = tracer.getSteps();
@@ -121,10 +104,8 @@ await tracer.restoreToStep(0); // restore pre-command snapshot
 
 ### Timeline entries
 
-~~Each timeline entry contains `step`, `action`, `state`, `timestamp`.~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Each `CommandTraceStep` has `index`, `label`, and
-> `snapshot` (`SerializedRuntimeSnapshot`).
+Each `CommandTraceStep` has `index`, `label`, and
+`snapshot` (`SerializedRuntimeSnapshot`).
 
 <Warning>
   Trace snapshots capture store state. For large datasets or high-frequency command execution,
@@ -137,17 +118,9 @@ The runtime profiler measures execution time for each phase of command execution
 
 ### Running the profiler
 
-~~```typescript
-import { RuntimeProfiler } from '@angriff36/manifest/profiler';
-const profiler = new RuntimeProfiler(runtime);
-const result = await profiler.runCommand('Order', 'complete', {
-  instanceId: 'order-1',
-});
-```~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** There is no `@angriff36/manifest/profiler` export /
-> `RuntimeProfiler` class. Profile timing via your own harness around
-> `runtime.runCommand(commandName, input, options?)` (Kitchen FlameGraph UI is separate).
+There is no `@angriff36/manifest/profiler` export /
+`RuntimeProfiler` class. Profile timing via your own harness around
+`runtime.runCommand(commandName, input, options?)` (Kitchen FlameGraph UI is separate).
 
 ```typescript
 const result = await runtime.runCommand('complete', {}, {
@@ -158,11 +131,8 @@ const result = await runtime.runCommand('complete', {}, {
 
 ### Profile report shape
 
-~~`ProfileReport` interface with per-phase `policy` / `constraints` / `guards` / `actions` /
-`emits` timings and `computedEvaluations`.~~
-
-> **Correction (2026-07-15) @RYANSIGNED — Documentation gap:** No shipped `ProfileReport` type
-> or runtime profiler package. Use host-level timing around `runCommand` if needed.
+No shipped `ProfileReport` type
+or runtime profiler package. Use host-level timing around `runCommand` if needed.
 
 <Note>
   Kitchen's FlameGraph profiler tab is a UI surface, not a public `@angriff36/manifest/profiler`

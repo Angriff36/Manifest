@@ -32,14 +32,7 @@ on one contract.
 
 ## Docs are now gated against the compiler
 
-~~Every ` ```manifest ` snippet in the published docs is compiled by the real
-compiler in CI (`scripts/check-doc-snippets.mjs`), internal links are resolved
-(`check-doc-links.mjs`), and page frontmatter and spec headers are enforced
-(`check-doc-metadata.mjs`, `check-spec-integrity.mjs`). Doc examples that stop
-compiling now fail the build, so what you read here matches what the compiler
-accepts.~~
-
-**Correction (2026-07-15):** CI does run `pnpm run docs:check` (metadata + links +
+CI does run `pnpm run docs:check` (metadata + links +
 spec integrity + snippets) via `.github/workflows/ci.yml`. Scope and limits:
 
 - **`check-doc-snippets.mjs`** compiles ` ```manifest ` blocks with the real

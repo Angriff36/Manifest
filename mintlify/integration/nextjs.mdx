@@ -9,10 +9,10 @@ This guide walks you through adding Manifest to an existing Next.js App Router p
 ## Prerequisites
 
 - Next.js 13+ with the App Router
-- ~~Node.js 18+~~
+-
 - An existing Next.js project (or `npx create-next-app@latest`)
 
-> **Correction (2026-07-15) @RYANSIGNED:** **Node.js 20 or later** (`package.json` `engines.node` is `>=20`). Package pin `@angriff36/manifest` **3.6.41**.
+**Node.js 20 or later** (`package.json` `engines.node` is `>=20`). Package pin `@angriff36/manifest` **3.6.41**.
 
 ## Workflow
 
@@ -289,10 +289,10 @@ In a monorepo, it is common to compile the IR once and share it across packages.
 
 ```
 apps/
-  web/           # Next.js app — consumes generated routes and client SDK
+  web/ # Next.js app — consumes generated routes and client SDK
 packages/
-  domain/        # recipe.manifest, build script, generated IR artifact
-  api-types/     # generated ts.types output, shared across apps
+  domain/ # recipe.manifest, build script, generated IR artifact
+  api-types/ # generated ts.types output, shared across apps
 ```
 
 In `packages/domain`, declare the sources and projection targets in `manifest.config.yaml` instead of writing a build script by hand:
@@ -317,8 +317,8 @@ Then the whole pipeline is two config-driven commands:
 
 ```bash
 cd packages/domain
-manifest compile --all     # compiles every source into ir/merged.ir.json
-manifest generate --all    # runs every projection declared in the config
+manifest compile --all # compiles every source into ir/merged.ir.json
+manifest generate --all # runs every projection declared in the config
 ```
 
 Routes land in `apps/web/app/api/`, the dispatcher in `apps/web/app/api/manifest/[entity]/commands/[command]/route.ts`, and types in `packages/api-types/src/recipe.ts`.

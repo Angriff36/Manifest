@@ -14,8 +14,8 @@ After a successful `runCommand` call that emits events, the runtime calls `outbo
 runCommand → success → enqueue(entries)
                             │
               ┌─────────────▼─────────────┐
-              │      OutboxStore          │
-              │  pending entries queue    │
+              │ OutboxStore │
+              │ pending entries queue │
               └─────────────┬─────────────┘
                             │
               delivery worker: claim → deliver → markDelivered
@@ -113,8 +113,8 @@ const outboxStore = new RedisOutboxStore({
 
 </CodeGroup>
 
-> **Correction (2026-07-15) @RYANSIGNED:** First-party outbox stores also include
-> `RedisOutboxStore` (`@angriff36/manifest/outbox/redis`) — see [Redis adapter](/adapters/redis).
+First-party outbox stores also include
+`RedisOutboxStore` (`@angriff36/manifest/outbox/redis`) — see [Redis adapter](/adapters/redis).
 
 `MemoryOutboxStore` is an in-memory analogue of `SELECT FOR UPDATE SKIP LOCKED` — `claim` skips entries that are already claimed or resolved. Use it in tests.
 
@@ -150,10 +150,10 @@ const result = await runtime.runCommand('placeOrder', input, {
 });
 ```
 
-> **Correction (2026-07-22) @RYANSIGNED:** `outboxStore` is a `RuntimeOptions`
-> field — put it in the **options** (3rd) arg of `new RuntimeEngine(ir, context,
-> options)`, not in `context`. In `context` it typechecks (the open index
-> signature) but is never read, so outbox entries are silently never enqueued.
+`outboxStore` is a `RuntimeOptions`
+field — put it in the **options** (3rd) arg of `new RuntimeEngine(ir, context,
+options)`, not in `context`. In `context` it typechecks (the open index
+signature) but is never read, so outbox entries are silently never enqueued.
 
 Then run the shipped delivery worker. `runOutboxWorker` owns the
 claim/deliver/mark loop — you supply only the `deliver` closure that publishes

@@ -17,7 +17,7 @@ import ir from './compiled.ir.json';
 // buildDescriptor(serviceId, ir, options)
 const descriptor = buildDescriptor('inventory-service', ir, {
   endpoint: 'https://inventory.internal',
-  // exposeEntities: ['InventoryItem'],  // omit to expose all entities with commands
+  // exposeEntities: ['InventoryItem'], // omit to expose all entities with commands
 });
 ```
 
@@ -145,8 +145,6 @@ const reconstructed = contextFromBridgeHeaders(parseBridgeHeaders(request.header
 
 ## HTTP adapter generation
 
-> **Correction (2026-07-22 @RYANSIGNED):** The examples below have been corrected to show the accurate signatures. `generateHttpAdapter(descriptor)` returns a `TypedClientAdapter` with a `create(baseUrl, options?)` method (not a `{ className, importPath }` options object). `FederationClient` constructor accepts options `{ defaultTimeoutMs, maxRetries, retryDelayMs, resolveAuthToken, fetchImpl }` (not `{ timeout, retryOnIdempotent }`).
-
 The federation module includes a code generator that produces typed HTTP client classes for calling remote services. Each exposed command becomes a typed method on the generated client.
 
 ```typescript
@@ -195,7 +193,7 @@ const federation = new FederationClient(registry, {
 });
 
 // 3. In the order service's "place" command middleware or action,
-//    call the inventory service to reserve stock
+// call the inventory service to reserve stock
 async function placeOrder(orderId: string, sku: string, qty: number) {
   // Check inventory availability
   const check = await federation.invoke({
@@ -232,11 +230,9 @@ async function placeOrder(orderId: string, sku: string, qty: number) {
 }
 ```
 
-~~Phantom (do not use): `localRuntime.runCommand('Order', 'create', { instanceId, sku, quantity })`.~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Local `RuntimeEngine.runCommand` is
-> `runCommand(commandName, input, options?)` — not entity-first. The `placeOrder` example
-> above uses the corrected shape.
+Local `RuntimeEngine.runCommand` is
+`runCommand(commandName, input, options?)` — not entity-first. The `placeOrder` example
+above uses the corrected shape.
 
 ## Importing federation
 

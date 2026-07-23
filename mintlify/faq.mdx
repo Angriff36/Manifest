@@ -111,9 +111,7 @@ Manifest is an IR-first domain-specific language for encoding business rules, au
   <Accordion title="What is the execution order for commands?">
     Manifest commands execute in a fixed, deterministic order defined in the language specification (`docs/spec/semantics.md`):
 
-    ~~1. Rate-limit → 2. Policy → 3. Constraint → 4. Guard → 5. Action → 6. Emit → 7. Return (as previously listed without the pre-gates)~~
-
-    > **Correction (2026-07-15) @RYANSIGNED:** Full command path:
+    > Full command path:
     > 1. **Build evaluation context** — apply parameter defaults; fail closed on missing required parameters (`MISSING_REQUIRED_PARAMETER`) before later gates
     > 2. **Rate-limit check** — per-user, per-tenant, or global limits declared on the command; stop with `rateLimitDenial` if exceeded
     > 3. **Policy check** — evaluated for `execute` or `all` scope (policy-level rate limits run before each policy expression)

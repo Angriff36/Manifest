@@ -5,11 +5,10 @@ sidebarTitle: 'Commands'
 ---
 
 A command is a named operation bound to an entity. When you call `runCommand`, the runtime executes the command in a strict, deterministic order:
-~~rate-limit → policies → constraints → guards → actions → emits → return~~
 
-> **Correction (2026-07-15):** parameters/context → rate-limit → policies → constraints → guards →
-> approval gate (when declared) → actions → declared `emits` → return. Nothing in that order can be
-> rearranged or skipped.
+parameters/context → rate-limit → policies → constraints → guards →
+approval gate (when declared) → actions → declared `emits` → return. Nothing in that order can be
+rearranged or skipped.
 
 ## Declaring a command
 
@@ -53,10 +52,8 @@ The runtime executes every command in exactly this order:
     window. If the limit is exceeded, execution stops immediately with a `rateLimitDenial` result.
   </Step>
   <Step title="Evaluate policies">
-    ~~Check every applicable policy (entity-level defaults first, then command-level). If any policy
-    denies, execution stops immediately with a `policyDenial` result.~~
 
-    **Correction (2026-07-15):** Evaluate the command's effective policy list only. Entity
+    Evaluate the command's effective policy list only. Entity
     `default policy` values are expanded into `IRCommand.policies` at compile time; when a command
     already has an explicit IR `policies` array, defaults are **not** merged. If any policy denies,
     execution stops with a `policyDenial` result. (Source has no command-body policy clause —
@@ -123,8 +120,8 @@ The compiler emits a `COMPUTE_USED_AS_MUTATE` warning when a `compute` target ma
 
 ```manifest
 command addItem(amount: number) {
-  compute newQuantity = quantity + amount   // ephemeral local, not persisted
-  mutate quantity = newQuantity              // persists
+  compute newQuantity = quantity + amount // ephemeral local, not persisted
+  mutate quantity = newQuantity // persists
 }
 ```
 
@@ -219,33 +216,19 @@ interface CommandResult {
   // All events emitted during this run
   emittedEvents: EmittedEvent[];
 
-  // ~~lastActionResult?: unknown;~~
+  //
   result?: unknown; // last action value
 }
 ```
 
-> **Correction (2026-07-15):** The field is `result?: unknown`. There is no `lastActionResult` on
-> `CommandResult` in `runtime-engine.ts` @ v3.6.41.
+The field is `result?: unknown`. There is no `lastActionResult` on
+`CommandResult` in `runtime-engine.ts` @ v3.6.41.
 
 ## Calling `runCommand` from TypeScript
 
-~~```typescript
-import { RuntimeEngine } from '@angriff36/manifest';
-import { ir } from './compiled.ir.json';
-
-const runtime = new RuntimeEngine(ir, {
-  user: { id: 'user-123', role: 'admin' },
-});
-
-const result = await runtime.runCommand('Order', 'updateStatus', {
-  instanceId: 'order-abc',
-  newStatus: 'processing',
-});
-```~~
-
-> **Correction (2026-07-15):** Real signature is
-> `runCommand(commandName, input, options?)` — not entity-first
-> `runCommand(Entity, cmd, args)`. Pass `entityName` / `instanceId` in `options`.
+Real signature is
+`runCommand(commandName, input, options?)` — not entity-first
+`runCommand(Entity, cmd, args)`. Pass `entityName` / `instanceId` in `options`.
 
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';
@@ -312,7 +295,7 @@ entity Notification {
 > **Note:** Delays are clamped with `min(delay, maxDelay)`. Source field `maxDelay` compiles to IR `maxDelayMs`.
 > See `runtime-retry.ts` `computeRetryDelays` and fixture `72-command-retry-policy.manifest`.
 
-~~| `initialDelay` | First retry delay in milliseconds |~~ (use `delay` instead)
+ (use `delay` instead)
 
 ### Backoff strategies
 
@@ -324,15 +307,9 @@ entity Notification {
 
 ### Retry events
 
-~~The runtime emits events for each retry attempt and when retries are exhausted:~~
-
-~~| Event | When emitted |
-| `{Command}RetryAttempted` | Each retry attempt, with attempt number |
-| `{Command}RetryExhausted` | All retries failed, with total attempts |~~
-
-> **Correction (2026-07-15):** No `{Command}RetryAttempted` / `{Command}RetryExhausted` events exist
-> in the reference runtime. Retry status is returned on `CommandResult.retry`
-> (`{ attempts, exhausted, lastErrorCode?, delaysMs }`).
+No `{Command}RetryAttempted` / `{Command}RetryExhausted` events exist
+in the reference runtime. Retry status is returned on `CommandResult.retry`
+(`{ attempts, exhausted, lastErrorCode?, delaysMs }`).
 
 <Note>
   Retry policies only apply when the failed attempt's derived error code appears in `retryOn`.
@@ -368,27 +345,11 @@ entity ApiKey {
 | `maxRequests` | Maximum allowed requests within the window                 |
 | `scope`       | `user`, `tenant`, or `global` (IR enum; not `user.id`)     |
 
-~~| `window` | Time window in milliseconds |~~
-~~| `scope` | `user.id`, `tenant.id`, or `global` |~~
-~~| `strategy` | `fixed` or `sliding` window (default: `fixed`) |~~
-
-> **Correction (2026-07-15):** IR `IRRateLimit` requires `maxRequests`, `windowMs`, and
-> `scope: "user" | "tenant" | "global"`. Optional `burstAllowance` exists. There is no `strategy`
-> field on the rate-limit block.
+IR `IRRateLimit` requires `maxRequests`, `windowMs`, and
+`scope: "user" | "tenant" | "global"`. Optional `burstAllowance` exists. There is no `strategy`
+field on the rate-limit block.
 
 When the rate limit is exceeded, the `CommandResult` includes:
-
-~~```typescript
-{
-  success: false,
-  rateLimitExceeded: {
-    scope: "user.id",
-    limit: 100,
-    remaining: 0,
-    retryAfterMs: 45000
-  }
-}
-```~~
 
 ```typescript
 {
@@ -403,8 +364,8 @@ When the rate limit is exceeded, the `CommandResult` includes:
 }
 ```
 
-> **Correction (2026-07-15):** Field name is `rateLimitDenial`, not `rateLimitExceeded`
-> (`runtime-engine.ts` `CommandResult`).
+Field name is `rateLimitDenial`, not `rateLimitExceeded`
+(`runtime-engine.ts` `CommandResult`).
 
 <Warning>
   Rate limiting is enforced by the runtime engine before policies/guards run. It is not a

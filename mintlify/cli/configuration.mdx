@@ -220,10 +220,9 @@ plugins:
 <ParamField path="env" type="object">
   Structured environment-variable mapping for **preflight validation** — grouped definitions of the variables your stores, auth, adapters, and custom settings require. Consumed by `manifest preflight` to check the environment and to generate `.env.example`.
 
-~~This is distinct from the `env(VAR)` expression syntax…~~
-> **Correction (2026-07-22):** There is **no** `env(VAR)` config-load inliner. This `env` block
-> only _declares_ variable metadata for `manifest preflight` / `.env.example`. Inject secrets with
-> `process.env` in `manifest.config.ts` (see [Durable storage](#durable-storage-for-generated-runtime-companions)).
+There is **no** `env(VAR)` config-load inliner. This `env` block
+only _declares_ variable metadata for `manifest preflight` / `.env.example`. Inject secrets with
+`process.env` in `manifest.config.ts` (see [Durable storage](#durable-storage-for-generated-runtime-companions)).
 
 The block has four optional groups — `stores`, `auth`, `adapters`, `custom` — each a map of an arbitrary key to an `EnvVarDefinition`. Each definition requires `name` and may set `description`, `required` (default `true`), `default`, and `example`.
 
@@ -266,7 +265,7 @@ env:
 
   ```yaml
   mergeIntegrity:
-    onDuplicateEntity: lastWins  # Allow duplicate entity names; last file wins
+    onDuplicateEntity: lastWins # Allow duplicate entity names; last file wins
   ```
 </ParamField>
 
@@ -279,7 +278,7 @@ env:
 
   ```yaml
   mergeIntegrity:
-    allowCrossModuleRefs: false  # Block relationships across modules
+    allowCrossModuleRefs: false # Block relationships across modules
   ```
 </ParamField>
 
@@ -311,9 +310,9 @@ env:
   ```yaml
   validation:
     rules:
-      - missing-policy    # Flag entities with commands but no policies
-      - unused-entity     # Flag entities that are never referenced
-      - orphan-relationship  # Flag one-sided relationships
+      - missing-policy # Flag entities with commands but no policies
+      - unused-entity # Flag entities that are never referenced
+      - orphan-relationship # Flag one-sided relationships
   ```
 </ParamField>
 
@@ -349,9 +348,9 @@ env:
 
 ```yaml
 provenance:
-  deterministic: true  # Use fixed timestamp for reproducible builds
+  deterministic: true # Use fixed timestamp for reproducible builds
   lockfile: .manifest/versions.json
-  failIfStale: true    # Fail if IR drifts despite unchanged sources
+  failIfStale: true # Fail if IR drifts despite unchanged sources
 ```
 
 ## `runtime`
@@ -390,7 +389,7 @@ provenance:
 
   ```yaml
   runtime:
-    stores: './manifest.config'  # Points to the TS config with store bindings
+    stores: './manifest.config' # Points to the TS config with store bindings
   ```
 </ParamField>
 
@@ -924,13 +923,9 @@ projections:
 
 ## Environment variables (what actually ships)
 
-~~`env(VAR)` / `env(VAR, "default")` expressions in `manifest.config.yaml`, top-level YAML
-`stores: { postgres: { url: env(...) } }`, and `MANIFEST_ENV` overlay files
-(`manifest.config.staging.yaml`)~~
-
-> **Correction (2026-07-22):** Those three mechanisms are **not implemented**. YAML load does not
-> expand `env(…)` strings, there is no connection-string `stores:` block in build YAML, and the CLI
-> does not merge `manifest.config.<env>.yaml` from `MANIFEST_ENV`.
+Those three mechanisms are **not implemented**. YAML load does not
+expand `env(…)` strings, there is no connection-string `stores:` block in build YAML, and the CLI
+does not merge `manifest.config.<env>.yaml` from `MANIFEST_ENV`.
 
 **Use instead:**
 
@@ -941,7 +936,7 @@ projections:
    separate config files and point the process at the right one yourself (no built-in overlay
    selector)
 
-Struck example that must not be copied (was never wired):
+Do not use these unsupported patterns (they are not wired):
 
 `stores.postgres.url: env(DATABASE_URL)` · `MANIFEST_ENV=staging manifest build` ·
 `manifest.config.staging.yaml` overlay merge

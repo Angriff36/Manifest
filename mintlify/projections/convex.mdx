@@ -109,13 +109,11 @@ Contract: `getAuthContext(ctx)` returns (or resolves to) an object carrying at l
 
 ### Read filtering
 
-~~Generated reads are **tenant-scoped and soft-delete-filtered by default**, mirroring the [Next.js projection](/integration/nextjs).~~
-
-> **Correction (2026-07-15) @RYANSIGNED:** Convex defaults `includeTenantFilter` and
-> `includeSoftDeleteFilter` to **`true`**. Next.js defaults both to **`false`** — they do **not**
-> mirror each other. Both Convex filters are _field-aware_: a clause is emitted only for entities
-> that actually declare the column, so entities that don't follow the tenancy / soft-delete
-> conventions get plain unfiltered reads.
+Convex defaults `includeTenantFilter` and
+`includeSoftDeleteFilter` to **`true`**. Next.js defaults both to **`false`** — they do **not**
+mirror each other. Both Convex filters are _field-aware_: a clause is emitted only for entities
+that actually declare the column, so entities that don't follow the tenancy / soft-delete
+conventions get plain unfiltered reads.
 
 <Note>
 The tenant id for `list<Entity>` and `get<Entity>` is derived from the authenticated identity (via `getAuthContext(ctx)` when `authContextImport` is set, otherwise the legacy inline `ctx.auth.<tenantProp>` read), **never from a client argument** — so an un-scoped `list<Entity>()` cannot return rows across tenants (it fails closed: with no auth wired, it matches no tenant and returns nothing rather than everything). `get<Entity>` returns `null` on a tenant mismatch or a soft-deleted row. `list<Entity>By<Field…>` reads additionally drop soft-deleted rows and apply the auth-derived tenant filter unless the index already constrains the tenant column. Turn either filter off with `includeTenantFilter` / `includeSoftDeleteFilter`.
@@ -162,9 +160,9 @@ Command- and policy-level `rateLimit` is implemented via a sliding-window bucket
 
 ```ts
 commandRateLimitBuckets: defineTable({
-  scopeKey: v.string(),      // "user:user-123", "tenant:org-abc", or "global"
-  timestamps: v.array(v.number()),  // Window timestamps
-  windowStart: v.number(),    // When the current window began
+  scopeKey: v.string(), // "user:user-123", "tenant:org-abc", or "global"
+  timestamps: v.array(v.number()), // Window timestamps
+  windowStart: v.number(), // When the current window began
 })
   .index("by_scopeKey", ["scopeKey"])
 ```

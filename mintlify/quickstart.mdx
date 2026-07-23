@@ -10,9 +10,7 @@ This guide walks you from a blank project to a running Manifest program. You wil
 
 <Step title="Install the package">
 
-~~Add `@angriff36/manifest` to your project. Node.js 18 or later is required.~~
-
-> **Correction (2026-07-15):** `package.json` `engines.node` is `>=20`. Use Node.js 20 or later.
+`package.json` `engines.node` is `>=20`. Use Node.js 20 or later.
 
 <CodeGroup>
 
@@ -78,7 +76,7 @@ const { ir, diagnostics } = await compileToIR(source);
 
 if (diagnostics.some((d) => d.severity === 'error')) {
   console.error('Compilation errors:');
-  diagnostics.forEach((d) => console.error(`  ${d.message}`));
+  diagnostics.forEach((d) => console.error(` ${d.message}`));
   process.exit(1);
 }
 
@@ -153,7 +151,7 @@ const completeResult = await runtime.runCommand(
 if (completeResult.success) {
   console.log('Events:', completeResult.emittedEvents);
   // Output: Events: [{ name: 'TodoCompleted', channel: 'TodoCompleted',
-  //   payload: { todoId: '...', ... }, subject: { entity: 'Todo', ... }, ... }]
+  // payload: { todoId: '...', ... }, subject: { entity: 'Todo', ... }, ... }]
 }
 ```
 
@@ -200,10 +198,8 @@ manifest build my-program.manifest --projection nextjs --code-output app/api/
 
 ## Troubleshooting
 
-~~**"Entity not found in IR"** — Entity names are case-sensitive. Make sure the name you pass to `runCommand` exactly matches the `entity` declaration in your source file.~~
-
-> **Correction (2026-07-15):** `runCommand`'s first argument is the **command** name. Pass the
-> entity as `options.entityName` (case-sensitive match to the `entity` declaration).
+`runCommand`'s first argument is the **command** name. Pass the
+entity as `options.entityName` (case-sensitive match to the `entity` declaration).
 
 **"Guard failed but no detail"** — Check that you aren't silently catching errors before inspecting `result.guardFailure`. The runtime populates it for every guard failure, including the guard index, the formatted expression, and resolved sub-expression values.
 
