@@ -69,7 +69,8 @@ Run these after implementing to get immediate feedback:
 ```bash
 pnpm test                    # Conformance + runtime tests (must pass)
 pnpm run typecheck          # TypeScript check (no emit)
-pnpm run lint               # ESLint
+pnpm run lint               # ESLint (TS/TSX only — does NOT touch .md/.mdx)
+pnpm run docs:check         # Docs gate for mintlify/docs/** edits: metadata + links + snippets + feature-list (shortcut: verify:docs:quick)
 pnpm run dev                # Kitchen/Runtime manual smoke test (localhost:5173)
 pnpm run conformance:regen  # Regenerate expected outputs after fixture changes
 ```
