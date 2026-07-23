@@ -311,7 +311,10 @@ describe('M4 — computed helpers', () => {
     };
     const code = gen(lineIR(expr), 'convex.computed').artifacts[0].code;
     expect(code).toContain('export function computeLine');
-    expect(code).toContain('total: (doc.price * doc.qty)');
+    // Assign-back so sibling computeds can read earlier fields via self.<name>.
+    expect(code).toContain('const __total = (doc.price * doc.qty);');
+    expect(code).toContain('doc.total = __total;');
+    expect(code).toContain('total: __total');
   });
 
   it('emits CONVEX_UNRESOLVED_COMPUTED for unmappable expression', () => {

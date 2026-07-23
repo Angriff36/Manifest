@@ -463,10 +463,12 @@ exports[`projection snapshots > convex > generated artifacts match snapshot 1`] 
 // Computed property helpers (1 entit(y/ies)).
 // Call from queries/mutations or app code; never stored.
 
-/** Self-only computed fields for Task. Pass the stored document. */
+/** Computed fields for Task. Pass the stored (and hydrated) document. */
 export function computeTask(doc: Record<string, any>): Record<string, any> {
+  const __isHighPriority = (doc.priority >= 3);
+  doc.isHighPriority = __isHighPriority;
   return {
-    isHighPriority: (doc.priority >= 3),
+    isHighPriority: __isHighPriority,
   };
 }
 ",
