@@ -224,8 +224,7 @@ function normalizeOptions(options?: NextJsProjectionOptions, ir?: IR): Normalize
     responseImportPath: options?.responseImportPath ?? NEXTJS_DEFAULTS.responseImportPath,
     runtimeImportPath: options?.runtimeImportPath ?? NEXTJS_DEFAULTS.runtimeImportPath,
     includeTenantFilter:
-      options?.includeTenantFilter ??
-      (ir?.tenant ? true : NEXTJS_DEFAULTS.includeTenantFilter),
+      options?.includeTenantFilter ?? (ir?.tenant ? true : NEXTJS_DEFAULTS.includeTenantFilter),
     includeSoftDeleteFilter:
       options?.includeSoftDeleteFilter ?? NEXTJS_DEFAULTS.includeSoftDeleteFilter,
     tenantIdProperty:

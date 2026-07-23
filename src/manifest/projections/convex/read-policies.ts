@@ -6,10 +6,7 @@ import type { IR, IRExpression, IRPolicy } from '../../ir';
 import type { RelationDependency } from '../../relation-plan.js';
 import type { ProjectionDiagnostic } from '../interface';
 import { renderExpression } from './expression.js';
-import {
-  buildReadPolicyRelationPlan,
-  isHydratableReadRelation,
-} from './read-policy-relations.js';
+import { buildReadPolicyRelationPlan, isHydratableReadRelation } from './read-policy-relations.js';
 
 /**
  * True when read/`all` policies (entity-scoped or global) gate this entity.
@@ -180,9 +177,7 @@ export function renderReadPolicies(
     : { relations: [] as RelationDependency[] };
   const hydratableByName = new Map(
     plan.relations
-      .filter(
-        (dependency) => !!entity && isHydratableReadRelation(ir, entity, dependency),
-      )
+      .filter((dependency) => !!entity && isHydratableReadRelation(ir, entity, dependency))
       .map((dependency) => [dependency.relationName, dependency] as const),
   );
   const relationVars: Record<string, string> = {};

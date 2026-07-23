@@ -27,10 +27,14 @@ function emptyIR(): IR {
 }
 
 async function evalExpr(expr: IRExpression, context: Record<string, unknown>): Promise<unknown> {
-  const runtime = new RuntimeEngine(emptyIR(), {}, {
-    generateId: () => 'id',
-    now: () => 0,
-  });
+  const runtime = new RuntimeEngine(
+    emptyIR(),
+    {},
+    {
+      generateId: () => 'id',
+      now: () => 0,
+    },
+  );
   return runtime['evaluateExpression'](expr, context);
 }
 

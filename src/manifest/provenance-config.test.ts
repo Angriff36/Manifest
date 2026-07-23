@@ -61,9 +61,13 @@ describe('checkProvenanceLockfileStale', () => {
 
   it('is not stale when sources changed', () => {
     expect(
-      checkProvenanceLockfileStale(buildProvenanceLockfile(base), { ...base, contentHash: 'xyz' }, {
-        deterministic: true,
-      }),
+      checkProvenanceLockfileStale(
+        buildProvenanceLockfile(base),
+        { ...base, contentHash: 'xyz' },
+        {
+          deterministic: true,
+        },
+      ),
     ).toBeNull();
   });
 

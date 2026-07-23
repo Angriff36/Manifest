@@ -49,10 +49,7 @@ import { isPersistentEntity, isPersistentStoreTarget } from './persist.js';
 import { CONVEX_DESCRIPTOR_META } from './descriptor-meta.js';
 import { synthesizeConvexVersionSchemaFields } from './version-occ.js';
 import { renderCommandIdempotencySchemaBlock } from './command-idempotency.js';
-import {
-  irHasCommandRateLimit,
-  renderCommandRateLimitSchemaBlock,
-} from './rate-limit-emit.js';
+import { irHasCommandRateLimit, renderCommandRateLimitSchemaBlock } from './rate-limit-emit.js';
 import { generateReactClient } from './react-client.js';
 
 export { isPersistentEntity } from './persist.js';

@@ -75,8 +75,7 @@ export interface ManifestRuntimeBagMeta {
 
 export function isRuntimeExecutionMode(value: unknown): value is RuntimeExecutionMode {
   return (
-    typeof value === 'string' &&
-    (RUNTIME_EXECUTION_MODES as readonly string[]).includes(value)
+    typeof value === 'string' && (RUNTIME_EXECUTION_MODES as readonly string[]).includes(value)
   );
 }
 
@@ -197,7 +196,8 @@ export function resolveRuntimeFactoryFanIn(
 ): RuntimeFactoryFanIn {
   const meta = readManifestRuntimeMeta(options);
   const explicit =
-    typeof options?.runtimeConfigImport === 'string' && options.runtimeConfigImport.trim().length > 0
+    typeof options?.runtimeConfigImport === 'string' &&
+    options.runtimeConfigImport.trim().length > 0
       ? options.runtimeConfigImport.trim()
       : undefined;
   return {

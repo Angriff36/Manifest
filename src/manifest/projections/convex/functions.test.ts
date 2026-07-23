@@ -746,9 +746,7 @@ describe('convex.queries — read-policy lockdown', () => {
     });
     const code = result.artifacts[0].code;
     expect(code).toContain('export const listPerson = query({');
-    expect(code).toContain(
-      'const __rel_docs = await ctx.db.query("docs").withIndex("by_ownerId"',
-    );
+    expect(code).toContain('const __rel_docs = await ctx.db.query("docs").withIndex("by_ownerId"');
     expect(code).toContain('__rel_docs != null');
     expect(
       result.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_READ_POLICY_RELATIONSHIP'),
@@ -758,14 +756,9 @@ describe('convex.queries — read-policy lockdown', () => {
   it('hydrates hasMany-through read policies via join entity edges', () => {
     const ir = emptyIR();
     const person = entity('Person', [prop('name', 'string')]);
-    person.relationships = [
-      { name: 'tags', kind: 'hasMany', target: 'Tag', through: 'PersonTag' },
-    ];
+    person.relationships = [{ name: 'tags', kind: 'hasMany', target: 'Tag', through: 'PersonTag' }];
     const tag = entity('Tag', [prop('label', 'string')]);
-    const join = entity('PersonTag', [
-      prop('personId', 'string'),
-      prop('tagId', 'string'),
-    ]);
+    const join = entity('PersonTag', [prop('personId', 'string'), prop('tagId', 'string')]);
     join.relationships = [
       {
         name: 'person',
@@ -818,9 +811,7 @@ describe('convex.queries — read-policy lockdown', () => {
   it('keeps through read policies internal when join edges are missing', () => {
     const ir = emptyIR();
     const person = entity('Person', [prop('name', 'string')]);
-    person.relationships = [
-      { name: 'tags', kind: 'hasMany', target: 'Tag', through: 'PersonTag' },
-    ];
+    person.relationships = [{ name: 'tags', kind: 'hasMany', target: 'Tag', through: 'PersonTag' }];
     ir.entities = [
       person,
       entity('Tag', [prop('label', 'string')]),
@@ -2791,9 +2782,7 @@ describe('convex.mutations — referential setNull / setDefault', () => {
     ];
     ir.stores = [durable('Parent'), durable('Child')];
     const res = mutations(ir);
-    expect(res.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_REFERENTIAL_SET')).toBe(
-      true,
-    );
+    expect(res.diagnostics.some((d) => d.code === 'CONVEX_UNSUPPORTED_REFERENTIAL_SET')).toBe(true);
     expect(res.artifacts[0]!.code).not.toContain('parentId: undefined');
   });
 
@@ -2904,9 +2893,7 @@ describe('convex.mutations — referential onUpdate', () => {
   it('patch mutations emit onUpdate cascade helper before parent patch', () => {
     const code = mutations(parentChildOnUpdateIR('cascade')).artifacts[0]!.code;
     expect(code).toContain('async function __applyReferentialOnUpdate');
-    expect(code).toContain(
-      'await __applyReferentialOnUpdate(ctx, "Parent", docId, doc, updates)',
-    );
+    expect(code).toContain('await __applyReferentialOnUpdate(ctx, "Parent", docId, doc, updates)');
     expect(code).toContain('await ctx.db.patch(__kid._id, { parentCode: __new0 } as any)');
     expect(code).toContain('await ctx.db.patch(docId');
   });

@@ -145,17 +145,19 @@ program
     'Comma-separated Node.js versions for CI matrix (default: 18,20,22)',
   )
   .option('--dry-run', 'Preview config/workflow writes; write nothing', false)
-  .action(async (options: { force?: boolean; ci?: string; nodeVersions?: string; dryRun?: boolean }) => {
-    if (options.ci) {
-      await initCiCommand(options.ci, {
-        force: options.force,
-        nodeVersions: options.nodeVersions,
-        dryRun: options.dryRun,
-      });
-      return;
-    }
-    await initCommand(options);
-  });
+  .action(
+    async (options: { force?: boolean; ci?: string; nodeVersions?: string; dryRun?: boolean }) => {
+      if (options.ci) {
+        await initCiCommand(options.ci, {
+          force: options.force,
+          nodeVersions: options.nodeVersions,
+          dryRun: options.dryRun,
+        });
+        return;
+      }
+      await initCommand(options);
+    },
+  );
 
 /**
  * manifest db init
@@ -555,7 +557,11 @@ program
   .option('--no-pretty', 'Emit compact JSON (no indentation)')
   .option('--dry-run', 'Preview unpack output path; write nothing', false)
   .action(async (input, options = {}) => {
-    await unpackCommand(input, { output: options.output, pretty: options.pretty, dryRun: options.dryRun });
+    await unpackCommand(input, {
+      output: options.output,
+      pretty: options.pretty,
+      dryRun: options.dryRun,
+    });
   });
 
 /**
@@ -1357,7 +1363,7 @@ emitProgram
   .option('--out <dir>', 'Output directory', 'manifest-registry')
   .option('--no-validate', 'Skip JSON-schema validation of the emitted output')
   .option('--no-pretty', 'Emit compact JSON (no indentation)')
-    .option('--dry-run', 'Preview registry JSON writes; write nothing', false)
+  .option('--dry-run', 'Preview registry JSON writes; write nothing', false)
   .action(async (options = {}) => {
     await emitRegistriesCommand({ ...options, dryRun: options.dryRun });
   });
@@ -1491,7 +1497,7 @@ program
   .option('-o, --output <path>', 'Write changelog to file')
   .option('-t, --title <title>', 'Custom heading for the changelog')
   .option('--json', 'Emit structured JSON instead of Markdown', false)
-    .option('--dry-run', 'Preview -o write; write nothing', false)
+  .option('--dry-run', 'Preview -o write; write nothing', false)
   .action(async (fromRef, toRef, options = {}) => {
     await changelogCommand(fromRef, toRef, {
       source: options.source,

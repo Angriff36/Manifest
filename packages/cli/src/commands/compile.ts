@@ -170,7 +170,8 @@ async function writeCompiledFile(
   spinner: Ora,
   provenancePolicy?: ResolvedProvenanceConfig,
 ): Promise<void> {
-  const { stabilizeProvenance, evaluateProvenanceStale } = await import('../utils/provenance-lockfile.js');
+  const { stabilizeProvenance, evaluateProvenanceStale } =
+    await import('../utils/provenance-lockfile.js');
   const { computeIRHash } = await loadCompiler();
 
   // Config G4 — check staleness BEFORE writing output
@@ -369,7 +370,12 @@ async function compileMerged(source: string | undefined, options: CompileOptions
       process.exit(1);
     }
 
-    await stabilizeProvenance(result.ir as IR, outputPath, computeIRHash, provenancePolicy.deterministic);
+    await stabilizeProvenance(
+      result.ir as IR,
+      outputPath,
+      computeIRHash,
+      provenancePolicy.deterministic,
+    );
     const jsonContent = options.pretty
       ? JSON.stringify(result.ir, null, 2)
       : JSON.stringify(result.ir);

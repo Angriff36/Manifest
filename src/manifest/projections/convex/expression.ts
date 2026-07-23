@@ -303,8 +303,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
               );
             }
             const empty = 'undefined';
-            const reduce =
-              callee === 'min_of' ? 'Math.min(...__vals)' : 'Math.max(...__vals)';
+            const reduce = callee === 'min_of' ? 'Math.min(...__vals)' : 'Math.max(...__vals)';
             return (
               `(() => { const __vals = ${valuesExpr}; ` +
               `return __vals.length === 0 ? ${empty} : ${reduce}; })()`

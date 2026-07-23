@@ -40,9 +40,7 @@ function makeFakeCollection() {
       options?: unknown,
     ) {
       calls.push({ method: 'findOneAndUpdate', args: [filter, update, options] });
-      const idx = pending.findIndex(
-        (d) => d.status === 'pending' && d.claimed === false,
-      );
+      const idx = pending.findIndex((d) => d.status === 'pending' && d.claimed === false);
       if (idx < 0) return null;
       const doc = pending[idx];
       const set = (update.$set ?? {}) as Record<string, unknown>;
@@ -116,8 +114,6 @@ describe('MongoDBOutboxStore — injected collection', () => {
     const updates = fake.calls.filter((c) => c.method === 'updateMany');
     expect(updates).toHaveLength(2);
     expect((updates[0].args[1] as { $set: { status: string } }).$set.status).toBe('delivered');
-    expect((updates[1].args[1] as { $set: { lastError: string } }).$set.lastError).toBe(
-      'timeout',
-    );
+    expect((updates[1].args[1] as { $set: { lastError: string } }).$set.lastError).toBe('timeout');
   });
 });

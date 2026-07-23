@@ -64,9 +64,7 @@ export class MongoDBOutboxStore implements OutboxStore {
     }
 
     if (!config.connectionString) {
-      throw new Error(
-        'MongoDBOutboxStore requires connectionString or an injected collection.',
-      );
+      throw new Error('MongoDBOutboxStore requires connectionString or an injected collection.');
     }
 
     let MongoClient: unknown;

@@ -36,8 +36,7 @@ export interface ResolvedMergeIntegrity {
 
 export function isMergeDuplicatePolicy(value: unknown): value is MergeDuplicatePolicy {
   return (
-    typeof value === 'string' &&
-    (MERGE_DUPLICATE_POLICIES as readonly string[]).includes(value)
+    typeof value === 'string' && (MERGE_DUPLICATE_POLICIES as readonly string[]).includes(value)
   );
 }
 

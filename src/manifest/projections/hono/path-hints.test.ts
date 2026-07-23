@@ -27,14 +27,12 @@ describe('hono pathHints — per-module nesting', () => {
   });
 
   it('sanitizes unsafe module segments', () => {
-    expect(
-      honoEntityRoutePathHint({ entityName: 'Order', module: 'Billing / Ops!' }),
-    ).toBe('routes/Billing_Ops/order.ts');
+    expect(honoEntityRoutePathHint({ entityName: 'Order', module: 'Billing / Ops!' })).toBe(
+      'routes/Billing_Ops/order.ts',
+    );
   });
 
   it('treats blank module as flat', () => {
-    expect(honoEntityRoutePathHint({ entityName: 'Order', module: '   ' })).toBe(
-      'routes/order.ts',
-    );
+    expect(honoEntityRoutePathHint({ entityName: 'Order', module: '   ' })).toBe('routes/order.ts');
   });
 });

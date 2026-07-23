@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  dartCommandPathHint,
-  dartEntityPathHint,
-  dartSnakeCase,
-} from './path-hints.js';
+import { dartCommandPathHint, dartEntityPathHint, dartSnakeCase } from './path-hints.js';
 
 describe('dart pathHints — per-module nesting', () => {
   it('snake_cases PascalCase names', () => {
@@ -21,20 +17,18 @@ describe('dart pathHints — per-module nesting', () => {
     expect(dartEntityPathHint({ name: 'Order', module: 'billing' })).toBe(
       'lib/models/billing/order.dart',
     );
-    expect(
-      dartCommandPathHint({ name: 'CreateOrder', module: 'billing' }),
-    ).toBe('lib/commands/billing/create_order_params.dart');
+    expect(dartCommandPathHint({ name: 'CreateOrder', module: 'billing' })).toBe(
+      'lib/commands/billing/create_order_params.dart',
+    );
   });
 
   it('sanitizes unsafe module segments', () => {
-    expect(
-      dartEntityPathHint({ name: 'Order', module: 'Billing / Ops!' }),
-    ).toBe('lib/models/Billing_Ops/order.dart');
+    expect(dartEntityPathHint({ name: 'Order', module: 'Billing / Ops!' })).toBe(
+      'lib/models/Billing_Ops/order.dart',
+    );
   });
 
   it('treats blank module as flat', () => {
-    expect(dartEntityPathHint({ name: 'Order', module: '   ' })).toBe(
-      'lib/models/order.dart',
-    );
+    expect(dartEntityPathHint({ name: 'Order', module: '   ' })).toBe('lib/models/order.dart');
   });
 });

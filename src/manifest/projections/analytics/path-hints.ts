@@ -11,15 +11,10 @@ function entityNameLower(name: string): string {
   return name.charAt(0).toLowerCase() + name.slice(1);
 }
 
-export function analyticsEntityHandlerPathHint(entity: {
-  name: string;
-  module?: string;
-}): string {
+export function analyticsEntityHandlerPathHint(entity: { name: string; module?: string }): string {
   const file = `${entityNameLower(entity.name)}.ts`;
   const mod = moduleDirSegment(entity.module);
-  return mod
-    ? `analytics/handlers/${mod}/${file}`
-    : `analytics/handlers/${file}`;
+  return mod ? `analytics/handlers/${mod}/${file}` : `analytics/handlers/${file}`;
 }
 
 export function analyticsHandlersMonolithPathHint(): string {

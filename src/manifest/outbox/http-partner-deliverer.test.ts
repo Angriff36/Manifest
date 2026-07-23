@@ -113,10 +113,7 @@ describe('HttpPartnerDeliverer', () => {
       fetchFn: fetchFn as typeof fetch,
     });
     await deliverer.deliver(makeEntry('sig1', 'Ping'));
-    const headers = (fetchFn.mock.calls[0]![1] as RequestInit).headers as Record<
-      string,
-      string
-    >;
+    const headers = (fetchFn.mock.calls[0]![1] as RequestInit).headers as Record<string, string>;
     const expected = createHmac('sha256', secret).update(raw).digest('hex');
     expect(headers['x-manifest-signature']).toBe(`sha256=${expected}`);
   });

@@ -111,9 +111,9 @@ describe('Prisma multiSchema.splitFiles', () => {
       },
     });
 
-    expect(result.diagnostics.some((d) => d.code === 'PRISMA_SPLITFILES_REQUIRES_MULTISCHEMA')).toBe(
-      true,
-    );
+    expect(
+      result.diagnostics.some((d) => d.code === 'PRISMA_SPLITFILES_REQUIRES_MULTISCHEMA'),
+    ).toBe(true);
     expect(result.artifacts.filter((a) => a.contentType === 'prisma')).toHaveLength(1);
   });
 

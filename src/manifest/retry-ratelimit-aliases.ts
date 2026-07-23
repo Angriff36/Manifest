@@ -4,21 +4,10 @@
  */
 
 export type CanonicalRetryField =
-  | 'maxAttempts'
-  | 'backoff'
-  | 'delay'
-  | 'delayMs'
-  | 'maxDelay'
-  | 'jitter'
-  | 'retryOn';
+  'maxAttempts' | 'backoff' | 'delay' | 'delayMs' | 'maxDelay' | 'jitter' | 'retryOn';
 
 export type CanonicalRateLimitField =
-  | 'maxRequests'
-  | 'windowMs'
-  | 'scope'
-  | 'burstAllowance'
-  | 'perMinute'
-  | 'strategy';
+  'maxRequests' | 'windowMs' | 'scope' | 'burstAllowance' | 'perMinute' | 'strategy';
 
 /** Map author-facing retry field names to canonical ones. Unknown → null. */
 export function canonicalizeRetryField(field: string): CanonicalRetryField | null {

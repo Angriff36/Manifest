@@ -77,14 +77,11 @@ describe('SupabaseStore — injected client', () => {
 
   it('getById returns row data; PGRST116 becomes undefined', async () => {
     const found = makeFakeClient({ data: { data: { id: 'w1', name: 'found' } } });
-    const store = new SupabaseStore(
-      { url: 'u', key: 'k', client: found.client },
-      () => 'x',
-    );
+    const store = new SupabaseStore({ url: 'u', key: 'k', client: found.client }, () => 'x');
     await expect(store.getById('w1')).resolves.toEqual({ id: 'w1', name: 'found' });
-    expect(found.calls.some((c) => c.method === 'eq' && c.args[0] === 'id' && c.args[1] === 'w1')).toBe(
-      true,
-    );
+    expect(
+      found.calls.some((c) => c.method === 'eq' && c.args[0] === 'id' && c.args[1] === 'w1'),
+    ).toBe(true);
 
     const missing = makeFakeClient({
       data: null,
@@ -111,10 +108,12 @@ describe('SupabaseStore — injected client', () => {
     let phase = 0;
     const calls: Call[] = [];
     const builder: Record<string, unknown> = {};
-    const chain = (method: string) => (...args: unknown[]) => {
-      calls.push({ method, args });
-      return builder;
-    };
+    const chain =
+      (method: string) =>
+      (...args: unknown[]) => {
+        calls.push({ method, args });
+        return builder;
+      };
     builder.select = chain('select');
     builder.eq = chain('eq');
     builder.update = chain('update');
@@ -142,11 +141,13 @@ describe('SupabaseStore — injected client', () => {
     });
 
     const missingBuilder: Record<string, unknown> = {};
-    const mChain = (method: string) => (...args: unknown[]) => {
-      void method;
-      void args;
-      return missingBuilder;
-    };
+    const mChain =
+      (method: string) =>
+      (...args: unknown[]) => {
+        void method;
+        void args;
+        return missingBuilder;
+      };
     missingBuilder.select = mChain('select');
     missingBuilder.eq = mChain('eq');
     missingBuilder.single = () =>

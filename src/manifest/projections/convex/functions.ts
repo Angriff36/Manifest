@@ -63,11 +63,7 @@ import {
 } from './version-occ.js';
 import { renderReadPolicies, resolveConvexReadVisibility } from './read-policies.js';
 import { renderReadPolicyRelationHydration } from './read-policy-relations.js';
-import {
-  encryptedFieldNames,
-  privateFieldNames,
-  stripPrivateFromReturn,
-} from './privacy.js';
+import { encryptedFieldNames, privateFieldNames, stripPrivateFromReturn } from './privacy.js';
 import {
   MASK_HELPER,
   maskAndStripPrivateDoc,
@@ -568,8 +564,7 @@ export function generateQueries(
     const encrypted = encryptedFieldNames(entity);
     const maskedFields = maskedFieldEmits(entity);
     const maskAuth = maskAuthExpr(maskedFieldsNeedAuth(maskedFields));
-    const maskNeedsAuthLocals =
-      maskedFieldsNeedAuth(maskedFields) && !!options.authContextImport;
+    const maskNeedsAuthLocals = maskedFieldsNeedAuth(maskedFields) && !!options.authContextImport;
     const inlineComputed =
       options.computedProperties === 'inline'
         ? // Cast self so relation/computed reads typecheck after hydrate (docs are not on Doc<>).
@@ -791,9 +786,7 @@ export function generateQueries(
           .map((f) => `${f.name}: (__doc as any).${f.name}`)
           .join(', ');
         lines.push(`    const __hydrated = { ...(__doc as any), ${assigns} };`);
-        lines.push(
-          `    ${maskAndStripPrivateDoc('__hydrated', maskedFields, privates, maskAuth)}`,
-        );
+        lines.push(`    ${maskAndStripPrivateDoc('__hydrated', maskedFields, privates, maskAuth)}`);
       } else {
         lines.push(`    ${maskAndStripPrivateDoc('__doc', maskedFields, privates, maskAuth)}`);
       }
@@ -1704,12 +1697,9 @@ function renderGovernedCreationEntry(
     resolveCollectionElementType: (collection) =>
       resolveHasManyDocElementType(entity, collection, options),
   };
-  const checks = renderChecks(
-    entity.name,
-    commandChecks(ir, cmd, options.policyMode),
-    scope,
-    { tenantProp: writeTenantProp },
-  );
+  const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), scope, {
+    tenantProp: writeTenantProp,
+  });
   diagnostics.push(...checks.diagnostics);
   const createViaRateLimitLines = renderCommandRateLimitCheckLines(cmd, {
     keyPrefix: commandCreationExportName(entity.name, cmd.name),
@@ -2025,12 +2015,9 @@ function generateMutation(
       docLines.push(line);
     }
 
-    const checks = renderChecks(
-      entity.name,
-      commandChecks(ir, cmd, options.policyMode),
-      scope,
-      { tenantProp: writeTenantProp },
-    );
+    const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), scope, {
+      tenantProp: writeTenantProp,
+    });
     diagnostics.push(...checks.diagnostics);
     // G7 `emit Event { field: expr }`: populate each event-row payload (and the
     // shared reaction payload below) with declared fields evaluated against the
@@ -2354,9 +2341,7 @@ function generateMutation(
   const needsReferentialOnDelete = inboundDeleteEdges.some(
     (edge) => edge.parentEntity === entity.name,
   );
-  const inboundUpdateEdges = !hardDelete
-    ? collectInboundOnUpdateEdges(ir, options).edges
-    : [];
+  const inboundUpdateEdges = !hardDelete ? collectInboundOnUpdateEdges(ir, options).edges : [];
   const needsReferentialOnUpdate = inboundUpdateEdges.some(
     (edge) => edge.parentEntity === entity.name,
   );
@@ -2401,10 +2386,7 @@ function generateMutation(
     hardDeleteAfter +
     payloadBinding +
     (tail ? tail + '\n' : '') +
-    stripPrivateFromReturn(
-      hardDelete ? '{ ...doc }' : '{ ...doc, ...updates }',
-      mutationPrivates,
-    ) +
+    stripPrivateFromReturn(hardDelete ? '{ ...doc }' : '{ ...doc, ...updates }', mutationPrivates) +
     `}\n\n` +
     `export const ${name} = mutation({\n` +
     `  args: {\n${argLines.join(',\n')}\n  },\n` +

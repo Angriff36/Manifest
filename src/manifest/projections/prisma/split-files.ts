@@ -30,9 +30,10 @@ export function schemaFileStem(schemaName: string): string {
   return cleaned.length > 0 ? cleaned : 'schema';
 }
 
-export function resolveSplitFilesPlan(
-  options: PrismaProjectionOptions,
-): { plan: SplitFilesPlan | undefined; diagnostics: ProjectionDiagnostic[] } {
+export function resolveSplitFilesPlan(options: PrismaProjectionOptions): {
+  plan: SplitFilesPlan | undefined;
+  diagnostics: ProjectionDiagnostic[];
+} {
   const split = options.multiSchema?.splitFiles;
   if (!split || split.enabled !== true) {
     return { plan: undefined, diagnostics: [] };
@@ -113,8 +114,7 @@ export function buildSplitPrismaArtifacts(args: {
   for (const schemaName of schemaNames) {
     const blocks = bySchema.get(schemaName) ?? [];
     const stem = schemaFileStem(schemaName);
-    const body =
-      blocks.length > 0 ? `${blocks.join('\n\n')}\n` : '// Empty schema partition.\n';
+    const body = blocks.length > 0 ? `${blocks.join('\n\n')}\n` : '// Empty schema partition.\n';
     artifacts.push({
       id: `prisma.schema.${stem}`,
       pathHint: joinDir(args.splitDir, `${stem}.prisma`),

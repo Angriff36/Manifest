@@ -96,7 +96,9 @@ export async function seedTemplateCommand(options: SeedTemplateCliOptions): Prom
     } else {
       await writeSeedPack(outDir, pack);
       spinner.succeed(
-        chalk.green(`Wrote seed pack template (${pack.tables.length} entities) → ${options.output}`),
+        chalk.green(
+          `Wrote seed pack template (${pack.tables.length} entities) → ${options.output}`,
+        ),
       );
     }
   } catch (err) {

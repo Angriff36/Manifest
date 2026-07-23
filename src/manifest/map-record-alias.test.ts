@@ -19,9 +19,21 @@ entity Bag {
     expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     const props = ir?.entities[0]?.properties ?? [];
     const byName = Object.fromEntries(props.map((p) => [p.name, p.type]));
-    expect(byName.a).toEqual({ name: 'map', generic: { name: 'boolean', nullable: false }, nullable: false });
-    expect(byName.b).toEqual({ name: 'map', generic: { name: 'number', nullable: false }, nullable: false });
-    expect(byName.c).toEqual({ name: 'map', generic: { name: 'string', nullable: false }, nullable: false });
+    expect(byName.a).toEqual({
+      name: 'map',
+      generic: { name: 'boolean', nullable: false },
+      nullable: false,
+    });
+    expect(byName.b).toEqual({
+      name: 'map',
+      generic: { name: 'number', nullable: false },
+      nullable: false,
+    });
+    expect(byName.c).toEqual({
+      name: 'map',
+      generic: { name: 'string', nullable: false },
+      nullable: false,
+    });
   });
 
   it('rejects non-string map/record key types (by design)', async () => {

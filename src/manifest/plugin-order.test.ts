@@ -31,15 +31,14 @@ describe('sortPluginDeclarations', () => {
       { module: 'ordered', order: 0 },
       { module: 'unordered-a' },
     ]);
-    expect(sorted.map((d) => d.module)).toEqual([
-      'ordered',
-      'unordered-a',
-      'unordered-b',
-    ]);
+    expect(sorted.map((d) => d.module)).toEqual(['ordered', 'unordered-a', 'unordered-b']);
   });
 
   it('does not mutate the input array', () => {
-    const input = [{ module: 'b', order: 2 }, { module: 'a', order: 1 }];
+    const input = [
+      { module: 'b', order: 2 },
+      { module: 'a', order: 1 },
+    ];
     const copy = [...input];
     sortPluginDeclarations(input);
     expect(input).toEqual(copy);

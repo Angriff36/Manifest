@@ -14,15 +14,13 @@ describe('analytics pathHints — per-module nesting', () => {
   });
 
   it('keeps flat handlers/ paths when module is absent', () => {
-    expect(analyticsEntityHandlerPathHint({ name: 'Order' })).toBe(
-      'analytics/handlers/order.ts',
-    );
+    expect(analyticsEntityHandlerPathHint({ name: 'Order' })).toBe('analytics/handlers/order.ts');
   });
 
   it('nests under analytics/handlers/<module>/ when module is set', () => {
-    expect(
-      analyticsEntityHandlerPathHint({ name: 'Order', module: 'billing' }),
-    ).toBe('analytics/handlers/billing/order.ts');
+    expect(analyticsEntityHandlerPathHint({ name: 'Order', module: 'billing' })).toBe(
+      'analytics/handlers/billing/order.ts',
+    );
   });
 
   it('sanitizes unsafe module segments', () => {

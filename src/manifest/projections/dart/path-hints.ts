@@ -15,19 +15,13 @@ export function dartSnakeCase(name: string): string {
     .replace(/^_/, '');
 }
 
-export function dartEntityPathHint(entity: {
-  name: string;
-  module?: string;
-}): string {
+export function dartEntityPathHint(entity: { name: string; module?: string }): string {
   const file = `${dartSnakeCase(entity.name)}.dart`;
   const mod = moduleDirSegment(entity.module);
   return mod ? `lib/models/${mod}/${file}` : `lib/models/${file}`;
 }
 
-export function dartCommandPathHint(command: {
-  name: string;
-  module?: string;
-}): string {
+export function dartCommandPathHint(command: { name: string; module?: string }): string {
   const file = `${dartSnakeCase(command.name)}_params.dart`;
   const mod = moduleDirSegment(command.module);
   return mod ? `lib/commands/${mod}/${file}` : `lib/commands/${file}`;

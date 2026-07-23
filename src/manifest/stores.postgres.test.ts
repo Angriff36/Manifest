@@ -22,7 +22,7 @@ function makeFakePool(
       const result = handler?.(sql, params) ?? { rows: [], rowCount: 0 };
       return {
         rows: result.rows ?? [],
-        rowCount: result.rowCount ?? (result.rows?.length ?? 0),
+        rowCount: result.rowCount ?? result.rows?.length ?? 0,
       } as QueryResult;
     },
     release() {},

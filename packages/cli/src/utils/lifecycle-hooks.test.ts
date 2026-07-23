@@ -11,10 +11,14 @@ import { runLifecycleHooks } from './lifecycle-hooks.js';
 describe('runLifecycleHooks', () => {
   it('is a no-op when lifecycle is unset', async () => {
     const runScript = vi.fn();
-    const ran = await runLifecycleHooks('beforeCompile', {}, {
-      cwd: process.cwd(),
-      runScript,
-    });
+    const ran = await runLifecycleHooks(
+      'beforeCompile',
+      {},
+      {
+        cwd: process.cwd(),
+        runScript,
+      },
+    );
     expect(ran).toEqual([]);
     expect(runScript).not.toHaveBeenCalled();
   });

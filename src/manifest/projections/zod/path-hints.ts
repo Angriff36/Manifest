@@ -10,10 +10,7 @@ import { moduleDirSegment } from '../shared/module-path.js';
 /** @deprecated Prefer {@link moduleDirSegment} from shared/module-path. */
 export const zodModuleDirSegment = moduleDirSegment;
 
-export function zodEntitySchemaPathHint(entity: {
-  name: string;
-  module?: string;
-}): string {
+export function zodEntitySchemaPathHint(entity: { name: string; module?: string }): string {
   const mod = moduleDirSegment(entity.module);
   return mod ? `schemas/${mod}/${entity.name}.schema.ts` : `schemas/${entity.name}.schema.ts`;
 }

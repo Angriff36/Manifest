@@ -17,10 +17,7 @@ import type {
   ProjectionArtifact,
   ProjectionDiagnostic,
 } from '../interface';
-import {
-  storybookCommandPathHint,
-  storybookEntityPathHint,
-} from './path-hints.js';
+import { storybookCommandPathHint, storybookEntityPathHint } from './path-hints.js';
 
 // ---------------------------------------------------------------------------
 // Options

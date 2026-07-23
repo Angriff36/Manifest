@@ -314,15 +314,20 @@ export function renderReadPolicyRelationHydration(
       !!tenantProp &&
       dependency.tenantOwnershipRequired &&
       target.properties.some((property) => property.name === tenantProp);
-    const tenantArgs = enforceTenant
-      ? `, ${JSON.stringify(tenantProp)}, __tenant`
-      : '';
+    const tenantArgs = enforceTenant ? `, ${JSON.stringify(tenantProp)}, __tenant` : '';
     const encryptedReads = encryptedFieldNames(target).filter((field) =>
       dependency.targetFieldsRead.includes(field),
     );
 
     if (encryptedReads.length > 0 && !options.encryptionImport) {
-      renderEncryptedDeny(lines, diagnostics, target.name, dependency.relationName, variable, false);
+      renderEncryptedDeny(
+        lines,
+        diagnostics,
+        target.name,
+        dependency.relationName,
+        variable,
+        false,
+      );
       continue;
     }
 

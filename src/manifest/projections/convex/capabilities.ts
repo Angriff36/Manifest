@@ -243,10 +243,11 @@ export function collectUnsupportedDiagnostics(
       );
       const enforceable =
         !!options.authContextImport &&
-        targetEntities.every((e) =>
-          renderReadPolicies(ir, e.name, '__row', {
-            flagProviderImport: options.flagProviderImport,
-          }).renderable,
+        targetEntities.every(
+          (e) =>
+            renderReadPolicies(ir, e.name, '__row', {
+              flagProviderImport: options.flagProviderImport,
+            }).renderable,
         );
       if (enforceable) continue;
       out.push({

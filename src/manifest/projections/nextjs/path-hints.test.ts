@@ -4,9 +4,9 @@ import { nextjsSubscriptionHookPathHint } from './path-hints.js';
 
 describe('nextjs pathHints — per-module nesting', () => {
   it('nests route segments under entityModules when no override', () => {
-    expect(
-      resolveEntitySegment('Order', { entityModules: { Order: 'billing' } }),
-    ).toBe('billing/order');
+    expect(resolveEntitySegment('Order', { entityModules: { Order: 'billing' } })).toBe(
+      'billing/order',
+    );
   });
 
   it('keeps flat subscription hooks when module is absent', () => {

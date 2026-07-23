@@ -24,11 +24,7 @@ import type {
   ProjectionDiagnostic,
   ProjectionArtifact,
 } from '../interface';
-import {
-  mermaidErPathHint,
-  mermaidSequencePathHint,
-  mermaidStatePathHint,
-} from './path-hints.js';
+import { mermaidErPathHint, mermaidSequencePathHint, mermaidStatePathHint } from './path-hints.js';
 
 // ============================================================================
 // Types
@@ -540,9 +536,7 @@ export class MermaidProjection implements ProjectionTarget {
     const { diagrams, diagnostics } = generateSequenceDiagrams(ir, options);
 
     const artifacts: ProjectionArtifact[] = diagrams.map((d) => {
-      const command = ir.commands.find(
-        (c) => c.name === d.command && c.entity === d.entity,
-      );
+      const command = ir.commands.find((c) => c.name === d.command && c.entity === d.entity);
       const entityModule = ir.entities.find((e) => e.name === d.entity)?.module;
       return {
         id: `mermaid.sequence.${d.entity}.${d.command}`,

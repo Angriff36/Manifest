@@ -57,9 +57,9 @@ describe('zodModuleDirSegment', () => {
 describe('zod path hints', () => {
   it('keeps flat paths without module', () => {
     expect(zodEntitySchemaPathHint({ name: 'Recipe' })).toBe('schemas/Recipe.schema.ts');
-    expect(
-      zodCommandSchemaPathHint({ commandName: 'create', entityName: 'Recipe' }),
-    ).toBe('schemas/Recipe_create.schema.ts');
+    expect(zodCommandSchemaPathHint({ commandName: 'create', entityName: 'Recipe' })).toBe(
+      'schemas/Recipe_create.schema.ts',
+    );
   });
 
   it('nests under module directory when set', () => {
@@ -84,9 +84,7 @@ describe('ZodProjection module pathHints', () => {
       {
         name: 'create',
         entity: 'Recipe',
-        parameters: [
-          { name: 'title', type: { name: 'string', nullable: false }, required: true },
-        ],
+        parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }],
         guards: [],
         actions: [],
         emits: [],

@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  mermaidErPathHint,
-  mermaidSequencePathHint,
-  mermaidStatePathHint,
-} from './path-hints.js';
+import { mermaidErPathHint, mermaidSequencePathHint, mermaidStatePathHint } from './path-hints.js';
 
 describe('mermaid pathHints — per-module nesting', () => {
   it('keeps ER diagram at the historical flat path', () => {
@@ -11,9 +7,7 @@ describe('mermaid pathHints — per-module nesting', () => {
   });
 
   it('keeps flat diagrams/ paths when module is absent', () => {
-    expect(mermaidStatePathHint({ entityName: 'Order' })).toBe(
-      'diagrams/state-Order.mmd',
-    );
+    expect(mermaidStatePathHint({ entityName: 'Order' })).toBe('diagrams/state-Order.mmd');
     expect(
       mermaidSequencePathHint({
         entityName: 'Order',
@@ -23,9 +17,9 @@ describe('mermaid pathHints — per-module nesting', () => {
   });
 
   it('nests state/sequence under diagrams/<module>/ when module is set', () => {
-    expect(
-      mermaidStatePathHint({ entityName: 'Order', module: 'billing' }),
-    ).toBe('diagrams/billing/state-Order.mmd');
+    expect(mermaidStatePathHint({ entityName: 'Order', module: 'billing' })).toBe(
+      'diagrams/billing/state-Order.mmd',
+    );
     expect(
       mermaidSequencePathHint({
         entityName: 'Order',
@@ -36,9 +30,9 @@ describe('mermaid pathHints — per-module nesting', () => {
   });
 
   it('sanitizes unsafe module segments', () => {
-    expect(
-      mermaidStatePathHint({ entityName: 'Order', module: 'Billing / Ops!' }),
-    ).toBe('diagrams/Billing_Ops/state-Order.mmd');
+    expect(mermaidStatePathHint({ entityName: 'Order', module: 'Billing / Ops!' })).toBe(
+      'diagrams/Billing_Ops/state-Order.mmd',
+    );
   });
 
   it('treats blank module as flat', () => {

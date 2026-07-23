@@ -51,9 +51,6 @@ export function buildCommandPathEntries(
 }
 
 /** Unique operationId: canonical on dispatcher; `…Legacy` on the alias. */
-export function commandOperationId(
-  baseOperationId: string,
-  kind: OpenApiCommandPathKind,
-): string {
+export function commandOperationId(baseOperationId: string, kind: OpenApiCommandPathKind): string {
   return kind === 'legacy' ? `${baseOperationId}Legacy` : baseOperationId;
 }

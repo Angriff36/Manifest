@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import {
-  storybookCommandPathHint,
-  storybookEntityPathHint,
-} from './path-hints.js';
+import { storybookCommandPathHint, storybookEntityPathHint } from './path-hints.js';
 
 describe('storybook pathHints — per-module nesting', () => {
   it('keeps flat stories/ paths when module is absent', () => {
-    expect(storybookEntityPathHint({ name: 'Order' })).toBe(
-      'stories/Order.stories.tsx',
-    );
+    expect(storybookEntityPathHint({ name: 'Order' })).toBe('stories/Order.stories.tsx');
     expect(
       storybookCommandPathHint({
         commandName: 'create',
@@ -37,9 +32,9 @@ describe('storybook pathHints — per-module nesting', () => {
   });
 
   it('sanitizes unsafe module segments', () => {
-    expect(
-      storybookEntityPathHint({ name: 'Order', module: 'Billing / Ops!' }),
-    ).toBe('stories/Billing_Ops/Order.stories.tsx');
+    expect(storybookEntityPathHint({ name: 'Order', module: 'Billing / Ops!' })).toBe(
+      'stories/Billing_Ops/Order.stories.tsx',
+    );
   });
 
   it('treats blank module as flat', () => {

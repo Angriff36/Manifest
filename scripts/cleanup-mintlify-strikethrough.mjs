@@ -145,7 +145,10 @@ function cleanupFile(source) {
           continue;
         }
         if (cur === '') break;
-        if (/^[ \t]*<\//.test(cur) || /^[ \t]*<(?:Step|Note|Warning|Info|Tip|Card|CodeGroup|Accordion)/.test(cur)) {
+        if (
+          /^[ \t]*<\//.test(cur) ||
+          /^[ \t]*<(?:Step|Note|Warning|Info|Tip|Card|CodeGroup|Accordion)/.test(cur)
+        ) {
           break;
         }
         if (cur.startsWith(indent) || /^[ \t]*@RYANSIGNED/i.test(cur)) {
@@ -163,7 +166,10 @@ function cleanupFile(source) {
         .replace(/\)\s*@RYANSIGNED:\*\*/i, ') @RYANSIGNED:**');
       let body = stripCorrectionPrefix(raw);
       // Drop "stale correction above" meta paragraphs when a Callout already states truth
-      if (/correction above is \*\*stale\*\*/i.test(body) || /correction above is stale/i.test(body)) {
+      if (
+        /correction above is \*\*stale\*\*/i.test(body) ||
+        /correction above is stale/i.test(body)
+      ) {
         report.correctionsUnwrapped += 1;
         continue;
       }
@@ -179,7 +185,11 @@ function cleanupFile(source) {
     // Blockquote notes that only carried @RYANSIGNED dating
     if (/^>\s*\*\*Note\s*\([^)]*\)\s*@RYANSIGNED:\*\*/i.test(line)) {
       const bq = [];
-      while (i < lines.length && (lines[i].startsWith('>') || (lines[i] === '' && i + 1 < lines.length && lines[i + 1].startsWith('>')))) {
+      while (
+        i < lines.length &&
+        (lines[i].startsWith('>') ||
+          (lines[i] === '' && i + 1 < lines.length && lines[i + 1].startsWith('>')))
+      ) {
         bq.push(lines[i]);
         i += 1;
       }
@@ -196,10 +206,7 @@ function cleanupFile(source) {
 
     let cleaned = removeInlineStrikes(line);
     // Parenthetical dating leftovers: (Correction 2026-07-15 @RYANSIGNED)
-    cleaned = cleaned.replace(
-      /\s*\(Correction\s+[^)]*@RYANSIGNED\)/gi,
-      '',
-    );
+    cleaned = cleaned.replace(/\s*\(Correction\s+[^)]*@RYANSIGNED\)/gi, '');
     cleaned = cleaned.replace(/\s*@RYANSIGNED\b/g, '');
     // "use `cmd`" after arrow-cleanup at line start → "Use `cmd`"
     cleaned = cleaned.replace(/^([ \t]*)use (`)/, '$1Use $2');
@@ -225,8 +232,7 @@ function cleanupFile(source) {
 export { cleanupFile };
 
 const isMain = process.argv[1]
-  ? fileURLToPath(import.meta.url).toLowerCase() ===
-    join(process.argv[1]).toLowerCase()
+  ? fileURLToPath(import.meta.url).toLowerCase() === join(process.argv[1]).toLowerCase()
   : false;
 
 if (isMain) {

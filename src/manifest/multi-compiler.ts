@@ -291,13 +291,7 @@ export function mergeIR(irs: IR[]): IR {
       ? ir.provenance.sources.map((s) => ({ absPath: s.path, contentHash: s.contentHash }))
       : [{ absPath: ir.provenance.contentHash, contentHash: ir.provenance.contentHash }],
   );
-  const merged = mergeIRs(
-    irs,
-    sources,
-    '',
-    resolveMergeIntegrity(undefined),
-    false,
-  );
+  const merged = mergeIRs(irs, sources, '', resolveMergeIntegrity(undefined), false);
   attachInitializationPlans(merged.entities, merged.commands, merged.tenant);
   return merged;
 }

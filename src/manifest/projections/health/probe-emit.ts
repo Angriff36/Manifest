@@ -87,7 +87,9 @@ export function emitStoreCheck(target: string, functionSuffix: string): string[]
     lines.push(`  if (probes?.checkStore) {`);
     lines.push(`    try {`);
     lines.push(`      const result = await probes.checkStore('${target}');`);
-    lines.push(`      return { ...result, details: { ...(result.details ?? {}), stub: false, live: true, target: '${target}' } };`);
+    lines.push(
+      `      return { ...result, details: { ...(result.details ?? {}), stub: false, live: true, target: '${target}' } };`,
+    );
     lines.push(`    } catch (err: unknown) {`);
     lines.push(`      const message = err instanceof Error ? err.message : String(err);`);
     lines.push(`      return {`);

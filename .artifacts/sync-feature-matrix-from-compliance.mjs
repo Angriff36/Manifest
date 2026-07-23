@@ -54,14 +54,12 @@ for (let i = 0; i < lines.length; i++) {
   // Keep PARTIAL-only rows unless compliance is FULLY
   const src = byFeature.get(feature);
   if (!src) continue;
-  if (
-    !(
-      src.impl.includes('FULLY_IMPLEMENTED') ||
-      src.impl.includes('REJECTED') ||
-      src.impl.includes('OUT_OF_SCOPE') ||
-      src.impl.includes('REMOVED')
-    )
-  ) {
+  if (!(
+    src.impl.includes('FULLY_IMPLEMENTED') ||
+    src.impl.includes('REJECTED') ||
+    src.impl.includes('OUT_OF_SCOPE') ||
+    src.impl.includes('REMOVED')
+  )) {
     continue;
   }
   // Don't upgrade PARTIAL capability rows that compliance still marks PARTIAL

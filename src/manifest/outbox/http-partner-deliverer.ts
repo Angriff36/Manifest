@@ -116,9 +116,7 @@ export class HttpPartnerDeliverer {
 }
 
 /** Factory returning an {@link OutboxDeliver} callback. */
-export function createHttpPartnerDeliverer(
-  options: HttpPartnerDelivererOptions,
-): OutboxDeliver {
+export function createHttpPartnerDeliverer(options: HttpPartnerDelivererOptions): OutboxDeliver {
   return new HttpPartnerDeliverer(options).asDeliver();
 }
 

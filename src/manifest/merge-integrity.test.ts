@@ -3,10 +3,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  dedupeLastByKey,
-  resolveMergeIntegrity,
-} from './merge-integrity.js';
+import { dedupeLastByKey, resolveMergeIntegrity } from './merge-integrity.js';
 
 describe('resolveMergeIntegrity', () => {
   it('defaults to strict error policies', () => {
@@ -37,9 +34,9 @@ describe('resolveMergeIntegrity', () => {
   });
 
   it('rejects unsupported moduleOrder', () => {
-    expect(() =>
-      resolveMergeIntegrity({ moduleOrder: 'filesystem' as 'lexicographic' }),
-    ).toThrow(/MERGE_INTEGRITY_MODULE_ORDER/);
+    expect(() => resolveMergeIntegrity({ moduleOrder: 'filesystem' as 'lexicographic' })).toThrow(
+      /MERGE_INTEGRITY_MODULE_ORDER/,
+    );
   });
 });
 

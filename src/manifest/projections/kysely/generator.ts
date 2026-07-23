@@ -249,9 +249,7 @@ function emitTableInterface(
 
         const refNullable = targetIdProp?.type.nullable ?? false;
         const tsExpr = refNullable ? `${fkTsType} | null` : fkTsType;
-        const columnKey = formatColumnPropertyKey(
-          resolveColumnName(entity.name, fkField, options),
-        );
+        const columnKey = formatColumnPropertyKey(resolveColumnName(entity.name, fkField, options));
 
         columns.push(`  ${columnKey}: ${tsExpr};`);
       }

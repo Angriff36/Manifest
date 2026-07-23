@@ -5,11 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import type { IR, IREntity } from '../../ir';
 import { ConvexProjection } from './generator.js';
-import {
-  maskedFieldEmits,
-  serializeMaskedFields,
-  maskAndStripPrivateDoc,
-} from './masking-emit.js';
+import { maskedFieldEmits, serializeMaskedFields, maskAndStripPrivateDoc } from './masking-emit.js';
 import { collectUnsupportedDiagnostics } from './capabilities.js';
 
 function patientEntity(): IREntity {
@@ -32,7 +28,11 @@ function patientEntity(): IREntity {
           unmaskWhen: {
             kind: 'binary',
             operator: '==',
-            left: { kind: 'member', object: { kind: 'identifier', name: 'user' }, property: 'role' },
+            left: {
+              kind: 'member',
+              object: { kind: 'identifier', name: 'user' },
+              property: 'role',
+            },
             right: { kind: 'literal', value: { kind: 'string', value: 'admin' } },
           },
         },

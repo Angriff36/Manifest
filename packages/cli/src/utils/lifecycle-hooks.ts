@@ -34,10 +34,7 @@ export interface RunLifecycleHooksOptions {
   runScript?: (scriptPath: string, cwd: string) => Promise<void>;
 }
 
-function scriptsForPhase(
-  hooks: HooksWithLifecycle | undefined,
-  phase: LifecyclePhase,
-): string[] {
+function scriptsForPhase(hooks: HooksWithLifecycle | undefined, phase: LifecyclePhase): string[] {
   const list = hooks?.lifecycle?.[phase];
   if (!list || list.length === 0) return [];
   return list.map((s) => s.trim()).filter(Boolean);

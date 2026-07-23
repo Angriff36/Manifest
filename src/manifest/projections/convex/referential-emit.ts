@@ -14,14 +14,8 @@ import {
   type InboundReferentialEdge,
 } from './referential-edges.js';
 
-export type {
-  InboundOnDeleteEdge,
-  InboundReferentialEdge,
-} from './referential-edges.js';
-export {
-  collectInboundOnDeleteEdges,
-  collectInboundOnUpdateEdges,
-} from './referential-edges.js';
+export type { InboundOnDeleteEdge, InboundReferentialEdge } from './referential-edges.js';
+export { collectInboundOnDeleteEdges, collectInboundOnUpdateEdges } from './referential-edges.js';
 
 export function isHardDeleteCommand(cmd: IRCommand): boolean {
   if (cmd.name !== 'delete' && cmd.name !== 'remove') return false;
@@ -58,9 +52,7 @@ function renderIndexQuery(
 }
 
 function patchObjectLiteral(edge: InboundReferentialEdge, valueExprs: string[]): string {
-  return edge.pairs
-    .map((pair, index) => `${pair.local}: ${valueExprs[index]}`)
-    .join(', ');
+  return edge.pairs.map((pair, index) => `${pair.local}: ${valueExprs[index]}`).join(', ');
 }
 
 function renderOnDeleteParentCase(parentEntity: string, edges: InboundReferentialEdge[]): string {

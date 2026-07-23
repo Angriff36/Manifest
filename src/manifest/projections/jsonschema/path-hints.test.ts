@@ -15,9 +15,9 @@ describe('jsonschema pathHints — per-module nesting', () => {
 
   it('sanitizes unsafe module segments', () => {
     expect(moduleDirSegment('Billing / Ops!')).toBe('Billing_Ops');
-    expect(
-      jsonSchemaEntityPathHint({ name: 'Order', module: 'Billing / Ops!' }),
-    ).toBe('schemas/Billing_Ops/Order.schema.json');
+    expect(jsonSchemaEntityPathHint({ name: 'Order', module: 'Billing / Ops!' })).toBe(
+      'schemas/Billing_Ops/Order.schema.json',
+    );
   });
 
   it('treats blank module as flat', () => {

@@ -8,15 +8,7 @@ import { KEYWORDS } from './lexer.js';
 
 describe('Appendix E reserved-word ergonomics', () => {
   it('does not reserve publish/persist/read/write/delete/execute/tenant', () => {
-    for (const word of [
-      'publish',
-      'persist',
-      'read',
-      'write',
-      'delete',
-      'execute',
-      'tenant',
-    ]) {
+    for (const word of ['publish', 'persist', 'read', 'write', 'delete', 'execute', 'tenant']) {
       expect(KEYWORDS.has(word)).toBe(false);
     }
   });

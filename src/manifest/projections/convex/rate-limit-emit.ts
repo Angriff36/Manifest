@@ -17,9 +17,7 @@ export const DEFAULT_COMMAND_RATE_LIMIT_TABLE = 'commandRateLimitBuckets';
 /** True when schema must emit the sliding-window bucket table. */
 export function irNeedsRateLimitTable(ir: IR): boolean {
   if ((ir.commands ?? []).some((c) => !!c.rateLimit)) return true;
-  return (ir.policies ?? []).some(
-    (p) => !!p.rateLimit && p.action !== 'read',
-  );
+  return (ir.policies ?? []).some((p) => !!p.rateLimit && p.action !== 'read');
 }
 
 /** @deprecated Prefer irNeedsRateLimitTable — kept for call-site clarity. */

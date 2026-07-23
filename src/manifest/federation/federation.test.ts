@@ -1,8 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import {
-  FederationRegistry,
-  FederationClient,
-} from './index';
+import { FederationRegistry, FederationClient } from './index';
 import type { ServiceDescriptor, FederationTransport } from './types';
 import { makeDescriptor } from './test-fixtures';
 

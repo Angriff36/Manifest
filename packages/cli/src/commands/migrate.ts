@@ -330,8 +330,7 @@ export async function migrateCommand(options: MigrateOptions = {}): Promise<void
     const runner = options.toolRunner ?? new MigrationToolRunner();
     const tool = options.tool === 'drizzle' ? 'drizzle' : 'prisma';
     const migrationsDir =
-      options.migrationsDir ??
-      (tool === 'prisma' ? 'prisma/migrations' : 'drizzle/migrations');
+      options.migrationsDir ?? (tool === 'prisma' ? 'prisma/migrations' : 'drizzle/migrations');
 
     const result = await runner.apply(
       {
@@ -349,7 +348,9 @@ export async function migrateCommand(options: MigrateOptions = {}): Promise<void
     );
 
     console.log(chalk.green(`Wrote migration artifacts to ${result.migrationDir}`));
-    console.log(chalk.green(`Applied via ${result.appliedVia} (${migration.summary.length} change(s))`));
+    console.log(
+      chalk.green(`Applied via ${result.appliedVia} (${migration.summary.length} change(s))`),
+    );
     if (result.command?.stdout) {
       console.log(chalk.gray(result.command.stdout.trim()));
     }

@@ -80,15 +80,14 @@ function aggregateGuard(
 function orderIR(guard: IRExpression): IR {
   const ir = emptyIR();
   ir.entities = [
-    entity('Order', [prop('status', 'string', ['required'])], [
-      { name: 'lines', kind: 'hasMany', target: 'OrderLine' },
-    ]),
+    entity(
+      'Order',
+      [prop('status', 'string', ['required'])],
+      [{ name: 'lines', kind: 'hasMany', target: 'OrderLine' }],
+    ),
     entity(
       'OrderLine',
-      [
-        prop('amount', 'number', ['required']),
-        prop('orderId', 'string', ['required']),
-      ],
+      [prop('amount', 'number', ['required']), prop('orderId', 'string', ['required'])],
       [
         {
           name: 'order',
@@ -186,9 +185,10 @@ describe('Convex sum/avg/min_of/max_of hasMany lambda guards', () => {
         surface: 'convex.mutations',
       });
       const code = res.artifacts[0]?.code ?? '';
-      expect(res.diagnostics.filter((d) => d.code === 'CONVEX_UNRESOLVED_GUARD'), callee).toEqual(
-        [],
-      );
+      expect(
+        res.diagnostics.filter((d) => d.code === 'CONVEX_UNRESOLVED_GUARD'),
+        callee,
+      ).toEqual([]);
       expect(code, callee).toContain(callee === 'min_of' ? 'Math.min' : 'Math.max');
     }
   });

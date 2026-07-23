@@ -88,11 +88,9 @@ async function initStore(storeRoot: string, dryRun?: boolean): Promise<void> {
   await ensureDir(storeRoot, dryRun);
   const index = vs.createVersionIndex();
   const { writeTextFile } = await import('../utils/dry-run-fs.js');
-  await writeTextFile(
-    path.join(storeRoot, 'manifest.json'),
-    JSON.stringify(index, null, 2),
-    { dryRun },
-  );
+  await writeTextFile(path.join(storeRoot, 'manifest.json'), JSON.stringify(index, null, 2), {
+    dryRun,
+  });
 }
 
 async function loadIndex(storeRoot: string): Promise<IRVersionIndex> {
@@ -106,11 +104,9 @@ async function saveIndex(
   dryRun?: boolean,
 ): Promise<void> {
   const { writeTextFile } = await import('../utils/dry-run-fs.js');
-  await writeTextFile(
-    path.join(storeRoot, 'manifest.json'),
-    JSON.stringify(index, null, 2),
-    { dryRun },
-  );
+  await writeTextFile(path.join(storeRoot, 'manifest.json'), JSON.stringify(index, null, 2), {
+    dryRun,
+  });
 }
 
 async function loadVersionIR(storeRoot: string, versionNumber: number): Promise<IR> {
@@ -278,10 +274,7 @@ export async function versionsSaveCommand(
   }
   spinner.succeed('Compiled successfully');
 
-  const index =
-    storeReady || !dryRun
-      ? await loadIndex(storeRoot)
-      : vs.createVersionIndex();
+  const index = storeReady || !dryRun ? await loadIndex(storeRoot) : vs.createVersionIndex();
   const nextVersionNum = index.currentVersionNumber + 1;
 
   // Determine tag

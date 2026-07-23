@@ -133,7 +133,10 @@ function collectFiles(dir, files = []) {
 }
 
 function getOrderKey(filePath) {
-  const relativePath = filePath.replace(MINTLIFY_DIR + '/', '').replace(/\\/g, '/').replace('.mdx', '');
+  const relativePath = filePath
+    .replace(MINTLIFY_DIR + '/', '')
+    .replace(/\\/g, '/')
+    .replace('.mdx', '');
   const idx = ORDER.indexOf(relativePath);
   return idx === -1 ? 9999 : idx;
 }
@@ -151,7 +154,10 @@ function extractTitle(content, filePath) {
   const h1Match = content.match(/^#\s+(.+)$/m);
   if (h1Match) return h1Match[1].trim();
   // Fallback to filename
-  return filePath.replace(/\.mdx$/, '').replace(/.*[\\/]/, '').replace(/-/g, ' ');
+  return filePath
+    .replace(/\.mdx$/, '')
+    .replace(/.*[\\/]/, '')
+    .replace(/-/g, ' ');
 }
 
 async function main() {
@@ -177,7 +183,10 @@ async function main() {
 `;
 
   for (const file of files) {
-    const relativePath = file.replace(MINTLIFY_DIR + '/', '').replace(/\\/g, '/').replace('.mdx', '');
+    const relativePath = file
+      .replace(MINTLIFY_DIR + '/', '')
+      .replace(/\\/g, '/')
+      .replace('.mdx', '');
     const content = readFileSync(file, 'utf-8');
     const title = extractTitle(content, relativePath);
     const url = formatUrl(relativePath);

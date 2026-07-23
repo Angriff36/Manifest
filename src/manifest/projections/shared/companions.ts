@@ -203,10 +203,7 @@ function emitDeterminismHelpers(
  * Emit the generateId closure inside the factory function.
  * This creates a fresh sequence counter for each factory invocation.
  */
-function emitGenerateIdInFactory(
-  lines: string[],
-  seed: number,
-): void {
+function emitGenerateIdInFactory(lines: string[], seed: number): void {
   lines.push('  // Per-invocation sequence counter — each factory call gets its own closure');
   lines.push(`  let __manifestIdSeq = 0;`);
   lines.push(

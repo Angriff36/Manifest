@@ -4,11 +4,7 @@
 
 import type { IR, IREntity, IRRelationship, IRValue, RefAction } from '../../ir';
 import type { ProjectionDiagnostic } from '../interface';
-import {
-  isPersistentEntity,
-  resolveConvexTableName,
-  type NormalizedOptions,
-} from './generator.js';
+import { isPersistentEntity, resolveConvexTableName, type NormalizedOptions } from './generator.js';
 
 export interface FkPair {
   local: string;

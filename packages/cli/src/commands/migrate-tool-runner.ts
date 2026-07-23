@@ -129,7 +129,10 @@ export class MigrationToolRunner {
     this.env = deps.env ?? process.env;
   }
 
-  async apply(plan: MigrationArtifactPlan, options: ApplyMigrationOptions): Promise<ApplyMigrationResult> {
+  async apply(
+    plan: MigrationArtifactPlan,
+    options: ApplyMigrationOptions,
+  ): Promise<ApplyMigrationResult> {
     if (plan.sql.length === 0 && plan.prisma.length === 0) {
       throw new Error('Nothing to apply — migration plan is empty.');
     }
@@ -161,11 +164,10 @@ export class MigrationToolRunner {
     }
 
     if (options.tool === 'prisma') {
-      const command = await this.runCommand(
-        'npx',
-        ['prisma', 'migrate', 'deploy'],
-        { cwd: options.cwd, env: this.env },
-      );
+      const command = await this.runCommand('npx', ['prisma', 'migrate', 'deploy'], {
+        cwd: options.cwd,
+        env: this.env,
+      });
       if (command.code !== 0) {
         throw new Error(
           `prisma migrate deploy failed (exit ${command.code}): ${command.stderr || command.stdout}`,

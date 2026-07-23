@@ -195,8 +195,6 @@ describe('generateRuntimeFactoryModule', () => {
       ir: tinyIR,
       maxParallelCommands: 4,
     });
-    expect(code).toContain(
-      'return new RuntimeEngine(ir, context, { maxParallelCommands: 4 });',
-    );
+    expect(code).toContain('return new RuntimeEngine(ir, context, { maxParallelCommands: 4 });');
   });
 });

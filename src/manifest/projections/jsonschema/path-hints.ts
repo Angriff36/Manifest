@@ -7,12 +7,7 @@
 
 import { moduleDirSegment } from '../shared/module-path.js';
 
-export function jsonSchemaEntityPathHint(entity: {
-  name: string;
-  module?: string;
-}): string {
+export function jsonSchemaEntityPathHint(entity: { name: string; module?: string }): string {
   const mod = moduleDirSegment(entity.module);
-  return mod
-    ? `schemas/${mod}/${entity.name}.schema.json`
-    : `schemas/${entity.name}.schema.json`;
+  return mod ? `schemas/${mod}/${entity.name}.schema.json` : `schemas/${entity.name}.schema.json`;
 }

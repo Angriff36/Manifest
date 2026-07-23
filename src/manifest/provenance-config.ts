@@ -68,13 +68,17 @@ export function resolveProvenanceConfig(
     stamp: raw?.stamp !== false,
     fields,
     deterministic: raw?.deterministic === true,
-    lockfile: typeof raw?.lockfile === 'string' && raw.lockfile.trim() ? raw.lockfile.trim() : undefined,
+    lockfile:
+      typeof raw?.lockfile === 'string' && raw.lockfile.trim() ? raw.lockfile.trim() : undefined,
     failIfStale: raw?.failIfStale === true,
   };
 }
 
 /** Pick compiledAt per policy. */
-export function resolveCompiledAt(deterministic: boolean, now: () => string = () => new Date().toISOString()): string {
+export function resolveCompiledAt(
+  deterministic: boolean,
+  now: () => string = () => new Date().toISOString(),
+): string {
   return deterministic ? DETERMINISTIC_COMPILED_AT : now();
 }
 

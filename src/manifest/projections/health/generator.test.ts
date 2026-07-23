@@ -183,7 +183,9 @@ describe('HealthCheckProjection', () => {
       });
 
       const resultWithout = projection.generate(irMemoryOnly, { surface: 'health.handler' });
-      expect(firstCode(resultWithout)).not.toContain('async function checkOutbox(probes?: HealthProbes)');
+      expect(firstCode(resultWithout)).not.toContain(
+        'async function checkOutbox(probes?: HealthProbes)',
+      );
     });
 
     it('generates runHealthCheck orchestrator', () => {

@@ -11,10 +11,7 @@ function toEntitySegment(name: string): string {
   return name.toLowerCase();
 }
 
-export function honoEntityRoutePathHint(args: {
-  entityName: string;
-  module?: string;
-}): string {
+export function honoEntityRoutePathHint(args: { entityName: string; module?: string }): string {
   const file = `${toEntitySegment(args.entityName)}.ts`;
   const mod = moduleDirSegment(args.module);
   return mod ? `routes/${mod}/${file}` : `routes/${file}`;
@@ -24,10 +21,7 @@ export function honoManifestRouterPathHint(): string {
   return 'src/routes.ts';
 }
 
-export function honoEntityTypesPathHint(args: {
-  entityName: string;
-  module?: string;
-}): string {
+export function honoEntityTypesPathHint(args: { entityName: string; module?: string }): string {
   const file = `${toEntitySegment(args.entityName)}.ts`;
   const mod = moduleDirSegment(args.module);
   return mod ? `types/${mod}/${file}` : `types/${file}`;

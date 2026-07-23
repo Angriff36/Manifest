@@ -13,21 +13,17 @@ describe('express pathHints — per-module nesting', () => {
   });
 
   it('keeps flat routes/types paths when module is absent', () => {
-    expect(expressEntityRoutePathHint({ entityName: 'Order' })).toBe(
-      'routes/order.ts',
-    );
-    expect(expressEntityTypesPathHint({ entityName: 'Order' })).toBe(
-      'types/order.ts',
-    );
+    expect(expressEntityRoutePathHint({ entityName: 'Order' })).toBe('routes/order.ts');
+    expect(expressEntityTypesPathHint({ entityName: 'Order' })).toBe('types/order.ts');
   });
 
   it('nests under routes|types/<module>/ when module is set', () => {
-    expect(
-      expressEntityRoutePathHint({ entityName: 'Order', module: 'billing' }),
-    ).toBe('routes/billing/order.ts');
-    expect(
-      expressEntityTypesPathHint({ entityName: 'Order', module: 'billing' }),
-    ).toBe('types/billing/order.ts');
+    expect(expressEntityRoutePathHint({ entityName: 'Order', module: 'billing' })).toBe(
+      'routes/billing/order.ts',
+    );
+    expect(expressEntityTypesPathHint({ entityName: 'Order', module: 'billing' })).toBe(
+      'types/billing/order.ts',
+    );
   });
 
   it('sanitizes unsafe module segments', () => {
@@ -40,8 +36,8 @@ describe('express pathHints — per-module nesting', () => {
   });
 
   it('treats blank module as flat', () => {
-    expect(
-      expressEntityRoutePathHint({ entityName: 'Order', module: '   ' }),
-    ).toBe('routes/order.ts');
+    expect(expressEntityRoutePathHint({ entityName: 'Order', module: '   ' })).toBe(
+      'routes/order.ts',
+    );
   });
 });

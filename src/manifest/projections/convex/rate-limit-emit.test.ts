@@ -46,10 +46,16 @@ function entity(name: string, props: IRProperty[]): IREntity {
 
 function rateLimitedIR(scope: 'user' | 'tenant' | 'global' = 'global'): IR {
   const ir = emptyIR();
-  ir.entities = [entity('Order', [prop('status', 'string', ['required']), prop('orgId', 'string')])];
+  ir.entities = [
+    entity('Order', [prop('status', 'string', ['required']), prop('orgId', 'string')]),
+  ];
   ir.stores = [durable('Order')];
   if (scope === 'tenant') {
-    ir.tenant = { property: 'orgId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
+    ir.tenant = {
+      property: 'orgId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
   }
   ir.commands = [
     {

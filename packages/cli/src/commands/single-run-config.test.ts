@@ -61,7 +61,15 @@ describe('layerProjectionOptions (per-projection + global naming merge)', () => 
 
   it('layers the global naming under a projection that did not set its own', () => {
     expect(layerProjectionOptions(build, 'prisma')).toEqual({
-      __manifestRuntime: { deterministicMode: false, executionMode: 'inline', storesPath: undefined, defaultContext: undefined, forbidWallClock: false, seed: undefined, maxParallelCommands: undefined },
+      __manifestRuntime: {
+        deterministicMode: false,
+        executionMode: 'inline',
+        storesPath: undefined,
+        defaultContext: undefined,
+        forbidWallClock: false,
+        seed: undefined,
+        maxParallelCommands: undefined,
+      },
       provider: 'postgresql',
       naming: 'snake_case',
     });
@@ -69,14 +77,30 @@ describe('layerProjectionOptions (per-projection + global naming merge)', () => 
 
   it('lets a per-projection naming override the global default', () => {
     expect(layerProjectionOptions(build, 'zod')).toEqual({
-      __manifestRuntime: { deterministicMode: false, executionMode: 'inline', storesPath: undefined, defaultContext: undefined, forbidWallClock: false, seed: undefined, maxParallelCommands: undefined },
+      __manifestRuntime: {
+        deterministicMode: false,
+        executionMode: 'inline',
+        storesPath: undefined,
+        defaultContext: undefined,
+        forbidWallClock: false,
+        seed: undefined,
+        maxParallelCommands: undefined,
+      },
       naming: 'camelCase',
     });
   });
 
   it('returns just the global naming for an unconfigured projection', () => {
     expect(layerProjectionOptions(build, 'kysely')).toEqual({
-      __manifestRuntime: { deterministicMode: false, executionMode: 'inline', storesPath: undefined, defaultContext: undefined, forbidWallClock: false, seed: undefined, maxParallelCommands: undefined },
+      __manifestRuntime: {
+        deterministicMode: false,
+        executionMode: 'inline',
+        storesPath: undefined,
+        defaultContext: undefined,
+        forbidWallClock: false,
+        seed: undefined,
+        maxParallelCommands: undefined,
+      },
       naming: 'snake_case',
     });
   });
@@ -86,7 +110,15 @@ describe('layerProjectionOptions (per-projection + global naming merge)', () => 
       projections: { prisma: { options: { provider: 'sqlite' } } },
     };
     expect(layerProjectionOptions(noNaming, 'prisma')).toEqual({
-      __manifestRuntime: { deterministicMode: false, executionMode: 'inline', storesPath: undefined, defaultContext: undefined, forbidWallClock: false, seed: undefined, maxParallelCommands: undefined },
+      __manifestRuntime: {
+        deterministicMode: false,
+        executionMode: 'inline',
+        storesPath: undefined,
+        defaultContext: undefined,
+        forbidWallClock: false,
+        seed: undefined,
+        maxParallelCommands: undefined,
+      },
       provider: 'sqlite',
     });
   });

@@ -185,7 +185,15 @@ describe('Generate Command - --all (config-driven batch)', () => {
       process.chdir(tempDir);
       const { build } = await loadAllConfigs(tempDir);
       expect(layerProjectionOptions(build, 'zod')).toEqual({
-        __manifestRuntime: { deterministicMode: false, executionMode: 'inline', storesPath: undefined, defaultContext: undefined, forbidWallClock: false, seed: undefined, maxParallelCommands: undefined },
+        __manifestRuntime: {
+          deterministicMode: false,
+          executionMode: 'inline',
+          storesPath: undefined,
+          defaultContext: undefined,
+          forbidWallClock: false,
+          seed: undefined,
+          maxParallelCommands: undefined,
+        },
         includeComments: true,
         strict: true,
       });
@@ -257,7 +265,15 @@ describe('Generate Command - webhook surface', () => {
     const { generateCommand } = await import('./generate.js');
 
     await compileCommand(manifestPath, {});
-    await generateCommand(irPath, { projection: 'nextjs', surface: 'webhook', output: tempDir, auth: '', database: '', runtime: '', response: '' });
+    await generateCommand(irPath, {
+      projection: 'nextjs',
+      surface: 'webhook',
+      output: tempDir,
+      auth: '',
+      database: '',
+      runtime: '',
+      response: '',
+    });
 
     const files = (await findGeneratedFiles(tempDir)).map((f) => f.replace(/\\/g, '/'));
     // appDir default 'app/api' → app root 'app'; served at /webhooks/stripe.
@@ -280,7 +296,15 @@ describe('Generate Command - webhook surface', () => {
     const { generateCommand } = await import('./generate.js');
 
     await compileCommand(manifestPath, {});
-    await generateCommand(irPath, { projection: 'nextjs', surface: 'webhook', output: tempDir, auth: '', database: '', runtime: '', response: '' });
+    await generateCommand(irPath, {
+      projection: 'nextjs',
+      surface: 'webhook',
+      output: tempDir,
+      auth: '',
+      database: '',
+      runtime: '',
+      response: '',
+    });
 
     const files = (await findGeneratedFiles(tempDir)).map((f) => f.replace(/\\/g, '/'));
     // No webhooks → the webhook surface writes no route files.
@@ -302,7 +326,15 @@ describe('Generate Command - --check drift mode', () => {
 
     // Produce IR, then generate the types surface for real.
     await compileCommand(manifestPath, {});
-    await generateCommand(irPath, { projection: 'nextjs', surface: 'types', output: tempDir, auth: '', database: '', runtime: '', response: '' });
+    await generateCommand(irPath, {
+      projection: 'nextjs',
+      surface: 'types',
+      output: tempDir,
+      auth: '',
+      database: '',
+      runtime: '',
+      response: '',
+    });
 
     const files = await findGeneratedFiles(tempDir);
     expect(files.length).toBeGreaterThan(0);

@@ -126,8 +126,7 @@ function normalizeOptions(opts: SvelteKitProjectionOptions = {}, ir?: IR): Norma
     validationImportPath: opts.validationImportPath,
     routesDir: opts.routesDir ?? SVELTEKIT_DEFAULTS.routesDir,
     includeTenantFilter:
-      opts.includeTenantFilter ??
-      (ir?.tenant ? true : SVELTEKIT_DEFAULTS.includeTenantFilter),
+      opts.includeTenantFilter ?? (ir?.tenant ? true : SVELTEKIT_DEFAULTS.includeTenantFilter),
     includeSoftDeleteFilter:
       opts.includeSoftDeleteFilter ?? SVELTEKIT_DEFAULTS.includeSoftDeleteFilter,
     tenantIdProperty:

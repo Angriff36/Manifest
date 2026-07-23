@@ -592,9 +592,7 @@ export class ZodProjection implements ProjectionTarget {
       // Entity-qualified path — bare `schemas/${command.name}.schema.ts` collides
       // when many entities share cancel/create/… Prefer zod.schemas bundle instead.
       const entityPart = command.entity ? `${command.entity}_` : '';
-      const owner = command.entity
-        ? ir.entities.find((e) => e.name === command.entity)
-        : undefined;
+      const owner = command.entity ? ir.entities.find((e) => e.name === command.entity) : undefined;
       artifacts.push({
         id: `zod.command.${entityPart}${command.name}`,
         pathHint: zodCommandSchemaPathHint({

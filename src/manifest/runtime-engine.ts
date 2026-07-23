@@ -5773,10 +5773,7 @@ export class RuntimeEngine {
         case 'member': {
           const obj = await this.evaluateExpression(expr.object, context);
           // `.length` on string/array is sugar for length(v) (Appendix E).
-          if (
-            expr.property === 'length' &&
-            (typeof obj === 'string' || Array.isArray(obj))
-          ) {
+          if (expr.property === 'length' && (typeof obj === 'string' || Array.isArray(obj))) {
             return obj.length;
           }
           if (obj && typeof obj === 'object') {

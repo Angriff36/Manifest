@@ -27,9 +27,7 @@ function byteLength(content: string | Buffer | Uint8Array): number {
 }
 
 export function logWouldWrite(absPath: string, bytes: number, cwd: string = process.cwd()): void {
-  console.log(
-    chalk.cyan(`dry-run: would write ${displayPath(absPath, cwd)} (${bytes} bytes)`),
-  );
+  console.log(chalk.cyan(`dry-run: would write ${displayPath(absPath, cwd)} (${bytes} bytes)`));
 }
 
 export function logWouldMkdir(absPath: string, cwd: string = process.cwd()): void {
@@ -41,19 +39,13 @@ export function logWouldApply(summary: string): void {
 }
 
 /** Reject combining --dry-run with --check (different jobs). */
-export function assertDryRunCheckExclusive(options: {
-  dryRun?: boolean;
-  check?: boolean;
-}): void {
+export function assertDryRunCheckExclusive(options: { dryRun?: boolean; check?: boolean }): void {
   if (options.dryRun && options.check) {
     throw new Error('Cannot combine --dry-run with --check (different jobs). Use one.');
   }
 }
 
-export async function ensureDir(
-  dirPath: string,
-  options: DryRunWriteOptions = {},
-): Promise<void> {
+export async function ensureDir(dirPath: string, options: DryRunWriteOptions = {}): Promise<void> {
   const cwd = options.cwd ?? process.cwd();
   const abs = path.resolve(cwd, dirPath);
   if (options.dryRun) {

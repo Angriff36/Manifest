@@ -5,11 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { IRCompiler } from './ir-compiler.js';
 import type { IR } from './ir.js';
-import {
-  RuntimeEngine,
-  type CommandResult,
-  type IdempotencyStore,
-} from './runtime-engine.js';
+import { RuntimeEngine, type CommandResult, type IdempotencyStore } from './runtime-engine.js';
 
 async function compileTodoCreate(): Promise<IR> {
   const compiler = new IRCompiler();

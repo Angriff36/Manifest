@@ -250,15 +250,7 @@ function walkExpression(
             const walkBoundLambda = (lambda: IRExpression | undefined): void => {
               if (lambda?.kind !== 'lambda' || !lambda.params[0] || !elementEntity) return;
               nextBindings.set(lambda.params[0], elementEntity);
-              walkExpression(
-                lambda.body,
-                rootEntity,
-                nextBindings,
-                hopPrefix,
-                ir,
-                options,
-                tree,
-              );
+              walkExpression(lambda.body, rootEntity, nextBindings, hopPrefix, ir, options, tree);
             };
             for (const wrapperLambda of peeled.wrapperLambdas) {
               walkBoundLambda(wrapperLambda);

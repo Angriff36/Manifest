@@ -69,11 +69,7 @@ describe('applyRuntimeConfigToProjectionOptions', () => {
 
   it('sets nextjs dispatcher.executionMode when unset', () => {
     const bag: Record<string, unknown> = {};
-    applyRuntimeConfigToProjectionOptions(
-      { executionMode: 'externalExecutor' },
-      'nextjs',
-      bag,
-    );
+    applyRuntimeConfigToProjectionOptions({ executionMode: 'externalExecutor' }, 'nextjs', bag);
     expect(bag.dispatcher).toEqual({ executionMode: 'externalExecutor' });
   });
 
@@ -81,11 +77,7 @@ describe('applyRuntimeConfigToProjectionOptions', () => {
     const bag: Record<string, unknown> = {
       dispatcher: { executionMode: 'inline', enabled: true },
     };
-    applyRuntimeConfigToProjectionOptions(
-      { executionMode: 'externalExecutor' },
-      'nextjs',
-      bag,
-    );
+    applyRuntimeConfigToProjectionOptions({ executionMode: 'externalExecutor' }, 'nextjs', bag);
     expect(bag.dispatcher).toEqual({ executionMode: 'inline', enabled: true });
   });
 

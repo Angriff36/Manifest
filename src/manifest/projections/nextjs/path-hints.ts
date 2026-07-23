@@ -14,7 +14,5 @@ export function nextjsSubscriptionHookPathHint(args: {
 }): string {
   const file = `use${args.entityName}Subscription.ts`;
   const mod = moduleDirSegment(args.module);
-  return mod
-    ? `${args.hooksDir}/${mod}/${file}`
-    : `${args.hooksDir}/${file}`;
+  return mod ? `${args.hooksDir}/${mod}/${file}` : `${args.hooksDir}/${file}`;
 }
