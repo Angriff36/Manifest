@@ -13,7 +13,7 @@
 import type { IR, IRComputedProperty, IREntity, IRExpression } from '../../ir';
 import type { ProjectionDiagnostic } from '../interface';
 import { planAndRenderAggregateHydration } from './aggregate-hydrate.js';
-import { codeUsesDocType, resolveHasManyDocElementType } from './count-of-preload.js';
+import { codeUsesDocType, resolveHasManyLambdaParamType } from './count-of-preload.js';
 import { renderExpression, type RenderScope } from './expression.js';
 import type { NormalizedOptions } from './generator.js';
 import { isPersistentEntity } from './persist.js';
@@ -43,8 +43,8 @@ export function generateComputedHelpers(ir: IR, options: NormalizedOptions): Com
 
     const scope: RenderScope = {
       selfVar: 'doc',
-      resolveCollectionElementType: (collection) =>
-        resolveHasManyDocElementType(entity, collection, options),
+      resolveCollectionElementType: (collection, callback) =>
+        resolveHasManyLambdaParamType(ir, entity, collection, callback, options),
     };
     const fields: { name: string; code: string }[] = [];
     for (const cp of entity.computedProperties) {
@@ -133,6 +133,7 @@ export function renderEntityComputedHydration(
  * Returns empty when strategy is not inline or no fields resolve.
  */
 export function renderInlineComputedFields(
+  ir: IR,
   entity: IREntity,
   docVar: string,
   options?: NormalizedOptions,
@@ -142,7 +143,8 @@ export function renderInlineComputedFields(
   const scope: RenderScope = {
     selfVar: docVar,
     resolveCollectionElementType: options
-      ? (collection) => resolveHasManyDocElementType(entity, collection, options)
+      ? (collection, callback) =>
+          resolveHasManyLambdaParamType(ir, entity, collection, callback, options)
       : undefined,
   };
   for (const cp of entity.computedProperties) {

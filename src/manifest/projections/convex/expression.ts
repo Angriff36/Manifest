@@ -66,7 +66,10 @@ export interface RenderScope {
    * → `Doc<"prepTasks">`) so `count_of` predicates get a named document type
    * when IR + table naming make that safe.
    */
-  resolveCollectionElementType?: (collection: IRExpression) => string | undefined;
+  resolveCollectionElementType?: (
+    collection: IRExpression,
+    callback?: IRExpression,
+  ) => string | undefined;
 }
 
 /** Smallest explicit doc-shaped type used when no named Doc<> is available. */
@@ -155,6 +158,8 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
   /** Stack of element types for nested `count_of`/aggregate lambda bodies. */
   const lambdaParamTypeStack: string[] = [];
   const fallbackLambdaType = scope.lambdaParamType ?? DEFAULT_LAMBDA_PARAM_TYPE;
+  const resolveLambdaParamType = (collection: IRExpression, callback: IRExpression): string =>
+    scope.resolveCollectionElementType?.(collection, callback) ?? fallbackLambdaType;
 
   const go = (e: IRExpression | undefined): string => {
     if (!e) {
@@ -264,8 +269,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
           if (callee === 'count_of') {
             if (e.args.length === 1) return `((${collCode}) ?? []).length`;
             const predicate = e.args[1]!;
-            const elementType =
-              scope.resolveCollectionElementType?.(collection) ?? fallbackLambdaType;
+            const elementType = resolveLambdaParamType(collection, predicate);
             lambdaParamTypeStack.push(elementType);
             const predCode = go(predicate);
             lambdaParamTypeStack.pop();
@@ -276,8 +280,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
               return `((${collCode}) ?? []).reduce((acc: number, v: unknown) => acc + (typeof v === "number" ? v : 0), 0)`;
             }
             const mapper = e.args[1]!;
-            const elementType =
-              scope.resolveCollectionElementType?.(collection) ?? fallbackLambdaType;
+            const elementType = resolveLambdaParamType(collection, mapper);
             lambdaParamTypeStack.push(elementType);
             const mapCode = go(mapper);
             lambdaParamTypeStack.pop();
@@ -289,8 +292,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
               valuesExpr = `((${collCode}) ?? []).filter((v: unknown): v is number => typeof v === "number")`;
             } else {
               const mapper = e.args[1]!;
-              const elementType =
-                scope.resolveCollectionElementType?.(collection) ?? fallbackLambdaType;
+              const elementType = resolveLambdaParamType(collection, mapper);
               lambdaParamTypeStack.push(elementType);
               const mapCode = go(mapper);
               lambdaParamTypeStack.pop();
@@ -315,8 +317,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
               return `((${collCode}) ?? [])`;
             }
             const predicate = e.args[1]!;
-            const elementType =
-              scope.resolveCollectionElementType?.(collection) ?? fallbackLambdaType;
+            const elementType = resolveLambdaParamType(collection, predicate);
             lambdaParamTypeStack.push(elementType);
             const predCode = go(predicate);
             lambdaParamTypeStack.pop();
@@ -328,8 +329,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
               return `((${collCode}) ?? [])`;
             }
             const mapper = e.args[1]!;
-            const elementType =
-              scope.resolveCollectionElementType?.(collection) ?? fallbackLambdaType;
+            const elementType = resolveLambdaParamType(collection, mapper);
             lambdaParamTypeStack.push(elementType);
             const mapCode = go(mapper);
             lambdaParamTypeStack.pop();

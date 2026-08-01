@@ -196,4 +196,128 @@ describe('convex lambda param typing — Event.isReadyForExecution / beginExecut
       expect(code).not.toMatch(/\.filter\(\([tpd]\)\s*=>/);
     }
   });
+
+  it('uses the hydrated row shape when count_of and sum lambdas traverse belongsTo', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity(
+        'Board',
+        [prop('status', 'string', ['required'])],
+        [{ name: 'tasks', kind: 'hasMany', target: 'Task' }],
+      ),
+      entity(
+        'Task',
+        [
+          prop('boardId', 'string', ['required']),
+          prop('predecessorTaskId', 'string'),
+          prop('status', 'string', ['required']),
+          prop('effort', 'number', ['required']),
+        ],
+        [
+          {
+            name: 'board',
+            kind: 'belongsTo',
+            target: 'Board',
+            foreignKey: { fields: ['boardId'], references: ['id'] },
+          },
+          {
+            name: 'predecessorTask',
+            kind: 'belongsTo',
+            target: 'Task',
+            foreignKey: { fields: ['predecessorTaskId'], references: ['id'] },
+          },
+        ],
+      ),
+    ];
+    ir.stores = ['Board', 'Task'].map((storedEntity): IRStore => ({
+      entity: storedEntity,
+      target: 'durable',
+      config: {},
+    }));
+    const tasks: IRExpression = {
+      kind: 'member',
+      object: { kind: 'identifier', name: 'self' },
+      property: 'tasks',
+    };
+    const predecessorStatus: IRExpression = {
+      kind: 'member',
+      object: {
+        kind: 'member',
+        object: { kind: 'identifier', name: 'line' },
+        property: 'predecessorTask',
+      },
+      property: 'status',
+    };
+    const predecessorEffort: IRExpression = {
+      kind: 'member',
+      object: {
+        kind: 'member',
+        object: { kind: 'identifier', name: 'line' },
+        property: 'predecessorTask',
+      },
+      property: 'effort',
+    };
+    ir.commands = [
+      {
+        name: 'start',
+        entity: 'Board',
+        parameters: [],
+        guards: [
+          {
+            kind: 'binary',
+            operator: '==',
+            left: {
+              kind: 'call',
+              callee: { kind: 'identifier', name: 'count_of' },
+              args: [
+                tasks,
+                {
+                  kind: 'lambda',
+                  params: ['line'],
+                  body: {
+                    kind: 'binary',
+                    operator: '!=',
+                    left: predecessorStatus,
+                    right: { kind: 'literal', value: { kind: 'string', value: 'done' } },
+                  },
+                },
+              ],
+            },
+            right: { kind: 'literal', value: { kind: 'number', value: 0 } },
+          },
+          {
+            kind: 'binary',
+            operator: '>=',
+            left: {
+              kind: 'call',
+              callee: { kind: 'identifier', name: 'sum' },
+              args: [tasks, { kind: 'lambda', params: ['line'], body: predecessorEffort }],
+            },
+            right: { kind: 'literal', value: { kind: 'number', value: 0 } },
+          },
+        ],
+        actions: [
+          {
+            kind: 'mutate',
+            target: 'status',
+            expression: { kind: 'literal', value: { kind: 'string', value: 'started' } },
+          },
+        ],
+        emits: [],
+      },
+    ];
+
+    const generated = new ConvexProjection().generate(ir, { surface: 'convex.mutations' });
+    const code = generated.artifacts[0]!.code;
+
+    expect(generated.diagnostics.filter((d) => d.code === 'CONVEX_UNRESOLVED_GUARD')).toEqual([]);
+    expect(code).toContain('.predecessorTask = __fk != null ? await ctx.db.get');
+    // Each guard renders in the public mutation and the reaction runner, so the
+    // lambda appears once per surface; the invariant is that EVERY occurrence
+    // uses the hydrated shape (no Doc<"tasks"> param remains).
+    expect(code.match(/\(line: Record<string, any>\)/g)!.length).toBeGreaterThanOrEqual(2);
+    expect(code).not.toContain('(line: Doc<"tasks">)');
+    expect(code).toContain('line.predecessorTask.status');
+    expect(code).toContain('line.predecessorTask.effort');
+  });
 });
