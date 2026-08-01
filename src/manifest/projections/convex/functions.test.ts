@@ -1129,6 +1129,56 @@ describe('convex.mutations — governance', () => {
     expect(code).toContain('if (!((doc.status === ""))) throw new Error("status must be empty")');
   });
 
+  it('maps self.id to doc._id across instance-command checks, computes, and mutates', () => {
+    const ir = govIR();
+    const selfId = {
+      kind: 'member' as const,
+      object: { kind: 'identifier' as const, name: 'self' },
+      property: 'id',
+    };
+    const identityCheck = (operator: string, value: string) => ({
+      kind: 'binary' as const,
+      operator,
+      left: selfId,
+      right: { kind: 'literal' as const, value: { kind: 'string' as const, value } },
+    });
+
+    ir.policies[0].expression = identityCheck('!=', 'policy-blocked');
+    ir.commands[0].guards = [identityCheck('!=', 'guard-blocked')];
+    ir.commands[0].constraints = [
+      {
+        name: 'notConstraintBlocked',
+        code: 'notConstraintBlocked',
+        expression: identityCheck('==', 'constraint-blocked'),
+        failWhen: true,
+        message: 'constraint blocked',
+      },
+    ];
+    ir.entities[0].properties.push(prop('computedId', 'string'), prop('copiedId', 'string'));
+    ir.commands[0].actions = [
+      { kind: 'compute', target: 'resolvedId', expression: selfId },
+      {
+        kind: 'mutate',
+        target: 'computedId',
+        expression: { kind: 'identifier', name: 'resolvedId' },
+      },
+      { kind: 'mutate', target: 'copiedId', expression: selfId },
+    ];
+
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.mutations',
+      options: { authContextImport: './lib/authContext' },
+    }).artifacts[0].code;
+
+    expect(code).toContain('if (!((doc._id !== "policy-blocked")))');
+    expect(code).toContain('if (!((doc._id !== "guard-blocked")))');
+    expect(code).toContain('if ((doc._id === "constraint-blocked"))');
+    expect(code).toContain('const resolvedId = doc._id;');
+    expect(code).toContain('computedId: resolvedId');
+    expect(code).toContain('copiedId: doc._id');
+    expect(code).not.toContain('doc.id');
+  });
+
   it('fails CLOSED on an unresolvable guard (throws + diagnostic, never passes)', () => {
     const ir = govIR();
     // unknown builtin — fail-closed (bare lambdas now lower to arrows)

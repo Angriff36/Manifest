@@ -2175,6 +2175,7 @@ function generateMutation(
     checkSpecs,
     {
       selfVar: 'doc',
+      idExpr: 'doc._id',
       locals: paramNames,
       relationVars: relationHydration.relationVars,
       resolveCollectionElementType: (collection) =>
@@ -2188,6 +2189,7 @@ function generateMutation(
   // locals to mutate actions and emit payloads (semantics.md § Actions).
   const compute = renderCommandComputeBindings(cmd, {
     selfVar: 'doc',
+    idExpr: 'doc._id',
     locals: paramNames,
     relationVars: relationHydration.relationVars,
   });
@@ -2206,6 +2208,7 @@ function generateMutation(
     if (isConvexVersionManagedField(entity, a.target)) continue;
     const { code, unresolved } = renderActionValue(entity, a.target, a.expression, {
       selfVar: 'doc',
+      idExpr: 'doc._id',
       locals: actionLocals,
       relationVars: relationHydration.relationVars,
     });
