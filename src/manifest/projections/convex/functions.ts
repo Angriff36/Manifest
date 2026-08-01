@@ -496,8 +496,9 @@ function emitListByIndexQueries(
     const applyTenant = rf.hasTenant && !!rf.tenantProp;
     const tenantFieldInIndex = applyTenant && names.includes(rf.tenantProp!);
     const eqChain = spec.fields
-      .map((f) =>
-        `.eq("${f.name}", ${tenantFieldInIndex && f.name === rf.tenantProp ? '__tenant' : f.name})`,
+      .map(
+        (f) =>
+          `.eq("${f.name}", ${tenantFieldInIndex && f.name === rf.tenantProp ? '__tenant' : f.name})`,
       )
       .join('');
 
