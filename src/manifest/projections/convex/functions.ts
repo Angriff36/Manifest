@@ -291,6 +291,8 @@ interface QueryIndexField {
   name: string;
   /** Target table when the column is a convexId reference (→ `v.id(...)` arg). */
   fkTarget?: string;
+  /** Schema-equivalent validator for enum properties (including nullable unions). */
+  enumValidator?: string;
 }
 
 interface QueryIndexSpec {
@@ -314,9 +316,28 @@ function collectQueryIndexSpecs(ir: IR, entity: IREntity, options: Normalized): 
   const specs: QueryIndexSpec[] = [];
   const seenSingle = new Set<string>();
   const seenName = new Set<string>();
-  // convexId-only targets: present → arg typed `v.id(target)`; absent → `v.string()`.
+  // convexId-only targets: present → arg typed `v.id(target)`; enum properties
+  // reuse their schema validator; every other field remains `v.string()`.
   const fkTargets = collectFkTargets(entity, ir, options);
-  const mkField = (name: string): QueryIndexField => ({ name, fkTarget: fkTargets.get(name) });
+  const mkField = (name: string): QueryIndexField => {
+    const fkTarget = fkTargets.get(name);
+    if (fkTarget) return { name, fkTarget };
+
+    const property = entity.properties.find((candidate) => candidate.name === name);
+    if (!property) return { name };
+
+    const isArray =
+      (property.type.name === 'array' || property.type.name === 'list') && !!property.type.generic;
+    const effectiveTypeName = isArray ? property.type.generic!.name : property.type.name;
+    const typeOverrides = options.typeMappings[entity.name];
+    const hasOverride =
+      typeOverrides !== undefined && Object.prototype.hasOwnProperty.call(typeOverrides, name);
+    const usesEnumValidator = !hasOverride && ir.enums?.some((e) => e.name === effectiveTypeName);
+    if (!usesEnumValidator) return { name };
+
+    const { validator } = buildValidator(entity, property, ir, options, undefined);
+    return { name, enumValidator: validator };
+  };
 
   const addSingle = (field: string, indexName: string): void => {
     if (field === 'id' || seenSingle.has(field)) return;
@@ -490,7 +511,10 @@ function emitListByIndexQueries(
     const names = spec.fields.map((f) => f.name);
     const suffix = spec.fields.map((f) => capWord(f.name)).join('And');
     const argList = spec.fields
-      .map((f) => `${f.name}: ${f.fkTarget ? `v.id("${f.fkTarget}")` : 'v.string()'}`)
+      .map(
+        (f) =>
+          `${f.name}: ${f.fkTarget ? `v.id("${f.fkTarget}")` : (f.enumValidator ?? 'v.string()')}`,
+      )
       .join(', ');
     const destructure = `{ ${names.join(', ')} }`;
     const applyTenant = rf.hasTenant && !!rf.tenantProp;

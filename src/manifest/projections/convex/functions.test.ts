@@ -95,6 +95,42 @@ describe('convex.queries', () => {
     expect(code).toContain('.withIndex("by_customerId"');
   });
 
+  it('uses schema-equivalent literal unions for indexed enum query args', () => {
+    const ir = emptyIR();
+    ir.enums = [
+      {
+        name: 'OrderStatus',
+        values: [{ name: 'pending' }, { name: 'fulfilled' }, { name: 'cancelled' }],
+      },
+    ];
+    ir.entities = [
+      entity('Order', [
+        prop('status', 'OrderStatus', ['required', 'indexed']),
+        prop('previousStatus', 'OrderStatus', ['required', 'indexed'], true),
+        prop('sku', 'string', ['required', 'indexed']),
+      ]),
+    ];
+    ir.stores = [durable('Order')];
+
+    const schema = new ConvexProjection().generate(ir, { surface: 'convex.schema' }).artifacts[0]
+      .code;
+    const code = queries(ir).artifacts[0].code;
+    const enumValidator =
+      'v.union(v.literal("pending"), v.literal("fulfilled"), v.literal("cancelled"))';
+    const nullableEnumValidator =
+      'v.union(v.literal("pending"), v.literal("fulfilled"), v.literal("cancelled"), v.null())';
+
+    expect(schema).toContain(`status: ${enumValidator}`);
+    expect(code).toContain(`args: { status: ${enumValidator} }`);
+    expect(code).toContain('.withIndex("by_status", (q) => q.eq("status", status))');
+    expect(schema).toContain(`previousStatus: ${nullableEnumValidator}`);
+    expect(code).toContain(`args: { previousStatus: ${nullableEnumValidator} }`);
+    expect(code).toContain(
+      '.withIndex("by_previousStatus", (q) => q.eq("previousStatus", previousStatus))',
+    );
+    expect(code).toContain('args: { sku: v.string() }');
+  });
+
   it('emits listBy for a reference FK index in stringId mode (schema/query parity)', () => {
     // Regression: the schema surface emits `by_<fk>` for every belongsTo/ref
     // regardless of referenceMode, but the query surface used to derive FK
