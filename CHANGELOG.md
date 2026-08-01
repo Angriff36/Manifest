@@ -4,6 +4,15 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.45] - 2026-08-01
+
+### Changed
+
+- docs: regenerate FEATURE-LIST (was stale at 3.6.41 since the 3.6.42-3.6.44 releases; CI docs:check:feature-list gate)
+- style: prettier on functions.ts (CI format:check)
+- fix(convex): bind tenant-index reads to the authenticated tenant
+- chore(repo): ignore .artifacts scratch directory
+
 ## [3.6.44] - 2026-07-23
 
 ### Changed
