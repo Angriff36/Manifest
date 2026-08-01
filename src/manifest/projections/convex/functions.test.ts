@@ -205,6 +205,69 @@ describe('convex.queries', () => {
 });
 
 describe('convex.queries — tenant + soft-delete read filtering', () => {
+  it('binds tenant-index listBy reads to auth even without a read policy', () => {
+    const ir = emptyIR();
+    ir.tenant = {
+      property: 'tenantId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
+    const invoice = entity('Invoice', [
+      prop('tenantId', 'string', ['required']),
+      prop('id', 'string', ['required']),
+    ]);
+    invoice.key = ['tenantId', 'id'];
+    ir.entities = [invoice];
+    ir.stores = [durable('Invoice')];
+
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { authContextImport: './lib/authContext' },
+    }).artifacts[0].code;
+    const tenantIndexQuery = code.slice(
+      code.indexOf('export const listInvoiceByTenantId = query({'),
+    );
+
+    expect(tenantIndexQuery).toContain('args: { tenantId: v.string() }');
+    expect(tenantIndexQuery).toContain('handler: async (ctx, { tenantId }) => {');
+    expect(tenantIndexQuery).toContain(
+      'const __tenant = ((await getAuthContext(ctx)) as any).tenantId ?? null;',
+    );
+    expect(tenantIndexQuery).toContain('if (__tenant == null) return [];');
+    expect(tenantIndexQuery).toContain(
+      '.withIndex("by_tenantId", (q) => q.eq("tenantId", __tenant))',
+    );
+    expect(tenantIndexQuery).not.toContain('q.eq("tenantId", tenantId)');
+  });
+
+  it('keeps non-tenant args client-supplied in a tenant-scoped composite index', () => {
+    const ir = emptyIR();
+    ir.tenant = {
+      property: 'tenantId',
+      type: { name: 'string', nullable: false },
+      contextPath: 'context.tenantId',
+    };
+    ir.entities = [
+      entity('Invoice', [
+        prop('tenantId', 'string', ['required']),
+        prop('createdAt', 'datetime', ['required']),
+      ]),
+    ];
+    ir.stores = [durable('Invoice')];
+
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: {
+        authContextImport: './lib/authContext',
+        indexes: { Invoice: [['tenantId', 'createdAt']] },
+      },
+    }).artifacts[0].code;
+
+    expect(code).toContain('args: { tenantId: v.string(), createdAt: v.string() }');
+    expect(code).toContain('q.eq("tenantId", __tenant).eq("createdAt", createdAt)');
+    expect(code).not.toContain('q.eq("tenantId", tenantId).eq("createdAt", createdAt)');
+  });
+
   it('scopes list/get to the auth tenant and excludes soft-deleted rows (field-aware, default on)', () => {
     const ir = emptyIR();
     ir.tenant = {

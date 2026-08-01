@@ -493,8 +493,13 @@ function emitListByIndexQueries(
       .map((f) => `${f.name}: ${f.fkTarget ? `v.id("${f.fkTarget}")` : 'v.string()'}`)
       .join(', ');
     const destructure = `{ ${names.join(', ')} }`;
-    const eqChain = spec.fields.map((f) => `.eq("${f.name}", ${f.name})`).join('');
-    const applyTenant = rf.hasTenant && !!rf.tenantProp && !names.includes(rf.tenantProp);
+    const applyTenant = rf.hasTenant && !!rf.tenantProp;
+    const tenantFieldInIndex = applyTenant && names.includes(rf.tenantProp!);
+    const eqChain = spec.fields
+      .map((f) =>
+        `.eq("${f.name}", ${tenantFieldInIndex && f.name === rf.tenantProp ? '__tenant' : f.name})`,
+      )
+      .join('');
 
     if (!applyTenant && !rf.hasSoftDelete) {
       const bodyLines = [
@@ -514,11 +519,14 @@ function emitListByIndexQueries(
     }
 
     const lines: string[] = [...policyPrelude('[]')];
-    if (applyTenant) lines.push(tenantBindingLine(options, rf.tenantProp!));
+    if (applyTenant) {
+      lines.push(tenantBindingLine(options, rf.tenantProp!));
+      lines.push(`    if (__tenant == null) return [];`);
+    }
     lines.push(
       `    let rows = await ctx.db.query("${table}").withIndex("${spec.indexName}", (q) => q${eqChain}).collect();`,
     );
-    if (applyTenant) {
+    if (applyTenant && !tenantFieldInIndex) {
       lines.push(`    rows = rows.filter((d) => (d as any).${rf.tenantProp} === __tenant);`);
     }
     if (rf.hasSoftDelete) {
