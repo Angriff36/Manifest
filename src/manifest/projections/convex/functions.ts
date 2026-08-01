@@ -41,7 +41,7 @@ import { planAndRenderAggregateHydration } from './aggregate-hydrate.js';
 import {
   codeUsesDocType,
   collectCountOfHasManyRels,
-  resolveHasManyDocElementType,
+  resolveHasManyLambdaParamType,
 } from './count-of-preload.js';
 import { renderEntityComputedHydration, renderInlineComputedFields } from './computed.js';
 import {
@@ -577,7 +577,7 @@ export function generateQueries(
     const inlineComputed =
       options.computedProperties === 'inline'
         ? // Cast self so relation/computed reads typecheck after hydrate (docs are not on Doc<>).
-          renderInlineComputedFields(entity, '(__row as any)', options)
+          renderInlineComputedFields(ir, entity, '(__row as any)', options)
         : {
             fields: [] as { name: string; code: string }[],
             diagnostics: [] as ProjectionDiagnostic[],
@@ -1703,8 +1703,8 @@ function renderGovernedCreationEntry(
     selfVar: '__draft',
     locals: [...paramNames],
     relationVars: relationHydration.relationVars,
-    resolveCollectionElementType: (collection) =>
-      resolveHasManyDocElementType(entity, collection, options),
+    resolveCollectionElementType: (collection, callback) =>
+      resolveHasManyLambdaParamType(ir, entity, collection, callback, options),
   };
   const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), scope, {
     tenantProp: writeTenantProp,
@@ -1925,8 +1925,8 @@ function generateMutation(
     const scope: RenderScope = {
       selfVar: 'args',
       relationVars: relationHydration.relationVars,
-      resolveCollectionElementType: (collection) =>
-        resolveHasManyDocElementType(entity, collection, options),
+      resolveCollectionElementType: (collection, callback) =>
+        resolveHasManyLambdaParamType(ir, entity, collection, callback, options),
     };
     const argLines: string[] = [];
     const argNames = new Set<string>();
@@ -2177,8 +2177,8 @@ function generateMutation(
       selfVar: 'doc',
       locals: paramNames,
       relationVars: relationHydration.relationVars,
-      resolveCollectionElementType: (collection) =>
-        resolveHasManyDocElementType(entity, collection, options),
+      resolveCollectionElementType: (collection, callback) =>
+        resolveHasManyLambdaParamType(ir, entity, collection, callback, options),
     },
     { tenantProp: writeTenantProp },
   );

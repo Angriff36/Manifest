@@ -22,7 +22,7 @@ import {
   resolveBelongsToHydrateHop,
   type BelongsToHydrateHop,
 } from './belongs-to-hydrate.js';
-import { resolveHasManyDocElementType } from './count-of-preload.js';
+import { resolveHasManyLambdaParamType } from './count-of-preload.js';
 import { renderExpression } from './expression.js';
 import type { NormalizedOptions } from './generator.js';
 import { resolveConvexTableName } from './generator.js';
@@ -553,8 +553,8 @@ function renderComputedMaterialization(
   if (names.length === 0) return [];
   const scope = {
     selfVar: itemVar,
-    resolveCollectionElementType: (collection: IRExpression) =>
-      resolveHasManyDocElementType(entity, collection, options),
+    resolveCollectionElementType: (collection: IRExpression, callback?: IRExpression) =>
+      resolveHasManyLambdaParamType(ir, entity, collection, callback, options),
   };
   const lines: string[] = [];
   for (const name of names) {

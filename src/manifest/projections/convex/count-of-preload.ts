@@ -37,6 +37,86 @@ export function resolveHasManyDocElementType(
   return `Doc<${JSON.stringify(table)}>`;
 }
 
+function memberChainRootAndFirstProperty(
+  expression: IRExpression,
+): { root: string; firstProperty: string } | undefined {
+  const properties: string[] = [];
+  let current = expression;
+  while (current.kind === 'member') {
+    properties.unshift(current.property);
+    current = current.object;
+  }
+  if (current.kind !== 'identifier' || properties.length === 0) return undefined;
+  return { root: current.name, firstProperty: properties[0]! };
+}
+
+function lambdaTraversesRelation(lambda: IRExpression, target: IREntity): boolean {
+  if (lambda.kind !== 'lambda') return false;
+  const params = new Set(lambda.params);
+  const relationNames = new Set(target.relationships.map((relationship) => relationship.name));
+
+  const visit = (expression: IRExpression): boolean => {
+    if (expression.kind === 'member') {
+      const chain = memberChainRootAndFirstProperty(expression);
+      if (chain && params.has(chain.root) && relationNames.has(chain.firstProperty)) return true;
+    }
+    switch (expression.kind) {
+      case 'member':
+        return visit(expression.object);
+      case 'binary':
+        return visit(expression.left) || visit(expression.right);
+      case 'unary':
+        return visit(expression.operand);
+      case 'call':
+        return visit(expression.callee) || expression.args.some(visit);
+      case 'conditional':
+        return (
+          visit(expression.condition) || visit(expression.consequent) || visit(expression.alternate)
+        );
+      case 'array':
+        return expression.elements.some(visit);
+      case 'object':
+        return expression.properties.some((property) => visit(property.value));
+      case 'lambda':
+        return visit(expression.body);
+      default:
+        return false;
+    }
+  };
+
+  return visit(lambda.body);
+}
+
+/**
+ * Resolve a named Doc type only while the callback reads stored row fields.
+ * Aggregate hydration attaches relationships at runtime, so a callback that
+ * traverses one must use the renderer's doc-shaped fallback instead.
+ */
+export function resolveHasManyLambdaParamType(
+  ir: IR,
+  entity: IREntity,
+  collection: IRExpression,
+  callback: IRExpression | undefined,
+  options: NormalizedOptions,
+): string | undefined {
+  const docType = resolveHasManyDocElementType(entity, collection, options);
+  if (!docType || !callback) return docType;
+  if (
+    collection.kind !== 'member' ||
+    collection.object.kind !== 'identifier' ||
+    (collection.object.name !== 'self' && collection.object.name !== 'this')
+  ) {
+    return docType;
+  }
+  const relation = entity.relationships.find(
+    (candidate) => candidate.name === collection.property && candidate.kind === 'hasMany',
+  );
+  const target = relation?.target
+    ? ir.entities.find((candidate) => candidate.name === relation.target)
+    : undefined;
+  return target && lambdaTraversesRelation(callback, target) ? undefined : docType;
+}
+
 /** True when generated code references `Doc<"…">` and needs a dataModel import. */
 export function codeUsesDocType(code: string): boolean {
   return /\bDoc\s*</.test(code);
