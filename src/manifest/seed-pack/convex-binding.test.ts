@@ -124,9 +124,11 @@ describe('Convex seed binding', () => {
     expect(binding.entities[0]!.createMutation).toBe('Event_createViaOpen');
     expect(code).toContain('api.mutations.Event_createViaOpen');
     expect(code).not.toContain('"internalNote"');
-    expect(code).toContain("(import.meta as ImportMeta & { main?: boolean }).main === true");
+    expect(code).toContain('(import.meta as ImportMeta & { main?: boolean }).main === true');
     expect(code).toContain('const deploymentUrl = process.argv[2] || process.env.CONVEX_URL;');
-    expect(code).toContain('Usage: bun scripts/seed-convex.ts <deployment-url> (or set CONVEX_URL)');
+    expect(code).toContain(
+      'Usage: bun scripts/seed-convex.ts <deployment-url> (or set CONVEX_URL)',
+    );
     expect(code).toContain('process.exit(1);');
     expect(code).toContain('await seedConvex(deploymentUrl);');
     expect(code).toContain('Manifest Convex seed complete: ${rowsAttempted} rows attempted.');
