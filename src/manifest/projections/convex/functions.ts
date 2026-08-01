@@ -327,8 +327,7 @@ function collectQueryIndexSpecs(ir: IR, entity: IREntity, options: Normalized): 
     if (!property) return { name };
 
     const isArray =
-      (property.type.name === 'array' || property.type.name === 'list') &&
-      !!property.type.generic;
+      (property.type.name === 'array' || property.type.name === 'list') && !!property.type.generic;
     const effectiveTypeName = isArray ? property.type.generic!.name : property.type.name;
     const typeOverrides = options.typeMappings[entity.name];
     const hasOverride =
