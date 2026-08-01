@@ -131,6 +131,71 @@ describe('convex.http — HMAC signature verification', () => {
     expect(code).toContain('status: 401');
   });
 
+  it('emits Stripe timestamped-payload verification across every v1 candidate', () => {
+    const ir = emptyIR();
+    ir.webhooks = [
+      {
+        name: 'stripe',
+        path: '/webhooks/stripe',
+        method: 'POST',
+        command: 'record',
+        entity: 'Payment',
+        signature: {
+          algorithm: 'hmac-sha256',
+          header: 'Stripe-Signature',
+          secret: 'context.stripeWebhookSecret',
+          scheme: 'stripe',
+          toleranceSeconds: 120,
+        },
+      },
+    ] as IRWebhook[];
+
+    const code = gen(ir, 'convex.http').artifacts[0].code;
+    expect(code).toContain('const parts = provided.split(",");');
+    expect(code).toContain('if (key === "t")');
+    expect(code).toContain('else if (key === "v1")');
+    expect(code).toContain(
+      'Math.abs(Math.floor(Date.now() / 1000) - timestamp) > toleranceSeconds',
+    );
+    expect(code).toContain('const signedPayload = `${timestamp}.${rawBody}`;');
+    expect(code).toContain('for (const candidate of signatures)');
+    expect(code).toContain('await _verifyHmac(signedPayload, "hmac-sha256", secret, candidate)');
+    expect(code).toContain('_verifyStripeHmac(_rawBody, _secret, _sig, 120)');
+    expect(code).toContain(
+      'return new Response(JSON.stringify({ error: "Invalid webhook signature" }), { status: 401',
+    );
+  });
+
+  it('uses the Stripe tolerance default and leaves prefixed-hex emission byte-identical', () => {
+    const legacy = emptyIR();
+    legacy.webhooks = [
+      {
+        name: 'github',
+        path: '/webhooks/github',
+        command: 'push',
+        signature: {
+          algorithm: 'hmac-sha256',
+          header: 'X-Hub-Signature-256',
+          secret: 'context.githubSecret',
+        },
+      },
+    ] as IRWebhook[];
+    const explicitPrefixed = structuredClone(legacy);
+    explicitPrefixed.webhooks![0].signature!.scheme = 'prefixed-hex';
+    expect(gen(explicitPrefixed, 'convex.http').artifacts[0].code).toBe(
+      gen(legacy, 'convex.http').artifacts[0].code,
+    );
+
+    const stripe = structuredClone(legacy);
+    stripe.webhooks![0].signature = {
+      ...stripe.webhooks![0].signature!,
+      scheme: 'stripe',
+    };
+    expect(gen(stripe, 'convex.http').artifacts[0].code).toContain(
+      '_verifyStripeHmac(_rawBody, _secret, _sig, 300)',
+    );
+  });
+
   it('emits SHA-512 hash algo for hmac-sha512', () => {
     const ir = emptyIR();
     ir.webhooks = [

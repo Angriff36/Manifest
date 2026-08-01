@@ -634,6 +634,10 @@ export interface WebhookSignatureNode extends ASTNode {
   header: string;
   /** Context path to the shared secret (e.g. "context.webhookSecret") */
   secret: string;
+  /** Signature header/payload convention. Omitted for the legacy prefixed-hex behavior. */
+  scheme?: 'prefixed-hex' | 'stripe';
+  /** Stripe signature timestamp tolerance in seconds. */
+  toleranceSeconds?: number;
 }
 
 export interface WebhookNode extends ASTNode {

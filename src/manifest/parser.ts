@@ -1824,7 +1824,7 @@ export class Parser {
   }
 
   /**
-   * Parses: { algorithm: "hmac-sha256", header: "X-Hub-Signature-256", secret: "context.secret" }
+   * Parses: { algorithm: "hmac-sha256", header: "X-Hub-Signature-256", secret: "context.secret", scheme: "prefixed-hex", tolerance: 300 }
    */
   private parseWebhookSignature(): WebhookSignatureNode {
     this.consume('PUNCTUATION', '{');
@@ -1833,6 +1833,8 @@ export class Parser {
     let algorithm: 'hmac-sha256' | 'hmac-sha512' | undefined;
     let header: string | undefined;
     let secret: string | undefined;
+    let scheme: 'prefixed-hex' | 'stripe' | undefined;
+    let toleranceSeconds: number | undefined;
 
     while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
       this.skipNL();
@@ -1863,6 +1865,26 @@ export class Parser {
           throw new Error(`Expected string secret path in signature block`);
         }
         secret = this.advance().value;
+      } else if (field === 'scheme') {
+        if (!this.check('STRING')) {
+          throw new Error(`Expected string scheme in signature block`);
+        }
+        const value = this.advance().value;
+        if (value === 'prefixed-hex' || value === 'stripe') {
+          scheme = value;
+        } else {
+          throw new Error(
+            `Unsupported signature scheme '${value}'. Supported: prefixed-hex, stripe`,
+          );
+        }
+      } else if (field === 'tolerance') {
+        if (!this.check('NUMBER')) {
+          throw new Error(`Expected numeric tolerance in signature block`);
+        }
+        toleranceSeconds = parseFloat(this.advance().value);
+        if (!Number.isFinite(toleranceSeconds) || toleranceSeconds < 0) {
+          throw new Error(`Signature tolerance must be a non-negative number of seconds`);
+        }
       } else {
         // Skip unknown field
         this.parseExpr();
@@ -1876,7 +1898,21 @@ export class Parser {
       throw new Error(`Signature block requires algorithm, header, and secret fields`);
     }
 
-    return { type: 'WebhookSignature', algorithm, header, secret };
+    if (toleranceSeconds !== undefined && scheme !== 'stripe') {
+      throw new Error(`Signature tolerance is only supported with the stripe scheme`);
+    }
+    if (scheme === 'stripe' && algorithm !== 'hmac-sha256') {
+      throw new Error(`The stripe signature scheme requires hmac-sha256`);
+    }
+
+    return {
+      type: 'WebhookSignature',
+      algorithm,
+      header,
+      secret,
+      ...(scheme ? { scheme } : {}),
+      ...(toleranceSeconds !== undefined ? { toleranceSeconds } : {}),
+    };
   }
 
   /**

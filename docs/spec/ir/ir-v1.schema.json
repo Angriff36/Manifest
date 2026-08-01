@@ -2027,6 +2027,16 @@
         "secret": {
           "type": "string",
           "description": "Context path to extract the shared secret at runtime (e.g. \"context.webhookSecret\")"
+        },
+        "scheme": {
+          "type": "string",
+          "enum": ["prefixed-hex", "stripe"],
+          "description": "Signature header and signed-payload scheme. Defaults to prefixed-hex when absent."
+        },
+        "toleranceSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum Stripe signature timestamp age in seconds. Stripe only; defaults to 300 when absent."
         }
       }
     },
