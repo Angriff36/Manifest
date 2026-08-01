@@ -6,7 +6,7 @@
 > This document proves that a capability is registered or has executable evidence; it does **not** independently prove completion.
 > Completion status is governed by [`docs/platform/FEATURE_MATRIX.md`](platform/FEATURE_MATRIX.md). Language meaning is governed by `docs/spec/**`.
 
-Package version: `3.6.41`
+Package version: `3.6.44`
 
 Generated sources:
 
