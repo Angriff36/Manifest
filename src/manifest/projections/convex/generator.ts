@@ -260,6 +260,27 @@ export function buildValidator(
   return { validator, diagnostics };
 }
 
+/**
+ * Build the validator for a persisted Convex field. Encrypted properties are
+ * stored as the versioned JSON ciphertext envelope emitted by `__encryptDoc`,
+ * so their storage representation is always a string even when callers and
+ * Manifest evaluation use a different declared scalar type.
+ */
+function buildSchemaValidator(
+  entity: IREntity,
+  prop: IRProperty,
+  ir: IR,
+  options: NormalizedOptions,
+  fkTargetTable: string | undefined,
+): { validator: string | undefined; diagnostics: ProjectionDiagnostic[] } {
+  if (prop.modifiers.includes('encrypted')) {
+    const validator = prop.type.nullable ? 'v.union(v.string(), v.null())' : 'v.string()';
+    return { validator, diagnostics: [] };
+  }
+
+  return buildValidator(entity, prop, ir, options, fkTargetTable);
+}
+
 function emitPropertyField(
   entity: IREntity,
   prop: IRProperty,
@@ -267,7 +288,7 @@ function emitPropertyField(
   options: NormalizedOptions,
   fkTargetTable: string | undefined,
 ): FieldEmission {
-  const { validator, diagnostics } = buildValidator(entity, prop, ir, options, fkTargetTable);
+  const { validator, diagnostics } = buildSchemaValidator(entity, prop, ir, options, fkTargetTable);
   if (!validator) return { line: null, diagnostics };
 
   const required = prop.modifiers.includes('required');

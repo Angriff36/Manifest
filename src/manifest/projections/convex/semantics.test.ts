@@ -220,6 +220,46 @@ describe('M3 — private strip + encrypted diagnostic', () => {
     expect(mutations.artifacts[0].code).toContain('ctx.db.patch(docId, __storedUpdates as any)');
   });
 
+  it('stores encrypted numerics as strings while keeping command args numeric', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Payroll', [
+        prop('grossAmount', 'money', ['required', 'encrypted']),
+        prop('overtimeRate', 'int', ['required', 'encrypted'], {
+          type: { name: 'int', nullable: true },
+        }),
+      ]),
+    ];
+    ir.stores = [durable('Payroll')];
+    ir.commands = [
+      {
+        name: 'create',
+        entity: 'Payroll',
+        parameters: [],
+        guards: [],
+        constraints: [],
+        actions: [],
+        emits: [],
+      },
+    ];
+    const options = { encryptionImport: './lib/encryption' };
+    const schema = gen(ir, 'convex.schema', options).artifacts[0].code;
+    const queries = gen(ir, 'convex.queries', options).artifacts[0].code;
+    const mutations = gen(ir, 'convex.mutations', options).artifacts[0].code;
+
+    expect(schema).toContain('grossAmount: v.string()');
+    expect(schema).toContain('overtimeRate: v.union(v.string(), v.null())');
+    expect(mutations).toContain('grossAmount: v.number()');
+    expect(mutations).toContain('overtimeRate: v.union(v.number(), v.null())');
+    expect(mutations).toContain(
+      'const __storedDoc = await __encryptDoc(ctx, "Payroll", ["grossAmount","overtimeRate"], doc);',
+    );
+    expect(queries).toContain('__decryptDoc(ctx, "Payroll", ["grossAmount","overtimeRate"], row)');
+    expect(queries).toContain(
+      'out[property] = await decrypt(envelope.ct, envelope.kid, { ctx, entity, property });',
+    );
+  });
+
   it('keeps byte-stable returns when entity has no private fields', () => {
     const ir = emptyIR();
     ir.entities = [entity('Item', [prop('sku', 'string', ['required'])])];
