@@ -170,6 +170,40 @@ const HMAC_HELPERS =
   `  return crypto.subtle.verify("HMAC", cryptoKey, sigBytes, new TextEncoder().encode(rawBody));\n` +
   `}`;
 
+const STRIPE_HMAC_HELPERS =
+  `/** Verify a Stripe t=...,v1=... signature header within its timestamp tolerance. */\n` +
+  `async function _verifyStripeHmac(\n` +
+  `  rawBody: string,\n` +
+  `  secret: string,\n` +
+  `  provided: string,\n` +
+  `  toleranceSeconds: number,\n` +
+  `): Promise<boolean> {\n` +
+  `  const parts = provided.split(",");\n` +
+  `  let timestamp: number | undefined;\n` +
+  `  const signatures: string[] = [];\n` +
+  `  for (const part of parts) {\n` +
+  `    const eq = part.indexOf("=");\n` +
+  `    if (eq <= 0) continue;\n` +
+  `    const key = part.slice(0, eq).trim();\n` +
+  `    const value = part.slice(eq + 1).trim();\n` +
+  `    if (key === "t") {\n` +
+  `      const parsed = Number(value);\n` +
+  `      if (!Number.isInteger(parsed) || parsed < 0) return false;\n` +
+  `      if (timestamp !== undefined && timestamp !== parsed) return false;\n` +
+  `      timestamp = parsed;\n` +
+  `    } else if (key === "v1") {\n` +
+  `      if (value) signatures.push(value);\n` +
+  `    }\n` +
+  `  }\n` +
+  `  if (timestamp === undefined || signatures.length === 0) return false;\n` +
+  `  if (Math.abs(Math.floor(Date.now() / 1000) - timestamp) > toleranceSeconds) return false;\n` +
+  '  const signedPayload = `${timestamp}.${rawBody}`;\n' +
+  `  for (const candidate of signatures) {\n` +
+  `    if (await _verifyHmac(signedPayload, "hmac-sha256", secret, candidate)) return true;\n` +
+  `  }\n` +
+  `  return false;\n` +
+  `}`;
+
 export function generateHttp(
   ir: IR,
   rawOptions: Record<string, unknown> | undefined,
@@ -179,6 +213,7 @@ export function generateHttp(
 
   const webhooks = (ir.webhooks ?? []) as IRWebhook[];
   const hasSignature = webhooks.some((w) => !!w.signature);
+  const hasStripeSignature = webhooks.some((w) => w.signature?.scheme === 'stripe');
   const hasIdempotency = webhooks.some((w) => !!w.idempotencyHeader);
 
   // --- Per-route code blocks ---
@@ -251,6 +286,7 @@ export function generateHttp(
     `${HEADER}\n${summary}\n\n` +
     `${importLines.join('\n')}\n` +
     (hasSignature ? `\n${HMAC_HELPERS}\n` : '') +
+    (hasStripeSignature ? `\n${STRIPE_HMAC_HELPERS}\n` : '') +
     (hasIdempotency ? `\n${idempotencyMutation}\n` : '') +
     `\nconst http = httpRouter();\n\n` +
     `${routes.join('\n\n')}${routes.length ? '\n\n' : ''}` +
@@ -280,6 +316,10 @@ function webhookSignatureLines(wh: IRWebhook): string[] {
   if (!wh.signature) return [];
   const sig = wh.signature;
   const envVar = secretToEnvVar(sig.secret);
+  const verifyCall =
+    sig.scheme === 'stripe'
+      ? `_verifyStripeHmac(_rawBody, _secret, _sig, ${sig.toleranceSeconds ?? 300})`
+      : `_verifyHmac(_rawBody, ${JSON.stringify(sig.algorithm)}, _secret, _sig)`;
   return [
     `    const _secret = process.env[${JSON.stringify(envVar)}];`,
     `    if (!_secret)`,
@@ -287,7 +327,7 @@ function webhookSignatureLines(wh: IRWebhook): string[] {
     `    const _sig = request.headers.get(${JSON.stringify(sig.header)});`,
     `    if (!_sig)`,
     `      return new Response(JSON.stringify({ error: "Missing signature header '${sig.header}'" }), { status: 401, headers: { "Content-Type": "application/json" } });`,
-    `    if (!(await _verifyHmac(_rawBody, ${JSON.stringify(sig.algorithm)}, _secret, _sig)))`,
+    `    if (!(await ${verifyCall}))`,
     `      return new Response(JSON.stringify({ error: "Invalid webhook signature" }), { status: 401, headers: { "Content-Type": "application/json" } });`,
   ];
 }

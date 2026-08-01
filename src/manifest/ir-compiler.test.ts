@@ -2094,6 +2094,44 @@ describe('IRCompiler', () => {
     });
   });
 
+  describe('Webhook signatures', () => {
+    it('compiles Stripe scheme/tolerance while preserving legacy signature defaults', async () => {
+      const result = await compileToIR(`
+        command receive() {}
+
+        webhook Legacy "/webhooks/legacy" run receive
+          signature {
+            algorithm: "hmac-sha256"
+            header: "X-Hub-Signature-256"
+            secret: "context.legacySecret"
+          }
+
+        webhook Stripe "/webhooks/stripe" run receive
+          signature {
+            algorithm: "hmac-sha256"
+            header: "Stripe-Signature"
+            secret: "context.stripeSecret"
+            scheme: "stripe"
+            tolerance: 120
+          }
+      `);
+
+      expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+      expect(result.ir?.webhooks?.[0]?.signature).toEqual({
+        algorithm: 'hmac-sha256',
+        header: 'X-Hub-Signature-256',
+        secret: 'context.legacySecret',
+      });
+      expect(result.ir?.webhooks?.[1]?.signature).toEqual({
+        algorithm: 'hmac-sha256',
+        header: 'Stripe-Signature',
+        secret: 'context.stripeSecret',
+        scheme: 'stripe',
+        toleranceSeconds: 120,
+      });
+    });
+  });
+
   describe('Scheduled Commands', () => {
     it('should compile cron schedule', async () => {
       const compiler = new IRCompiler();

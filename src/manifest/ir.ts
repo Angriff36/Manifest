@@ -430,6 +430,10 @@ export interface IRWebhookSignature {
   header: string;
   /** Context path to extract the shared secret at runtime (e.g. "context.webhookSecret") */
   secret: string;
+  /** Signature header/payload convention. Defaults to 'prefixed-hex' when absent. */
+  scheme?: 'prefixed-hex' | 'stripe';
+  /** Stripe signature timestamp tolerance in seconds. Defaults to 300 when absent. */
+  toleranceSeconds?: number;
 }
 
 export interface IRWebhookParam {

@@ -1433,6 +1433,10 @@ export class IRCompiler {
         algorithm: w.signature.algorithm,
         header: w.signature.header,
         secret: w.signature.secret,
+        ...(w.signature.scheme ? { scheme: w.signature.scheme } : {}),
+        ...(w.signature.toleranceSeconds !== undefined
+          ? { toleranceSeconds: w.signature.toleranceSeconds }
+          : {}),
       };
     }
 
