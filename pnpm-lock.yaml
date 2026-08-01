@@ -13,7 +13,7 @@ importers:
         version: 0.17.3
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
-        version: 1.29.0(zod@3.25.76)
+        version: 1.29.0(zod@4.4.3)
       '@msgpack/msgpack':
         specifier: ^3.1.3
         version: 3.1.3
@@ -72,8 +72,8 @@ importers:
         specifier: ^1.0.12
         version: 1.0.12
       zod:
-        specifier: ^3.25.76
-        version: 3.25.76
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@assemblyscript/loader':
         specifier: ^0.27.37
@@ -232,10 +232,10 @@ importers:
         version: link:../..
       '@modelcontextprotocol/sdk':
         specifier: ^1.12.0
-        version: 1.29.0(zod@3.25.76)
+        version: 1.29.0(zod@4.4.3)
       zod:
-        specifier: ^3.25.0
-        version: 3.25.76
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@types/node':
         specifier: latest
@@ -4289,8 +4289,8 @@ packages:
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+  zod@4.4.3:
+    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
 snapshots:
 
@@ -5058,7 +5058,7 @@ snapshots:
   '@libsql/win32-x64-msvc@0.5.29':
     optional: true
 
-  '@modelcontextprotocol/sdk@1.29.0(zod@3.25.76)':
+  '@modelcontextprotocol/sdk@1.29.0(zod@4.4.3)':
     dependencies:
       '@hono/node-server': 1.19.14(hono@4.12.23)
       ajv: 8.20.0
@@ -5075,8 +5075,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 3.25.76
-      zod-to-json-schema: 3.25.2(zod@3.25.76)
+      zod: 4.4.3
+      zod-to-json-schema: 3.25.2(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -6292,8 +6292,8 @@ snapshots:
       '@babel/parser': 7.29.0
       eslint: 9.39.5(jiti@2.7.0)
       hermes-parser: 0.25.1
-      zod: 3.25.76
-      zod-validation-error: 4.0.2(zod@3.25.76)
+      zod: 4.4.3
+      zod-validation-error: 4.0.2(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -8227,12 +8227,12 @@ snapshots:
 
   yoctocolors@2.1.2: {}
 
-  zod-to-json-schema@3.25.2(zod@3.25.76):
+  zod-to-json-schema@3.25.2(zod@4.4.3):
     dependencies:
-      zod: 3.25.76
+      zod: 4.4.3
 
-  zod-validation-error@4.0.2(zod@3.25.76):
+  zod-validation-error@4.0.2(zod@4.4.3):
     dependencies:
-      zod: 3.25.76
+      zod: 4.4.3
 
-  zod@3.25.76: {}
+  zod@4.4.3: {}
