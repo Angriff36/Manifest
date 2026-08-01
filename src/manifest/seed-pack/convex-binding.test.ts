@@ -78,6 +78,116 @@ describe('Convex seed binding', () => {
     expect(code).toContain('"Hello"');
   });
 
+  it('binds an initialization-only entity to createVia and emits a direct-run entrypoint', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Event')];
+    ir.entities[0]!.properties.push({
+      name: 'internalNote',
+      type: { name: 'string', nullable: true },
+      modifiers: [],
+    });
+    ir.stores = [{ entity: 'Event', target: 'durable', config: {} } satisfies IRStore];
+    ir.commands = [
+      {
+        entity: 'Event',
+        name: 'open',
+        parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }],
+        guards: [],
+        actions: [],
+        emits: [],
+        initialization: {
+          initializationInputs: ['title'],
+          authenticatedOwnershipFields: [],
+          declaredDefaults: [],
+          initialLifecycleState: [],
+          commandOwnedFields: ['title'],
+          draftFields: ['id', 'title'],
+          finalDocumentRequirements: ['title'],
+          dynamicGuardIndexes: [],
+          redundantGuardIndexes: [],
+        },
+      },
+    ];
+    const pack: SeedPack = {
+      meta: { packId: 'event-spine', version: '1', entities: ['Event'] },
+      tables: [
+        {
+          entity: 'Event',
+          columns: ['seedKey', 'title', 'internalNote'],
+          rows: [{ seedKey: 'event-1', title: 'Launch', internalNote: 'not a command parameter' }],
+        },
+      ],
+    };
+
+    const { binding, code } = generateConvexSeedScript(ir, pack);
+
+    expect(binding.entities[0]!.createMutation).toBe('Event_createViaOpen');
+    expect(code).toContain('api.mutations.Event_createViaOpen');
+    expect(code).not.toContain('"internalNote"');
+    expect(code).toContain("(import.meta as ImportMeta & { main?: boolean }).main === true");
+    expect(code).toContain('const deploymentUrl = process.argv[2] || process.env.CONVEX_URL;');
+    expect(code).toContain('Usage: bun scripts/seed-convex.ts <deployment-url> (or set CONVEX_URL)');
+    expect(code).toContain('process.exit(1);');
+    expect(code).toContain('await seedConvex(deploymentUrl);');
+    expect(code).toContain('Manifest Convex seed complete: ${rowsAttempted} rows attempted.');
+  });
+
+  it('chooses the first initialization command in IR order and documents the choice', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Event')];
+    ir.stores = [{ entity: 'Event', target: 'durable', config: {} } satisfies IRStore];
+    const initialization = {
+      initializationInputs: ['title'],
+      authenticatedOwnershipFields: [],
+      declaredDefaults: [],
+      initialLifecycleState: [],
+      commandOwnedFields: ['title'],
+      draftFields: ['id', 'title'],
+      finalDocumentRequirements: ['title'],
+      dynamicGuardIndexes: [],
+      redundantGuardIndexes: [],
+    };
+    ir.commands = ['open', 'import'].map((name) => ({
+      entity: 'Event',
+      name,
+      parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }],
+      guards: [],
+      actions: [],
+      emits: [],
+      initialization,
+    }));
+    const pack: SeedPack = {
+      meta: { packId: 'event-spine', version: '1', entities: ['Event'] },
+      tables: [
+        { entity: 'Event', columns: ['seedKey', 'title'], rows: [{ seedKey: 'e1', title: 'One' }] },
+      ],
+    };
+
+    const { binding, code } = generateConvexSeedScript(ir, pack);
+
+    expect(binding.entities[0]!.createMutation).toBe('Event_createViaOpen');
+    expect(code).toContain(
+      'Event has multiple initialization commands (open, import); using first in IR order: open.',
+    );
+  });
+
+  it('keeps a skip comment for a persistent entity with no creation command', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Task')];
+    ir.stores = [{ entity: 'Task', target: 'durable', config: {} } satisfies IRStore];
+    const pack: SeedPack = {
+      meta: { packId: 'demo', version: '1', entities: ['Task'] },
+      tables: [
+        { entity: 'Task', columns: ['seedKey', 'title'], rows: [{ seedKey: 't1', title: 'One' }] },
+      ],
+    };
+
+    const { binding, code } = generateConvexSeedScript(ir, pack);
+
+    expect(binding.entities[0]!.createMutation).toBeNull();
+    expect(code).toContain('skip Task: no creation command in IR (1 rows unused)');
+  });
+
   it('fills blank template cells and never emits empty mutation args', () => {
     const ir = emptyIR();
     ir.entities = [entity('Task')];
