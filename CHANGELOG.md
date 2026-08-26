@@ -4,6 +4,26 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.46] - 2026-08-26
+
+### Changed
+
+- fix(convex): truthful dispatcher discovery — OCC name, idempotency note, nullability
+- feat(convex): GET discovery routes on the /api/manifest/ dispatcher
+- feat(convex): stripe webhook signature scheme with timestamp tolerance
+- docs: regenerate FEATURE-LIST for 3.6.45 (stale since release; CI docs gate)
+- docs: regenerate FEATURE-LIST for 3.6.45 (stale since release; CI docs gate)
+- docs: regenerate FEATURE-LIST for 3.6.45 (stale since release; CI docs gate)
+- docs: regenerate FEATURE-LIST for 3.6.45 (stale since release; CI docs gate)
+- docs: regenerate FEATURE-LIST for 3.6.45 (stale since release; CI docs gate)
+- fix(convex): relation-traversing aggregate lambdas use the hydrated row shape
+- fix(convex): encrypted fields project as string envelopes in the schema
+- style: prettier
+- style: prettier
+- fix(seed-pack): Convex seed script gains a CLI entrypoint and createVia binding
+- fix(convex): indexed enum properties emit schema-matching by-index query args
+- fix(convex): project self.id as doc._id in instance-command scopes
+
 ## [3.6.45] - 2026-08-01
 
 ### Changed
