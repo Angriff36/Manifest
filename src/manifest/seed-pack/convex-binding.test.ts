@@ -134,7 +134,7 @@ describe('Convex seed binding', () => {
     expect(code).toContain('Manifest Convex seed complete: ${rowsAttempted} rows attempted.');
   });
 
-  it('chooses the first initialization command in IR order and documents the choice', () => {
+  it('binds the same initialization command the mutations projection selects', () => {
     const ir = emptyIR();
     ir.entities = [entity('Event')];
     ir.stores = [{ entity: 'Event', target: 'durable', config: {} } satisfies IRStore];
@@ -167,9 +167,11 @@ describe('Convex seed binding', () => {
 
     const { binding, code } = generateConvexSeedScript(ir, pack);
 
-    expect(binding.entities[0]!.createMutation).toBe('Event_createViaOpen');
+    // selectInitializationCommand tie-breaks alphabetically → `import`, matching
+    // the `Event_createViaImport` export the mutations projection emits.
+    expect(binding.entities[0]!.createMutation).toBe('Event_createViaImport');
     expect(code).toContain(
-      'Event has multiple initialization commands (open, import); using first in IR order: open.',
+      'Event has multiple initialization commands (open, import); using the selected initialization command: import.',
     );
   });
 

@@ -7,6 +7,7 @@
  */
 
 import type { IR, IRCommand } from '../ir.js';
+import { selectInitializationCommand } from '../initialization-plan.js';
 import { commandCreationExportName } from '../projections/convex/creation-entry.js';
 import type { SeedPack, SeedEntityTable, SeedRow } from './types.js';
 import { isBlankCell } from './types.js';
@@ -50,10 +51,14 @@ const DEFAULTS = {
 
 function findCreationCommand(ir: IR, entityName: string): IRCommand | undefined {
   const commands = ir.commands.filter((command) => command.entity === entityName);
-  return (
-    commands.find((command) => command.name === 'create') ??
-    commands.find((command) => command.initialization !== undefined)
-  );
+  const create = commands.find((command) => command.name === 'create');
+  if (create) return create;
+  // Must match the Convex mutations projection: only the SELECTED initialization
+  // command gets a `createVia*` export, so the seed must bind the same command
+  // (not the first planned one in IR order).
+  const entity = findEntity(ir, entityName);
+  if (entity) return selectInitializationCommand(ir, entity);
+  return commands.find((command) => command.initialization !== undefined);
 }
 
 function createMutationName(entityName: string, command: IRCommand): string {
@@ -191,7 +196,7 @@ export function generateConvexSeedScript(
     const candidates = initializationCommands(ir, table.entity);
     if (create?.name !== 'create' && candidates.length > 1) {
       lines.push(
-        `  // ${table.entity} has multiple initialization commands (${candidates.map((command) => command.name).join(', ')}); using first in IR order: ${create!.name}.`,
+        `  // ${table.entity} has multiple initialization commands (${candidates.map((command) => command.name).join(', ')}); using the selected initialization command: ${create!.name}.`,
       );
     }
     lines.push(`  // ${table.entity} → api.mutations.${b.createMutation}`);
