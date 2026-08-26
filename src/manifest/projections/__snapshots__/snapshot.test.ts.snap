@@ -497,10 +497,12 @@ const COMMAND_DISPATCH = {
   "Task.assignTask": {
     ref: api.mutations.Task_assignTask,
     params: ["docId","version","idempotencyKey"] as const,
+    paramMeta: [{"name":"docId","type":"string","required":true},{"name":"version","type":"number","required":false},{"name":"idempotencyKey","type":"string","required":false}] as const,
   },
   "Task.updateStatus": {
     ref: api.mutations.Task_updateStatus,
     params: ["docId","newStatus","version","idempotencyKey"] as const,
+    paramMeta: [{"name":"docId","type":"string","required":true},{"name":"newStatus","type":"string","required":true},{"name":"version","type":"number","required":false},{"name":"idempotencyKey","type":"string","required":false}] as const,
   },
 } as const;
 
@@ -547,6 +549,46 @@ http.route({
       const message = err instanceof Error ? err.message : String(err);
       return new Response(JSON.stringify({ error: message }), { status: 400, headers: { "Content-Type": "application/json" } });
     }
+  }),
+});
+
+/** Wire-format notes returned by the GET discovery routes. */
+const DISPATCHER_WIRE_NOTES = {
+  execute: "POST /api/manifest/{entity}/commands/{command} with a JSON object body of the listed params",
+  auth: "Authorization: Bearer <JWT accepted by Convex auth>; identity/tenant/role fields are server-derived and ignored in the body",
+  datetime: "datetime/date params are epoch milliseconds numbers",
+  lists: "list params are JSON arrays",
+  idempotencyKey: "optional string; retries with the same key do not repeat the command",
+  concurrency: "instance commands take docId (Convex document id) plus optional version for optimistic concurrency",
+} as const;
+
+http.route({
+  pathPrefix: "/api/manifest/",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
+    }
+    const registry = COMMAND_DISPATCH as Record<string, { params: readonly string[]; paramMeta: readonly { name: string; type: string; required: boolean }[] }>;
+    const url = new URL(request.url);
+    if (/^\\/api\\/manifest\\/commands\\/?$/.test(url.pathname)) {
+      const commands = Object.keys(registry).map((key) => {
+        const dot = key.indexOf(".");
+        return { entity: key.slice(0, dot), command: key.slice(dot + 1), params: registry[key]!.paramMeta };
+      });
+      return new Response(JSON.stringify({ commands, wire: DISPATCHER_WIRE_NOTES }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    const match = url.pathname.match(/^\\/api\\/manifest\\/([^/]+)\\/commands\\/([^/]+)\\/?$/);
+    if (!match) {
+      return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+    }
+    const key = match[1]! + "." + match[2]!;
+    const entry = registry[key];
+    if (!entry) {
+      return new Response(JSON.stringify({ error: "Unknown command " + key }), { status: 404, headers: { "Content-Type": "application/json" } });
+    }
+    return new Response(JSON.stringify({ entity: match[1], command: match[2], params: entry.paramMeta, execute: "POST /api/manifest/" + match[1] + "/commands/" + match[2], wire: DISPATCHER_WIRE_NOTES }), { status: 200, headers: { "Content-Type": "application/json" } });
   }),
 });
 

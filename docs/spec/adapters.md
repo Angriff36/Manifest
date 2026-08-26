@@ -241,6 +241,11 @@ The dispatcher targets Next.js 15 App Router. Dynamic route segment params are a
 > which derives Manifest RuntimeContext via the consumer `getAuthContext`
 > seam. The request body MUST NOT supply tenant/role/user/`__auth`. Provider
 > HMAC callbacks remain separate inbound `webhook` decls on the same `http.ts`.
+> The Convex projection also emits an authenticated `GET` discovery surface on
+> the same prefix — `GET /api/manifest/commands` (full catalog with
+> `name`/`type`/`required` param metadata and wire-format notes) and
+> `GET /api/manifest/{entity}/commands/{command}` (one command) — so remote
+> agents can learn the contract without a repo checkout.
 > Evidence: `src/manifest/projections/convex/http-dispatcher.ts`,
 > `orchestration.test.ts` (authenticated command dispatcher).
 

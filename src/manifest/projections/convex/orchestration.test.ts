@@ -594,6 +594,23 @@ describe('convex.http — authenticated command dispatcher', () => {
     expect(code).not.toContain('role: body');
   });
 
+  it('emits a GET discovery route with param metadata', () => {
+    const code = gen(irWithInstanceReserveCommand(), 'convex.http').artifacts[0].code;
+    expect(code).toContain('method: "GET"');
+    expect(code).toContain('DISPATCHER_WIRE_NOTES');
+    expect(code).toContain('/^\\/api\\/manifest\\/commands\\/?$/');
+    expect(code).toContain('{"name":"inventoryItemId","type":"string","required":true}');
+    expect(code).toContain('{"name":"quantity","type":"number","required":true}');
+    expect(code).toContain('{"name":"docId","type":"string","required":true}');
+    expect(code).toContain('{"name":"version","type":"number","required":false}');
+    // trustedSource params never appear in discovery metadata
+    expect(code).not.toContain('{"name":"actorId"');
+    // Discovery requires the same authenticated identity as POST (both routes 401 unauthenticated)
+    const identityChecks =
+      code.match(/const identity = await ctx\.auth\.getUserIdentity\(\)/g) ?? [];
+    expect(identityChecks.length).toBeGreaterThanOrEqual(2);
+  });
+
   it('can be disabled via options.dispatcher.enabled', () => {
     const res = new ConvexProjection().generate(irWithInstanceReserveCommand(), {
       surface: 'convex.http',
