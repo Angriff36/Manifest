@@ -5,10 +5,16 @@
  * Identity comes from Convex `ctx.auth.getUserIdentity()` (Bearer JWT); the
  * governed command mutation derives RuntimeContext via `getAuthContext(ctx)`.
  * Request bodies never supply tenant/role/user/`__auth`.
+ *
+ * Also emits a GET discovery surface on the same prefix so remote callers can
+ * learn the contract without a repo checkout:
+ *   GET /api/manifest/commands                       → full command catalog
+ *   GET /api/manifest/{entity}/commands/{command}    → one command's params
+ * Both require the same authenticated identity as POST.
  */
 
 import { selectInitializationCommand } from '../../initialization-plan.js';
-import type { IR, IRCommand } from '../../ir.js';
+import type { IR, IRCommand, IRType } from '../../ir.js';
 import type { ProjectionDiagnostic } from '../interface.js';
 import { commandCreationExportName } from './creation-entry.js';
 import type { NormalizedConvexOptions } from './options.js';
@@ -25,12 +31,31 @@ export const DISPATCHER_FORBIDDEN_BODY_KEYS = [
   'identity',
 ] as const;
 
+export interface DispatcherParamInfo {
+  name: string;
+  /** IR type rendered as text, e.g. `string`, `datetime`, `list<string>`. */
+  type: string;
+  required: boolean;
+}
+
 export interface DispatcherCommandEntry {
   entity: string;
   command: string;
   mutationExport: string;
   /** Client-owned param names only (no trustedSource; optional idempotencyKey). */
   paramNames: string[];
+  /** Wire metadata for the GET discovery routes (same params as `paramNames`). */
+  paramInfo: DispatcherParamInfo[];
+}
+
+/**
+ * Render an IR type as text for discovery responses. Nullability is omitted
+ * on purpose: generated mutation validators (`paramValidator`) do not accept
+ * `null` for nullable params, so advertising `| null` would misstate the wire.
+ */
+function formatIRType(type: IRType): string {
+  const inner = type.generic ? `<${formatIRType(type.generic)}>` : '';
+  return `${type.name}${inner}`;
 }
 
 /** Entity.command keys that allocate through the Convex createVia* entry. */
@@ -55,6 +80,7 @@ export function collectDispatcherCommands(
 ): DispatcherCommandEntry[] {
   const forbidden = new Set<string>(DISPATCHER_FORBIDDEN_BODY_KEYS);
   const createViaKeys = createViaCommandKeys(ir);
+  const entityByName = new Map((ir.entities ?? []).map((e) => [e.name, e]));
   const out: DispatcherCommandEntry[] = [];
 
   for (const cmd of ir.commands ?? []) {
@@ -62,12 +88,14 @@ export function collectDispatcherCommands(
     if (!entity) continue;
 
     const allocates = allocatesDocument(entity, cmd, createViaKeys);
-    const paramNames = clientOwnedParamNames(cmd, options, forbidden, allocates);
+    const versionProperty = entityByName.get(entity)?.versionProperty;
+    const paramInfo = clientOwnedParams(cmd, options, forbidden, allocates, versionProperty);
     out.push({
       entity,
       command: cmd.name,
       mutationExport: dispatcherMutationExport(entity, cmd, createViaKeys),
-      paramNames,
+      paramNames: paramInfo.map((p) => p.name),
+      paramInfo,
     });
   }
 
@@ -97,28 +125,34 @@ function dispatcherMutationExport(
   return `${entity}_${cmd.name}`;
 }
 
-function clientOwnedParamNames(
+function clientOwnedParams(
   cmd: IRCommand,
   options: NormalizedConvexOptions,
   forbidden: Set<string>,
   allocates: boolean,
-): string[] {
-  const names: string[] = [];
+  versionProperty: string | undefined,
+): DispatcherParamInfo[] {
+  const params: DispatcherParamInfo[] = [];
   for (const p of cmd.parameters ?? []) {
     if (p.trustedSource) continue;
     if (forbidden.has(p.name)) continue;
-    names.push(p.name);
+    params.push({ name: p.name, type: formatIRType(p.type), required: p.required });
   }
-  // Instance commands target an existing Convex document — forward docId + OCC
-  // version. Create / createVia / selected initialization commands allocate.
+  const has = (name: string) => params.some((p) => p.name === name);
+  // Instance commands target an existing Convex document — forward docId plus
+  // the entity's OCC expected-version arg (named by `versionProperty`; the
+  // generated mutation accepts no such arg for unversioned entities).
+  // Create / createVia / selected initialization commands allocate.
   if (!allocates) {
-    if (!names.includes('docId')) names.unshift('docId');
-    if (!names.includes('version')) names.push('version');
+    if (!has('docId')) params.unshift({ name: 'docId', type: 'string', required: true });
+    if (versionProperty && !has(versionProperty)) {
+      params.push({ name: versionProperty, type: 'number', required: false });
+    }
   }
-  if (options.enableCommandIdempotency && !names.includes('idempotencyKey')) {
-    names.push('idempotencyKey');
+  if (options.enableCommandIdempotency && !has('idempotencyKey')) {
+    params.push({ name: 'idempotencyKey', type: 'string', required: false });
   }
-  return names;
+  return params;
 }
 
 /**
@@ -151,10 +185,12 @@ export function emitDispatcherRoute(
 
   const registryLines = commands.map((c) => {
     const paramsLit = JSON.stringify(c.paramNames);
+    const paramMetaLit = JSON.stringify(c.paramInfo);
     return (
       `  ${JSON.stringify(`${c.entity}.${c.command}`)}: {\n` +
       `    ref: api.mutations.${c.mutationExport},\n` +
       `    params: ${paramsLit} as const,\n` +
+      `    paramMeta: ${paramMetaLit} as const,\n` +
       `  },`
     );
   });
@@ -208,6 +244,48 @@ export function emitDispatcherRoute(
     `      const message = err instanceof Error ? err.message : String(err);\n` +
     `      return new Response(JSON.stringify({ error: message }), { status: 400, headers: { "Content-Type": "application/json" } });\n` +
     `    }\n` +
+    `  }),\n` +
+    `});\n\n` +
+    `/** Wire-format notes returned by the GET discovery routes. */\n` +
+    `const DISPATCHER_WIRE_NOTES = {\n` +
+    `  execute: "POST /api/manifest/{entity}/commands/{command} with a JSON object body of the listed params",\n` +
+    `  auth: "Authorization: Bearer <JWT accepted by Convex auth>; identity/tenant/role fields are server-derived and ignored in the body",\n` +
+    `  datetime: "datetime/date params are epoch milliseconds numbers",\n` +
+    `  lists: "list params are JSON arrays",\n` +
+    `  idempotencyKey: ${JSON.stringify(
+      options.enableCommandIdempotency
+        ? 'optional string; retries with the same key do not repeat the command'
+        : 'NOT AVAILABLE: command idempotency is disabled in this deployment — retries may repeat the command',
+    )},\n` +
+    `  concurrency: "instance commands take docId (Convex document id) plus, when listed, the entity's optional expected-version number for optimistic concurrency",\n` +
+    `} as const;\n\n` +
+    `http.route({\n` +
+    `  pathPrefix: "/api/manifest/",\n` +
+    `  method: "GET",\n` +
+    `  handler: httpAction(async (ctx, request) => {\n` +
+    `    const identity = await ctx.auth.getUserIdentity();\n` +
+    `    if (identity === null) {\n` +
+    `      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });\n` +
+    `    }\n` +
+    `    const registry = COMMAND_DISPATCH as Record<string, { params: readonly string[]; paramMeta: readonly { name: string; type: string; required: boolean }[] }>;\n` +
+    `    const url = new URL(request.url);\n` +
+    `    if (/^\\/api\\/manifest\\/commands\\/?$/.test(url.pathname)) {\n` +
+    `      const commands = Object.keys(registry).map((key) => {\n` +
+    `        const dot = key.indexOf(".");\n` +
+    `        return { entity: key.slice(0, dot), command: key.slice(dot + 1), params: registry[key]!.paramMeta };\n` +
+    `      });\n` +
+    `      return new Response(JSON.stringify({ commands, wire: DISPATCHER_WIRE_NOTES }), { status: 200, headers: { "Content-Type": "application/json" } });\n` +
+    `    }\n` +
+    `    const match = url.pathname.match(/^\\/api\\/manifest\\/([^/]+)\\/commands\\/([^/]+)\\/?$/);\n` +
+    `    if (!match) {\n` +
+    `      return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: { "Content-Type": "application/json" } });\n` +
+    `    }\n` +
+    `    const key = match[1]! + "." + match[2]!;\n` +
+    `    const entry = registry[key];\n` +
+    `    if (!entry) {\n` +
+    `      return new Response(JSON.stringify({ error: "Unknown command " + key }), { status: 404, headers: { "Content-Type": "application/json" } });\n` +
+    `    }\n` +
+    `    return new Response(JSON.stringify({ entity: match[1], command: match[2], params: entry.paramMeta, execute: "POST /api/manifest/" + match[1] + "/commands/" + match[2], wire: DISPATCHER_WIRE_NOTES }), { status: 200, headers: { "Content-Type": "application/json" } });\n` +
     `  }),\n` +
     `});\n`;
 

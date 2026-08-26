@@ -559,9 +559,9 @@ describe('convex.http — authenticated command dispatcher', () => {
     expect(code).toContain('await ctx.runMutation(entry.ref, args as any)');
     expect(code).toContain('"inventoryItemId"');
     expect(code).toContain('"quantity"');
-    // Instance commands forward docId (+ optional OCC version)
+    // Instance commands forward docId; no versionProperty on the entity → no OCC arg
     expect(code).toContain('"docId"');
-    expect(code).toContain('"version"');
+    expect(code).not.toContain('"version"');
     // trustedSource / identity params are not client-owned
     expect(code).not.toMatch(/params: \[[^\]]*"actorId"/);
   });
@@ -592,6 +592,70 @@ describe('convex.http — authenticated command dispatcher', () => {
     expect(code).not.toContain('__auth: body');
     expect(code).not.toContain('tenantId: body');
     expect(code).not.toContain('role: body');
+  });
+
+  it('emits a GET discovery route with param metadata', () => {
+    const code = gen(irWithInstanceReserveCommand(), 'convex.http').artifacts[0].code;
+    expect(code).toContain('method: "GET"');
+    expect(code).toContain('DISPATCHER_WIRE_NOTES');
+    expect(code).toContain('/^\\/api\\/manifest\\/commands\\/?$/');
+    expect(code).toContain('{"name":"inventoryItemId","type":"string","required":true}');
+    expect(code).toContain('{"name":"quantity","type":"number","required":true}');
+    expect(code).toContain('{"name":"docId","type":"string","required":true}');
+    // trustedSource params never appear in discovery metadata
+    expect(code).not.toContain('{"name":"actorId"');
+    // Discovery requires the same authenticated identity as POST (both routes 401 unauthenticated)
+    const identityChecks =
+      code.match(/const identity = await ctx\.auth\.getUserIdentity\(\)/g) ?? [];
+    expect(identityChecks.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('advertises the entity versionProperty name for OCC and omits it when unversioned', () => {
+    const ir = irWithInstanceReserveCommand();
+    ir.entities = [
+      {
+        name: 'InventoryReservation',
+        versionProperty: 'revision',
+        properties: [
+          {
+            name: 'inventoryItemId',
+            type: { name: 'string', nullable: false },
+            modifiers: ['required'],
+          },
+          { name: 'quantity', type: { name: 'number', nullable: false }, modifiers: ['required'] },
+        ],
+        computedProperties: [],
+        relationships: [],
+        commands: ['create', 'reserve'],
+        constraints: [],
+        policies: [],
+      },
+    ];
+    // A `create` peer keeps `reserve` on the instance mutation path.
+    ir.commands!.unshift({
+      name: 'create',
+      entity: 'InventoryReservation',
+      parameters: [],
+      guards: [],
+      actions: [],
+      emits: [],
+    });
+    const code = gen(ir, 'convex.http').artifacts[0].code;
+    expect(code).toMatch(/"InventoryReservation\.reserve": \{[\s\S]*?"revision"/);
+    expect(code).toContain('{"name":"revision","type":"number","required":false}');
+    // Never the hardcoded synthetic name when the entity declares its own.
+    expect(code).not.toContain('{"name":"version"');
+  });
+
+  it('does not promise idempotent retries when command idempotency is disabled', () => {
+    const res = new ConvexProjection().generate(irWithInstanceReserveCommand(), {
+      surface: 'convex.http',
+      options: { enableCommandIdempotency: false },
+    });
+    const code = res.artifacts[0].code;
+    expect(code).toContain('NOT AVAILABLE: command idempotency is disabled');
+    expect(code).not.toContain('"idempotencyKey"');
+    expect(code).not.toContain('retries with the same key do not repeat');
   });
 
   it('can be disabled via options.dispatcher.enabled', () => {

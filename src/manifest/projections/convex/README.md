@@ -33,7 +33,11 @@ workflow): `docs/convex-projection-wiring.html`.
   dispatcher (`pathPrefix: "/api/manifest/"`, `POST`) that requires
   `ctx.auth.getUserIdentity()`, strips identity fields from the body, and
   `runMutation`s the same governed command mutation (RuntimeContext via
-  `getAuthContext`). Disable with `options.dispatcher.enabled: false`.
+  `getAuthContext`). A matching authenticated `GET` discovery surface serves
+  the contract to remote callers: `GET /api/manifest/commands` lists every
+  command with param metadata (`name`/`type`/`required`) plus wire-format
+  notes, and `GET /api/manifest/{entity}/commands/{command}` describes one.
+  Disable with `options.dispatcher.enabled: false`.
 - **`convex.sagas`** — each IR saga → an orchestrator `action` that runs steps
   via `ctx.runMutation`, tracks completed steps, and (when `onFailure:
 compensate`) runs each completed step's compensating command in reverse.
