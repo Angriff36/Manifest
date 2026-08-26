@@ -48,10 +48,14 @@ export interface DispatcherCommandEntry {
   paramInfo: DispatcherParamInfo[];
 }
 
-/** Render an IR type as text for discovery responses. */
+/**
+ * Render an IR type as text for discovery responses. Nullability is omitted
+ * on purpose: generated mutation validators (`paramValidator`) do not accept
+ * `null` for nullable params, so advertising `| null` would misstate the wire.
+ */
 function formatIRType(type: IRType): string {
   const inner = type.generic ? `<${formatIRType(type.generic)}>` : '';
-  return `${type.name}${inner}${type.nullable ? ' | null' : ''}`;
+  return `${type.name}${inner}`;
 }
 
 /** Entity.command keys that allocate through the Convex createVia* entry. */
@@ -76,6 +80,7 @@ export function collectDispatcherCommands(
 ): DispatcherCommandEntry[] {
   const forbidden = new Set<string>(DISPATCHER_FORBIDDEN_BODY_KEYS);
   const createViaKeys = createViaCommandKeys(ir);
+  const entityByName = new Map((ir.entities ?? []).map((e) => [e.name, e]));
   const out: DispatcherCommandEntry[] = [];
 
   for (const cmd of ir.commands ?? []) {
@@ -83,7 +88,8 @@ export function collectDispatcherCommands(
     if (!entity) continue;
 
     const allocates = allocatesDocument(entity, cmd, createViaKeys);
-    const paramInfo = clientOwnedParams(cmd, options, forbidden, allocates);
+    const versionProperty = entityByName.get(entity)?.versionProperty;
+    const paramInfo = clientOwnedParams(cmd, options, forbidden, allocates, versionProperty);
     out.push({
       entity,
       command: cmd.name,
@@ -124,6 +130,7 @@ function clientOwnedParams(
   options: NormalizedConvexOptions,
   forbidden: Set<string>,
   allocates: boolean,
+  versionProperty: string | undefined,
 ): DispatcherParamInfo[] {
   const params: DispatcherParamInfo[] = [];
   for (const p of cmd.parameters ?? []) {
@@ -132,11 +139,15 @@ function clientOwnedParams(
     params.push({ name: p.name, type: formatIRType(p.type), required: p.required });
   }
   const has = (name: string) => params.some((p) => p.name === name);
-  // Instance commands target an existing Convex document — forward docId + OCC
-  // version. Create / createVia / selected initialization commands allocate.
+  // Instance commands target an existing Convex document — forward docId plus
+  // the entity's OCC expected-version arg (named by `versionProperty`; the
+  // generated mutation accepts no such arg for unversioned entities).
+  // Create / createVia / selected initialization commands allocate.
   if (!allocates) {
     if (!has('docId')) params.unshift({ name: 'docId', type: 'string', required: true });
-    if (!has('version')) params.push({ name: 'version', type: 'number', required: false });
+    if (versionProperty && !has(versionProperty)) {
+      params.push({ name: versionProperty, type: 'number', required: false });
+    }
   }
   if (options.enableCommandIdempotency && !has('idempotencyKey')) {
     params.push({ name: 'idempotencyKey', type: 'string', required: false });
@@ -241,8 +252,12 @@ export function emitDispatcherRoute(
     `  auth: "Authorization: Bearer <JWT accepted by Convex auth>; identity/tenant/role fields are server-derived and ignored in the body",\n` +
     `  datetime: "datetime/date params are epoch milliseconds numbers",\n` +
     `  lists: "list params are JSON arrays",\n` +
-    `  idempotencyKey: "optional string; retries with the same key do not repeat the command",\n` +
-    `  concurrency: "instance commands take docId (Convex document id) plus optional version for optimistic concurrency",\n` +
+    `  idempotencyKey: ${JSON.stringify(
+      options.enableCommandIdempotency
+        ? 'optional string; retries with the same key do not repeat the command'
+        : 'NOT AVAILABLE: command idempotency is disabled in this deployment — retries may repeat the command',
+    )},\n` +
+    `  concurrency: "instance commands take docId (Convex document id) plus, when listed, the entity's optional expected-version number for optimistic concurrency",\n` +
     `} as const;\n\n` +
     `http.route({\n` +
     `  pathPrefix: "/api/manifest/",\n` +

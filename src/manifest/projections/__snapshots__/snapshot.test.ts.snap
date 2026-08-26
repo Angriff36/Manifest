@@ -496,13 +496,13 @@ const http = httpRouter();
 const COMMAND_DISPATCH = {
   "Task.assignTask": {
     ref: api.mutations.Task_assignTask,
-    params: ["docId","version","idempotencyKey"] as const,
-    paramMeta: [{"name":"docId","type":"string","required":true},{"name":"version","type":"number","required":false},{"name":"idempotencyKey","type":"string","required":false}] as const,
+    params: ["docId","idempotencyKey"] as const,
+    paramMeta: [{"name":"docId","type":"string","required":true},{"name":"idempotencyKey","type":"string","required":false}] as const,
   },
   "Task.updateStatus": {
     ref: api.mutations.Task_updateStatus,
-    params: ["docId","newStatus","version","idempotencyKey"] as const,
-    paramMeta: [{"name":"docId","type":"string","required":true},{"name":"newStatus","type":"string","required":true},{"name":"version","type":"number","required":false},{"name":"idempotencyKey","type":"string","required":false}] as const,
+    params: ["docId","newStatus","idempotencyKey"] as const,
+    paramMeta: [{"name":"docId","type":"string","required":true},{"name":"newStatus","type":"string","required":true},{"name":"idempotencyKey","type":"string","required":false}] as const,
   },
 } as const;
 
@@ -559,7 +559,7 @@ const DISPATCHER_WIRE_NOTES = {
   datetime: "datetime/date params are epoch milliseconds numbers",
   lists: "list params are JSON arrays",
   idempotencyKey: "optional string; retries with the same key do not repeat the command",
-  concurrency: "instance commands take docId (Convex document id) plus optional version for optimistic concurrency",
+  concurrency: "instance commands take docId (Convex document id) plus, when listed, the entity's optional expected-version number for optimistic concurrency",
 } as const;
 
 http.route({
