@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.47] - 2026-08-26
+
+### Changed
+
+- docs: regenerate FEATURE-LIST for 3.6.46 (stale since release; CI docs gate)
+- fix(seed-pack): bind the seed script to the selected initialization command
+
 ## [3.6.46] - 2026-08-26
 
 ### Changed
