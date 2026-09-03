@@ -585,13 +585,31 @@ describe('convex.http — authenticated command dispatcher', () => {
     expect(code).toContain('DISPATCHER_FORBIDDEN_BODY_KEYS');
     expect(code).toContain('"__auth"');
     expect(code).toContain('"tenantId"');
-    expect(code).toContain('"role"');
     expect(code).toContain('"user"');
     expect(code).toContain('if (DISPATCHER_FORBIDDEN_BODY_KEYS.has(name)) continue');
     // Must not accept a body.__auth passthrough pattern
     expect(code).not.toContain('__auth: body');
     expect(code).not.toContain('tenantId: body');
     expect(code).not.toContain('role: body');
+  });
+
+  it('forwards declared business `role` params (name must not collide with the identity filter)', () => {
+    // Regression: `role` used to sit in DISPATCHER_FORBIDDEN_BODY_KEYS, so the
+    // dispatcher stripped every command's declared role param and the mutation
+    // rejected the write ("missing the required field `role`").
+    const ir = irWithInstanceReserveCommand();
+    ir.commands[0]!.parameters.splice(2, 0, {
+      name: 'role',
+      type: { name: 'string', nullable: false },
+      required: true,
+    });
+    const code = gen(ir, 'convex.http').artifacts[0].code;
+    // Whitelist + discovery paramMeta both carry the declared role param.
+    expect(code).toMatch(/"InventoryReservation\.reserve": \{[\s\S]*?"role"/);
+    expect(code).toContain('{"name":"role","type":"string","required":true}');
+    // The identity filter never lists role — RuntimeContext role is derived
+    // from the authenticated Person, never from a command param.
+    expect(code).not.toMatch(/DISPATCHER_FORBIDDEN_BODY_KEYS = \[[^\]]*"role"/);
   });
 
   it('emits a GET discovery route with param metadata', () => {
