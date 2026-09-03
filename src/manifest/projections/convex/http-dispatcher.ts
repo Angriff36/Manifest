@@ -4,7 +4,8 @@
  * Emits `POST /api/manifest/{entity}/commands/{command}` via `pathPrefix`.
  * Identity comes from Convex `ctx.auth.getUserIdentity()` (Bearer JWT); the
  * governed command mutation derives RuntimeContext via `getAuthContext(ctx)`.
- * Request bodies never supply tenant/role/user/`__auth`.
+ * Request bodies never supply tenant/user/`__auth` identity keys; declared
+ * command params (which may include a business `role`) are forwarded as-is.
  *
  * Also emits a GET discovery surface on the same prefix so remote callers can
  * learn the contract without a repo checkout:
