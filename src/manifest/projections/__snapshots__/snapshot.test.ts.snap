@@ -506,7 +506,7 @@ const COMMAND_DISPATCH = {
   },
 } as const;
 
-const DISPATCHER_FORBIDDEN_BODY_KEYS = new Set(["__auth","user","role","tenantId","orgId","userId","actorId","identity"]);
+const DISPATCHER_FORBIDDEN_BODY_KEYS = new Set(["__auth","user","tenantId","orgId","userId","actorId","identity"]);
 
 http.route({
   pathPrefix: "/api/manifest/",
@@ -555,7 +555,7 @@ http.route({
 /** Wire-format notes returned by the GET discovery routes. */
 const DISPATCHER_WIRE_NOTES = {
   execute: "POST /api/manifest/{entity}/commands/{command} with a JSON object body of the listed params",
-  auth: "Authorization: Bearer <JWT accepted by Convex auth>; identity/tenant/role fields are server-derived and ignored in the body",
+  auth: "Authorization: Bearer <JWT accepted by Convex auth>; identity/tenant fields are server-derived and ignored in the body; declared command params (including role) are accepted",
   datetime: "datetime/date params are epoch milliseconds numbers",
   lists: "list params are JSON arrays",
   idempotencyKey: "optional string; retries with the same key do not repeat the command",

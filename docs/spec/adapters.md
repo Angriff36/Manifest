@@ -239,7 +239,12 @@ The dispatcher targets Next.js 15 App Router. Dynamic route segment params are a
 > `ctx.auth.getUserIdentity()` (Bearer JWT on the HTTP action); identity
 > propagates into `ctx.runMutation` of the existing governed command mutation,
 > which derives Manifest RuntimeContext via the consumer `getAuthContext`
-> seam. The request body MUST NOT supply tenant/role/user/`__auth`. Provider
+> seam. The request body MUST NOT supply tenant/user/`__auth` identity keys.
+> **Correction (2026-09-03):** declared command params are forwarded as-is,
+> including a business `role` (e.g. assignment/staffing role) — `role` was
+> removed from `DISPATCHER_FORBIDDEN_BODY_KEYS` because it names real command
+> params; identity filtering relies on `trustedSource` plus the remaining
+> identity-key blocklist. Provider
 > HMAC callbacks remain separate inbound `webhook` decls on the same `http.ts`.
 > The Convex projection also emits an authenticated `GET` discovery surface on
 > the same prefix — `GET /api/manifest/commands` (full catalog with

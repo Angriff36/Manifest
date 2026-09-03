@@ -4,7 +4,8 @@
  * Emits `POST /api/manifest/{entity}/commands/{command}` via `pathPrefix`.
  * Identity comes from Convex `ctx.auth.getUserIdentity()` (Bearer JWT); the
  * governed command mutation derives RuntimeContext via `getAuthContext(ctx)`.
- * Request bodies never supply tenant/role/user/`__auth`.
+ * Request bodies never supply tenant/user/`__auth` identity keys; declared
+ * command params (which may include a business `role`) are forwarded as-is.
  *
  * Also emits a GET discovery surface on the same prefix so remote callers can
  * learn the contract without a repo checkout:
@@ -23,7 +24,6 @@ import type { NormalizedConvexOptions } from './options.js';
 export const DISPATCHER_FORBIDDEN_BODY_KEYS = [
   '__auth',
   'user',
-  'role',
   'tenantId',
   'orgId',
   'userId',
@@ -249,7 +249,7 @@ export function emitDispatcherRoute(
     `/** Wire-format notes returned by the GET discovery routes. */\n` +
     `const DISPATCHER_WIRE_NOTES = {\n` +
     `  execute: "POST /api/manifest/{entity}/commands/{command} with a JSON object body of the listed params",\n` +
-    `  auth: "Authorization: Bearer <JWT accepted by Convex auth>; identity/tenant/role fields are server-derived and ignored in the body",\n` +
+    `  auth: "Authorization: Bearer <JWT accepted by Convex auth>; identity/tenant fields are server-derived and ignored in the body; declared command params (including role) are accepted",\n` +
     `  datetime: "datetime/date params are epoch milliseconds numbers",\n` +
     `  lists: "list params are JSON arrays",\n` +
     `  idempotencyKey: ${JSON.stringify(
