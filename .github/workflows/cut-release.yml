@@ -62,7 +62,7 @@ jobs:
         uses: pnpm/action-setup@v4
 
       - name: Setup Node.js (npm registry)
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           # Node 24 ships npm 11.x (Trusted Publishing OIDC). Node 22's npm 10.x
           # cannot self-upgrade cleanly on GHA (MODULE_NOT_FOUND: sigstore).
