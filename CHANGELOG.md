@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.48] - 2026-09-03
+
+### Changed
+
+- fix(convex): stop stripping declared role params from the HTTP dispatcher (#74)
+
 ## [3.6.47] - 2026-08-26
 
 ### Changed
