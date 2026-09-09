@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.49] - 2026-09-09
+
+### Changed
+
+- docs: record nested aggregate command proof
+- fix(convex): evaluate nested aggregate guards on resolved relations
+
 ## [3.6.48] - 2026-09-03
 
 ### Changed
