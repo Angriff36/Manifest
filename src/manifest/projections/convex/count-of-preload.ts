@@ -99,22 +99,35 @@ export function resolveHasManyLambdaParamType(
   callback: IRExpression | undefined,
   options: NormalizedOptions,
 ): string | undefined {
-  const docType = resolveHasManyDocElementType(entity, collection, options);
-  if (!docType || !callback) return docType;
-  if (
-    collection.kind !== 'member' ||
-    collection.object.kind !== 'identifier' ||
-    (collection.object.name !== 'self' && collection.object.name !== 'this')
+  // Filtering preserves the source entity; mapping may produce plain objects.
+  let source = collection;
+  while (
+    source.kind === 'call' &&
+    source.callee.kind === 'identifier' &&
+    source.callee.name === 'filter' &&
+    source.args[0]
   ) {
-    return docType;
+    source = source.args[0];
   }
-  const relation = entity.relationships.find(
-    (candidate) => candidate.name === collection.property && candidate.kind === 'hasMany',
-  );
-  const target = relation?.target
-    ? ir.entities.find((candidate) => candidate.name === relation.target)
-    : undefined;
-  return target && lambdaTraversesRelation(callback, target) ? undefined : docType;
+  const properties: string[] = [];
+  while (source.kind === 'member') {
+    properties.unshift(source.property);
+    source = source.object;
+  }
+  if (source.kind !== 'identifier' || !['self', 'this'].includes(source.name)) return undefined;
+  let target = entity;
+  let collectionRelation = false;
+  for (const name of properties) {
+    const relation = target.relationships.find((candidate) => candidate.name === name);
+    if (!relation) return undefined;
+    const next = ir.entities.find((candidate) => candidate.name === relation.target);
+    if (!next) return undefined;
+    target = next;
+    collectionRelation = relation.kind === 'hasMany';
+  }
+  if (!collectionRelation) return undefined;
+  if (callback && lambdaTraversesRelation(callback, target)) return undefined;
+  return `Doc<${JSON.stringify(resolveConvexTableName(target.name, options))}>`;
 }
 
 /** True when generated code references `Doc<"…">` and needs a dataModel import. */

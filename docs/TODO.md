@@ -22,6 +22,12 @@ non-binding navigation mirror only.
 
 ## Bugs
 
+- [x] **Convex belongsTo-to-hasMany mutation guard identity** — fixed the
+      hydration/local mismatch and entity-lambda identity lowering reported by
+      Capsule packing adoption at `6ea86b6`. Generated-command runtime proof,
+      including tenant isolation and ordinary-object identity preservation, is
+      recorded in the compliance matrix. Registry publication remains separate.
+
 - [x] **WASM evaluator polarity aligned** — fixed 2026-07-14.
       ~~WASM path still in RuntimeOptions~~ **Correction (2026-07-15):** WASM
       removed from the default RuntimeEngine path (never shipped `.wasm`);

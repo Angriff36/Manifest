@@ -580,6 +580,11 @@ export function renderAggregateHydration(
   baseIndent = '    ',
   ir?: IR,
   options?: NormalizedOptions,
+  commandScope?: {
+    relationVars: Readonly<Record<string, string>>;
+    tenantProperty?: string;
+    tenantValue?: string;
+  },
 ): string[] {
   if (tree.size === 0) return [];
   const lines: string[] = [];
@@ -594,10 +599,21 @@ export function renderAggregateHydration(
     const indent = baseIndent + '  '.repeat(depth);
     for (const node of nodes.values()) {
       const hop = node.hop;
+      const tenantProperty = commandScope?.tenantProperty;
+      const tenantScoped =
+        tenantProperty &&
+        ir?.entities
+          .find((entity) => entity.name === hop.toEntity)
+          ?.properties.some((property) => property.name === tenantProperty);
       if (hop.kind === 'hasMany') {
         lines.push(
           `${indent}${parentExpr}.${hop.relName} = await ctx.db.query(${JSON.stringify(hop.childTable)}).withIndex(${JSON.stringify(`by_${hop.fkField}`)}, (q: any) => q.eq(${JSON.stringify(hop.fkField)}, ${parentIdExpr})).collect();`,
         );
+        if (tenantScoped) {
+          lines.push(
+            `${indent}${parentExpr}.${hop.relName} = ${parentExpr}.${hop.relName}.filter((row: any) => row.${tenantProperty} === ${commandScope!.tenantValue});`,
+          );
+        }
         const needsLoop =
           node.children.size > 0 ||
           (node.requiredComputeds != null && node.requiredComputeds.size > 0);
@@ -624,7 +640,18 @@ export function renderAggregateHydration(
         continue;
       }
 
-      lines.push(...renderBelongsToHydration(hop, parentExpr, indent));
+      const existingRoot = depth === 0 ? commandScope?.relationVars[hop.relName] : undefined;
+      if (existingRoot) {
+        lines.push(`${indent}(${parentExpr} as any).${hop.relName} = ${existingRoot};`);
+      } else {
+        lines.push(...renderBelongsToHydration(hop, parentExpr, indent));
+        if (tenantScoped) {
+          const relation = `(${parentExpr} as any).${hop.relName}`;
+          lines.push(
+            `${indent}if (${relation} && ${relation}.${tenantProperty} !== ${commandScope!.tenantValue}) ${relation} = null;`,
+          );
+        }
+      }
       if (node.children.size > 0 && hop.mode !== 'unsupported') {
         const relExpr = `(${parentExpr} as any).${hop.relName}`;
         lines.push(`${indent}if (${relExpr}) {`);
