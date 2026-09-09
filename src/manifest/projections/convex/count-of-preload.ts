@@ -50,15 +50,18 @@ function memberChainRootAndFirstProperty(
   return { root: current.name, firstProperty: properties[0]! };
 }
 
-function lambdaTraversesRelation(lambda: IRExpression, target: IREntity): boolean {
+function lambdaReadsHydratedField(lambda: IRExpression, target: IREntity): boolean {
   if (lambda.kind !== 'lambda') return false;
   const params = new Set(lambda.params);
-  const relationNames = new Set(target.relationships.map((relationship) => relationship.name));
+  const hydratedNames = new Set([
+    ...target.relationships.map((relationship) => relationship.name),
+    ...target.computedProperties.map((property) => property.name),
+  ]);
 
   const visit = (expression: IRExpression): boolean => {
     if (expression.kind === 'member') {
       const chain = memberChainRootAndFirstProperty(expression);
-      if (chain && params.has(chain.root) && relationNames.has(chain.firstProperty)) return true;
+      if (chain && params.has(chain.root) && hydratedNames.has(chain.firstProperty)) return true;
     }
     switch (expression.kind) {
       case 'member':
@@ -126,7 +129,7 @@ export function resolveHasManyLambdaParamType(
     collectionRelation = relation.kind === 'hasMany';
   }
   if (!collectionRelation) return undefined;
-  if (callback && lambdaTraversesRelation(callback, target)) return undefined;
+  if (callback && lambdaReadsHydratedField(callback, target)) return undefined;
   return `Doc<${JSON.stringify(resolveConvexTableName(target.name, options))}>`;
 }
 

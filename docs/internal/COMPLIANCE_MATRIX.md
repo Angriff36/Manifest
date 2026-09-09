@@ -393,6 +393,10 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 
 | Status | Feature | Implementation Status | Evidence pointer |
 | --- | --- | --- | --- |
+| [x] | Convex filtered child-computed callback typing | FULLY_IMPLEMENTED | `src/manifest/projections/convex/count-of-preload.ts:53-93,132-133`; strict TypeScript diagnostic and runtime total proof `src/manifest/projections/convex/parent-child-computed-hydrate.test.ts:74-117`, all at `2a4798d`. Corrects 3.6.49 TS2339 on materialized EventDish.estimatedCost by retaining the hydrated callback shape; entity identity resolution remains independent. |
+
+| Status | Feature | Implementation Status | Evidence pointer |
+| --- | --- | --- | --- |
 | [x] | Convex belongsTo-to-hasMany mutation guard identity | FULLY_IMPLEMENTED | `src/manifest/projections/convex/aggregate-hydrate.ts:583-662`, `functions.ts:2196-2208`, `count-of-preload.ts:95-138`, `expression.ts:166-181,204-212,433-449`; executable generated-command proof `src/manifest/projections/convex/nested-aggregate-guard.test.ts:38-132`, all at `6ea86b6`. Proves shared resolved roots, nested tenant isolation, and entity `id` lowering while preserving plain-object `id`; does not assert every possible aggregate shape. |
 
 | Status | Feature                                        | Implementation Status | Notes                                                                                                                  |

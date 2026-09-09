@@ -27,11 +27,16 @@ carries file evidence checked on 2026-07-14.
 
 ## 1. Language (DSL) Features
 
-**Projection correction (2026-09-09, source commit `6ea86b6`, not yet published):**
+**Projection correction (2026-09-09, source commit `6ea86b6`, published in 3.6.49):**
 Convex belongsTo-to-hasMany mutation guards share resolved relationship objects
 with aggregate hydration and lower entity callback `id` to `_id`. The generated
 command regression covers tenant isolation and preserves ordinary object `id`.
 See the matching compliance-matrix row for exact implementation and proof ranges.
+
+**Computed callback follow-up (source `2a4798d`, not yet published):** callbacks
+over filtered child collections keep the hydrated shape when reading computed
+values. The strict TypeScript regression covers the 3.6.49 consumer failure;
+matrix evidence also verifies the aggregate runtime total.
 
 All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts`
 

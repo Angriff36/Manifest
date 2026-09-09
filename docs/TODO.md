@@ -22,6 +22,10 @@ non-binding navigation mirror only.
 
 ## Bugs
 
+- [x] **Convex filtered child-computed callback typing** — source fix `2a4798d`
+      retains hydrated callback types for materialized computed values. Strict
+      TypeScript and runtime proof is recorded in the matrix; publication is separate.
+
 - [x] **Convex belongsTo-to-hasMany mutation guard identity** — fixed the
       hydration/local mismatch and entity-lambda identity lowering reported by
       Capsule packing adoption at `6ea86b6`. Generated-command runtime proof,
