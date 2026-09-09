@@ -169,12 +169,17 @@ Both seams are projection configuration only and do not alter IR shape.
 
 Nested collection guards such as
 `count_of(filter(self.packList.event.eventDishes, (item) => item.id == eventDishId))`
-currently hydrate the document graph but evaluate through a separate, unhydrated
-relationship local. Collection callbacks also retain logical `id` instead of
+previously hydrated the document graph but evaluated through a separate, unhydrated
+relationship local. Collection callbacks also retained logical `id` instead of
 the Convex document `_id`. This differs from relationship and identity semantics
 in the reference runtime. The projection must use the same resolved graph for
 hydration and evaluation, preserve tenant isolation at every hop, and lower
 entity identity without rewriting ordinary object fields named `id`.
+
+**Resolved in source at `6ea86b6` (not yet published at this entry):** the generated
+mutation reuses resolved root relations, applies tenant checks to subsequent
+hops, and lowers entity callback identities. Executable regression:
+`src/manifest/projections/convex/nested-aggregate-guard.test.ts:38-132`.
 
 See also:
 
