@@ -167,6 +167,11 @@ Both seams are projection configuration only and do not alter IR shape.
 
 ### Convex aggregate nonconformance (2026-09-09)
 
+**Computed-field typing follow-up (3.6.49):** filtered entity collections now
+resolve stored document types, but callbacks reading hydrated computed fields
+must retain the hydrated row shape. Assigning only `Doc<...>` to those callbacks
+rejects valid generated TypeScript even though runtime evaluation succeeds.
+
 Nested collection guards such as
 `count_of(filter(self.packList.event.eventDishes, (item) => item.id == eventDishId))`
 previously hydrated the document graph but evaluated through a separate, unhydrated

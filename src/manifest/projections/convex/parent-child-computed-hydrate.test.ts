@@ -5,10 +5,14 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import ts from 'typescript';
+import { resolve } from 'node:path';
 import { compileToIR } from '../../ir-compiler.js';
 import { planAndRenderAggregateHydration } from './aggregate-hydrate.js';
 import { ConvexProjection } from './generator.js';
 import { normalizeOptions } from './options.js';
+import { resolveHasManyLambdaParamType } from './count-of-preload.js';
+import { renderExpression } from './expression.js';
 
 const PROGRAM = `
 entity Event {
@@ -67,6 +71,50 @@ store EventDish in durable
 `;
 
 describe('convex parent aggregate over child computeds', () => {
+  it('typechecks and evaluates a filtered aggregate over materialized child values', async () => {
+    const { ir } = await compileToIR(PROGRAM);
+    const event = ir!.entities.find((entity) => entity.name === 'Event')!;
+    const rendered = renderExpression(event.computedProperties[0]!.expression, {
+      selfVar: 'doc',
+      resolveCollectionElementType: (collection, callback) =>
+        resolveHasManyLambdaParamType(ir!, event, collection, callback, normalizeOptions({})),
+    });
+    const source =
+      `type Doc<T extends string> = { _id: string; deletedAt?: number; addedAt?: number };\n` +
+      `function total(doc: any) { return ${rendered.code}; }`;
+    const fileName = resolve('aggregate-callback-typecheck.ts');
+    const options: ts.CompilerOptions = {
+      strict: true,
+      noEmit: true,
+      types: [],
+      skipLibCheck: true,
+      target: ts.ScriptTarget.ES2020,
+    };
+    const host = ts.createCompilerHost(options);
+    const readSource = host.getSourceFile.bind(host);
+    host.getSourceFile = (name, languageVersion, onError, shouldCreateNewSourceFile) =>
+      resolve(name) === fileName
+        ? ts.createSourceFile(name, source, languageVersion, true)
+        : readSource(name, languageVersion, onError, shouldCreateNewSourceFile);
+    const program = ts.createProgram([fileName], options, host);
+    expect(
+      ts
+        .getPreEmitDiagnostics(program)
+        .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')),
+    ).toEqual([]);
+    const js = ts.transpileModule(source, {
+      compilerOptions: { target: ts.ScriptTarget.ES2020 },
+    }).outputText;
+    const total = new Function(`${js}\nreturn total;`)() as (doc: unknown) => number;
+    expect(
+      total({
+        eventDishes: [
+          { _id: 'a', addedAt: 1, estimatedCost: 12 },
+          { _id: 'b', addedAt: 1, estimatedCost: 8 },
+        ],
+      }),
+    ).toBe(20);
+  });
   it('hydrates EventDish graph and materializes estimatedCost under Event.eventDishes', async () => {
     const { ir, diagnostics } = await compileToIR(PROGRAM);
     expect((diagnostics ?? []).filter((d) => d.severity === 'error')).toEqual([]);

@@ -22,6 +22,10 @@ non-binding navigation mirror only.
 
 ## Bugs
 
+- [ ] **Convex filtered child-computed callback typing** — 3.6.49 consumer
+      typechecking exposed stored `Doc` annotations on hydrated computed-value
+      callbacks. Track correction and executable TypeScript proof in the matrix.
+
 - [x] **Convex belongsTo-to-hasMany mutation guard identity** — fixed the
       hydration/local mismatch and entity-lambda identity lowering reported by
       Capsule packing adoption at `6ea86b6`. Generated-command runtime proof,

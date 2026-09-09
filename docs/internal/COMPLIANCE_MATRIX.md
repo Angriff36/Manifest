@@ -393,6 +393,10 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 
 | Status | Feature | Implementation Status | Evidence pointer |
 | --- | --- | --- | --- |
+| [~] | Convex filtered child-computed callback typing | PARTIAL | Capsule integration of 3.6.49 exposed TS2339 on EventDish.estimatedCost: the nested collection resolver assigns a stored Doc type to a callback that reads hydrated computed fields. Runtime passes; generated consumer typecheck fails. |
+
+| Status | Feature | Implementation Status | Evidence pointer |
+| --- | --- | --- | --- |
 | [x] | Convex belongsTo-to-hasMany mutation guard identity | FULLY_IMPLEMENTED | `src/manifest/projections/convex/aggregate-hydrate.ts:583-662`, `functions.ts:2196-2208`, `count-of-preload.ts:95-138`, `expression.ts:166-181,204-212,433-449`; executable generated-command proof `src/manifest/projections/convex/nested-aggregate-guard.test.ts:38-132`, all at `6ea86b6`. Proves shared resolved roots, nested tenant isolation, and entity `id` lowering while preserving plain-object `id`; does not assert every possible aggregate shape. |
 
 | Status | Feature                                        | Implementation Status | Notes                                                                                                                  |
