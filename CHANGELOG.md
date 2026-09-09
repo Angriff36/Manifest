@@ -4,6 +4,14 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.50] - 2026-09-09
+
+### Changed
+
+- docs: acknowledge published relationship guard fix
+- docs: record child computed callback type proof
+- fix(convex): retain hydrated types for child computed callbacks
+
 ## [3.6.49] - 2026-09-09
 
 ### Changed
