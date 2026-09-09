@@ -157,9 +157,26 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
   const relationVars = scope.relationVars ?? {};
   /** Stack of element types for nested `count_of`/aggregate lambda bodies. */
   const lambdaParamTypeStack: string[] = [];
+  const entityLambdaStack: boolean[] = [];
+  const entityLambdaBindings = new Map<string, boolean>();
   const fallbackLambdaType = scope.lambdaParamType ?? DEFAULT_LAMBDA_PARAM_TYPE;
   const resolveLambdaParamType = (collection: IRExpression, callback: IRExpression): string =>
     scope.resolveCollectionElementType?.(collection, callback) ?? fallbackLambdaType;
+
+  const renderCollectionLambda = (
+    collection: IRExpression,
+    callback: IRExpression,
+    type?: string,
+  ): string => {
+    lambdaParamTypeStack.push(type ?? resolveLambdaParamType(collection, callback));
+    entityLambdaStack.push(
+      scope.resolveCollectionElementType?.(collection)?.startsWith('Doc<') === true,
+    );
+    const code = go(callback);
+    entityLambdaStack.pop();
+    lambdaParamTypeStack.pop();
+    return code;
+  };
 
   const go = (e: IRExpression | undefined): string => {
     if (!e) {
@@ -185,6 +202,13 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
       }
 
       case 'member': {
+        if (
+          e.property === 'id' &&
+          e.object.kind === 'identifier' &&
+          entityLambdaBindings.get(e.object.name)
+        ) {
+          return `${e.object.name}._id`;
+        }
         // self.x / this.x → <selfVar>.x (with Convex id / previous* rewrites)
         if (
           e.object.kind === 'identifier' &&
@@ -269,10 +293,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
           if (callee === 'count_of') {
             if (e.args.length === 1) return `((${collCode}) ?? []).length`;
             const predicate = e.args[1]!;
-            const elementType = resolveLambdaParamType(collection, predicate);
-            lambdaParamTypeStack.push(elementType);
-            const predCode = go(predicate);
-            lambdaParamTypeStack.pop();
+            const predCode = renderCollectionLambda(collection, predicate);
             return `((${collCode}) ?? []).filter(${predCode}).length`;
           }
           if (callee === 'sum') {
@@ -280,10 +301,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
               return `((${collCode}) ?? []).reduce((acc: number, v: unknown) => acc + (typeof v === "number" ? v : 0), 0)`;
             }
             const mapper = e.args[1]!;
-            const elementType = resolveLambdaParamType(collection, mapper);
-            lambdaParamTypeStack.push(elementType);
-            const mapCode = go(mapper);
-            lambdaParamTypeStack.pop();
+            const mapCode = renderCollectionLambda(collection, mapper);
             return `((${collCode}) ?? []).map(${mapCode}).reduce((acc: number, v: unknown) => acc + (typeof v === "number" ? v : 0), 0)`;
           }
           if (callee === 'avg' || callee === 'min_of' || callee === 'max_of') {
@@ -292,10 +310,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
               valuesExpr = `((${collCode}) ?? []).filter((v: unknown): v is number => typeof v === "number")`;
             } else {
               const mapper = e.args[1]!;
-              const elementType = resolveLambdaParamType(collection, mapper);
-              lambdaParamTypeStack.push(elementType);
-              const mapCode = go(mapper);
-              lambdaParamTypeStack.pop();
+              const mapCode = renderCollectionLambda(collection, mapper);
               valuesExpr = `((${collCode}) ?? []).map(${mapCode}).filter((v: unknown): v is number => typeof v === "number")`;
             }
             if (callee === 'avg') {
@@ -317,10 +332,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
               return `((${collCode}) ?? [])`;
             }
             const predicate = e.args[1]!;
-            const elementType = resolveLambdaParamType(collection, predicate);
-            lambdaParamTypeStack.push(elementType);
-            const predCode = go(predicate);
-            lambdaParamTypeStack.pop();
+            const predCode = renderCollectionLambda(collection, predicate);
             return `((${collCode}) ?? []).filter(${predCode})`;
           }
           if (callee === 'map') {
@@ -329,10 +341,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
               return `((${collCode}) ?? [])`;
             }
             const mapper = e.args[1]!;
-            const elementType = resolveLambdaParamType(collection, mapper);
-            lambdaParamTypeStack.push(elementType);
-            const mapCode = go(mapper);
-            lambdaParamTypeStack.pop();
+            const mapCode = renderCollectionLambda(collection, mapper);
             return `((${collCode}) ?? []).map(${mapCode})`;
           }
           // flat_map — element rows are often relation-hydrated beyond Doc<> fields
@@ -342,9 +351,7 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
             return `((${collCode}) ?? [])`;
           }
           const mapper = e.args[1]!;
-          lambdaParamTypeStack.push(fallbackLambdaType);
-          const mapCode = go(mapper);
-          lambdaParamTypeStack.pop();
+          const mapCode = renderCollectionLambda(collection, mapper, fallbackLambdaType);
           return `((${collCode}) ?? []).flatMap(${mapCode})`;
         }
         const args = e.args.map(go);
@@ -424,13 +431,17 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
         // Render as a typed JS arrow so aggregate builtins (count_of/filter/map)
         // pass the predicate through under strict TypeScript (no TS7006).
         const added: string[] = [];
+        const previousBindings = new Map(entityLambdaBindings);
         for (const p of e.params) {
+          entityLambdaBindings.set(p, entityLambdaStack[entityLambdaStack.length - 1] ?? false);
           if (!locals.has(p)) {
             locals.add(p);
             added.push(p);
           }
         }
         const body = go(e.body);
+        entityLambdaBindings.clear();
+        for (const [name, value] of previousBindings) entityLambdaBindings.set(name, value);
         for (const p of added) locals.delete(p);
         const paramType =
           lambdaParamTypeStack[lambdaParamTypeStack.length - 1] ?? fallbackLambdaType;

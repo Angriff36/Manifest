@@ -37,7 +37,7 @@ import {
 } from './generator.js';
 import { resolveConvexValidator } from './type-mapping.js';
 import { ReactionPayloadCollisionPlanner } from './reactionPayloadCollision.js';
-import { planAndRenderAggregateHydration } from './aggregate-hydrate.js';
+import { planAndRenderAggregateHydration, renderAggregateHydration } from './aggregate-hydrate.js';
 import {
   codeUsesDocType,
   collectCountOfHasManyRels,
@@ -2174,7 +2174,7 @@ function generateMutation(
     'docId',
   );
   diagnostics.push(...aggregateHydration.diagnostics);
-  const hasManyPreloads = aggregateHydration.lines;
+  let hasManyPreloads = aggregateHydration.lines;
   // Preserve one-hop count_of support detection for relation-plan skip logic.
   const countOfRels = new Set<string>();
   for (const c of checkSpecs) collectCountOfHasManyRels(c.expr, countOfRels);
@@ -2192,6 +2192,19 @@ function generateMutation(
     tenantScoped,
     writeTenantProp,
     supportedHasMany,
+  );
+  hasManyPreloads = renderAggregateHydration(
+    aggregateHydration.tree,
+    '(doc as any)',
+    'docId',
+    '    ',
+    ir,
+    options,
+    {
+      relationVars: relationHydration.relationVars,
+      tenantProperty: tenantScoped ? writeTenantProp : undefined,
+      tenantValue: writeTenantProp ? `__auth.${writeTenantProp}` : undefined,
+    },
   );
   diagnostics.push(...relationHydration.diagnostics);
   const checks = renderChecks(

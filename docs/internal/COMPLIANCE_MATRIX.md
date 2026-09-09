@@ -391,6 +391,10 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 
 **Cross-cutting projection gaps**
 
+| Status | Feature | Implementation Status | Evidence pointer |
+| --- | --- | --- | --- |
+| [~] | Convex nested relationship aggregate mutation guards | PARTIAL | Nonconformance found 2026-09-09 in Capsule packing-link adoption: aggregate hydration populates the document graph while guards read separate relation locals; collection lambda logical `id` is not lowered to `_id`. Existing aggregate completion claims above do not cover this failing command path. See `docs/spec/adapters.md` Convex aggregate nonconformance. |
+
 | Status | Feature                                        | Implementation Status | Notes                                                                                                                  |
 | ------ | ---------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | [x]    | Capability descriptors API                     | FULLY_IMPLEMENTED     | §1                                                                                                                     |
