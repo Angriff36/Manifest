@@ -27,7 +27,7 @@ carries file evidence checked on 2026-07-14.
 
 ## 1. Language (DSL) Features
 
-**Projection correction (2026-09-09, source commit `6ea86b6`, not yet published):**
+**Projection correction (2026-09-09, source commit `6ea86b6`, published in 3.6.49):**
 Convex belongsTo-to-hasMany mutation guards share resolved relationship objects
 with aggregate hydration and lower entity callback `id` to `_id`. The generated
 command regression covers tenant isolation and preserves ordinary object `id`.
