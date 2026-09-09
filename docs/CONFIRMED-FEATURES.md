@@ -33,6 +33,11 @@ with aggregate hydration and lower entity callback `id` to `_id`. The generated
 command regression covers tenant isolation and preserves ordinary object `id`.
 See the matching compliance-matrix row for exact implementation and proof ranges.
 
+**Computed callback follow-up (source `2a4798d`, not yet published):** callbacks
+over filtered child collections keep the hydrated shape when reading computed
+values. The strict TypeScript regression covers the 3.6.49 consumer failure;
+matrix evidence also verifies the aggregate runtime total.
+
 All verified via `docs/spec/ir/ir-v1.schema.json` + `src/manifest/ir-compiler.ts`
 
 - a dedicated conformance fixture in `src/manifest/conformance/fixtures/`

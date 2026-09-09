@@ -393,7 +393,7 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 
 | Status | Feature | Implementation Status | Evidence pointer |
 | --- | --- | --- | --- |
-| [~] | Convex filtered child-computed callback typing | PARTIAL | Capsule integration of 3.6.49 exposed TS2339 on EventDish.estimatedCost: the nested collection resolver assigns a stored Doc type to a callback that reads hydrated computed fields. Runtime passes; generated consumer typecheck fails. |
+| [x] | Convex filtered child-computed callback typing | FULLY_IMPLEMENTED | `src/manifest/projections/convex/count-of-preload.ts:53-93,132-133`; strict TypeScript diagnostic and runtime total proof `src/manifest/projections/convex/parent-child-computed-hydrate.test.ts:74-117`, all at `2a4798d`. Corrects 3.6.49 TS2339 on materialized EventDish.estimatedCost by retaining the hydrated callback shape; entity identity resolution remains independent. |
 
 | Status | Feature | Implementation Status | Evidence pointer |
 | --- | --- | --- | --- |

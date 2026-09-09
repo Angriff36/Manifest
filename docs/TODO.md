@@ -22,9 +22,9 @@ non-binding navigation mirror only.
 
 ## Bugs
 
-- [ ] **Convex filtered child-computed callback typing** — 3.6.49 consumer
-      typechecking exposed stored `Doc` annotations on hydrated computed-value
-      callbacks. Track correction and executable TypeScript proof in the matrix.
+- [x] **Convex filtered child-computed callback typing** — source fix `2a4798d`
+      retains hydrated callback types for materialized computed values. Strict
+      TypeScript and runtime proof is recorded in the matrix; publication is separate.
 
 - [x] **Convex belongsTo-to-hasMany mutation guard identity** — fixed the
       hydration/local mismatch and entity-lambda identity lowering reported by

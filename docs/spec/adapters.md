@@ -171,6 +171,9 @@ Both seams are projection configuration only and do not alter IR shape.
 resolve stored document types, but callbacks reading hydrated computed fields
 must retain the hydrated row shape. Assigning only `Doc<...>` to those callbacks
 rejects valid generated TypeScript even though runtime evaluation succeeds.
+Resolved in source at `2a4798d` (publication tracked separately): computed-field
+callbacks retain the hydrated row shape, with strict TypeScript and runtime
+regression proof in `parent-child-computed-hydrate.test.ts:74-117`.
 
 Nested collection guards such as
 `count_of(filter(self.packList.event.eventDishes, (item) => item.id == eventDishId))`
