@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.52] - 2026-09-10
+
+### Changed
+
+- docs: record governed creation binding proof
+- fix: preserve governed creation command bindings
+
 ## [3.6.51] - 2026-09-10
 
 ### Changed
