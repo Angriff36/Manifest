@@ -4,6 +4,14 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.53] - 2026-09-10
+
+### Changed
+
+- docs: include query projection integration in computed proof
+- docs: record computed context proof and release follow-up
+- fix(convex): bind runtime context in computed projections
+
 ## [3.6.52] - 2026-09-10
 
 ### Changed
