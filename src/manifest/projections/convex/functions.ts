@@ -1740,30 +1740,39 @@ function renderGovernedCreationEntry(
     tenantProp: writeTenantProp,
   });
 
-  const mutates = (cmd.actions ?? []).filter(
-    (action) =>
+  // Run against one working copy in declaration order. Parameters retain their
+  // lexical bindings even when an action changes a same-named stored field;
+  // compute values remain locals and are available only after their action.
+  const actionLines: string[] = [];
+  const actionLocals = [...paramNames];
+  for (const action of cmd.actions ?? []) {
+    if (!action.target || (action.kind !== 'compute' && action.kind !== 'mutate')) continue;
+    if (
       action.kind === 'mutate' &&
-      action.target &&
-      !(tenantScoped && action.target === writeTenantProp) &&
-      !isConvexVersionManagedField(entity, action.target),
-  );
-  const mutateLines: string[] = [];
-  for (const action of mutates) {
-    const { code, unresolved } = renderActionValue(entity, action.target, action.expression, {
-      selfVar: '__draft',
-      locals: [...paramNames],
-      relationVars: relationHydration.relationVars,
-    });
+      ((tenantScoped && action.target === writeTenantProp) ||
+        isConvexVersionManagedField(entity, action.target))
+    )
+      continue;
+    const actionScope: RenderScope = { ...scope, selfVar: 'doc', locals: actionLocals };
+    const { code, unresolved } =
+      action.kind === 'compute'
+        ? renderExpression(action.expression, actionScope)
+        : renderActionValue(entity, action.target, action.expression, actionScope);
     if (unresolved.length) {
       diagnostics.push({
         severity: 'warning',
-        code: 'CONVEX_UNRESOLVED_ACTION',
+        code: action.kind === 'compute' ? 'CONVEX_UNRESOLVED_COMPUTE' : 'CONVEX_UNRESOLVED_ACTION',
         entity: entity.name,
         message: `initialization action '${action.target}' unresolved (${unresolved.join('; ')}); omitted.`,
       });
       continue;
     }
-    mutateLines.push(`      ${action.target}: ${code}`);
+    if (action.kind === 'compute') {
+      actionLines.push(`    const ${action.target} = ${code};`);
+      if (!actionLocals.includes(action.target)) actionLocals.push(action.target);
+    } else {
+      actionLines.push(`    doc.${action.target} = ${code};`);
+    }
   }
 
   for (const requirement of plan.finalDocumentRequirements) {
@@ -1792,6 +1801,7 @@ function renderGovernedCreationEntry(
   const g7Scope: RenderScope = {
     selfVar: 'doc',
     idExpr: 'docId',
+    locals: actionLocals,
     relationVars: relationHydration.relationVars,
   };
   const g7 = unionEmitPayloadFields(cmd, g7Scope, 'docId');
@@ -1857,7 +1867,7 @@ function renderGovernedCreationEntry(
     ...relationHydration.lines,
     ...createViaRateLimitLines,
     ...checks.lines,
-    ...mutateLines,
+    ...actionLines,
     tail,
     paramBindLine,
     ...trustedInject.lines,
@@ -1886,9 +1896,9 @@ function renderGovernedCreationEntry(
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
     `    const doc: Record<string, any> = {\n` +
     `      ...__draft,\n` +
-    (mutateLines.length ? `${mutateLines.join(',\n')},\n` : '') +
     (versionLines.length ? `${versionLines.join(',\n')},\n` : '') +
     `    };\n` +
+    (actionLines.length ? actionLines.join('\n') + '\n' : '') +
     (encryptionActive
       ? `    const __storedDoc = await __encryptDoc(ctx, ${JSON.stringify(entity.name)}, ${JSON.stringify(mutationEncrypted)}, doc);\n`
       : '') +

@@ -95,7 +95,7 @@ describe('Convex draft defaults for command-owned fields', () => {
 
     expect(draftSection).toContain('status: "pending"');
     expect(createSection).toContain('__draft.status === "pending"');
-    expect(docSection).toContain('status: "calculated"');
+    expect(docSection).toContain('doc.status = "calculated"');
     expect(docSection).toContain('...__draft');
   });
 });

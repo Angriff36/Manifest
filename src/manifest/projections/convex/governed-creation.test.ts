@@ -394,7 +394,7 @@ describe('Convex governed creation entries', () => {
       ingredientCreate.indexOf('const doc:'),
     );
     expect(draftSection).not.toContain('introducedAt: Date.now()');
-    expect(ingredientCreate).toContain('introducedAt: Date.now()');
+    expect(ingredientCreate).toContain('doc.introducedAt = Date.now()');
     expect(ingredientCreate).not.toContain('await __runIngredientIntroduce');
     expect(ingredientCreate).not.toContain('await ctx.db.delete(docId)');
 
@@ -407,7 +407,7 @@ describe('Convex governed creation entries', () => {
       recipeCreate.indexOf('const doc:'),
     );
     expect(recipeDraft).not.toContain('draftedAt: Date.now()');
-    expect(recipeCreate).toContain('draftedAt: Date.now()');
+    expect(recipeCreate).toContain('doc.draftedAt = Date.now()');
     expect(recipeCreate).not.toContain('await __runRecipeDraft');
     expect(recipeCreate).not.toContain('await ctx.db.delete(docId)');
 
@@ -563,9 +563,9 @@ describe('Convex governed creation entries', () => {
     expect(createVia).toContain('const { name, costPerUnit, sku } = args;');
     expect(createVia).toContain('(((name).trim()).length > 0)');
     expect(createVia).toContain('(costPerUnit >= 0)');
-    expect(createVia).toContain('name: name');
-    expect(createVia).toContain('costPerUnit: costPerUnit');
-    expect(createVia).toContain('sku: sku');
+    expect(createVia).toContain('doc.name = name');
+    expect(createVia).toContain('doc.costPerUnit = costPerUnit');
+    expect(createVia).toContain('doc.sku = sku');
     expect(createVia).toContain('(__draft.introducedAt == null)');
     expect(createVia).toContain('tenantId: __auth.tenantId');
     // Draft seeds still read the args bag; locals are for expression eval.

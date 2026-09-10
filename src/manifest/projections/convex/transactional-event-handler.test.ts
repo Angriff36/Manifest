@@ -360,4 +360,84 @@ describe('Convex transactional event handler', () => {
     expect(silent.code).not.toContain('./lib/events');
     await silent.call('Silent_create', { value: 1 });
   });
+  it.each([true, false])(
+    'preserves createVia parameters and ordered computes (handler %s)',
+    async (enabled) => {
+      const seen: Event[] = [];
+      const source = `
+      entity RecipeStep {
+        property amount: decimal = 0
+        property reactionAmount: decimal = 0
+        property reactionSync: boolean = true
+        property openedAt: datetime?
+        command open(amount: decimal, optional synchronizePrep: boolean) {
+          guard self.openedAt == null
+          guard amount >= 0
+          compute syncPrepRequested = synchronizePrep != null ? synchronizePrep : true
+          compute doubled = amount * 2
+          mutate amount = doubled
+          compute afterAmount = self.amount + 1
+          mutate amount = afterAmount
+          mutate openedAt = now()
+          emit StepOpened { stepId: self.id, original: amount, current: self.amount, computedAmount: afterAmount, sync: syncPrepRequested, directSync: synchronizePrep != null ? synchronizePrep : true }
+        }
+        command record(amount: decimal, sync: boolean) {
+          mutate reactionAmount = amount
+          mutate reactionSync = sync
+        }
+      }
+      store RecipeStep in durable
+      event StepOpened: "step.opened" { stepId: string original: decimal current: decimal computedAmount: decimal sync: boolean directSync: boolean }
+      on StepOpened run RecipeStep.record
+        resolve payload.stepId
+        params { amount: payload.computedAmount, sync: payload.sync }
+    `;
+      const f = await fixture(
+        async (_ctx, event) => {
+          seen.push(event);
+        },
+        source,
+        enabled,
+      );
+      for (const synchronizePrep of [false, true, undefined]) {
+        const args = {
+          amount: 4,
+          ...(synchronizePrep === undefined ? {} : { synchronizePrep }),
+          idempotencyKey: `open-${synchronizePrep}`,
+        };
+        const created = await f.call('RecipeStep_createViaOpen', args);
+        const row = await f.root.run((ctx) => ctx.db.get(created.docId));
+        expect(row).toMatchObject({
+          amount: 9,
+          reactionAmount: 9,
+          reactionSync: synchronizePrep ?? true,
+        });
+        for (const local of ['synchronizePrep', 'syncPrepRequested', 'doubled', 'afterAmount'])
+          expect(row).not.toHaveProperty(local);
+        const event = (await f.rows('manifestEvents')).find(
+          (event) => event.entityId === created.docId,
+        )!;
+        expect(event.payload).toEqual({
+          stepId: created.docId,
+          original: 4,
+          current: 9,
+          computedAmount: 9,
+          sync: synchronizePrep ?? true,
+          directSync: synchronizePrep ?? true,
+        });
+        if (enabled) expect(seen[seen.length - 1]!.payload).toEqual(event.payload);
+        const before = {
+          rows: await f.rows('recipeSteps'),
+          events: await f.rows('manifestEvents'),
+          seen: seen.length,
+        };
+        expect(await f.call('RecipeStep_createViaOpen', args)).toEqual(created);
+        expect({
+          rows: await f.rows('recipeSteps'),
+          events: await f.rows('manifestEvents'),
+          seen: seen.length,
+        }).toEqual(before);
+      }
+    },
+  );
 });

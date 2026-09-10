@@ -393,6 +393,10 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 
 | Status | Feature | Implementation Status | Evidence pointer |
 | --- | --- | --- | --- |
+| [x] | Convex governed creation command bindings | FULLY_IMPLEMENTED | `src/manifest/projections/convex/functions.ts:1743-1779,1801-1807,1891-1912`; actual generated execution `src/manifest/projections/convex/transactional-event-handler.test.ts:363-441`, all at `300f2ea`. Parameter/local versus stored-field identity, ordered compute/mutate evaluation, optional false/true/omitted flags, reaction/stored/callback payloads, non-persistence and replay pass with callback enabled/disabled. Full suite4506 passed/60 skipped, typecheck, lint, docs and independent gpt-5.6-sol APPROVE. Registry release and Capsule adoption are separate. |
+
+| Status | Feature | Implementation Status | Evidence pointer |
+| --- | --- | --- | --- |
 | [x] | Convex filtered child-computed callback typing | FULLY_IMPLEMENTED | `src/manifest/projections/convex/count-of-preload.ts:53-93,132-133`; strict TypeScript diagnostic and runtime total proof `src/manifest/projections/convex/parent-child-computed-hydrate.test.ts:74-117`, all at `2a4798d`. Corrects 3.6.49 TS2339 on materialized EventDish.estimatedCost by retaining the hydrated callback shape; entity identity resolution remains independent. |
 
 | Status | Feature | Implementation Status | Evidence pointer |
