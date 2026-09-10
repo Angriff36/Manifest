@@ -31,6 +31,7 @@ import {
   collectReferenceFields,
   indexEntryToDef,
   buildValidator,
+  buildSchemaValidator,
   isPersistentEntity,
   resolveEventsTableName,
   type NormalizedOptions,
@@ -292,10 +293,8 @@ function capWord(s: string): string {
 interface QueryIndexField {
   /** Column being matched (also the arg name). */
   name: string;
-  /** Target table when the column is a convexId reference (→ `v.id(...)` arg). */
-  fkTarget?: string;
-  /** Schema-equivalent validator for enum properties (including nullable unions). */
-  enumValidator?: string;
+  /** Validator for the indexed storage value, including declared nullability. */
+  validator: string;
 }
 
 interface QueryIndexSpec {
@@ -315,38 +314,45 @@ interface QueryIndexSpec {
  * query — the two surfaces can no longer drift (closing both the stringId-mode
  * FK gap and the composite-index gap).
  */
-function collectQueryIndexSpecs(ir: IR, entity: IREntity, options: Normalized): QueryIndexSpec[] {
+function collectQueryIndexSpecs(
+  ir: IR,
+  entity: IREntity,
+  options: Normalized,
+  diagnostics: ProjectionDiagnostic[],
+): QueryIndexSpec[] {
   const specs: QueryIndexSpec[] = [];
   const seenSingle = new Set<string>();
   const seenName = new Set<string>();
-  // convexId-only targets: present → arg typed `v.id(target)`; enum properties
-  // reuse their schema validator; every other field remains `v.string()`.
+  // Indexed comparisons use persisted values, exactly as the schema does.
+  // In particular, dates are numbers and encrypted fields are ciphertext strings.
   const fkTargets = collectFkTargets(entity, ir, options);
-  const mkField = (name: string): QueryIndexField => {
+  const mkField = (name: string): QueryIndexField | null => {
     const fkTarget = fkTargets.get(name);
-    if (fkTarget) return { name, fkTarget };
-
     const property = entity.properties.find((candidate) => candidate.name === name);
-    if (!property) return { name };
+    if (!property) return { name, validator: fkTarget ? `v.id("${fkTarget}")` : 'v.string()' };
 
-    const isArray =
-      (property.type.name === 'array' || property.type.name === 'list') && !!property.type.generic;
-    const effectiveTypeName = isArray ? property.type.generic!.name : property.type.name;
-    const typeOverrides = options.typeMappings[entity.name];
-    const hasOverride =
-      typeOverrides !== undefined && Object.prototype.hasOwnProperty.call(typeOverrides, name);
-    const usesEnumValidator = !hasOverride && ir.enums?.some((e) => e.name === effectiveTypeName);
-    if (!usesEnumValidator) return { name };
-
-    const { validator } = buildValidator(entity, property, ir, options, undefined);
-    return { name, enumValidator: validator };
+    const { validator, diagnostics: fieldDiagnostics } = buildSchemaValidator(
+      entity,
+      property,
+      ir,
+      options,
+      fkTarget,
+    );
+    diagnostics.push(...fieldDiagnostics);
+    if (!validator) return null;
+    return {
+      name,
+      validator: property.modifiers.includes('required') ? validator : `v.optional(${validator})`,
+    };
   };
 
   const addSingle = (field: string, indexName: string): void => {
     if (field === 'id' || seenSingle.has(field)) return;
+    const indexField = mkField(field);
+    if (!indexField) return;
     seenSingle.add(field);
     seenName.add(indexName);
-    specs.push({ fields: [mkField(field)], indexName });
+    specs.push({ fields: [indexField], indexName });
   };
 
   for (const p of entity.properties) {
@@ -362,7 +368,9 @@ function collectQueryIndexSpecs(ir: IR, entity: IREntity, options: Normalized): 
       addSingle(def.fields[0], def.name);
     } else if (def.fields.length > 1 && !seenName.has(def.name)) {
       seenName.add(def.name);
-      specs.push({ fields: def.fields.map(mkField), indexName: def.name });
+      const fields = def.fields.map(mkField);
+      if (fields.every((field): field is QueryIndexField => field !== null))
+        specs.push({ fields, indexName: def.name });
     }
   }
   return specs;
@@ -509,16 +517,12 @@ function emitListByIndexQueries(
   qfn: string,
   policyPrelude: PolicyPrelude,
   finishRows: FinishRows,
+  diagnostics: ProjectionDiagnostic[],
 ): void {
-  for (const spec of collectQueryIndexSpecs(ir, entity, options)) {
+  for (const spec of collectQueryIndexSpecs(ir, entity, options, diagnostics)) {
     const names = spec.fields.map((f) => f.name);
     const suffix = spec.fields.map((f) => capWord(f.name)).join('And');
-    const argList = spec.fields
-      .map(
-        (f) =>
-          `${f.name}: ${f.fkTarget ? `v.id("${f.fkTarget}")` : (f.enumValidator ?? 'v.string()')}`,
-      )
-      .join(', ');
+    const argList = spec.fields.map((f) => `${f.name}: ${f.validator}`).join(', ');
     const destructure = `{ ${names.join(', ')} }`;
     const applyTenant = rf.hasTenant && !!rf.tenantProp;
     const tenantFieldInIndex = applyTenant && names.includes(rf.tenantProp!);
@@ -841,7 +845,18 @@ export function generateQueries(
     // list/get/listBy — tenant + soft-delete filters applied in helpers.
     emitListEntityQuery(blocks, entity, table, rf, options, qfn, policyPrelude, finishRows);
     emitGetEntityQuery(blocks, entity, table, rf, options, qfn, policyPrelude, finishDoc);
-    emitListByIndexQueries(blocks, ir, entity, table, rf, options, qfn, policyPrelude, finishRows);
+    emitListByIndexQueries(
+      blocks,
+      ir,
+      entity,
+      table,
+      rf,
+      options,
+      qfn,
+      policyPrelude,
+      finishRows,
+      diagnostics,
+    );
   }
 
   // System events table reads (when emitted): recent feed + the three indexed

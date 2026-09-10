@@ -68,6 +68,28 @@ describe('ConvexProjection — surfaces', () => {
 });
 
 describe('convex.queries', () => {
+  it('reports unmappable indexed fields and omits their single and composite reads', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Record', [
+        prop('label', 'string', ['required']),
+        prop('unsupported', 'missingStorageType', ['indexed']),
+      ]),
+    ];
+    ir.stores = [durable('Record')];
+    const result = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { indexes: { Record: [['label', 'unsupported']] } },
+    });
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ severity: 'error', code: 'CONVEX_UNKNOWN_TYPE' }),
+      ]),
+    );
+    expect(result.artifacts[0].code).not.toContain('listRecordByUnsupported');
+    expect(result.artifacts[0].code).not.toContain('listRecordByLabelAndUnsupported');
+  });
+
   it('emits list/get and index-based listBy with typed FK args', () => {
     const ir = emptyIR();
     ir.entities = [
@@ -299,7 +321,7 @@ describe('convex.queries — tenant + soft-delete read filtering', () => {
       },
     }).artifacts[0].code;
 
-    expect(code).toContain('args: { tenantId: v.string(), createdAt: v.string() }');
+    expect(code).toContain('args: { tenantId: v.string(), createdAt: v.number() }');
     expect(code).toContain('q.eq("tenantId", __tenant).eq("createdAt", createdAt)');
     expect(code).not.toContain('q.eq("tenantId", tenantId).eq("createdAt", createdAt)');
   });

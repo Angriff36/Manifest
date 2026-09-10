@@ -714,7 +714,7 @@ export const getTask = query({
 });
 
 export const listTaskByAssigneeId = query({
-  args: { assigneeId: v.id("users") },
+  args: { assigneeId: v.optional(v.union(v.id("users"), v.null())) },
   handler: async (ctx, { assigneeId }) => {
     return await ctx.db.query("tasks").withIndex("by_assigneeId", (q) => q.eq("assigneeId", assigneeId)).collect();
   },

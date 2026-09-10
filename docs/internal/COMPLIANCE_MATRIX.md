@@ -95,6 +95,12 @@ No generated document or automated inventory may promote a feature to `FULLY_IMP
 
 ## Integration status (Manifest × Builder)
 
+### Convex indexed storage validator correction (2026-09-10)
+
+| Status | Capability | Implementation status | Evidence |
+| --- | --- | --- | --- |
+| [ ] | Convex indexed reads use declared storage types | CLAIMED_NEEDS_PROOF | Capsule issue [364](https://github.com/Angriff36/capsule/issues/364): datetime/numeric/boolean query selectors were emitted as strings. The source fix shares schema validator generation, preserves declared optional/null values, encrypted storage and overrides. Five emitted-query runtime checks now pass in `src/manifest/projections/convex/indexed-query-storage.test.ts`; full gates, independent review and commit proof are pending. |
+
 These states are **orthogonal** to implementation status above. A Manifest gap is never “fixed” by Builder UI. Builder-owned work is never a Manifest `NOT_IMPLEMENTED` row.
 
 | Integration state     | Meaning                                                                                                                                                   |
