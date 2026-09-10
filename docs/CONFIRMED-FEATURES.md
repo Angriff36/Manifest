@@ -31,7 +31,10 @@ carries file evidence checked on 2026-07-14.
 invokes a host's `handleManifestEvent` inside the generated command's mutation,
 after declared reactions. Generated-module runtime tests cover rollback,
 creation, idempotency, policies, event ordering, and stored payload identity.
-The compliance matrix tracks pending full validation and commit proof.
+Source `15c5a38` passed the full suite (4504 passed, 60 skipped), typecheck,
+lint, formatting, docs, cycles, and a built public-package type import check.
+Independent gpt-5.6-sol approved the diff. Exact evidence is in the compliance
+matrix; registry publication and consumer adoption remain separate.
 
 **Projection correction (2026-09-09, source commit `6ea86b6`, published in 3.6.49):**
 Convex belongsTo-to-hasMany mutation guards share resolved relationship objects
