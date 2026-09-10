@@ -22,6 +22,14 @@ non-binding navigation mirror only.
 
 ## Bugs
 
+- [x] **Convex indexed-query name limit** — names longer than Convex's
+      64-character limit now retain a readable prefix and stable FNV-1a/64
+      suffix; existing valid names and indexed read behavior stay unchanged.
+      Four compile/generate/execute regressions, real local backend acceptance
+      and all required gates pass at `a65cd42`, with independent gpt-5.6-sol
+      APPROVE. Exact proof is in the compliance matrix; registry publication
+      and Capsule adoption are separate verification steps.
+
 - [x] **Convex indexed storage validators** — indexed query selectors now share
       schema storage types, including timestamp numbers, optional/null values,
       typed references, overrides and ciphertext. Five emitted-query runtime
