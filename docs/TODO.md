@@ -22,6 +22,13 @@ non-binding navigation mirror only.
 
 ## Bugs
 
+- [x] **Convex indexed storage validators** — indexed query selectors now share
+      schema storage types, including timestamp numbers, optional/null values,
+      typed references, overrides and ciphertext. Five emitted-query runtime
+      checks plus unknown-type rejection pass at `47d1762`; full local suite
+      passes 4,519 tests with gpt-5.6-sol APPROVE. The compliance matrix carries
+      exact proof ranges. Publication and Capsule consumption remain separate.
+
 - [x] **Convex computed runtime context** — generated helpers now take explicit
       user/context bindings when their expressions need them; related computed
       hydration and inline reads use the same bindings. Seven generated execution

@@ -266,7 +266,7 @@ export function buildValidator(
  * so their storage representation is always a string even when callers and
  * Manifest evaluation use a different declared scalar type.
  */
-function buildSchemaValidator(
+export function buildSchemaValidator(
   entity: IREntity,
   prop: IRProperty,
   ir: IR,
