@@ -393,6 +393,11 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 
 | Status | Feature | Implementation Status | Evidence pointer |
 | --- | --- | --- | --- |
+| [x] | Convex computed runtime context | FULLY_IMPLEMENTED | `src/manifest/projections/convex/computed-context.ts:1-60`, `computed.ts:44-162`, `functions.ts:621-912`, and `role-helpers.ts:1-28`; generated TypeScript/execution proof `src/manifest/projections/convex/computed-context.test.ts:108-215`, all at `9521ae61895e9573a4437d515a24f5f7b95e2c08`. Seven cases prove explicit helper user/context, role inheritance/targets, child materialization including child-only bindings, inline public/row/context-policy reads, and missing-seam failure. Full suite4513 passed/60 skipped, typecheck, lint, format, cycles, docs, and independent gpt-5.6-sol APPROVE. Fix for Capsule [#362](https://github.com/Angriff36/capsule/issues/362); registry publication and Builder/Capsule consumption are separate. |
+| [ ] | Release-generated feature inventory version | PARTIAL | The `db385089432f8067650d252898a6633510e56d03` release bumped package.json to 3.6.52 while docs/FEATURE-LIST.md retained 3.6.51, failing docs:check:feature-list. Local regeneration passes; `.github/workflows/cut-release.yml` now regenerates after install and before its formatting commit. Source `9521ae61895e9573a4437d515a24f5f7b95e2c08`, `.github/workflows/cut-release.yml:105-114`; Capsule [#363](https://github.com/Angriff36/capsule/issues/363). The next release must verify the committed inventory matches the published version. |
+
+| Status | Feature | Implementation Status | Evidence pointer |
+| --- | --- | --- | --- |
 | [x] | Convex governed creation command bindings | FULLY_IMPLEMENTED | `src/manifest/projections/convex/functions.ts:1743-1779,1801-1807,1891-1912`; actual generated execution `src/manifest/projections/convex/transactional-event-handler.test.ts:363-441`, all at `300f2ea`. Parameter/local versus stored-field identity, ordered compute/mutate evaluation, optional false/true/omitted flags, reaction/stored/callback payloads, non-persistence and replay pass with callback enabled/disabled. Full suite4506 passed/60 skipped, typecheck, lint, docs and independent gpt-5.6-sol APPROVE. Registry release and Capsule adoption are separate. |
 
 | Status | Feature | Implementation Status | Evidence pointer |

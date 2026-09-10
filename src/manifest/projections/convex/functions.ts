@@ -44,6 +44,8 @@ import {
   resolveHasManyLambdaParamType,
 } from './count-of-preload.js';
 import { renderEntityComputedHydration, renderInlineComputedFields } from './computed.js';
+import { computedRuntimeBindings } from './computed-context.js';
+import { renderRoleHelper } from './role-helpers.js';
 import {
   renderExpression,
   isNullLiteral,
@@ -611,42 +613,59 @@ export function generateQueries(
     const inlineHydrateDoc =
       options.computedProperties === 'inline' && inlineComputed.fields.length > 0
         ? renderEntityComputedHydration(ir, entity, options, '(__doc as any)', '__doc._id')
-        : { lines: [] as string[] };
+        : { lines: [] as string[], runtimeBindings: [] };
     const inlineHydrateRow =
       options.computedProperties === 'inline' && inlineComputed.fields.length > 0
         ? renderEntityComputedHydration(ir, entity, options, '(__row as any)', '__row._id')
-        : { lines: [] as string[] };
+        : { lines: [] as string[], runtimeBindings: [] };
+    const computedBindings =
+      options.computedProperties === 'inline'
+        ? new Set([
+            ...computedRuntimeBindings(entity.computedProperties.map((cp) => cp.expression)),
+            ...inlineHydrateDoc.runtimeBindings,
+          ])
+        : new Set<string>();
+    if (computedBindings.size > 0 && !options.authContextImport) {
+      diagnostics.push({
+        severity: 'error',
+        code: 'CONVEX_AUTH_CONTEXT_REQUIRED',
+        entity: entity.name,
+        message: `Computed fields for '${entity.name}' require runtime context; set options.authContextImport.`,
+      });
+    }
     const allPolicyChecks = [...listPolicyPlan.contextChecks, ...listPolicyPlan.rowChecks];
-    const policyAuthLines = (): string[] => {
-      const text = allPolicyChecks.map((check) => check.code).join('\n');
-      const needsUser = /\buser\b/.test(text);
-      const needsContext = /\bcontext\b/.test(text);
+    const readAuthLines = (): string[] => {
+      const text =
+        policyGated && policyEnforceable
+          ? allPolicyChecks.map((check) => check.code).join('\n')
+          : '';
+      const needsUser =
+        /\buser\b/.test(text) || computedBindings.has('user') || maskNeedsAuthLocals;
+      const needsContext =
+        /\bcontext\b/.test(text) || computedBindings.has('context') || maskNeedsAuthLocals;
       if (!needsUser && !needsContext) return [];
+      if (!options.authContextImport) {
+        return [
+          ...(needsUser ? [`    const user = undefined as any;`] : []),
+          ...(needsContext ? [`    const context = undefined as any;`] : []),
+          `    throw new Error("CONVEX_AUTH_CONTEXT_REQUIRED: set options.authContextImport");`,
+        ];
+      }
       return [
         `    const __auth = (await getAuthContext(ctx)) as any;`,
         ...(needsUser ? [`    const user = (__auth.user ?? __auth) as any;`] : []),
         ...(needsContext ? [`    const context = (__auth.context ?? __auth) as any;`] : []),
       ];
     };
-    const policyPrelude = (deniedValue: '[]' | 'null'): string[] => {
-      if (!policyGated || !policyEnforceable) return [];
-      return [
-        ...policyAuthLines(),
-        ...listPolicyPlan.contextChecks.map(
-          (check) =>
-            `    if (!__allowsRead(${JSON.stringify(check.policyName)}, ${JSON.stringify(entity.name)}, () => ${check.code})) return ${deniedValue};`,
-        ),
-      ];
-    };
-
-    const maskAuthLocals = (): string[] => {
-      if (!maskNeedsAuthLocals) return [];
-      return [
-        `    const __auth = (await getAuthContext(ctx)) as any;`,
-        `    const user = (__auth.user ?? __auth) as any;`,
-        `    const context = (__auth.context ?? __auth) as any;`,
-      ];
-    };
+    const policyPrelude = (deniedValue: '[]' | 'null'): string[] => [
+      ...readAuthLines(),
+      ...(policyGated && policyEnforceable
+        ? listPolicyPlan.contextChecks.map(
+            (check) =>
+              `    if (!__allowsRead(${JSON.stringify(check.policyName)}, ${JSON.stringify(entity.name)}, () => ${check.code})) return ${deniedValue};`,
+          )
+        : []),
+    ];
 
     const hydrateThenProjectRows = (sourceExpr: string): string => {
       // Assign in declaration order onto the row so later computeds can read
@@ -671,12 +690,9 @@ export function generateQueries(
 
     /** Finalize rows: decrypt → read policies → computed → mask → private strip. */
     const finishRows = (rowsExpr: string): string => {
-      const authLocals =
-        maskNeedsAuthLocals && !(policyGated && policyEnforceable) ? maskAuthLocals() : [];
       if (encrypted.length === 0 && !policyGated) {
-        const prefix = authLocals.length ? `${authLocals.join('\n')}\n    ` : '';
         if (inlineComputed.fields.length === 0) {
-          return prefix + maskAndStripPrivateRows(rowsExpr, maskedFields, privates, maskAuth);
+          return maskAndStripPrivateRows(rowsExpr, maskedFields, privates, maskAuth);
         }
         if (inlineHydrateRow.lines.length === 0) {
           const seq = inlineComputed.fields
@@ -688,12 +704,12 @@ export function generateQueries(
           const mapped =
             `(${rowsExpr}).map((__row) => { ${seq} ` +
             `return { ...(__row as any), ${assigns} }; })`;
-          return prefix + maskAndStripPrivateRows(mapped, maskedFields, privates, maskAuth);
+          return maskAndStripPrivateRows(mapped, maskedFields, privates, maskAuth);
         }
-        return prefix + hydrateThenProjectRows(rowsExpr);
+        return hydrateThenProjectRows(rowsExpr);
       }
 
-      const lines: string[] = [...authLocals];
+      const lines: string[] = [];
       const plainExpr =
         encrypted.length > 0 && options.encryptionImport
           ? `await Promise.all((${rowsExpr}).map((row) => __decryptDoc(ctx, ${JSON.stringify(entity.name)}, ${JSON.stringify(encrypted)}, row)))`
@@ -752,12 +768,9 @@ export function generateQueries(
     const finishDoc = (docExpr: string): string => {
       const hydrateBlock =
         inlineHydrateDoc.lines.length > 0 ? `${inlineHydrateDoc.lines.join('\n')}\n` : '';
-      const authLocals =
-        maskNeedsAuthLocals && !(policyGated && policyEnforceable) ? maskAuthLocals() : [];
       if (encrypted.length === 0 && !policyGated) {
-        const prefix = authLocals.length ? `${authLocals.join('\n')}\n    ` : '';
         if (inlineComputed.fields.length === 0) {
-          return prefix + maskAndStripPrivateDoc(docExpr, maskedFields, privates, maskAuth);
+          return maskAndStripPrivateDoc(docExpr, maskedFields, privates, maskAuth);
         }
         const seqAssigns = inlineComputed.fields
           .map((f) => {
@@ -769,7 +782,6 @@ export function generateQueries(
           .map((f) => `${f.name}: (__doc as any).${f.name}`)
           .join(', ');
         return (
-          prefix +
           `const __doc = ${docExpr};\n` +
           `    if (!__doc) return __doc;\n` +
           hydrateBlock +
@@ -780,7 +792,6 @@ export function generateQueries(
       }
 
       const lines: string[] = [
-        ...authLocals,
         `const __rawDoc = ${docExpr};`,
         `    if (!__rawDoc) return __rawDoc;`,
       ];
@@ -869,20 +880,7 @@ export function generateQueries(
   if (/\b__allowsRead\(/.test(body)) helpers.push(READ_POLICY_HELPER);
   if (/\b__maskDoc\(/.test(body)) helpers.push(MASK_HELPER);
   if (/\b__resolveRelation\(/.test(body)) helpers.push(RELATION_HELPER);
-  if (/\bcheckRole\(/.test(body)) {
-    helpers.push(
-      `const ROLE_PERMISSIONS: Record<string, { action: string; target?: string }[]> = ${roleMapLiteral(ir)};\n\n` +
-        `function checkRole(userRole: unknown, action: unknown, target?: unknown): boolean {\n` +
-        `  if (typeof userRole !== "string" || typeof action !== "string") return false;\n` +
-        `  const perms = ROLE_PERMISSIONS[userRole];\n` +
-        `  const requestedTarget = typeof target === "string" ? target : undefined;\n` +
-        `  return perms ? perms.some((permission) =>\n` +
-        `    (permission.action === action || permission.action === "all") &&\n` +
-        `    (permission.target === undefined || permission.target === requestedTarget)\n` +
-        `  ) : false;\n` +
-        `}`,
-    );
-  }
+  if (/\bcheckRole\(/.test(body)) helpers.push(renderRoleHelper(ir));
   if (needsFlag && !flagFromProvider) {
     helpers.push(
       `// Feature toggle stub (safe default off). Set options.flagProviderImport to wire a real provider.\n` +
@@ -917,22 +915,6 @@ export function generateQueries(
 // ---------------------------------------------------------------------------
 // Mutations
 // ---------------------------------------------------------------------------
-
-/** Build the ROLE_PERMISSIONS map literal from IR roles' effective permissions. */
-function roleMapLiteral(ir: IR): string {
-  const map: Record<string, { action: string; target?: string }[]> = {};
-  for (const role of ir.roles ?? []) {
-    map[role.name] = [...(role.effectivePermissions ?? [])]
-      .map((permission) => ({
-        action: permission.action,
-        ...(permission.target === undefined ? {} : { target: permission.target }),
-      }))
-      .sort((a, b) =>
-        `${a.action}\u0000${a.target ?? ''}`.localeCompare(`${b.action}\u0000${b.target ?? ''}`),
-      );
-  }
-  return JSON.stringify(map, null, 2);
-}
 
 interface CheckSpec {
   expr: IRExpression | undefined;
@@ -2522,16 +2504,7 @@ export function generateMutations(
   if (/\bcheckRole\(/.test(body)) {
     helpers.push(
       `// Role hierarchy from IR (effective permissions after inheritance).\n` +
-        `const ROLE_PERMISSIONS: Record<string, { action: string; target?: string }[]> = ${roleMapLiteral(ir)};\n\n` +
-        `function checkRole(userRole: unknown, action: unknown, target?: unknown): boolean {\n` +
-        `  if (typeof userRole !== "string" || typeof action !== "string") return false;\n` +
-        `  const perms = ROLE_PERMISSIONS[userRole];\n` +
-        `  const requestedTarget = typeof target === "string" ? target : undefined;\n` +
-        `  return perms ? perms.some((permission) =>\n` +
-        `    (permission.action === action || permission.action === "all") &&\n` +
-        `    (permission.target === undefined || permission.target === requestedTarget)\n` +
-        `  ) : false;\n` +
-        `}`,
+        renderRoleHelper(ir),
     );
   }
   const needsFlag = /\bflag\(/.test(body);
