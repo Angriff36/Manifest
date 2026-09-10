@@ -393,6 +393,10 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 
 | Status | Feature | Implementation Status | Evidence pointer |
 | --- | --- | --- | --- |
+| [ ] | Convex governed creation command bindings | PARTIAL | 3.6.51 `functions.ts` `renderGovernedCreationEntry` omits computes and event parameter locals. Capsule issue #341 reproduces duplicate prep during staged recipe adoption. Actions and payload runtime proof required before closure. |
+
+| Status | Feature | Implementation Status | Evidence pointer |
+| --- | --- | --- | --- |
 | [x] | Convex filtered child-computed callback typing | FULLY_IMPLEMENTED | `src/manifest/projections/convex/count-of-preload.ts:53-93,132-133`; strict TypeScript diagnostic and runtime total proof `src/manifest/projections/convex/parent-child-computed-hydrate.test.ts:74-117`, all at `2a4798d`. Corrects 3.6.49 TS2339 on materialized EventDish.estimatedCost by retaining the hydrated callback shape; entity identity resolution remains independent. |
 
 | Status | Feature | Implementation Status | Evidence pointer |

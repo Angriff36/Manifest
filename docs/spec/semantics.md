@@ -1165,4 +1165,9 @@ The `drainJobs()` method on `RuntimeEngine` drains all pending jobs synchronousl
 
 ## Nonconformance
 
-There are no known nonconformances. All implementations conform to this specification.
+Convex governed creation (`createVia*`) in 3.6.51 omits command `compute`
+actions and resolves command-only parameters against the created document in
+emit payloads. This violates the command evaluation context and Actions rules
+above: parameter bindings remain available, and computes execute in declaration
+order without becoming stored fields. Tracked by Capsule issue #341; the
+projection must preserve these bindings through actions, emits, and reactions.
