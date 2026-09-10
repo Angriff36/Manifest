@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.51] - 2026-09-10
+
+### Changed
+
+- docs: record transactional event handler proof
+- feat: support transactional Convex event handlers
+
 ## [3.6.50] - 2026-09-09
 
 ### Changed
