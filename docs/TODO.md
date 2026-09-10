@@ -22,6 +22,12 @@ non-binding navigation mirror only.
 
 ## Bugs
 
+- [x] **Convex governed creation bindings** — source `300f2ea` preserves
+      command parameters and ordered compute/mutate locals through createVia
+      events and reactions, without persisting temporary bindings. Actual
+      generated-runtime proof and full gates are recorded in the compliance
+      matrix; publication and Capsule adoption are separate.
+
 - [x] **Convex transactional event handler** — source `15c5a38` implements
       optional `eventHandlerImport`. The compliance matrix records 13 actual
       generated-module runtime cases, full gates, public-package type smoke,

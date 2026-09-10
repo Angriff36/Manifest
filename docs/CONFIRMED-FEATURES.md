@@ -27,6 +27,14 @@ carries file evidence checked on 2026-07-14.
 
 ## 1. Language (DSL) Features
 
+**Convex governed creation binding correction (source `300f2ea`, unreleased):**
+createVia commands retain input parameters and execute compute/mutate actions
+in declaration order against one working copy. Computed locals reach later
+actions, events, reactions, and optional transactional callbacks without being
+stored. Generated execution proves optional false/true/omitted parameters,
+parameter/property name separation, action ordering and idempotent replay.
+The compliance matrix carries exact proof ranges and full-gate results.
+
 **Convex transactional event handler (unreleased):** `eventHandlerImport`
 invokes a host's `handleManifestEvent` inside the generated command's mutation,
 after declared reactions. Generated-module runtime tests cover rollback,

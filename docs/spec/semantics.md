@@ -1169,5 +1169,7 @@ Convex governed creation (`createVia*`) in 3.6.51 omits command `compute`
 actions and resolves command-only parameters against the created document in
 emit payloads. This violates the command evaluation context and Actions rules
 above: parameter bindings remain available, and computes execute in declaration
-order without becoming stored fields. Tracked by Capsule issue #341; the
-projection must preserve these bindings through actions, emits, and reactions.
+order without becoming stored fields. Tracked by Capsule issue #341. Source correction `300f2ea` preserves these
+bindings through ordered actions, emits, and reactions; generated-runtime proof
+is recorded in the compliance matrix. This corrects the projection and does not
+change language meaning. Publication and consumer adoption are separate.
