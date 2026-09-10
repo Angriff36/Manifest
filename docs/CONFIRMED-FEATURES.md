@@ -27,6 +27,16 @@ carries file evidence checked on 2026-07-14.
 
 ## 1. Language (DSL) Features
 
+**Convex indexed-query name correction (source `a65cd42`, unpublished):** indexed
+read exports preserve their existing names through 64 characters. Longer names
+use the first 47 characters, an underscore and a 16-digit FNV-1a/64 hash of the
+full original name. This is deterministic across index declaration order and
+keeps long names sharing a prefix distinct. Index fields, argument validators,
+read policies and filters are unchanged. Four generated execution regressions
+and a real local backend query pass; the full suite passes 4,523 tests. Exact
+source/commit/native proof is in the compliance matrix. This is a projection
+correction; language semantics and non-indexed function names are unchanged.
+
 **Convex indexed storage correction (source `47d1762`, unpublished):** generated
 indexed read arguments now match declared schema storage types and retain
 optional/null selectors, typed references, explicit overrides and encrypted

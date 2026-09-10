@@ -93,6 +93,12 @@ Update this matrix first when closing Manifest work; then reconcile `docs/TODO.m
 
 No generated document or automated inventory may promote a feature to `FULLY_IMPLEMENTED`. Registration, source presence, a fixture, or an expected output is discovery evidence only until the end-to-end compile and tests have been hand verified and the full proof tuple is recorded here.
 
+## Convex indexed-query name limit (2026-09-10)
+
+| Status | Capability | Implementation status | Evidence |
+| --- | --- | --- | --- |
+| [x] | Indexed-query exports respect the Convex 64-character identifier limit | FULLY_IMPLEMENTED | Name planning and both emission branches `src/manifest/projections/convex/functions.ts:510-591`; compile/generate/execute proofs `src/manifest/projections/convex/indexed-query-names.test.ts:1-138`, at `a65cd42847f55c1ca7a4e953541746075db8ff77`. Existing names up to 64 characters are unchanged; longer names use a 47-character prefix plus an unsigned FNV-1a/64 suffix, independent of declaration order. Four regressions proved red/green, including distinct shared-prefix indexes and reads with/without soft-delete filtering. Full suite: 4,523 passed / 60 skipped; build, typecheck, lint, format, docs and cycles passed; independent gpt-5.6-sol APPROVE. Real local backend `precompiled-2026-08-25-7cce8fb` registered the generated 64-character credential query and returned its matching row at 2026-09-10T22:02:36Z; a nonmatching timestamp returned no rows and a string timestamp was rejected. Evidence: Capsule `.artifacts/operations-source-study/query-name-native/native-proof.json`. Registry publication and full Capsule consumption/authenticated app proof remain separate; see Capsule [issue 365](https://github.com/Angriff36/capsule/issues/365). |
+
 ## Convex indexed storage validator correction (2026-09-10)
 
 | Status | Capability | Implementation status | Evidence |

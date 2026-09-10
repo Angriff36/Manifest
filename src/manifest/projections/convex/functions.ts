@@ -507,6 +507,20 @@ function emitGetEntityQuery(
   );
 }
 
+/** Convex function identifiers may contain at most 64 characters. */
+function indexedQueryExportName(entityName: string, fields: string[]): string {
+  const name = `list${entityName}By${fields.map(capWord).join('And')}`;
+  if (name.length <= 64) return name;
+
+  // FNV-1a/64 over the full name keeps shared prefixes distinct and is stable
+  // across platforms and index declaration order, without a Node-only import.
+  let hash = 0xcbf29ce484222325n;
+  for (const byte of new TextEncoder().encode(name)) {
+    hash = BigInt.asUintN(64, (hash ^ BigInt(byte)) * 0x100000001b3n);
+  }
+  return `${name.slice(0, 47)}_${hash.toString(16).padStart(16, '0')}`;
+}
+
 function emitListByIndexQueries(
   blocks: string[],
   ir: IR,
@@ -521,7 +535,7 @@ function emitListByIndexQueries(
 ): void {
   for (const spec of collectQueryIndexSpecs(ir, entity, options, diagnostics)) {
     const names = spec.fields.map((f) => f.name);
-    const suffix = spec.fields.map((f) => capWord(f.name)).join('And');
+    const exportName = indexedQueryExportName(entity.name, names);
     const argList = spec.fields.map((f) => `${f.name}: ${f.validator}`).join(', ');
     const destructure = `{ ${names.join(', ')} }`;
     const applyTenant = rf.hasTenant && !!rf.tenantProp;
@@ -541,7 +555,7 @@ function emitListByIndexQueries(
         )}`,
       ].join('\n');
       blocks.push(
-        `export const list${entity.name}By${suffix} = ${qfn}({\n` +
+        `export const ${exportName} = ${qfn}({\n` +
           `  args: { ${argList} },\n` +
           `  handler: async (ctx, ${destructure}) => {\n` +
           `${bodyLines}\n` +
@@ -566,7 +580,7 @@ function emitListByIndexQueries(
     }
     lines.push(`    ${finishRows('rows')}`);
     blocks.push(
-      `export const list${entity.name}By${suffix} = ${qfn}({\n` +
+      `export const ${exportName} = ${qfn}({\n` +
         `  args: { ${argList} },\n` +
         `  handler: async (ctx, ${destructure}) => {\n${lines.join('\n')}\n  },\n});`,
     );
