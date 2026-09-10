@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.55] - 2026-09-10
+
+### Changed
+
+- docs: record native Convex query name proof
+- fix: bound generated Convex indexed query names
+
 ## [3.6.54] - 2026-09-10
 
 ### Changed
