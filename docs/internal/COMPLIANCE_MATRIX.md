@@ -93,13 +93,13 @@ Update this matrix first when closing Manifest work; then reconcile `docs/TODO.m
 
 No generated document or automated inventory may promote a feature to `FULLY_IMPLEMENTED`. Registration, source presence, a fixture, or an expected output is discovery evidence only until the end-to-end compile and tests have been hand verified and the full proof tuple is recorded here.
 
-## Integration status (Manifest × Builder)
-
-### Convex indexed storage validator correction (2026-09-10)
+## Convex indexed storage validator correction (2026-09-10)
 
 | Status | Capability | Implementation status | Evidence |
 | --- | --- | --- | --- |
-| [ ] | Convex indexed reads use declared storage types | CLAIMED_NEEDS_PROOF | Capsule issue [364](https://github.com/Angriff36/capsule/issues/364): datetime/numeric/boolean query selectors were emitted as strings. The source fix shares schema validator generation, preserves declared optional/null values, encrypted storage and overrides. Five emitted-query runtime checks now pass in `src/manifest/projections/convex/indexed-query-storage.test.ts`; full gates, independent review and commit proof are pending. |
+| [x] | Convex indexed reads use declared storage types | FULLY_IMPLEMENTED | Shared storage validator `src/manifest/projections/convex/generator.ts:269-284`; query field planning `src/manifest/projections/convex/functions.ts:317-385`; emitted-query runtime proofs `src/manifest/projections/convex/indexed-query-storage.test.ts:1-147`; unknown-type rejection proof `src/manifest/projections/convex/functions.test.ts:71-91`, all at `47d176213d9dbcfd84385790e31d1832b0565fb7`. Manifest source compiles into real Convex schema/query modules and executes timestamp/composite, missing/null, decimal/boolean/int64 override, ciphertext and typed-FK reads. Full local suite: 4,519 passed / 60 skipped; root/CLI build, typecheck, lint, format, docs and cycles passed. Independent gpt-5.6-sol APPROVE. Registry publication, Capsule/Builder consumption and Capsule issue [364](https://github.com/Angriff36/capsule/issues/364) closure require separate evidence. |
+
+## Integration status (Manifest × Builder)
 
 These states are **orthogonal** to implementation status above. A Manifest gap is never “fixed” by Builder UI. Builder-owned work is never a Manifest `NOT_IMPLEMENTED` row.
 

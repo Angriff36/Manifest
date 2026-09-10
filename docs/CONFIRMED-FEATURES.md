@@ -27,6 +27,14 @@ carries file evidence checked on 2026-07-14.
 
 ## 1. Language (DSL) Features
 
+**Convex indexed storage correction (source `47d1762`, unpublished):** generated
+indexed read arguments now match declared schema storage types and retain
+optional/null selectors, typed references, explicit overrides and encrypted
+ciphertext. Five emitted-query runtime checks and an unknown-type rejection
+regression pass; the full local suite passes 4,519 tests. This is a projection
+correction, with no language semantics change. Exact proof is in the compliance
+matrix; publication and consumer adoption are separate.
+
 **Convex computed context correction (source `9521ae6`, unpublished):** generated
 helpers for runtime-dependent fields accept `computeEntity(doc, { user, context })`,
 with only the required keys in the parameter type. Relation hydration accepts
