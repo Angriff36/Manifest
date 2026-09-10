@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.54] - 2026-09-10
+
+### Changed
+
+- docs: record indexed query storage proof
+- fix: align Convex indexed query arguments with stored types
+
 ## [3.6.53] - 2026-09-10
 
 ### Changed
