@@ -27,7 +27,7 @@ carries file evidence checked on 2026-07-14.
 
 ## 1. Language (DSL) Features
 
-**Convex computed context correction (working branch, unpublished):** generated
+**Convex computed context correction (source `9521ae6`, unpublished):** generated
 helpers for runtime-dependent fields accept `computeEntity(doc, { user, context })`,
 with only the required keys in the parameter type. Relation hydration accepts
 the same explicit bindings as its third argument when child computeds use them.

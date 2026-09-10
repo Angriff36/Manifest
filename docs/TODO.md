@@ -22,12 +22,12 @@ non-binding navigation mirror only.
 
 ## Bugs
 
-- [ ] **Convex computed runtime context** — generated helpers now take explicit
+- [x] **Convex computed runtime context** — generated helpers now take explicit
       user/context bindings when their expressions need them; related computed
       hydration and inline reads use the same bindings. Seven generated execution
-      checks and strict TypeScript pass locally. Commit proof, final review,
-      registry publication, and Capsule consumption are still pending; see the
-      compliance matrix and Capsule issue362.
+      checks and strict TypeScript pass at source `9521ae6`, with full gates and
+      independent gpt-5.6-sol APPROVE. The compliance matrix carries exact
+      proof ranges. Registry publication and Capsule consumption remain separate.
 
 - [ ] **Release feature inventory version** — cut-release now regenerates the
       feature inventory after its version bump and dependency installation.
