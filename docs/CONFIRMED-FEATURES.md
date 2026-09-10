@@ -27,6 +27,16 @@ carries file evidence checked on 2026-07-14.
 
 ## 1. Language (DSL) Features
 
+**Convex computed context correction (working branch, unpublished):** generated
+helpers for runtime-dependent fields accept `computeEntity(doc, { user, context })`,
+with only the required keys in the parameter type. Relation hydration accepts
+the same explicit bindings as its third argument when child computeds use them.
+Document-only helpers keep their one-argument API. Inline queries obtain these
+bindings from `authContextImport`, including reads whose policies do not themselves
+reference the user. Missing required auth configuration produces a diagnostic
+and a failing generated query. Role checks share the existing effective-permission
+implementation. The compliance matrix governs completion and committed proof.
+
 **Convex governed creation binding correction (source `300f2ea`, unreleased):**
 createVia commands retain input parameters and execute compute/mutate actions
 in declaration order against one working copy. Computed locals reach later

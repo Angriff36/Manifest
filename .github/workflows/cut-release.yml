@@ -107,6 +107,11 @@ jobs:
         # pnpm workspace — one root install covers packages/* too.
         run: pnpm install --frozen-lockfile
 
+      # The inventory embeds package.json's version. Keep the generated document
+      # aligned with the bump so a successful release leaves docs:check green.
+      - name: Refresh feature inventory
+        run: pnpm docs:feature-list
+
       # Owner policy 2026-07-19: "the release should literally be the thing
       # that formats." Normalize code style (prettier is code-only; *.md/*.mdx
       # are prettierignored) so every published version ships formatted, even

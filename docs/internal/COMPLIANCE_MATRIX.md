@@ -393,6 +393,11 @@ Registration: `src/manifest/projections/builtins.ts` (`registerBuiltinProjection
 
 | Status | Feature | Implementation Status | Evidence pointer |
 | --- | --- | --- | --- |
+| [ ] | Convex computed runtime context | PARTIAL | Capsule issue [#362](https://github.com/Angriff36/capsule/issues/362), reproduced against `db385089432f8067650d252898a6633510e56d03`: standalone helpers omit `user`, `context`, and role support; nested child materialization and inline queries without matching policy bindings also reference missing locals. `src/manifest/projections/convex/computed-context.test.ts` is the failing generated-code regression. No language or IR change; completion requires passing generated execution, strict TypeScript, full gates, review, and committed proof ranges. |
+| [ ] | Release-generated feature inventory version | PARTIAL | The `db385089432f8067650d252898a6633510e56d03` release bumped package.json to 3.6.52 while docs/FEATURE-LIST.md retained 3.6.51, failing docs:check:feature-list. Local regeneration passes; `.github/workflows/cut-release.yml` now regenerates after install and before its formatting commit. The next release must verify the committed inventory matches the published version. |
+
+| Status | Feature | Implementation Status | Evidence pointer |
+| --- | --- | --- | --- |
 | [x] | Convex governed creation command bindings | FULLY_IMPLEMENTED | `src/manifest/projections/convex/functions.ts:1743-1779,1801-1807,1891-1912`; actual generated execution `src/manifest/projections/convex/transactional-event-handler.test.ts:363-441`, all at `300f2ea`. Parameter/local versus stored-field identity, ordered compute/mutate evaluation, optional false/true/omitted flags, reaction/stored/callback payloads, non-persistence and replay pass with callback enabled/disabled. Full suite4506 passed/60 skipped, typecheck, lint, docs and independent gpt-5.6-sol APPROVE. Registry release and Capsule adoption are separate. |
 
 | Status | Feature | Implementation Status | Evidence pointer |

@@ -22,6 +22,19 @@ non-binding navigation mirror only.
 
 ## Bugs
 
+- [ ] **Convex computed runtime context** — generated helpers now take explicit
+      user/context bindings when their expressions need them; related computed
+      hydration and inline reads use the same bindings. Seven generated execution
+      checks and strict TypeScript pass locally. Commit proof, final review,
+      registry publication, and Capsule consumption are still pending; see the
+      compliance matrix and Capsule issue362.
+
+- [ ] **Release feature inventory version** — cut-release now regenerates the
+      feature inventory after its version bump and dependency installation.
+      The 3.6.52 baseline still recorded 3.6.51 in that generated file, failing
+      docs:check. Local regeneration clears the gate; the next release must prove
+      the workflow repair.
+
 - [x] **Convex governed creation bindings** — source `300f2ea` preserves
       command parameters and ordered compute/mutate locals through createVia
       events and reactions, without persisting temporary bindings. Actual
