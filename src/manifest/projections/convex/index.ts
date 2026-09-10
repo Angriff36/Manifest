@@ -5,6 +5,7 @@
  * `convex/values` validators) from Manifest IR.
  */
 export { ConvexProjection } from './generator.js';
+export type { ConvexCommandEvent } from './event-payload.js';
 export {
   normalizeOptions,
   CONVEX_PROJECTION_DEFAULTS,

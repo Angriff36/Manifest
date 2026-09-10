@@ -77,6 +77,7 @@ import {
   computeBindingLines,
   renderCommandComputeBindings,
   renderEvents,
+  transactionalEventHandlerName,
   unionEmitPayloadFields,
 } from './event-payload.js';
 import {
@@ -1802,11 +1803,13 @@ function renderGovernedCreationEntry(
     cmd,
     'docId',
     g7Scope,
+    [],
+    options.eventHandlerImport ? transactionalEventHandlerName(ir) : undefined,
   );
   diagnostics.push(...events.diagnostics);
   const reactions = renderReactions(ir, options, cmd.emits ?? []);
   diagnostics.push(...reactions.diagnostics);
-  const tail = [...events.lines, ...reactions.lines].join('\n');
+  const tail = [...events.lines, ...reactions.lines, ...events.afterReactionLines].join('\n');
   const collision = reactionPayloadCollisionPlanner.plan(g7.fields, {
     entity: entity.name,
     command: cmd.name,
@@ -2069,11 +2072,13 @@ function generateMutation(
       cmd,
       '_id',
       g7Scope,
+      [],
+      options.eventHandlerImport ? transactionalEventHandlerName(ir) : undefined,
     );
     diagnostics.push(...events.diagnostics);
     const reactions = renderReactions(ir, options, cmd.emits ?? []);
     diagnostics.push(...reactions.diagnostics);
-    const tail = [...events.lines, ...reactions.lines].join('\n');
+    const tail = [...events.lines, ...reactions.lines, ...events.afterReactionLines].join('\n');
     // Reaction expressions resolve `payload` against the reference-runtime
     // contract (runtime-engine.ts): the emitted event payload is `{ ...input,
     // result }` then G7 fields overwrite; reactions additionally see `_subject`.
@@ -2322,12 +2327,13 @@ function generateMutation(
     'docId',
     g7Scope,
     computeLocals,
+    options.eventHandlerImport ? transactionalEventHandlerName(ir) : undefined,
   );
   diagnostics.push(...events.diagnostics);
   const reactions = renderReactions(ir, options, cmd.emits ?? []);
   diagnostics.push(...reactions.diagnostics);
 
-  const tail = [...events.lines, ...reactions.lines].join('\n');
+  const tail = [...events.lines, ...reactions.lines, ...events.afterReactionLines].join('\n');
   // Same reference-runtime payload contract as the create branch, including
   // G7 `result` collision handling (business field wins; `_subject` keeps id).
   const collision = reactionPayloadCollisionPlanner.plan(g7.fields, {
@@ -2531,10 +2537,17 @@ export function generateMutations(
     options.policyMode === 'skip' ? ' (policyMode: skip — authorization policies omitted)' : '';
   const needsAuthCtx = !!options.authContextImport && /\bgetAuthContext\b/.test(body);
   const needsDoc = codeUsesDocType(body);
+  const eventHandlerName = options.eventHandlerImport
+    ? transactionalEventHandlerName(ir)
+    : undefined;
+  const needsEventHandler = eventHandlerName && body.includes(`await ${eventHandlerName}(`);
   const code =
     `${GENERATED_HEADER}\n// ${blocks.length} mutation(s); roles: ${(ir.roles ?? []).length}; policies: ${ir.policies.length}.${policyNote}\n\n` +
     `import { mutation, type MutationCtx } from "./_generated/server";\n` +
     `import { v } from "convex/values";\n` +
+    (needsEventHandler
+      ? `import { handleManifestEvent as ${eventHandlerName} } from ${JSON.stringify(options.eventHandlerImport)};\n`
+      : '') +
     (needsDoc ? `import type { Doc } from "./_generated/dataModel";\n` : '') +
     (needsAuthCtx
       ? `import { getAuthContext } from ${JSON.stringify(options.authContextImport)};\n`

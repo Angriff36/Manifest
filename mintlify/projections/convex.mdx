@@ -96,6 +96,33 @@ The options object is `ConvexProjectionOptions` in `convex/options.ts`, normaliz
 | `deletedAtProperty`       | `string`                                           | `"deletedAt"`                                   | Soft-delete property name; a read drops rows whose value is non-null.                                                                                                     |
 | `authContextImport`       | `string`                                           | unset                                           | Module specifier of an author-owned auth-context module — see [Auth context seam](#auth-context-seam).                                                                    |
 
+### Transactional event handler (`eventHandlerImport`)
+
+Use `eventHandlerImport: "./lib/events"` when an emitted event must update
+related database work before the originating command can commit. The path is
+relative to the generated mutations module. Your module exports
+`handleManifestEvent(ctx, event): Promise<void>`. Type `ctx` with your generated
+`MutationCtx` and import the event type with:
+
+```ts
+import type { ConvexCommandEvent } from '@angriff36/manifest/projections/convex';
+```
+
+The event contains `eventId`, `type`, `entity`, `entityId`, `payload`, `createdAt`,
+`command`, and `emitIndex`. Payload and timestamp match the inserted event row.
+After a command's declared reactions finish, its handler runs once for each of
+its own emissions in declaration order. Nested reaction commands run their own
+handlers first. Instance commands and both creation paths use this behavior.
+Cached idempotency results skip execution, including handlers.
+
+A handler failure rolls back the command, reactions, emitted events, and handler
+database writes together. Use governed commands for governed writes. Keep the
+handler within transactional database work; external delivery belongs in an
+outbox or worker. Convex may retry the transaction, so this does not provide
+exactly-once external delivery. Do not mutate the envelope or introduce a
+recursive command/event chain. This option does not implement reference-runtime
+middleware or outbound EventBus delivery. Omit it to keep the default behavior.
+
 ### Auth context seam (`authContextImport`)
 
 By default (unset), generated functions read identity from an inline `(ctx as any).auth` bag — a shape the real Convex runtime **never populates** (`ctx.auth` only exposes `getUserIdentity()`), so role/tenant reads evaluate against `undefined` and fail closed until you wire auth by hand. Setting `authContextImport` (e.g. `"./lib/authContext"`) routes all identity reads through your module's exported `getAuthContext(ctx)` — which should derive role and tenant from the real authenticated identity (e.g. a Clerk/Auth0 JWT via `ctx.auth.getUserIdentity()`).

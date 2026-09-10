@@ -192,6 +192,14 @@ export interface ConvexProjectionOptions {
   authContextImport?: string;
 
   /**
+   * Module exporting `handleManifestEvent(ctx, event): Promise<void>` for
+   * transactional database work after a command's declared reactions.
+   * Errors abort the enclosing mutation. See adapters.md, Convex
+   * Transactional Event Handler. Example: "./lib/events".
+   */
+  eventHandlerImport?: string;
+
+  /**
    * Module exporting `flag(name: string): unknown` (truthy = on). Required for
    * public Convex queries whose read/`all` policies call `flag()`. Without it,
    * those queries stay `internalQuery` (fail closed). Same import is used by
@@ -309,7 +317,12 @@ export type NormalizedConvexOptions = Required<
 > &
   Pick<
     ConvexProjectionOptions,
-    'naming' | 'tenantIdProperty' | 'authContextImport' | 'flagProviderImport' | 'encryptionImport'
+    | 'naming'
+    | 'tenantIdProperty'
+    | 'authContextImport'
+    | 'eventHandlerImport'
+    | 'flagProviderImport'
+    | 'encryptionImport'
   > & {
     dispatcher: { enabled: boolean };
     /** @internal App-wide naming policy when injected by config resolution. */
@@ -374,6 +387,7 @@ export function normalizeOptions(
     computedProperties: input.computedProperties ?? CONVEX_PROJECTION_DEFAULTS.computedProperties,
     tenantIdProperty: input.tenantIdProperty,
     authContextImport: input.authContextImport,
+    eventHandlerImport: input.eventHandlerImport,
     flagProviderImport: input.flagProviderImport,
     encryptionImport: input.encryptionImport,
     dispatcher: {

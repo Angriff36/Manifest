@@ -8,6 +8,48 @@ Applies to: `@angriff36/manifest@0.5.0+`
 
 This document defines adapter hooks for storage targets and action kinds. Adapters are extensions, not core language features, unless stated otherwise.
 
+## Convex Transactional Event Handler
+
+The Convex projection MAY accept an optional `eventHandlerImport` module path.
+The module MUST export `handleManifestEvent(ctx, event): Promise<void>`, where
+`ctx` is the current Convex mutation context. This is a trusted, server-authored
+transaction extension, not an outbound notification or a language action adapter.
+It does not implement the reference runtime's `after-emit` middleware API.
+
+The `event` envelope has `eventId` (the inserted event row's identity), `type`,
+`entity`, `entityId`, `payload`, and `createdAt` from that exact stored event,
+plus `command` and zero-based `emitIndex` for this command's own emissions.
+The projection MUST evaluate each stored payload and timestamp once and reuse
+them for the handler. Explicit payload fields, schema-derived payloads, and
+bare-emission fallback payloads retain their existing projection meaning.
+The envelope does not add authenticated identity, private hydrated relations,
+or correlation metadata beyond the existing stored event payload contract.
+
+For each successful command invocation, the projection MUST await the handler
+once for each of that command's own emissions, in declaration order, after its
+declared reactions finish and before returning. This applies to instance
+commands, ordinary creates, and governed creation entries. Reaction commands
+run their own handlers before their caller's handlers; a parent MUST NOT
+redeliver a child's emissions. Commands with no emissions do not call the
+handler. A cached command-idempotency result MUST skip handlers as well as
+the command's other execution. Without the option, generated behavior is
+unchanged and no handler module is imported.
+
+Handler errors MUST propagate and abort the enclosing Convex mutation,
+including command writes, emitted event rows, reactions, handler writes, and
+any idempotency result. A failed policy, guard, constraint, or reaction MUST
+prevent the failing command's handler from running. The handler cannot
+short-circuit command checks or replace the command result. Its database work
+participates in Convex's transaction and retry semantics: invocation is once
+per execution attempt, not exactly-once external delivery.
+
+Handlers MUST perform transactional database work only, MUST NOT mutate the
+event envelope, and MUST use governed command paths for governed entity writes.
+They MUST NOT perform external I/O, swallow errors from required work, or
+introduce command/event recursion. The host owns event selection and termination
+of any additional command chain; the projection does not infer subscriptions or
+install a cycle breaker. Outbound delivery remains an outbox/worker concern.
+
 ## Storage Targets
 
 A conforming runtime MUST support:

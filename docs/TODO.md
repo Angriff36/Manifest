@@ -22,6 +22,12 @@ non-binding navigation mirror only.
 
 ## Bugs
 
+- [x] **Convex transactional event handler** — source `15c5a38` implements
+      optional `eventHandlerImport`. The compliance matrix records 13 actual
+      generated-module runtime cases, full gates, public-package type smoke,
+      and independent gpt-5.6-sol APPROVE. Registry publication, Capsule
+      consumption, and production proof are separate.
+
 - [x] **Convex filtered child-computed callback typing** — source fix `2a4798d`
       retains hydrated callback types for materialized computed values. Strict
       TypeScript and runtime proof is recorded in the matrix; publication is separate.
