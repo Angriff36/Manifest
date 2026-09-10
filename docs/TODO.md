@@ -22,6 +22,11 @@ non-binding navigation mirror only.
 
 ## Bugs
 
+- [ ] **Convex transactional event handler** — optional `eventHandlerImport`
+      implemented in the working branch with generated-module runtime checks;
+      full gates, independent review, and commit proof pending. See the
+      compliance matrix. Capsule consumption and production proof are separate.
+
 - [x] **Convex filtered child-computed callback typing** — source fix `2a4798d`
       retains hydrated callback types for materialized computed values. Strict
       TypeScript and runtime proof is recorded in the matrix; publication is separate.

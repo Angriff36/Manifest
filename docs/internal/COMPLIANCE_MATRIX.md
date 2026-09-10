@@ -490,6 +490,7 @@ Keep in sync with `docs/TODO.md`. Matrix wins disputes.
 
 | Status | Gap                                                                    | Implementation Status    |
 | ------ | ---------------------------------------------------------------------- | ------------------------ |
+| [ ] | Convex transactional `eventHandlerImport` | CLAIMED_NEEDS_PROOF | Contract: `docs/spec/adapters.md` section Convex Transactional Event Handler. Source and 13 generated-module runtime checks in `transactional-event-handler.test.ts` cover rollback, ordering, creation, idempotency, policies, and payload identity. Commit proof and full gates pending; Capsule issue #337 consumption remains separate. |
 | [x]    | Approval escalate timeout (open `to` expression)                       | FULLY_IMPLEMENTED        | §1; author-defined routing — not person/department platform choice                                                         |
 | [ ]    | `optional` runtime gate (beyond `required`)                            | OUT_OF_SCOPE             | by design — see §4; not a missing Manifest feature                                                                         |
 | [x]    | Entity-level constraint overrides                                      | FULLY_IMPLEMENTED        | §1                                                                                                                         |

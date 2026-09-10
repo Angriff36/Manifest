@@ -27,6 +27,12 @@ carries file evidence checked on 2026-07-14.
 
 ## 1. Language (DSL) Features
 
+**Convex transactional event handler (unreleased):** `eventHandlerImport`
+invokes a host's `handleManifestEvent` inside the generated command's mutation,
+after declared reactions. Generated-module runtime tests cover rollback,
+creation, idempotency, policies, event ordering, and stored payload identity.
+The compliance matrix tracks pending full validation and commit proof.
+
 **Projection correction (2026-09-09, source commit `6ea86b6`, published in 3.6.49):**
 Convex belongsTo-to-hasMany mutation guards share resolved relationship objects
 with aggregate hydration and lower entity callback `id` to `_id`. The generated

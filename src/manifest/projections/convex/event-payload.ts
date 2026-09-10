@@ -19,6 +19,38 @@ export {
 } from './compute-bindings.js';
 export type { ComputeBinding } from './compute-bindings.js';
 
+/** Event envelope delivered inside the originating Convex mutation. */
+export interface ConvexCommandEvent {
+  readonly eventId: string;
+  readonly type: string;
+  readonly entity: string;
+  readonly entityId: string;
+  readonly command: string;
+  readonly emitIndex: number;
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly createdAt: number;
+}
+
+function commandBindings(cmd: IRCommand): string[] {
+  return [
+    ...cmd.parameters.map((param) => param.name),
+    ...cmd.actions
+      .filter((action) => action.kind === 'compute')
+      .map((action) => action.target ?? ''),
+  ];
+}
+
+function unboundName(base: string, bindings: readonly string[]): string {
+  let name = base;
+  while (bindings.includes(name)) name += '_';
+  return name;
+}
+
+/** Keep the imported function callable even when an author uses its stem. */
+export function transactionalEventHandlerName(ir: IR): string {
+  return unboundName('__handleManifestEvent', ir.commands.flatMap(commandBindings));
+}
+
 export interface RenderedPayloadField {
   name: string;
   /**
@@ -248,10 +280,12 @@ export function renderEvents(
   idVar: string,
   scope: RenderScope,
   computeLocals: readonly string[] = [],
-): { lines: string[]; diagnostics: ProjectionDiagnostic[] } {
+  handlerName?: string,
+): { lines: string[]; afterReactionLines: string[]; diagnostics: ProjectionDiagnostic[] } {
   const lines: string[] = [];
+  const afterReactionLines: string[] = [];
   const diagnostics: ProjectionDiagnostic[] = [];
-  for (const ev of cmd.emits ?? []) {
+  for (const [emitIndex, ev] of (cmd.emits ?? []).entries()) {
     const { fields, diagnostics: d } = resolveEventPayloadFields(
       ir,
       entity,
@@ -264,11 +298,23 @@ export function renderEvents(
     diagnostics.push(...d);
     const payloadLit =
       fields.length > 0 ? payloadObjectLiteral(fields) : bareEmitFallbackLiteral(scope, idVar);
-    lines.push(
-      `    await ctx.db.insert("${eventsTable}", { type: ${JSON.stringify(ev)}, entity: ${JSON.stringify(cmd.entity)}, entityId: ${idVar}, payload: ${payloadLit}, createdAt: Date.now() });`,
-    );
+    const eventLiteral = `{ type: ${JSON.stringify(ev)}, entity: ${JSON.stringify(cmd.entity)}, entityId: ${idVar}, payload: ${payloadLit}, createdAt: Date.now() }`;
+    if (handlerName) {
+      const bindings = commandBindings(cmd);
+      const eventVar = unboundName(`__manifestEvent${emitIndex}`, bindings);
+      const eventIdVar = unboundName(`__manifestEventId${emitIndex}`, bindings);
+      lines.push(
+        `    const ${eventVar} = ${eventLiteral};`,
+        `    const ${eventIdVar} = await ctx.db.insert("${eventsTable}", ${eventVar});`,
+      );
+      afterReactionLines.push(
+        `    await ${handlerName}(ctx, { ...${eventVar}, eventId: ${eventIdVar}, command: ${JSON.stringify(cmd.name)}, emitIndex: ${emitIndex} });`,
+      );
+    } else {
+      lines.push(`    await ctx.db.insert("${eventsTable}", ${eventLiteral});`);
+    }
   }
-  return { lines, diagnostics };
+  return { lines, afterReactionLines, diagnostics };
 }
 
 /**
