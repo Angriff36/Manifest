@@ -178,23 +178,33 @@ describe('wiring command transport', () => {
     expect(body).toEqual({ docId: 'doc-9', version: 3 });
   });
 
-  it('treats createVia as allocation, not an existing instance', async () => {
+  it('does not treat a createVia-named update as the createVia id result', async () => {
     const contract = buildWiringContract(await compile(FIXTURE));
     const capture = cap(contract.capabilities, 'createViaCapture');
     expect(capture.targetsExistingInstance).toBe(false);
-    expect(capture.resultKind).toBe('allocation');
-    expect(capture.returnTsType).toBe('{ docId: string }');
+    expect(capture.resultKind).toBe('instance');
+    expect(capture.returnTsType).toContain('_id: string');
+    expect(capture.returnTsType).toContain('_creationTime: number');
+    expect(capture.returnTsType).not.toContain('docId');
   });
 
-  it('types a new record, an updated record, a declared return, and an empty command', async () => {
+  it('types create, an update, a createVia id, and an empty command from the dispatcher', async () => {
     const source = `
 entity Task {
   property required id: string
   property title: string = ""
+  property private taxId: string = ""
+  property due: date = "2026-01-01"
   command create(title: string) { mutate title = title }
   command rename(title: string) returns string { mutate title = title }
   command markPublished() { mutate title = "published" }
   store Task in memory
+}
+entity Note {
+  property required id: string
+  property required body: string
+  command capture(body: string) { mutate body = body }
+  store Note in memory
 }
 command ping() { }
 `;
@@ -202,18 +212,25 @@ command ping() { }
     const create = cap(contract.capabilities, 'create');
     const rename = cap(contract.capabilities, 'rename');
     const publish = cap(contract.capabilities, 'markPublished');
+    const capture = cap(contract.capabilities, 'capture');
     const ping = contract.capabilities.find((item) => item.command === 'ping');
-    expect(create.resultKind).toBe('allocation');
-    expect(create.returnTsType).toBe('{ docId: string }');
-    expect(rename.resultKind).toBe('declared');
-    expect(rename.returnTsType).toBe('string');
-    expect(publish.resultKind).toBe('instance');
-    expect(publish.returnTsType).toContain('title: string');
+    expect(create.resultKind).toBe('created');
+    expect(create.returnTsType).toBe('{ _id: string; title: string; due: number }');
+    expect(rename.resultKind).toBe('instance');
+    expect(rename.returnTsType).toBe(
+      '{ _id: string; _creationTime: number; title: string; due: number }',
+    );
+    expect(publish.returnTsType).toBe(rename.returnTsType);
+    expect(capture.resultKind).toBe('allocation');
+    expect(capture.returnTsType).toBe('{ docId: string }');
     expect(ping?.resultKind).toBe('empty');
     expect(ping?.returnTsType).toBe('void');
     const bindings = generateWiringBindings(contract);
-    expect(bindings).toContain('export type TaskCreateResult = { docId: string };');
-    expect(bindings).toContain('export type TaskRenameResult = string;');
+    expect(bindings).toContain(
+      'export type TaskCreateResult = { _id: string; title: string; due: number };',
+    );
+    expect(bindings).not.toContain('taxId');
+    expect(bindings).not.toContain('TaskRenameResult = string');
     expect(bindings).not.toContain('returnTsType: "unknown"');
   });
 

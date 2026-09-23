@@ -10860,13 +10860,13 @@ export const TaskAssignTaskCapability = {
   versionField: null,
   acceptsIdempotencyKey: true,
   resultKind: "instance",
-  returnTsType: "{ id: string; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: string }",
+  returnTsType: "{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }",
   clientParameterNames: ["userId"],
   serverParameterNames: [],
   emits: ["TaskAssigned"],
 } as const;
 
-export type TaskAssignTaskResult = { id: string; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: string };
+export type TaskAssignTaskResult = { _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number };
 
 /**
  * Build command input for Task.assignTask.
@@ -10909,13 +10909,13 @@ export const TaskUpdateStatusCapability = {
   versionField: null,
   acceptsIdempotencyKey: true,
   resultKind: "instance",
-  returnTsType: "{ id: string; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: string }",
+  returnTsType: "{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }",
   clientParameterNames: ["newStatus"],
   serverParameterNames: [],
   emits: ["TaskStatusUpdated"],
 } as const;
 
-export type TaskUpdateStatusResult = { id: string; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: string };
+export type TaskUpdateStatusResult = { _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number };
 
 /**
  * Build command input for Task.updateStatus.
@@ -11006,7 +11006,7 @@ export const ALL_CAPABILITY_IDS = [
       ],
       "serverParameterNames": [],
       "resultKind": "instance",
-      "returnTsType": "{ id: string; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: string }",
+      "returnTsType": "{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }",
       "emits": [
         "TaskAssigned"
       ],
@@ -11067,7 +11067,7 @@ export const ALL_CAPABILITY_IDS = [
       ],
       "serverParameterNames": [],
       "resultKind": "instance",
-      "returnTsType": "{ id: string; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: string }",
+      "returnTsType": "{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }",
       "emits": [
         "TaskStatusUpdated"
       ],

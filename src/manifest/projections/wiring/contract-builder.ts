@@ -418,10 +418,8 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
       .map((p) => p.name);
     const execution = targets.facts(command);
     const result = CommandResultShape.from({
-      command,
       entity,
-      dispatchable: execution.dispatchable,
-      targetsExistingInstance: execution.targetsExistingInstance,
+      successShape: execution.successShape,
       typeToTs: (type) => irTypeToTs(type, enums, dateAsString),
     });
     const camel = toLowerCamel(entityName === '_program' ? command.name : entityName);

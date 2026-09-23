@@ -114,12 +114,13 @@ export interface WiringCommandDescriptor {
   /** Server-owned parameter names (injected, never from browser). */
   serverParameterNames: string[];
   /**
-   * declared: the command says what it returns.
-   * allocation: creating a record returns the new document id.
-   * instance: updating a record returns the stored fields.
-   * empty: there is no domain payload.
+   * created: Entity_create returns the inserted fields plus `_id`.
+   * allocation: the createVia export returns `{ docId }`.
+   * instance: an existing-document command returns the stored document.
+   * empty: the command is not sent to the dispatcher.
+   * An IR `returns` clause is not used here; Convex mutations do not honor it.
    */
-  resultKind: 'declared' | 'allocation' | 'instance' | 'empty';
+  resultKind: 'created' | 'allocation' | 'instance' | 'empty';
   returnTsType: string;
   emits: string[];
   affectedEntity: string;
