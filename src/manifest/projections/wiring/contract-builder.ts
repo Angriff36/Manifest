@@ -16,6 +16,7 @@ import type {
 import { resolveRouteContract } from '../shared/route-contract.js';
 import { ConvexHttpWireProtocol } from './transport/command-wire-protocol.js';
 import { CommandInstanceTarget } from './transport/instance-target.js';
+import { CommandResultShape } from './transport/command-result.js';
 import type {
   TrustedSourceKind,
   WiringCommandDescriptor,
@@ -416,6 +417,13 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
       .filter((p) => p.ownership === 'client' && p.constraints.dateLike)
       .map((p) => p.name);
     const execution = targets.facts(command);
+    const result = CommandResultShape.from({
+      command,
+      entity,
+      dispatchable: execution.dispatchable,
+      targetsExistingInstance: execution.targetsExistingInstance,
+      typeToTs: (type) => irTypeToTs(type, enums, dateAsString),
+    });
     const camel = toLowerCamel(entityName === '_program' ? command.name : entityName);
 
     capabilities.push({
@@ -434,7 +442,8 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
       parameters: params,
       clientParameterNames,
       serverParameterNames,
-      returnTsType: command.returns ? irTypeToTs(command.returns, enums, dateAsString) : 'unknown',
+      resultKind: result.resultKind,
+      returnTsType: result.returnTsType,
       emits: [...(command.emits ?? [])],
       affectedEntity: entityName,
       lifecycleTransitions: extractLifecycleTransitions(command, entity),

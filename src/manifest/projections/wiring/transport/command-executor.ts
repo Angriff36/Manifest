@@ -26,10 +26,10 @@ export class WiringCommandExecutor {
     this.reader = new WiringCommandResponseReader(this.protocol);
   }
 
-  async execute(
+  async execute<TData = never>(
     command: WiringExecutableCommand,
     call: WiringCommandCall,
-  ): Promise<WiringCommandOutcome> {
+  ): Promise<WiringCommandOutcome<TData>> {
     const request = this.builder.build(command, call);
     const response = await this.fetchImpl(this.url(request.path), {
       method: request.method,
@@ -39,7 +39,10 @@ export class WiringCommandExecutor {
       },
       body: JSON.stringify(request.body),
     });
-    return this.reader.read(response.status, await this.parse(response));
+    return this.reader.read(
+      response.status,
+      await this.parse(response),
+    ) as WiringCommandOutcome<TData>;
   }
 
   private url(path: string): string {

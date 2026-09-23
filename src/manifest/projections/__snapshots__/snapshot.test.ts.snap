@@ -10813,7 +10813,8 @@ exports[`projection snapshots > wiring > generated artifacts match snapshot 1`] 
  *
  * This module does NOT generate UI. It provides typed client inputs,
  * trusted-context injection helpers, invalidation metadata, and the
- * transport facts a shared executor uses to call the canonical command API.
+ * transport facts a shared executor uses to call the canonical command API,
+ * and the success type of each command.
  */
 
 export const WIRING_CONTRACT_HASH = "snapshot-fixture-hash";
@@ -10858,10 +10859,14 @@ export const TaskAssignTaskCapability = {
   dateParameterNames: [],
   versionField: null,
   acceptsIdempotencyKey: true,
+  resultKind: "instance",
+  returnTsType: "{ id: string; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: string }",
   clientParameterNames: ["userId"],
   serverParameterNames: [],
   emits: ["TaskAssigned"],
 } as const;
+
+export type TaskAssignTaskResult = { id: string; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: string };
 
 /**
  * Build command input for Task.assignTask.
@@ -10903,10 +10908,14 @@ export const TaskUpdateStatusCapability = {
   dateParameterNames: [],
   versionField: null,
   acceptsIdempotencyKey: true,
+  resultKind: "instance",
+  returnTsType: "{ id: string; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: string }",
   clientParameterNames: ["newStatus"],
   serverParameterNames: [],
   emits: ["TaskStatusUpdated"],
 } as const;
+
+export type TaskUpdateStatusResult = { id: string; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: string };
 
 /**
  * Build command input for Task.updateStatus.
@@ -10996,7 +11005,8 @@ export const ALL_CAPABILITY_IDS = [
         "userId"
       ],
       "serverParameterNames": [],
-      "returnTsType": "unknown",
+      "resultKind": "instance",
+      "returnTsType": "{ id: string; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: string }",
       "emits": [
         "TaskAssigned"
       ],
@@ -11056,7 +11066,8 @@ export const ALL_CAPABILITY_IDS = [
         "newStatus"
       ],
       "serverParameterNames": [],
-      "returnTsType": "unknown",
+      "resultKind": "instance",
+      "returnTsType": "{ id: string; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: string }",
       "emits": [
         "TaskStatusUpdated"
       ],

@@ -133,6 +133,8 @@ function emitCapabilityConst(cap: WiringCommandDescriptor): string {
     `  dateParameterNames: ${JSON.stringify(cap.dateParameterNames)},`,
     `  versionField: ${cap.versionField === null ? 'null' : JSON.stringify(cap.versionField)},`,
     `  acceptsIdempotencyKey: ${cap.acceptsIdempotencyKey},`,
+    `  resultKind: ${JSON.stringify(cap.resultKind)},`,
+    `  returnTsType: ${JSON.stringify(cap.returnTsType)},`,
     `  clientParameterNames: ${JSON.stringify(cap.clientParameterNames)},`,
     `  serverParameterNames: ${JSON.stringify(cap.serverParameterNames)},`,
     `  emits: ${JSON.stringify(cap.emits)},`,
@@ -151,7 +153,8 @@ export function generateWiringBindings(contract: WiringContract): string {
   lines.push(' *');
   lines.push(' * This module does NOT generate UI. It provides typed client inputs,');
   lines.push(' * trusted-context injection helpers, invalidation metadata, and the');
-  lines.push(' * transport facts a shared executor uses to call the canonical command API.');
+  lines.push(' * transport facts a shared executor uses to call the canonical command API,');
+  lines.push(' * and the success type of each command.');
   lines.push(' */');
   lines.push('');
   lines.push(`export const WIRING_CONTRACT_HASH = ${JSON.stringify(contract.meta.contentHash)};`);
@@ -172,6 +175,8 @@ export function generateWiringBindings(contract: WiringContract): string {
       lines.push('');
     }
     lines.push(emitCapabilityConst(cap));
+    lines.push('');
+    lines.push(`export type ${pascal(cap.entity, cap.command)}Result = ${cap.returnTsType};`);
     lines.push('');
     lines.push(emitBindFunction(cap));
     lines.push('');

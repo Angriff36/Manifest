@@ -113,6 +113,13 @@ export interface WiringCommandDescriptor {
   clientParameterNames: string[];
   /** Server-owned parameter names (injected, never from browser). */
   serverParameterNames: string[];
+  /**
+   * declared: the command says what it returns.
+   * allocation: creating a record returns the new document id.
+   * instance: updating a record returns the stored fields.
+   * empty: there is no domain payload.
+   */
+  resultKind: 'declared' | 'allocation' | 'instance' | 'empty';
   returnTsType: string;
   emits: string[];
   affectedEntity: string;
