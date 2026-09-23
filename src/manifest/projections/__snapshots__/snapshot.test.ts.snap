@@ -10812,10 +10812,35 @@ exports[`projection snapshots > wiring > generated artifacts match snapshot 1`] 
  * DO NOT EDIT — regenerate from IR via the wiring projection.
  *
  * This module does NOT generate UI. It provides typed client inputs,
- * trusted-context injection helpers, and invalidation metadata.
+ * trusted-context injection helpers, invalidation metadata, and the
+ * transport facts a shared executor uses to call the canonical command API.
  */
 
 export const WIRING_CONTRACT_HASH = "snapshot-fixture-hash";
+
+/** Canonical command transport. One protocol for every capability. */
+export const WIRING_TRANSPORT = {
+  "profile": "convex-http",
+  "method": "POST",
+  "contentType": "application/json",
+  "auth": "bearer",
+  "forbiddenBodyKeys": [
+    "__auth",
+    "user",
+    "tenantId",
+    "orgId",
+    "userId",
+    "actorId",
+    "identity"
+  ],
+  "successStatus": 200,
+  "successEnvelope": "data",
+  "unauthorizedStatus": 401,
+  "failureStatus": 400,
+  "errorEnvelope": "error",
+  "dateWire": "epoch-ms",
+  "instanceIdentityField": "docId"
+} as const;
 
 // --- Task.assignTask ---
 export interface TaskAssignTaskClientInput {
@@ -10828,6 +10853,11 @@ export const TaskAssignTaskCapability = {
   command: "assignTask",
   route: "/api/manifest/Task/commands/assignTask",
   instanceCommand: true,
+  dispatchable: true,
+  targetsExistingInstance: true,
+  dateParameterNames: [],
+  versionField: null,
+  acceptsIdempotencyKey: true,
   clientParameterNames: ["userId"],
   serverParameterNames: [],
   emits: ["TaskAssigned"],
@@ -10868,6 +10898,11 @@ export const TaskUpdateStatusCapability = {
   command: "updateStatus",
   route: "/api/manifest/Task/commands/updateStatus",
   instanceCommand: true,
+  dispatchable: true,
+  targetsExistingInstance: true,
+  dateParameterNames: [],
+  versionField: null,
+  acceptsIdempotencyKey: true,
   clientParameterNames: ["newStatus"],
   serverParameterNames: [],
   emits: ["TaskStatusUpdated"],
@@ -10909,7 +10944,29 @@ export const ALL_CAPABILITY_IDS = [
     "compilerVersion": "snapshot-test",
     "schemaVersion": "1.0",
     "contentHash": "snapshot-fixture-hash",
-    "projection": "wiring"
+    "projection": "wiring",
+    "transport": {
+      "profile": "convex-http",
+      "method": "POST",
+      "contentType": "application/json",
+      "auth": "bearer",
+      "forbiddenBodyKeys": [
+        "__auth",
+        "user",
+        "tenantId",
+        "orgId",
+        "userId",
+        "actorId",
+        "identity"
+      ],
+      "successStatus": 200,
+      "successEnvelope": "data",
+      "unauthorizedStatus": 401,
+      "failureStatus": 400,
+      "errorEnvelope": "error",
+      "dateWire": "epoch-ms",
+      "instanceIdentityField": "docId"
+    }
   },
   "capabilities": [
     {
@@ -10918,6 +10975,11 @@ export const ALL_CAPABILITY_IDS = [
       "capabilityId": "Task.assignTask",
       "route": "/api/manifest/Task/commands/assignTask",
       "instanceCommand": true,
+      "dispatchable": true,
+      "targetsExistingInstance": true,
+      "dateParameterNames": [],
+      "versionField": null,
+      "acceptsIdempotencyKey": true,
       "parameters": [
         {
           "name": "userId",
@@ -10973,6 +11035,11 @@ export const ALL_CAPABILITY_IDS = [
       "capabilityId": "Task.updateStatus",
       "route": "/api/manifest/Task/commands/updateStatus",
       "instanceCommand": true,
+      "dispatchable": true,
+      "targetsExistingInstance": true,
+      "dateParameterNames": [],
+      "versionField": null,
+      "acceptsIdempotencyKey": true,
       "parameters": [
         {
           "name": "newStatus",
