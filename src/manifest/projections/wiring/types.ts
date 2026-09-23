@@ -95,6 +95,19 @@ export interface WiringCommandDescriptor {
   route: string;
   /** True when the command mutates an existing instance (not create/static). */
   instanceCommand: boolean;
+  /** True when the canonical dispatcher can execute this command. */
+  dispatchable: boolean;
+  /**
+   * True when the dispatcher requires an existing document id.
+   * Create, createVia*, and the selected initialization command allocate instead.
+   */
+  targetsExistingInstance: boolean;
+  /** Client date/datetime parameter names, sent as epoch milliseconds. */
+  dateParameterNames: string[];
+  /** Optional optimistic-concurrency field when the entity declares one. */
+  versionField: string | null;
+  /** True when the dispatcher accepts an optional idempotencyKey. */
+  acceptsIdempotencyKey: boolean;
   parameters: WiringParameterDescriptor[];
   /** Client-owned parameter names only (browser input surface). */
   clientParameterNames: string[];
@@ -108,6 +121,21 @@ export interface WiringCommandDescriptor {
   resultStates: WiringCommandResultStates;
 }
 
+export interface WiringTransportProtocol {
+  profile: 'convex-http';
+  method: 'POST';
+  contentType: 'application/json';
+  auth: 'bearer';
+  forbiddenBodyKeys: string[];
+  successStatus: 200;
+  successEnvelope: 'data';
+  unauthorizedStatus: 401;
+  failureStatus: 400;
+  errorEnvelope: 'error';
+  dateWire: 'epoch-ms';
+  instanceIdentityField: 'docId';
+}
+
 export interface WiringContract {
   $schema: typeof WIRING_CONTRACT_SCHEMA;
   meta: {
@@ -115,6 +143,7 @@ export interface WiringContract {
     schemaVersion: string;
     contentHash: string;
     projection: 'wiring';
+    transport: WiringTransportProtocol;
   };
   capabilities: WiringCommandDescriptor[];
 }
@@ -179,4 +208,9 @@ export interface WiringProjectionOptions {
   contractPathHint?: string;
   /** Output path hint for generated TypeScript bindings. */
   bindingsPathHint?: string;
+  /**
+   * When false, generated commands do not advertise idempotencyKey.
+   * Default true, matching the Convex projection.
+   */
+  commandIdempotency?: boolean;
 }

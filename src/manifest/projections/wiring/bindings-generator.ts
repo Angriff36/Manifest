@@ -128,6 +128,11 @@ function emitCapabilityConst(cap: WiringCommandDescriptor): string {
     `  command: ${JSON.stringify(cap.command)},`,
     `  route: ${JSON.stringify(cap.route)},`,
     `  instanceCommand: ${cap.instanceCommand},`,
+    `  dispatchable: ${cap.dispatchable},`,
+    `  targetsExistingInstance: ${cap.targetsExistingInstance},`,
+    `  dateParameterNames: ${JSON.stringify(cap.dateParameterNames)},`,
+    `  versionField: ${cap.versionField === null ? 'null' : JSON.stringify(cap.versionField)},`,
+    `  acceptsIdempotencyKey: ${cap.acceptsIdempotencyKey},`,
     `  clientParameterNames: ${JSON.stringify(cap.clientParameterNames)},`,
     `  serverParameterNames: ${JSON.stringify(cap.serverParameterNames)},`,
     `  emits: ${JSON.stringify(cap.emits)},`,
@@ -145,10 +150,16 @@ export function generateWiringBindings(contract: WiringContract): string {
   lines.push(' * DO NOT EDIT — regenerate from IR via the wiring projection.');
   lines.push(' *');
   lines.push(' * This module does NOT generate UI. It provides typed client inputs,');
-  lines.push(' * trusted-context injection helpers, and invalidation metadata.');
+  lines.push(' * trusted-context injection helpers, invalidation metadata, and the');
+  lines.push(' * transport facts a shared executor uses to call the canonical command API.');
   lines.push(' */');
   lines.push('');
   lines.push(`export const WIRING_CONTRACT_HASH = ${JSON.stringify(contract.meta.contentHash)};`);
+  lines.push('');
+  lines.push('/** Canonical command transport. One protocol for every capability. */');
+  lines.push(
+    `export const WIRING_TRANSPORT = ${JSON.stringify(contract.meta.transport, null, 2)} as const;`,
+  );
   lines.push('');
 
   for (const cap of contract.capabilities) {

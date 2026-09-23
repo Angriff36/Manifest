@@ -14,6 +14,8 @@ import type {
   IRType,
 } from '../../ir.js';
 import { resolveRouteContract } from '../shared/route-contract.js';
+import { ConvexHttpWireProtocol } from './transport/command-wire-protocol.js';
+import { CommandInstanceTarget } from './transport/instance-target.js';
 import type {
   TrustedSourceKind,
   WiringCommandDescriptor,
@@ -392,6 +394,8 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
     routeCasing: options?.routeCasing,
   });
   const dateAsString = (options?.dateSerialization ?? 'iso-string') === 'iso-string';
+  const idempotency = options?.commandIdempotency ?? true;
+  const targets = new CommandInstanceTarget(ir);
   const enums = new Map(ir.enums.map((e) => [e.name, e]));
   const entities = new Map(ir.entities.map((e) => [e.name, e]));
 
@@ -408,6 +412,10 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
     const params = command.parameters.map((p) => buildParameter(p, command, enums, dateAsString));
     const clientParameterNames = params.filter((p) => p.ownership === 'client').map((p) => p.name);
     const serverParameterNames = params.filter((p) => p.ownership === 'server').map((p) => p.name);
+    const dateParameterNames = params
+      .filter((p) => p.ownership === 'client' && p.constraints.dateLike)
+      .map((p) => p.name);
+    const execution = targets.facts(command);
     const camel = toLowerCamel(entityName === '_program' ? command.name : entityName);
 
     capabilities.push({
@@ -418,6 +426,11 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
         ? contract.dispatcherInvocationPath(command.entity, command.name)
         : contract.dispatcherInvocationPath('_', command.name),
       instanceCommand: isInstanceCommand(command),
+      dispatchable: execution.dispatchable,
+      targetsExistingInstance: execution.targetsExistingInstance,
+      dateParameterNames,
+      versionField: execution.versionField,
+      acceptsIdempotencyKey: idempotency && execution.dispatchable,
       parameters: params,
       clientParameterNames,
       serverParameterNames,
@@ -448,6 +461,7 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
       schemaVersion: ir.provenance.schemaVersion,
       contentHash: ir.provenance.contentHash,
       projection: 'wiring',
+      transport: ConvexHttpWireProtocol.canonical().toContract(),
     },
     capabilities,
   };

@@ -19,6 +19,13 @@ export type {
   WiringInvalidationTarget,
 } from './types.js';
 export { WIRING_CONTRACT_SCHEMA, WIRING_CONSUMERS_SCHEMA } from './types.js';
+export { WiringCommandExecutor } from './transport/command-executor.js';
+export { WiringCommandRequestBuilder } from './transport/request-builder.js';
+export { ConvexHttpWireProtocol } from './transport/command-wire-protocol.js';
+export { WiringTransportError } from './transport/transport-error.js';
+export type { WiringCommandCall, WiringExecutableCommand } from './transport/executable-command.js';
+export type { WiringCommandOutcome } from './transport/response-reader.js';
+export type { WiringTransportProtocol } from './types.js';
 
 export {
   inspectWiringConsumers,
