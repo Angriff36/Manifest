@@ -5,6 +5,8 @@
 export { WiringProjection } from './generator.js';
 export { buildWiringContract, parameterTsType } from './contract-builder.js';
 export { generateWiringBindings } from './bindings-generator.js';
+export { GeneratedWiringConsumer } from './consumer/generated-wiring-consumer.js';
+export type { OfferedAction } from './consumer/generated-wiring-consumer.js';
 export { validateWiringCoverage, parseConsumersRegistry } from './coverage.js';
 export type {
   WiringContract,
@@ -17,6 +19,8 @@ export type {
   WiringProjectionOptions,
   WiringLifecycleTransition,
   WiringInvalidationTarget,
+  WiringReadDescriptor,
+  WiringActionPresentation,
 } from './types.js';
 export { WIRING_CONTRACT_SCHEMA, WIRING_CONSUMERS_SCHEMA } from './types.js';
 export { WiringCommandExecutor } from './transport/command-executor.js';

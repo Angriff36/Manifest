@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { GeneratedWiringConsumer as PublicWiringConsumer } from '../index.js';
 import { compileToIR } from '../../../ir-compiler.js';
 import { buildWiringContract } from '../contract-builder.js';
 import { WiringCommandExecutor } from '../transport/command-executor.js';
-import { GeneratedWiringConsumer } from './generated-wiring-consumer.js';
 
 const SOURCE = `
 entity Order {
@@ -51,7 +51,7 @@ function consumerFor(
       return respond(String(url), body);
     }) as typeof fetch,
   });
-  return { consumer: new GeneratedWiringConsumer(contract, executor), seen };
+  return { consumer: new PublicWiringConsumer(contract, executor), seen };
 }
 
 function ok(data: Record<string, unknown>): Response {
