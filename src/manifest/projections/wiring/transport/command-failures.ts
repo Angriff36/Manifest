@@ -67,10 +67,11 @@ export class CommandFailureCatalog {
   }
 
   private static trusted(command: IRCommand): WiringFailureRule[] {
-    const required = command.parameters.some(
-      (parameter) => parameter.trustedSource && parameter.required,
+    const canThrow = command.parameters.some(
+      (parameter) =>
+        parameter.trustedSource && parameter.required && parameter.defaultValue === undefined,
     );
-    if (!required) return [];
+    if (!canThrow) return [];
     return [{ kind: 'missing_trusted_context', message: 'MISSING_TRUSTED_CONTEXT:', prefix: true }];
   }
 

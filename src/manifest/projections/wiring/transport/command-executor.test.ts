@@ -329,6 +329,24 @@ entity Task {
     });
   });
 
+  it('does not advertise a missing trusted value when the parameter has a default', async () => {
+    const source = `
+entity Task {
+  property required id: string
+  property title: string = ""
+  command stamp(actor: string from context.actorId) { mutate title = actor }
+  command stampDefault(actor: string = "kitchen" from context.actorId) { mutate title = actor }
+  store Task in memory
+}
+`;
+    const contract = buildWiringContract(await compile(source));
+    const stamp = cap(contract.capabilities, 'stamp');
+    const stamped = cap(contract.capabilities, 'stampDefault');
+    expect(stamp.resultStates.errors).toContain('missing_trusted_context');
+    expect(stamped.resultStates.errors).not.toContain('missing_trusted_context');
+    expect(stamped.failures.some((rule) => rule.kind === 'missing_trusted_context')).toBe(false);
+  });
+
   it('emits transport facts into generated bindings', async () => {
     const contract = buildWiringContract(await compile(FIXTURE));
     const bindings = generateWiringBindings(contract);
