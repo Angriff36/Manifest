@@ -18,6 +18,7 @@ import type {
   IRConstraint,
   IREntity,
   IRExpression,
+  IRParameter,
   IRPolicy,
   IRReactionParam,
   IRReactionRule,
@@ -1923,6 +1924,29 @@ function renderGovernedCreationEntry(
   return { code, diagnostics };
 }
 
+function clientParametersExceptTenant(
+  cmd: IRCommand,
+  tenantScoped: boolean,
+  writeTenantProp: string | undefined,
+): IRParameter[] {
+  return clientOwnedParameters(cmd).filter(
+    (parameter) => !(tenantScoped && writeTenantProp && parameter.name === writeTenantProp),
+  );
+}
+
+function tenantParameterLocal(
+  cmd: IRCommand,
+  tenantScoped: boolean,
+  writeTenantProp: string | undefined,
+): string[] {
+  if (!tenantScoped || !writeTenantProp) return [];
+  const declared = (cmd.parameters ?? []).some(
+    (parameter) => parameter.name === writeTenantProp && !parameter.trustedSource,
+  );
+  if (!declared) return [];
+  return [`    const ${writeTenantProp} = __auth.${writeTenantProp};`];
+}
+
 function generateMutation(
   ir: IR,
   options: Normalized,
@@ -2176,7 +2200,8 @@ function generateMutation(
   // Non-create mutation
   const versionOcc = renderConvexUpdateVersionOcc(entity);
   const argLines = [`    docId: v.id("${table}")`];
-  for (const p of clientOwnedParameters(cmd)) {
+  const instanceClientParams = clientParametersExceptTenant(cmd, tenantScoped, writeTenantProp);
+  for (const p of instanceClientParams) {
     argLines.push(
       `    ${p.name}: ${p.required ? paramValidator(p.type) : `v.optional(${paramValidator(p.type)})`}`,
     );
@@ -2187,6 +2212,7 @@ function generateMutation(
   appendCommandIdempotencyArg(argLines, options);
   const trustedInject = renderTrustedSourceInjection(cmd, options, 'locals');
   diagnostics.push(...trustedInject.diagnostics);
+  const tenantLocal = tenantParameterLocal(cmd, tenantScoped, writeTenantProp);
 
   // Non-create: command params are destructured locals; self.x → doc.x.
   // Trusted params are injected as locals (not taken from client args).
@@ -2379,7 +2405,7 @@ function generateMutation(
   const payloadBinding = /\bpayload\b/.test(tail)
     ? `    const payload: Record<string, any> = { ${payloadParts} };\n`
     : '';
-  const argDestructureParts = clientOwnedParameters(cmd).map((parameter) => parameter.name);
+  const argDestructureParts = instanceClientParams.map((parameter) => parameter.name);
   if (versionOcc.expectedArgName) {
     argDestructureParts.push(versionOcc.expectedArgName);
   }
@@ -2442,6 +2468,7 @@ function generateMutation(
   let body =
     `async function ${runnerName}(ctx: MutationCtx, { docId${argDestructure} }: any, __creation = false) {\n` +
     (authLines.length ? authLines.join('\n') + '\n' : '') +
+    (tenantLocal.length ? tenantLocal.join('\n') + '\n' : '') +
     (trustedInject.lines.length ? trustedInject.lines.join('\n') + '\n' : '') +
     (encryptionActive
       ? `    const __storedDoc = await ctx.db.get(docId) as Record<string, any> | null;\n` +

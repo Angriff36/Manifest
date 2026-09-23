@@ -413,10 +413,14 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
     const entityName = command.entity ?? '_program';
     const entity = command.entity ? entities.get(command.entity) : undefined;
     const mapped = command.parameters.map((p) => buildParameter(p, command, enums, dateAsString));
+    const execution = targets.facts(command);
     const params = TenantServerContext.apply(
       mapped,
       ir.tenant,
       entity,
+      command.name,
+      command.name === 'create' || execution.targetsExistingInstance,
+      options?.authContextImport,
       (type) => irTypeToTs(type, enums, dateAsString),
       classifyTrustedSource,
     );
@@ -425,7 +429,6 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
     const dateParameterNames = params
       .filter((p) => p.ownership === 'client' && p.constraints.dateLike)
       .map((p) => p.name);
-    const execution = targets.facts(command);
     const result = CommandResultShape.from({
       entity,
       successShape: execution.successShape,

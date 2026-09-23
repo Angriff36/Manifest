@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileToIR } from '../../../ir-compiler.js';
 import { DISPATCHER_FORBIDDEN_BODY_KEYS } from '../../convex/http-dispatcher.js';
+import { generateMutations } from '../../convex/functions.js';
 import { generateWiringBindings } from '../bindings-generator.js';
 import { buildWiringContract } from '../contract-builder.js';
 import type { WiringCommandDescriptor } from '../types.js';
@@ -347,37 +348,57 @@ entity Task {
     expect(stamped.failures.some((rule) => rule.kind === 'missing_trusted_context')).toBe(false);
   });
 
-  it('treats a declared tenant column as server-owned and drops it from the request', async () => {
+  it('keeps a tenant column on the caller except where the mutation fills it', async () => {
     const source = `
-tenant tenantId : string from context.tenantId
+tenant kitchenId : string from context.kitchenId
 entity Task {
   property required id: string
-  property tenantId: string = ""
+  property kitchenId: string = ""
   property title: string = ""
   command create(title: string) { mutate title = title }
-  command rename(title: string, tenantId: string) { mutate title = title }
-  store Task in memory
+  command rename(title: string, kitchenId: string) { mutate title = title }
+  store Task in durable
 }
 entity Note {
   property required id: string
   property body: string = ""
   command create(body: string) { mutate body = body }
-  store Note in memory
+  store Note in durable
 }
 `;
-    const contract = buildWiringContract(await compile(source));
+    const ir = await compile(source);
+    const open = buildWiringContract(ir);
+    const openCreate = open.capabilities.find((item) => item.capabilityId === 'Task.create');
+    const openRename = open.capabilities.find((item) => item.capabilityId === 'Task.rename');
+    expect(openCreate?.serverParameterNames).not.toContain('kitchenId');
+    expect(openRename?.parameters.find((item) => item.name === 'kitchenId')?.ownership).toBe(
+      'client',
+    );
+    const openMutations = generateMutations(ir, {}).code;
+    const openRenameMutation = openMutations.slice(
+      openMutations.indexOf('export const Task_rename'),
+    );
+    expect(openRenameMutation).toContain('kitchenId: v.string()');
+
+    const contract = buildWiringContract(ir, { authContextImport: './lib/auth' });
     const taskCreate = contract.capabilities.find((item) => item.capabilityId === 'Task.create');
     const taskRename = contract.capabilities.find((item) => item.capabilityId === 'Task.rename');
     const noteCreate = contract.capabilities.find((item) => item.capabilityId === 'Note.create');
-    expect(taskCreate?.serverParameterNames).toContain('tenantId');
-    expect(taskCreate?.clientParameterNames).not.toContain('tenantId');
-    expect(taskRename?.parameters.find((item) => item.name === 'tenantId')?.ownership).toBe(
+    expect(taskCreate?.serverParameterNames).toContain('kitchenId');
+    expect(taskCreate?.clientParameterNames).not.toContain('kitchenId');
+    expect(taskRename?.parameters.find((item) => item.name === 'kitchenId')?.ownership).toBe(
       'server',
     );
-    expect(taskRename?.parameters.find((item) => item.name === 'tenantId')?.trustedSource).toBe(
-      'context.tenantId',
-    );
-    expect(noteCreate?.serverParameterNames).not.toContain('tenantId');
+    expect(taskRename?.clientParameterNames).not.toContain('kitchenId');
+    expect(noteCreate?.serverParameterNames).not.toContain('kitchenId');
+    const scopedMutations = generateMutations(ir, { authContextImport: './lib/auth' }).code;
+    const runnerAt = scopedMutations.indexOf('async function __runTaskRename');
+    const exportAt = scopedMutations.indexOf('export const Task_rename');
+    const scopedRunner = scopedMutations.slice(runnerAt, exportAt);
+    const scopedRename = scopedMutations.slice(exportAt);
+    expect(scopedRename).not.toContain('kitchenId: v.string()');
+    expect(scopedRunner).toContain('const kitchenId = __auth.kitchenId');
+
     let body: Record<string, unknown> = {};
     const executor = new WiringCommandExecutor({
       baseUrl: 'https://backend.example',
@@ -387,10 +408,20 @@ entity Note {
         return new Response(JSON.stringify({ data: { docId: 'doc-1' } }), { status: 200 });
       }) as typeof fetch,
     });
+    await executor.execute(openRename!, {
+      docId: 'doc-1',
+      client: { title: 'Supper', kitchenId: 'kitchen-a' },
+    });
+    expect(body).toEqual({ docId: 'doc-1', title: 'Supper', kitchenId: 'kitchen-a' });
     await executor.execute(taskCreate!, {
-      client: { title: 'Dinner', tenantId: 'spoofed' },
+      client: { title: 'Dinner', kitchenId: 'spoofed' },
     });
     expect(body).toEqual({ title: 'Dinner' });
+    await executor.execute(taskRename!, {
+      docId: 'doc-1',
+      client: { title: 'Supper', kitchenId: 'spoofed' },
+    });
+    expect(body).toEqual({ docId: 'doc-1', title: 'Supper' });
   });
 
   it('emits transport facts into generated bindings', async () => {

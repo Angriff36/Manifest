@@ -233,4 +233,9 @@ export interface WiringProjectionOptions {
    * Default true, matching the Convex projection.
    */
   commandIdempotency?: boolean;
+  /**
+   * Same switch as the Convex projection. Create fills the tenant column
+   * from auth only when this import is set.
+   */
+  authContextImport?: string;
 }

@@ -43,6 +43,8 @@ function normalizeOptions(raw?: Record<string, unknown>): WiringProjectionOption
     runtimeImportPath: o.runtimeImportPath ?? '@/lib/manifest-runtime',
     contractPathHint: o.contractPathHint ?? 'src/generated/manifest-wiring-contract.json',
     bindingsPathHint: o.bindingsPathHint ?? 'src/generated/manifest-wiring-bindings.ts',
+    commandIdempotency: o.commandIdempotency,
+    authContextImport: o.authContextImport,
   };
 }
 
