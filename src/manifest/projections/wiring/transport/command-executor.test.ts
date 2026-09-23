@@ -347,6 +347,52 @@ entity Task {
     expect(stamped.failures.some((rule) => rule.kind === 'missing_trusted_context')).toBe(false);
   });
 
+  it('treats a declared tenant column as server-owned and drops it from the request', async () => {
+    const source = `
+tenant tenantId : string from context.tenantId
+entity Task {
+  property required id: string
+  property tenantId: string = ""
+  property title: string = ""
+  command create(title: string) { mutate title = title }
+  command rename(title: string, tenantId: string) { mutate title = title }
+  store Task in memory
+}
+entity Note {
+  property required id: string
+  property body: string = ""
+  command create(body: string) { mutate body = body }
+  store Note in memory
+}
+`;
+    const contract = buildWiringContract(await compile(source));
+    const taskCreate = contract.capabilities.find((item) => item.capabilityId === 'Task.create');
+    const taskRename = contract.capabilities.find((item) => item.capabilityId === 'Task.rename');
+    const noteCreate = contract.capabilities.find((item) => item.capabilityId === 'Note.create');
+    expect(taskCreate?.serverParameterNames).toContain('tenantId');
+    expect(taskCreate?.clientParameterNames).not.toContain('tenantId');
+    expect(taskRename?.parameters.find((item) => item.name === 'tenantId')?.ownership).toBe(
+      'server',
+    );
+    expect(taskRename?.parameters.find((item) => item.name === 'tenantId')?.trustedSource).toBe(
+      'context.tenantId',
+    );
+    expect(noteCreate?.serverParameterNames).not.toContain('tenantId');
+    let body: Record<string, unknown> = {};
+    const executor = new WiringCommandExecutor({
+      baseUrl: 'https://backend.example',
+      bearerToken: 'staff-token',
+      fetchImpl: (async (_url, init) => {
+        body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        return new Response(JSON.stringify({ data: { docId: 'doc-1' } }), { status: 200 });
+      }) as typeof fetch,
+    });
+    await executor.execute(taskCreate!, {
+      client: { title: 'Dinner', tenantId: 'spoofed' },
+    });
+    expect(body).toEqual({ title: 'Dinner' });
+  });
+
   it('emits transport facts into generated bindings', async () => {
     const contract = buildWiringContract(await compile(FIXTURE));
     const bindings = generateWiringBindings(contract);

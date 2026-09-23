@@ -17,6 +17,7 @@ import { resolveRouteContract } from '../shared/route-contract.js';
 import { ConvexHttpWireProtocol } from './transport/command-wire-protocol.js';
 import { CommandInstanceTarget } from './transport/instance-target.js';
 import { CommandFailureCatalog } from './transport/command-failures.js';
+import { TenantServerContext } from './transport/tenant-server-context.js';
 import { CommandResultShape } from './transport/command-result.js';
 import type {
   TrustedSourceKind,
@@ -411,7 +412,14 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
   for (const command of commands) {
     const entityName = command.entity ?? '_program';
     const entity = command.entity ? entities.get(command.entity) : undefined;
-    const params = command.parameters.map((p) => buildParameter(p, command, enums, dateAsString));
+    const mapped = command.parameters.map((p) => buildParameter(p, command, enums, dateAsString));
+    const params = TenantServerContext.apply(
+      mapped,
+      ir.tenant,
+      entity,
+      (type) => irTypeToTs(type, enums, dateAsString),
+      classifyTrustedSource,
+    );
     const clientParameterNames = params.filter((p) => p.ownership === 'client').map((p) => p.name);
     const serverParameterNames = params.filter((p) => p.ownership === 'server').map((p) => p.name);
     const dateParameterNames = params
