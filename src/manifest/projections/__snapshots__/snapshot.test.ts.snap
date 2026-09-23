@@ -10949,6 +10949,30 @@ export const ALL_CAPABILITY_IDS = [
   "Task.assignTask",
   "Task.updateStatus"
 ] as const;
+
+/** Stored-record reads. A list has no page cursor. */
+export const ALL_READ_IDS = [
+  "Task.byAssigneeId",
+  "Task.get",
+  "Task.list",
+  "User.get",
+  "User.list"
+] as const;
+
+export const listTaskByAssigneeIdRead = {"entity":"Task","readId":"Task.byAssigneeId","exportName":"listTaskByAssigneeId","kind":"indexed","clientCallable":true,"pagination":"unsupported","parameters":[{"name":"assigneeId","tsType":"string | null","required":false}],"returnTsType":"Array<{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }>"} as const;
+export type listTaskByAssigneeIdResult = Array<{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }>;
+
+export const getTaskRead = {"entity":"Task","readId":"Task.get","exportName":"getTask","kind":"detail","clientCallable":true,"pagination":"unsupported","parameters":[{"name":"id","tsType":"string","required":true}],"returnTsType":"{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number } | null"} as const;
+export type getTaskResult = { _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number } | null;
+
+export const listTaskRead = {"entity":"Task","readId":"Task.list","exportName":"listTask","kind":"list","clientCallable":true,"pagination":"unsupported","parameters":[],"returnTsType":"Array<{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }>"} as const;
+export type listTaskResult = Array<{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }>;
+
+export const getUserRead = {"entity":"User","readId":"User.get","exportName":"getUser","kind":"detail","clientCallable":true,"pagination":"unsupported","parameters":[{"name":"id","tsType":"string","required":true}],"returnTsType":"{ _id: string; _creationTime: number; name: string; email: string; role: string } | null"} as const;
+export type getUserResult = { _id: string; _creationTime: number; name: string; email: string; role: string } | null;
+
+export const listUserRead = {"entity":"User","readId":"User.list","exportName":"listUser","kind":"list","clientCallable":true,"pagination":"unsupported","parameters":[],"returnTsType":"Array<{ _id: string; _creationTime: number; name: string; email: string; role: string }>"} as const;
+export type listUserResult = Array<{ _id: string; _creationTime: number; name: string; email: string; role: string }>;
 ",
   "wiring-contract": "{
   "$schema": "manifest-wiring-contract/v1",
@@ -11115,6 +11139,76 @@ export const ALL_CAPABILITY_IDS = [
           "business_failure"
         ]
       }
+    }
+  ],
+  "reads": [
+    {
+      "entity": "Task",
+      "readId": "Task.byAssigneeId",
+      "exportName": "listTaskByAssigneeId",
+      "kind": "indexed",
+      "clientCallable": true,
+      "pagination": "unsupported",
+      "parameters": [
+        {
+          "name": "assigneeId",
+          "tsType": "string | null",
+          "required": false
+        }
+      ],
+      "returnTsType": "Array<{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }>"
+    },
+    {
+      "entity": "Task",
+      "readId": "Task.get",
+      "exportName": "getTask",
+      "kind": "detail",
+      "clientCallable": true,
+      "pagination": "unsupported",
+      "parameters": [
+        {
+          "name": "id",
+          "tsType": "string",
+          "required": true
+        }
+      ],
+      "returnTsType": "{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number } | null"
+    },
+    {
+      "entity": "Task",
+      "readId": "Task.list",
+      "exportName": "listTask",
+      "kind": "list",
+      "clientCallable": true,
+      "pagination": "unsupported",
+      "parameters": [],
+      "returnTsType": "Array<{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }>"
+    },
+    {
+      "entity": "User",
+      "readId": "User.get",
+      "exportName": "getUser",
+      "kind": "detail",
+      "clientCallable": true,
+      "pagination": "unsupported",
+      "parameters": [
+        {
+          "name": "id",
+          "tsType": "string",
+          "required": true
+        }
+      ],
+      "returnTsType": "{ _id: string; _creationTime: number; name: string; email: string; role: string } | null"
+    },
+    {
+      "entity": "User",
+      "readId": "User.list",
+      "exportName": "listUser",
+      "kind": "list",
+      "clientCallable": true,
+      "pagination": "unsupported",
+      "parameters": [],
+      "returnTsType": "Array<{ _id: string; _creationTime: number; name: string; email: string; role: string }>"
     }
   ]
 }

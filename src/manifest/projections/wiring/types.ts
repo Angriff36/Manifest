@@ -156,6 +156,30 @@ export interface WiringTransportProtocol {
   instanceIdentityField: 'docId';
 }
 
+export interface WiringReadParameter {
+  name: string;
+  tsType: string;
+  required: boolean;
+}
+
+export interface WiringReadDescriptor {
+  entity: string;
+  /** Entity.list, Entity.get, or Entity.listByField. */
+  readId: string;
+  /** Convex query export, such as listTask or getTask. */
+  exportName: string;
+  kind: 'list' | 'detail' | 'indexed';
+  /** False when the query is internalQuery and a browser cannot call it. */
+  clientCallable: boolean;
+  /**
+   * The Convex list/get queries load the whole result with collect() or db.get.
+   * They do not take a cursor.
+   */
+  pagination: 'unsupported';
+  parameters: WiringReadParameter[];
+  returnTsType: string;
+}
+
 export interface WiringContract {
   $schema: typeof WIRING_CONTRACT_SCHEMA;
   meta: {
@@ -166,6 +190,8 @@ export interface WiringContract {
     transport: WiringTransportProtocol;
   };
   capabilities: WiringCommandDescriptor[];
+  /** Reads the Convex query generator emits for stored records. */
+  reads: WiringReadDescriptor[];
 }
 
 /** Application-declared consumer of a Manifest capability. */

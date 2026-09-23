@@ -193,5 +193,20 @@ export function generateWiringBindings(contract: WiringContract): string {
   );
   lines.push('');
 
+  lines.push('/** Stored-record reads. A list has no page cursor. */');
+  lines.push(
+    `export const ALL_READ_IDS = ${JSON.stringify(
+      contract.reads.map((read) => read.readId),
+      null,
+      2,
+    )} as const;`,
+  );
+  lines.push('');
+  for (const read of contract.reads) {
+    lines.push(`export const ${read.exportName}Read = ${JSON.stringify(read)} as const;`);
+    lines.push(`export type ${read.exportName}Result = ${read.returnTsType};`);
+    lines.push('');
+  }
+
   return lines.join('\n');
 }

@@ -18,6 +18,7 @@ import { ConvexHttpWireProtocol } from './transport/command-wire-protocol.js';
 import { CommandInstanceTarget } from './transport/instance-target.js';
 import { CommandFailureCatalog } from './transport/command-failures.js';
 import { TenantServerContext } from './transport/tenant-server-context.js';
+import { ReadCatalog } from './reads/read-catalog.js';
 import { CommandResultShape } from './transport/command-result.js';
 import type {
   TrustedSourceKind,
@@ -482,6 +483,9 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
       transport: ConvexHttpWireProtocol.canonical().toContract(),
     },
     capabilities,
+    reads: ReadCatalog.from(ir, options?.authContextImport, (type) =>
+      irTypeToTs(type, enums, dateAsString),
+    ),
   };
 }
 

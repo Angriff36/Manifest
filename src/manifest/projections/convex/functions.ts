@@ -377,6 +377,38 @@ function collectQueryIndexSpecs(
   return specs;
 }
 
+export interface GeneratedReadIndex {
+  entity: string;
+  exportName: string;
+  fields: { name: string; optional: boolean }[];
+}
+
+/** Index reads `generateQueries` emits, in entity-then-index order. */
+export function generatedReadIndexes(
+  ir: IR,
+  rawOptions?: Record<string, unknown>,
+): GeneratedReadIndex[] {
+  const options = normalizeOptions(rawOptions);
+  const diagnostics: ProjectionDiagnostic[] = [];
+  const plans: GeneratedReadIndex[] = [];
+  for (const entity of persistentEntities(ir)) {
+    for (const spec of collectQueryIndexSpecs(ir, entity, options, diagnostics)) {
+      plans.push({
+        entity: entity.name,
+        exportName: indexedQueryExportName(
+          entity.name,
+          spec.fields.map((field) => field.name),
+        ),
+        fields: spec.fields.map((field) => ({
+          name: field.name,
+          optional: field.validator.startsWith('v.optional('),
+        })),
+      });
+    }
+  }
+  return plans;
+}
+
 /**
  * Tenant-id binding for a handler body. Identity comes from the author-owned
  * `getAuthContext(ctx)` module ({@link NormalizedOptions.authContextImport}).
