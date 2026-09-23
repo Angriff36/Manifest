@@ -1,4 +1,7 @@
 /** Facts the shared executor needs. Generated capability constants satisfy this. */
+
+import type { WiringFailureRule } from '../types.js';
+
 export interface WiringExecutableCommand {
   capabilityId: string;
   route: string;
@@ -9,6 +12,7 @@ export interface WiringExecutableCommand {
   dateParameterNames: readonly string[];
   versionField: string | null;
   acceptsIdempotencyKey: boolean;
+  failures?: readonly WiringFailureRule[];
 }
 
 export interface WiringCommandCall {

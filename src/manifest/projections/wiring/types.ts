@@ -72,18 +72,27 @@ export interface WiringInvalidationTarget {
   label?: string;
 }
 
+export type WiringFailureKind =
+  | 'policy_denial'
+  | 'guard_failure'
+  | 'constraint_block'
+  | 'concurrency_conflict'
+  | 'missing_trusted_context'
+  | 'not_found'
+  | 'business_failure';
+
+/** A dispatcher error string the Convex generator already throws. */
+export interface WiringFailureRule {
+  kind: Exclude<WiringFailureKind, 'business_failure'>;
+  /** Exact message, or the leading text when prefix is true. */
+  message: string;
+  prefix?: boolean;
+}
+
 export interface WiringCommandResultStates {
   success: true;
-  /** Structured failure modes the caller must handle. */
-  errors: Array<
-    | 'policy_denial'
-    | 'guard_failure'
-    | 'constraint_block'
-    | 'concurrency_conflict'
-    | 'missing_required_parameter'
-    | 'missing_trusted_context'
-    | 'unknown'
-  >;
+  /** Failure kinds this command can produce, plus the unmatched remainder. */
+  errors: WiringFailureKind[];
 }
 
 export interface WiringCommandDescriptor {
@@ -123,6 +132,8 @@ export interface WiringCommandDescriptor {
   resultKind: 'created' | 'allocation' | 'instance' | 'empty';
   returnTsType: string;
   emits: string[];
+  /** Exact dispatcher error strings this command throws. */
+  failures: WiringFailureRule[];
   affectedEntity: string;
   lifecycleTransitions: WiringLifecycleTransition[];
   invalidation: WiringInvalidationTarget[];
@@ -138,6 +149,7 @@ export interface WiringTransportProtocol {
   successStatus: 200;
   successEnvelope: 'data';
   unauthorizedStatus: 401;
+  notFoundStatus: 404;
   failureStatus: 400;
   errorEnvelope: 'error';
   dateWire: 'epoch-ms';

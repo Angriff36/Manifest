@@ -14,6 +14,7 @@ const generatedTransport = {
   successStatus: 200,
   successEnvelope: 'data',
   unauthorizedStatus: 401,
+  notFoundStatus: 404,
   failureStatus: 400,
   errorEnvelope: 'error',
   dateWire: 'epoch-ms',

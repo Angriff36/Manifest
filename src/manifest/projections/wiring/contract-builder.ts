@@ -16,6 +16,7 @@ import type {
 import { resolveRouteContract } from '../shared/route-contract.js';
 import { ConvexHttpWireProtocol } from './transport/command-wire-protocol.js';
 import { CommandInstanceTarget } from './transport/instance-target.js';
+import { CommandFailureCatalog } from './transport/command-failures.js';
 import { CommandResultShape } from './transport/command-result.js';
 import type {
   TrustedSourceKind,
@@ -422,6 +423,12 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
       successShape: execution.successShape,
       typeToTs: (type) => irTypeToTs(type, enums, dateAsString),
     });
+    const failures = CommandFailureCatalog.from({
+      command,
+      entity,
+      policies: ir.policies,
+      targetsExistingInstance: execution.targetsExistingInstance,
+    });
     const camel = toLowerCamel(entityName === '_program' ? command.name : entityName);
 
     capabilities.push({
@@ -443,20 +450,13 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
       resultKind: result.resultKind,
       returnTsType: result.returnTsType,
       emits: [...(command.emits ?? [])],
+      failures: failures.rules,
       affectedEntity: entityName,
       lifecycleTransitions: extractLifecycleTransitions(command, entity),
       invalidation: entityName === '_program' ? [] : buildInvalidation(entityName, camel),
       resultStates: {
         success: true,
-        errors: [
-          'policy_denial',
-          'guard_failure',
-          'constraint_block',
-          'concurrency_conflict',
-          'missing_required_parameter',
-          'missing_trusted_context',
-          'unknown',
-        ],
+        errors: failures.kinds,
       },
     });
   }

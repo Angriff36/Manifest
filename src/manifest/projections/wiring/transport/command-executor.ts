@@ -42,6 +42,7 @@ export class WiringCommandExecutor {
     return this.reader.read(
       response.status,
       await this.parse(response),
+      command.failures,
     ) as WiringCommandOutcome<TData>;
   }
 

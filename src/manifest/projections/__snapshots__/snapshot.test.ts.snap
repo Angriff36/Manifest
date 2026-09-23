@@ -10837,6 +10837,7 @@ export const WIRING_TRANSPORT = {
   "successStatus": 200,
   "successEnvelope": "data",
   "unauthorizedStatus": 401,
+  "notFoundStatus": 404,
   "failureStatus": 400,
   "errorEnvelope": "error",
   "dateWire": "epoch-ms",
@@ -10863,6 +10864,7 @@ export const TaskAssignTaskCapability = {
   returnTsType: "{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }",
   clientParameterNames: ["userId"],
   serverParameterNames: [],
+  failures: [{"kind":"guard_failure","message":"Guard 0 failed"},{"kind":"not_found","message":"Task not found"}],
   emits: ["TaskAssigned"],
 } as const;
 
@@ -10912,6 +10914,7 @@ export const TaskUpdateStatusCapability = {
   returnTsType: "{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }",
   clientParameterNames: ["newStatus"],
   serverParameterNames: [],
+  failures: [{"kind":"guard_failure","message":"Guard 0 failed"},{"kind":"not_found","message":"Task not found"}],
   emits: ["TaskStatusUpdated"],
 } as const;
 
@@ -10971,6 +10974,7 @@ export const ALL_CAPABILITY_IDS = [
       "successStatus": 200,
       "successEnvelope": "data",
       "unauthorizedStatus": 401,
+      "notFoundStatus": 404,
       "failureStatus": 400,
       "errorEnvelope": "error",
       "dateWire": "epoch-ms",
@@ -11010,6 +11014,16 @@ export const ALL_CAPABILITY_IDS = [
       "emits": [
         "TaskAssigned"
       ],
+      "failures": [
+        {
+          "kind": "guard_failure",
+          "message": "Guard 0 failed"
+        },
+        {
+          "kind": "not_found",
+          "message": "Task not found"
+        }
+      ],
       "affectedEntity": "Task",
       "lifecycleTransitions": [],
       "invalidation": [
@@ -11029,13 +11043,9 @@ export const ALL_CAPABILITY_IDS = [
       "resultStates": {
         "success": true,
         "errors": [
-          "policy_denial",
           "guard_failure",
-          "constraint_block",
-          "concurrency_conflict",
-          "missing_required_parameter",
-          "missing_trusted_context",
-          "unknown"
+          "not_found",
+          "business_failure"
         ]
       }
     },
@@ -11071,6 +11081,16 @@ export const ALL_CAPABILITY_IDS = [
       "emits": [
         "TaskStatusUpdated"
       ],
+      "failures": [
+        {
+          "kind": "guard_failure",
+          "message": "Guard 0 failed"
+        },
+        {
+          "kind": "not_found",
+          "message": "Task not found"
+        }
+      ],
       "affectedEntity": "Task",
       "lifecycleTransitions": [],
       "invalidation": [
@@ -11090,13 +11110,9 @@ export const ALL_CAPABILITY_IDS = [
       "resultStates": {
         "success": true,
         "errors": [
-          "policy_denial",
           "guard_failure",
-          "constraint_block",
-          "concurrency_conflict",
-          "missing_required_parameter",
-          "missing_trusted_context",
-          "unknown"
+          "not_found",
+          "business_failure"
         ]
       }
     }

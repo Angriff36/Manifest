@@ -26,6 +26,7 @@ export class ConvexHttpWireProtocol {
   readonly successStatus = 200 as const;
   readonly successEnvelope = 'data' as const;
   readonly unauthorizedStatus = 401 as const;
+  readonly notFoundStatus = 404 as const;
   readonly failureStatus = 400 as const;
   readonly errorEnvelope = 'error' as const;
   readonly dateWire = 'epoch-ms' as const;
@@ -45,6 +46,7 @@ export class ConvexHttpWireProtocol {
       successStatus: this.successStatus,
       successEnvelope: this.successEnvelope,
       unauthorizedStatus: this.unauthorizedStatus,
+      notFoundStatus: this.notFoundStatus,
       failureStatus: this.failureStatus,
       errorEnvelope: this.errorEnvelope,
       dateWire: this.dateWire,

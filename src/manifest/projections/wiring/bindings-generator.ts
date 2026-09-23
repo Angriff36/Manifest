@@ -137,6 +137,7 @@ function emitCapabilityConst(cap: WiringCommandDescriptor): string {
     `  returnTsType: ${JSON.stringify(cap.returnTsType)},`,
     `  clientParameterNames: ${JSON.stringify(cap.clientParameterNames)},`,
     `  serverParameterNames: ${JSON.stringify(cap.serverParameterNames)},`,
+    `  failures: ${JSON.stringify(cap.failures)},`,
     `  emits: ${JSON.stringify(cap.emits)},`,
     `} as const;`,
   ].join('\n');

@@ -258,6 +258,77 @@ command ping() { }
     });
   });
 
+  it('distinguishes the failure messages the backend already throws', async () => {
+    const source = `
+entity Task {
+  property required id: string
+  property title: string = ""
+  versionProperty version: number
+  default policy cookCanPublish execute: context.actorId != null "Only a cook can publish"
+  command publish() {
+    guard self.title != ""
+    constraint titleRequired:block self.title != "" "Title is empty"
+    mutate title = "published"
+  }
+  store Task in memory
+}
+`;
+    const contract = buildWiringContract(await compile(source));
+    const publish = cap(contract.capabilities, 'publish');
+    expect(publish.resultStates.errors).toEqual([
+      'policy_denial',
+      'guard_failure',
+      'constraint_block',
+      'concurrency_conflict',
+      'not_found',
+      'business_failure',
+    ]);
+    expect(publish.failures.map((rule) => rule.message)).toEqual([
+      'Only a cook can publish',
+      'Guard 0 failed',
+      'Title is empty',
+      'ConcurrencyConflict:',
+      'Task not found',
+    ]);
+    const responses = [
+      new Response(JSON.stringify({ error: 'Only a cook can publish' }), { status: 400 }),
+      new Response(JSON.stringify({ error: 'Guard 0 failed' }), { status: 400 }),
+      new Response(JSON.stringify({ error: 'Title is empty' }), { status: 400 }),
+      new Response(
+        JSON.stringify({ error: 'ConcurrencyConflict: VERSION_MISMATCH expected 1 actual 2' }),
+        {
+          status: 400,
+        },
+      ),
+      new Response(JSON.stringify({ error: 'Task not found' }), { status: 400 }),
+      new Response(JSON.stringify({ error: 'Unknown command Task.missing' }), { status: 404 }),
+      new Response(JSON.stringify({ error: 'Something else broke' }), { status: 400 }),
+    ];
+    const executor = new WiringCommandExecutor({
+      baseUrl: 'https://backend.example',
+      bearerToken: 'staff-token',
+      fetchImpl: (async () => responses.shift()!) as typeof fetch,
+    });
+    const call = { client: {}, docId: 'doc-1', version: 1 };
+    await expect(executor.execute(publish, call)).resolves.toMatchObject({ kind: 'policy_denial' });
+    await expect(executor.execute(publish, call)).resolves.toMatchObject({ kind: 'guard_failure' });
+    await expect(executor.execute(publish, call)).resolves.toMatchObject({
+      kind: 'constraint_block',
+    });
+    await expect(executor.execute(publish, call)).resolves.toMatchObject({
+      kind: 'concurrency_conflict',
+    });
+    await expect(executor.execute(publish, call)).resolves.toMatchObject({ kind: 'not_found' });
+    await expect(executor.execute(publish, call)).resolves.toMatchObject({
+      kind: 'not_found',
+      status: 404,
+    });
+    await expect(executor.execute(publish, call)).resolves.toMatchObject({
+      kind: 'business_failure',
+      message: 'Something else broke',
+    });
+  });
+
   it('emits transport facts into generated bindings', async () => {
     const contract = buildWiringContract(await compile(FIXTURE));
     const bindings = generateWiringBindings(contract);

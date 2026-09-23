@@ -1,31 +1,38 @@
-import type { WiringTransportProtocol } from '../types.js';
+import type { WiringFailureKind, WiringFailureRule, WiringTransportProtocol } from '../types.js';
 import { WiringTransportError } from './transport-error.js';
 
 export type WiringCommandOutcome<TData = never> =
   | { ok: true; data: TData }
-  | { ok: false; kind: 'unauthorized' | 'business_failure'; status: number; message: string };
+  | {
+      ok: false;
+      kind: 'unauthorized' | WiringFailureKind;
+      status: number;
+      message: string;
+    };
 
-/** Reads the dispatcher envelope without inventing a second error protocol. */
+/** Reads the dispatcher `{ error }` envelope. Kinds come from known thrown messages. */
 export class WiringCommandResponseReader {
   constructor(private readonly protocol: WiringTransportProtocol) {}
 
-  read(status: number, body: unknown): WiringCommandOutcome<unknown> {
-    if (status === this.protocol.unauthorizedStatus) return this.unauthorized(body);
+  read(
+    status: number,
+    body: unknown,
+    rules: readonly WiringFailureRule[] = [],
+  ): WiringCommandOutcome<unknown> {
+    if (status === this.protocol.unauthorizedStatus) return this.denied(body, 'unauthorized');
+    if (status === this.protocol.notFoundStatus) return this.denied(body, 'not_found');
     if (status === this.protocol.successStatus) return this.success(body);
-    if (status === this.protocol.failureStatus) return this.failure(body);
+    if (status === this.protocol.failureStatus) return this.failure(body, rules);
     throw new WiringTransportError(
       'invalid_response',
       `Unexpected command response status ${status}`,
     );
   }
 
-  private unauthorized(body: unknown): WiringCommandOutcome<unknown> {
-    return {
-      ok: false,
-      kind: 'unauthorized',
-      status: this.protocol.unauthorizedStatus,
-      message: this.message(body, 'Unauthorized'),
-    };
+  private denied(body: unknown, kind: 'unauthorized' | 'not_found'): WiringCommandOutcome<unknown> {
+    const status =
+      kind === 'unauthorized' ? this.protocol.unauthorizedStatus : this.protocol.notFoundStatus;
+    return { ok: false, kind, status, message: this.message(body, kind) };
   }
 
   private success(body: unknown): WiringCommandOutcome<unknown> {
@@ -35,12 +42,19 @@ export class WiringCommandResponseReader {
     return { ok: true, data: (body as Record<string, unknown>)[this.protocol.successEnvelope] };
   }
 
-  private failure(body: unknown): WiringCommandOutcome<unknown> {
+  private failure(
+    body: unknown,
+    rules: readonly WiringFailureRule[],
+  ): WiringCommandOutcome<unknown> {
+    const message = this.message(body, 'Command failed');
+    const match = rules.find((rule) =>
+      rule.prefix ? message.startsWith(rule.message) : message === rule.message,
+    );
     return {
       ok: false,
-      kind: 'business_failure',
+      kind: match?.kind ?? 'business_failure',
       status: this.protocol.failureStatus,
-      message: this.message(body, 'Command failed'),
+      message,
     };
   }
 
