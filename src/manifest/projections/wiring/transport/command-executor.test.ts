@@ -105,6 +105,46 @@ describe('wiring command transport', () => {
     expect(body).not.toHaveProperty('tenantId');
   });
 
+  it('sends a Date and omits an undefined date instead of failing', async () => {
+    const contract = buildWiringContract(await compile(FIXTURE));
+    const create = cap(contract.capabilities, 'create');
+    const bodies: Record<string, unknown>[] = [];
+    const executor = new WiringCommandExecutor({
+      baseUrl: 'https://backend.example',
+      bearerToken: 'staff-token',
+      fetchImpl: (async (_url, init) => {
+        bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return new Response(JSON.stringify({ data: { id: 'task-1' } }), { status: 200 });
+      }) as typeof fetch,
+    });
+    const due = new Date('2026-06-01T00:00:00.000Z');
+    await executor.execute(create, { client: { title: 'Dinner', dueDate: due } });
+    await executor.execute(create, { client: { title: 'Dinner', dueDate: undefined } });
+    expect(bodies[0]?.dueDate).toBe(due.getTime());
+    expect(bodies[1]).not.toHaveProperty('dueDate');
+  });
+
+  it('uses the global fetch function when no fetch implementation is injected', async () => {
+    const contract = buildWiringContract(await compile(FIXTURE));
+    const publish = cap(contract.capabilities, 'markPublished');
+    const original = globalThis.fetch;
+    let called = false;
+    globalThis.fetch = (async () => {
+      called = true;
+      return new Response(JSON.stringify({ data: null }), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const executor = new WiringCommandExecutor({
+        baseUrl: 'https://backend.example',
+        bearerToken: 'staff-token',
+      });
+      await executor.execute(publish, { client: {}, docId: 'doc-1' });
+    } finally {
+      globalThis.fetch = original;
+    }
+    expect(called).toBe(true);
+  });
+
   it('requires docId for a zero-parameter instance command and forwards version', async () => {
     const ir = await compile(FIXTURE);
     ir.entities.find((entity) => entity.name === 'Task')!.versionProperty = 'version';

@@ -61,6 +61,7 @@ export class WiringCommandRequestBuilder {
       if (this.forbidden.has(name) || serverOwned.has(name)) continue;
       if (!Object.prototype.hasOwnProperty.call(call.client, name)) continue;
       const value = call.client[name];
+      if (value === undefined) continue;
       body[name] = dates.has(name) ? this.dates.toWire(value) : value;
     }
   }

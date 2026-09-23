@@ -126,7 +126,7 @@ export interface WiringTransportProtocol {
   method: 'POST';
   contentType: 'application/json';
   auth: 'bearer';
-  forbiddenBodyKeys: string[];
+  forbiddenBodyKeys: readonly string[];
   successStatus: 200;
   successEnvelope: 'data';
   unauthorizedStatus: 401;

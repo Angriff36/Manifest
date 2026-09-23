@@ -21,7 +21,7 @@ export class WiringCommandExecutor {
 
   constructor(private readonly options: WiringCommandExecutorOptions) {
     this.protocol = options.protocol ?? ConvexHttpWireProtocol.canonical().toContract();
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
     this.builder = new WiringCommandRequestBuilder(this.protocol);
     this.reader = new WiringCommandResponseReader(this.protocol);
   }
