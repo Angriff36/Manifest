@@ -107,6 +107,9 @@ function emitBindFunction(cap: WiringCommandDescriptor): string {
   lines.push(
     `export const ${base}Invalidation = ${JSON.stringify(cap.invalidation, null, 2)} as const;`,
   );
+  lines.push('');
+  lines.push(`/** How a screen should offer ${cap.capabilityId}. Not a rendered control. */`);
+  lines.push(`export const ${base}Action = ${JSON.stringify(cap.presentation, null, 2)} as const;`);
 
   if (cap.lifecycleTransitions.length > 0) {
     lines.push('');
@@ -155,7 +158,7 @@ export function generateWiringBindings(contract: WiringContract): string {
   lines.push(' * This module does NOT generate UI. It provides typed client inputs,');
   lines.push(' * trusted-context injection helpers, invalidation metadata, and the');
   lines.push(' * transport facts a shared executor uses to call the canonical command API,');
-  lines.push(' * and the success type of each command.');
+  lines.push(' * the success type of each command, and whether a person should be offered it.');
   lines.push(' */');
   lines.push('');
   lines.push(`export const WIRING_CONTRACT_HASH = ${JSON.stringify(contract.meta.contentHash)};`);

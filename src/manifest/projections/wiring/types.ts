@@ -3,7 +3,8 @@
  * applications and agents wire UI to Manifest commands without guessing.
  *
  * This is NOT a UI generator. It describes inputs, ownership, constraints,
- * lifecycle transitions, invalidation, and coverage — nothing visual.
+ * lifecycle transitions, invalidation, action presentation, and coverage.
+ * It does not render a screen.
  */
 
 /** Schema id for the wiring-contract artifact. */
@@ -97,6 +98,38 @@ export interface WiringCommandResultStates {
   errors: WiringFailureKind[];
 }
 
+export interface WiringActionChoice {
+  value: string;
+  label: string;
+}
+
+export interface WiringActionField {
+  name: string;
+  label: string;
+  required: boolean;
+  /** Present when the field's type is an enum. */
+  choices?: WiringActionChoice[];
+}
+
+export interface WiringActionAvailability {
+  property: string;
+  /** Record values for which this action is statically allowed. */
+  values: string[];
+}
+
+export interface WiringActionPresentation {
+  /** human: offer it to a person. internal: keep it off the screen. */
+  exposure: 'human' | 'internal';
+  /** Words for the action, from the command name. */
+  label: string;
+  /** True when this command removes the record. */
+  confirm: boolean;
+  /** Fields a person fills in. Server-owned values are omitted. */
+  fields: WiringActionField[];
+  /** Present when every proven transition shares one property. */
+  availableFrom?: WiringActionAvailability;
+}
+
 export interface WiringCommandDescriptor {
   entity: string;
   command: string;
@@ -140,6 +173,8 @@ export interface WiringCommandDescriptor {
   lifecycleTransitions: WiringLifecycleTransition[];
   invalidation: WiringInvalidationTarget[];
   resultStates: WiringCommandResultStates;
+  /** How a person-facing screen should offer this command. */
+  presentation: WiringActionPresentation;
 }
 
 export interface WiringTransportProtocol {

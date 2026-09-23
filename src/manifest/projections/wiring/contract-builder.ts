@@ -20,6 +20,7 @@ import { CommandFailureCatalog } from './transport/command-failures.js';
 import { TenantServerContext } from './transport/tenant-server-context.js';
 import { ReadCatalog } from './reads/read-catalog.js';
 import { RelatedReadInvalidation } from './reads/related-invalidation.js';
+import { ActionPresentation } from './actions/action-presentation.js';
 import { CommandResultShape } from './transport/command-result.js';
 import type {
   TrustedSourceKind,
@@ -420,6 +421,7 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
       policies: ir.policies,
       targetsExistingInstance: execution.targetsExistingInstance,
     });
+    const transitions = extractLifecycleTransitions(command, entity);
 
     capabilities.push({
       entity: entityName,
@@ -442,12 +444,19 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
       emits: [...(command.emits ?? [])],
       failures: failures.rules,
       affectedEntity: entityName,
-      lifecycleTransitions: extractLifecycleTransitions(command, entity),
+      lifecycleTransitions: transitions,
       invalidation: RelatedReadInvalidation.forCommand(ir, command, entityName),
       resultStates: {
         success: true,
         errors: failures.kinds,
       },
+      presentation: ActionPresentation.from({
+        command,
+        dispatchable: execution.dispatchable,
+        clientParameters: params.filter((parameter) => parameter.ownership === 'client'),
+        enums,
+        transitions,
+      }),
     });
   }
 

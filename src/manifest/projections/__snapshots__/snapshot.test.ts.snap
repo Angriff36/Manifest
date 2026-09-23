@@ -10814,7 +10814,7 @@ exports[`projection snapshots > wiring > generated artifacts match snapshot 1`] 
  * This module does NOT generate UI. It provides typed client inputs,
  * trusted-context injection helpers, invalidation metadata, and the
  * transport facts a shared executor uses to call the canonical command API,
- * and the success type of each command.
+ * the success type of each command, and whether a person should be offered it.
  */
 
 export const WIRING_CONTRACT_HASH = "snapshot-fixture-hash";
@@ -10910,6 +10910,20 @@ export const TaskAssignTaskInvalidation = [
   }
 ] as const;
 
+/** How a screen should offer Task.assignTask. Not a rendered control. */
+export const TaskAssignTaskAction = {
+  "exposure": "human",
+  "label": "Assign task",
+  "confirm": false,
+  "fields": [
+    {
+      "name": "userId",
+      "label": "User id",
+      "required": true
+    }
+  ]
+} as const;
+
 // --- Task.updateStatus ---
 export interface TaskUpdateStatusClientInput {
   newStatus: string;
@@ -10975,6 +10989,20 @@ export const TaskUpdateStatusInvalidation = [
     "label": "related entity detail"
   }
 ] as const;
+
+/** How a screen should offer Task.updateStatus. Not a rendered control. */
+export const TaskUpdateStatusAction = {
+  "exposure": "human",
+  "label": "Update status",
+  "confirm": false,
+  "fields": [
+    {
+      "name": "newStatus",
+      "label": "New status",
+      "required": true
+    }
+  ]
+} as const;
 
 /** All capability ids in this contract (sorted). */
 export const ALL_CAPABILITY_IDS = [
@@ -11119,6 +11147,18 @@ export type listUserResult = Array<{ _id: string; _creationTime: number; name: s
           "not_found",
           "business_failure"
         ]
+      },
+      "presentation": {
+        "exposure": "human",
+        "label": "Assign task",
+        "confirm": false,
+        "fields": [
+          {
+            "name": "userId",
+            "label": "User id",
+            "required": true
+          }
+        ]
       }
     },
     {
@@ -11201,6 +11241,18 @@ export type listUserResult = Array<{ _id: string; _creationTime: number; name: s
           "guard_failure",
           "not_found",
           "business_failure"
+        ]
+      },
+      "presentation": {
+        "exposure": "human",
+        "label": "Update status",
+        "confirm": false,
+        "fields": [
+          {
+            "name": "newStatus",
+            "label": "New status",
+            "required": true
+          }
         ]
       }
     }

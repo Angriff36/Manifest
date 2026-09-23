@@ -1485,6 +1485,7 @@ export class IRCompiler {
       ...(c.rateLimit ? { rateLimit: this.transformRateLimit(c.rateLimit) } : {}),
       actions: c.actions.map((a) => this.transformAction(a)),
       emits: c.emits || [],
+      ...(c.visibility === 'private' ? { visibility: 'private' as const } : {}),
       ...(c.emitPayloads && c.emitPayloads.length > 0
         ? {
             emitPayloads: c.emitPayloads.map((ep) => ({

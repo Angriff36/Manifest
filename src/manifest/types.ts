@@ -200,6 +200,8 @@ export interface CommandNode extends ASTNode {
   returns?: TypeNode;
   /** When true, defers action execution to a background worker queue */
   async?: boolean;
+  /** Set by `private command`. The command stays callable, but it is not a person-facing action. */
+  visibility?: 'private';
 }
 
 export interface ParameterNode extends ASTNode {
