@@ -66,6 +66,8 @@ export interface WiringLifecycleTransition {
 export interface WiringInvalidationTarget {
   kind: 'entityList' | 'entityDetail' | 'custom';
   entity: string;
+  /** Wiring read id, such as Task.list, when this target is a generated read. */
+  readId?: string;
   /** Query-key hint aligned with react-query projection naming. */
   queryKeyHint: string;
   /** Optional declared extension label. */

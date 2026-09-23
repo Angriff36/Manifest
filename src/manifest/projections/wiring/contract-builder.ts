@@ -19,13 +19,13 @@ import { CommandInstanceTarget } from './transport/instance-target.js';
 import { CommandFailureCatalog } from './transport/command-failures.js';
 import { TenantServerContext } from './transport/tenant-server-context.js';
 import { ReadCatalog } from './reads/read-catalog.js';
+import { RelatedReadInvalidation } from './reads/related-invalidation.js';
 import { CommandResultShape } from './transport/command-result.js';
 import type {
   TrustedSourceKind,
   WiringCommandDescriptor,
   WiringContract,
   WiringInputConstraints,
-  WiringInvalidationTarget,
   WiringLifecycleTransition,
   WiringParameterDescriptor,
   WiringProjectionOptions,
@@ -336,27 +336,6 @@ function isInstanceCommand(command: IRCommand): boolean {
   return command.entity != null && command.name !== 'create';
 }
 
-function buildInvalidation(entityName: string, camelEntity: string): WiringInvalidationTarget[] {
-  return [
-    {
-      kind: 'entityList',
-      entity: entityName,
-      queryKeyHint: `queryKeys.${camelEntity}.lists()`,
-      label: 'entity list',
-    },
-    {
-      kind: 'entityDetail',
-      entity: entityName,
-      queryKeyHint: `queryKeys.${camelEntity}.detail(id)`,
-      label: 'entity detail',
-    },
-  ];
-}
-
-function toLowerCamel(name: string): string {
-  return name ? name[0].toLowerCase() + name.slice(1) : name;
-}
-
 function buildParameter(
   param: IRParameter,
   command: IRCommand,
@@ -441,7 +420,6 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
       policies: ir.policies,
       targetsExistingInstance: execution.targetsExistingInstance,
     });
-    const camel = toLowerCamel(entityName === '_program' ? command.name : entityName);
 
     capabilities.push({
       entity: entityName,
@@ -465,7 +443,7 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
       failures: failures.rules,
       affectedEntity: entityName,
       lifecycleTransitions: extractLifecycleTransitions(command, entity),
-      invalidation: entityName === '_program' ? [] : buildInvalidation(entityName, camel),
+      invalidation: RelatedReadInvalidation.forCommand(ir, command, entityName),
       resultStates: {
         success: true,
         errors: failures.kinds,

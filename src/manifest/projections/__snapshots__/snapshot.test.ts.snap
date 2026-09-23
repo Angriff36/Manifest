@@ -10884,13 +10884,29 @@ export const TaskAssignTaskInvalidation = [
     "kind": "entityList",
     "entity": "Task",
     "queryKeyHint": "queryKeys.task.lists()",
+    "readId": "Task.list",
     "label": "entity list"
   },
   {
     "kind": "entityDetail",
     "entity": "Task",
     "queryKeyHint": "queryKeys.task.detail(id)",
+    "readId": "Task.get",
     "label": "entity detail"
+  },
+  {
+    "kind": "entityList",
+    "entity": "User",
+    "queryKeyHint": "queryKeys.user.lists()",
+    "readId": "User.list",
+    "label": "related entity list"
+  },
+  {
+    "kind": "entityDetail",
+    "entity": "User",
+    "queryKeyHint": "queryKeys.user.detail(id)",
+    "readId": "User.get",
+    "label": "related entity detail"
   }
 ] as const;
 
@@ -10934,13 +10950,29 @@ export const TaskUpdateStatusInvalidation = [
     "kind": "entityList",
     "entity": "Task",
     "queryKeyHint": "queryKeys.task.lists()",
+    "readId": "Task.list",
     "label": "entity list"
   },
   {
     "kind": "entityDetail",
     "entity": "Task",
     "queryKeyHint": "queryKeys.task.detail(id)",
+    "readId": "Task.get",
     "label": "entity detail"
+  },
+  {
+    "kind": "entityList",
+    "entity": "User",
+    "queryKeyHint": "queryKeys.user.lists()",
+    "readId": "User.list",
+    "label": "related entity list"
+  },
+  {
+    "kind": "entityDetail",
+    "entity": "User",
+    "queryKeyHint": "queryKeys.user.detail(id)",
+    "readId": "User.get",
+    "label": "related entity detail"
   }
 ] as const;
 
@@ -11055,13 +11087,29 @@ export type listUserResult = Array<{ _id: string; _creationTime: number; name: s
           "kind": "entityList",
           "entity": "Task",
           "queryKeyHint": "queryKeys.task.lists()",
+          "readId": "Task.list",
           "label": "entity list"
         },
         {
           "kind": "entityDetail",
           "entity": "Task",
           "queryKeyHint": "queryKeys.task.detail(id)",
+          "readId": "Task.get",
           "label": "entity detail"
+        },
+        {
+          "kind": "entityList",
+          "entity": "User",
+          "queryKeyHint": "queryKeys.user.lists()",
+          "readId": "User.list",
+          "label": "related entity list"
+        },
+        {
+          "kind": "entityDetail",
+          "entity": "User",
+          "queryKeyHint": "queryKeys.user.detail(id)",
+          "readId": "User.get",
+          "label": "related entity detail"
         }
       ],
       "resultStates": {
@@ -11122,13 +11170,29 @@ export type listUserResult = Array<{ _id: string; _creationTime: number; name: s
           "kind": "entityList",
           "entity": "Task",
           "queryKeyHint": "queryKeys.task.lists()",
+          "readId": "Task.list",
           "label": "entity list"
         },
         {
           "kind": "entityDetail",
           "entity": "Task",
           "queryKeyHint": "queryKeys.task.detail(id)",
+          "readId": "Task.get",
           "label": "entity detail"
+        },
+        {
+          "kind": "entityList",
+          "entity": "User",
+          "queryKeyHint": "queryKeys.user.lists()",
+          "readId": "User.list",
+          "label": "related entity list"
+        },
+        {
+          "kind": "entityDetail",
+          "entity": "User",
+          "queryKeyHint": "queryKeys.user.detail(id)",
+          "readId": "User.get",
+          "label": "related entity detail"
         }
       ],
       "resultStates": {
