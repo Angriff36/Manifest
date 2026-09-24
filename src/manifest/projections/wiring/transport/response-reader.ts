@@ -1,4 +1,5 @@
 import type { WiringFailureKind, WiringFailureRule, WiringTransportProtocol } from '../types.js';
+import { DispatcherErrorText } from './dispatcher-error-text.js';
 import { WiringTransportError } from './transport-error.js';
 
 export type WiringCommandOutcome<TData = never> =
@@ -46,7 +47,9 @@ export class WiringCommandResponseReader {
     body: unknown,
     rules: readonly WiringFailureRule[],
   ): WiringCommandOutcome<unknown> {
-    const message = this.message(body, 'Command failed');
+    const raw = this.message(body, 'Command failed');
+    const thrown = DispatcherErrorText.thrownLine(raw);
+    const message = thrown.length > 0 ? thrown : raw;
     const match = rules.find((rule) =>
       rule.prefix ? message.startsWith(rule.message) : message === rule.message,
     );

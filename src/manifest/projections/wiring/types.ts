@@ -167,7 +167,12 @@ export interface WiringCommandDescriptor {
   resultKind: 'created' | 'allocation' | 'instance' | 'empty';
   returnTsType: string;
   emits: string[];
-  /** Exact dispatcher error strings this command throws. */
+  /**
+   * Thrown dispatcher strings this command can produce.
+   * Matching peels Convex's `[CONVEX …] [Request ID: …] Server Error` and
+   * `Uncaught Error:` wrapper first. A production-redacted body with no
+   * thrown line stays `business_failure`.
+   */
   failures: WiringFailureRule[];
   affectedEntity: string;
   lifecycleTransitions: WiringLifecycleTransition[];
