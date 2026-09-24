@@ -4,6 +4,27 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.56] - 2026-09-24
+
+### Changed
+
+- fix(wiring): classify command failures after Convex wraps them
+- feat(wiring): offer the command caller on the public wiring entry
+- feat(wiring): call generated commands through one consumer
+- fix(wiring): spell action words with the older string replace
+- feat(wiring): say which commands a person should see as an action
+- feat(wiring): mark related records stale when a save changes one
+- feat(wiring): describe the list and single-record reads a stored record already has
+- fix(wiring): only hide a kitchen id when the save already fills it
+- feat(wiring): keep a declared tenant column off the client request
+- fix(wiring): skip missing-context failures when a trusted field has a default
+- feat(wiring): distinguish the business failures a command can throw
+- fix(wiring): match command success types to the dispatcher
+- feat(wiring): type command success results instead of unknown
+- test(wiring): record the command transport in the projection snapshot
+- fix(wiring): accept real date inputs and a generated transport object
+- feat(wiring): execute the canonical command API from generated facts
+
 ## [3.6.55] - 2026-09-10
 
 ### Changed
