@@ -513,6 +513,8 @@ export interface IRCommand {
   returns?: IRType;
   /** When true, defers action execution to a background worker queue */
   async?: boolean;
+  /** Set by `private command`. Callable, but not a person-facing action. */
+  visibility?: 'private';
   /** Auto-derived completion event name (set when async=true) */
   completionEvent?: string;
   /** Auto-derived failure event name (set when async=true) */

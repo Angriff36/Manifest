@@ -14,12 +14,19 @@ import type {
   IRType,
 } from '../../ir.js';
 import { resolveRouteContract } from '../shared/route-contract.js';
+import { ConvexHttpWireProtocol } from './transport/command-wire-protocol.js';
+import { CommandInstanceTarget } from './transport/instance-target.js';
+import { CommandFailureCatalog } from './transport/command-failures.js';
+import { TenantServerContext } from './transport/tenant-server-context.js';
+import { ReadCatalog } from './reads/read-catalog.js';
+import { RelatedReadInvalidation } from './reads/related-invalidation.js';
+import { ActionPresentation } from './actions/action-presentation.js';
+import { CommandResultShape } from './transport/command-result.js';
 import type {
   TrustedSourceKind,
   WiringCommandDescriptor,
   WiringContract,
   WiringInputConstraints,
-  WiringInvalidationTarget,
   WiringLifecycleTransition,
   WiringParameterDescriptor,
   WiringProjectionOptions,
@@ -330,27 +337,6 @@ function isInstanceCommand(command: IRCommand): boolean {
   return command.entity != null && command.name !== 'create';
 }
 
-function buildInvalidation(entityName: string, camelEntity: string): WiringInvalidationTarget[] {
-  return [
-    {
-      kind: 'entityList',
-      entity: entityName,
-      queryKeyHint: `queryKeys.${camelEntity}.lists()`,
-      label: 'entity list',
-    },
-    {
-      kind: 'entityDetail',
-      entity: entityName,
-      queryKeyHint: `queryKeys.${camelEntity}.detail(id)`,
-      label: 'entity detail',
-    },
-  ];
-}
-
-function toLowerCamel(name: string): string {
-  return name ? name[0].toLowerCase() + name.slice(1) : name;
-}
-
 function buildParameter(
   param: IRParameter,
   command: IRCommand,
@@ -392,6 +378,8 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
     routeCasing: options?.routeCasing,
   });
   const dateAsString = (options?.dateSerialization ?? 'iso-string') === 'iso-string';
+  const idempotency = options?.commandIdempotency ?? true;
+  const targets = new CommandInstanceTarget(ir);
   const enums = new Map(ir.enums.map((e) => [e.name, e]));
   const entities = new Map(ir.entities.map((e) => [e.name, e]));
 
@@ -405,10 +393,35 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
   for (const command of commands) {
     const entityName = command.entity ?? '_program';
     const entity = command.entity ? entities.get(command.entity) : undefined;
-    const params = command.parameters.map((p) => buildParameter(p, command, enums, dateAsString));
+    const mapped = command.parameters.map((p) => buildParameter(p, command, enums, dateAsString));
+    const execution = targets.facts(command);
+    const params = TenantServerContext.apply(
+      mapped,
+      ir.tenant,
+      entity,
+      command.name,
+      command.name === 'create' || execution.targetsExistingInstance,
+      options?.authContextImport,
+      (type) => irTypeToTs(type, enums, dateAsString),
+      classifyTrustedSource,
+    );
     const clientParameterNames = params.filter((p) => p.ownership === 'client').map((p) => p.name);
     const serverParameterNames = params.filter((p) => p.ownership === 'server').map((p) => p.name);
-    const camel = toLowerCamel(entityName === '_program' ? command.name : entityName);
+    const dateParameterNames = params
+      .filter((p) => p.ownership === 'client' && p.constraints.dateLike)
+      .map((p) => p.name);
+    const result = CommandResultShape.from({
+      entity,
+      successShape: execution.successShape,
+      typeToTs: (type) => irTypeToTs(type, enums, dateAsString),
+    });
+    const failures = CommandFailureCatalog.from({
+      command,
+      entity,
+      policies: ir.policies,
+      targetsExistingInstance: execution.targetsExistingInstance,
+    });
+    const transitions = extractLifecycleTransitions(command, entity);
 
     capabilities.push({
       entity: entityName,
@@ -418,26 +431,32 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
         ? contract.dispatcherInvocationPath(command.entity, command.name)
         : contract.dispatcherInvocationPath('_', command.name),
       instanceCommand: isInstanceCommand(command),
+      dispatchable: execution.dispatchable,
+      targetsExistingInstance: execution.targetsExistingInstance,
+      dateParameterNames,
+      versionField: execution.versionField,
+      acceptsIdempotencyKey: idempotency && execution.dispatchable,
       parameters: params,
       clientParameterNames,
       serverParameterNames,
-      returnTsType: command.returns ? irTypeToTs(command.returns, enums, dateAsString) : 'unknown',
+      resultKind: result.resultKind,
+      returnTsType: result.returnTsType,
       emits: [...(command.emits ?? [])],
+      failures: failures.rules,
       affectedEntity: entityName,
-      lifecycleTransitions: extractLifecycleTransitions(command, entity),
-      invalidation: entityName === '_program' ? [] : buildInvalidation(entityName, camel),
+      lifecycleTransitions: transitions,
+      invalidation: RelatedReadInvalidation.forCommand(ir, command, entityName),
       resultStates: {
         success: true,
-        errors: [
-          'policy_denial',
-          'guard_failure',
-          'constraint_block',
-          'concurrency_conflict',
-          'missing_required_parameter',
-          'missing_trusted_context',
-          'unknown',
-        ],
+        errors: failures.kinds,
       },
+      presentation: ActionPresentation.from({
+        command,
+        dispatchable: execution.dispatchable,
+        clientParameters: params.filter((parameter) => parameter.ownership === 'client'),
+        enums,
+        transitions,
+      }),
     });
   }
 
@@ -448,8 +467,12 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
       schemaVersion: ir.provenance.schemaVersion,
       contentHash: ir.provenance.contentHash,
       projection: 'wiring',
+      transport: ConvexHttpWireProtocol.canonical().toContract(),
     },
     capabilities,
+    reads: ReadCatalog.from(ir, options?.authContextImport, (type) =>
+      irTypeToTs(type, enums, dateAsString),
+    ),
   };
 }
 

@@ -107,6 +107,9 @@ function emitBindFunction(cap: WiringCommandDescriptor): string {
   lines.push(
     `export const ${base}Invalidation = ${JSON.stringify(cap.invalidation, null, 2)} as const;`,
   );
+  lines.push('');
+  lines.push(`/** How a screen should offer ${cap.capabilityId}. Not a rendered control. */`);
+  lines.push(`export const ${base}Action = ${JSON.stringify(cap.presentation, null, 2)} as const;`);
 
   if (cap.lifecycleTransitions.length > 0) {
     lines.push('');
@@ -128,8 +131,16 @@ function emitCapabilityConst(cap: WiringCommandDescriptor): string {
     `  command: ${JSON.stringify(cap.command)},`,
     `  route: ${JSON.stringify(cap.route)},`,
     `  instanceCommand: ${cap.instanceCommand},`,
+    `  dispatchable: ${cap.dispatchable},`,
+    `  targetsExistingInstance: ${cap.targetsExistingInstance},`,
+    `  dateParameterNames: ${JSON.stringify(cap.dateParameterNames)},`,
+    `  versionField: ${cap.versionField === null ? 'null' : JSON.stringify(cap.versionField)},`,
+    `  acceptsIdempotencyKey: ${cap.acceptsIdempotencyKey},`,
+    `  resultKind: ${JSON.stringify(cap.resultKind)},`,
+    `  returnTsType: ${JSON.stringify(cap.returnTsType)},`,
     `  clientParameterNames: ${JSON.stringify(cap.clientParameterNames)},`,
     `  serverParameterNames: ${JSON.stringify(cap.serverParameterNames)},`,
+    `  failures: ${JSON.stringify(cap.failures)},`,
     `  emits: ${JSON.stringify(cap.emits)},`,
     `} as const;`,
   ].join('\n');
@@ -145,10 +156,17 @@ export function generateWiringBindings(contract: WiringContract): string {
   lines.push(' * DO NOT EDIT — regenerate from IR via the wiring projection.');
   lines.push(' *');
   lines.push(' * This module does NOT generate UI. It provides typed client inputs,');
-  lines.push(' * trusted-context injection helpers, and invalidation metadata.');
+  lines.push(' * trusted-context injection helpers, invalidation metadata, and the');
+  lines.push(' * transport facts a shared executor uses to call the canonical command API,');
+  lines.push(' * the success type of each command, and whether a person should be offered it.');
   lines.push(' */');
   lines.push('');
   lines.push(`export const WIRING_CONTRACT_HASH = ${JSON.stringify(contract.meta.contentHash)};`);
+  lines.push('');
+  lines.push('/** Canonical command transport. One protocol for every capability. */');
+  lines.push(
+    `export const WIRING_TRANSPORT = ${JSON.stringify(contract.meta.transport, null, 2)} as const;`,
+  );
   lines.push('');
 
   for (const cap of contract.capabilities) {
@@ -161,6 +179,8 @@ export function generateWiringBindings(contract: WiringContract): string {
       lines.push('');
     }
     lines.push(emitCapabilityConst(cap));
+    lines.push('');
+    lines.push(`export type ${pascal(cap.entity, cap.command)}Result = ${cap.returnTsType};`);
     lines.push('');
     lines.push(emitBindFunction(cap));
     lines.push('');
@@ -175,6 +195,21 @@ export function generateWiringBindings(contract: WiringContract): string {
     )} as const;`,
   );
   lines.push('');
+
+  lines.push('/** Stored-record reads. A list has no page cursor. */');
+  lines.push(
+    `export const ALL_READ_IDS = ${JSON.stringify(
+      contract.reads.map((read) => read.readId),
+      null,
+      2,
+    )} as const;`,
+  );
+  lines.push('');
+  for (const read of contract.reads) {
+    lines.push(`export const ${read.exportName}Read = ${JSON.stringify(read)} as const;`);
+    lines.push(`export type ${read.exportName}Result = ${read.returnTsType};`);
+    lines.push('');
+  }
 
   return lines.join('\n');
 }

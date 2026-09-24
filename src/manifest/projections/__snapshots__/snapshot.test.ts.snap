@@ -10812,10 +10812,37 @@ exports[`projection snapshots > wiring > generated artifacts match snapshot 1`] 
  * DO NOT EDIT — regenerate from IR via the wiring projection.
  *
  * This module does NOT generate UI. It provides typed client inputs,
- * trusted-context injection helpers, and invalidation metadata.
+ * trusted-context injection helpers, invalidation metadata, and the
+ * transport facts a shared executor uses to call the canonical command API,
+ * the success type of each command, and whether a person should be offered it.
  */
 
 export const WIRING_CONTRACT_HASH = "snapshot-fixture-hash";
+
+/** Canonical command transport. One protocol for every capability. */
+export const WIRING_TRANSPORT = {
+  "profile": "convex-http",
+  "method": "POST",
+  "contentType": "application/json",
+  "auth": "bearer",
+  "forbiddenBodyKeys": [
+    "__auth",
+    "user",
+    "tenantId",
+    "orgId",
+    "userId",
+    "actorId",
+    "identity"
+  ],
+  "successStatus": 200,
+  "successEnvelope": "data",
+  "unauthorizedStatus": 401,
+  "notFoundStatus": 404,
+  "failureStatus": 400,
+  "errorEnvelope": "error",
+  "dateWire": "epoch-ms",
+  "instanceIdentityField": "docId"
+} as const;
 
 // --- Task.assignTask ---
 export interface TaskAssignTaskClientInput {
@@ -10828,10 +10855,20 @@ export const TaskAssignTaskCapability = {
   command: "assignTask",
   route: "/api/manifest/Task/commands/assignTask",
   instanceCommand: true,
+  dispatchable: true,
+  targetsExistingInstance: true,
+  dateParameterNames: [],
+  versionField: null,
+  acceptsIdempotencyKey: true,
+  resultKind: "instance",
+  returnTsType: "{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }",
   clientParameterNames: ["userId"],
   serverParameterNames: [],
+  failures: [{"kind":"guard_failure","message":"Guard 0 failed"},{"kind":"not_found","message":"Task not found"}],
   emits: ["TaskAssigned"],
 } as const;
+
+export type TaskAssignTaskResult = { _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number };
 
 /**
  * Build command input for Task.assignTask.
@@ -10847,15 +10884,45 @@ export const TaskAssignTaskInvalidation = [
     "kind": "entityList",
     "entity": "Task",
     "queryKeyHint": "queryKeys.task.lists()",
+    "readId": "Task.list",
     "label": "entity list"
   },
   {
     "kind": "entityDetail",
     "entity": "Task",
     "queryKeyHint": "queryKeys.task.detail(id)",
+    "readId": "Task.get",
     "label": "entity detail"
+  },
+  {
+    "kind": "entityList",
+    "entity": "User",
+    "queryKeyHint": "queryKeys.user.lists()",
+    "readId": "User.list",
+    "label": "related entity list"
+  },
+  {
+    "kind": "entityDetail",
+    "entity": "User",
+    "queryKeyHint": "queryKeys.user.detail(id)",
+    "readId": "User.get",
+    "label": "related entity detail"
   }
 ] as const;
+
+/** How a screen should offer Task.assignTask. Not a rendered control. */
+export const TaskAssignTaskAction = {
+  "exposure": "human",
+  "label": "Assign task",
+  "confirm": false,
+  "fields": [
+    {
+      "name": "userId",
+      "label": "User id",
+      "required": true
+    }
+  ]
+} as const;
 
 // --- Task.updateStatus ---
 export interface TaskUpdateStatusClientInput {
@@ -10868,10 +10935,20 @@ export const TaskUpdateStatusCapability = {
   command: "updateStatus",
   route: "/api/manifest/Task/commands/updateStatus",
   instanceCommand: true,
+  dispatchable: true,
+  targetsExistingInstance: true,
+  dateParameterNames: [],
+  versionField: null,
+  acceptsIdempotencyKey: true,
+  resultKind: "instance",
+  returnTsType: "{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }",
   clientParameterNames: ["newStatus"],
   serverParameterNames: [],
+  failures: [{"kind":"guard_failure","message":"Guard 0 failed"},{"kind":"not_found","message":"Task not found"}],
   emits: ["TaskStatusUpdated"],
 } as const;
+
+export type TaskUpdateStatusResult = { _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number };
 
 /**
  * Build command input for Task.updateStatus.
@@ -10887,21 +10964,75 @@ export const TaskUpdateStatusInvalidation = [
     "kind": "entityList",
     "entity": "Task",
     "queryKeyHint": "queryKeys.task.lists()",
+    "readId": "Task.list",
     "label": "entity list"
   },
   {
     "kind": "entityDetail",
     "entity": "Task",
     "queryKeyHint": "queryKeys.task.detail(id)",
+    "readId": "Task.get",
     "label": "entity detail"
+  },
+  {
+    "kind": "entityList",
+    "entity": "User",
+    "queryKeyHint": "queryKeys.user.lists()",
+    "readId": "User.list",
+    "label": "related entity list"
+  },
+  {
+    "kind": "entityDetail",
+    "entity": "User",
+    "queryKeyHint": "queryKeys.user.detail(id)",
+    "readId": "User.get",
+    "label": "related entity detail"
   }
 ] as const;
+
+/** How a screen should offer Task.updateStatus. Not a rendered control. */
+export const TaskUpdateStatusAction = {
+  "exposure": "human",
+  "label": "Update status",
+  "confirm": false,
+  "fields": [
+    {
+      "name": "newStatus",
+      "label": "New status",
+      "required": true
+    }
+  ]
+} as const;
 
 /** All capability ids in this contract (sorted). */
 export const ALL_CAPABILITY_IDS = [
   "Task.assignTask",
   "Task.updateStatus"
 ] as const;
+
+/** Stored-record reads. A list has no page cursor. */
+export const ALL_READ_IDS = [
+  "Task.byAssigneeId",
+  "Task.get",
+  "Task.list",
+  "User.get",
+  "User.list"
+] as const;
+
+export const listTaskByAssigneeIdRead = {"entity":"Task","readId":"Task.byAssigneeId","exportName":"listTaskByAssigneeId","kind":"indexed","clientCallable":true,"pagination":"unsupported","parameters":[{"name":"assigneeId","tsType":"string | null","required":false}],"returnTsType":"Array<{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }>"} as const;
+export type listTaskByAssigneeIdResult = Array<{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }>;
+
+export const getTaskRead = {"entity":"Task","readId":"Task.get","exportName":"getTask","kind":"detail","clientCallable":true,"pagination":"unsupported","parameters":[{"name":"id","tsType":"string","required":true}],"returnTsType":"{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number } | null"} as const;
+export type getTaskResult = { _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number } | null;
+
+export const listTaskRead = {"entity":"Task","readId":"Task.list","exportName":"listTask","kind":"list","clientCallable":true,"pagination":"unsupported","parameters":[],"returnTsType":"Array<{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }>"} as const;
+export type listTaskResult = Array<{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }>;
+
+export const getUserRead = {"entity":"User","readId":"User.get","exportName":"getUser","kind":"detail","clientCallable":true,"pagination":"unsupported","parameters":[{"name":"id","tsType":"string","required":true}],"returnTsType":"{ _id: string; _creationTime: number; name: string; email: string; role: string } | null"} as const;
+export type getUserResult = { _id: string; _creationTime: number; name: string; email: string; role: string } | null;
+
+export const listUserRead = {"entity":"User","readId":"User.list","exportName":"listUser","kind":"list","clientCallable":true,"pagination":"unsupported","parameters":[],"returnTsType":"Array<{ _id: string; _creationTime: number; name: string; email: string; role: string }>"} as const;
+export type listUserResult = Array<{ _id: string; _creationTime: number; name: string; email: string; role: string }>;
 ",
   "wiring-contract": "{
   "$schema": "manifest-wiring-contract/v1",
@@ -10909,7 +11040,30 @@ export const ALL_CAPABILITY_IDS = [
     "compilerVersion": "snapshot-test",
     "schemaVersion": "1.0",
     "contentHash": "snapshot-fixture-hash",
-    "projection": "wiring"
+    "projection": "wiring",
+    "transport": {
+      "profile": "convex-http",
+      "method": "POST",
+      "contentType": "application/json",
+      "auth": "bearer",
+      "forbiddenBodyKeys": [
+        "__auth",
+        "user",
+        "tenantId",
+        "orgId",
+        "userId",
+        "actorId",
+        "identity"
+      ],
+      "successStatus": 200,
+      "successEnvelope": "data",
+      "unauthorizedStatus": 401,
+      "notFoundStatus": 404,
+      "failureStatus": 400,
+      "errorEnvelope": "error",
+      "dateWire": "epoch-ms",
+      "instanceIdentityField": "docId"
+    }
   },
   "capabilities": [
     {
@@ -10918,6 +11072,11 @@ export const ALL_CAPABILITY_IDS = [
       "capabilityId": "Task.assignTask",
       "route": "/api/manifest/Task/commands/assignTask",
       "instanceCommand": true,
+      "dispatchable": true,
+      "targetsExistingInstance": true,
+      "dateParameterNames": [],
+      "versionField": null,
+      "acceptsIdempotencyKey": true,
       "parameters": [
         {
           "name": "userId",
@@ -10934,9 +11093,20 @@ export const ALL_CAPABILITY_IDS = [
         "userId"
       ],
       "serverParameterNames": [],
-      "returnTsType": "unknown",
+      "resultKind": "instance",
+      "returnTsType": "{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }",
       "emits": [
         "TaskAssigned"
+      ],
+      "failures": [
+        {
+          "kind": "guard_failure",
+          "message": "Guard 0 failed"
+        },
+        {
+          "kind": "not_found",
+          "message": "Task not found"
+        }
       ],
       "affectedEntity": "Task",
       "lifecycleTransitions": [],
@@ -10945,25 +11115,49 @@ export const ALL_CAPABILITY_IDS = [
           "kind": "entityList",
           "entity": "Task",
           "queryKeyHint": "queryKeys.task.lists()",
+          "readId": "Task.list",
           "label": "entity list"
         },
         {
           "kind": "entityDetail",
           "entity": "Task",
           "queryKeyHint": "queryKeys.task.detail(id)",
+          "readId": "Task.get",
           "label": "entity detail"
+        },
+        {
+          "kind": "entityList",
+          "entity": "User",
+          "queryKeyHint": "queryKeys.user.lists()",
+          "readId": "User.list",
+          "label": "related entity list"
+        },
+        {
+          "kind": "entityDetail",
+          "entity": "User",
+          "queryKeyHint": "queryKeys.user.detail(id)",
+          "readId": "User.get",
+          "label": "related entity detail"
         }
       ],
       "resultStates": {
         "success": true,
         "errors": [
-          "policy_denial",
           "guard_failure",
-          "constraint_block",
-          "concurrency_conflict",
-          "missing_required_parameter",
-          "missing_trusted_context",
-          "unknown"
+          "not_found",
+          "business_failure"
+        ]
+      },
+      "presentation": {
+        "exposure": "human",
+        "label": "Assign task",
+        "confirm": false,
+        "fields": [
+          {
+            "name": "userId",
+            "label": "User id",
+            "required": true
+          }
         ]
       }
     },
@@ -10973,6 +11167,11 @@ export const ALL_CAPABILITY_IDS = [
       "capabilityId": "Task.updateStatus",
       "route": "/api/manifest/Task/commands/updateStatus",
       "instanceCommand": true,
+      "dispatchable": true,
+      "targetsExistingInstance": true,
+      "dateParameterNames": [],
+      "versionField": null,
+      "acceptsIdempotencyKey": true,
       "parameters": [
         {
           "name": "newStatus",
@@ -10989,9 +11188,20 @@ export const ALL_CAPABILITY_IDS = [
         "newStatus"
       ],
       "serverParameterNames": [],
-      "returnTsType": "unknown",
+      "resultKind": "instance",
+      "returnTsType": "{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }",
       "emits": [
         "TaskStatusUpdated"
+      ],
+      "failures": [
+        {
+          "kind": "guard_failure",
+          "message": "Guard 0 failed"
+        },
+        {
+          "kind": "not_found",
+          "message": "Task not found"
+        }
       ],
       "affectedEntity": "Task",
       "lifecycleTransitions": [],
@@ -11000,27 +11210,121 @@ export const ALL_CAPABILITY_IDS = [
           "kind": "entityList",
           "entity": "Task",
           "queryKeyHint": "queryKeys.task.lists()",
+          "readId": "Task.list",
           "label": "entity list"
         },
         {
           "kind": "entityDetail",
           "entity": "Task",
           "queryKeyHint": "queryKeys.task.detail(id)",
+          "readId": "Task.get",
           "label": "entity detail"
+        },
+        {
+          "kind": "entityList",
+          "entity": "User",
+          "queryKeyHint": "queryKeys.user.lists()",
+          "readId": "User.list",
+          "label": "related entity list"
+        },
+        {
+          "kind": "entityDetail",
+          "entity": "User",
+          "queryKeyHint": "queryKeys.user.detail(id)",
+          "readId": "User.get",
+          "label": "related entity detail"
         }
       ],
       "resultStates": {
         "success": true,
         "errors": [
-          "policy_denial",
           "guard_failure",
-          "constraint_block",
-          "concurrency_conflict",
-          "missing_required_parameter",
-          "missing_trusted_context",
-          "unknown"
+          "not_found",
+          "business_failure"
+        ]
+      },
+      "presentation": {
+        "exposure": "human",
+        "label": "Update status",
+        "confirm": false,
+        "fields": [
+          {
+            "name": "newStatus",
+            "label": "New status",
+            "required": true
+          }
         ]
       }
+    }
+  ],
+  "reads": [
+    {
+      "entity": "Task",
+      "readId": "Task.byAssigneeId",
+      "exportName": "listTaskByAssigneeId",
+      "kind": "indexed",
+      "clientCallable": true,
+      "pagination": "unsupported",
+      "parameters": [
+        {
+          "name": "assigneeId",
+          "tsType": "string | null",
+          "required": false
+        }
+      ],
+      "returnTsType": "Array<{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }>"
+    },
+    {
+      "entity": "Task",
+      "readId": "Task.get",
+      "exportName": "getTask",
+      "kind": "detail",
+      "clientCallable": true,
+      "pagination": "unsupported",
+      "parameters": [
+        {
+          "name": "id",
+          "tsType": "string",
+          "required": true
+        }
+      ],
+      "returnTsType": "{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number } | null"
+    },
+    {
+      "entity": "Task",
+      "readId": "Task.list",
+      "exportName": "listTask",
+      "kind": "list",
+      "clientCallable": true,
+      "pagination": "unsupported",
+      "parameters": [],
+      "returnTsType": "Array<{ _id: string; _creationTime: number; title: string; status: string; priority: number | null; assigneeId: string | null; createdAt: number }>"
+    },
+    {
+      "entity": "User",
+      "readId": "User.get",
+      "exportName": "getUser",
+      "kind": "detail",
+      "clientCallable": true,
+      "pagination": "unsupported",
+      "parameters": [
+        {
+          "name": "id",
+          "tsType": "string",
+          "required": true
+        }
+      ],
+      "returnTsType": "{ _id: string; _creationTime: number; name: string; email: string; role: string } | null"
+    },
+    {
+      "entity": "User",
+      "readId": "User.list",
+      "exportName": "listUser",
+      "kind": "list",
+      "clientCallable": true,
+      "pagination": "unsupported",
+      "parameters": [],
+      "returnTsType": "Array<{ _id: string; _creationTime: number; name: string; email: string; role: string }>"
     }
   ]
 }

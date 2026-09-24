@@ -5,6 +5,8 @@
 export { WiringProjection } from './generator.js';
 export { buildWiringContract, parameterTsType } from './contract-builder.js';
 export { generateWiringBindings } from './bindings-generator.js';
+export { GeneratedWiringConsumer } from './consumer/generated-wiring-consumer.js';
+export type { OfferedAction } from './consumer/generated-wiring-consumer.js';
 export { validateWiringCoverage, parseConsumersRegistry } from './coverage.js';
 export type {
   WiringContract,
@@ -17,8 +19,17 @@ export type {
   WiringProjectionOptions,
   WiringLifecycleTransition,
   WiringInvalidationTarget,
+  WiringReadDescriptor,
+  WiringActionPresentation,
 } from './types.js';
 export { WIRING_CONTRACT_SCHEMA, WIRING_CONSUMERS_SCHEMA } from './types.js';
+export { WiringCommandExecutor } from './transport/command-executor.js';
+export { WiringCommandRequestBuilder } from './transport/request-builder.js';
+export { ConvexHttpWireProtocol } from './transport/command-wire-protocol.js';
+export { WiringTransportError } from './transport/transport-error.js';
+export type { WiringCommandCall, WiringExecutableCommand } from './transport/executable-command.js';
+export type { WiringCommandOutcome } from './transport/response-reader.js';
+export type { WiringTransportProtocol } from './types.js';
 
 export {
   inspectWiringConsumers,

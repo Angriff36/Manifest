@@ -139,6 +139,8 @@ export class Parser {
           const cmd = this.parseCommand();
           cmd.async = true;
           program.commands.push(cmd);
+        } else if (this.check('KEYWORD', 'private') && this.peekIsKeyword(1, 'command')) {
+          program.commands.push(this.parsePrivateCommand());
         } else if (this.check('KEYWORD', 'command')) program.commands.push(this.parseCommand());
         else if (this.check('KEYWORD', 'flow')) program.flows.push(this.parseFlow());
         else if (this.check('KEYWORD', 'effect')) program.effects.push(this.parseEffect());
@@ -236,6 +238,8 @@ export class Parser {
         const cmd = this.parseCommand();
         cmd.async = true;
         commands.push(cmd);
+      } else if (this.check('KEYWORD', 'private') && this.peekIsKeyword(1, 'command')) {
+        commands.push(this.parsePrivateCommand());
       } else if (this.check('KEYWORD', 'command')) commands.push(this.parseCommand());
       else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy(false));
       else if (this.check('KEYWORD', 'store')) stores.push(this.parseStore());
@@ -386,6 +390,8 @@ export class Parser {
         const cmd = this.parseCommand();
         cmd.async = true;
         commands.push(cmd);
+      } else if (this.check('KEYWORD', 'private') && this.peekIsKeyword(1, 'command')) {
+        commands.push(this.parsePrivateCommand());
       } else if (this.check('KEYWORD', 'command')) commands.push(this.parseCommand());
       else if (this.check('KEYWORD', 'constraint')) constraints.push(this.parseConstraint());
       else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy(false));
@@ -1122,6 +1128,13 @@ export class Parser {
       onDelete,
       onUpdate,
     };
+  }
+
+  private parsePrivateCommand(): CommandNode {
+    this.consume('KEYWORD', 'private');
+    const command = this.parseCommand();
+    command.visibility = 'private';
+    return command;
   }
 
   private parseCommand(): CommandNode {

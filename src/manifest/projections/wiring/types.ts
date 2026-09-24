@@ -3,7 +3,8 @@
  * applications and agents wire UI to Manifest commands without guessing.
  *
  * This is NOT a UI generator. It describes inputs, ownership, constraints,
- * lifecycle transitions, invalidation, and coverage — nothing visual.
+ * lifecycle transitions, invalidation, action presentation, and coverage.
+ * It does not render a screen.
  */
 
 /** Schema id for the wiring-contract artifact. */
@@ -66,24 +67,67 @@ export interface WiringLifecycleTransition {
 export interface WiringInvalidationTarget {
   kind: 'entityList' | 'entityDetail' | 'custom';
   entity: string;
+  /** Wiring read id, such as Task.list, when this target is a generated read. */
+  readId?: string;
   /** Query-key hint aligned with react-query projection naming. */
   queryKeyHint: string;
   /** Optional declared extension label. */
   label?: string;
 }
 
+export type WiringFailureKind =
+  | 'policy_denial'
+  | 'guard_failure'
+  | 'constraint_block'
+  | 'concurrency_conflict'
+  | 'missing_trusted_context'
+  | 'not_found'
+  | 'business_failure';
+
+/** A dispatcher error string the Convex generator already throws. */
+export interface WiringFailureRule {
+  kind: Exclude<WiringFailureKind, 'business_failure'>;
+  /** Exact message, or the leading text when prefix is true. */
+  message: string;
+  prefix?: boolean;
+}
+
 export interface WiringCommandResultStates {
   success: true;
-  /** Structured failure modes the caller must handle. */
-  errors: Array<
-    | 'policy_denial'
-    | 'guard_failure'
-    | 'constraint_block'
-    | 'concurrency_conflict'
-    | 'missing_required_parameter'
-    | 'missing_trusted_context'
-    | 'unknown'
-  >;
+  /** Failure kinds this command can produce, plus the unmatched remainder. */
+  errors: WiringFailureKind[];
+}
+
+export interface WiringActionChoice {
+  value: string;
+  label: string;
+}
+
+export interface WiringActionField {
+  name: string;
+  label: string;
+  required: boolean;
+  /** Present when the field's type is an enum. */
+  choices?: WiringActionChoice[];
+}
+
+export interface WiringActionAvailability {
+  property: string;
+  /** Record values for which this action is statically allowed. */
+  values: string[];
+}
+
+export interface WiringActionPresentation {
+  /** human: offer it to a person. internal: keep it off the screen. */
+  exposure: 'human' | 'internal';
+  /** Words for the action, from the command name. */
+  label: string;
+  /** True when this command removes the record. */
+  confirm: boolean;
+  /** Fields a person fills in. Server-owned values are omitted. */
+  fields: WiringActionField[];
+  /** Present when every proven transition shares one property. */
+  availableFrom?: WiringActionAvailability;
 }
 
 export interface WiringCommandDescriptor {
@@ -95,17 +139,87 @@ export interface WiringCommandDescriptor {
   route: string;
   /** True when the command mutates an existing instance (not create/static). */
   instanceCommand: boolean;
+  /** True when the canonical dispatcher can execute this command. */
+  dispatchable: boolean;
+  /**
+   * True when the dispatcher requires an existing document id.
+   * Create, createVia*, and the selected initialization command allocate instead.
+   */
+  targetsExistingInstance: boolean;
+  /** Client date/datetime parameter names, sent as epoch milliseconds. */
+  dateParameterNames: string[];
+  /** Optional optimistic-concurrency field when the entity declares one. */
+  versionField: string | null;
+  /** True when the dispatcher accepts an optional idempotencyKey. */
+  acceptsIdempotencyKey: boolean;
   parameters: WiringParameterDescriptor[];
   /** Client-owned parameter names only (browser input surface). */
   clientParameterNames: string[];
   /** Server-owned parameter names (injected, never from browser). */
   serverParameterNames: string[];
+  /**
+   * created: Entity_create returns the inserted fields plus `_id`.
+   * allocation: the createVia export returns `{ docId }`.
+   * instance: an existing-document command returns the stored document.
+   * empty: the command is not sent to the dispatcher.
+   * An IR `returns` clause is not used here; Convex mutations do not honor it.
+   */
+  resultKind: 'created' | 'allocation' | 'instance' | 'empty';
   returnTsType: string;
   emits: string[];
+  /**
+   * Thrown dispatcher strings this command can produce.
+   * Matching peels Convex's `[CONVEX …] [Request ID: …] Server Error` and
+   * `Uncaught Error:` wrapper first. A production-redacted body with no
+   * thrown line stays `business_failure`.
+   */
+  failures: WiringFailureRule[];
   affectedEntity: string;
   lifecycleTransitions: WiringLifecycleTransition[];
   invalidation: WiringInvalidationTarget[];
   resultStates: WiringCommandResultStates;
+  /** How a person-facing screen should offer this command. */
+  presentation: WiringActionPresentation;
+}
+
+export interface WiringTransportProtocol {
+  profile: 'convex-http';
+  method: 'POST';
+  contentType: 'application/json';
+  auth: 'bearer';
+  forbiddenBodyKeys: readonly string[];
+  successStatus: 200;
+  successEnvelope: 'data';
+  unauthorizedStatus: 401;
+  notFoundStatus: 404;
+  failureStatus: 400;
+  errorEnvelope: 'error';
+  dateWire: 'epoch-ms';
+  instanceIdentityField: 'docId';
+}
+
+export interface WiringReadParameter {
+  name: string;
+  tsType: string;
+  required: boolean;
+}
+
+export interface WiringReadDescriptor {
+  entity: string;
+  /** Entity.list, Entity.get, or Entity.listByField. */
+  readId: string;
+  /** Convex query export, such as listTask or getTask. */
+  exportName: string;
+  kind: 'list' | 'detail' | 'indexed';
+  /** False when the query is internalQuery and a browser cannot call it. */
+  clientCallable: boolean;
+  /**
+   * The Convex list/get queries load the whole result with collect() or db.get.
+   * They do not take a cursor.
+   */
+  pagination: 'unsupported';
+  parameters: WiringReadParameter[];
+  returnTsType: string;
 }
 
 export interface WiringContract {
@@ -115,8 +229,11 @@ export interface WiringContract {
     schemaVersion: string;
     contentHash: string;
     projection: 'wiring';
+    transport: WiringTransportProtocol;
   };
   capabilities: WiringCommandDescriptor[];
+  /** Reads the Convex query generator emits for stored records. */
+  reads: WiringReadDescriptor[];
 }
 
 /** Application-declared consumer of a Manifest capability. */
@@ -179,4 +296,14 @@ export interface WiringProjectionOptions {
   contractPathHint?: string;
   /** Output path hint for generated TypeScript bindings. */
   bindingsPathHint?: string;
+  /**
+   * When false, generated commands do not advertise idempotencyKey.
+   * Default true, matching the Convex projection.
+   */
+  commandIdempotency?: boolean;
+  /**
+   * Same switch as the Convex projection. Create fills the tenant column
+   * from auth only when this import is set.
+   */
+  authContextImport?: string;
 }
