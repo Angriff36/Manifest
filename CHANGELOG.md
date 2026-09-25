@@ -4,6 +4,17 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.57] - 2026-09-24
+
+### Fixed
+
+- Convex: `create` and `createVia*` (allocating commands) now load nested
+  related collections before running guards and constraints. Before, a check
+  like `sum(self.inventoryItem.reservations, ...)` on a new record saw an
+  empty list and always passed. Instance commands were not affected.
+- CLI test for `enforce-surface --help` now runs the CLI entry (`bin/`)
+  instead of a removed build folder, so it passes on a clean checkout.
+
 ## [3.6.56] - 2026-09-24
 
 ### Changed
