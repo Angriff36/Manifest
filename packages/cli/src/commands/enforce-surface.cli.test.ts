@@ -3,10 +3,10 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
 /**
- * Invokes the built CLI to confirm the `enforce-surface` command is wired
+ * Invokes the CLI entry (bin runs src via jiti) to confirm the `enforce-surface` command is wired
  * into commander with all spec-required flags and that `--help` succeeds.
  */
-const CLI_BIN = path.resolve(__dirname, '../../dist/index.js');
+const CLI_BIN = path.resolve(__dirname, '../../bin/manifest.js');
 
 describe('manifest enforce-surface CLI registration', () => {
   it('exposes the command with the documented flags via --help', () => {
