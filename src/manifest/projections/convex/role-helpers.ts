@@ -61,7 +61,7 @@ export function renderRoleHelper(ir: IR, gated = false): string {
  * as a plain role-name check.
  */
 export function applyRoleGate(body: string, roleGateImport: string | undefined): string {
-  return roleGateImport ? body.replaceAll('checkRole(user.role,', 'checkRole(user,') : body;
+  return roleGateImport ? body.split('checkRole(user.role,').join('checkRole(user,') : body;
 }
 
 export function roleGateImportLine(body: string, roleGateImport: string | undefined): string {
