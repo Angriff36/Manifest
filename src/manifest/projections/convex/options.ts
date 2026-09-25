@@ -208,6 +208,16 @@ export interface ConvexProjectionOptions {
   flagProviderImport?: string;
 
   /**
+   * Module exporting `roleGateDenies(user: unknown, action: string, target?: string): boolean`.
+   * When set, `roleAllows(user.role, action, target)` passes the acting user's
+   * auth object to the generated `checkRole`, which denies before the role
+   * hierarchy lookup whenever `roleGateDenies` returns true (e.g. an
+   * organization switched a domain off). Other first arguments (a stored role
+   * name) are checked against the hierarchy only. Example: `"./lib/roleGate"`.
+   */
+  roleGateImport?: string;
+
+  /**
    * Module exporting `encrypt(plaintext, metadata)` and
    * `decrypt(ciphertext, keyId, metadata)` for properties carrying the
    * `encrypted` modifier. Metadata is `{ ctx, entity, property }`. Required
@@ -322,6 +332,7 @@ export type NormalizedConvexOptions = Required<
     | 'authContextImport'
     | 'eventHandlerImport'
     | 'flagProviderImport'
+    | 'roleGateImport'
     | 'encryptionImport'
   > & {
     dispatcher: { enabled: boolean };
@@ -389,6 +400,7 @@ export function normalizeOptions(
     authContextImport: input.authContextImport,
     eventHandlerImport: input.eventHandlerImport,
     flagProviderImport: input.flagProviderImport,
+    roleGateImport: input.roleGateImport,
     encryptionImport: input.encryptionImport,
     dispatcher: {
       enabled: input.dispatcher?.enabled ?? CONVEX_PROJECTION_DEFAULTS.dispatcher.enabled,

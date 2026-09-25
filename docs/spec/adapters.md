@@ -197,6 +197,15 @@ depend on application identity or key management:
   > single-column `belongsTo`/`ref` edges to source and target. Missing join
   > edges or composite FKs still keep queries `internalQuery`.
 - `flagProviderImport` — see correction above (feature-flag seam).
+- `roleGateImport` (added 2026-09-25) MUST name a module exporting
+  `roleGateDenies(user: unknown, action: string, target?: string): boolean`.
+  When set, every generated `roleAllows(user.role, action, target)` passes the
+  acting user's auth object to `checkRole`, which returns `false` whenever
+  `roleGateDenies` returns `true`, before consulting the role hierarchy. A
+  `roleAllows` whose first argument is anything else (e.g. a stored role name)
+  is a plain hierarchy check. The gate can only narrow access, never widen it
+  (typical use: organization-level capability switches loaded onto the auth
+  object by `authContextImport`).
 - `encryptionImport` MUST name a module exporting `encrypt` and `decrypt`.
   `encrypt(plaintext, metadata)` returns `{ ciphertext, keyId }`;
   `decrypt(ciphertext, keyId, metadata)` returns plaintext. `metadata` contains

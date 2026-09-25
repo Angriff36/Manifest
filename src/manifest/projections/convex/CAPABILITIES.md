@@ -51,6 +51,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Tenant filter / soft-delete filter               | queries                      | Field-aware defaults                                                                         |
 | `authContextImport`                              | queries + mutations          | Author-owned identity seam (also used after HTTP auth propagates into `runMutation`)         |
 | `flagProviderImport` / `flag()`                  | queries + mutations          | Author-owned `flag(name)` module; required for public read policies that call `flag()`       |
+| `roleGateImport` / `roleGateDenies`             | queries + mutations + computed | `roleAllows(user.role, …)` → `checkRole(user, …)`; author gate can only deny (2026-09-25)   |
 | `encryptionImport` / encrypted properties        | queries + mutations          | Versioned envelope; decrypt before policy/read projection, encrypt before store writes       |
 | `trustedSource` (`from context.*`)               | mutations + http dispatcher  | Omitted from client args; injected from `getAuthContext` (`__auth.context ?? __auth`)          |
 | React client hooks (`useQuery` / `useMutation`)  | react                        | Skips only read-gated entities whose public policy queries cannot be rendered                |

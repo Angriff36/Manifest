@@ -47,7 +47,7 @@ import {
 } from './count-of-preload.js';
 import { renderEntityComputedHydration, renderInlineComputedFields } from './computed.js';
 import { computedRuntimeBindings } from './computed-context.js';
-import { renderRoleHelper } from './role-helpers.js';
+import { applyRoleGate, renderRoleHelper, roleGateImportLine } from './role-helpers.js';
 import { collectEntityAggregates, renderEntityAggregateRead } from './entity-aggregate-read.js';
 import {
   renderExpression,
@@ -946,7 +946,7 @@ export function generateQueries(
     }
   }
 
-  const body = blocks.join('\n\n');
+  const body = applyRoleGate(blocks.join('\n\n'), options.roleGateImport);
   const needsAuthCtx = !!options.authContextImport && /\bgetAuthContext\b/.test(body);
   const needsDecrypt = !!options.encryptionImport && /\b__decryptDoc\b/.test(body);
   const needsFlag = /\bflag\(/.test(body);
@@ -955,7 +955,7 @@ export function generateQueries(
   if (/\b__allowsRead\(/.test(body)) helpers.push(READ_POLICY_HELPER);
   if (/\b__maskDoc\(/.test(body)) helpers.push(MASK_HELPER);
   if (/\b__resolveRelation\(/.test(body)) helpers.push(RELATION_HELPER);
-  if (/\bcheckRole\(/.test(body)) helpers.push(renderRoleHelper(ir));
+  if (/\bcheckRole\(/.test(body)) helpers.push(renderRoleHelper(ir, !!options.roleGateImport));
   if (needsFlag && !flagFromProvider) {
     helpers.push(
       `// Feature toggle stub (safe default off). Set options.flagProviderImport to wire a real provider.\n` +
@@ -978,6 +978,7 @@ export function generateQueries(
     (flagFromProvider
       ? `import { flag } from ${JSON.stringify(options.flagProviderImport)};\n`
       : '') +
+    roleGateImportLine(body, options.roleGateImport) +
     (needsDecrypt ? `import { decrypt } from ${JSON.stringify(options.encryptionImport)};\n` : '') +
     `\n` +
     (needsDecrypt ? `${DECRYPT_HELPER}\n\n` : '') +
@@ -2628,7 +2629,7 @@ export function generateMutations(
 
   // Emit helpers only when the generated mutations actually reference them
   // (a policyMode:'skip' build may use neither), so there is no dead code.
-  const body = blocks.join('\n\n');
+  const body = applyRoleGate(blocks.join('\n\n'), options.roleGateImport);
   const helpers: string[] = [];
   const needsEncrypt = !!options.encryptionImport && /\b__encryptDoc\b/.test(body);
   const needsDecrypt = !!options.encryptionImport && /\b__decryptDoc\b/.test(body);
@@ -2656,7 +2657,7 @@ export function generateMutations(
   if (/\bcheckRole\(/.test(body)) {
     helpers.push(
       `// Role hierarchy from IR (effective permissions after inheritance).\n` +
-        renderRoleHelper(ir),
+        renderRoleHelper(ir, !!options.roleGateImport),
     );
   }
   const needsFlag = /\bflag\(/.test(body);
@@ -2690,6 +2691,7 @@ export function generateMutations(
     (flagFromProvider
       ? `import { flag } from ${JSON.stringify(options.flagProviderImport)};\n`
       : '') +
+    roleGateImportLine(body, options.roleGateImport) +
     (needsEncrypt || needsDecrypt
       ? `import { ${[needsEncrypt ? 'encrypt' : '', needsDecrypt ? 'decrypt' : ''].filter(Boolean).join(', ')} } from ${JSON.stringify(options.encryptionImport)};\n`
       : '') +
