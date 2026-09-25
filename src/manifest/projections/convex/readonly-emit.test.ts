@@ -128,4 +128,27 @@ describe('Convex readonly enforcement', () => {
     await runners.stamp!(allocated.ctx, { docId: 'inv', batchCode: 'B7' }, true);
     expect(allocated.patches).toEqual([expect.objectContaining({ batchCode: 'B7' })]);
   });
+
+  it('lets commands stamp timestamps-managed updatedAt but not createdAt', async () => {
+    const { ir } = await compileToIR(`
+entity Note {
+  timestamps
+  property body: string?
+  command edit(body: string) {
+    mutate body = body
+    mutate updatedAt = now()
+  }
+  command backdate(at: number) {
+    mutate createdAt = at
+  }
+}
+store Note in durable
+`);
+    const code = new ConvexProjection().generate(ir!, {
+      surface: 'convex.mutations',
+      options: { policyMode: 'skip' },
+    }).artifacts[0]!.code;
+    expect(code).not.toContain("Property 'updatedAt' is readonly");
+    expect(code).toContain("E_READONLY: Property 'createdAt' is readonly");
+  });
 });

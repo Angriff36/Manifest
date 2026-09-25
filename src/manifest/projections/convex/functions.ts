@@ -1083,6 +1083,9 @@ function renderChecks(
  * command may not change a readonly property to a different value. Writing the
  * current value is a no-op, and a row allocated for this command (`__creation`)
  * may set it. Absent and null compare equal (Convex drops undefined fields).
+ * `updatedAt` under `timestamps` is audit metadata the runtime itself rewrites
+ * on every update; Convex does not auto-stamp it, so commands that write it
+ * are the stamp, not a change to a fixed value.
  */
 function renderReadonlyChecks(entity: IREntity, cmd: IRCommand): string {
   const written = new Set(
@@ -1090,6 +1093,7 @@ function renderReadonlyChecks(entity: IREntity, cmd: IRCommand): string {
   );
   return entity.properties
     .filter((p) => p.modifiers.includes('readonly') && written.has(p.name))
+    .filter((p) => !(entity.timestamps && p.name === 'updatedAt'))
     .map((p) => {
       const key = JSON.stringify(p.name);
       const message = JSON.stringify(
