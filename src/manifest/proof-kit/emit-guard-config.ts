@@ -13,6 +13,8 @@ export interface EmitGuardConfigOptions {
   lifecycleLiteralPattern?: string;
   lifecyclePolicies?: IntegrationGuardConfig['lifecyclePolicies'];
   exceptions?: IntegrationGuardConfig['exceptions'];
+  allowances?: IntegrationGuardConfig['allowances'];
+  writeTargets?: IntegrationGuardConfig['writeTargets'];
   forbidDirectConvexHooks?: boolean;
   /** Extra tables beyond catalog entities (usually empty). */
   extraOwnedTables?: string[];
@@ -55,5 +57,7 @@ export function emitIntegrationGuardConfig(
       : {}),
     lifecyclePolicies: options.lifecyclePolicies ?? [],
     exceptions: options.exceptions ?? [],
+    ...(options.allowances?.length ? { allowances: options.allowances } : {}),
+    ...(options.writeTargets ? { writeTargets: options.writeTargets } : {}),
   };
 }

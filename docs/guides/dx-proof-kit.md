@@ -158,6 +158,17 @@ Manifest does not own product decisions (for example unresolved receipt→stock)
 **Schema ids:** `manifest-capability-catalog/v1` · `manifest-proof-registry/v1` ·
 `manifest-integration-guard/v1`
 
+**Guard config options (added 2026-09-25, optional, same schema id):**
+
+- `allowances: [{ pathSuffix, imports?, hooks?, reason }]` — the named import
+  specifiers / Convex hooks are allowed in that one file; every other rule
+  (other imports, other hooks, lifecycle literals) still applies there.
+- `writeTargets: { typedIdTables, idNames, memberRoots }` — authored
+  `ctx.db.patch/replace/delete` counts as an owned write only when its target is
+  an owned document id (typed `Id<"table">` local or alias, a listed id name,
+  or `<root>._id`). Without it, any write in a file that mentions an owned table
+  is a violation (unchanged default). Direct inserts are always violations.
+
 ### `@angriff36/manifest/proof-kit/convex-test`
 
 | Export                                                       | Purpose                                                                                             |
