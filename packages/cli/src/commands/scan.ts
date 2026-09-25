@@ -293,7 +293,16 @@ async function scanRoutes(
 /**
  * Known built-in store targets (from runtime-engine.ts)
  */
-const BUILTIN_STORE_TARGETS = ['memory', 'localStorage', 'postgres', 'supabase'];
+// Built-in targets per docs/spec/ir/ir-v1.schema.json (IRStore.target).
+const BUILTIN_STORE_TARGETS = [
+  'memory',
+  'localStorage',
+  'postgres',
+  'supabase',
+  'durable',
+  'mongodb',
+  'eventSourced',
+];
 
 /**
  * Get all manifest files from source pattern
@@ -328,13 +337,20 @@ async function getManifestFiles(source: string, options: ScanOptions): Promise<s
  * Check if a command is covered by any policy
  *
  * A policy covers a command if:
- * 1. Policy action is 'execute' or 'all'
- * 2. Policy entity matches the command's entity (or policy is global)
+ * 1. The command's IR `policies` names a declared policy of any action — the
+ *    runtime enforces every attached policy, including `write`/`delete`
+ *    (docs/spec/semantics.md, Policies); or
+ * 2. Policy action is 'execute' or 'all' and its entity matches the
+ *    command's entity (or the policy is global).
  */
 function isCommandCoveredByPolicy(
   entityName: string,
-  policies: Array<{ entity?: string; action: string }>,
+  policies: Array<{ name?: string; entity?: string; action: string }>,
+  attached: readonly string[] = [],
 ): boolean {
+  if (attached.some((name) => policies.some((policy) => policy.name === name))) {
+    return true;
+  }
   for (const policy of policies) {
     // Policy must have execute or all action
     if (policy.action !== 'execute' && policy.action !== 'all') {
@@ -363,6 +379,34 @@ function findCommandLine(sourceLines: string[], commandName: string): number | u
   return undefined;
 }
 
+/** Source text of every file a scanned IR came from (one file, or a `use` project). */
+interface ScanSource {
+  file: string;
+  lines: string[];
+}
+
+/**
+ * First source file + line where `find` matches, trying files that declare
+ * `entityName` first (command names repeat across entities); falls back to
+ * the scanned root.
+ */
+function locate(
+  sources: ScanSource[],
+  entityName: string,
+  find: (lines: string[]) => number | undefined,
+): { file: string; line: number | undefined } {
+  const declares = new RegExp(`^\\s*entity\\s+${entityName}\\b`);
+  const ordered = [
+    ...sources.filter((source) => source.lines.some((line) => declares.test(line))),
+    ...sources.filter((source) => !source.lines.some((line) => declares.test(line))),
+  ];
+  for (const source of ordered) {
+    const line = find(source.lines);
+    if (line !== undefined) return { file: source.file, line };
+  }
+  return { file: sources[0]!.file, line: undefined };
+}
+
 /**
  * Find the line number of a store declaration in source
  */
@@ -387,6 +431,7 @@ async function scanFile(
   filePath: string,
   spinner: Ora,
   runtimeConfig: ManifestRuntimeConfig | null,
+  project?: { members: string[] },
 ): Promise<{
   errors: ScanError[];
   warnings: ScanWarning[];
@@ -401,19 +446,36 @@ async function scanFile(
 
   spinner.text = `Scanning ${path.relative(process.cwd(), filePath)}`;
 
-  // Read source
+  // Read source. A project root (`use` graph) compiles with every file it
+  // pulls in, exactly as `manifest compile --merge` does; findings point at
+  // the member file that declares the command/store.
   const source = await fs.readFile(filePath, 'utf-8');
-  const sourceLines = source.split('\n');
-
-  // Compile to IR
-  const result = await compileToIR(source);
+  const sources: ScanSource[] = [{ file: filePath, lines: source.split('\n') }];
+  let result: {
+    ir: ScanIR | null;
+    diagnostics?: Array<{ severity: string; message: string; line?: number; file?: string }>;
+  };
+  if (project) {
+    for (const member of project.members) {
+      sources.push({ file: member, lines: (await fs.readFile(member, 'utf-8')).split('\n') });
+    }
+    const { compileProjectToIR } = await import('@angriff36/manifest/multi-compiler');
+    const { createFsHost } = await import('./compile.js');
+    result = (await compileProjectToIR({
+      entries: [filePath],
+      host: createFsHost(),
+      basePath: process.cwd(),
+    })) as unknown as typeof result;
+  } else {
+    result = (await compileToIR(source)) as unknown as typeof result;
+  }
 
   // Check for compilation errors first
   if (result.diagnostics && result.diagnostics.length > 0) {
     for (const diagnostic of result.diagnostics) {
       if (diagnostic.severity === 'error') {
         errors.push({
-          file: filePath,
+          file: diagnostic.file ?? filePath,
           line: diagnostic.line,
           entityName: '',
           commandName: '',
@@ -460,13 +522,17 @@ async function scanFile(
     const commandName = command.name;
 
     // Check if command is covered by policies
-    const isCovered = isCommandCoveredByPolicy(entityName, ir.policies || []);
+    const isCovered = isCommandCoveredByPolicy(
+      entityName,
+      ir.policies || [],
+      (command as { policies?: string[] }).policies ?? [],
+    );
 
     if (!isCovered) {
-      const lineNum = findCommandLine(sourceLines, commandName);
+      const at = locate(sources, entityName, (lines) => findCommandLine(lines, commandName));
       errors.push({
-        file: filePath,
-        line: lineNum,
+        file: at.file,
+        line: at.line,
         entityName,
         commandName,
         message: `Command '${entityName}.${commandName}' has no policy.`,
@@ -484,10 +550,12 @@ async function scanFile(
 
     if (!isBuiltin && !hasConfigBinding) {
       // Custom store target without config binding
-      const lineNum = findStoreLine(sourceLines, store.entity, store.target);
+      const at = locate(sources, store.entity, (lines) =>
+        findStoreLine(lines, store.entity, store.target),
+      );
       warnings.push({
-        file: filePath,
-        line: lineNum,
+        file: at.file,
+        line: at.line,
         message: `Store target '${store.target}' is not a built-in target and has no config binding.`,
         suggestion: `Built-in targets: ${BUILTIN_STORE_TARGETS.join(', ')}\n  \n  If using a custom store, bind it in manifest.config.ts:\n    stores: { ${store.entity}: { implementation: YourStoreClass } }`,
       });
@@ -751,10 +819,23 @@ export async function scanCommand(
     // Collect all IRs for route scanning
     const allIRs: ScanIR[] = [];
 
-    for (const file of files) {
+    // Files pulled in by another file's `use` are scanned through that root,
+    // so cross-file references resolve (per-file compiles report every
+    // imported name as missing).
+    const { findRootFiles } = await import('./compile.js');
+    const roots = await findRootFiles(files);
+    const members = files.filter((file) => !roots.includes(file));
+    const useRegex = /^\s*use\s+"/m;
+    const scanTargets: Array<{ file: string; project?: { members: string[] } }> = [];
+    for (const root of roots) {
+      const usesOthers = useRegex.test(await fs.readFile(root, 'utf-8'));
+      scanTargets.push(usesOthers ? { file: root, project: { members } } : { file: root });
+    }
+
+    for (const { file, project } of scanTargets) {
       const fileSpinner = ora().start();
       try {
-        const fileResult = await scanFile(file, fileSpinner, runtimeConfig);
+        const fileResult = await scanFile(file, fileSpinner, runtimeConfig, project);
         result.errors.push(...fileResult.errors);
         result.warnings.push(...fileResult.warnings);
         result.commandsChecked += fileResult.commandsChecked;
@@ -872,7 +953,7 @@ export async function scanCommand(
         if (error.entityName && error.commandName) {
           console.log(`    Command '${error.entityName}.${error.commandName}' has no policy.`);
         } else {
-          console.log(`    ${error instanceof Error ? error.message : String(error)}`);
+          console.log(`    ${error.message}`);
         }
 
         if (error.suggestion) {
