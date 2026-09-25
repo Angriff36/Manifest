@@ -22,7 +22,7 @@ import { codeUsesDocType, resolveHasManyLambdaParamType } from './count-of-prelo
 import { renderExpression, type RenderScope } from './expression.js';
 import type { NormalizedOptions } from './generator.js';
 import { isPersistentEntity } from './persist.js';
-import { renderRoleHelper } from './role-helpers.js';
+import { applyRoleGate, renderRoleHelper, roleGateImportLine } from './role-helpers.js';
 
 export interface ComputedResult {
   code: string;
@@ -98,9 +98,10 @@ export function generateComputedHelpers(ir: IR, options: NormalizedOptions): Com
     );
   }
 
-  const body = blocks.length
-    ? blocks.join('\n\n') + '\n'
-    : `// No resolvable computed properties.\n`;
+  const body = applyRoleGate(
+    blocks.length ? blocks.join('\n\n') + '\n' : `// No resolvable computed properties.\n`,
+    options.roleGateImport,
+  );
   const docImport = codeUsesDocType(body)
     ? `import type { Doc } from "./_generated/dataModel";\n\n`
     : '';
@@ -109,7 +110,10 @@ export function generateComputedHelpers(ir: IR, options: NormalizedOptions): Com
     `// Computed property helpers (${entityCount} entit(y/ies)).\n` +
     `// Call from queries/mutations or app code; never stored.\n\n` +
     docImport +
-    (/\bcheckRole\(/.test(body) ? `${renderRoleHelper(ir)}\n\n` : '') +
+    (roleGateImportLine(body, options.roleGateImport)
+      ? `${roleGateImportLine(body, options.roleGateImport)}\n`
+      : '') +
+    (/\bcheckRole\(/.test(body) ? `${renderRoleHelper(ir, !!options.roleGateImport)}\n\n` : '') +
     (/\bflag\(/.test(body)
       ? options.flagProviderImport
         ? `import { flag } from ${JSON.stringify(options.flagProviderImport)};\n\n`

@@ -957,6 +957,11 @@
           "$ref": "#/definitions/IRType",
           "description": "Declared command result type for projections (TypeScript/OpenAPI/Zod/etc.). Projection-only metadata — the reference runtime does not validate or coerce CommandResult against this type."
         },
+        "visibility": {
+          "type": "string",
+          "enum": ["private"],
+          "description": "Set by `private command` (2026-09-25 schema catch-up; the compiler already emitted it). Callable, but not a person-facing action."
+        },
         "async": {
           "type": "boolean",
           "description": "When true, defers action execution to a background worker queue. The command returns a JobId immediately after policies/guards pass."

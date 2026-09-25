@@ -225,7 +225,7 @@ async function loadMultiCompiler() {
   return { compileProjectToIR: module.compileProjectToIR };
 }
 
-function createFsHost() {
+export function createFsHost() {
   return {
     async readFile(absPath: string): Promise<string> {
       return fs.readFile(absPath, 'utf-8');
@@ -248,7 +248,7 @@ function createFsHost() {
  * Find root manifest files (files not referenced by any other file's `use` declarations).
  * Uses regex extraction to avoid needing to import the full parser.
  */
-async function findRootFiles(allFiles: string[]): Promise<string[]> {
+export async function findRootFiles(allFiles: string[]): Promise<string[]> {
   const usedPaths = new Set<string>();
   const useRegex = /^\s*use\s+"([^"]+)"/gm;
 

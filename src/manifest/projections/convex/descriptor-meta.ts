@@ -48,6 +48,7 @@ export const CONVEX_DESCRIPTOR_META: ProjectionDescriptorMeta = {
     optionalOption('authContextImport', 'string'),
     optionalOption('eventHandlerImport', 'string'),
     optionalOption('flagProviderImport', 'string'),
+    optionalOption('roleGateImport', 'string'),
     optionalOption('encryptionImport', 'string'),
     optionalOption('includeTenantFilter', 'boolean', {
       default: CONVEX_PROJECTION_DEFAULTS.includeTenantFilter,

@@ -295,6 +295,13 @@ Scan manifest files for configuration issues (for example policy coverage and st
 manifest scan src/ --strict
 ```
 
+Edit 2026-09-25: files pulled in by another file's `use` are scanned through
+that root as one project (the same merge as `compile --merge`), so cross-file
+mixins, roles and relations resolve. A command is covered when its IR
+`policies` names any declared policy (including `write`/`delete`, which the
+runtime enforces at command execution) or an `execute`/`all` policy matches its
+entity. `durable`, `mongodb` and `eventSourced` are built-in store targets.
+
 ## harness
 
 Run an IR harness script and report failed steps/assertions.

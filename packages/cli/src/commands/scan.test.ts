@@ -406,3 +406,118 @@ policy Authenticated execute: user.authenticated
     }
   });
 });
+
+describe('Scan Command - multi-file projects and attached policies (2026-09-25)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  async function project(files: Record<string, string>): Promise<string> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-scan-project-'));
+    for (const [name, content] of Object.entries(files)) {
+      await fs.mkdir(path.dirname(path.join(dir, name)), { recursive: true });
+      await fs.writeFile(path.join(dir, name), content, 'utf-8');
+    }
+    return dir;
+  }
+
+  async function scanJson(dir: string) {
+    const { scanCommand } = await import('./scan.js');
+    const capture = captureOutput();
+    try {
+      await scanCommand(dir, { format: 'json' });
+    } finally {
+      capture.restore();
+    }
+    const jsonOutput = capture.outputs.find((o) => o.includes('"errors"'));
+    expect(jsonOutput).toBeDefined();
+    return JSON.parse(jsonOutput!) as {
+      errors: Array<{ file: string; message: string; commandName: string }>;
+      warnings: Array<{ message: string }>;
+    };
+  }
+
+  const base = `
+role staff {
+  allow staffAccess
+}
+entity Owned {
+  property ownerId: string?
+}
+`;
+
+  it('compiles a use-graph as one project instead of each file alone', async () => {
+    const dir = await project({
+      'app.manifest': `use "./base.manifest"\nuse "./orders/order.manifest"\n`,
+      'base.manifest': base,
+      'orders/order.manifest': `
+entity Order mixin Owned {
+  property status: string = "open"
+  default policy orderWrite write: roleAllows(user.role, "staffAccess") "Staff may change orders"
+  command close() {
+    mutate status = "closed"
+  }
+}
+store Order in durable
+`,
+    });
+    try {
+      const result = await scanJson(dir);
+      // A per-file compile reports the mixin and role as unknown.
+      expect(result.errors).toEqual([]);
+      // `durable` is a built-in store target (ir-v1.schema.json IRStore.target).
+      expect(result.warnings).toEqual([]);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('still reports a command with no attached or execute policy, in the declaring file', async () => {
+    const dir = await project({
+      'app.manifest': `use "./base.manifest"\nuse "./a.manifest"\nuse "./b.manifest"\n`,
+      'base.manifest': base,
+      'a.manifest': `
+entity Alpha {
+  property n: number = 0
+  default policy alphaRun execute: roleAllows(user.role, "staffAccess") "Staff may run"
+  command bump() {
+    mutate n = self.n + 1
+  }
+}
+store Alpha in memory
+`,
+      'b.manifest': `
+entity Beta {
+  property n: number = 0
+  command bump() {
+    mutate n = self.n + 1
+  }
+}
+store Beta in memory
+`,
+    });
+    try {
+      const result = await scanJson(dir);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]!.message).toBe("Command 'Beta.bump' has no policy.");
+      expect(path.basename(result.errors[0]!.file)).toBe('b.manifest');
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('prints compile error messages as text', async () => {
+    const dir = await project({ 'broken.manifest': 'entity {\n' });
+    const { scanCommand } = await import('./scan.js');
+    const capture = captureOutput();
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    try {
+      await scanCommand(dir, {});
+    } finally {
+      capture.restore();
+      exit.mockRestore();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+    expect(capture.outputs.join('\n')).not.toContain('[object Object]');
+  });
+});

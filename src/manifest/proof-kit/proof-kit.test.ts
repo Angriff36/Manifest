@@ -224,6 +224,106 @@ describe('proof-kit catalog + registry', () => {
   });
 });
 
+describe('guard engine allowances and write targets (2026-09-25)', () => {
+  async function tree(files: Record<string, string>) {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'proof-kit-guard-ext-'));
+    for (const [rel, text] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+      fs.writeFileSync(path.join(root, rel), text);
+    }
+    return { root, cleanup: () => fs.rmSync(root, { recursive: true, force: true }) };
+  }
+
+  const base = {
+    schemaVersion: 'manifest-integration-guard/v1' as const,
+    versions: { manifestVersion: 'test', projection: 'convex' },
+    featureRoots: ['src/features/events'],
+    convexLibRoot: 'convex/lib',
+    ownedTables: ['events'],
+    forbidDirectConvexHooks: true,
+    forbiddenImportPatterns: ['(?:^|/)convex/(?:queries|mutations)(?:\\.|$|/)', '^convex/react$'],
+    lifecyclePolicies: [],
+    exceptions: [],
+  };
+
+  it('an allowance permits only the named import and hook in that file', async () => {
+    const { root, cleanup } = await tree({
+      'src/features/events/GuestPanel.tsx':
+        'import { useQuery } from "convex/react";\nconst rows = useQuery(api.x);\n',
+      'src/features/events/GuestWriter.tsx':
+        'import { useMutation } from "convex/react";\nconst go = useMutation(api.y);\n',
+      'src/features/events/GuestPanelBypass.tsx':
+        'import { useMutation } from "convex/react";\nconst go = useMutation(api.y);\n',
+    });
+    try {
+      const config = {
+        ...base,
+        allowances: [
+          {
+            pathSuffix: '/GuestPanel.tsx',
+            imports: ['convex/react'],
+            hooks: ['useQuery' as const],
+            reason: 'relationship query',
+          },
+        ],
+      };
+      const files = (rule: string) =>
+        runManifestIntegrationGuard(root, config)
+          .filter((v) => v.rule === rule)
+          .map((v) => v.file.split('/').pop());
+      expect(files('approved-api-path')).not.toContain('GuestPanel.tsx');
+      expect(files('approved-api-path')).toContain('GuestWriter.tsx');
+      expect(files('approved-api-path')).toContain('GuestPanelBypass.tsx');
+
+      const { writeFileSync } = await import('node:fs');
+      const path = await import('node:path');
+      writeFileSync(
+        path.join(root, 'src/features/events/GuestPanel.tsx'),
+        'import { useQuery, useMutation } from "convex/react";\nconst rows = useQuery(api.x);\nconst go = useMutation(api.y);\n',
+      );
+      const panel = runManifestIntegrationGuard(root, config).filter((v) =>
+        v.file.endsWith('/GuestPanel.tsx'),
+      );
+      expect(panel).toEqual([expect.objectContaining({ rule: 'approved-api-path', line: 3 })]);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('write targets flag only writes to owned document ids', async () => {
+    const { root, cleanup } = await tree({
+      'convex/lib/reads.ts':
+        'export async function f(ctx: any, eventId: Id<"events">, file: any) {\n  const e = await ctx.db.get(eventId);\n  await ctx.db.patch(file._id, { seen: true });\n}\n',
+      'convex/lib/typed.ts':
+        'type EventKey = Id<"events">;\nexport async function f(ctx: any, key: EventKey) {\n  const target = key;\n  await ctx.db.patch(target, { title: "x" });\n}\n',
+      'convex/lib/member.ts':
+        'export async function f(ctx: any, event: any) {\n  const row = await ctx.db.get(event._id as Id<"events">);\n  await ctx.db.delete(event._id);\n}\n',
+      'convex/lib/insert.ts':
+        'export async function f(ctx: any) {\n  await ctx.db.insert("events", {});\n}\n',
+    });
+    try {
+      const flagged = (config: typeof base & Record<string, unknown>) =>
+        new Set(
+          runManifestIntegrationGuard(root, config as never)
+            .filter((v) => v.rule === 'generated-writes-only')
+            .map((v) => v.file.split('/').pop()),
+        );
+      // Coarse default: any write in a file that mentions an owned table.
+      expect(flagged(base)).toEqual(new Set(['reads.ts', 'typed.ts', 'member.ts', 'insert.ts']));
+      const precise = flagged({
+        ...base,
+        writeTargets: { typedIdTables: ['events'], idNames: [], memberRoots: ['event'] },
+      });
+      expect(precise).toEqual(new Set(['typed.ts', 'member.ts', 'insert.ts']));
+    } finally {
+      cleanup();
+    }
+  });
+});
+
 describe('proof-kit package boundary', () => {
   it('core index does not reference convex-test', async () => {
     const fs = await import('node:fs');

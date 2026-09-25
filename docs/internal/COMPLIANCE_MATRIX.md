@@ -13,6 +13,7 @@ companion_inventory: docs/CONFIRMED-FEATURES.md (existence claims; must reconcil
 companion_checklist: docs/TODO.md
 ---
 
+<!-- Edit 2026-09-25: Convex nullable params, entity aggregates in checks + composite-index reads, roleGateImport, readonly enforcement; scan project mode; IR schema visibility; guard allowances/writeTargets (Capsule adoption pass) -->
 <!-- Edit 2026-09-24: Convex nested aggregate guards on allocating commands (create/createVia) FULLY_IMPLEMENTED @ e6478e4 -->
 <!-- Edit 2026-07-22: Hono per-module pathHints (routes|types/<module>/…); monolith src/routes + types stay flat; continue per-module split slice -->
 <!-- Edit 2026-07-22: Express per-module pathHints (routes|types/<module>/…); monolith router/types stay flat; continue per-module split slice -->
@@ -105,6 +106,25 @@ No generated document or automated inventory may promote a feature to `FULLY_IMP
 | Status | Capability | Implementation status | Evidence |
 | --- | --- | --- | --- |
 | [x] | Convex indexed reads use declared storage types | FULLY_IMPLEMENTED | Shared storage validator `src/manifest/projections/convex/generator.ts:269-284`; query field planning `src/manifest/projections/convex/functions.ts:317-385`; emitted-query runtime proofs `src/manifest/projections/convex/indexed-query-storage.test.ts:1-147`; unknown-type rejection proof `src/manifest/projections/convex/functions.test.ts:71-91`, all at `47d176213d9dbcfd84385790e31d1832b0565fb7`. Manifest source compiles into real Convex schema/query modules and executes timestamp/composite, missing/null, decimal/boolean/int64 override, ciphertext and typed-FK reads. Full local suite: 4,519 passed / 60 skipped; root/CLI build, typecheck, lint, format, docs and cycles passed. Independent gpt-5.6-sol APPROVE. Registry publication, Capsule/Builder consumption and Capsule issue [364](https://github.com/Angriff36/capsule/issues/364) closure require separate evidence. |
+
+## Capsule adoption pass (2026-09-25)
+
+Found while moving Capsule off regex patches over generated output
+(`apply-aggregate-composite-indexes.ts`, `apply-org-capability-check-role.ts`,
+`apply-event-service-style-reference-guard.ts`) and hand-rolled guards.
+Capsule consumption evidence (regen with a locally packed build, 387 test
+files / 1454 tests green) is recorded on the Capsule branch; registry
+publication is a separate step.
+
+| Status | Capability | Implementation status | Evidence |
+| --- | --- | --- | --- |
+| [x] | Convex args accept `null` for nullable command params (`T?`), matching Zod `.nullable()` | FULLY_IMPLEMENTED | `src/manifest/projections/convex/functions.ts:279-297` (paramValidator); proof `src/manifest/projections/convex/nullable-param-args.test.ts:1-58` @ `7a74402b27502a930c74712ba3f46a94384c569b` |
+| [x] | Entity-scoped `count`/`sum(E where …)` in command guards/constraints (runtime + Convex); `id` predicate point read; aggregate reads use the declared/composite index covering the most equality predicates | FULLY_IMPLEMENTED | Spec `docs/spec/builtins.md` (Entity-scoped aggregates, edit 2026-09-25); `src/manifest/projections/convex/entity-aggregate-read.ts:1-239`, `functions.ts:1013-1079` (renderChecks hoist); conformance fixture `116-aggregate-count-guard` (4 runtime cases); proof `entity-aggregate-read.test.ts:1-167` @ `be9b22381a8da81a668500ae0f0163fed7f1d90d` |
+| [x] | Convex `roleGateImport` (author `roleGateDenies` consulted by `roleAllows(user.role, …)`) | FULLY_IMPLEMENTED | Spec `docs/spec/adapters.md` (roleGateImport, 2026-09-25); `src/manifest/projections/convex/role-helpers.ts:1-71`; proof `role-gate.test.ts:1-133` (executed gated/ungated mutations + queries) @ `5bd1ef81535d3c53583ff9f7d7ce7fb41575c736` |
+| [x] | Convex `readonly` enforcement (`E_READONLY` on instance commands; creation/allocation may set; timestamps `updatedAt` stampable) | FULLY_IMPLEMENTED | `src/manifest/projections/convex/functions.ts:1090-1108`; proof `readonly-emit.test.ts:1-154` @ `117dff6a680b7ffe24bdc93b39089857947c506c` + `d5d9ae8d2f003986365b172e618e1d88b64c4286` |
+| [x] | `manifest scan` on multi-file (`use`) projects: project compile per root, attached write/delete policies count as coverage, built-in `durable`/`mongodb`/`eventSourced` targets, real error text | FULLY_IMPLEMENTED | `packages/cli/src/commands/scan.ts:346-460,825-840`; proof `packages/cli/src/commands/scan.test.ts` (3 new cases) @ `a82e89692458c2855827b51bc3072eab551f99c8`; Capsule 105 files: 382 false errors → 4 real |
+| [x] | IR schema accepts `IRCommand.visibility` (`private command`), which the compiler already emitted | FULLY_IMPLEMENTED | `docs/spec/ir/ir-v1.schema.json` IRCommand.visibility; fixture 116 declares a private command (red without the field) @ `6adf5c11668d954bb1ad7beb2c3011c6af04cc5a` |
+| [x] | Proof-kit guard engine `allowances` + `writeTargets` (optional, same schema id) | FULLY_IMPLEMENTED | `src/manifest/proof-kit/guard/engine.ts:56-267`, `src/manifest/proof-kit/types.ts` (IntegrationGuardAllowance / IntegrationGuardWriteTargets); proof `proof-kit.test.ts` (2 new cases) @ `26a13ee70e6fe8de9c37e8d46f72dd4f74b60235` |
 
 ## Integration status (Manifest × Builder)
 

@@ -149,7 +149,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 
 ## Conformance evidence
 
-104 source fixtures are present. Expected IR, diagnostics, and results files are compiler-derived executable evidence; their presence is not a substitute for the matrix proof protocol.
+105 source fixtures are present. Expected IR, diagnostics, and results files are compiler-derived executable evidence; their presence is not a substitute for the matrix proof protocol.
 
 | Fixture | Expected evidence |
 | --- | --- |
@@ -257,6 +257,7 @@ The public language-metadata registry currently reports 19 top-level constructs,
 | `113-silent-drop-constructs.manifest` | `113-silent-drop-constructs.diagnostics.json` |
 | `114-aggregate-sum-reaction.manifest` | `114-aggregate-sum-reaction.ir.json` |
 | `115-reaction-match-else-create.manifest` | `115-reaction-match-else-create.ir.json` |
+| `116-aggregate-count-guard.manifest` | `116-aggregate-count-guard.ir.json`, `116-aggregate-count-guard.results.json` |
 
 ## Published package export map
 

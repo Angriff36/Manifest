@@ -1,6 +1,7 @@
 # Convex projection — capability map
 
-**Date:** 2026-07-22  
+**Date:** 2026-09-25 (nullable command params row added)  
+~~**Date:** 2026-07-22~~  
 ~~**Date:** 2026-07-20~~  
 ~~**Date:** 2026-07-17~~  
 ~~**Date:** 2026-07-14~~  
@@ -32,12 +33,15 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Command policies / guards / constraints          | mutations                    | Fail-closed; `CONVEX_UNRESOLVED_*` + denying throw; constraint `failWhen` polarity honored   |
 | Roles + `roleAllows`                             | queries + mutations          | Target-aware `ROLE_PERMISSIONS` + `checkRole`                                                |
 | Events + G7 emit payloads                        | mutations                    | `manifestEvents` table                                                                       |
-| Reactions (resolve, fanOut, count aggregates)    | mutations                    |                                                                                              |
+| Reactions (resolve, fanOut, count aggregates)    | mutations                    | Entity-scoped `count`/`sum(E where …)` read via the declared index covering the most equality predicates (config `indexes` composites included); `id` predicate = point read (2026-09-25) |
+| Entity-scoped aggregates in guards/constraints   | mutations                    | Read into `__chkN` locals before the check; tenant + soft-delete filtered; unresolved predicate → fail-closed (2026-09-25) |
 | Transitions                                      | mutations                    | Pre-patch legality; same-state (`from === to`) allowed; always on                            |
+| Nullable command params (`T?`)                   | mutations                    | Arg validator `v.union(T, v.null())` (wrapped in `v.optional` when `optional`); matches Zod `.nullable()` params (2026-09-25) |
 | Command idempotency (`idempotencyKey`)           | schema + mutations           | `commandIdempotencyKeys` table; optional arg; cached result before re-execution (default on) |
 | Command `rateLimit`                              | schema + mutations           | Sliding-window `commandRateLimitBuckets`; before policies/guards; user/tenant need auth seam |
 | Policy `rateLimit` (write/execute/delete)        | schema + mutations           | Same bucket table; `policy:<name>` key; before each policy expression                        |
 | `versionProperty` / `versionAtProperty` OCC      | schema + mutations           | Schema field synthesis; create seeds `1`; updates optional expected version + increment      |
+| `readonly` properties                            | mutations                    | Instance commands throw `E_READONLY` when changing a readonly value (same value passes); create/createVia and match-else-create allocations may set it; `updatedAt` under `timestamps` is audit metadata commands may stamp (2026-09-25; was silently ignored) |
 | Private properties (read strip)                  | queries                      | Always on; mutation path still sees stored values                                            |
 | `masked` / `unmask when`                         | queries                      | Read-time strategies on list/get; unmaskWhen when Convex-renderable; mutations stay unmasked |
 | Computed (self-only)                             | computed (+ optional inline) | `computedProperties: helpers \| inline`                                                      |
@@ -48,6 +52,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Tenant filter / soft-delete filter               | queries                      | Field-aware defaults                                                                         |
 | `authContextImport`                              | queries + mutations          | Author-owned identity seam (also used after HTTP auth propagates into `runMutation`)         |
 | `flagProviderImport` / `flag()`                  | queries + mutations          | Author-owned `flag(name)` module; required for public read policies that call `flag()`       |
+| `roleGateImport` / `roleGateDenies`             | queries + mutations + computed | `roleAllows(user.role, …)` → `checkRole(user, …)`; author gate can only deny (2026-09-25)   |
 | `encryptionImport` / encrypted properties        | queries + mutations          | Versioned envelope; decrypt before policy/read projection, encrypt before store writes       |
 | `trustedSource` (`from context.*`)               | mutations + http dispatcher  | Omitted from client args; injected from `getAuthContext` (`__auth.context ?? __auth`)          |
 | React client hooks (`useQuery` / `useMutation`)  | react                        | Skips only read-gated entities whose public policy queries cannot be rendered                |

@@ -1,0 +1,274 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "7a5a80fd8103aa7c32d7dd2f50db27d86aab0abfb7f786bd185a741880391121",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "ServiceStyle",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "active"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "events",
+          "kind": "hasMany",
+          "target": "Event"
+        }
+      ],
+      "commands": [
+        "retire"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Event",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "serviceStyleId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "headcount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "serviceStyle",
+          "kind": "belongsTo",
+          "target": "ServiceStyle"
+        }
+      ],
+      "commands": [
+        "changeServiceStyle",
+        "setHeadcount"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "ServiceStyle",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Event",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [
+    {
+      "name": "retire",
+      "entity": "ServiceStyle",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "retired"
+            }
+          }
+        }
+      ],
+      "emits": [],
+      "visibility": "private"
+    },
+    {
+      "name": "changeServiceStyle",
+      "entity": "Event",
+      "parameters": [
+        {
+          "name": "serviceStyleId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": ">",
+          "left": {
+            "kind": "aggregate",
+            "op": "count",
+            "entity": "ServiceStyle",
+            "predicates": [
+              {
+                "field": "id",
+                "value": {
+                  "kind": "identifier",
+                  "name": "serviceStyleId"
+                }
+              },
+              {
+                "field": "status",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "string",
+                    "value": "active"
+                  }
+                }
+              }
+            ]
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "serviceStyleId",
+          "expression": {
+            "kind": "identifier",
+            "name": "serviceStyleId"
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "setHeadcount",
+      "entity": "Event",
+      "parameters": [
+        {
+          "name": "headcount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [
+        {
+          "name": "styleChosen",
+          "code": "styleChosen",
+          "expression": {
+            "kind": "binary",
+            "operator": ">",
+            "left": {
+              "kind": "aggregate",
+              "op": "count",
+              "entity": "ServiceStyle",
+              "predicates": [
+                {
+                  "field": "id",
+                  "value": {
+                    "kind": "member",
+                    "object": {
+                      "kind": "identifier",
+                      "name": "self"
+                    },
+                    "property": "serviceStyleId"
+                  }
+                }
+              ]
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 0
+              }
+            }
+          },
+          "severity": "block",
+          "message": "Choose a service style first",
+          "overrideable": false
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "headcount",
+          "expression": {
+            "kind": "identifier",
+            "name": "headcount"
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

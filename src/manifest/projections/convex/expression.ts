@@ -70,6 +70,12 @@ export interface RenderScope {
     collection: IRExpression,
     callback?: IRExpression,
   ) => string | undefined;
+  /**
+   * Entity-scoped aggregate nodes (`count(Entity where …)`) the caller already
+   * read into locals; each renders as its local. Unmapped aggregates stay
+   * unresolved (fail closed).
+   */
+  aggregateVars?: ReadonlyMap<IRExpression, string>;
 }
 
 /** Smallest explicit doc-shaped type used when no named Doc<> is available. */
@@ -446,6 +452,13 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
         const paramType =
           lambdaParamTypeStack[lambdaParamTypeStack.length - 1] ?? fallbackLambdaType;
         return `(${formatTypedLambdaParams(e.params, paramType)}) => (${body})`;
+      }
+
+      case 'aggregate': {
+        const local = scope.aggregateVars?.get(e);
+        if (local) return local;
+        unresolved.push(`expression kind 'aggregate'`);
+        return '/* unresolved */ undefined';
       }
 
       default: {

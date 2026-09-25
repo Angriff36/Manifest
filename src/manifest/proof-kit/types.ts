@@ -99,6 +99,36 @@ export interface IntegrationGuardException {
   reason: string;
 }
 
+/**
+ * Narrow per-file permission (2026-09-25): the named imports / Convex hooks are
+ * allowed in files ending with `pathSuffix`; every other rule still applies.
+ */
+export interface IntegrationGuardAllowance {
+  pathSuffix: string;
+  /** Import specifiers exempt from forbiddenImportPatterns in this file. */
+  imports?: string[];
+  /** Convex hooks this file may call directly. */
+  hooks?: Array<'useQuery' | 'useMutation' | 'useAction'>;
+  reason: string;
+}
+
+/**
+ * Precise authored-write detection (2026-09-25). Without it, any
+ * patch/replace/delete in a file that mentions an owned table is a violation.
+ * With it, only a patch/replace/delete whose target is an owned document id
+ * is: a local typed `Id<"table">` (directly, via a type alias, or a simple
+ * `const a = b` alias), a name in `idNames`, or `<root>._id` for a root in
+ * `memberRoots` (case-insensitive).
+ */
+export interface IntegrationGuardWriteTargets {
+  /** Tables whose `Id<"…">` typed locals are owned-document ids. */
+  typedIdTables: string[];
+  /** Untyped argument names that conventionally hold owned ids. */
+  idNames: string[];
+  /** Roots whose `._id` is an owned document id (e.g. `event`). */
+  memberRoots: string[];
+}
+
 export interface IntegrationGuardLifecyclePolicy {
   pathSuffix: string;
   bindingsImport: string;
@@ -116,6 +146,8 @@ export interface IntegrationGuardConfig {
   lifecycleLiteralPattern?: string;
   lifecyclePolicies: IntegrationGuardLifecyclePolicy[];
   exceptions: IntegrationGuardException[];
+  allowances?: IntegrationGuardAllowance[];
+  writeTargets?: IntegrationGuardWriteTargets;
 }
 
 export interface GuardViolation {

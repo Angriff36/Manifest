@@ -1,0 +1,100 @@
+{
+  "testCases": [
+    {
+      "name": "guard count(...) > 0 passes when the referenced row is active",
+      "setup": {
+        "createInstances": [
+          { "entity": "ServiceStyle", "data": { "id": "style-buffet", "status": "active" } },
+          { "entity": "Event", "data": { "id": "event-1" } }
+        ]
+      },
+      "command": {
+        "name": "changeServiceStyle",
+        "entityName": "Event",
+        "instanceId": "event-1",
+        "input": { "serviceStyleId": "style-buffet" }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "style-buffet",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "event-1",
+        "serviceStyleId": "style-buffet",
+        "headcount": 0
+      }
+    },
+    {
+      "name": "guard count(...) > 0 fails when the referenced row is not active",
+      "setup": {
+        "createInstances": [
+          { "entity": "ServiceStyle", "data": { "id": "style-old", "status": "retired" } },
+          { "entity": "Event", "data": { "id": "event-2" } }
+        ]
+      },
+      "command": {
+        "name": "changeServiceStyle",
+        "entityName": "Event",
+        "instanceId": "event-2",
+        "input": { "serviceStyleId": "style-old" }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'changeServiceStyle'",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "event-2",
+        "serviceStyleId": "",
+        "headcount": 0
+      }
+    },
+    {
+      "name": "constraint count(...) blocks when no referenced row exists",
+      "setup": {
+        "createInstances": [{ "entity": "Event", "data": { "id": "event-3" } }]
+      },
+      "command": {
+        "name": "setHeadcount",
+        "entityName": "Event",
+        "instanceId": "event-3",
+        "input": { "headcount": 120 }
+      },
+      "expectedResult": {
+        "success": false,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "event-3",
+        "serviceStyleId": "",
+        "headcount": 0
+      }
+    },
+    {
+      "name": "constraint count(...) passes when the referenced row exists",
+      "setup": {
+        "createInstances": [
+          { "entity": "ServiceStyle", "data": { "id": "style-plated" } },
+          { "entity": "Event", "data": { "id": "event-4", "serviceStyleId": "style-plated" } }
+        ]
+      },
+      "command": {
+        "name": "setHeadcount",
+        "entityName": "Event",
+        "instanceId": "event-4",
+        "input": { "headcount": 120 }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 120,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "event-4",
+        "serviceStyleId": "style-plated",
+        "headcount": 120
+      }
+    }
+  ]
+}
