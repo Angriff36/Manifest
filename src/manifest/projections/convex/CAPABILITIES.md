@@ -1,6 +1,7 @@
 # Convex projection — capability map
 
-**Date:** 2026-07-22  
+**Date:** 2026-09-25 (nullable command params row added)  
+~~**Date:** 2026-07-22~~  
 ~~**Date:** 2026-07-20~~  
 ~~**Date:** 2026-07-17~~  
 ~~**Date:** 2026-07-14~~  
@@ -34,6 +35,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Events + G7 emit payloads                        | mutations                    | `manifestEvents` table                                                                       |
 | Reactions (resolve, fanOut, count aggregates)    | mutations                    |                                                                                              |
 | Transitions                                      | mutations                    | Pre-patch legality; same-state (`from === to`) allowed; always on                            |
+| Nullable command params (`T?`)                   | mutations                    | Arg validator `v.union(T, v.null())` (wrapped in `v.optional` when `optional`); matches Zod `.nullable()` params (2026-09-25) |
 | Command idempotency (`idempotencyKey`)           | schema + mutations           | `commandIdempotencyKeys` table; optional arg; cached result before re-execution (default on) |
 | Command `rateLimit`                              | schema + mutations           | Sliding-window `commandRateLimitBuckets`; before policies/guards; user/tenant need auth seam |
 | Policy `rateLimit` (write/execute/delete)        | schema + mutations           | Same bucket table; `policy:<name>` key; before each policy expression                        |

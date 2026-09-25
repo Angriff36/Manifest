@@ -275,12 +275,24 @@ function renderActionValue(
  * Unknown leaf types still fall back to `v.any()` (params are not schema fields,
  * so an unmapped type is permissive rather than a hard diagnostic).
  */
-function paramValidator(type: { name: string; generic?: { name: string } }): string {
+/**
+ * Arg validator for a command parameter. A nullable parameter (`T?`) accepts
+ * `null` as well as `T`, matching the Zod companion's `.nullable()` params —
+ * otherwise a value the shared schema accepts is rejected by Convex.
+ */
+function paramValidator(type: {
+  name: string;
+  nullable?: boolean;
+  generic?: { name: string };
+}): string {
+  let base: string;
   if ((type.name === 'array' || type.name === 'list') && type.generic) {
     const element = resolveConvexValidator(type.generic.name, undefined, '') ?? 'v.any()';
-    return `v.array(${element})`;
+    base = `v.array(${element})`;
+  } else {
+    base = resolveConvexValidator(type.name, undefined, '') ?? 'v.any()';
   }
-  return resolveConvexValidator(type.name, undefined, '') ?? 'v.any()';
+  return type.nullable && base !== 'v.any()' ? `v.union(${base}, v.null())` : base;
 }
 
 // ---------------------------------------------------------------------------
