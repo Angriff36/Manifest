@@ -1,0 +1,35 @@
+// Entity-scoped aggregate in a command guard and constraint (2026-09-25).
+// `count(E where f == v, …)` is evaluated at execution time against the
+// current rows of E, exactly as in reaction params. Here it proves a
+// referenced row exists and is active before the reference is written: an
+// `id` predicate names the target row by the command parameter.
+entity ServiceStyle {
+  property required id: string
+  property status: string = "active"
+  hasMany events: Event
+
+  command retire() {
+    mutate status = "retired"
+  }
+
+  store in memory
+}
+
+entity Event {
+  property required id: string
+  property serviceStyleId: string = ""
+  property headcount: number = 0
+  belongsTo serviceStyle: ServiceStyle
+
+  command changeServiceStyle(serviceStyleId: string) {
+    guard count(ServiceStyle where id == serviceStyleId, status == "active") > 0
+    mutate serviceStyleId = serviceStyleId
+  }
+
+  command setHeadcount(headcount: number) {
+    constraint styleChosen: count(ServiceStyle where id == self.serviceStyleId) > 0 "Choose a service style first"
+    mutate headcount = headcount
+  }
+
+  store in memory
+}

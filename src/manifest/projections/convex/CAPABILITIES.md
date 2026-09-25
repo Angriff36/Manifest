@@ -33,7 +33,8 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Command policies / guards / constraints          | mutations                    | Fail-closed; `CONVEX_UNRESOLVED_*` + denying throw; constraint `failWhen` polarity honored   |
 | Roles + `roleAllows`                             | queries + mutations          | Target-aware `ROLE_PERMISSIONS` + `checkRole`                                                |
 | Events + G7 emit payloads                        | mutations                    | `manifestEvents` table                                                                       |
-| Reactions (resolve, fanOut, count aggregates)    | mutations                    |                                                                                              |
+| Reactions (resolve, fanOut, count aggregates)    | mutations                    | Entity-scoped `count`/`sum(E where …)` read via the declared index covering the most equality predicates (config `indexes` composites included); `id` predicate = point read (2026-09-25) |
+| Entity-scoped aggregates in guards/constraints   | mutations                    | Read into `__chkN` locals before the check; tenant + soft-delete filtered; unresolved predicate → fail-closed (2026-09-25) |
 | Transitions                                      | mutations                    | Pre-patch legality; same-state (`from === to`) allowed; always on                            |
 | Nullable command params (`T?`)                   | mutations                    | Arg validator `v.union(T, v.null())` (wrapped in `v.optional` when `optional`); matches Zod `.nullable()` params (2026-09-25) |
 | Command idempotency (`idempotencyKey`)           | schema + mutations           | `commandIdempotencyKeys` table; optional arg; cached result before re-execution (default on) |

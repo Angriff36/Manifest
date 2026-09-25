@@ -48,6 +48,7 @@ import {
 import { renderEntityComputedHydration, renderInlineComputedFields } from './computed.js';
 import { computedRuntimeBindings } from './computed-context.js';
 import { renderRoleHelper } from './role-helpers.js';
+import { collectEntityAggregates, renderEntityAggregateRead } from './entity-aggregate-read.js';
 import {
   renderExpression,
   isNullLiteral,
@@ -1013,9 +1014,15 @@ function renderChecks(
   checks: CheckSpec[],
   scope: RenderScope,
   rateLimitOpts?: { tenantProp: string | undefined },
+  aggregateOpts?: { ir: IR; options: Normalized },
 ): { lines: string[]; diagnostics: ProjectionDiagnostic[] } {
   const lines: string[] = [];
   const diagnostics: ProjectionDiagnostic[] = [];
+  // Entity-scoped aggregates in guards/constraints read into `__chkN` locals
+  // just before the check that uses them (docs/spec/builtins.md).
+  const aggregateVars = new Map<IRExpression, string>();
+  let aggregateCounter = 0;
+  let checkTenantEmitted = false;
   for (const c of checks) {
     if (c.policyRateLimit?.rateLimit && rateLimitOpts) {
       lines.push(
@@ -1024,7 +1031,35 @@ function renderChecks(
         }),
       );
     }
-    const { code, unresolved } = renderExpression(c.expr, scope);
+    if (aggregateOpts) {
+      const { ir, options } = aggregateOpts;
+      for (const agg of collectEntityAggregates(c.expr)) {
+        const read = renderEntityAggregateRead(agg, `__chk${aggregateCounter++}`, {
+          ir,
+          options,
+          label: c.label,
+          renderValue: (val) => {
+            const r = renderExpression(val, scope);
+            return r.unresolved.length ? null : r.code;
+          },
+          readFilter: (entity) => resolveReadFilter(ir, entity, options),
+          tenantVar: '__checkTenant',
+          tenantBinding: (tenantProp) => {
+            if (checkTenantEmitted) return null;
+            checkTenantEmitted = true;
+            return `    const __checkTenant = ((await getAuthContext(ctx)) as any).${tenantProp} ?? null;`;
+          },
+        });
+        diagnostics.push(...read.diagnostics);
+        if (read.valueVar === null) continue;
+        lines.push(...read.lines);
+        aggregateVars.set(agg, read.valueVar);
+      }
+    }
+    const { code, unresolved } = renderExpression(
+      c.expr,
+      aggregateVars.size ? { ...scope, aggregateVars } : scope,
+    );
     if (unresolved.length > 0) {
       diagnostics.push({
         severity: 'error',
@@ -1171,89 +1206,32 @@ function renderReactions(
   ): { preLines: string[]; entry: string | null } => {
     const e = p.expression;
     if (e.kind === 'aggregate' && (e.op === 'count' || e.op === 'sum')) {
-      const childEntity = ir.entities.find((en) => en.name === e.entity);
-      if (!childEntity) {
-        diagnostics.push({
-          severity: 'error',
-          code: 'CONVEX_AGGREGATE_UNKNOWN_ENTITY',
-          message: `${label} param '${p.name}' ${e.op}s unknown entity '${e.entity}'; omitted.`,
-        });
-        return { preLines: [], entry: null };
-      }
-      if (e.op === 'sum' && !e.field) {
-        diagnostics.push({
-          severity: 'error',
-          code: 'CONVEX_AGGREGATE_SUM_MISSING_FIELD',
-          message: `${label} param '${p.name}' sum is missing 'of' field; omitted.`,
-        });
-        return { preLines: [], entry: null };
-      }
-      const childTable = resolveConvexTableName(e.entity, options);
-      const rf = resolveReadFilter(ir, childEntity, options);
-      const refFields = collectReferenceFields(childEntity, ir, options);
-      const isIndexedField = (field: string): boolean => {
-        const prop = childEntity.properties.find((pp) => pp.name === field);
-        return !!prop && (prop.modifiers.includes('indexed') || refFields.has(field));
-      };
-      const renderVal = (val: IRExpression): RenderResult => {
-        const r = renderExpression(val, scope);
-        if (r.unresolved.length) {
-          diagnostics.push({
-            severity: 'warning',
-            code: 'CONVEX_UNRESOLVED_AGGREGATE_PREDICATE',
-            message: `${label} param '${p.name}' ${e.op} predicate value unresolved (${r.unresolved.join('; ')}).`,
-          });
-        }
-        return r;
-      };
-
-      const indexedPred = e.predicates.find((pr) => isIndexedField(pr.field));
-      const remaining = indexedPred
-        ? e.predicates.filter((pr) => pr !== indexedPred)
-        : e.predicates;
-      const rowsVar = `__agg${countCounter}_rows`;
-      const aggVar = `__agg${countCounter}`;
-      countCounter++;
-      const preLines: string[] = [];
-
-      let queryHead: string;
-      if (indexedPred) {
-        const v = renderVal(indexedPred.value);
-        queryHead = `ctx.db.query("${childTable}").withIndex("by_${indexedPred.field}", (q) => q.eq("${indexedPred.field}", ${v.code}))`;
-      } else {
-        queryHead = `ctx.db.query("${childTable}")`;
-        diagnostics.push({
-          severity: 'info',
-          code: 'CONVEX_AGGREGATE_UNINDEXED',
-          message: `${label} param '${p.name}' ${e.op}s '${e.entity}' with no indexed/foreign-key predicate; rendered a table scan (mark an equality field indexed for speed).`,
-        });
-      }
-      preLines.push(`    const ${rowsVar} = await ${queryHead}.collect();`);
-
-      const filters: string[] = [];
-      for (const pr of remaining) {
-        const v = renderVal(pr.value);
-        filters.push(`(d as any).${pr.field} === ${v.code}`);
-      }
-      if (rf.hasSoftDelete) filters.push(`(d as any).${rf.deletedProp} == null`);
-      if (rf.hasTenant && rf.tenantProp) {
-        if (!tenantEmitted) {
-          preLines.push(tenantBindingLine(options, rf.tenantProp!));
+      const read = renderEntityAggregateRead(e, `__agg${countCounter}`, {
+        ir,
+        options,
+        label: `${label} param '${p.name}'`,
+        renderValue: (val) => {
+          const r = renderExpression(val, scope);
+          if (r.unresolved.length) {
+            diagnostics.push({
+              severity: 'warning',
+              code: 'CONVEX_UNRESOLVED_AGGREGATE_PREDICATE',
+              message: `${label} param '${p.name}' ${e.op} predicate value unresolved (${r.unresolved.join('; ')}).`,
+            });
+          }
+          return r.code;
+        },
+        readFilter: (entity) => resolveReadFilter(ir, entity, options),
+        tenantBinding: (tenantProp) => {
+          if (tenantEmitted) return null;
           tenantEmitted = true;
-        }
-        filters.push(`(d as any).${rf.tenantProp} === __tenant`);
-      }
-      const filteredVar = `${rowsVar}f`;
-      const chain = filters.length ? filters.map((f) => `.filter((d) => ${f})`).join('') : '';
-      if (e.op === 'count') {
-        preLines.push(`    const ${aggVar} = ${rowsVar}${chain}.length;`);
-      } else {
-        preLines.push(`    const ${filteredVar} = ${rowsVar}${chain};`);
-        preLines.push(
-          `    const ${aggVar} = ${filteredVar}.reduce((acc, d) => { const n = Number((d as any).${e.field}); return acc + (Number.isFinite(n) ? n : 0); }, 0);`,
-        );
-      }
-      return { preLines, entry: `${p.name}: ${aggVar}` };
+          return tenantBindingLine(options, tenantProp);
+        },
+      });
+      countCounter++;
+      diagnostics.push(...read.diagnostics);
+      if (read.valueVar === null) return { preLines: [], entry: null };
+      return { preLines: read.lines, entry: `${p.name}: ${read.valueVar}` };
     }
 
     const { code, unresolved } = renderExpression(e, scope);
@@ -1841,9 +1819,13 @@ function renderGovernedCreationEntry(
     resolveCollectionElementType: (collection, callback) =>
       resolveHasManyLambdaParamType(ir, entity, collection, callback, options),
   };
-  const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), scope, {
-    tenantProp: writeTenantProp,
-  });
+  const checks = renderChecks(
+    entity.name,
+    commandChecks(ir, cmd, options.policyMode),
+    scope,
+    { tenantProp: writeTenantProp },
+    { ir, options },
+  );
   diagnostics.push(...checks.diagnostics);
   const createViaRateLimitLines = renderCommandRateLimitCheckLines(cmd, {
     keyPrefix: commandCreationExportName(entity.name, cmd.name),
@@ -2205,9 +2187,13 @@ function generateMutation(
       docLines.push(line);
     }
 
-    const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), scope, {
-      tenantProp: writeTenantProp,
-    });
+    const checks = renderChecks(
+      entity.name,
+      commandChecks(ir, cmd, options.policyMode),
+      scope,
+      { tenantProp: writeTenantProp },
+      { ir, options },
+    );
     diagnostics.push(...checks.diagnostics);
     // G7 `emit Event { field: expr }`: populate each event-row payload (and the
     // shared reaction payload below) with declared fields evaluated against the
@@ -2380,6 +2366,7 @@ function generateMutation(
         resolveHasManyLambdaParamType(ir, entity, collection, callback, options),
     },
     { tenantProp: writeTenantProp },
+    { ir, options },
   );
   diagnostics.push(...checks.diagnostics);
 

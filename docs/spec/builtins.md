@@ -116,9 +116,16 @@ entity Order {
 
 Evidence: conformance fixture `64-aggregate-computed-properties.manifest`.
 
-### Entity-scoped aggregates (reaction params)
+### Entity-scoped aggregates (reaction params, command guards and constraints)
 
-In addition to array aggregates, reaction `params` may use entity scans:
+~~In addition to array aggregates, reaction `params` may use entity scans:~~
+
+> **Edit 2026-09-25:** entity scans are valid in reaction `params` **and** in
+> command guards and command constraints. They read the current rows at
+> execution time (same result as the reaction form). A predicate on `id`
+> selects the row with that identity, so `count(E where id == x, status ==
+> "active") > 0` proves a referenced row exists and matches before a command
+> writes the reference. Evidence: conformance fixture `116-aggregate-count-guard.manifest`.
 
 - `count(Entity where field == value, …)` — count matching rows (ANDed equalities; ≥1 predicate required)
 - `sum(Entity where field == value, …, of quantityField)` — sum a numeric property on matching rows; non-finite values contribute `0`
