@@ -8,7 +8,9 @@ entity ServiceStyle {
   property status: string = "active"
   hasMany events: Event
 
-  command retire() {
+  // Private: callable (e.g. by reactions/seams), not a person-facing action.
+  // Its IR carries `visibility: "private"`, which ir-v1.schema.json accepts.
+  private command retire() {
     mutate status = "retired"
   }
 

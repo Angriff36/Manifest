@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "aa134dbad35bc62f12ac9b70bb303b0545fedc8ef1615c4a5a120ecd14d1ace3",
+    "irHash": "7a5a80fd8103aa7c32d7dd2f50db27d86aab0abfb7f786bd185a741880391121",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -138,7 +138,8 @@
           }
         }
       ],
-      "emits": []
+      "emits": [],
+      "visibility": "private"
     },
     {
       "name": "changeServiceStyle",
