@@ -1680,6 +1680,49 @@ function renderRelationHydration(
 }
 
 /**
+ * Nested aggregate hydration for allocating commands. The new document owns no
+ * child rows yet, so only belongsTo roots already resolved by the relation plan
+ * are walked; their nested hasMany collections load onto those same relation
+ * locals so guards like `sum(self.item.reservations, ...)` see real rows.
+ */
+function renderCreationAggregateHydration(
+  ir: IR,
+  options: Normalized,
+  entity: IREntity,
+  cmd: IRCommand,
+  relationVars: Readonly<Record<string, string>>,
+  tenantScoped: boolean,
+  writeTenantProp: string | undefined,
+): { lines: string[]; diagnostics: ProjectionDiagnostic[] } {
+  const planned = planAndRenderAggregateHydration(
+    ir,
+    entity,
+    commandChecks(ir, cmd, options.policyMode).map((check) => check.expr),
+    options,
+    'undefined',
+  );
+  const tree = new Map(
+    [...planned.tree].filter(
+      ([, node]) => node.hop.kind !== 'hasMany' && relationVars[node.hop.relName] !== undefined,
+    ),
+  );
+  if (![...tree.values()].some((node) => node.children.size > 0)) {
+    return { lines: [], diagnostics: planned.diagnostics };
+  }
+  return {
+    lines: [
+      `    const __aggRoot: Record<string, any> = {};`,
+      ...renderAggregateHydration(tree, '__aggRoot', 'undefined', '    ', ir, options, {
+        relationVars,
+        tenantProperty: tenantScoped ? writeTenantProp : undefined,
+        tenantValue: writeTenantProp ? `__auth.${writeTenantProp}` : undefined,
+      }),
+    ],
+    diagnostics: planned.diagnostics,
+  };
+}
+
+/**
  * Emit an allocating `createVia*` mutation that performs atomic document
  * construction from the command's IR initialization plan: draft → checks →
  * mutations → single insert. No partial document is persisted before mutations.
@@ -1767,6 +1810,17 @@ function renderGovernedCreationEntry(
     writeTenantProp,
   );
   diagnostics.push(...relationHydration.diagnostics);
+  const creationAggregates = renderCreationAggregateHydration(
+    ir,
+    options,
+    entity,
+    cmd,
+    relationHydration.relationVars,
+    tenantScoped,
+    writeTenantProp,
+  );
+  relationHydration.lines.push(...creationAggregates.lines);
+  diagnostics.push(...creationAggregates.diagnostics);
 
   const scope: RenderScope = {
     selfVar: '__draft',
@@ -2026,6 +2080,17 @@ function generateMutation(
       writeTenantProp,
     );
     diagnostics.push(...relationHydration.diagnostics);
+    const creationAggregates = renderCreationAggregateHydration(
+      ir,
+      options,
+      entity,
+      cmd,
+      relationHydration.relationVars,
+      tenantScoped,
+      writeTenantProp,
+    );
+    relationHydration.lines.push(...creationAggregates.lines);
+    diagnostics.push(...creationAggregates.diagnostics);
     const scope: RenderScope = {
       selfVar: 'args',
       relationVars: relationHydration.relationVars,
