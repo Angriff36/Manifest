@@ -1078,6 +1078,31 @@ function renderChecks(
   return { lines, diagnostics };
 }
 
+/**
+ * `readonly` (semantics.md, Modifier enforcement): once a document exists, a
+ * command may not change a readonly property to a different value. Writing the
+ * current value is a no-op, and a row allocated for this command (`__creation`)
+ * may set it. Absent and null compare equal (Convex drops undefined fields).
+ */
+function renderReadonlyChecks(entity: IREntity, cmd: IRCommand): string {
+  const written = new Set(
+    (cmd.actions ?? []).filter((a) => a.kind === 'mutate' && a.target).map((a) => a.target!),
+  );
+  return entity.properties
+    .filter((p) => p.modifiers.includes('readonly') && written.has(p.name))
+    .map((p) => {
+      const key = JSON.stringify(p.name);
+      const message = JSON.stringify(
+        `E_READONLY: Property '${p.name}' is readonly and cannot be modified after creation`,
+      );
+      return (
+        `    if (!__creation && JSON.stringify((updates as any)[${key}] ?? null) !== JSON.stringify(doc[${key}] ?? null)) ` +
+        `throw new Error(${message});\n`
+      );
+    })
+    .join('');
+}
+
 /** Collect the policy/guard/constraint checks for a command, in runtime order. */
 function commandChecks(ir: IR, cmd: IRCommand, policyMode: 'enforce' | 'skip'): CheckSpec[] {
   const checks: CheckSpec[] = [];
@@ -1169,7 +1194,8 @@ function renderMatchElseCreateCall(
     `${indent}    if (__elseArgs[__k] !== undefined) __elseDoc[__k] = __elseArgs[__k];`,
     `${indent}  }`,
     `${indent}  const __elseId = await ctx.db.insert(${JSON.stringify(table)}, __elseDoc as any);`,
-    `${indent}  await ${runner}(ctx, { docId: __elseId, ...__elseArgs } as any);`,
+    // `true`: the row was allocated for this command, so readonly fields may be set.
+    `${indent}  await ${runner}(ctx, { docId: __elseId, ...__elseArgs } as any, true);`,
     `${indent}}`,
   ];
 }
@@ -2549,6 +2575,7 @@ function generateMutation(
     ? (needsReferentialOnDelete ? renderReferentialOnDeleteCall(entity.name) : '') +
       `    await ctx.db.delete(docId);\n`
     : `    const updates = {\n${updateFieldLines.join(',\n')}${updateFieldLines.length ? '\n' : ''}    };\n` +
+      renderReadonlyChecks(entity, cmd) +
       (needsReferentialOnUpdate ? renderReferentialOnUpdateCall(entity.name) : '') +
       (encryptionActive
         ? `    const __storedUpdates = await __encryptDoc(ctx, ${JSON.stringify(entity.name)}, ${JSON.stringify(mutationEncrypted)}, updates);\n`

@@ -41,6 +41,7 @@ roadmap Part 1 M2–M7 in `docs/internal/plans/2026-07-14-full-manifest-adoption
 | Command `rateLimit`                              | schema + mutations           | Sliding-window `commandRateLimitBuckets`; before policies/guards; user/tenant need auth seam |
 | Policy `rateLimit` (write/execute/delete)        | schema + mutations           | Same bucket table; `policy:<name>` key; before each policy expression                        |
 | `versionProperty` / `versionAtProperty` OCC      | schema + mutations           | Schema field synthesis; create seeds `1`; updates optional expected version + increment      |
+| `readonly` properties                            | mutations                    | Instance commands throw `E_READONLY` when changing a readonly value (same value passes); create/createVia and match-else-create allocations may set it (2026-09-25; was silently ignored) |
 | Private properties (read strip)                  | queries                      | Always on; mutation path still sees stored values                                            |
 | `masked` / `unmask when`                         | queries                      | Read-time strategies on list/get; unmaskWhen when Convex-renderable; mutations stay unmasked |
 | Computed (self-only)                             | computed (+ optional inline) | `computedProperties: helpers \| inline`                                                      |
