@@ -4,6 +4,39 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.6.58] - 2026-09-25
+
+### Added
+
+- Language: `count(Entity where …)` / `sum(Entity where …, of q)` may be used
+  in command guards and constraints, not only reaction params. A predicate on
+  `id` selects that row, so a command can check a referenced record exists and
+  is active before writing the reference.
+- Convex: new `roleGateImport` option. Name a module exporting
+  `roleGateDenies(user, action, target?)`; every `roleAllows(user.role, …)`
+  asks it first and denies when it says so (e.g. an organization switched a
+  domain off). It can only narrow access.
+- Proof kit: guard configs accept `allowances` (one file may use named
+  imports/hooks, everything else still checked) and `writeTargets` (count an
+  authored patch/replace/delete only when it targets an owned document id).
+
+### Fixed
+
+- Convex: `readonly` properties are now enforced. A command that would change
+  one on an existing record fails with `E_READONLY`; creation commands may set
+  it, and `updatedAt` under `timestamps` can still be stamped.
+- Convex: optional nullable command params (`optional x: string?`) accept
+  `null`, matching the shared Zod schemas.
+- Convex: entity-scoped aggregate reads use the declared index (including
+  composite `indexes` from config) that covers the most equality predicates,
+  instead of the first single-field index.
+- `manifest scan` works on multi-file projects: files pulled in with `use`
+  are compiled together, write/delete policies attached to a command count as
+  coverage, `durable` is a known store target, and errors print their text
+  instead of `[object Object]`.
+- IR schema accepts `visibility` on commands (`private command`); IR with a
+  private command failed `manifest validate` / `validate-ai` before.
+
 ## [3.6.57] - 2026-09-24
 
 ### Fixed
