@@ -24,3 +24,7 @@ Append one entry per run. Prune entries older than 30 days.
 ```json
 {"run_id":"2026-07-16T11:35:30Z","pattern":"daily-triage","duration_s":11,"items_found":2,"actions_taken":1,"escalations":1,"tokens_estimate":23000,"readiness_score":100,"outcome":"escalated","workflow_run":"29494959830"}
 ```
+
+```json
+{"run_id":"2026-10-13T08:11:40Z","pattern":"daily-triage","source":"gha-dogfood","duration_s":14,"readiness_score":100,"readiness_level":"L2","ci_status":"success","outcome":"dogfood-ok","workflow_run":"38367563786","note":"Scoreboard only — agent triage owns STATE.md"}
+```
